@@ -1,0 +1,108 @@
+{
+  "amp_model": "Sunn Model T (1973 First Generation)",
+  "version": "1.0",
+  "description": "Component-accurate model of the original pre-Fender Sunn Model T. Dual 12AX7 preamp channels with Fender-derived passive tonestack, cathodyne PI, 4x6550A ultralinear power section, and 22dB NFB loop.",
+
+  "parameter_definitions": {
+    "vol1":         { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Volume I",     "taper": "audio", "channel": 1 },
+    "bass1":        { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Bass",          "taper": "linear","channel": 1 },
+    "mid1":         { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Midrange",      "taper": "linear","channel": 1 },
+    "treble1":      { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Treble",        "taper": "linear","channel": 1 },
+    "bright1":      { "min": 0.0, "max": 1.0, "default": 0.0,  "label": "Bright",        "taper": "switch","channel": 1 },
+
+    "vol2":         { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Volume II",     "taper": "audio", "channel": 2 },
+    "bass2":        { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Bass",          "taper": "linear","channel": 2 },
+    "mid2":         { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Midrange",      "taper": "linear","channel": 2 },
+    "treble2":      { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Treble",        "taper": "linear","channel": 2 },
+    "bright2":      { "min": 0.0, "max": 1.0, "default": 0.0,  "label": "Bright",        "taper": "switch","channel": 2 },
+
+    "master":       { "min": 0.0, "max": 1.0, "default": 1.0,  "label": "Master Volume", "taper": "audio", "note": "1.0 = no attenuation; authentic non-MV behavior at full" },
+    "presence":     { "min": 0.0, "max": 1.0, "default": 0.5,  "label": "Presence",      "taper": "linear","note": "0=max boost (NFB shelf at 8kHz), 1=flattest" },
+    "sag":          { "min": 0.0, "max": 1.0, "default": 0.3,  "label": "Sag",           "taper": "linear" },
+
+    "channel_link": { "min": 0.0, "max": 1.0, "default": 0.0,
+                       "label": "Channel Link",
+                       "values": { "0.0": "Independent", "0.5": "Parallel", "1.0": "Series (Doom)" } },
+    "input_pad":    { "min": 0.0, "max": 1.0, "default": 0.0,
+                       "label": "Input Pad",
+                       "values": { "0.0": "0 dB", "1.0": "-6 dB" } }
+  },
+
+  "presets": [
+    {
+      "name": "Stock — Noon Settings",
+      "description": "All controls at noon, independent Ch1 only. Clean headroom.",
+      "params": {
+        "vol1": 0.5, "bass1": 0.5, "mid1": 0.5, "treble1": 0.5, "bright1": 0,
+        "vol2": 0.5, "bass2": 0.5, "mid2": 0.5, "treble2": 0.5, "bright2": 0,
+        "master": 1.0, "presence": 0.5, "sag": 0.3,
+        "channel_link": 0.0, "input_pad": 0.0
+      }
+    },
+    {
+      "name": "Sleep — Doom Classic",
+      "description": "Sleep / Dopesmoker / Holy Mountain tone. Max bass, scooped mids, series cascade.",
+      "params": {
+        "vol1": 0.75, "bass1": 0.9, "mid1": 0.15, "treble1": 0.6, "bright1": 0,
+        "vol2": 0.7,  "bass2": 0.85,"mid2": 0.1,  "treble2": 0.55,"bright2": 0,
+        "master": 1.0, "presence": 0.35, "sag": 0.5,
+        "channel_link": 1.0, "input_pad": 0.0
+      }
+    },
+    {
+      "name": "Sunn O))) — Wall of Drone",
+      "description": "Sustained drone tone. Both channels in series, vol maxed, presence down.",
+      "params": {
+        "vol1": 1.0, "bass1": 0.95, "mid1": 0.05, "treble1": 0.45, "bright1": 0,
+        "vol2": 0.9, "bass2": 0.9,  "mid2": 0.05, "treble2": 0.4,  "bright2": 0,
+        "master": 1.0, "presence": 0.2, "sag": 0.6,
+        "channel_link": 1.0, "input_pad": 0.0
+      }
+    },
+    {
+      "name": "Boris — Heavy Psych",
+      "description": "Boris tone: less mid scoop than Sleep, more presence for power chords.",
+      "params": {
+        "vol1": 0.65, "bass1": 0.75, "mid1": 0.35, "treble1": 0.65, "bright1": 1,
+        "vol2": 0.6,  "bass2": 0.7,  "mid2": 0.3,  "treble2": 0.6,  "bright2": 0,
+        "master": 1.0, "presence": 0.55, "sag": 0.35,
+        "channel_link": 1.0, "input_pad": 0.0
+      }
+    },
+    {
+      "name": "Clean — Hi-Fi Headroom",
+      "description": "Maximum clean headroom. Single channel, moderate vol, flat EQ.",
+      "params": {
+        "vol1": 0.4, "bass1": 0.5, "mid1": 0.6, "treble1": 0.55, "bright1": 1,
+        "vol2": 0.5, "bass2": 0.5, "mid2": 0.5, "treble2": 0.5,  "bright2": 0,
+        "master": 0.85, "presence": 0.6, "sag": 0.2,
+        "channel_link": 0.0, "input_pad": 0.0
+      }
+    },
+    {
+      "name": "Parallel Blend — Thick Crunch",
+      "description": "Both channels active in parallel, Ch1 bright + Ch2 dark. Thick rhythm tone.",
+      "params": {
+        "vol1": 0.7, "bass1": 0.6,  "mid1": 0.45, "treble1": 0.65, "bright1": 1,
+        "vol2": 0.6, "bass2": 0.75, "mid2": 0.35, "treble2": 0.4,  "bright2": 0,
+        "master": 1.0, "presence": 0.5, "sag": 0.4,
+        "channel_link": 0.5, "input_pad": 0.0
+      }
+    }
+  ],
+
+  "circuit_reference": {
+    "preamp_tubes":  "2× 12AX7 per channel (V1A/V2A, V1B/V2B)",
+    "pi_tube":       "1× 12AX7 cathodyne (split-load) phase inverter (V3)",
+    "power_tubes":   "4× 6550A beam tetrode (GE, Sylvania, or KT88 equivalent)",
+    "power_mode":    "Class AB push-pull, ultralinear at 43% primary tap",
+    "plate_voltage": "540–560 V",
+    "bias":          "Fixed, −52 to −56 V per tube",
+    "idle_current":  "65 mA per tube, ~260 mA total",
+    "output_power":  "150–180 W RMS (4× 6550A at rated dissipation)",
+    "xfmr_z":        "1900 Ω plate-to-plate primary, 4/8/16 Ω secondary",
+    "nfb_amount":    "~22 dB (same as Fender Bassman-derived topologies)",
+    "tonestack":     "Fender-derived passive, bass=250k, mid=25k, treble=250k",
+    "channel_link":  "Series cascade via patch cable from Ch1 output to Ch2 input (original mod)"
+  }
+}

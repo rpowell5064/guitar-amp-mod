@@ -1,0 +1,14 @@
+# Normalize line endings to LF in the repo; checkout as-is on Windows
+* text=auto eol=lf
+
+# Explicitly binary
+*.lib binary
+*.dll binary
+*.exe binary
+*.pdb binary
+*.wav binary
+*.aif binary
+*.aiff binary
+*.png binary
+*.jpg binary
+*.jpeg binary

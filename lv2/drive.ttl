@@ -1,0 +1,84 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix modgui:<http://moddevices.com/ns/modgui#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/drive>
+    a lv2:Plugin, lv2:DistortionPlugin ;
+    rdfs:label "Hex Chain — Drive/Boost" ;
+    mod:label  "Drive" ;
+    mod:brand  "Hex Chain" ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 0 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out"
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "TS-808"    ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Life Pedal" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "ProCo RAT" ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "tone" ; lv2:name "Tone" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "level" ; lv2:name "Level" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "octave" ; lv2:name "Octave" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] ;
+
+    # ── Custom MOD web GUI ────────────────────────────────────────────────────
+    # Octave control is shown only for the Life Pedal (handled in script-drive.js).
+    modgui:gui [
+        modgui:resourcesDirectory <modgui-drive> ;
+        modgui:iconTemplate <modgui-drive/icon-drive.html> ;
+        modgui:stylesheet <modgui-drive/stylesheet-drive.css> ;
+        modgui:javascript <modgui-drive/script-drive.js> ;
+        modgui:screenshot <modgui-drive/screenshot-drive.png> ;
+        modgui:thumbnail <modgui-drive/thumbnail-drive.png> ;
+        modgui:brand "Hex Chain" ;
+        modgui:label "Drive" ;
+        modgui:model "mod-pedal-guitaramp-drive" ;
+        modgui:port [
+            lv2:index 0 ; lv2:symbol "model"  ; lv2:name "Model"
+        ] , [
+            lv2:index 1 ; lv2:symbol "drive"  ; lv2:name "Drive"
+        ] , [
+            lv2:index 2 ; lv2:symbol "tone"   ; lv2:name "Tone"
+        ] , [
+            lv2:index 3 ; lv2:symbol "level"  ; lv2:name "Level"
+        ] , [
+            lv2:index 4 ; lv2:symbol "mix"    ; lv2:name "Mix"
+        ] , [
+            lv2:index 5 ; lv2:symbol "octave" ; lv2:name "Octave"
+        ] , [
+            lv2:index 6 ; lv2:symbol "bypass" ; lv2:name "Bypass"
+        ]
+    ] .

@@ -1,0 +1,84 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix modgui:<http://moddevices.com/ns/modgui#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/reverb>
+    a lv2:Plugin, lv2:ReverbPlugin ;
+    rdfs:label "Hex Chain — Reverb" ;
+    mod:label  "Reverb" ;
+    mod:brand  "Hex Chain" ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 0 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L"
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R"
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "pre_delay_ms" ; lv2:name "Pre-Delay" ;
+        units:unit units:ms ;
+        lv2:default 10.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "decay_time" ; lv2:name "Decay" ;
+        lv2:default 1.5 ; lv2:minimum 0.1 ; lv2:maximum 8.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "damping" ; lv2:name "Damping" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 0.99
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "mod_depth" ; lv2:name "Mod Depth" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "mod_rate" ; lv2:name "Mod Rate" ;
+        lv2:default 0.8 ; lv2:minimum 0.01 ; lv2:maximum 5.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] ;
+
+    modgui:gui [
+        modgui:resourcesDirectory <modgui-reverb> ;
+        modgui:iconTemplate <modgui-reverb/icon-reverb.html> ;
+        modgui:stylesheet <modgui-reverb/stylesheet-reverb.css> ;
+        modgui:screenshot <modgui-reverb/screenshot-reverb.png> ;
+        modgui:thumbnail <modgui-reverb/thumbnail-reverb.png> ;
+        modgui:brand "Hex Chain" ;
+        modgui:label "Reverb" ;
+        modgui:model "mod-pedal-guitaramp-reverb" ;
+        modgui:port [
+            lv2:index 0 ; lv2:symbol "pre_delay_ms" ; lv2:name "Pre-Delay"
+        ] , [
+            lv2:index 1 ; lv2:symbol "decay_time"   ; lv2:name "Decay"
+        ] , [
+            lv2:index 2 ; lv2:symbol "damping"      ; lv2:name "Damping"
+        ] , [
+            lv2:index 3 ; lv2:symbol "mod_depth"    ; lv2:name "Mod Depth"
+        ] , [
+            lv2:index 4 ; lv2:symbol "mod_rate"     ; lv2:name "Mod Rate"
+        ] , [
+            lv2:index 5 ; lv2:symbol "mix"          ; lv2:name "Mix"
+        ] , [
+            lv2:index 6 ; lv2:symbol "bypass"       ; lv2:name "Bypass"
+        ]
+    ] .

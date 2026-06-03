@@ -1,0 +1,47 @@
+@prefix lv2:  <http://lv2plug.in/ns/lv2core#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/gate>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_gate.so> ;
+    rdfs:seeAlso <gate.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/comp>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_comp.so> ;
+    rdfs:seeAlso <comp.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/drive>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_drive.so> ;
+    rdfs:seeAlso <drive.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/amp>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_amp.so> ;
+    rdfs:seeAlso <amp.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/cab>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_cab.so> ;
+    rdfs:seeAlso <cab.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/modfx>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_modfx.so> ;
+    rdfs:seeAlso <modfx.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/delay>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_delay.so> ;
+    rdfs:seeAlso <delay.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/reverb>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_reverb.so> ;
+    rdfs:seeAlso <reverb.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/utility>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_utility.so> ;
+    rdfs:seeAlso <utility.ttl> .

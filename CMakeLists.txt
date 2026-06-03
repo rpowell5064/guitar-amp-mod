@@ -1,0 +1,159 @@
+cmake_minimum_required(VERSION 3.20)
+project(GuitarAmpMOD CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# The DSP engine builds static libs (GuitarAmpSim, NamCore) that get linked into
+# our shared LV2 .so plugins. On aarch64 that requires position-independent code,
+# so force PIC tree-wide BEFORE add_subdirectory (the submodule doesn't set it).
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+# Each plugin .so statically embeds DSP code. Loading several into one host
+# process (mod-host) can interpose duplicate global symbols between plugins and
+# corrupt shared state → crash. Hidden visibility helps but is NOT sufficient on
+# its own (strong globals from NamCore/Eigen still leaked and crashed the host);
+# the authoritative guard is the per-plugin version script (lv2/export.map) added
+# in add_lv2_plugin, plus NOT linking NAM into plugins that don't use it (below).
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_C_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+
+# ── DSP engine (submodule) ────────────────────────────────────────────────────
+# Provides: GuitarAmpSim (static, all DSP) + NamCore (static, NAM inference)
+# The submodule's CMakeLists uses -march=native; override it for Pi 5 cross-builds.
+add_subdirectory(deps/guitar-amp-simulator)
+
+if(CMAKE_CROSSCOMPILING)
+    # Cortex-A76 (Pi 5): enable dot-product unit for Eigen/NEON throughput.
+    # GCC uses the LAST -march it sees, so appending here overrides -march=native.
+    foreach(_T GuitarAmpSim NamCore)
+        target_compile_options(${_T} PRIVATE
+            -march=armv8.2-a+dotprod
+            -mtune=cortex-a76
+        )
+    endforeach()
+endif()
+
+# ── NAM only where it is actually used ────────────────────────────────────────
+# The submodule links NamCore into GuitarAmpSim PUBLIC with --whole-archive, which
+# forces the entire NAM core (+ Eigen + its mutable global registries) into EVERY
+# consumer. Only the `amp` plugin uses NAM; the other eight don't. Embedding it
+# everywhere bloated each .so by ~0.6 MB AND leaked NAM/Eigen global state out of
+# every plugin, which is what interposed and crashed mod-host when two were loaded.
+#
+# Drop the whole-archive NamCore from GuitarAmpSim's link interface so plugins that
+# never reference NAM don't pull it in at all. Re-attach it to the submodule's own
+# example/test exes (which do use NAM) and, below, to the amp plugin only.
+set_property(TARGET GuitarAmpSim PROPERTY INTERFACE_LINK_LIBRARIES "")
+foreach(_E TestNam GuitarAmpExample)
+    if(TARGET ${_E})
+        target_link_libraries(${_E} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+    endif()
+endforeach()
+
+# ── System dependencies ───────────────────────────────────────────────────────
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(LV2 REQUIRED lv2)
+# NOTE: libsndfile was previously linked into the cab plugin for WAV IR loading,
+# but the cab plugin only uses the embedded DefaultCabIR — no file I/O. Dropped
+# to avoid an unnecessary runtime .so dependency on the device.
+
+# ── Per-plugin optimization flags ─────────────────────────────────────────────
+# Applied to all LV2 targets. Native builds get -march=native automatically
+# from GuitarAmpSim; these flags tune the LV2 wrapper layer itself.
+set(LV2_OPT_FLAGS -O3 -ffast-math)
+if(CMAKE_CROSSCOMPILING)
+    list(APPEND LV2_OPT_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)
+endif()
+
+# ── Helper macro: one LV2 plugin .so ─────────────────────────────────────────
+function(add_lv2_plugin name src)
+    add_library(${name} SHARED ${src})
+    target_include_directories(${name} PRIVATE
+        lv2/common
+        ${LV2_INCLUDE_DIRS}
+    )
+    target_link_libraries(${name} PRIVATE GuitarAmpSim)
+    target_compile_options(${name} PRIVATE ${LV2_OPT_FLAGS})
+    # Prevent cross-plugin symbol interposition: export ONLY the LV2 entry points
+    # (version script forces everything else local), bind internal refs to this
+    # .so's own defs, and don't re-export static-archive symbols. The version
+    # script is the decisive one — visibility/exclude-libs alone leaked NAM globals.
+    target_link_options(${name} PRIVATE
+        -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/lv2/export.map
+        -Wl,-Bsymbolic
+        -Wl,--exclude-libs,ALL)
+    set_target_properties(${name} PROPERTIES PREFIX "" SUFFIX ".so")
+endfunction()
+
+# ── Plugin targets ─────────────────────────────────────────────────────────────
+add_lv2_plugin(guitaramp_gate    lv2/gate/gate_plugin.cpp)
+add_lv2_plugin(guitaramp_comp    lv2/comp/comp_plugin.cpp)
+add_lv2_plugin(guitaramp_drive   lv2/drive/drive_plugin.cpp)
+add_lv2_plugin(guitaramp_modfx   lv2/modfx/modfx_plugin.cpp)
+add_lv2_plugin(guitaramp_delay   lv2/delay/delay_plugin.cpp)
+add_lv2_plugin(guitaramp_reverb  lv2/reverb/reverb_plugin.cpp)
+add_lv2_plugin(guitaramp_amp     lv2/amp/amp_plugin.cpp)
+add_lv2_plugin(guitaramp_utility lv2/utility/utility_plugin.cpp)
+
+add_lv2_plugin(guitaramp_cab lv2/cab/cab_plugin.cpp)
+
+# NAM is used only by the amp plugin (NamModel) and the drive plugin (OverdriveBlock
+# -> NamOverdrive). Give those two — and only those two — the whole-archived NamCore
+# so the model-parser static initializers register. --whole-archive is required:
+# those registrations live in objects nothing references by name otherwise.
+foreach(_P guitaramp_amp guitaramp_drive)
+    target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+endforeach()
+
+# ── Install into one LV2 bundle ───────────────────────────────────────────────
+# RELATIVE to the install prefix — so `cmake --install --prefix <dir>` works.
+# (An absolute path here would ignore --prefix and always target /usr/local.)
+set(BUNDLE_DIR "lib/lv2/guitaramp-suite.lv2")
+
+install(TARGETS
+    guitaramp_gate guitaramp_comp guitaramp_drive guitaramp_modfx
+    guitaramp_delay guitaramp_reverb guitaramp_amp guitaramp_cab
+    guitaramp_utility
+    DESTINATION ${BUNDLE_DIR}
+)
+
+# All TTL files are flat in lv2/ (LV2 bundles require manifest.ttl and all
+# referenced TTLs in the same directory as the .so files)
+install(FILES
+    lv2/manifest.ttl
+    lv2/gate.ttl
+    lv2/comp.ttl
+    lv2/drive.ttl
+    lv2/modfx.ttl
+    lv2/delay.ttl
+    lv2/reverb.ttl
+    lv2/amp.ttl
+    lv2/cab.ttl
+    lv2/utility.ttl
+    DESTINATION ${BUNDLE_DIR}
+)
+
+# MOD-UI HTML/CSS widgets (optional — plugins fall back to MOD's generic UI
+# if no modgui bundle is present). Guarded so the install step doesn't fail
+# when the directory hasn't been authored yet.
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lv2/modgui")
+    install(DIRECTORY lv2/modgui DESTINATION ${BUNDLE_DIR})
+endif()
+
+# Bundled NAM models and IR files
+install(DIRECTORY nam_models DESTINATION ${BUNDLE_DIR})
+install(DIRECTORY ir_files   DESTINATION ${BUNDLE_DIR})
+
+# ── Offline analysis tool (host only, opt-in) ─────────────────────────────────
+# nam_compare reports frequency-response / THD / loudness deltas between a .nam
+# capture and the algorithmic amp model (tuning aid). It needs NAM, so it links
+# NamCore explicitly. OFF by default so on-device (Pi) builds skip it entirely;
+# enable on a desktop host with -DGUITARAMP_BUILD_TOOLS=ON.
+option(GUITARAMP_BUILD_TOOLS "Build host-side analysis tools (nam_compare)" OFF)
+if(GUITARAMP_BUILD_TOOLS AND NOT CMAKE_CROSSCOMPILING)
+    add_executable(nam_compare tools/nam_compare.cpp)
+    target_link_libraries(nam_compare PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+    set_target_properties(nam_compare PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
+endif()

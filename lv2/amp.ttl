@@ -1,0 +1,215 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix modgui:<http://moddevices.com/ns/modgui#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/amp>
+    a lv2:Plugin, lv2:AmplifierPlugin ;
+    rdfs:label "Hex Chain — Amp" ;
+    mod:label  "Amp" ;
+    mod:brand  "Hex Chain" ;
+    lv2:minorVersion 2 ;
+    lv2:microVersion 0 ;
+
+    # Analog model switches rebuild the amp off the audio thread (they allocate an
+    # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
+    # has been removed — use a dedicated NAM block on the pi-Stomp instead.
+    lv2:requiredFeature work:schedule ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:extensionData work:interface ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L"
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R"
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "model" ; lv2:name "Model" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
+        lv2:scalePoint [ rdfs:label "Clean Meanie"         ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Crunchy McCrunchFace" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Gainzilla"            ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Doom Daddy"           ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Tangerang"            ; rdf:value 4 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "gain" ; lv2:name "Gain" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "bass" ; lv2:name "Bass" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "mid" ; lv2:name "Mid" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "treble" ; lv2:name "Treble" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "presence" ; lv2:name "Presence" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "master" ; lv2:name "Master" ;
+        lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "sag" ; lv2:name "Sag" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 12 ; lv2:symbol "channel" ; lv2:name "Channel" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 13 ; lv2:symbol "resonance" ; lv2:name "Resonance" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "sunn_vol2" ; lv2:name "Brite Vol" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 15 ; lv2:symbol "sunn_link" ; lv2:name "Ch Link" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Independent" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Parallel"    ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Series"      ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+    # ── Power-amp stage ──────────────────────────────────────────────────────
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 17 ; lv2:symbol "pamp_bypass" ; lv2:name "Power Amp Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 18 ; lv2:symbol "pamp_tube" ; lv2:name "Power Tube" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "EL34"  ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "EL84"  ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "KT88"  ; rdf:value 3 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 19 ; lv2:symbol "pamp_presence" ; lv2:name "PA Presence" ;
+        lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 20 ; lv2:symbol "pamp_depth" ; lv2:name "PA Depth" ;
+        lv2:default 0.18 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 21 ; lv2:symbol "pamp_sag" ; lv2:name "PA Sag" ;
+        lv2:default 0.33 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 22 ; lv2:symbol "pamp_master" ; lv2:name "PA Master" ;
+        lv2:default 0.62 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 23 ; lv2:symbol "pamp_nfb" ; lv2:name "PA NFB" ;
+        lv2:default 0.42 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 24 ; lv2:symbol "pamp_resonance" ; lv2:name "PA Resonance" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 25 ; lv2:symbol "pamp_airfeel" ; lv2:name "Air Feel" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+    # When on (default), the power amp follows per-model defaults + auto tube;
+    # the pamp_* knobs above are active only when this is off.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 26 ; lv2:symbol "pamp_auto" ; lv2:name "PA Auto" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] ;
+
+    # ── Custom MOD web GUI ────────────────────────────────────────────────────
+    # Renders all amp + power-amp controls with model-aware show/hide handled in
+    # script-amp.js (Sunn-only controls, EVH/Rockerverb channel, EVH resonance,
+    # power-amp section hidden for Sunn, manual PA knobs hidden when PA Auto on).
+    # modgui:port indices below are the {{#controls.N}} slots used by the HTML
+    # template (N is this list's order, 0-based — NOT the lv2 port index).
+    modgui:gui [
+        modgui:resourcesDirectory <modgui-amp> ;
+        modgui:iconTemplate <modgui-amp/icon-amp.html> ;
+        modgui:stylesheet <modgui-amp/stylesheet-amp.css> ;
+        modgui:javascript <modgui-amp/script-amp.js> ;
+        modgui:screenshot <modgui-amp/screenshot-amp.png> ;
+        modgui:thumbnail <modgui-amp/thumbnail-amp.png> ;
+        modgui:brand "Hex Chain" ;
+        modgui:label "Amp" ;
+        modgui:model "mod-pedal-guitaramp-amp" ;
+        modgui:port [
+            lv2:index 0  ; lv2:symbol "model"          ; lv2:name "Model"
+        ] , [
+            lv2:index 1  ; lv2:symbol "gain"           ; lv2:name "Gain"
+        ] , [
+            lv2:index 2  ; lv2:symbol "bass"           ; lv2:name "Bass"
+        ] , [
+            lv2:index 3  ; lv2:symbol "mid"            ; lv2:name "Mid"
+        ] , [
+            lv2:index 4  ; lv2:symbol "treble"         ; lv2:name "Treble"
+        ] , [
+            lv2:index 5  ; lv2:symbol "presence"       ; lv2:name "Presence"
+        ] , [
+            lv2:index 6  ; lv2:symbol "master"         ; lv2:name "Master"
+        ] , [
+            lv2:index 7  ; lv2:symbol "sag"            ; lv2:name "Sag"
+        ] , [
+            lv2:index 8  ; lv2:symbol "channel"        ; lv2:name "Channel"
+        ] , [
+            lv2:index 9  ; lv2:symbol "resonance"      ; lv2:name "Resonance"
+        ] , [
+            lv2:index 10 ; lv2:symbol "sunn_vol2"      ; lv2:name "Brite Vol"
+        ] , [
+            lv2:index 11 ; lv2:symbol "sunn_link"      ; lv2:name "Ch Link"
+        ] , [
+            lv2:index 12 ; lv2:symbol "bypass"         ; lv2:name "Bypass"
+        ] , [
+            lv2:index 13 ; lv2:symbol "pamp_bypass"    ; lv2:name "PA Bypass"
+        ] , [
+            lv2:index 14 ; lv2:symbol "pamp_tube"      ; lv2:name "Power Tube"
+        ] , [
+            lv2:index 15 ; lv2:symbol "pamp_presence"  ; lv2:name "PA Presence"
+        ] , [
+            lv2:index 16 ; lv2:symbol "pamp_depth"     ; lv2:name "PA Depth"
+        ] , [
+            lv2:index 17 ; lv2:symbol "pamp_sag"       ; lv2:name "PA Sag"
+        ] , [
+            lv2:index 18 ; lv2:symbol "pamp_master"    ; lv2:name "PA Master"
+        ] , [
+            lv2:index 19 ; lv2:symbol "pamp_nfb"       ; lv2:name "PA NFB"
+        ] , [
+            lv2:index 20 ; lv2:symbol "pamp_resonance" ; lv2:name "PA Resonance"
+        ] , [
+            lv2:index 21 ; lv2:symbol "pamp_airfeel"   ; lv2:name "Air Feel"
+        ] , [
+            lv2:index 22 ; lv2:symbol "pamp_auto"      ; lv2:name "PA Auto"
+        ]
+    ] .

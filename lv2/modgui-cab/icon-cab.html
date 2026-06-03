@@ -1,0 +1,78 @@
+<div class="mod-pedal mod-pedal-guitaramp-cab{{{cns}}} ">
+    <div mod-role="drag-handle" class="mod-drag-handle"></div>
+
+    <div class="mod-powerswitch" mod-role="bypass">
+        <div class="mod-powerswitch-image" mod-role="bypass-light"></div>
+    </div>
+
+    <div class="hx-header">
+        <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
+        <div class="hx-title">CABINET</div>
+        <div class="hx-tag">IR loader · low / high cut</div>
+    </div>
+
+    <div class="mod-control-group mod-knobs clearfix">
+        {{#controls.0}}
+        <div class="mod-knob" title="{{name}}">
+            <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+            <span class="mod-knob-title">{{name}}</span>
+        </div>
+        {{/controls.0}}
+        {{#controls.1}}
+        <div class="mod-knob" title="{{name}}">
+            <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+            <span class="mod-knob-title">{{name}}</span>
+        </div>
+        {{/controls.1}}
+        {{#controls.2}}
+        <div class="mod-knob" title="{{name}}">
+            <div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+            <span class="mod-knob-title">{{name}}</span>
+        </div>
+        {{/controls.2}}
+    </div>
+
+    <div class="mod-irloader-group">
+        <span class="mod-section-label">IMPULSE RESPONSE</span>
+        {{#effect.parameters.0}}
+        {{#path}}
+        <div class="mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">
+            <div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">
+                -- choose an IR file --
+            </div>
+            <div class="mod-enumerated-list">
+                {{#files}}
+                <div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>
+                {{/files}}
+            </div>
+        </div>
+        {{/path}}
+        {{/effect.parameters.0}}
+    </div>
+
+    <div class="mod-control-group mod-switches clearfix">
+        {{#controls.3}}
+        <div class="mod-switch" title="{{name}}">
+            <div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div>
+            <span class="mod-switch-title">{{name}}</span>
+        </div>
+        {{/controls.3}}
+    </div>
+
+    <div class="hx-logo"></div>
+
+    <div class="mod-pedal-input">
+        {{#effect.ports.audio.input}}
+        <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}">
+            <div class="mod-pedal-input-image"></div>
+        </div>
+        {{/effect.ports.audio.input}}
+    </div>
+    <div class="mod-pedal-output">
+        {{#effect.ports.audio.output}}
+        <div class="mod-output mod-output-disconnected" title="{{name}}" mod-role="output-audio-port" mod-port-symbol="{{symbol}}">
+            <div class="mod-pedal-output-image"></div>
+        </div>
+        {{/effect.ports.audio.output}}
+    </div>
+</div>

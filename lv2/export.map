@@ -1,0 +1,12 @@
+# Linker version script for every guitaramp .so.
+# Exports ONLY the LV2 entry points; forces everything else (all DSP, and any
+# NAM/Eigen globals that slip past -fvisibility=hidden / --exclude-libs) to be
+# local. This is what actually prevents cross-plugin symbol interposition when
+# mod-host loads several of these plugins into one process.
+{
+  global:
+    lv2_descriptor;
+    lv2_lib_descriptor;
+  local:
+    *;
+};

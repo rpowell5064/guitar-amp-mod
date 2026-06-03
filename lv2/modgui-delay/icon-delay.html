@@ -1,0 +1,61 @@
+<div class="mod-pedal mod-pedal-guitaramp-delay{{{cns}}} ">
+    <div mod-role="drag-handle" class="mod-drag-handle"></div>
+
+    <div class="mod-powerswitch" mod-role="bypass">
+        <div class="mod-powerswitch-image" mod-role="bypass-light"></div>
+    </div>
+
+    <div class="hx-header">
+        <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
+        <div class="hx-title">DELAY</div>
+        <div class="hx-tag">digital · tape · echorec</div>
+    </div>
+
+    <div class="mod-amp-modelrow">
+        <span class="mod-section-label">DELAY TYPE</span>
+        {{#controls.0}}
+        <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+            <div class="mod-enumerated-list">
+                {{#scalePoints}}
+                <div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>
+                {{/scalePoints}}
+            </div>
+        </div>
+        {{/controls.0}}
+    </div>
+
+    <div class="mod-control-group mod-knobs clearfix">
+        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.1}}
+        {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.2}}
+        {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.3}}
+        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.4}}
+    </div>
+
+    <!-- Wow + Flutter: tape mechanisms — shown for Tape / Echorec, hidden for Digital -->
+    <div rata-role="tapegroup" class="mod-tapegroup mod-hidden">
+        <div class="mod-section-divider"></div>
+        <span class="mod-section-label">TAPE MOTION</span>
+        <div class="mod-control-group mod-knobs clearfix">
+            {{#controls.5}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.5}}
+            {{#controls.6}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.6}}
+        </div>
+    </div>
+
+    <div class="hx-logo"></div>
+
+    <div class="mod-pedal-input">
+        {{#effect.ports.audio.input}}
+        <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}">
+            <div class="mod-pedal-input-image"></div>
+        </div>
+        {{/effect.ports.audio.input}}
+    </div>
+    <div class="mod-pedal-output">
+        {{#effect.ports.audio.output}}
+        <div class="mod-output mod-output-disconnected" title="{{name}}" mod-role="output-audio-port" mod-port-symbol="{{symbol}}">
+            <div class="mod-pedal-output-image"></div>
+        </div>
+        {{/effect.ports.audio.output}}
+    </div>
+</div>

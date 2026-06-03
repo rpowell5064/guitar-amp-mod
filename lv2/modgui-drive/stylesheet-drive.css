@@ -1,0 +1,97 @@
+/* STYLES FOR THE GUITARAMP DRIVE PEDAL */
+
+.mod-pedal-guitaramp-drive{{{cns}}} {
+    /* Hex Chain flat-futuristic panel: dark base + accent-tinted hex-grid
+       watermark + top accent glow. (Branding rendered in CSS, not baked PNG.) */
+    background-color: #0b0d12;
+    background-image:
+        url("data:image/svg+xml,%3Csvg%20width='28'%20height='49'%20viewBox='0%200%2028%2049'%20xmlns='http://www.w3.org/2000/svg'%3E%3Cg%20fill='%23eb5046'%20fill-opacity='0.06'%20fill-rule='evenodd'%3E%3Cpath%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/g%3E%3C/svg%3E"),
+        radial-gradient(150% 70% at 50% -12%, rgba(235,80,70,.14), rgba(11,13,18,0) 55%),
+        linear-gradient(180deg, #0d1016 0%, #070809 100%);
+    background-repeat: repeat, no-repeat, no-repeat;
+    background-position: center top, center top, center top;
+    background-size: 28px 49px, 100% 100%, 100% 100%;
+    height: 300px;
+    width: 360px;
+    position: absolute;
+    border-radius: 12px;
+    border-top: 2px solid #eb5046;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), inset 0 -50px 70px rgba(0,0,0,.45);
+}
+
+/* HEX CHAIN HEADER (brand wordmark + effect title + tagline) */
+.mod-pedal-guitaramp-drive{{{cns}}} .hx-header { position:absolute; top:8px; left:24px; right:24px; z-index:5; pointer-events:none; border-bottom:1px solid rgba(235,80,70,.28); padding-bottom:8px; }
+.mod-pedal-guitaramp-drive{{{cns}}} .hx-brand { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:800; letter-spacing:3px; line-height:1; text-transform:uppercase; background:linear-gradient(90deg,#19e0ff 0%,#ff2bd6 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
+.mod-pedal-guitaramp-drive{{{cns}}} .hx-mark { display:inline-block; width:9px; height:10px; margin-right:7px; vertical-align:-1px; background:linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
+.mod-pedal-guitaramp-drive{{{cns}}} .hx-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:26px; font-weight:800; letter-spacing:2px; line-height:1; margin-top:7px; text-transform:uppercase; color:#eb5046; text-shadow:0 0 16px rgba(235,80,70,.45); }
+.mod-pedal-guitaramp-drive{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:9px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
+
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-pedal-input,
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-pedal-output { top: 150px; }
+
+/* POWER / BYPASS SWITCH */
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-powerswitch {
+    margin-left: 285px; margin-top: 12px; cursor: pointer; position: absolute;
+    height: 30px; width: 60px; z-index: 40;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-powerswitch-image {
+    background-image: url(/resources/switches/powerswitch.png{{{ns}}});
+    background-position: 0 0; background-repeat: no-repeat; background-size: auto 30px;
+    height: 30px; width: 60px;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-powerswitch-image.on  { background-position: -60px 0; }
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-powerswitch-image.off { background-position: 0 0; }
+
+/* SECTION LABEL + MODEL SELECT */
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-section-label {
+    display: block; font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 11px; font-weight: bold; letter-spacing: 1px; color: #eb5046; margin: 0 0 4px 24px;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-amp-modelrow { margin-top: 80px; padding: 0 24px; position: relative; }
+
+/* KNOBS */
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-control-group { position: relative; text-align: center; }
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-knobs { margin-top: 10px; width: 360px; }
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-knob {
+    display: inline-block; height: 96px; width: 100px; overflow: hidden; position: relative; vertical-align: top;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-knob .mod-knob-image {
+    background-image: url(/resources/knobs/knob.png{{{ns}}});
+    background-repeat: no-repeat; background-size: auto 60px; height: 60px; width: 60px; margin: 4px auto 0;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-knob .mod-knob-title {
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 11px; font-weight: bold;
+    color: #fff; text-transform: uppercase; text-align: center; display: block; margin-top: 4px;
+}
+
+/* ENUMERATED SELECT */
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-enumerated {
+    background-color: rgba(0,0,0,.5); border: 1px solid rgba(235,80,70,.5); border-radius: 4px;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 13px; font-weight: bold;
+    color: #fff; line-height: 1.9; position: relative; overflow: visible; text-align: left;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-model-select { width: 100%; }
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-enumerated .mod-enumerated-selected {
+    position: relative; z-index: 50; /* above drag-handle overlay so the box is clickable */
+    border-radius: 4px 4px 0 0; padding: 0 9px; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-enumerated .mod-enumerated-list {
+    display: none; background-color: rgba(0,0,0,.92); color: #fff; width: 100%;
+    max-height: 160px; overflow: auto; position: absolute; z-index: 9000 !important;
+}
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding: 3px 9px; }
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-enumerated .mod-enumerated-list > div:hover { background-color: rgba(255,255,255,.2); cursor: pointer; }
+
+/* SHOW / HIDE */
+.mod-pedal-guitaramp-drive{{{cns}}} .drv-cond { display: inline-block; vertical-align: top; }
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-hidden { display: none !important; }
+
+
+/* HEX CHAIN logo badge (black background dropped via screen blend) */
+.mod-pedal-guitaramp-drive{{{cns}}} .hx-logo {
+    position: absolute; left: 14px; bottom: 12px; width: 74px; height: 74px;
+    background-image: url(/resources/logo.jpg{{{ns}}});
+    background-size: contain; background-repeat: no-repeat; background-position: center;
+    mix-blend-mode: screen; pointer-events: none; z-index: 4;
+}

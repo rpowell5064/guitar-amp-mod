@@ -1,0 +1,66 @@
+name: Build macOS VST3 / AU
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: macOS (Apple Silicon)
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Xcode ships Clang; Ninja is a faster single-config generator than Xcode.
+      - name: Install Ninja
+        run: brew install ninja
+
+      # Cache the FetchContent downloads (JUCE ~200 MB, NAMCore ~50 MB).
+      # FETCHCONTENT_UPDATES_DISCONNECTED prevents CMake from checking for updates
+      # when the cache is present, so the key just needs to track CMakeLists.txt.
+      - name: Cache FetchContent sources
+        id: cache-deps
+        uses: actions/cache@v4
+        with:
+          path: plugin/build/_deps
+          key: fetchcontent-macos14-${{ hashFiles('plugin/CMakeLists.txt') }}
+          restore-keys: fetchcontent-macos14-
+
+      - name: Configure
+        working-directory: plugin
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DFETCHCONTENT_UPDATES_DISCONNECTED=TRUE
+
+      - name: Build
+        working-directory: plugin
+        run: cmake --build build --config Release
+
+      - name: Find artefacts (debug)
+        if: always()
+        run: |
+          echo "=== plugin/build top level ==="
+          ls plugin/build/ 2>/dev/null || echo "(missing)"
+          echo "=== GuitarAmpPlugin_artefacts ==="
+          ls -R plugin/build/GuitarAmpPlugin_artefacts/ 2>/dev/null || echo "(missing)"
+          echo "=== all bundles ==="
+          find plugin/build \( -name "*.vst3" -o -name "*.component" -o -name "*.app" \) -print 2>/dev/null || echo "(none)"
+
+      - name: Upload VST3
+        uses: actions/upload-artifact@v4
+        with:
+          name: GuitarAmpSim-VST3-macOS
+          path: plugin/build/GuitarAmpPlugin_artefacts/Release/VST3/
+          if-no-files-found: error
+
+      - name: Upload AU
+        uses: actions/upload-artifact@v4
+        with:
+          name: GuitarAmpSim-AU-macOS
+          path: plugin/build/GuitarAmpPlugin_artefacts/Release/AU/
+          if-no-files-found: error

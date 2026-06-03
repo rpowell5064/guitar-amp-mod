@@ -1,0 +1,110 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+@prefix modgui:<http://moddevices.com/ns/modgui#> .
+
+# ── Cabinet IR file parameter ─────────────────────────────────────────────────
+# Writable path parameter; mod-ui renders a file browser filtered by mod:fileTypes.
+# "cabsim,ir" map to the "Speaker Cabinets IRs" / IR user-files folders, so IR .wav
+# files dropped there appear in the browser. The chosen absolute path arrives as a
+# patch:Set(atom:Path) on the control port and is loaded on the worker thread.
+<https://rpowell5064.github.io/guitaramp-suite/cab#irfile>
+    a lv2:Parameter ;
+    rdfs:label "Cabinet IR" ;
+    rdfs:range atom:Path ;
+    mod:fileTypes "cabsim,ir,wav,audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/cab>
+    a lv2:Plugin, lv2:FilterPlugin ;
+    rdfs:label "Hex Chain — Cabinet" ;
+    mod:label  "Cabinet" ;
+    mod:brand  "Hex Chain" ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 0 ;
+
+    # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
+    lv2:requiredFeature urid:map , work:schedule ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:extensionData state:interface , work:interface ;
+
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/cab#irfile> ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L"
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R"
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "low_cut_hz" ; lv2:name "Low Cut" ;
+        units:unit units:hz ;
+        lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "high_cut_hz" ; lv2:name "High Cut" ;
+        units:unit units:hz ;
+        lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 8 ; lv2:symbol "control" ; lv2:name "Control"
+    ] , [
+        a lv2:OutputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 9 ; lv2:symbol "notify" ; lv2:name "Notify"
+    ] ;
+
+    # ── Custom MOD web GUI ────────────────────────────────────────────────────
+    # Required to expose the IR file picker: the default auto-generated GUI does
+    # not render patch:writable atom:Path params. modgui:port maps the control
+    # ports to the template's {{#controls.N}} indices (N below, 0-based); the IR
+    # picker is rendered from {{#effect.parameters.0}} (irfile is the sole param).
+    modgui:gui [
+        modgui:resourcesDirectory <modgui-cab> ;
+        modgui:iconTemplate <modgui-cab/icon-cab.html> ;
+        modgui:stylesheet <modgui-cab/stylesheet-cab.css> ;
+        modgui:javascript <modgui-cab/script-cab.js> ;
+        modgui:screenshot <modgui-cab/screenshot-cab.png> ;
+        modgui:thumbnail <modgui-cab/thumbnail-cab.png> ;
+        modgui:brand "Hex Chain" ;
+        modgui:label "Cabinet" ;
+        modgui:model "mod-pedal-guitaramp-cab" ;
+        modgui:port [
+            lv2:index 0 ; lv2:symbol "low_cut_hz" ; lv2:name "Low Cut"
+        ] , [
+            lv2:index 1 ; lv2:symbol "high_cut_hz" ; lv2:name "High Cut"
+        ] , [
+            lv2:index 2 ; lv2:symbol "mix" ; lv2:name "Mix"
+        ] , [
+            lv2:index 3 ; lv2:symbol "bypass" ; lv2:name "Bypass"
+        ]
+    ] .

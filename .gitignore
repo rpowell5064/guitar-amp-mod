@@ -1,0 +1,26 @@
+build/
+build-arm64/
+dist/
+*.so
+*.a
+*.o
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+
+# stale / out-of-tree build output
+build-tools/out/
+
+# MSVC intermediates (not covered by the generic CMake patterns above)
+*.obj
+*.lib
+*.pdb
+*.tlog
+*.ilk
+*.exp
+
+# Claude Code working files (never distribute)
+.claude/
+CLAUDE.md
+CLAUDE.local.md

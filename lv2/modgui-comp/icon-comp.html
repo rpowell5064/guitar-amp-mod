@@ -1,0 +1,58 @@
+<div class="mod-pedal mod-pedal-guitaramp-comp{{{cns}}} ">
+    <div mod-role="drag-handle" class="mod-drag-handle"></div>
+
+    <div class="mod-powerswitch" mod-role="bypass">
+        <div class="mod-powerswitch-image" mod-role="bypass-light"></div>
+    </div>
+
+    <div class="hx-header">
+        <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
+        <div class="hx-title">COMPRESSOR</div>
+        <div class="hx-tag">VCA · 1176-style</div>
+    </div>
+
+    <div class="mod-amp-modelrow">
+        <span class="mod-section-label">MODEL</span>
+        {{#controls.0}}
+        <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+        </div>
+        {{/controls.0}}
+    </div>
+
+    <div class="mod-control-group mod-row-mixed clearfix">
+        {{#controls.2}}
+        <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+        </div>
+        <span class="mod-inline-label">{{#controls.2}}{{name}}{{/controls.2}}</span>
+        {{/controls.2}}
+    </div>
+
+    <div class="mod-control-group mod-knobs clearfix">
+        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.1}}
+        {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.3}}
+        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.4}}
+        {{#controls.5}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.5}}
+        {{#controls.6}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.6}}
+    </div>
+
+    <div class="hx-logo"></div>
+
+    <div class="mod-pedal-input">
+        {{#effect.ports.audio.input}}
+        <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}">
+            <div class="mod-pedal-input-image"></div>
+        </div>
+        {{/effect.ports.audio.input}}
+    </div>
+    <div class="mod-pedal-output">
+        {{#effect.ports.audio.output}}
+        <div class="mod-output mod-output-disconnected" title="{{name}}" mod-role="output-audio-port" mod-port-symbol="{{symbol}}">
+            <div class="mod-pedal-output-image"></div>
+        </div>
+        {{/effect.ports.audio.output}}
+    </div>
+</div>

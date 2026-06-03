@@ -1,0 +1,3 @@
+[submodule "deps/guitar-amp-simulator"]
+	path = deps/guitar-amp-simulator
+	url = ../GuitarAmpSimulator
