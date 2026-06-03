@@ -9,6 +9,8 @@
 @prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
 @prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 
 # ── Cabinet IR file parameter ─────────────────────────────────────────────────
 # Writable path parameter; mod-ui renders a file browser filtered by mod:fileTypes.
@@ -26,6 +28,9 @@
     rdfs:label "Hex Chain — Cabinet" ;
     mod:label  "Cabinet" ;
     mod:brand  "Hex Chain" ;
+    doap:license <http://opensource.org/licenses/MIT> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
     lv2:microVersion 0 ;
 

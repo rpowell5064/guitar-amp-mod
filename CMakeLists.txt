@@ -18,19 +18,29 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
+# ── Architecture tuning ───────────────────────────────────────────────────────
+# The submodule's CMakeLists compiles with -march=native. GCC honours the LAST
+# -march, so appending GUITARAMP_ARCH_FLAGS below overrides it.
+#   GUITARAMP_PORTABLE=ON  → generic -march=armv8-a: one aarch64 binary that runs on
+#                            any Pi 4/5-class pi-Stomp. Use this for redistribution.
+#   OFF (default)          → Pi 5 (Cortex-A76 + dot-product) when cross-compiling, or
+#                            the host's -march=native for an on-device/personal build.
+option(GUITARAMP_PORTABLE "Generic aarch64 (armv8-a) build for redistribution" OFF)
+if(GUITARAMP_PORTABLE)
+    set(GUITARAMP_ARCH_FLAGS -march=armv8-a)
+elseif(CMAKE_CROSSCOMPILING)
+    set(GUITARAMP_ARCH_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)
+else()
+    set(GUITARAMP_ARCH_FLAGS)   # keep the submodule's -march=native
+endif()
+
 # ── DSP engine (submodule) ────────────────────────────────────────────────────
 # Provides: GuitarAmpSim (static, all DSP) + NamCore (static, NAM inference)
-# The submodule's CMakeLists uses -march=native; override it for Pi 5 cross-builds.
 add_subdirectory(deps/guitar-amp-simulator)
 
-if(CMAKE_CROSSCOMPILING)
-    # Cortex-A76 (Pi 5): enable dot-product unit for Eigen/NEON throughput.
-    # GCC uses the LAST -march it sees, so appending here overrides -march=native.
+if(GUITARAMP_ARCH_FLAGS)
     foreach(_T GuitarAmpSim NamCore)
-        target_compile_options(${_T} PRIVATE
-            -march=armv8.2-a+dotprod
-            -mtune=cortex-a76
-        )
+        target_compile_options(${_T} PRIVATE ${GUITARAMP_ARCH_FLAGS})
     endforeach()
 endif()
 
@@ -61,10 +71,7 @@ pkg_check_modules(LV2 REQUIRED lv2)
 # ── Per-plugin optimization flags ─────────────────────────────────────────────
 # Applied to all LV2 targets. Native builds get -march=native automatically
 # from GuitarAmpSim; these flags tune the LV2 wrapper layer itself.
-set(LV2_OPT_FLAGS -O3 -ffast-math)
-if(CMAKE_CROSSCOMPILING)
-    list(APPEND LV2_OPT_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)
-endif()
+set(LV2_OPT_FLAGS -O3 -ffast-math ${GUITARAMP_ARCH_FLAGS})
 
 # ── Helper macro: one LV2 plugin .so ─────────────────────────────────────────
 function(add_lv2_plugin name src)
@@ -134,16 +141,12 @@ install(FILES
     DESTINATION ${BUNDLE_DIR}
 )
 
-# MOD-UI HTML/CSS widgets (optional — plugins fall back to MOD's generic UI
-# if no modgui bundle is present). Guarded so the install step doesn't fail
-# when the directory hasn't been authored yet.
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/lv2/modgui")
-    install(DIRECTORY lv2/modgui DESTINATION ${BUNDLE_DIR})
-endif()
-
-# Bundled NAM models and IR files
-install(DIRECTORY nam_models DESTINATION ${BUNDLE_DIR})
-install(DIRECTORY ir_files   DESTINATION ${BUNDLE_DIR})
+# MOD-UI modgui resources: one dir per plugin, named exactly as that plugin's
+# modgui:resourcesDirectory in its TTL (modgui-amp, modgui-cab, …). Each carries
+# the stylesheet/icon/script, screenshot/thumbnail/logo, and knob/switch sprites.
+foreach(_m amp cab drive delay gate comp modfx reverb utility)
+    install(DIRECTORY lv2/modgui-${_m} DESTINATION ${BUNDLE_DIR})
+endforeach()
 
 # ── Offline analysis tool (host only, opt-in) ─────────────────────────────────
 # nam_compare reports frequency-response / THD / loudness deltas between a .nam

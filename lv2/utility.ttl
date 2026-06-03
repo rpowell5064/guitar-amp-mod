@@ -3,12 +3,17 @@
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix units: <http://lv2plug.in/ns/extensions/units#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 
 <https://rpowell5064.github.io/guitaramp-suite/utility>
     a lv2:Plugin, lv2:UtilityPlugin ;
     rdfs:label "Hex Chain — Input Trim" ;
     mod:label  "Input Trim" ;
     mod:brand  "Hex Chain" ;
+    doap:license <http://opensource.org/licenses/MIT> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
     lv2:microVersion 0 ;
     lv2:optionalFeature lv2:hardRTCapable ;

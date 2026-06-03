@@ -4,12 +4,17 @@
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix work:  <http://lv2plug.in/ns/ext/worker#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 
 <https://rpowell5064.github.io/guitaramp-suite/amp>
     a lv2:Plugin, lv2:AmplifierPlugin ;
     rdfs:label "Hex Chain — Amp" ;
     mod:label  "Amp" ;
     mod:brand  "Hex Chain" ;
+    doap:license <http://opensource.org/licenses/MIT> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
     lv2:microVersion 0 ;
 
