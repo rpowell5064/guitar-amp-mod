@@ -20,7 +20,17 @@ echo "== configure (portable: -march=armv8-a) =="
 cmake -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DGUITARAMP_PORTABLE=ON >/dev/null
 
 echo "== build =="
-cmake --build "$BUILD" -j"$(nproc)"
+# Memory-aware parallelism: the NAM/Eigen TUs are RAM-hungry (~1.5 GB each at -O3),
+# so -j nproc OOM-kills cc1plus on a 2 GB Pi. Scale jobs to available RAM.
+JOBS="${JOBS:-}"
+if [ -z "$JOBS" ]; then
+    memkb=$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 0)
+    if   [ "$memkb" -lt 3000000 ]; then JOBS=1
+    elif [ "$memkb" -lt 6000000 ]; then JOBS=2
+    else JOBS=$(nproc); fi
+fi
+echo "   building with -j$JOBS (MemTotal=$((memkb/1024)) MB)"
+cmake --build "$BUILD" -j"$JOBS"
 
 echo "== install to staging =="
 cmake --install "$BUILD" --prefix "$STAGE" >/dev/null
