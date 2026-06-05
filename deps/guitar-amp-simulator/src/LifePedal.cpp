@@ -27,7 +27,7 @@ void LifePedal::reset() noexcept {
         c.preHPF.reset();
         c.postLPF.reset();
         c.dcBlock.reset();
-        c.octBPF.reset();
+        c.octLP.reset();
     }
     driveSmooth_.setCurrentAndTargetValue(drive_);
     levelSmooth_.setCurrentAndTargetValue(level_);
@@ -49,45 +49,38 @@ void LifePedal::advanceSmoothing() noexcept {
 float LifePedal::processSample(float x, int ch) noexcept {
     auto& s = ch_[ch];
 
-    // Stage 1: pre-HP always in series (same philosophy as TS-808 input cap).
-    // The clean path uses the HP-conditioned signal so the blend is spectrally
-    // consistent — mixing raw bass into the clean path would mismatch the
-    // distorted path which has the bass removed.
-    const float clean = s.preHPF.process(x);
+    // Input coupling (RAT input cap @ 720 Hz). Also biases the octave toward
+    // high notes — low/mid content is attenuated before rectification, so the
+    // octave is strongest on single notes high on the neck (as on the real unit).
+    const float in = s.preHPF.process(x);
 
-    // RAT-style gain: 1× (drive=0, nearly clean) to 100× (drive=1, heavy clip).
-    // At drive=1, tanh saturates almost immediately → near-square-wave output.
-    const float gain = 1.0f + 99.0f * driveCur_;
-    const float clipped = softClip(clean, gain);
+    // ── Stage 1: Octave-up — germanium full-wave rectifier, FIRST in the chain ──
+    // Full-wave rectification (|·|) folds the negative half up → frequency
+    // doubling (the octave). DC-block + smooth, then blend into the dry signal by
+    // the Octave knob. This octave-laden signal is what feeds the distortion;
+    // clipping the doubled signal is what makes the octave sing.
+    float oct = std::fabs(in);
+    oct = s.dcBlock.process(oct);     // remove rectification DC offset
+    oct = s.octLP.process(oct);       // tame the rectifier's hard edges
+    const float octd = in + octaveCur_ * 2.0f * oct;
 
-    // Stage 2: octave-up tapped from the clean (pre-distortion) signal.
-    // Tapping after the clipper produces near-constant DC when drive is high
-    // (tanh → ±1 square wave → |·| → DC), which the DC block removes entirely.
-    // Tapping from clean ensures a consistent 2nd harmonic at 2f regardless of drive.
-    const float rect   = std::abs(clean);
-    const float dcFree = s.dcBlock.process(rect);
-    const float oct    = s.octBPF.process(dcFree);
+    // ── Stage 2: RAT-style LM308 distortion (fed the octave-laden signal) ──
+    // 1× (drive=0, near clean) to 100× (drive=1, near square-wave) soft clip.
+    const float gain      = 1.0f + 99.0f * driveCur_;
+    const float clipped   = softClip(octd, gain);
+    const float distorted = s.postLPF.process(clipped);   // RAT "filter" tone
 
-    float distorted = s.postLPF.process(clipped);
-    // Octave-up blended into the dirty path. Scaled up so the knob is clearly
-    // audible (the rectified 2f is otherwise low-level next to the clipped signal).
-    const float dirty = distorted + octaveCur_ * 1.5f * oct;
-
-    // Stage 3: clean/dirty blend + output boost.
-    // level=0 → 0 dB (×1 unity), level=1 → +6 dB (×2).
-    // Linear 1–2× range keeps output consistent with other pedals and
-    // prevents the exponential boost from overloading amp input stages.
-    const float blended = (1.0f - mixCur_) * clean + mixCur_ * dirty;
-    const float boost   = 1.0f + levelCur_;
+    // ── Stage 3: dry/wet + MOSFET clean boost (level) ──
+    const float blended = (1.0f - mixCur_) * in + mixCur_ * distorted;
+    const float boost   = 1.0f + levelCur_;               // 0 dB … +6 dB clean boost
     return blended * boost;
 }
 
-float LifePedal::softClip(float clean, float gain) noexcept {
-    // tanh(gain·clean) / tanh(gain): symmetric LED-style soft clip.
-    // Amplitude is normalised to ±1 at the rail for all gain values.
-    // At high drive (gain→100), approaches hard clipping (square wave).
+float LifePedal::softClip(float x, float gain) noexcept {
+    // tanh(gain·x) / tanh(gain): symmetric soft clip, normalised to ±1 at the rail
+    // for all gains. At high drive (gain→100) it approaches a hard square wave.
     const float tg = std::tanh(gain);
-    return tg > 1e-6f ? std::tanh(gain * clean) / tg : clean;
+    return tg > 1e-6f ? std::tanh(gain * x) / tg : x;
 }
 
 void LifePedal::setParameter(const std::string& id, float v) noexcept {
@@ -112,30 +105,25 @@ void LifePedal::recalcFilters() noexcept {
     const double fs = oversampledFs_;
     if (fs <= 0.0) return;
 
-    // Pre-HP at 720 Hz (same RC topology as TS-808 input cap).
+    // Pre-HP at 720 Hz (RAT input cap topology).
     const auto preHPC = Filters::highpass1pole(720.0, fs);
 
     // Post-LPF tone sweep: tone=0 → 5 kHz (bright), tone=1 → 500 Hz (dark).
-    // Log interpolation: fc = 5000 × 0.1^tone  (one decade from 5 kHz down to 500 Hz).
-    // This inverts the TS-808's tone sweep direction — the Life Pedal's "filter" knob
-    // works like the RAT's: clockwise = darker (more attenuation above the corner).
     const double postLPHz = 5000.0 * std::pow(0.1, static_cast<double>(tone_));
     const auto postLPC = Filters::lowpass1pole(
         std::clamp(postLPHz, 20.0, fs * 0.48), fs);
 
-    // DC block: 20 Hz 1-pole HPF to remove rectification DC before the BPF.
+    // DC block: 20 Hz 1-pole HPF to remove rectification DC.
     const auto dcC = Filters::highpass1pole(20.0, fs);
 
-    // Octave BPF: broad band-pass centred ~350 Hz, low Q (0.5) → roughly 100 Hz–
-    // 1 kHz. A narrow 1.2 kHz band (the old value) put the octave (2·fundamental)
-    // OUTSIDE the passband for normal guitar notes, so the octave knob did nothing.
-    // This wide band passes the 2f octave across open strings and low frets.
-    const auto bpC = Filters::bandpass(350.0, 0.5, fs);
+    // Octave smoothing LP: tame the hard corners of full-wave rectification
+    // (removes the worst fizz) while keeping the octave-up content broad.
+    const auto octLpC = Filters::lowpass1pole(6000.0, fs);
 
     for (auto& c : ch_) {
         c.preHPF.setCoeffs(preHPC);
         c.postLPF.setCoeffs(postLPC);
         c.dcBlock.setCoeffs(dcC);
-        c.octBPF.setCoeffs(bpC);
+        c.octLP.setCoeffs(octLpC);
     }
 }
