@@ -83,7 +83,7 @@ void DelayBlock::setParameter(const std::string& id, float v) {
     else if (id == "flutterDepth") pFlutterDepth_ = v;
     else if (id == "saturation")   pSaturation_   = v;
     else if (id == "tapeAge")      pTapeAge_      = v;
-    else if (id == "headMask")     pHeadMask_     = static_cast<int>(v) & 0x0F;
+    else if (id == "headMask")     pHeadMask_     = static_cast<int>(v) & 0x1F;
     else if (id == "noiseLevel")   pNoiseLevel_   = v;
 
     if (model_)    model_->setParameter(id, v);

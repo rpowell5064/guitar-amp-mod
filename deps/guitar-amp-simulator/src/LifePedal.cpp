@@ -69,7 +69,9 @@ float LifePedal::processSample(float x, int ch) noexcept {
     const float oct    = s.octBPF.process(dcFree);
 
     float distorted = s.postLPF.process(clipped);
-    const float dirty = distorted + octaveCur_ * oct;
+    // Octave-up blended into the dirty path. Scaled up so the knob is clearly
+    // audible (the rectified 2f is otherwise low-level next to the clipped signal).
+    const float dirty = distorted + octaveCur_ * 1.5f * oct;
 
     // Stage 3: clean/dirty blend + output boost.
     // level=0 → 0 dB (×1 unity), level=1 → +6 dB (×2).
@@ -124,9 +126,11 @@ void LifePedal::recalcFilters() noexcept {
     // DC block: 20 Hz 1-pole HPF to remove rectification DC before the BPF.
     const auto dcC = Filters::highpass1pole(20.0, fs);
 
-    // Octave BPF: 2nd-order, 1.2 kHz, Q=1.0, 0 dB peak.
-    // Q=1.0 gives a ±1 octave bandwidth (octave below and above centre pass).
-    const auto bpC = Filters::bandpass(1200.0, 1.0, fs);
+    // Octave BPF: broad band-pass centred ~350 Hz, low Q (0.5) → roughly 100 Hz–
+    // 1 kHz. A narrow 1.2 kHz band (the old value) put the octave (2·fundamental)
+    // OUTSIDE the passband for normal guitar notes, so the octave knob did nothing.
+    // This wide band passes the 2f octave across open strings and low frets.
+    const auto bpC = Filters::bandpass(350.0, 0.5, fs);
 
     for (auto& c : ch_) {
         c.preHPF.setCoeffs(preHPC);

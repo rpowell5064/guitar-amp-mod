@@ -18,7 +18,17 @@ enum DelayPorts {
     P_WOW     = 9,
     P_FLUTTER = 10,
     P_BYPASS  = 11,
+    P_HEADS   = 12,   // Echorec rotary program (0..11); ignored by Digital/Tape
     P_N_PORTS
+};
+
+// The 12 Echorec rotary programs -> playback-head bitmask.
+// bit0=H1 (1/4) · bit1=H2 (1/2) · bit2=H3 (3/4) · bit3=H4 (full) · bit4=dense tap.
+static const int kEchorecProgram[12] = {
+    0x01, 0x02, 0x04, 0x08,   //  1- 4: single heads H1, H2, H3, H4
+    0x03, 0x06, 0x0C,         //  5- 7: H1+H2, H2+H3, H3+H4
+    0x07, 0x0E, 0x0D,         //  8-10: H1+H2+H3, H2+H3+H4, H1+H3+H4
+    0x0F, 0x1F,               // 11-12: all heads, all heads + dense tap
 };
 
 struct DelayPlugin {
@@ -55,6 +65,10 @@ static void delay_run(LV2_Handle h, uint32_t n) {
     p->dsp.setParameter("stereoWidth",  *p->ports[P_WIDTH]);
     p->dsp.setParameter("wowDepth",     *p->ports[P_WOW]);
     p->dsp.setParameter("flutterDepth", *p->ports[P_FLUTTER]);
+
+    int prog = static_cast<int>(*p->ports[P_HEADS] + 0.5f);
+    prog = (prog < 0) ? 0 : (prog > 11) ? 11 : prog;
+    p->dsp.setParameter("headMask", static_cast<float>(kEchorecProgram[prog]));
 
     float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
     float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };

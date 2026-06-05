@@ -105,6 +105,15 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
             ++headCount;
         }
     }
+    // Position-12 "dense" mode (bit 4): an extra tap at the 1/8 drum position
+    // (between the write head and H1) for maximum rhythmic density. Read raw —
+    // closest to the write head, so head-oxide HF loss is negligible.
+    if (headMask_ & 0x10) {
+        float dn = timeSmoother_.current() * 0.125f * fs / 1000.0f / currentSpeedMod_;
+        dn = std::clamp(dn, 1.0f, static_cast<float>(bufLen - 2));
+        wet += readFrac(s.drumBuf, dn, s.writeIdx);
+        ++headCount;
+    }
     if (headCount > 0) wet *= (1.0f / static_cast<float>(headCount));
 
     // Feedback path: tanh soft clip → LP 3.5 kHz → HP 120 Hz.
@@ -131,7 +140,7 @@ void EchorecDelay::setParameter(const std::string& id, float v) noexcept {
     if      (id == "timeMs")        timeMs_       = std::clamp(v, 40.0f, kMaxDelayMs);
     else if (id == "feedback")      feedback_     = std::clamp(v, 0.0f, 0.98f);
     else if (id == "mix")           mix_          = std::clamp(v, 0.0f, 1.0f);
-    else if (id == "headMask")      headMask_     = static_cast<int>(v) & 0x0F;
+    else if (id == "headMask")      headMask_     = static_cast<int>(v) & 0x1F;  // bit4 = dense tap
     else if (id == "wowDepth")      wowDepth_     = std::clamp(v, 0.0f, 1.0f);
     else if (id == "flutterDepth")  flutterDepth_ = std::clamp(v, 0.0f, 1.0f);
     else if (id == "noiseLevel")    noiseLevel_   = std::clamp(v, 0.0f, 1.0f);

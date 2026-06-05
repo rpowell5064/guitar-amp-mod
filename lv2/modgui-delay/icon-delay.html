@@ -25,6 +25,23 @@
         {{/controls.0}}
     </div>
 
+    <!-- Echo heads: Binson Echorec head/program selector — shown for Echorec only -->
+    <div rata-role="echogroup" class="mod-echogroup mod-hidden">
+        {{#controls.8}}
+        <div class="mod-heads-row">
+            <span class="mod-section-label">ECHO HEADS</span>
+            <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                <div class="mod-enumerated-list">
+                    {{#scalePoints}}
+                    <div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>
+                    {{/scalePoints}}
+                </div>
+            </div>
+        </div>
+        {{/controls.8}}
+    </div>
+
     <div class="mod-control-group mod-knobs clearfix">
         {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.1}}
         {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.2}}

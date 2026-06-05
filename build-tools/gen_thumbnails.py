@@ -29,8 +29,11 @@ PED = {
     '<div class="mod-control-group mod-switches clearfix">' + sw("Bypass") + '</div>'),
  "drive": dict(w=360,h=300,tw=180,title="DRIVE",tag=f"TS-808 {DOT} Life Pedal {DOT} ProCo RAT", body=
     modelrow("PEDAL MODEL","TS-808") + knobs("Drive","Tone","Level","Mix")),
- "delay": dict(w=480,h=360,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} echorec", body=
-    modelrow("DELAY TYPE","Digital") + knobs("Time","Feedback","Mix","Width")),
+ "delay": dict(w=480,h=450,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} echorec", body=
+    modelrow("DELAY TYPE","Echorec") +
+    '<div class="mod-echogroup"><div class="mod-heads-row"><span class="mod-section-label">ECHO HEADS</span>' + sel("11: All Heads") + '</div></div>' +
+    knobs("Time","Feedback","Mix","Width") +
+    '<div class="mod-tapegroup"><div class="mod-section-divider"></div><span class="mod-section-label">TAPE MOTION</span><div class="mod-control-group mod-knobs clearfix">' + knob("Wow") + knob("Flutter") + '</div></div>'),
  "gate": dict(w=360,h=300,tw=180,title="GATE",tag=f"noise gate {DOT} hysteresis", body=
     knobs("Threshold","Attack","Hold","Release","Hysteresis")),
  "comp": dict(w=420,h=340,tw=210,title="COMPRESSOR",tag=f"VCA {DOT} 1176-style", body=
