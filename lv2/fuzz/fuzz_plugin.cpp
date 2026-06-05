@@ -1,6 +1,6 @@
 #include "lv2_util.h"
-#include "OverdriveFactory.h"
 #include "OversamplingWrapper.h"
+#include "EHXBigMuff.h"
 #include <memory>
 #include <cstring>
 #include <new>
@@ -31,7 +31,9 @@ static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
                                    const char*, const LV2_Feature* const*) {
     auto* p = new(std::nothrow) FuzzPlugin;
     if (!p) return nullptr;
-    p->os = OverdriveFactory::createOversampled(OverdriveType::BigMuffPi);
+    // Construct the model directly (NOT via OverdriveFactory) so this plugin pulls
+    // in zero NAM code — fuzz does not link NamCore, and the factory references it.
+    p->os = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
     if (!p->os) { delete p; return nullptr; }
     p->os->prepare(rate, 512, 1);
     p->os->setParameter("era", 2.0f);   // default: Gotham
