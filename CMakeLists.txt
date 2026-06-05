@@ -164,4 +164,10 @@ if(GUITARAMP_BUILD_TOOLS AND NOT CMAKE_CROSSCOMPILING)
     target_link_libraries(nam_compare PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
     set_target_properties(nam_compare PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
+
+    # Per-effect DSP cost/denormal benchmark (host/native; see tools/bench.cpp).
+    add_executable(bench tools/bench.cpp)
+    target_link_libraries(bench PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+    set_target_properties(bench PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
 endif()
