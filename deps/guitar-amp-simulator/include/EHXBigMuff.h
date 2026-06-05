@@ -4,43 +4,48 @@
 #include <array>
 #include <string>
 
-// ── Electro-Harmonix Big Muff Pi ─────────────────────────────────────────────
+// ── Multi-era Muff-style fuzz ────────────────────────────────────────────────
 //
-// Component-informed model of the EHX Big Muff Pi fuzz pedal
-// (Triangle variant, circa 1969–1973).
+// Component-informed model of the classic four-transistor Muff-style fuzz, with
+// six switchable era voicings selected by the "era" parameter. The topology is
+// shared; each era supplies its own component table (input coupling, clip gain
+// range + asymmetry, interstage bandwidth, tone-stack corners, output makeup).
 //
-// Signal path (runs at oversampled rate):
+// (Class/file name kept as EHXBigMuff for engine compatibility; the user-facing
+// names are trademark-clean and live in the LV2 TTL scale points.)
 //
-//   in → inputHP   (R=47 kΩ, C=100 nF → fc=33.9 Hz, 1-pole coupling cap)
-//      → stage1    (NPN transistor amp: y = tanh(gain·x), symmetric silicon clip)
-//      → stageLP   (interstage transistor bandwidth limit, fc=4.8 kHz, 1-pole)
-//      → stage2    (identical second transistor clipping stage)
-//      → toneStack (passive LP/HP voltage-divider blend, mid-scoop characteristic)
-//      → volume    (linear gain [0, 2])
-//      → out
+// Signal path (runs at the OVERSAMPLED rate):
+//   in → inputHP (coupling cap) → clip1 → interstage LP → clip2
+//      → tone stack (LP/HP voltage-divider blend, mid-scoop) → volume → out
 //
-// Clipping stages (both identical, gain shared via "sustain"):
-//   Open-loop gain: g = 2 + 98 · sustain   → 2× to 100× as sustain 0→1
-//   Clip function:  y = tanh(g · x)
-//   Models two 1N914 silicon diodes anti-parallel in transistor feedback.
+// Clip stages (both identical, gain shared via "sustain"):
+//   g = gLo + sustain·(gHi − gLo)            per-era gain range
+//   y = tanh(g·x + asym) − tanh(asym)        asymmetric soft clip (even harmonics,
+//                                            DC removed); asym=0 ⇒ symmetric silicon
 //
-// Tone network (passive LP/HP voltage-divider, characteristic mid-scoop):
-//   LP: 2nd-order Butterworth LP at 300 Hz  (bass path)
-//   HP: 2nd-order Butterworth HP at 2.0 kHz (treble path)
+// Tone stack (passive LP/HP blend):
 //   out = (1−tone)·LP(x) + tone·HP(x)
-//   → tone=0: bass-heavy; tone=0.5: deep mid-scoop (~10 dB); tone=1: treble-heavy
+//   The gap between toneLP and toneHP sets the mid-scoop depth (wider = deeper).
 //
-// Parameter mapping (standard OverdriveBase IDs):
-//   "drive"  [0,1] → sustain pot (0 = low gain/mild fuzz, 1 = full fuzz)
-//   "tone"   [0,1] → tone network (0 = bass, 1 = treble)
-//   "level"  [0,1] → volume pot, maps to [0, 2] gain (centre ≈ unity)
+// Eras (index → voicing):
+//   0 Delta     — bright/clear, least compressed   (Triangle-style)
+//   1 Ovis      — scooped, smooth, compressed        (Ram's-Head-style)
+//   2 Gotham    — balanced, aggressive standard       (Pi/NYC-style)
+//   3 Cold War  — Russian, smoother highs, fatter
+//   4 Red Bear  — fattest lows, thick, smooth         (Green-Russian-style)
+//   5 Boutique  — tighter lows, more output, mid push (modern/JHS-style)
+//
+// Parameter IDs (OverdriveBase convention):
+//   "era"   [0,5] → voicing select (rounded to nearest integer)
+//   "drive" [0,1] → sustain pot (clip gain)
+//   "tone"  [0,1] → tone stack (0 = bass, 1 = treble)
+//   "level" [0,1] → volume pot → [0,2]·outScale
 //   "mix","octave" → ignored
-//
-// Factory preset: drive = 0.55, tone = 0.50, level = 0.65
 //
 class EHXBigMuff final : public OverdriveBase {
 public:
     static constexpr int kMaxCh = 2;
+    static constexpr int kNumEras = 6;
 
     void  prepare(double oversampledFs, int maxBlockSize) noexcept override;
     void  reset()                                          noexcept override;
@@ -49,30 +54,43 @@ public:
     void  setParameter(const std::string& id, float value)  noexcept override;
     float getParameter(const std::string& id) const         noexcept override;
 
-    const char* modelName() const noexcept override { return "Big Muff Pi"; }
+    const char* modelName() const noexcept override { return "Muff Fuzz"; }
 
 private:
+    // Per-era component table.
+    struct Era {
+        float inHpHz;     // input coupling high-pass cutoff
+        float gLo, gHi;   // clip stage gain at sustain 0 and 1
+        float asym;       // clip asymmetry (even-harmonic bias)
+        float interLpHz;  // interstage transistor bandwidth limit
+        float toneLpHz;   // tone-stack bass-path corner
+        float toneHpHz;   // tone-stack treble-path corner
+        float outScale;   // output level makeup
+    };
+    static const Era kEra[kNumEras];
+
     double fs_ = 0.0;
 
+    int   era_     = 2;       // default: Gotham
     float sustain_ = 0.55f;
     float tone_    = 0.50f;
     float volume_  = 0.65f;
+
+    int   eraApplied_ = -1;   // last era whose coefficients are loaded
 
     LinearSmoother sustainSmooth_, volSmooth_;
     float sustainCur_ = 0.55f, volCur_ = 0.65f;
 
     struct ChannelState {
-        BiquadFilter inputHP;    // 33.9 Hz, 1-pole — dc blocking / input coupling cap
-        BiquadFilter stageLP;    // 4.8 kHz, 1-pole — interstage transistor bandwidth
-        BiquadFilter toneLP;     // 300 Hz, 2nd-order Butterworth — bass path
-        BiquadFilter toneHP;     // 2.0 kHz, 2nd-order Butterworth — treble path
+        BiquadFilter inputHP;   // input coupling cap
+        BiquadFilter stageLP;   // interstage bandwidth
+        BiquadFilter toneLP;    // tone bass path
+        BiquadFilter toneHP;    // tone treble path
     };
     std::array<ChannelState, kMaxCh> ch_;
 
     void recalcFilters() noexcept;
 
-    // Symmetric soft-clip modelling two 1N914 diodes anti-parallel.
-    // y = tanh(gain · x).  No amplitude normalisation — output saturates to ±1
-    // at high gains, which is the intended fuzz behaviour.
-    static float clipStage(float x, float gain) noexcept;
+    // Asymmetric soft clip: y = tanh(g·x + asym) − tanh(asym).
+    static float clipStage(float x, float gain, float asym) noexcept;
 };

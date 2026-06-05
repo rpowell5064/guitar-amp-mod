@@ -43,6 +43,8 @@ PED = {
     knobs("Pre-Delay","Decay","Damping","Mod Depth","Mod Rate","Mix")),
  "utility": dict(w=320,h=240,tw=160,title="INPUT TRIM",tag=f"gain {DOT} phase {DOT} hum filter", body=
     '<div class="mod-control-group mod-knobs clearfix">' + knob("Gain") + sw("Phase") + sw("Hum Filter") + '</div>'),
+ "fuzz": dict(w=360,h=300,tw=180,title="FUZZ",tag=f"6 fuzz eras {DOT} sustain {DOT} tone {DOT} volume", body=
+    modelrow("ERA","Gotham") + knobs("Sustain","Tone","Volume")),
 }
 
 def render(p, d):

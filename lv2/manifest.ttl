@@ -45,3 +45,8 @@
     a lv2:Plugin ;
     lv2:binary <guitaramp_utility.so> ;
     rdfs:seeAlso <utility.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/fuzz>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_fuzz.so> ;
+    rdfs:seeAlso <fuzz.ttl> .

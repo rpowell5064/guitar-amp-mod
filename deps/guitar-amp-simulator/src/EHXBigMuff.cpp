@@ -2,6 +2,19 @@
 #include <cmath>
 #include <algorithm>
 
+// ── Per-era component table ─────────────────────────────────────────────────
+// Values are component-informed approximations of the documented circuit
+// differences between Muff eras; tuned for musical separation between voicings.
+//          inHp   gLo   gHi   asym  interLp  toneLp  toneHp  outScale
+const EHXBigMuff::Era EHXBigMuff::kEra[kNumEras] = {
+    { 34.0f, 2.0f, 80.0f, 0.00f, 5200.0f, 320.0f, 1800.0f, 0.95f }, // 0 Delta    (bright, clear)
+    { 32.0f, 2.0f, 78.0f, 0.06f, 4200.0f, 300.0f, 2200.0f, 0.92f }, // 1 Ovis     (scooped, smooth)
+    { 34.0f, 2.0f, 95.0f, 0.04f, 5000.0f, 310.0f, 2000.0f, 0.95f }, // 2 Gotham   (balanced, aggressive)
+    { 26.0f, 2.0f, 70.0f, 0.10f, 3500.0f, 280.0f, 1700.0f, 1.00f }, // 3 Cold War (smoother, fatter)
+    { 20.0f, 2.0f, 85.0f, 0.12f, 3000.0f, 260.0f, 1500.0f, 1.00f }, // 4 Red Bear (fat lows, thick)
+    { 46.0f, 2.0f, 72.0f, 0.05f, 5200.0f, 360.0f, 1400.0f, 1.12f }, // 5 Boutique (tight, mid push, hot)
+};
+
 // ── prepare ───────────────────────────────────────────────────────────────────
 
 void EHXBigMuff::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
@@ -14,6 +27,7 @@ void EHXBigMuff::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
     sustainCur_ = sustain_;
     volCur_     = volume_;
 
+    eraApplied_ = -1;        // force coefficient (re)load
     recalcFilters();
     reset();
 }
@@ -43,46 +57,51 @@ void EHXBigMuff::advanceSmoothing() noexcept {
 // ── processSample ─────────────────────────────────────────────────────────────
 
 float EHXBigMuff::processSample(float x, int ch) noexcept {
-    auto& s = ch_[ch];
+    const Era& e = kEra[era_];
+    auto&      s = ch_[ch];
 
-    // Input coupling capacitor — removes DC and very low sub-bass.
+    // Input coupling capacitor — removes DC and sub-bass below the era's corner.
     const float coupled = s.inputHP.process(x);
 
-    // Stage gain: 2× (gentle overdrive) to 100× (full fuzz) linear.
-    const float gain = 2.0f + sustainCur_ * 98.0f;
+    // Clip gain from the era's range, driven by the (smoothed) sustain pot.
+    const float gain = e.gLo + sustainCur_ * (e.gHi - e.gLo);
 
-    // Stage 1: transistor amplifier with symmetric silicon-diode clipping.
-    float y = clipStage(coupled, gain);
+    // Stage 1: transistor amp with asymmetric soft clipping.
+    float y = clipStage(coupled, gain, e.asym);
 
-    // Interstage bandwidth limit (transistor collector RC roll-off, fc=4.8 kHz).
+    // Interstage bandwidth limit (transistor collector RC roll-off).
     y = s.stageLP.process(y);
 
-    // Stage 2: identical clipping stage — cascaded saturation gives fuzz character.
-    y = clipStage(y, gain);
+    // Stage 2: identical clipping stage — cascaded saturation = fuzz sustain.
+    y = clipStage(y, gain, e.asym);
 
-    // Tone network: LP/HP voltage-divider blend.
-    // out = (1−tone)·LP(y) + tone·HP(y)
-    // The gap between LP(300 Hz) and HP(2 kHz) creates the characteristic mid-scoop.
+    // Tone stack: LP/HP voltage-divider blend; the corner gap sets the mid-scoop.
     const float lp    = s.toneLP.process(y);
     const float hp    = s.toneHP.process(y);
     const float toned = (1.0f - tone_) * lp + tone_ * hp;
 
-    // Volume pot: [0,1] → [0,2] gain so the centre knob position is near unity,
-    // compensating for the ~−6 dB loss from the tone network blend.
-    return toned * (volCur_ * 2.0f);
+    // Volume pot [0,1] → [0,2] gain, with per-era output makeup.
+    return toned * (volCur_ * 2.0f * e.outScale);
 }
 
 // ── setParameter ──────────────────────────────────────────────────────────────
 
 void EHXBigMuff::setParameter(const std::string& id, float v) noexcept {
+    if (id == "era") {
+        int idx = static_cast<int>(std::lround(v));
+        era_ = std::clamp(idx, 0, kNumEras - 1);
+        if (era_ != eraApplied_) recalcFilters();   // reload coeffs on change
+        return;
+    }
     const float c = std::clamp(v, 0.0f, 1.0f);
     if      (id == "drive") { sustain_ = c; sustainSmooth_.setTargetValue(c); }
     else if (id == "tone")  { tone_    = c; }
     else if (id == "level") { volume_  = c; volSmooth_    .setTargetValue(c); }
-    // "mix" and "octave" are not part of the Big Muff circuit; silently ignored.
+    // "mix" and "octave" are not part of the Muff circuit; silently ignored.
 }
 
 float EHXBigMuff::getParameter(const std::string& id) const noexcept {
+    if (id == "era")   return static_cast<float>(era_);
     if (id == "drive") return sustain_;
     if (id == "tone")  return tone_;
     if (id == "level") return volume_;
@@ -94,19 +113,13 @@ float EHXBigMuff::getParameter(const std::string& id) const noexcept {
 void EHXBigMuff::recalcFilters() noexcept {
     if (fs_ <= 0.0) return;
 
-    // Input HP: R=47 kΩ, C=100 nF → fc = 1/(2π·47k·100n) = 33.9 Hz.
-    const auto hpC = Filters::highpass1pole(33.9, fs_);
+    const Era& e = kEra[era_];
+    static constexpr double kQ = 0.7071;   // Butterworth for the 2nd-order tone paths
 
-    // Interstage LP: models the transistor stage bandwidth (~4.8 kHz).
-    const auto lpC = Filters::lowpass1pole(4800.0, fs_);
-
-    // Tone LP: 2nd-order Butterworth low-pass at 300 Hz (bass path).
-    static constexpr double kQ = 0.7071;
-    const auto toneLpC = Filters::lowpass(300.0, kQ, fs_);
-
-    // Tone HP: 2nd-order Butterworth high-pass at 2.0 kHz (treble path).
-    // The ~1.7-octave gap between 300 Hz and 2 kHz forms the mid-scoop notch.
-    const auto toneHpC = Filters::highpass(2000.0, kQ, fs_);
+    const auto hpC     = Filters::highpass1pole(e.inHpHz,   fs_);
+    const auto lpC     = Filters::lowpass1pole (e.interLpHz, fs_);
+    const auto toneLpC = Filters::lowpass (e.toneLpHz, kQ, fs_);
+    const auto toneHpC = Filters::highpass(e.toneHpHz, kQ, fs_);
 
     for (auto& c : ch_) {
         c.inputHP.setCoeffs(hpC);
@@ -114,10 +127,13 @@ void EHXBigMuff::recalcFilters() noexcept {
         c.toneLP .setCoeffs(toneLpC);
         c.toneHP .setCoeffs(toneHpC);
     }
+    eraApplied_ = era_;
 }
 
 // ── clipStage ─────────────────────────────────────────────────────────────────
 
-float EHXBigMuff::clipStage(float x, float gain) noexcept {
-    return std::tanh(gain * x);
+float EHXBigMuff::clipStage(float x, float gain, float asym) noexcept {
+    // Asymmetric soft clip: the bias adds even harmonics; subtracting tanh(asym)
+    // removes the resulting DC so it doesn't accumulate across the cascade.
+    return std::tanh(gain * x + asym) - std::tanh(asym);
 }
