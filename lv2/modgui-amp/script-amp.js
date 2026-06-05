@@ -11,6 +11,8 @@ function (event, funcs) {
         icon.find('[rata-role=resonancectl]').toggleClass('mod-hidden', m !== 2);
         // Power-amp section: hidden for Sunn (its PA is auto-bypassed)
         icon.find('[rata-role=pagroup]').toggleClass('mod-hidden', m === 3);
+        // For Sunn the shared Gain knob IS the Normal-channel volume; relabel it.
+        icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : 'Gain');
     }
     // Manual power-amp controls are only active when PA Auto is off.
     function update_pa_auto(icon, value) {

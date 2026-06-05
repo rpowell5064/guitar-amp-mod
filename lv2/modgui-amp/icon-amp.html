@@ -28,7 +28,7 @@
 
     <!-- ── PREAMP / TONE knobs (always shown) ──────────────────────────── -->
     <div class="mod-control-group mod-knobs clearfix">
-        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.1}}
+        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="gainlabel">{{name}}</span></div>{{/controls.1}}
         {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.2}}
         {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.3}}
         {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.4}}
@@ -41,19 +41,6 @@
         {{#controls.9}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.9}}
         </span>
 
-        <!-- Sunn Model T only: Brite Vol + Ch Link -->
-        <span rata-role="sunngroup" class="amp-cond mod-hidden">
-        {{#controls.10}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.10}}
-        {{#controls.11}}
-        <div class="mod-knob mod-knob-select" title="{{name}}">
-            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
-                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-            </div>
-            <span class="mod-knob-title">{{name}}</span>
-        </div>
-        {{/controls.11}}
-        </span>
     </div>
 
     <!-- EVH / Rockerverb channel toggle -->
@@ -61,6 +48,29 @@
         <span rata-role="channelctl" class="amp-cond mod-hidden">
         {{#controls.8}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.8}}
         </span>
+    </div>
+
+    <!-- ── BRITE CHANNEL (Sunn Model T / Doom Daddy only) ── -->
+    <div rata-role="sunngroup" class="mod-pagroup mod-hidden">
+        <div class="mod-section-divider"></div>
+        <span class="mod-section-label">BRITE CHANNEL</span>
+        <div class="mod-control-group mod-knobs clearfix">
+            {{#controls.10}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.10}}
+            {{#controls.23}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.23}}
+            {{#controls.24}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.24}}
+            {{#controls.25}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.25}}
+        </div>
+        <div class="mod-control-group mod-row-mixed clearfix">
+            {{#controls.26}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.26}}
+            {{#controls.27}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.27}}
+            {{#controls.11}}
+            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+            </div>
+            <span class="mod-inline-label">{{name}}</span>
+            {{/controls.11}}
+        </div>
     </div>
 
     <!-- ── POWER AMP section (hidden for Sunn — its PA is auto-bypassed) ── -->

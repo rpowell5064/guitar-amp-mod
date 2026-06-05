@@ -170,4 +170,10 @@ if(GUITARAMP_BUILD_TOOLS AND NOT CMAKE_CROSSCOMPILING)
     target_link_libraries(bench PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
     set_target_properties(bench PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
+
+    # Sunn Model T crunch sweep (THD vs volume) — see tools/sunn_sweep.cpp.
+    add_executable(sunn_sweep tools/sunn_sweep.cpp)
+    target_link_libraries(sunn_sweep PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+    set_target_properties(sunn_sweep PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
 endif()

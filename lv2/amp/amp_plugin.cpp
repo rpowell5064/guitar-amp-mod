@@ -68,6 +68,7 @@ enum AmpPorts {
     P_CHANNEL, P_RESON, P_SUNN_V2, P_SUNN_LNK, P_BYPASS,
     P_PA_BYPASS, P_PA_TUBE, P_PA_PRES, P_PA_DEPTH, P_PA_SAG, P_PA_MASTER,
     P_PA_NFB, P_PA_RESON, P_PA_AIR, P_PA_AUTO,
+    P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2,  // Sunn Brite-channel
     P_N_PORTS
 };
 
@@ -207,12 +208,17 @@ static void amp_run(LV2_Handle h, uint32_t n) {
 
     // Preamp / model parameters.
     if (modelIdx == kSunnIdx) {
-        amp->setParameter("vol1",         *p->ctrl[P_GAIN]);
+        amp->setParameter("vol1",         *p->ctrl[P_GAIN]);      // "Normal Vol"
         amp->setParameter("vol2",         *p->ctrl[P_SUNN_V2]);
         amp->setParameter("channel_link", *p->ctrl[P_SUNN_LNK]);
         amp->setParameter("bass1",        *p->ctrl[P_BASS]);
         amp->setParameter("mid1",         *p->ctrl[P_MID]);
         amp->setParameter("treble1",      *p->ctrl[P_TREBLE]);
+        amp->setParameter("bass2",        *p->ctrl[P_SUNN_B2]);
+        amp->setParameter("mid2",         *p->ctrl[P_SUNN_M2]);
+        amp->setParameter("treble2",      *p->ctrl[P_SUNN_T2]);
+        amp->setParameter("bright1",      *p->ctrl[P_SUNN_BR1]);
+        amp->setParameter("bright2",      *p->ctrl[P_SUNN_BR2]);
     } else {
         amp->setParameter("gain",   *p->ctrl[P_GAIN]);
         amp->setParameter("bass",   *p->ctrl[P_BASS]);
