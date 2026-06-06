@@ -35,10 +35,13 @@ static void sweep(const char* mode, float link) {
         }
         std::vector<float> seg(out.begin()+8192, out.end());
         const double h1=goertzel(seg,f,fs);
-        double hh=0; for (int k=2;k<=6;k++){ double h=goertzel(seg,k*f,fs); hh+=h*h; }
-        const double thd = h1>1e-9 ? std::sqrt(hh)/h1*100.0 : 0.0;
-        double rms=0; for (float v:seg) rms+=(double)v*v; rms=std::sqrt(rms/seg.size());
-        printf("  %-18s  %.1f  %6.2f  %8.4f\n", "", vol, thd, rms);
+        const double h2=goertzel(seg,2*f,fs), h3=goertzel(seg,3*f,fs);
+        const double h4=goertzel(seg,4*f,fs), h5=goertzel(seg,5*f,fs);
+        const double thd = h1>1e-9 ? std::sqrt(h2*h2+h3*h3+h4*h4+h5*h5)/h1*100.0 : 0.0;
+        // odd/even harmonic ratio: <1 = even-dominated (warm/clean), >1 = odd-rich (crunchy)
+        const double oe = (h2+h4) > 1e-9 ? (h3+h5)/(h2+h4) : 0.0;
+        printf("  %-12s vol %.1f  THD %5.1f%%   h2 %4.1f  h3 %4.1f  h5 %4.1f   odd/even %.2f\n",
+               "", vol, thd, h2/(h1+1e-12)*100, h3/(h1+1e-12)*100, h5/(h1+1e-12)*100, oe);
     }
 }
 

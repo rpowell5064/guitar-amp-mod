@@ -60,10 +60,13 @@ void SunnPowerAmp6550::buildLUTs() noexcept {
     //   - Class-AB crossover region shaped by xoverSoft
     const float range    = params_.inputMax - params_.inputMin;
     const float invMax   = (params_.inputMax > 0.0f) ? (1.0f / params_.inputMax) : 1.0f;
-    // 6550A UL: softer onset than EL34/EL84, strong even-harmonic content.
-    // kDriveScale 2.2 gives a gentler knee; kAsymmetry 0.32 biases toward 2nd harmonic.
-    constexpr float kDriveScale  = 2.2f;
-    constexpr float kAsymmetry   = 0.32f;  // screen-grid compression — more even harmonic
+    // Push-pull already cancels the even harmonics, so the output is odd-dominated
+    // (measured). A slightly harder knee (2.6 vs the old 2.2) tightens/defines the
+    // clip without changing the harmonic balance; the per-tube asymmetry is left as
+    // calibrated. The "doesn't crunch" fix lives in the preamp/PI DRIVE (SunnModelT
+    // kInputDrive/kPowerDrive), not here.
+    constexpr float kDriveScale  = 2.6f;   // marginally harder knee → more defined clip
+    constexpr float kAsymmetry   = 0.32f;
 
     for (int i = 0; i < kLutSize; ++i) {
         const float t   = static_cast<float>(i) / static_cast<float>(kLutSize - 1);

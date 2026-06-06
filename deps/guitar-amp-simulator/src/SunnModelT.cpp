@@ -167,7 +167,7 @@ void SunnModelT::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
         // briteCapShelf coefficients are set by updateBriteCapCoeffs() below
 
         // Post-mix
-        s.postMixHP.setCoeffs(Filters::highpass1pole(55.0, oversampledFs));
+        s.postMixHP.setCoeffs(Filters::highpass1pole(85.0, oversampledFs));  // tighter lows into the power amp (less mush)
         // The large Sunn custom transformer and 15" cab roll off naturally around
         // 10 kHz — letting 16 kHz through adds artificial harshness.
         s.airLP.setCoeffs(Filters::lowpass1pole(10000.0, oversampledFs));
@@ -240,16 +240,17 @@ void SunnModelT::advanceSmoothing() noexcept {
 // They live in the passive mixing network (passiveMixNode / singleChannelMix).
 // The fixed kInputDrive gives a moderate, consistent drive into V1A/V1B.
 
-// Lower drive gives V1A/V1B enough signal to work without hard-clipping at moderate
-// volumes. The Sunn Model T is a headroom amp — saturation should only appear when
-// both volume pots and master are cranked well past noon.
-static constexpr float kInputDrive = 3.5f;
+// Input drive into V1A/V1B. Raised from 3.5 so the amp breaks up at realistic
+// guitar levels rather than only with a hot, cranked signal (it was measuring
+// "clean/slightly dirty" at normal playing levels). Still leaves clean headroom
+// at low volume; pushes into grit as the volumes come up.
+static constexpr float kInputDrive = 5.0f;
 
 // Drive scale from the phase-inverter into the 6550 power amp. The passive
-// volume-mixing network attenuates heavily (~14× at noon), so without makeup the
-// power stage never reaches its clipping region. Calibrated (post rectifier-bug
-// fix) so the Model T breaks up around the same drive as the reference capture.
-static constexpr float kPowerDrive = 12.0f;
+// volume-mixing network attenuates heavily (~14× at noon), so this provides the
+// makeup that reaches the power stage's clipping region. Raised from 12 together
+// with kInputDrive so the Model T grind arrives sooner on the dial.
+static constexpr float kPowerDrive = 16.0f;
 
 float SunnModelT::processCh1(AudioChannelState& s, float x) noexcept {
     x = s.v1a.process(kInputDrive * x) * 0.90f;
