@@ -167,10 +167,15 @@ void SunnModelT::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
         // briteCapShelf coefficients are set by updateBriteCapCoeffs() below
 
         // Post-mix
-        s.postMixHP.setCoeffs(Filters::highpass1pole(85.0, oversampledFs));  // tighter lows into the power amp (less mush)
-        // The large Sunn custom transformer and 15" cab roll off naturally around
-        // 10 kHz — letting 16 kHz through adds artificial harshness.
-        s.airLP.setCoeffs(Filters::lowpass1pole(10000.0, oversampledFs));
+        s.postMixHP.setCoeffs(Filters::highpass1pole(55.0, oversampledFs));  // real Model T is fat in the lows (nam_compare: model was too dark there)
+        // The real Model T rolls its treble off progressively above ~500 Hz (nam_compare:
+        // NAM is -2.7 dB @2k, -6 @5k). With the NFB now correctly on the power amp only
+        // (it no longer cuts highs at the input), this air rolloff restores that voice.
+        s.airLP.setCoeffs(Filters::lowpass1pole(3000.0, oversampledFs));
+        // 1 kHz honk trim (still needed); the +3.8 kHz presence boost is gone — the
+        // power-amp NFB topology now gives natural presence, so boosting over-brightened.
+        s.voiceCut.setCoeffs(Filters::peaking(1000.0, -1.6, 0.9, oversampledFs));
+        s.voicePres.setCoeffs(Filters::peaking(3800.0,  0.0, 0.7, oversampledFs));
 
         // Cathodyne PI
         s.v3pi.prepare(oversampledFs, TriodeComponent::kSunn_S4);
@@ -240,18 +245,30 @@ void SunnModelT::advanceSmoothing() noexcept {
 // They live in the passive mixing network (passiveMixNode / singleChannelMix).
 // The fixed kInputDrive gives a moderate, consistent drive into V1A/V1B.
 
-// Input drive into V1A/V1B. Raised from 3.5 so the amp breaks up at realistic
-// guitar levels rather than only with a hot, cranked signal (it was measuring
-// "clean/slightly dirty" at normal playing levels). Still leaves clean headroom
-// at low volume; pushes into grit as the volumes come up.
-static constexpr float kInputDrive = 5.0f;
+// Input drive into V1A/V1B. Tuned against the real Model T NAM capture (nam_compare):
+// the reference sits at ~37-41% THD across ALL input levels (consistently saturated),
+// so the preamp needs heavy gain to clip even on quiet input — the saturation must
+// come from the cascaded triodes (thick crunch), not from slamming the power amp.
+static constexpr float kInputDrive = 22.0f;
 
-// Drive scale from the phase-inverter into the 6550 power amp. The passive
-// volume-mixing network attenuates heavily (~14× at noon), so this provides the
-// makeup that reaches the power stage's clipping region. Raised from 12 together
-// with kInputDrive so the Model T grind arrives sooner on the dial.
-static constexpr float kPowerDrive = 16.0f;
+// Drive into the 6550 power amp. Kept LOW on purpose: a real Model T at 4.5 breaks
+// up in its single-ended preamp (asymmetric, even-rich, fast harmonic rolloff). The
+// push-pull power amp, when slammed, cancels even harmonics and adds high-order odd
+// (h7/h9) — a hard, square, "sputtery" buzz (confirmed by nam_compare harmonic
+// profile vs the real amp). So the power amp here only adds gentle compression/touch;
+// the crunch comes from the preamp.
+static constexpr float kPowerDrive = 6.0f;
 
+// Output trim. The modeled power stage pins near full-scale (~+12 dB hotter than
+// the real Model T capture), which made the output safety-limiter clip every peak
+// (a fuzzy edge) and slammed the downstream cab. Trim to the capture's level so the
+// limiter no longer engages and the cab is driven cleanly. (nam_compare: makeup ~0.28.)
+static constexpr float kOutputTrim = 0.28f;
+
+// Asymmetric single-ended preamp saturation. The real Model T breaks up in its
+// preamp, which clips one grid polarity harder than the other → strong, warm EVEN
+// harmonics. Our two cascaded inverting triode stages nearly symmetrise, so the
+// output evens were only ~3% vs the real amp's ~13% (nam_compare harmonic profile),
 float SunnModelT::processCh1(AudioChannelState& s, float x) noexcept {
     x = s.v1a.process(kInputDrive * x) * 0.90f;
     x = s.ch1CoupHP.process(x) * SunnModelT::kCouple12;
@@ -293,7 +310,6 @@ float SunnModelT::processSample(float x, int ch) noexcept {
 
     x *= inputPad_;
     x = s.inputHPF.process(x);
-    x = s.nfb.process(x, s.nfbPrev);
 
     const float v1 = vol1Smooth_.getCurrentValue();
     const float v2 = vol2Smooth_.getCurrentValue();
@@ -340,6 +356,15 @@ float SunnModelT::processSample(float x, int ch) noexcept {
     prePI = s.postMixHP.process(prePI);
     prePI *= masterSmooth_.getCurrentValue();
 
+    // ── Global negative feedback ────────────────────────────────────────────────
+    // Wraps the POWER AMP ONLY (output-transformer tap → phase-inverter input), as in
+    // the real Model T. Previously the feedback was injected at the signal INPUT, so
+    // the loop enclosed the entire ×22 preamp; as a note decayed and the preamp came
+    // out of clipping its incremental gain soared, driving the one-sample-delayed loop
+    // gain far past unity → it rang → the "sputter as notes ring out". Injecting it at
+    // the PI input keeps the preamp out of the loop, so it stays stable at every level.
+    prePI = s.nfb.process(prePI, s.nfbPrev);
+
     // ── Cathodyne PI ──────────────────────────────────────────────────────────
     // Pure split-load cathodyne: plate and cathode produce equal-and-opposite
     // signals. The previous 50/50 blend with a separate TriodeComponent output
@@ -357,7 +382,12 @@ float SunnModelT::processSample(float x, int ch) noexcept {
     powerOut = s.airLP.process(powerOut);
 
     s.nfbPrev = powerOut;
-    return softLimit(powerOut);
+
+    // Output voicing correction (post-NFB so the loop behaviour is unchanged):
+    // match the real Model T's open, present voice instead of a boxy 1 kHz honk.
+    powerOut = s.voiceCut.process(powerOut);
+    powerOut = s.voicePres.process(powerOut);
+    return softLimit(powerOut * kOutputTrim);
 }
 
 // ─── Parameter handling ───────────────────────────────────────────────────────

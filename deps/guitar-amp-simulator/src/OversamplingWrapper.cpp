@@ -6,8 +6,8 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-OversamplingWrapper::OversamplingWrapper(std::unique_ptr<AmpModelBase> model)
-    : model_(std::move(model))
+OversamplingWrapper::OversamplingWrapper(std::unique_ptr<AmpModelBase> model, int factor)
+    : model_(std::move(model)), factor_(factor >= 2 ? factor : 2)
 {}
 
 void OversamplingWrapper::prepare(double sr, int maxBlock, int numCh) {
@@ -15,17 +15,17 @@ void OversamplingWrapper::prepare(double sr, int maxBlock, int numCh) {
     maxBlockSize = maxBlock;
     numChannels  = numCh;
 
-    const double oversampledRate = sr * kFactor;
+    const double oversampledRate = sr * factor_;
     computeAACoeffs(oversampledRate);
 
     for (int ch = 0; ch < kMaxCh; ++ch) {
-        upBuf_[ch].assign(static_cast<size_t>(maxBlock * kFactor), 0.0f);
+        upBuf_[ch].assign(static_cast<size_t>(maxBlock * factor_), 0.0f);
         upAA_[ch].reset();
         downAA_[ch].reset();
     }
 
     if (model_)
-        model_->prepare(oversampledRate, maxBlock * kFactor);
+        model_->prepare(oversampledRate, maxBlock * factor_);
 }
 
 void OversamplingWrapper::process(float** in, float** out,
@@ -35,18 +35,17 @@ void OversamplingWrapper::process(float** in, float** out,
 
     const int numCh      = std::min(numChannels, kMaxCh);
     const int numClamped = upBuf_[0].empty() ? 0
-                         : std::min(numSamples, static_cast<int>(upBuf_[0].size() / kFactor));
-    const int numOS      = numClamped * kFactor;
+                         : std::min(numSamples, static_cast<int>(upBuf_[0].size() / factor_));
+    const int numOS      = numClamped * factor_;
 
     // ── Upsample: zero-insert then interpolation LP ───────────────────────────
     for (int ch = 0; ch < numCh; ++ch) {
         for (int i = 0; i < numClamped; ++i) {
-            // Multiply by kFactor to compensate for energy spread across
-            // kFactor interpolated samples (preserves DC gain through LP).
-            upBuf_[ch][i * kFactor]     = in[ch][i] * static_cast<float>(kFactor);
-            upBuf_[ch][i * kFactor + 1] = 0.0f;
-            upBuf_[ch][i * kFactor + 2] = 0.0f;
-            upBuf_[ch][i * kFactor + 3] = 0.0f;
+            // Multiply by factor_ to compensate for energy spread across the
+            // interpolated samples (preserves DC gain through the LP).
+            upBuf_[ch][i * factor_] = in[ch][i] * static_cast<float>(factor_);
+            for (int k = 1; k < factor_; ++k)
+                upBuf_[ch][i * factor_ + k] = 0.0f;
         }
         for (int i = 0; i < numOS; ++i)
             upBuf_[ch][i] = upAA_[ch].process(upBuf_[ch][i]);
@@ -64,7 +63,7 @@ void OversamplingWrapper::process(float** in, float** out,
         for (int i = 0; i < numOS; ++i)
             upBuf_[ch][i] = downAA_[ch].process(upBuf_[ch][i]);
         for (int i = 0; i < numClamped; ++i)
-            out[ch][i] = upBuf_[ch][i * kFactor];
+            out[ch][i] = upBuf_[ch][i * factor_];
     }
 }
 
@@ -77,11 +76,11 @@ float OversamplingWrapper::getParameter(const std::string& id) const {
 }
 
 void OversamplingWrapper::computeAACoeffs(double /*oversampledSampleRate*/) noexcept {
-    // For 4x oversampling the cutoff is always at the original Nyquist:
-    //   fc / fs_up = 1 / (2 * kFactor) = 1/8
-    //   K = tan(π * fc / fs_up) = tan(π / (2 * kFactor)) = tan(π/8)
+    // Cutoff is always at the original Nyquist:
+    //   fc / fs_up = 1 / (2 * factor_)
+    //   K = tan(π * fc / fs_up) = tan(π / (2 * factor_))
     // This ratio is independent of the actual sample rate.
-    const double K  = std::tan(M_PI / (2.0 * static_cast<double>(kFactor)));
+    const double K  = std::tan(M_PI / (2.0 * static_cast<double>(factor_)));
     const double K2 = K * K;
 
     // 4th-order Butterworth: two SOS sections.

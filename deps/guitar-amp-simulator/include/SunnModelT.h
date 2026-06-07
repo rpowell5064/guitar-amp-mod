@@ -148,6 +148,11 @@ private:
         // Post-mix
         BiquadFilter     postMixHP;   // 55 Hz sub-bass cut after channel sum
         BiquadFilter     airLP;       // 16 kHz air rolloff
+        // Output voicing correction, tuned to the real Model T NAM capture (nam_compare):
+        // the model honked at ~1 kHz and lacked presence at 3-5 kHz vs the reference,
+        // which read as a boxy/fuzzy rather than open amp voice.
+        BiquadFilter     voiceCut;    // -1.6 dB peaking @ 1 kHz  (tame upper-mid honk)
+        BiquadFilter     voicePres;   // +2.6 dB peaking @ 3.8 kHz (restore amp presence)
 
         // Cathodyne PI (V3: 12AX7)
         TriodeComponent  v3pi;        // unity-gain PI triode model

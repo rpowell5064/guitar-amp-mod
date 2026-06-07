@@ -65,7 +65,7 @@ void SunnPowerAmp6550::buildLUTs() noexcept {
     // clip without changing the harmonic balance; the per-tube asymmetry is left as
     // calibrated. The "doesn't crunch" fix lives in the preamp/PI DRIVE (SunnModelT
     // kInputDrive/kPowerDrive), not here.
-    constexpr float kDriveScale  = 2.6f;   // marginally harder knee → more defined clip
+    constexpr float kDriveScale  = 1.8f;   // softer knee → faster harmonic rolloff (less h7/h9 buzz)
     constexpr float kAsymmetry   = 0.32f;
 
     for (int i = 0; i < kLutSize; ++i) {

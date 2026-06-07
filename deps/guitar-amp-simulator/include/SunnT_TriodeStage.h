@@ -78,8 +78,10 @@ public:
     double getBiasVk() const noexcept { return Vk_bias_; }
 
 private:
-    static constexpr int    kMaxIter  = 12;
-    static constexpr double kEpsilon  = 1e-13; // convergence threshold (A)
+    static constexpr int    kMaxIter  = 8;
+    static constexpr double kEpsilon  = 1e-10; // convergence threshold (A) — 1e-13 was
+                                               // far tighter than audible and forced
+                                               // many extra Newton iterations per sample
 
     Params p_;
     double fs_ = 0.0;

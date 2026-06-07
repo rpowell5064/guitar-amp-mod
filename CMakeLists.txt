@@ -176,4 +176,10 @@ if(GUITARAMP_BUILD_TOOLS AND NOT CMAKE_CROSSCOMPILING)
     target_link_libraries(sunn_sweep PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
     set_target_properties(sunn_sweep PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
+
+    # Sunn Model T envelope/"sputter" probe — see tools/sunn_envelope.cpp.
+    add_executable(sunn_envelope tools/sunn_envelope.cpp)
+    target_link_libraries(sunn_envelope PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+    set_target_properties(sunn_envelope PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
 endif()

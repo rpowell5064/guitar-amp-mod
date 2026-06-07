@@ -22,6 +22,7 @@
 #include "CompressorBlock.h"
 #include "NoiseGateBlock.h"
 #include "ModulationBlock.h"
+#include "DenormalGuard.h"
 
 #include <chrono>
 #include <cstdio>
@@ -75,6 +76,7 @@ static void run(const char* name, int nCh, const Proc& proc, bool testSilence) {
 }
 
 int main() {
+    DenormalGuard dg;   // mirror the real-time plugin: flush denormals
     printf("Hex Chain per-effect DSP cost — 48 kHz, %d-frame blocks (%.2f ms budget/block)\n",
            NB, BLOCK_MS);
     printf("RT%% = %% of ONE core. A serial chain sums these.\n\n");
@@ -93,9 +95,18 @@ int main() {
     { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::EVH5150III);
       PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_EL34);
       run("Amp: 5150 + power amp", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, false); }
-    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::SunnModelT);
-      PowerAmpProcessor pa; pa.prepare(FS,NB,2);
-      run("Amp: Sunn + power amp", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, false); }
+    // Sunn Model T: its PA is internal, so measure the amp block alone — in each
+    // channel-link mode. Parallel/Series run BOTH preamp channels (≈2x triodes).
+    // Silence column flags denormal/decay cost (relevant to "notes cut out").
+    for (auto lk : { std::pair<const char*,float>{"Sunn Indep",   0.0f},
+                     std::pair<const char*,float>{"Sunn Parallel",1.0f},
+                     std::pair<const char*,float>{"Sunn Series",  2.0f} }) {
+        AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::SunnModelT);
+        a.setParameter("channel_link", lk.second);
+        a.setParameter("vol1",0.6f); a.setParameter("vol2",0.6f); a.setParameter("master",0.7f);
+        char nm[48]; std::snprintf(nm,sizeof(nm),"Amp: %s", lk.first);
+        run(nm, 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); }, true);
+    }
 
     { CabinetBlock cb; cb.prepare(FS,NB,2); cb.setIR(DefaultCabIR::generate(FS));
       run("Cab (convolution)", 2, [&](float**i,float**o,int n,int c){cb.process(i,o,n,c);}, false); }

@@ -15,10 +15,12 @@
 // No heap allocation after prepare(); scratch buffers are sized to the host block size in prepare().
 class OversamplingWrapper final : public AudioBlock {
 public:
-    static constexpr int kFactor  = 4;
     static constexpr int kMaxCh   = 2;
 
-    explicit OversamplingWrapper(std::unique_ptr<AmpModelBase> model);
+    // factor: oversampling ratio (2 or 4). Cheaper models that generate a lot of HF
+    // (e.g. the Newton-solved Sunn triode preamp) can run at 2x to halve CPU; the AA
+    // Butterworth cutoff tracks the factor automatically.
+    explicit OversamplingWrapper(std::unique_ptr<AmpModelBase> model, int factor = 4);
 
     void  prepare(double sampleRate, int maxBlockSize, int numChannels) override;
     void  process(float** in, float** out, int numSamples, int numChannels) override;
@@ -30,6 +32,7 @@ public:
 
 private:
     std::unique_ptr<AmpModelBase> model_;
+    const int factor_;            // oversampling ratio (set in constructor)
 
     // 4th-order Butterworth LP: two cascaded biquad stages per channel.
     struct OsFilter {

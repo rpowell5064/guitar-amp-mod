@@ -318,6 +318,39 @@ static double thdOf(const std::vector<float>& y, int cycles, int N) {
     return fund > 1e-20 ? std::sqrt(harm / fund) * 100.0 : 0.0;
 }
 
+// Per-harmonic profile of both ref and model at one tone/level. A smooth tube
+// crunch is h2/h3-led with a fast rolloff; a square/buzzy ("sputtery") distortion
+// has large h5/h7/h9. This isolates clipping SHAPE (vs total THD).
+static void harmonicReport(NamModel& nam, const ModelSpec& m, const Knobs& k,
+                           double sr, double inDb, double targetHz) {
+    constexpr int N = 8192;
+    const int cycles = std::max(1, int(std::round(targetHz * N / sr)));
+    const double f = cycles * sr / N;
+    const int warm = int(sr * 0.5);
+    const int total = warm + N;
+    const double A = std::pow(10.0, inDb / 20.0);
+    std::vector<float> in(total);
+    for (int i = 0; i < total; ++i) in[i] = float(A * std::sin(2.0 * M_PI * f * i / sr));
+    std::vector<float> nOut, mOut;
+    runNam(nam, sr, in, nOut);
+    runModel(m, k, sr, in, mOut);
+
+    auto profile = [&](const std::vector<float>& y, const char* tag) {
+        std::vector<std::complex<double>> buf(N);
+        for (int i = 0; i < N; ++i) buf[i] = y[y.size() - N + i];
+        fft(buf);
+        auto mag = [&](int h) { int kk = h * cycles; double p = 0;
+            for (int d = -1; d <= 1; ++d) { int j = kk + d; if (j >= 1 && j <= N / 2) p += std::norm(buf[j]); }
+            return std::sqrt(p); };
+        const double h1 = std::max(mag(1), 1e-20);
+        std::printf("  %-6s  h2 %4.1f  h3 %4.1f  h4 %4.1f  h5 %4.1f  h6 %4.1f  h7 %4.1f  h9 %4.1f\n",
+            tag, mag(2)/h1*100, mag(3)/h1*100, mag(4)/h1*100, mag(5)/h1*100, mag(6)/h1*100, mag(7)/h1*100, mag(9)/h1*100);
+    };
+    std::printf("\n── harmonic profile @ %.0f Hz, in %.0f dBFS (%% of fundamental) ──\n", f, inDb);
+    profile(nOut, "NAM");
+    profile(mOut, "model");
+}
+
 static ThdResult thdAtLevel(NamModel& nam, const ModelSpec& m, const Knobs& k,
                             double sr, double inDb, double targetHz) {
     constexpr int N = 8192;
@@ -469,6 +502,9 @@ int main(int argc, char** argv) {
             std::printf("  %-9.0f  %8.1f  %9.1f  %s\n", lvl, t.namPct, t.modelPct, verdict);
         }
     }
+
+    harmonicReport(nam, spec, k, sr, -12.0, 110.0);
+    harmonicReport(nam, spec, k, sr, -12.0, 220.0);
 
     std::printf("\nDone.\n");
     return 0;

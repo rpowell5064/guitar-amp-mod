@@ -19,6 +19,7 @@
 #include "lv2_util.h"
 #include "AmpBlockExtended.h"
 #include "PowerAmpProcessor.h"
+#include "DenormalGuard.h"
 #include <new>
 #include <cstring>
 
@@ -188,6 +189,8 @@ static LV2_Worker_Status amp_work_response(LV2_Handle h, uint32_t, const void* d
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 static void amp_run(LV2_Handle h, uint32_t n) {
+    DenormalGuard denormalGuard;   // flush denormals: keeps CPU flat into decay/silence
+                                   // (prevents xrun-induced note cut-outs on the pi-Stomp)
     auto* p = static_cast<AmpPlugin*>(h);
 
     const int modelIdx = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);

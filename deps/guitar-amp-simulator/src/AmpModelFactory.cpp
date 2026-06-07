@@ -17,7 +17,12 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
 }
 
 std::unique_ptr<OversamplingWrapper> AmpModelFactory::createWithOversampling(ModelID id) {
-    return std::make_unique<OversamplingWrapper>(create(id));
+    // The Sunn Model T uses a per-sample Newton-solved triode preamp — ~4.5x the cost
+    // of the other amp models. Its breakup is also band-limited (grid-stopper LP +
+    // soft power amp), so 2x oversampling halves its CPU with negligible added aliasing
+    // (verified via tools/sunn_envelope period-jitter). Other models stay at 4x.
+    const int factor = (id == ModelID::SunnModelT) ? 2 : 4;
+    return std::make_unique<OversamplingWrapper>(create(id), factor);
 }
 
 const char* AmpModelFactory::getModelName(ModelID id) noexcept {
