@@ -154,6 +154,7 @@ struct HexForge {
 
     // scratch
     float mono[kMaxBlock];
+    int   clipHold = 0;   // samples remaining to keep the CLIP indicator lit
 
     // host features
     LV2_URID_Map*        map      = nullptr;
@@ -374,6 +375,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (*p->ports[HF_BYPASS] > 0.5f) {
         if (outL != inL) std::memcpy(outL, inL, sizeof(float)*n);
         if (outR != inR) std::memcpy(outR, inR, sizeof(float)*n);
+        if (p->ports[HF_CLIP]) *p->ports[HF_CLIP] = 0.0f;
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
         return;
     }
@@ -574,6 +576,16 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     const float outLevel = *p->ports[HF_OUT_LEVEL];
     if (outLevel != 1.0f)
         for (uint32_t i = 0; i < n; ++i) { outL[i] *= outLevel; outR[i] *= outLevel; }
+
+    // ── Clip indicator: latch for ~250 ms whenever the output hits full scale ──
+    float peak = 0.0f;
+    for (uint32_t i = 0; i < n; ++i) {
+        float a = std::fabs(outL[i]); if (a > peak) peak = a;
+        a = std::fabs(outR[i]);       if (a > peak) peak = a;
+    }
+    if (peak >= 0.999f) p->clipHold = static_cast<int>(p->rate * 0.25);
+    if (p->ports[HF_CLIP]) *p->ports[HF_CLIP] = (p->clipHold > 0) ? 1.0f : 0.0f;
+    if (p->clipHold > 0)   p->clipHold -= static_cast<int>(n);
 
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }

@@ -147,11 +147,12 @@ UNIT = {"db": "units:db", "ms": "units:ms", "hz": "units:hz"}
 
 # ── Build the ordered control-port list ───────────────────────────────────────
 # Each entry: dict(enum, sym, name, kind, mn, mx, df, scale)
-def mkport(enum, sym, name, kind, mn, mx, df, scale, short=None, hidden=False):
+def mkport(enum, sym, name, kind, mn, mx, df, scale, short=None, hidden=False, out=False):
     # hidden=True → pprops:notOnGUI: kept out of MOD's generic/advanced control list
     # (still driven by the custom modgui). Used for the chain-plumbing slot ports.
+    # out=True → an OutputPort (plugin -> UI), e.g. the clip indicator.
     return dict(enum=enum, sym=sym, name=name, kind=kind, mn=mn, mx=mx, df=df,
-                scale=scale, short=short or name, hidden=hidden)
+                scale=scale, short=short or name, hidden=hidden, out=out)
 
 ctrl = []
 # global bypass first
@@ -159,6 +160,8 @@ ctrl.append(mkport("BYPASS", "bypass", "Bypass", "t", 0, 1, 0, None))
 # master output level — applied LAST in the chain (the "Output" stage that feeds
 # the device). Shown in the top Output strip, not as a chain tile.
 ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "f", 0, 1, 1.0, None, "Master"))
+# output clip indicator (plugin -> UI): 1 while the output is hitting full scale.
+ctrl.append(mkport("CLIP", "clip", "Clip", "f", 0, 1, 0, None, "Clip", out=True))
 # input trim (locked): enable + params, no pos. Per-block toggles use ENABLE
 # semantics (1 = on/active, default on) so a lit tile switch means "block engaged".
 ctrl.append(mkport("IT_ENABLE", "it_enable", "Input Trim Enable", "t", 0, 1, 1, None, "On"))
@@ -202,7 +205,7 @@ def ttl_ctrl(c, index):
     integral = c["kind"] in ("t", "i", "e")
     out = []
     out.append("    ] , [")
-    out.append("        a lv2:ControlPort, lv2:InputPort ;")
+    out.append("        a lv2:ControlPort, lv2:%s ;" % ("OutputPort" if c.get("out") else "InputPort"))
     out.append('        lv2:index %d ; lv2:symbol "%s" ; lv2:name "%s" ;' % (index, c["sym"], c["name"]))
     if c["kind"] in UNIT:
         out.append("        units:unit %s ;" % UNIT[c["kind"]])
@@ -443,8 +446,9 @@ def emit_icon():
         '  <div class="hf-out">\n'
         '    <span class="hf-out-mark"></span>\n'
         '    <span class="hf-out-name">Output</span>\n'
-        '    <span class="hf-out-sub">last in chain &rarr; default device</span>\n'
         '    <span class="hf-out-spacer"></span>\n'
+        '    <span class="hf-clip" rata-role="clip">CLIP</span>\n'
+        '    <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
         '    ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
         '  </div>\n'
         '  <div class="hf-rack">\n      ' + tiles + '\n  </div>\n'

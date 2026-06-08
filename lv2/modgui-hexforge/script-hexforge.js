@@ -149,6 +149,8 @@ function (event, funcs) {
             show(icon, 'dr', '.c-dr-oct', parseInt(event.value, 10) === 1);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
+        } else if (s === 'clip') {
+            icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
         } else if (event.uri && event.uri.indexOf('#irfile') >= 0) {
             setIr(icon, event.value);
         }

@@ -133,7 +133,7 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
     s.drumBuf[s.writeIdx] = x + feedbackSmoother_.current() * fb;
     s.writeIdx = (s.writeIdx + 1) % bufLen;
 
-    return (1.0f - mixSmoother_.current()) * x + mixSmoother_.current() * wet;
+    return x + mixSmoother_.current() * wet;   // dry unity + wet on top (no level drop)
 }
 
 void EchorecDelay::setParameter(const std::string& id, float v) noexcept {

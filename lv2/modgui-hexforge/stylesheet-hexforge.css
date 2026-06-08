@@ -14,7 +14,7 @@
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
     width: 1300px;
-    height: 856px;
+    height: 916px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -87,6 +87,16 @@
     font-size: 10px; font-weight: 600; letter-spacing: .5px; color: #8b93a1;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out-spacer { flex: 1; }
+/* CLIP indicator: dim until the output hits full scale, then red + glow */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-clip {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.5px; color: #5a6270;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 4px; padding: 3px 9px;
+    text-transform: uppercase; transition: color .05s, background .05s, box-shadow .05s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-clip.hf-clip-on {
+    color: #fff; background: #ff2a2a; border-color: #ff6a6a;
+    box-shadow: 0 0 12px 2px rgba(255,42,42,.8);
+}
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out .hf-knob { width: 78px; height: 44px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out .hf-knob-img { background-size: auto 30px; height: 30px; width: 30px; display: inline-block; vertical-align: middle; margin: 0 6px 0 0; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out .hf-knob-t { display: inline; font-size: 10px; color: #d7dbe2; }
@@ -101,7 +111,7 @@
 }
 
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tile {
-    width: 240px; box-sizing: border-box; position: relative; height: 312px;  /* uniform */
+    width: 240px; box-sizing: border-box; position: relative; height: 344px;  /* uniform */
     background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.20));
     border: 1px solid rgba(255,255,255,.07);
     border-top: 2px solid var(--acc);

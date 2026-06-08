@@ -112,7 +112,7 @@ void UniVibeEffect::process(float** in, float** out,
             // ── Mix (Chorus = wet/dry blend; Vibrato = wet only) ────────────
             const float mixed = vibrato_
                 ? wet
-                : dry * (1.0f - mix_) + wet * mix_;
+                : dry + wet * mix_;   // chorus: dry unity + wet on top (no level drop)
 
             out[c][i] = mixed * outGain;
         }

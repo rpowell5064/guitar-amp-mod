@@ -113,11 +113,14 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
         outL *= 0.5f; outR *= 0.5f; // normalise (2 combs summed per side)
 
         // Write outputs: stereo reverb return mixed with dry
+        // Dry stays at unity; wet is added on top (mix = wet amount). Keeps the
+        // overall level from dropping when reverb is engaged — only the Input Trim
+        // and Output blocks should change level.
         if (nCh >= 2) {
-            out[0][i] = in[0][i] * (1.0f - mix) + outL * mix;
-            out[1][i] = in[1][i] * (1.0f - mix) + outR * mix;
+            out[0][i] = in[0][i] + outL * mix;
+            out[1][i] = in[1][i] + outR * mix;
         } else {
-            out[0][i] = in[0][i] * (1.0f - mix) + (outL + outR) * 0.5f * mix;
+            out[0][i] = in[0][i] + (outL + outR) * 0.5f * mix;
         }
     }
 

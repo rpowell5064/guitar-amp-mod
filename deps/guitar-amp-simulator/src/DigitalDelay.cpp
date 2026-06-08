@@ -66,7 +66,7 @@ float DigitalDelay::processSample(float x, int ch) noexcept {
     s.buf[s.writeIdx] = x + feedbackSmoother_.current() * fb;
     s.writeIdx = (s.writeIdx + 1) % bufLen;
 
-    return (1.0f - mixSmoother_.current()) * x + mixSmoother_.current() * delayed;
+    return x + mixSmoother_.current() * delayed;   // dry unity + wet on top (no level drop)
 }
 
 void DigitalDelay::setParameter(const std::string& id, float v) noexcept {

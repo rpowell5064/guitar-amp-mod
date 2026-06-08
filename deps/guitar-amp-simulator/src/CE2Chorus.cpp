@@ -137,7 +137,7 @@ void CE2Chorus::process(float** in, float** out,
             chState_[c].lpOut += lpOutAlpha_ * (bbdOut - chState_[c].lpOut);
 
             // ── Wet/dry mix ───────────────────────────────────────────────────
-            out[c][i] = dry * (1.0f - mix_) + chState_[c].lpOut * mix_;
+            out[c][i] = dry + chState_[c].lpOut * mix_;   // dry unity + wet on top (no level drop)
         }
 
         // Passthrough any extra channels

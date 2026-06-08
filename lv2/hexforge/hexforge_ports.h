@@ -4,6 +4,7 @@ enum HexForgePort {
     HF_IN_L = 0, HF_IN_R, HF_OUT_L, HF_OUT_R, HF_CONTROL, HF_NOTIFY,
     HF_BYPASS,
     HF_OUT_LEVEL,
+    HF_CLIP,
     HF_IT_ENABLE,
     HF_IT_GAIN,
     HF_IT_PHASE,
@@ -103,4 +104,4 @@ enum HexForgePort {
     HF_RV_MIX,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 105, "port count drift");
+static_assert(HF_N_PORTS == 106, "port count drift");
