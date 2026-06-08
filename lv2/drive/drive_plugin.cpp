@@ -1,75 +1,260 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// GuitarAmp Suite — Drive/Boost LV2 plugin
+//
+// Three algorithmic pedals (Green Man / New Dawn / Dear Rodent Boy) plus a NAM
+// slot: model 3 ("Neural (NAM)") runs a user-loaded .nam pedal capture. The .nam
+// is chosen in mod-ui's file browser, loaded on the LV2 worker thread, and
+// swapped in with a lock-free pointer assignment. The bundled core parses legacy
+// (a1) and new container/slimmable (a2) formats. Level + Mix apply to the NAM
+// (drive/tone/octave are baked into the capture).
+// ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
 #include "OverdriveBlock.h"
 #include "OverdriveFactory.h"
+#include "NamModel.h"
 #include <new>
+#include <cstring>
+#include <cstdint>
+#include <algorithm>
 
-#define DRIVE_URI "https://rpowell5064.github.io/guitaramp-suite/drive"
+#define DRIVE_URI     "https://rpowell5064.github.io/guitaramp-suite/drive"
+#define DRIVE_NAM_URI DRIVE_URI "#nammodel"
+static constexpr int kPathMax  = 1024;
+static constexpr int kMaxBlock = 512;
 
-// LV2 port model indices: 0=TS808, 1=LifePedal, 2=ProcoRAT
-// Maps to OverdriveType: 0, 1, 3 (NAM=2 is skipped in LV2)
+// LV2 model indices: 0=Green Man(TS808), 1=New Dawn(LifePedal), 2=Dear Rodent Boy(RAT)
 static const OverdriveType kModelMap[3] = {
     OverdriveType::TubeScreamer808,
     OverdriveType::LifePedal,
     OverdriveType::ProcoRAT,
 };
+static constexpr int kNamIdx = 3;   // Neural (NAM) slot
 
 enum DrivePorts {
-    P_IN     = 0,
-    P_OUT    = 1,
-    P_MODEL  = 2,
-    P_DRIVE  = 3,
-    P_TONE   = 4,
-    P_LEVEL  = 5,
-    P_MIX    = 6,
-    P_OCTAVE = 7,
-    P_BYPASS = 8,
+    P_IN = 0, P_OUT, P_MODEL, P_DRIVE, P_TONE, P_LEVEL, P_MIX, P_OCTAVE, P_BYPASS,
+    P_CONTROL, P_NOTIFY,
     P_N_PORTS
 };
 
-struct DrivePlugin {
-    OverdriveBlock dsp;
-    float* ports[P_N_PORTS];
-    int    lastModel = -1;
+enum WorkType { WORK_NAM_LOAD, WORK_NAM_FREE };
+struct WorkMsg { WorkType type; NamModel* nam = nullptr; char path[kPathMax] = {0}; };
+
+struct URIs {
+    LV2_URID atom_Object, atom_Path, atom_URID;
+    LV2_URID patch_Set, patch_Get, patch_property, patch_value;
+    LV2_URID nam_file;
 };
 
+static int clampi(float v, int lo, int hi) { int i = int(v + 0.5f); return i < lo ? lo : (i > hi ? hi : i); }
+
+struct DrivePlugin {
+    double rate = 48000.0;
+    OverdriveBlock dsp;
+    NamModel* nam = nullptr;
+
+    float* ports[P_N_PORTS] = {};
+    const LV2_Atom_Sequence* control = nullptr;
+    LV2_Atom_Sequence*       notify  = nullptr;
+
+    int  lastModel = -1;
+    char namPath[kPathMax] = {0};
+    float namIn[kMaxBlock], namOut[kMaxBlock];
+
+    LV2_Worker_Schedule* schedule = nullptr;
+    LV2_URID_Map*        map      = nullptr;
+    LV2_Atom_Forge       forge;
+    URIs                 uris;
+};
+
+static void mapURIs(DrivePlugin* p) {
+    LV2_URID_Map* m = p->map;
+    p->uris.atom_Object    = m->map(m->handle, LV2_ATOM__Object);
+    p->uris.atom_Path      = m->map(m->handle, LV2_ATOM__Path);
+    p->uris.atom_URID      = m->map(m->handle, LV2_ATOM__URID);
+    p->uris.patch_Set      = m->map(m->handle, LV2_PATCH__Set);
+    p->uris.patch_Get      = m->map(m->handle, LV2_PATCH__Get);
+    p->uris.patch_property = m->map(m->handle, LV2_PATCH__property);
+    p->uris.patch_value    = m->map(m->handle, LV2_PATCH__value);
+    p->uris.nam_file       = m->map(m->handle, DRIVE_NAM_URI);
+}
+static void writeNamToNotify(DrivePlugin* p) {
+    const URIs& u = p->uris;
+    LV2_Atom_Forge_Frame frame;
+    lv2_atom_forge_frame_time(&p->forge, 0);
+    lv2_atom_forge_object(&p->forge, &frame, 0, u.patch_Set);
+    lv2_atom_forge_key(&p->forge, u.patch_property);
+    lv2_atom_forge_urid(&p->forge, u.nam_file);
+    lv2_atom_forge_key(&p->forge, u.patch_value);
+    lv2_atom_forge_path(&p->forge, p->namPath, static_cast<uint32_t>(std::strlen(p->namPath)));
+    lv2_atom_forge_pop(&p->forge, &frame);
+}
+
 static LV2_Handle drive_instantiate(const LV2_Descriptor*, double rate,
-                                     const char*, const LV2_Feature* const*) {
+                                    const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) DrivePlugin;
     if (!p) return nullptr;
-    p->dsp.prepare(rate, 512, 1);
+    p->schedule = static_cast<LV2_Worker_Schedule*>(lv2_find_feature(features, LV2_WORKER__schedule));
+    p->map      = static_cast<LV2_URID_Map*>(lv2_find_feature(features, LV2_URID__map));
+    if (!p->schedule || !p->map) { delete p; return nullptr; }
+    mapURIs(p);
+    lv2_atom_forge_init(&p->forge, p->map);
+    p->rate = rate;
+    p->dsp.prepare(rate, kMaxBlock, 1);
     p->dsp.setType(OverdriveType::TubeScreamer808);
     return p;
 }
 
 static void drive_connect_port(LV2_Handle h, uint32_t port, void* data) {
-    static_cast<DrivePlugin*>(h)->ports[port] = static_cast<float*>(data);
+    auto* p = static_cast<DrivePlugin*>(h);
+    if (port == P_CONTROL)     p->control = static_cast<const LV2_Atom_Sequence*>(data);
+    else if (port == P_NOTIFY) p->notify  = static_cast<LV2_Atom_Sequence*>(data);
+    else if (port < P_N_PORTS) p->ports[port] = static_cast<float*>(data);
+}
+
+static LV2_Worker_Status drive_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
+                                    LV2_Worker_Respond_Handle handle, uint32_t, const void* data) {
+    auto* p = static_cast<DrivePlugin*>(h);
+    const auto* msg = static_cast<const WorkMsg*>(data);
+    if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
+    auto* nm = new(std::nothrow) NamModel;
+    if (!nm) return LV2_WORKER_ERR_NO_SPACE;
+    if (nm->loadFromFile(msg->path)) nm->reset(p->rate, kMaxBlock);
+    WorkMsg reply; reply.type = WORK_NAM_LOAD; reply.nam = nm;
+    respond(handle, sizeof(reply), &reply);
+    return LV2_WORKER_SUCCESS;
+}
+static LV2_Worker_Status drive_work_response(LV2_Handle h, uint32_t, const void* data) {
+    auto* p = static_cast<DrivePlugin*>(h);
+    const auto* msg = static_cast<const WorkMsg*>(data);
+    NamModel* old = p->nam;
+    p->nam = msg->nam;
+    WorkMsg freeMsg; freeMsg.type = WORK_NAM_FREE; freeMsg.nam = old;
+    p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
+    return LV2_WORKER_SUCCESS;
 }
 
 static void drive_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<DrivePlugin*>(h);
-    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
+    const URIs& u = p->uris;
 
-    // Model switch — remap LV2 index [0,2] to OverdriveType
-    const int modelIdx = static_cast<int>(*p->ports[P_MODEL] + 0.5f);
-    const int clamped  = (modelIdx < 0) ? 0 : (modelIdx > 2) ? 2 : modelIdx;
-    if (clamped != p->lastModel) {
-        p->lastModel = clamped;
-        p->dsp.setType(kModelMap[clamped]);
+    const bool haveNotify = (p->notify != nullptr);
+    LV2_Atom_Forge_Frame seqFrame;
+    if (haveNotify) {
+        lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), p->notify->atom.size);
+        lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
+    }
+    if (p->control) {
+        LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
+            if (ev->body.type != u.atom_Object) continue;
+            const auto* obj = reinterpret_cast<const LV2_Atom_Object*>(&ev->body);
+            if (obj->body.otype == u.patch_Set) {
+                const LV2_Atom *prop = nullptr, *val = nullptr;
+                lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
+                if (prop && prop->type == u.atom_URID &&
+                    reinterpret_cast<const LV2_Atom_URID*>(prop)->body == u.nam_file &&
+                    val && val->type == u.atom_Path) {
+                    const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                    std::strncpy(p->namPath, path, kPathMax - 1); p->namPath[kPathMax - 1] = '\0';
+                    WorkMsg msg; msg.type = WORK_NAM_LOAD;
+                    std::strncpy(msg.path, p->namPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
+                    p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+                }
+            } else if (obj->body.otype == u.patch_Get && haveNotify) {
+                writeNamToNotify(p);
+            }
+        }
     }
 
+    const float* in  = p->ports[P_IN];
+    float*       out = p->ports[P_OUT];
+    const int    model = clampi(*p->ports[P_MODEL], 0, kNamIdx);
+
+    if (*p->ports[P_BYPASS] > 0.5f) {
+        if (out != in) std::memcpy(out, in, sizeof(float) * n);
+        if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+        return;
+    }
+
+    if (model == kNamIdx) {
+        // ── Neural (NAM) path ── mono; Level (×2 → unity at 0.5) + Mix dry/wet.
+        if (p->nam && p->nam->isLoaded()) {
+            const float gain    = *p->ports[P_LEVEL] * 2.0f;
+            const float mix     = *p->ports[P_MIX];
+            const float wetGain = gain * mix;
+            const float dryGain = 1.0f - mix;
+            for (uint32_t off = 0; off < n; off += kMaxBlock) {
+                const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
+                for (int i = 0; i < len; ++i) p->namIn[i] = in[off + i];
+                p->nam->processBuffer(p->namIn, p->namOut, len);
+                for (int i = 0; i < len; ++i) out[off + i] = dryGain * in[off + i] + wetGain * p->namOut[i];
+            }
+        } else if (out != in) std::memcpy(out, in, sizeof(float) * n);
+        if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+        return;
+    }
+
+    // ── Algorithmic pedal path ──
+    p->dsp.setBypass(false);
+    if (model != p->lastModel) { p->lastModel = model; p->dsp.setType(kModelMap[model]); }
     p->dsp.setParameter("drive",  *p->ports[P_DRIVE]);
     p->dsp.setParameter("tone",   *p->ports[P_TONE]);
     p->dsp.setParameter("level",  *p->ports[P_LEVEL]);
     p->dsp.setParameter("mix",    *p->ports[P_MIX]);
     p->dsp.setParameter("octave", *p->ports[P_OCTAVE]);
-
-    float* ins[1]  = { p->ports[P_IN]  };
-    float* outs[1] = { p->ports[P_OUT] };
+    float* ins[1]  = { const_cast<float*>(in) };
+    float* outs[1] = { out };
     p->dsp.process(ins, outs, static_cast<int>(n), 1);
+
+    if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }
 
-static void drive_cleanup(LV2_Handle h) { delete static_cast<DrivePlugin*>(h); }
+static void drive_cleanup(LV2_Handle h) {
+    auto* p = static_cast<DrivePlugin*>(h);
+    delete p->nam;
+    delete p;
+}
+
+// ── State (persist the loaded NAM path) ───────────────────────────────────────
+static LV2_State_Status drive_save(LV2_Handle h, LV2_State_Store_Function store,
+                                   LV2_State_Handle handle, uint32_t flags,
+                                   const LV2_Feature* const* features) {
+    auto* p = static_cast<DrivePlugin*>(h);
+    if (p->namPath[0] == '\0') return LV2_STATE_SUCCESS;
+    auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
+    char* ap = mapPath ? mapPath->abstract_path(mapPath->handle, p->namPath) : p->namPath;
+    store(handle, p->uris.nam_file, ap, std::strlen(ap) + 1, p->uris.atom_Path,
+          flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+    if (mapPath && ap != p->namPath) free(ap);
+    return LV2_STATE_SUCCESS;
+}
+static LV2_State_Status drive_restore(LV2_Handle h, LV2_State_Retrieve_Function retrieve,
+                                      LV2_State_Handle handle, uint32_t,
+                                      const LV2_Feature* const* features) {
+    auto* p = static_cast<DrivePlugin*>(h);
+    size_t size = 0; uint32_t type = 0, vflags = 0;
+    const void* val = retrieve(handle, p->uris.nam_file, &size, &type, &vflags);
+    if (!val || type != p->uris.atom_Path) return LV2_STATE_SUCCESS;
+    auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
+    const char* ap = static_cast<const char*>(val);
+    char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
+    auto* nm = new(std::nothrow) NamModel;
+    if (nm && nm->loadFromFile(path)) {
+        nm->reset(p->rate, kMaxBlock);
+        delete p->nam; p->nam = nm;
+        std::strncpy(p->namPath, path, kPathMax - 1); p->namPath[kPathMax - 1] = '\0';
+    } else delete nm;
+    if (mapPath && path != ap) free(path);
+    return LV2_STATE_SUCCESS;
+}
+
+static const void* drive_extension_data(const char* uri) {
+    static const LV2_Worker_Interface worker = { drive_work, drive_work_response, nullptr };
+    static const LV2_State_Interface  state  = { drive_save, drive_restore };
+    if (!std::strcmp(uri, LV2_WORKER__interface)) return &worker;
+    if (!std::strcmp(uri, LV2_STATE__interface))  return &state;
+    return nullptr;
+}
 
 LV2_EXPORT_DESCRIPTOR(DRIVE_URI,
     drive_instantiate, drive_connect_port,
-    nullptr, drive_run, nullptr, drive_cleanup, nullptr)
+    nullptr, drive_run, nullptr, drive_cleanup, drive_extension_data)

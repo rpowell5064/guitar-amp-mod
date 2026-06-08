@@ -5,6 +5,19 @@
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+
+# NAM neural-model file parameter (used when Model = "Neural (NAM)").
+<https://rpowell5064.github.io/guitaramp-suite/drive#nammodel>
+    a lv2:Parameter ;
+    rdfs:label "NAM Model" ;
+    rdfs:range atom:Path ;
+    mod:fileTypes "nammodel,nam" .
 
 <https://rpowell5064.github.io/guitaramp-suite/drive>
     a lv2:Plugin, lv2:DistortionPlugin ;
@@ -16,7 +29,10 @@
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
     lv2:microVersion 0 ;
+    lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:extensionData state:interface , work:interface ;
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/drive#nammodel> ;
 
     lv2:port [
         a lv2:AudioPort, lv2:InputPort ;
@@ -28,10 +44,11 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
-        lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ]
+        lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Neural (NAM)"    ; rdf:value 3 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;
@@ -57,6 +74,20 @@
         lv2:index 8 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 9 ; lv2:symbol "control" ; lv2:name "Control"
+    ] , [
+        a lv2:OutputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 10 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
