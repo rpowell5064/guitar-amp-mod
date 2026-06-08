@@ -11,8 +11,11 @@ name: Build & Release (pi-Stomp aarch64)
 # (`bash build-tools/package_bundle.sh <ver>`) and upload it to the release manually.
 
 on:
-  push:
-    tags: ['v*']
+  # Auto-release on tag is DISABLED until CI can reach the private submodule.
+  # Add a SUBMODULE_TOKEN secret (fine-grained PAT, read-only Contents on
+  # GuitarAmpSimulator), then re-enable by uncommenting:
+  #   push:
+  #     tags: ['v*']
   workflow_dispatch:
     inputs:
       version:
