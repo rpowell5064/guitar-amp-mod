@@ -326,20 +326,44 @@ TILES = [
     ("rv",  "Reverb",     "#5ce6c8", ["decay","damping","mix"]),
 ]
 
+# Conditional-visibility classes: a control is shown/hidden by script-hexforge.js
+# based on the relevant selector, exactly like the standalone pedals.
+COND = {
+    # amp — Sunn (Doom Daddy = model 3) only
+    "amp_sunn_vol2":"c-amp-sunn", "amp_sunn_link":"c-amp-sunn", "amp_sunn_bass2":"c-amp-sunn",
+    "amp_sunn_mid2":"c-amp-sunn", "amp_sunn_treble2":"c-amp-sunn",
+    "amp_sunn_bright1":"c-amp-sunn", "amp_sunn_bright2":"c-amp-sunn",
+    "amp_channel":"c-amp-chan",          # EVH(2)/Rockerverb(4)
+    "amp_resonance":"c-amp-reso",        # EVH(2)
+    # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
+    "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
+    "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
+    "amp_pamp_tube":"c-amp-paman", "amp_pamp_presence":"c-amp-paman", "amp_pamp_depth":"c-amp-paman",
+    "amp_pamp_sag":"c-amp-paman", "amp_pamp_master":"c-amp-paman", "amp_pamp_nfb":"c-amp-paman",
+    # fuzz — Italian Hero(0) vs I know it(1)
+    "fz_mode":"c-fz-ih", "fz_tone":"c-fz-ih",
+    "fz_bias":"c-fz-tb", "fz_inputtrim":"c-fz-tb", "fz_getemp":"c-fz-tb",
+    # drive — Octave only on New Dawn (model 1)
+    "dr_octave":"c-dr-oct",
+    # delay — Wow/Flutter for Tape(1)/Echo Wreck(2); Heads for Echo Wreck(2)
+    "dl_wow":"c-dl-tape", "dl_flutter":"c-dl-tape", "dl_heads":"c-dl-heads",
+}
+
 def render_ctrl(c):
     sym, nm, k = c["sym"], c["short"], c["kind"]
+    cc = (" " + COND[sym]) if sym in COND else ""
     if k == "t":
-        return ('<div class="hf-sw" title="%s"><div class="hf-sw-img" mod-role="input-control-port" '
-                'mod-port-symbol="%s" mod-widget="switch"></div><span class="hf-sw-t">%s</span></div>') % (nm, sym, nm)
+        return ('<div class="hf-sw%s" title="%s"><div class="hf-sw-img" mod-role="input-control-port" '
+                'mod-port-symbol="%s" mod-widget="switch"></div><span class="hf-sw-t">%s</span></div>') % (cc, nm, sym, nm)
     if k == "e":
         opts = "".join('<div mod-role="enumeration-option" mod-port-value="%d">%s</div>' % (v, lbl) for lbl, v in c["scale"])
-        return ('<div class="hf-sel-wrap"><span class="hf-sel-label">%s</span>'
+        return ('<div class="hf-sel-wrap%s"><span class="hf-sel-label">%s</span>'
                 '<div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="%s" mod-widget="custom-select" title="%s">'
                 '<div mod-role="input-control-value" mod-port-symbol="%s" class="mod-enumerated-selected"></div>'
-                '<div class="mod-enumerated-list">%s</div></div></div>') % (nm, sym, nm, sym, opts)
-    return ('<div class="hf-knob" title="%s"><div class="hf-knob-img" mod-role="input-control-port" '
-            'mod-port-symbol="%s"></div><span class="hf-knob-t">%s</span>'
-            '<span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>') % (nm, sym, nm, sym)
+                '<div class="mod-enumerated-list">%s</div></div></div>') % (cc, nm, sym, nm, sym, opts)
+    return ('<div class="hf-knob%s" title="%s"><div class="hf-knob-img" mod-role="input-control-port" '
+            'mod-port-symbol="%s"></div><span class="hf-knob-t" rata-role="lbl-%s">%s</span>'
+            '<span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>') % (cc, nm, sym, sym, nm, sym)
 
 IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
     '{{#effect.parameters.0}}{{#path}}'

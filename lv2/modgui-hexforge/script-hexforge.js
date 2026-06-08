@@ -58,6 +58,34 @@ function (event, funcs) {
         });
     }
 
+    // ── Conditional control visibility (only show what the selection uses) ──
+    function show(icon, b, sel, on) { tileOf(icon, b).find(sel).toggleClass('mod-hidden', !on); }
+
+    function applyAmp(icon) {
+        var m = icon.data('hf_amp_m'); if (m == null) m = 1;
+        var a = icon.data('hf_amp_auto'); if (a == null) a = true;
+        show(icon, 'amp', '.c-amp-sunn', m === 3);
+        show(icon, 'amp', '.c-amp-chan', m === 2 || m === 4);
+        show(icon, 'amp', '.c-amp-reso', m === 2);
+        show(icon, 'amp', '.c-amp-pa',   m !== 3);
+        show(icon, 'amp', '.c-amp-paman', m !== 3 && !a);
+        tileOf(icon, 'amp').find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : 'Gain');
+    }
+    function applyFuzz(icon) {
+        var p = icon.data('hf_fz_p'); if (p == null) p = 0;
+        var tb = (p === 1);
+        show(icon, 'fz', '.c-fz-ih', !tb);
+        show(icon, 'fz', '.c-fz-tb', tb);
+        var t = tileOf(icon, 'fz');
+        t.find('[rata-role=lbl-fz_sustain]').text(tb ? 'Attack' : 'Sustain');
+        t.find('[rata-role=lbl-fz_volume]').text(tb ? 'Level' : 'Volume');
+    }
+    function applyDelay(icon) {
+        var t = icon.data('hf_dl_t'); if (t == null) t = 0;
+        show(icon, 'dl', '.c-dl-tape', t === 1 || t === 2);
+        show(icon, 'dl', '.c-dl-heads', t === 2);
+    }
+
     function setIr(icon, value) {
         var box = icon.find('[rata-role=Ir]');
         if (value == null || value === 'None' || value === '') { box.text('-- choose an IR file --'); return; }
@@ -89,6 +117,16 @@ function (event, funcs) {
             moveToSlot(icon, funcs, b, want);
         } else if (s && /_enable$/.test(s)) {
             tileOf(icon, s.replace(/_enable$/, '')).toggleClass('hf-off', !(event.value > 0.5));
+        } else if (s === 'amp_model') {
+            icon.data('hf_amp_m', parseInt(event.value, 10)); applyAmp(icon);
+        } else if (s === 'amp_pamp_auto') {
+            icon.data('hf_amp_auto', event.value > 0.5); applyAmp(icon);
+        } else if (s === 'fz_pedal') {
+            icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
+        } else if (s === 'dr_model') {
+            show(icon, 'dr', '.c-dr-oct', parseInt(event.value, 10) === 1);
+        } else if (s === 'dl_type') {
+            icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (event.uri && event.uri.indexOf('#irfile') >= 0) {
             setIr(icon, event.value);
         }

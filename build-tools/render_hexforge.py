@@ -9,7 +9,12 @@ BASE = os.path.join(REPO, "lv2", "modgui-hexforge")
 OUT  = os.path.join(os.environ["TEMP"], "hxthumb")
 os.makedirs(OUT, exist_ok=True)
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-W, H = 1140, 560
+W, H = 1300, 680
+# Conditional classes hidden in the default selection (amp=Crunchy, PA Auto on,
+# fuzz=Italian Hero, drive=Green Man, delay=Digital) — mirror script-hexforge.js
+# so the static screenshot reflects the real default view.
+DEFAULT_HIDDEN = ["c-amp-sunn", "c-amp-chan", "c-amp-reso", "c-amp-paman",
+                  "c-fz-tb", "c-dr-oct", "c-dl-tape", "c-dl-heads"]
 
 def strip_mustache(html):
     # Drop the audio-port loops entirely (no jacks in a static render).
@@ -30,6 +35,8 @@ def build(open_tiles=False):
     html = html.replace('class="hf-on-img"', 'class="hf-on-img on"')
     html = html.replace('class="hf-sw-img"', 'class="hf-sw-img on"')
     html = html.replace('class="mod-powerswitch-image"', 'class="mod-powerswitch-image on"')
+    for cls in DEFAULT_HIDDEN:
+        html = html.replace(cls + '"', cls + ' mod-hidden"')
     if open_tiles:
         html = html.replace('class="hf-tile"', 'class="hf-tile hf-open"')
     page = ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
