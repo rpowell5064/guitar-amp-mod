@@ -108,6 +108,19 @@ function (event, funcs) {
             });
         });
         setupDrag(icon, funcs);
+        // Initialize conditional visibility + slot order from the START port values.
+        // (Some mod-ui builds don't emit initial 'change' events, so relying on
+        // those alone leaves every conditional control visible at load — which is
+        // why the Sunn/power-amp controls showed up under a non-Sunn amp.)
+        var map = {};
+        (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
+        if ('amp_model' in map)     icon.data('hf_amp_m', parseInt(map.amp_model, 10));
+        if ('amp_pamp_auto' in map) icon.data('hf_amp_auto', map.amp_pamp_auto > 0.5);
+        if ('fz_pedal' in map)      icon.data('hf_fz_p', parseInt(map.fz_pedal, 10));
+        if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
+        applyAmp(icon); applyFuzz(icon); applyDelay(icon);
+        show(icon, 'dr', '.c-dr-oct', parseInt(map.dr_model || 0, 10) === 1);
+        BLOCKS.forEach(function (b) { if ((b + '_pos') in map) tileOf(icon, b).attr('data-pos', parseInt(map[b + '_pos'], 10)); });
         resort(icon);
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
