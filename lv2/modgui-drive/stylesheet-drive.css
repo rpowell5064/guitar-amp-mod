@@ -53,11 +53,11 @@
 .mod-pedal-guitaramp-drive{{{cns}}} .mod-control-group { position: relative; text-align: center; }
 .mod-pedal-guitaramp-drive{{{cns}}} .mod-knobs { margin-top: 10px; width: 360px; }
 .mod-pedal-guitaramp-drive{{{cns}}} .mod-knob {
-    display: inline-block; height: 96px; width: 100px; overflow: hidden; position: relative; vertical-align: top;
+    display: inline-block; height: 96px; width: 88px; overflow: visible; position: relative; vertical-align: top;
 }
 .mod-pedal-guitaramp-drive{{{cns}}} .mod-knob .mod-knob-image {
     background-image: url(/resources/knobs/knob.png{{{ns}}});
-    background-repeat: no-repeat; background-size: auto 60px; height: 60px; width: 60px; margin: 4px auto 0;
+    background-repeat: no-repeat; background-size: auto 50px; height: 50px; width: 50px; margin: 4px auto 0;
 }
 .mod-pedal-guitaramp-drive{{{cns}}} .mod-knob .mod-knob-title {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 11px; font-weight: bold;
@@ -95,3 +95,6 @@
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
 }
+
+/* Live control value readout (visible without advanced view) */
+.mod-pedal-guitaramp-drive{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

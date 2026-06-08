@@ -33,6 +33,18 @@ def render(pedal, name, w, h, title, tag, body):
                     f"--screenshot={os.path.join(OUT, f'chk_{name}.png')}", url], capture_output=True)
     print("rendered", os.path.join(OUT, f"chk_{name}.png"))
 
+def sel_open(t, opts, cls="mod-model-select"):
+    items = ''.join(f'<div>{o}</div>' for o in opts)
+    return (f'<div class="mod-enumerated {cls}"><div class="mod-enumerated-selected">{t}</div>'
+            f'<div class="mod-enumerated-list" style="display:block">{items}</div></div>')
+
+render("comp", "comp_open", 420, 340, "COMPRESSOR", "VCA " + DOT + " 1176-style",
+       modelrow("MODEL", "VCA") +
+       '<div class="mod-control-group mod-row-mixed clearfix">' +
+       sel_open("4:1", ["2:1","4:1","8:1","12:1","20:1"], "mod-mini-select") +
+       '<span class="mod-inline-label">Ratio</span></div>' +
+       knobs(("Threshold","-18dB"),("Attack","8ms"),("Release","120ms"),("Knee","6dB"),("Makeup","3dB")))
+
 render("fuzz", "fuzz_tb", 360, 384, "FUZZ", "Tone Bender MkII " + DOT + " germanium",
        modelrow("PEDAL", "Tone Bender MkII") +
        knobs(("Attack","6.8"),("Bias","4.5V"),("Level","-3.2dB"),("Input Trim","0.50"),("Ge Temp","16C")))

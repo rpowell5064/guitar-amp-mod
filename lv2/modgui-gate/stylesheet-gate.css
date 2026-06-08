@@ -36,7 +36,7 @@
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-amp-modelrow { margin-top:58px; padding:0 24px; position:relative; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-control-group { position:relative; text-align:center; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-knobs { margin-top:80px; width:360px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob { display:inline-block; height:92px; width:96px; overflow:hidden; position:relative; vertical-align:top; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob { display:inline-block; height:92px; width:96px; overflow: visible; position:relative; vertical-align:top; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-knob .mod-knob-image { background-image:url(/resources/knobs/knob.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 56px; height:56px; width:56px; margin:4px auto 0; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-knob .mod-knob-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; text-transform:uppercase; text-align:center; display:block; margin-top:4px; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-row-mixed { width:360px; margin-top:4px; text-align:center; }
@@ -62,3 +62,6 @@
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
 }
+
+/* Live control value readout (visible without advanced view) */
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

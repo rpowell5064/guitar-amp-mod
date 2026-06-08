@@ -60,7 +60,7 @@
 .mod-pedal-guitaramp-delay{{{cns}}} .mod-control-group { position: relative; text-align: center; }
 .mod-pedal-guitaramp-delay{{{cns}}} .mod-knobs { margin-top: 10px; width: 480px; }
 .mod-pedal-guitaramp-delay{{{cns}}} .mod-knob {
-    display: inline-block; height: 96px; width: 108px; overflow: hidden; position: relative; vertical-align: top;
+    display: inline-block; height: 96px; width: 108px; overflow: visible; position: relative; vertical-align: top;
 }
 .mod-pedal-guitaramp-delay{{{cns}}} .mod-knob .mod-knob-image {
     background-image: url(/resources/knobs/knob.png{{{ns}}});
@@ -102,3 +102,6 @@
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
 }
+
+/* Live control value readout (visible without advanced view) */
+.mod-pedal-guitaramp-delay{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

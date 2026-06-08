@@ -116,7 +116,7 @@
     display: inline-block;
     height: 86px;
     width: 92px;
-    overflow: hidden;
+    overflow: visible;
     position: relative;
     vertical-align: top;
 }
@@ -259,3 +259,6 @@
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
 }
+
+/* Live control value readout (visible without advanced view) */
+.mod-pedal-guitaramp-amp{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }

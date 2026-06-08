@@ -10,7 +10,7 @@ os.makedirs(OUT, exist_ok=True)
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
 
 # pedal -> (w, h, thumbW, title, tag, body-html)
-def knob(l):   return f'<div class="mod-knob" title="{l}"><div class="mod-knob-image"></div><span class="mod-knob-title">{l}</span></div>'
+def knob(l):   return f'<div class="mod-knob" title="{l}"><div class="mod-knob-image"></div><span class="mod-knob-title">{l}</span><span class="mod-knob-value">0.50</span></div>'
 def sw(l):     return f'<div class="mod-switch" title="{l}"><div class="mod-switch-image on"></div><span class="mod-switch-title">{l}</span></div>'
 def knobs(*ls):return '<div class="mod-control-group mod-knobs clearfix">' + ''.join(knob(l) for l in ls) + '</div>'
 def sel(text, cls="mod-model-select"): return f'<div class="mod-enumerated {cls}"><div class="mod-enumerated-selected">{text}</div></div>'
