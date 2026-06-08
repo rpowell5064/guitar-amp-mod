@@ -14,7 +14,7 @@
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
     width: 1300px;
-    height: 916px;
+    height: 1000px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -111,7 +111,7 @@
 }
 
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tile {
-    width: 240px; box-sizing: border-box; position: relative; height: 344px;  /* uniform */
+    width: 240px; box-sizing: border-box; position: relative; height: 400px;  /* uniform, roomy */
     background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.20));
     border: 1px solid rgba(255,255,255,.07);
     border-top: 2px solid var(--acc);
@@ -176,19 +176,19 @@
 
 /* KNOBS */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-knob {
-    display: inline-block; width: 66px; height: 76px; overflow: visible; position: relative; vertical-align: top;
+    display: inline-block; width: 66px; height: 100px; overflow: visible; position: relative; vertical-align: top;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-knob-img {
     background-image: url(/resources/knobs/knob.png{{{ns}}});
     background-repeat: no-repeat; background-size: auto 46px; height: 46px; width: 46px; margin: 2px auto 0;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-knob-t {
-    display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #d7dbe2; margin-top: 3px;
+    display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #d7dbe2; margin-top: 7px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-knob-v {
-    display: block; font-size: 10px; font-weight: 600; color: var(--acc); margin-top: 1px; line-height: 1.1;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: block; font-size: 10px; font-weight: 600; color: var(--acc); margin-top: 6px; line-height: 1.3;
+    white-space: nowrap; overflow: visible; text-overflow: clip;
 }
 
 /* SWITCHES (toggles) */
