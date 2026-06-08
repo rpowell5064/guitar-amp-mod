@@ -8,27 +8,43 @@
     <div class="hx-header">
         <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
         <div class="hx-title">FUZZ</div>
-        <div class="hx-tag">6 fuzz eras · sustain · tone · volume</div>
+        <div class="hx-tag" rata-role="tagline">Italian Hero · 6 variants</div>
     </div>
 
+    <!-- ── PEDAL selector (always shown) ──────────────────────────────── -->
     <div class="mod-amp-modelrow">
-        <span class="mod-section-label">ERA</span>
+        <span class="mod-section-label">PEDAL</span>
         {{#controls.0}}
         <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
             <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
             <div class="mod-enumerated-list">
-                {{#scalePoints}}
-                <div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>
-                {{/scalePoints}}
+                {{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}
             </div>
         </div>
         {{/controls.0}}
     </div>
 
+    <!-- ── VARIANT selector (Italian Hero only) ───────────────────────── -->
+    <div rata-role="ihgroup" class="mod-amp-modelrow hx-row2">
+        <span class="mod-section-label">VARIANT</span>
+        {{#controls.1}}
+        <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+            <div class="mod-enumerated-list">
+                {{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}
+            </div>
+        </div>
+        {{/controls.1}}
+    </div>
+
+    <!-- ── Knobs: shared (Sustain/Attack, Volume/Level) + per-pedal ───── -->
     <div class="mod-control-group mod-knobs clearfix">
-        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.1}}
-        {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.2}}
-        {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span></div>{{/controls.3}}
+        {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="sustainlabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.2}}
+        {{#controls.3}}<div class="mod-knob" rata-role="ihgroup" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
+        {{#controls.5}}<div class="mod-knob mod-hidden" rata-role="tbgroup" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
+        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="volumelabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
+        {{#controls.6}}<div class="mod-knob mod-hidden" rata-role="tbgroup" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
+        {{#controls.7}}<div class="mod-knob mod-hidden" rata-role="tbgroup" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.7}}
     </div>
 
     <div class="hx-logo"></div>
