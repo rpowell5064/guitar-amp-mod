@@ -87,11 +87,23 @@ float ProcoRAT::processSample(float x, int ch) noexcept {
     // Output swing: LM308N on 9 V single supply clips at approximately ±4 V
     // from the virtual ground (rail is ~4.5 V each side, minus ~0.5 V dropout).
     vout = std::max(-kVswing, std::min(kVswing, vout));
-    s.vout = vout;
+    s.vout = vout;   // op-amp feedback state (pre output-stage), for slew continuity
 
-    // DC block: the asymmetric diode clip leaves a small DC offset; the real RAT's
-    // output coupling cap removes it. Do the same before the tone filter / volume.
-    const double dc = s.dcBlock.process(static_cast<float>(vout));
+    // ── Op-amp output stage: drive-scaled offset + symmetric hard clip ────────
+    // A distortion-scaled DC offset before a symmetric clip shifts the duty cycle
+    // → even harmonics that persist even when slammed to a square (and survive the
+    // DC blocker). All three scale with the knob so clean settings pass through.
+    const double d   = static_cast<double>(distCur_);
+    const double hg  = 1.0 + d * kHG;
+    const double lim = kLimHi + d * (kLimLo - kLimHi);
+    const double off = d * kOff;        // drive-scaled (absolute) offset → duty asymmetry
+    double yo = vout * hg + off;
+    if      (yo >  lim) yo =  lim;
+    else if (yo < -lim) yo = -lim;
+
+    // DC block: the asymmetric clip leaves a DC offset; the real RAT's output
+    // coupling cap removes it. Do the same before the tone filter / volume.
+    const double dc = s.dcBlock.process(static_cast<float>(yo));
 
     // ── Stage 3: passive RC low-pass filter ("Filter" control) ────────────────
     // R = filter × 100 kΩ, C = 560 pF.

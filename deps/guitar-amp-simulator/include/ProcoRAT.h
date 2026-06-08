@@ -63,15 +63,27 @@ private:
     //   clips well before max. kRfMin sets the floor; kRdistMax the span.
     static constexpr double kRfMin     = 100.0e3;   // 100 kΩ  → ~unity min-distortion gain
     static constexpr double kRdistMax  =   3.0e6;   //   span  → slams by ~noon distortion
-    // NOTE (RAT NAM tuning, in progress): the captures show strong even harmonics
-    // (h2/h4/h6 ~14%) that persist when slammed. Amplitude asymmetry (diode-Is ratio)
-    // or a fixed bias current do NOT reproduce that — after DC blocking they leave a
-    // half-wave-symmetric (odd-only) waveform. The real source is duty-cycle / shape
-    // asymmetry (signal-proportional), TODO. For now keep diodes symmetric so clean
-    // settings stay clean (kAsymN=1). THD is still a touch low at high drive (soft
-    // diode knee) — also pending a harder clip stage.
+    // Diode clipper stays symmetric (clean settings stay clean). Even harmonics +
+    // extra THD come from the op-amp OUTPUT STAGE below, not the feedback diodes.
     static constexpr double kAsymN     =    1.0;    // reverse-diode Is multiplier (symmetric)
     static constexpr double kBiasI     =    0.0;    // summing-node bias current (disabled)
+    // Op-amp single-supply output stage (after the diode shaper). Modeled as a hard
+    // ASYMMETRIC rail clip whose drive + asymmetry SCALE WITH THE DISTORTION KNOB:
+    // transparent at low distortion (clean stays clean), strongly asymmetric +
+    // hard at high distortion. Unequal +/- limits give unequal flat-top DURATIONS
+    // (duty-cycle asymmetry) = the even-harmonic source that survives the output DC
+    // blocker; the rising drive squares it up (THD). Tuned to the RAT NAM captures.
+    // A drive-scaled DC OFFSET is added before a symmetric hard clip: the offset
+    // shifts the square's zero-crossings so the +/- flat-tops last for different
+    // fractions of the cycle (duty-cycle asymmetry). Unlike amplitude asymmetry,
+    // this SURVIVES being slammed to a square and survives the DC blocker → even
+    // harmonics that persist at high THD, like the captures. Offset (and drive)
+    // scale with the distortion knob so clean settings stay clean.
+    //   hardGain = 1 + drive*kHG ;  lim = lerp(kLimHi,kLimLo,drive) ;  off = drive*kOff
+    static constexpr double kHG    = 1.3;   // output drive ramp with distortion
+    static constexpr double kLimHi = 0.55;  // symmetric clip limit at min distortion
+    static constexpr double kLimLo = 0.28;  // symmetric clip limit at max distortion
+    static constexpr double kOff   = 0.40;  // drive-scaled input offset (duty asymmetry → evens)
     static constexpr double kCin       =  22.0e-9;  //  22 nF  (input coupling cap)
     static constexpr double kRfiltMax  = 100.0e3;   // 100 kΩ  (filter pot range)
     static constexpr double kCfilt     = 560.0e-12; // 560 pF  (filter cap)
