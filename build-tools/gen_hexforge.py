@@ -387,12 +387,14 @@ def render_ctrl(c):
             'mod-port-symbol="%s"></div><span class="hf-knob-t" rata-role="lbl-%s">%s</span>'
             '<span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>') % (cc, nm, sym, sym, nm, sym)
 
+# IMPORTANT: mod-ui sorts effect.parameters ALPHABETICALLY by URI, so the array
+# indices are: ampnam=0, cabnam=1, drnam=2, irfile=3 (NOT declaration order).
 IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
-    '{{#effect.parameters.0}}{{#path}}'
+    '{{#effect.parameters.3}}{{#path}}'
     '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
     '<div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- choose an IR file --</div>'
     '<div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
-    '</div>{{/path}}{{/effect.parameters.0}}</div>')
+    '</div>{{/path}}{{/effect.parameters.3}}</div>')
 
 def nam_picker(idx, rata, cls):
     # NAM file picker bound to effect.parameters.<idx> (1=amp,2=drive,3=cab).
@@ -440,12 +442,13 @@ def tile(pfx, title, accent, keys):
         keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
         morehtml = ""
     # NAM pickers: amp/drive shown only on the Neural slot (cond class); cab always.
+    # effect.parameters indices (alphabetical by URI): ampnam=0, cabnam=1, drnam=2, irfile=3
     if pfx == "amp":
-        keyhtml = nam_picker(1, "AmpNam", "c-amp-nam") + keyhtml
+        keyhtml = nam_picker(0, "AmpNam", "c-amp-nam") + keyhtml
     elif pfx == "dr":
         keyhtml = nam_picker(2, "DrNam", "c-dr-nam") + keyhtml
     elif pfx == "cab":
-        keyhtml = IR_PICKER + nam_picker(3, "CabNam", "") + keyhtml
+        keyhtml = IR_PICKER + nam_picker(1, "CabNam", "") + keyhtml
 
     cls = "hf-tile hf-locked" if locked else "hf-tile"
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]
