@@ -103,7 +103,16 @@ function (event, funcs) {
         icon.find('.hf-morebtn').each(function () {
             this.addEventListener('click', function (e) {
                 var t = this; while (t && !(t.className && (' ' + t.className + ' ').indexOf(' hf-tile ') >= 0)) t = t.parentNode;
-                if (t) t.classList.toggle('hf-open');
+                if (t) {
+                    t.classList.toggle('hf-open');
+                    // Open the popup upward when the tile sits in the lower rows so it
+                    // doesn't hang off the bottom of the Hex Forge frame.
+                    var rack = t.parentNode, more = t.querySelector('.hf-more');
+                    if (more) {
+                        var up = rack && (t.offsetTop > rack.clientHeight * 0.4);
+                        if (up) more.classList.add('hf-more-up'); else more.classList.remove('hf-more-up');
+                    }
+                }
                 e.stopPropagation();
             });
         });

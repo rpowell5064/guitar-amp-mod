@@ -570,6 +570,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (!stereo) for (int i=0;i<len;++i) R[i] = L[i];
     }
 
+    // ── Master output level (the "Output" stage — last in the chain) ──
+    const float outLevel = *p->ports[HF_OUT_LEVEL];
+    if (outLevel != 1.0f)
+        for (uint32_t i = 0; i < n; ++i) { outL[i] *= outLevel; outR[i] *= outLevel; }
+
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }
 

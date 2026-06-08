@@ -154,6 +154,9 @@ def mkport(enum, sym, name, kind, mn, mx, df, scale, short=None):
 ctrl = []
 # global bypass first
 ctrl.append(mkport("BYPASS", "bypass", "Bypass", "t", 0, 1, 0, None))
+# master output level — applied LAST in the chain (the "Output" stage that feeds
+# the device). Shown in the top Output strip, not as a chain tile.
+ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "f", 0, 1, 1.0, None, "Master"))
 # input trim (locked): enable + params, no pos. Per-block toggles use ENABLE
 # semantics (1 = on/active, default on) so a lit tile switch means "block engaged".
 ctrl.append(mkport("IT_ENABLE", "it_enable", "Input Trim Enable", "t", 0, 1, 1, None, "On"))
@@ -426,6 +429,13 @@ def emit_icon():
         '    <div class="hf-title">HEX FORGE</div>\n'
         '    <div class="hf-sub">prewired rig · drag a tile or pick its slot to reorder · per-block on/off</div>\n'
         '    <div class="hx-logo"></div>\n'
+        '  </div>\n'
+        '  <div class="hf-out">\n'
+        '    <span class="hf-out-mark"></span>\n'
+        '    <span class="hf-out-name">Output</span>\n'
+        '    <span class="hf-out-sub">last in chain &rarr; default device</span>\n'
+        '    <span class="hf-out-spacer"></span>\n'
+        '    ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
         '  </div>\n'
         '  <div class="hf-rack">\n      ' + tiles + '\n  </div>\n'
         '  <div class="mod-pedal-input">\n'

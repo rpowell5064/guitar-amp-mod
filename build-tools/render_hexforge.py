@@ -9,7 +9,7 @@ BASE = os.path.join(REPO, "lv2", "modgui-hexforge")
 OUT  = os.path.join(os.environ["TEMP"], "hxthumb")
 os.makedirs(OUT, exist_ok=True)
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-W, H = 1300, 820
+W, H = 1300, 812
 # Conditional classes hidden in the default selection (amp=Crunchy, PA Auto on,
 # fuzz=Italian Hero, drive=Green Man, delay=Digital) — mirror script-hexforge.js
 # so the static screenshot reflects the real default view.
