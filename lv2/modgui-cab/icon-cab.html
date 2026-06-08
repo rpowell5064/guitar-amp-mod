@@ -50,6 +50,24 @@
         {{/effect.parameters.0}}
     </div>
 
+    <div class="mod-irloader-group">
+        <span class="mod-section-label">NEURAL (NAM) — overrides IR</span>
+        {{#effect.parameters.1}}
+        {{#path}}
+        <div class="mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">
+            <div mod-role="input-parameter-value" rata-role="Nam" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">
+                -- choose a NAM file --
+            </div>
+            <div class="mod-enumerated-list">
+                {{#files}}
+                <div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>
+                {{/files}}
+            </div>
+        </div>
+        {{/path}}
+        {{/effect.parameters.1}}
+    </div>
+
     <div class="mod-control-group mod-switches clearfix">
         {{#controls.3}}
         <div class="mod-switch" title="{{name}}">

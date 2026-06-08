@@ -118,7 +118,7 @@ add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
 # whole-archived NamCore so the model-parser static initializers register.
 # --whole-archive is required: those registrations live in objects nothing
 # references by name otherwise.
-foreach(_P guitaramp_amp guitaramp_drive guitaramp_hexforge)
+foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
     target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
 endforeach()
 

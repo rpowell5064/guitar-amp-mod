@@ -1,18 +1,20 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// GuitarAmp Suite — Cabinet LV2 plugin
+// GuitarAmp Suite — Cabinet LV2 plugin (dual NAM / IR)
 //
-// Convolution cab with user IR loading. An IR .wav is chosen in mod-ui's file
-// browser (mod:fileTypes "cabsim,ir,wav,audio" → the "Speaker Cabinets IRs"
-// user-files folder) and delivered as a patch:Set(atom:Path) on the control port.
-// The file is read + the convolver rebuilt on the LV2 worker thread; CabinetBlock
-// ::setIR() then publishes it to the audio thread with a lock-free slot swap, so
-// the RT thread never allocates or blocks. The chosen path persists via state.
-//
-// Until an IR is loaded the embedded Greenback default IR is used.
+// Two ways to capture a cab/rig:
+//   • IR (.wav)  — convolution cab (mod:fileTypes "cabsim,ir,wav,audio").
+//   • NAM (.nam) — a neural capture (full rig). When a NAM is loaded it OVERRIDES
+//                  the IR and runs instead of the convolver.
+// Both files are chosen in mod-ui's file browser, read + built on the LV2 worker
+// thread, and swapped in lock-free (CabinetBlock::setIR for the IR; a NamModel
+// pointer swap for the NAM). Both paths persist via state. Until an IR is loaded
+// the embedded Greenback default IR is used. Low/High Cut + Mix shape the IR path;
+// in NAM mode Mix is the dry/wet blend (the cut filters are baked into the capture).
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
 #include "CabinetBlock.h"
 #include "DefaultCabIR.h"
+#include "NamModel.h"
 #include <new>
 #include <cstring>
 #include <cstdint>
@@ -20,10 +22,12 @@
 #include <vector>
 #include <fstream>
 
-#define CAB_URI    "https://rpowell5064.github.io/guitaramp-suite/cab"
-#define CAB_IR_URI CAB_URI "#irfile"
+#define CAB_URI     "https://rpowell5064.github.io/guitaramp-suite/cab"
+#define CAB_IR_URI  CAB_URI "#irfile"
+#define CAB_NAM_URI CAB_URI "#namfile"
 
-static constexpr int kPathMax = 1024;
+static constexpr int kPathMax  = 1024;
+static constexpr int kMaxBlock = 512;
 
 enum CabPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -35,20 +39,24 @@ enum CabPorts {
 struct URIs {
     LV2_URID atom_Object, atom_Path, atom_URID;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID ir_file;
+    LV2_URID ir_file, nam_file;
 };
 
-struct WorkMsg { char path[kPathMax]; };
+enum WorkType { WORK_IR, WORK_NAM_LOAD, WORK_NAM_FREE };
+struct WorkMsg { WorkType type; char path[kPathMax]; NamModel* nam; };
 
 struct CabPlugin {
     double rate = 48000.0;
     CabinetBlock dsp;
+    NamModel*    nam = nullptr;   // when non-null + loaded, overrides the IR
 
     float* ports[P_N_PORTS]          = {};
     const LV2_Atom_Sequence* control = nullptr;
     LV2_Atom_Sequence*       notify  = nullptr;
 
-    char irPath[kPathMax] = {0};
+    char irPath[kPathMax]  = {0};
+    char namPath[kPathMax] = {0};
+    float namIn[kMaxBlock], namOut[kMaxBlock];
 
     LV2_URID_Map*        map      = nullptr;
     LV2_Worker_Schedule* schedule = nullptr;
@@ -108,9 +116,6 @@ static bool readWav(const char* path, std::vector<float>& L, std::vector<float>&
     return true;
 }
 
-// Linear resample one channel from srcRate to dstRate (in place via return).
-// Linear is adequate for cabinet IRs (convolution smooths the minor HF error) and
-// keeps the worker allocation-light. No-op when rates already match.
 static std::vector<float> resampleLinear(const std::vector<float>& in,
                                          double srcRate, double dstRate) {
     if (in.empty() || srcRate <= 0.0 || dstRate <= 0.0 ||
@@ -130,8 +135,6 @@ static std::vector<float> resampleLinear(const std::vector<float>& in,
     return out;
 }
 
-// Read an IR .wav and resample it to the engine rate (most IR packs ship at 44.1k
-// while the pi-Stomp runs at 48k — without this the cab would be pitch/length-skewed).
 static bool loadIRFile(const char* path, double dstRate,
                        std::vector<float>& L, std::vector<float>& R) {
     uint32_t srcRate = 0;
@@ -151,18 +154,17 @@ static void mapURIs(CabPlugin* p) {
     p->uris.patch_property = m->map(m->handle, LV2_PATCH__property);
     p->uris.patch_value    = m->map(m->handle, LV2_PATCH__value);
     p->uris.ir_file        = m->map(m->handle, CAB_IR_URI);
+    p->uris.nam_file       = m->map(m->handle, CAB_NAM_URI);
 }
 
-// Tell the UI which IR file is loaded.
-static void writeIRToNotify(CabPlugin* p) {
-    const URIs& u = p->uris;
+static void writeFileToNotify(CabPlugin* p, LV2_URID prop, const char* path) {
     LV2_Atom_Forge_Frame frame;
     lv2_atom_forge_frame_time(&p->forge, 0);
-    lv2_atom_forge_object(&p->forge, &frame, 0, u.patch_Set);
-    lv2_atom_forge_key(&p->forge, u.patch_property);
-    lv2_atom_forge_urid(&p->forge, u.ir_file);
-    lv2_atom_forge_key(&p->forge, u.patch_value);
-    lv2_atom_forge_path(&p->forge, p->irPath, static_cast<uint32_t>(std::strlen(p->irPath)));
+    lv2_atom_forge_object(&p->forge, &frame, 0, p->uris.patch_Set);
+    lv2_atom_forge_key(&p->forge, p->uris.patch_property);
+    lv2_atom_forge_urid(&p->forge, prop);
+    lv2_atom_forge_key(&p->forge, p->uris.patch_value);
+    lv2_atom_forge_path(&p->forge, path, static_cast<uint32_t>(std::strlen(path)));
     lv2_atom_forge_pop(&p->forge, &frame);
 }
 
@@ -178,8 +180,8 @@ static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
     lv2_atom_forge_init(&p->forge, p->map);
 
     p->rate = rate;
-    p->dsp.prepare(rate, 512, 2);
-    const std::vector<float> ir = DefaultCabIR::generate(rate);  // embedded default
+    p->dsp.prepare(rate, kMaxBlock, 2);
+    const std::vector<float> ir = DefaultCabIR::generate(rate);
     p->dsp.setIR(ir);
     return p;
 }
@@ -193,18 +195,35 @@ static void cab_connect_port(LV2_Handle h, uint32_t port, void* data) {
     }
 }
 
-// ── Worker: read the IR file and swap it in (CabinetBlock::setIR is RT-safe) ──
-static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function,
-                                  LV2_Worker_Respond_Handle, uint32_t, const void* data) {
+// ── Worker: build IR / NAM off the RT thread ──
+static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
+                                  LV2_Worker_Respond_Handle handle, uint32_t, const void* data) {
     auto* p   = static_cast<CabPlugin*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
-    std::vector<float> L, R;
-    if (loadIRFile(msg->path, p->rate, L, R))
-        p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish to audio thread
+    if (msg->type == WORK_IR) {
+        std::vector<float> L, R;
+        if (loadIRFile(msg->path, p->rate, L, R))
+            p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
+        return LV2_WORKER_SUCCESS;
+    }
+    if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
+    // WORK_NAM_LOAD
+    auto* nm = new(std::nothrow) NamModel;
+    if (!nm) return LV2_WORKER_ERR_NO_SPACE;
+    if (nm->loadFromFile(msg->path)) nm->reset(p->rate, kMaxBlock);
+    WorkMsg reply; reply.type = WORK_NAM_LOAD; reply.nam = nm;
+    respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
 }
 
-static LV2_Worker_Status cab_work_response(LV2_Handle, uint32_t, const void*) {
+static LV2_Worker_Status cab_work_response(LV2_Handle h, uint32_t, const void* data) {
+    auto* p = static_cast<CabPlugin*>(h);
+    const auto* msg = static_cast<const WorkMsg*>(data);
+    if (msg->type != WORK_NAM_LOAD) return LV2_WORKER_SUCCESS;
+    NamModel* old = p->nam;
+    p->nam = msg->nam;
+    WorkMsg freeMsg; freeMsg.type = WORK_NAM_FREE; freeMsg.nam = old;
+    p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
     return LV2_WORKER_SUCCESS;
 }
 
@@ -216,60 +235,93 @@ static void cab_run(LV2_Handle h, uint32_t n) {
     const bool haveNotify = (p->notify != nullptr);
     LV2_Atom_Forge_Frame seqFrame;
     if (haveNotify) {
-        lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify),
-                                  p->notify->atom.size);
+        lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), p->notify->atom.size);
         lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
     }
-
     if (p->control) {
         LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
             if (ev->body.type != u.atom_Object) continue;
             const auto* obj = reinterpret_cast<const LV2_Atom_Object*>(&ev->body);
             if (obj->body.otype == u.patch_Set) {
-                const LV2_Atom* property = nullptr;
-                const LV2_Atom* value    = nullptr;
-                lv2_atom_object_get(obj, u.patch_property, &property, u.patch_value, &value, 0);
-                if (property && property->type == u.atom_URID &&
-                    reinterpret_cast<const LV2_Atom_URID*>(property)->body == u.ir_file &&
-                    value && value->type == u.atom_Path) {
-                    const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(value));
-                    std::strncpy(p->irPath, path, kPathMax - 1);
-                    p->irPath[kPathMax - 1] = '\0';
-                    WorkMsg msg;
-                    std::strncpy(msg.path, p->irPath, kPathMax - 1);
-                    msg.path[kPathMax - 1] = '\0';
+                const LV2_Atom *prop = nullptr, *val = nullptr;
+                lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
+                if (!prop || prop->type != u.atom_URID || !val || val->type != u.atom_Path) continue;
+                const LV2_URID which = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
+                const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                if (which == u.ir_file) {
+                    std::strncpy(p->irPath, path, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
+                    WorkMsg msg; msg.type = WORK_IR;
+                    std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
+                    p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+                } else if (which == u.nam_file) {
+                    std::strncpy(p->namPath, path, kPathMax - 1); p->namPath[kPathMax - 1] = '\0';
+                    WorkMsg msg; msg.type = WORK_NAM_LOAD;
+                    std::strncpy(msg.path, p->namPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
                     p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
                 }
             } else if (obj->body.otype == u.patch_Get && haveNotify) {
-                writeIRToNotify(p);
+                writeFileToNotify(p, u.ir_file, p->irPath);
+                writeFileToNotify(p, u.nam_file, p->namPath);
             }
         }
     }
 
-    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
-    p->dsp.setParameter("lowCutHz",  *p->ports[P_LOWCUT]);
-    p->dsp.setParameter("highCutHz", *p->ports[P_HIGHCUT]);
-    p->dsp.setParameter("mix",       *p->ports[P_MIX]);
-    float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
-    float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };
-    p->dsp.process(ins, outs, static_cast<int>(n), 2);
+    const bool bypass = *p->ports[P_BYPASS] > 0.5f;
+    float* inL  = p->ports[P_IN_L];  float* inR  = p->ports[P_IN_R];
+    float* outL = p->ports[P_OUT_L]; float* outR = p->ports[P_OUT_R];
+
+    if (p->nam && p->nam->isLoaded() && !bypass) {
+        // ── NAM mode (overrides the IR) ── mono capture → both channels; Mix = dry/wet.
+        const float mix = *p->ports[P_MIX];
+        const float dry = 1.0f - mix;
+        for (uint32_t off = 0; off < n; off += kMaxBlock) {
+            const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
+            for (int i = 0; i < len; ++i) p->namIn[i] = 0.5f * (inL[off + i] + inR[off + i]);
+            p->nam->processBuffer(p->namIn, p->namOut, len);
+            for (int i = 0; i < len; ++i) {
+                const float w = p->namOut[i] * mix;
+                outL[off + i] = dry * inL[off + i] + w;
+                outR[off + i] = dry * inR[off + i] + w;
+            }
+        }
+    } else if (p->nam && p->nam->isLoaded()) {   // NAM loaded but bypassed → passthrough
+        if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
+        if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
+    } else {
+        // ── IR convolver mode ──
+        p->dsp.setBypass(bypass);
+        p->dsp.setParameter("lowCutHz",  *p->ports[P_LOWCUT]);
+        p->dsp.setParameter("highCutHz", *p->ports[P_HIGHCUT]);
+        p->dsp.setParameter("mix",       *p->ports[P_MIX]);
+        float* ins[2]  = { inL,  inR  };
+        float* outs[2] = { outL, outR };
+        p->dsp.process(ins, outs, static_cast<int>(n), 2);
+    }
 
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }
 
-static void cab_cleanup(LV2_Handle h) { delete static_cast<CabPlugin*>(h); }
+static void cab_cleanup(LV2_Handle h) {
+    auto* p = static_cast<CabPlugin*>(h);
+    delete p->nam;
+    delete p;
+}
 
-// ── State (persist the loaded IR path) ────────────────────────────────────────
+// ── State (persist both file paths) ───────────────────────────────────────────
 static LV2_State_Status cab_save(LV2_Handle h, LV2_State_Store_Function store,
                                  LV2_State_Handle handle, uint32_t flags,
                                  const LV2_Feature* const* features) {
     auto* p = static_cast<CabPlugin*>(h);
-    if (p->irPath[0] == '\0') return LV2_STATE_SUCCESS;
     auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
-    char* apath = mapPath ? mapPath->abstract_path(mapPath->handle, p->irPath) : p->irPath;
-    store(handle, p->uris.ir_file, apath, std::strlen(apath) + 1,
-          p->uris.atom_Path, flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
-    if (mapPath && apath != p->irPath) free(apath);
+    auto saveOne = [&](LV2_URID prop, const char* raw) {
+        if (raw[0] == '\0') return;
+        char* ap = mapPath ? mapPath->abstract_path(mapPath->handle, const_cast<char*>(raw)) : const_cast<char*>(raw);
+        store(handle, prop, ap, std::strlen(ap) + 1, p->uris.atom_Path,
+              flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+        if (mapPath && ap != raw) free(ap);
+    };
+    saveOne(p->uris.ir_file,  p->irPath);
+    saveOne(p->uris.nam_file, p->namPath);
     return LV2_STATE_SUCCESS;
 }
 
@@ -277,21 +329,33 @@ static LV2_State_Status cab_restore(LV2_Handle h, LV2_State_Retrieve_Function re
                                     LV2_State_Handle handle, uint32_t,
                                     const LV2_Feature* const* features) {
     auto* p = static_cast<CabPlugin*>(h);
-    size_t size=0; uint32_t type=0, vflags=0;
-    const void* val = retrieve(handle, p->uris.ir_file, &size, &type, &vflags);
-    if (!val || type != p->uris.atom_Path) return LV2_STATE_SUCCESS;
     auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
-    const char* apath = static_cast<const char*>(val);
-    char* path = mapPath ? mapPath->absolute_path(mapPath->handle, apath) : const_cast<char*>(apath);
+    size_t size = 0; uint32_t type = 0, vflags = 0;
 
-    // restore() is not real-time — read + apply directly.
-    std::vector<float> L, R;
-    if (loadIRFile(path, p->rate, L, R)) {
-        p->dsp.setIR(L, R.empty() ? nullptr : &R);
-        std::strncpy(p->irPath, path, kPathMax - 1);
-        p->irPath[kPathMax - 1] = '\0';
+    const void* irv = retrieve(handle, p->uris.ir_file, &size, &type, &vflags);
+    if (irv && type == p->uris.atom_Path) {
+        const char* ap = static_cast<const char*>(irv);
+        char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
+        std::vector<float> L, R;
+        if (loadIRFile(path, p->rate, L, R)) {
+            p->dsp.setIR(L, R.empty() ? nullptr : &R);
+            std::strncpy(p->irPath, path, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
+        }
+        if (mapPath && path != ap) free(path);
     }
-    if (mapPath && path != apath) free(path);
+
+    const void* nv = retrieve(handle, p->uris.nam_file, &size, &type, &vflags);
+    if (nv && type == p->uris.atom_Path) {
+        const char* ap = static_cast<const char*>(nv);
+        char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
+        auto* nm = new(std::nothrow) NamModel;
+        if (nm && nm->loadFromFile(path)) {
+            nm->reset(p->rate, kMaxBlock);
+            delete p->nam; p->nam = nm;
+            std::strncpy(p->namPath, path, kPathMax - 1); p->namPath[kPathMax - 1] = '\0';
+        } else delete nm;
+        if (mapPath && path != ap) free(path);
+    }
     return LV2_STATE_SUCCESS;
 }
 

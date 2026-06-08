@@ -24,9 +24,23 @@ function (event, funcs) {
         box.text(label);
     }
 
+    function set_namfile(icon, value) {
+        var box = icon.find('[rata-role=Nam]');
+        if (value == null || value == 'None' || value == '') { box.text('-- choose a NAM file --'); return; }
+        var label = null;
+        icon.find('[mod-role=enumeration-option]').each(function () {
+            if (this.getAttribute('mod-parameter-value') == value)
+                label = (this.textContent || '').replace(/^\s+|\s+$/g, '');
+        });
+        if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
+        box.text(label);
+    }
+
     if (event.type == 'start') {
     } else if (event.type == 'change') {
         if (event.uri == 'https://rpowell5064.github.io/guitaramp-suite/cab#irfile')
             set_irfile(event.icon, event.value);
+        else if (event.uri == 'https://rpowell5064.github.io/guitaramp-suite/cab#namfile')
+            set_namfile(event.icon, event.value);
     }
 }
