@@ -53,6 +53,8 @@ void Rockerverb50::reset() noexcept {
         c.airLP.reset();
         c.cleanInterLP.reset();
         c.cleanHFRolloff.reset();
+        c.cleanLift.reset();
+        c.cleanScoop.reset();
         c.sagEnv = 0.0f;
     }
     gainSmooth_.setCurrentAndTargetValue(gain_);
@@ -81,9 +83,12 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         //
         // Global Gain [0,1] drives stages 1–3.  Stage 4 is fixed.
         // Higher gain = more saturation = higher THD + more perceived compression.
-        const float g1 = kS1Base + gainCurrent_ * kS1Range;  // [3.0, 22.0]
-        const float g2 = kS2Base + gainCurrent_ * kS2Range;  // [4.0, 13.0]
-        const float g3 = kS3Base + gainCurrent_ * kS3Range;  // [5.0, 11.0]
+        // Audio-taper the gain knob so it sweeps clean->saturated like a real pot
+        // (linear pinned every setting at full saturation — dead knob, no dynamics).
+        const float gt = gainCurrent_ * gainCurrent_;
+        const float g1 = kS1Base + gt * kS1Range;
+        const float g2 = kS2Base + gt * kS2Range;
+        const float g3 = kS3Base + gt * kS3Range;
 
         // Stage 1 — input shaper.
         x = s.stage1.process(g1 * x) * kS1Post;
@@ -118,8 +123,11 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         x = s.inter34HPF.process(x);
         x *= kCouple34;
 
-        // Stage 4 — final tightening ("cold" focus, fixed gain).
-        x = s.stage4.process(kS4Pre * x) * kS4Post;
+        // Stage 4 — final tightening. Drive tapers with the gain knob too, so low
+        // gain settings actually clean up (it was a fixed clipper flooring the OD
+        // channel at ~13% THD even on soft playing; the real amp cleans to ~1%).
+        const float g4 = 1.0f + gt * (kS4Pre - 1.0f);
+        x = s.stage4.process(g4 * x) * kS4Post;
 
         // Normalise pre-EQ level so the tonestack sees a consistent drive.
         x *= kPreEQGain;
@@ -163,6 +171,9 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         x = s.midF.process(x);
         x = s.trebleF.process(x);
         x = s.cleanHFRolloff.process(x);
+        x = s.cleanScoop.process(x);    // Orange clean mid scoop (~1.4 kHz)
+        x = s.cleanLift.process(x);     // treble recovery (undo dark power-amp defaults)
+        x *= kCleanOutGain;             // level match to DI
     }
 
     // Update supply-sag envelope (decay-coefficient form).
@@ -296,6 +307,8 @@ void Rockerverb50::recalcFilters() noexcept {
         c.airLP.setCoeffs(airLPc);
         c.cleanInterLP.setCoeffs(cleanInterLPc);
         c.cleanHFRolloff.setCoeffs(cleanHFRollofc);
+        c.cleanLift.setCoeffs(Filters::highshelf(3200.0, 10.0, fs));
+        c.cleanScoop.setCoeffs(Filters::peaking(1400.0, -3.5, 0.9, fs));
     }
 }
 

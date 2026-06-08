@@ -94,6 +94,11 @@ private:
         // Clean channel filters (preserved)
         BiquadFilter cleanInterLP;  // 1-pole LPF @ 5000 Hz
         BiquadFilter cleanHFRolloff;// 1-pole LPF @ 10000 Hz
+        // Clean-channel treble recovery (high-shelf): the shared power amp's dark
+        // presence-EQ/NFB defaults left the clean channel ~8-12 dB too dark at 3-8 kHz
+        // vs the DI capture. Safe to EQ here (low gain, no fizz). Clean-only.
+        BiquadFilter cleanLift;
+        BiquadFilter cleanScoop;    // ~1.4 kHz dip — the Orange clean's mid scoop (DI)
 
         // Supply sag envelope (300 ms, models EL34 cathode-cap compression)
         float sagEnv   = 0.0f;
@@ -103,9 +108,12 @@ private:
 
     // ── Dirty channel constants ──────────────────────────────────────────────
     // Stage pre-gain: g_n = kSnBase + gainCurrent_ * kSnRange
-    static constexpr float kS1Base  = 2.0f,  kS1Range = 12.0f;  // Stage 1: [2,  14]
-    static constexpr float kS2Base  = 3.0f,  kS2Range = 10.0f;  // Stage 2: [3,  13]
-    static constexpr float kS3Base  = 4.5f,  kS3Range =  7.5f;  // Stage 3: [4.5, 12]
+    // Ranges widened + driven through an audio taper (gain^2) in process(): the linear
+    // map pinned the OD channel at ~33% THD at EVERY knob setting (dead gain control,
+    // no clean headroom/dynamics). Real amp sweeps clean (G3) to saturated (G7) — DI matrix.
+    static constexpr float kS1Base  = 1.2f,  kS1Range = 19.0f;
+    static constexpr float kS2Base  = 1.8f,  kS2Range = 17.0f;
+    static constexpr float kS3Base  = 2.8f,  kS3Range = 15.0f;
     static constexpr float kS4Pre   = 3.0f;                      // Stage 4: fixed
 
     // Stage post-gains (level normalisation after each waveshaper)
@@ -125,6 +133,8 @@ private:
     // ── Clean channel constants (preserved from original) ────────────────────
     static constexpr float kCleanMin = 1.5f, kCleanMax = 5.0f;
     static constexpr int   kCleanN   = 2;
+    static constexpr float kCleanOutGain = 4.5f;  // boosted for in-rig parity with the OD
+                                                  // channel (DI-match level was too quiet)
 
     // ── Helpers ──────────────────────────────────────────────────────────────
     void recalcFilters() noexcept;
