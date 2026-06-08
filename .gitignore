@@ -21,11 +21,16 @@ build-tools/out/
 *.ilk
 *.exp
 
-# NAM captures of real amps/pedals — licensed third-party content, kept local
-# only as offline tuning references (never committed/distributed).
+# Captures of real amps/pedals/cabs — licensed third-party content. NEVER commit:
+# only the user's own captures may be distributed. (NAM neural models + IR files.)
 *.nam
+*.ir
+*.wav
+*.aidax
 nam_refs/
 nam_models/
+ir_files/
+ir_refs/
 
 # Claude Code working files (never distribute)
 .claude/
