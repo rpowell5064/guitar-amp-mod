@@ -129,7 +129,10 @@ function (event, funcs) {
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
         show(icon, 'dr', '.c-dr-oct', parseInt(map.dr_model || 0, 10) === 1);
-        BLOCKS.forEach(function (b) { if ((b + '_pos') in map) tileOf(icon, b).attr('data-pos', parseInt(map[b + '_pos'], 10)); });
+        ['it'].concat(BLOCKS).forEach(function (b) {
+            if ((b + '_enable') in map) tileOf(icon, b).toggleClass('hf-off', !(map[b + '_enable'] > 0.5));
+            if ((b + '_pos') in map)    tileOf(icon, b).attr('data-pos', parseInt(map[b + '_pos'], 10));
+        });
         resort(icon);
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;

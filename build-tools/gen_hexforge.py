@@ -168,11 +168,14 @@ ctrl.append(mkport("IT_ENABLE", "it_enable", "Input Trim Enable", "t", 0, 1, 1, 
 for suf, nm, kind, mn, mx, df, sc in IT:
     ctrl.append(mkport("IT_" + suf.upper(), "it_" + suf, "IT " + nm, kind, mn, mx, df, sc, nm))
 # movable blocks: pos, enable, params
+# Blocks that start OFF on a fresh Hex Forge (engage them as needed).
+OFF_BY_DEFAULT = {"fz", "dr", "md"}   # Fuzz, Drive, Modulation
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
     posscale = [(str(k), k) for k in range(1, 10)]   # 1..9 dropdown for reordering
+    en_def = 0 if pfx in OFF_BY_DEFAULT else 1
     ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 9, dpos, posscale, "Slot", hidden=True))
-    ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, 1, None, "On"))
+    ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
 
