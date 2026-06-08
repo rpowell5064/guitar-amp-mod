@@ -27,8 +27,8 @@ PED = {
     knobs("Low Cut","High Cut","Mix") +
     f'<div class="mod-irloader-group"><span class="mod-section-label">IMPULSE RESPONSE</span>{sel("-- choose an IR file --","")}</div>'
     '<div class="mod-control-group mod-switches clearfix">' + sw("Bypass") + '</div>'),
- "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"Tube Screech {DOT} Life Sentence {DOT} Sewer Rat", body=
-    modelrow("PEDAL MODEL","Tube Screech") + knobs("Drive","Tone","Level","Mix")),
+ "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"Green Man {DOT} New Dawn {DOT} Dear Vermin Boy", body=
+    modelrow("PEDAL MODEL","Green Man") + knobs("Drive","Tone","Level","Mix")),
  "delay": dict(w=480,h=450,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} drum echo", body=
     modelrow("DELAY TYPE","Echo Wreck") +
     '<div class="mod-echogroup"><div class="mod-heads-row"><span class="mod-section-label">ECHO HEADS</span>' + sel("11: All Heads") + '</div></div>' +

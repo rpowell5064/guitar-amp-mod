@@ -50,3 +50,8 @@
     a lv2:Plugin ;
     lv2:binary <guitaramp_fuzz.so> ;
     rdfs:seeAlso <fuzz.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/hexforge>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_hexforge.so> ;
+    rdfs:seeAlso <hexforge.ttl> .
