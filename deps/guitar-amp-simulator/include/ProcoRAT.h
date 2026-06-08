@@ -56,7 +56,22 @@ private:
     // (compiled out; kept here for documentation)
     static constexpr double kRin       = 100.0e3;   // 100 kΩ  (inverting input series R)
     static constexpr double kRfFixed   =    47.0;   //  47 Ω   (feedback stability R)
-    static constexpr double kRdistMax  =   1.0e6;   //   1 MΩ  (distortion pot range)
+    // Gain law tuned to real RAT NAM captures (tools/nam_compare --model rat):
+    //   The original 47 Ω..1 MΩ feedback gave 0.0005×..10× — silent at min and far
+    //   too clean (the real pedal is already slammed by ~noon distortion). The real
+    //   RAT is a very-high-gain stage; map drive so min ≈ unity (clean) and it hard-
+    //   clips well before max. kRfMin sets the floor; kRdistMax the span.
+    static constexpr double kRfMin     = 100.0e3;   // 100 kΩ  → ~unity min-distortion gain
+    static constexpr double kRdistMax  =   3.0e6;   //   span  → slams by ~noon distortion
+    // NOTE (RAT NAM tuning, in progress): the captures show strong even harmonics
+    // (h2/h4/h6 ~14%) that persist when slammed. Amplitude asymmetry (diode-Is ratio)
+    // or a fixed bias current do NOT reproduce that — after DC blocking they leave a
+    // half-wave-symmetric (odd-only) waveform. The real source is duty-cycle / shape
+    // asymmetry (signal-proportional), TODO. For now keep diodes symmetric so clean
+    // settings stay clean (kAsymN=1). THD is still a touch low at high drive (soft
+    // diode knee) — also pending a harder clip stage.
+    static constexpr double kAsymN     =    1.0;    // reverse-diode Is multiplier (symmetric)
+    static constexpr double kBiasI     =    0.0;    // summing-node bias current (disabled)
     static constexpr double kCin       =  22.0e-9;  //  22 nF  (input coupling cap)
     static constexpr double kRfiltMax  = 100.0e3;   // 100 kΩ  (filter pot range)
     static constexpr double kCfilt     = 560.0e-12; // 560 pF  (filter cap)
@@ -85,6 +100,7 @@ private:
     struct ChannelState {
         BiquadFilter inputHP;    // 72.3 Hz 1-pole RC HP  (R=100kΩ, C=22nF)
         BiquadFilter filterLP;   // variable 1-pole RC LP (560pF, 0–100kΩ)
+        BiquadFilter dcBlock;    // ~8 Hz HP — removes the DC the asymmetric clip adds
         double       vout = 0.0; // LM308N output of previous sample (for slew)
     };
     std::array<ChannelState, kMaxCh> ch_;

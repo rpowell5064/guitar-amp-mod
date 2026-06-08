@@ -31,6 +31,8 @@
 #include "AmpBlockExtended.h"
 #include "PowerAmpProcessor.h"
 #include "AmpBlock.h"
+#include "OverdriveBlock.h"      // drive-pedal models (ProCo RAT etc.)
+#include "OverdriveFactory.h"
 #include "NamModel.h"
 
 #include <algorithm>
@@ -173,7 +175,8 @@ static void scaleToRms(std::vector<float>& x, double targetRms) {
 }
 
 // ── Model spec: name → (AmpModel, plugin idx, tube idx), matching amp_plugin ─
-struct ModelSpec { AmpModel model; int idx; int tube; bool sunn; const char* label; };
+struct ModelSpec { AmpModel model; int idx; int tube; bool sunn; const char* label;
+                   bool drive = false; OverdriveType odtype = OverdriveType::ProcoRAT; };
 
 static bool resolveModel(std::string name, ModelSpec& out) {
     for (auto& c : name) c = char(std::tolower((unsigned char)c));
@@ -183,6 +186,13 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 0, true,  "Sunn Model T"}; return true; }
     if (name == "rockerverb" || name == "orange")
                               { out = {AmpModel::OrangeRockerverb50, 5, 1, false, "Orange Rockerverb 50"}; return true; }
+    // ── drive pedals (OverdriveBlock path; drive/tone/level via --gain/--tone/--level) ──
+    if (name == "rat" || name == "rodent" || name == "dearrodentboy")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "ProCo RAT (Dear Rodent Boy)", true, OverdriveType::ProcoRAT}; return true; }
+    if (name == "ts808" || name == "greenman" || name == "green")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "TS-808 (Green Man)", true, OverdriveType::TubeScreamer808}; return true; }
+    if (name == "life" || name == "lifepedal" || name == "newdawn")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Life Pedal (New Dawn)", true, OverdriveType::LifePedal}; return true; }
     return false;
 }
 
@@ -191,11 +201,37 @@ struct Knobs {
     float gain = 0.5f, bass = 0.5f, mid = 0.5f, treble = 0.5f;
     float presence = 0.5f, master = 0.7f, sag = 0.3f;
     float channel = 0.0f, reson = 0.5f;
+    float tone = 0.5f, level = 0.7f;   // drive-pedal: tone=filter, level=volume (gain=drive)
 };
+
+// ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
+static void runDriveModel(const ModelSpec& m, const Knobs& k, double sr,
+                          const std::vector<float>& in, std::vector<float>& out) {
+    constexpr int BLK = 512;
+    OverdriveBlock od;
+    od.prepare(sr, BLK, 1);
+    od.setType(m.odtype);
+    od.setBypass(false);
+    od.setParameter("drive",  k.gain);
+    od.setParameter("tone",   k.tone);
+    od.setParameter("level",  k.level);
+    od.setParameter("mix",    1.0f);
+    od.setParameter("octave", 0.0f);
+    out.assign(in.size(), 0.0f);
+    std::vector<float> scratch(BLK);
+    for (size_t off = 0; off < in.size(); off += BLK) {
+        const int len = int(std::min<size_t>(BLK, in.size() - off));
+        std::memcpy(scratch.data(), in.data() + off, size_t(len) * sizeof(float));
+        float* p = scratch.data();
+        od.process(&p, &p, len, 1);
+        std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
+    }
+}
 
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
                      const std::vector<float>& in, std::vector<float>& out) {
+    if (m.drive) { runDriveModel(m, k, sr, in, out); return; }
     constexpr int BLK = 512;
     AmpBlockExtended amp;
     amp.prepare(sr, BLK, 1);
@@ -405,6 +441,7 @@ int main(int argc, char** argv) {
     knob("--gain", k.gain);   knob("--bass", k.bass);     knob("--mid", k.mid);
     knob("--treble", k.treble); knob("--presence", k.presence); knob("--master", k.master);
     knob("--sag", k.sag);     knob("--channel", k.channel); knob("--reson", k.reson);
+    knob("--tone", k.tone);   knob("--level", k.level);   // drive-pedal filter/volume
 
     // Load the reference capture.
     NamModel nam;
@@ -424,10 +461,13 @@ int main(int argc, char** argv) {
     std::printf("model     : %s   (plugin idx %d, tube %d)\n", spec.label, spec.idx, spec.tube);
     std::printf("rate      : %.0f Hz   input level : %.1f dBFS\n",
                 sr, inLevelDb);
-    std::printf("knobs     : gain=%.2f bass=%.2f mid=%.2f treble=%.2f "
-                "pres=%.2f master=%.2f sag=%.2f chan=%.2f reson=%.2f\n\n",
-                k.gain, k.bass, k.mid, k.treble, k.presence, k.master, k.sag,
-                k.channel, k.reson);
+    if (spec.drive)
+        std::printf("knobs     : drive=%.2f tone=%.2f level=%.2f\n\n", k.gain, k.tone, k.level);
+    else
+        std::printf("knobs     : gain=%.2f bass=%.2f mid=%.2f treble=%.2f "
+                    "pres=%.2f master=%.2f sag=%.2f chan=%.2f reson=%.2f\n\n",
+                    k.gain, k.bass, k.mid, k.treble, k.presence, k.master, k.sag,
+                    k.channel, k.reson);
 
     // ── Spectral excitation: a real DI if given, else pink noise ─────────────
     std::vector<float> exc;

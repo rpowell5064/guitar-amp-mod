@@ -53,7 +53,7 @@ float ProcoRAT::processSample(float x, int ch) noexcept {
     // ── Stage 2: LM308N feedback clipper ──────────────────────────────────────
     // Feedback resistance: 47 Ω (fixed stability resistor) + distortion pot.
     // The 1 MΩ pot goes 0→1 with the distortion control.
-    const double Rf = kRfFixed + static_cast<double>(distCur_) * kRdistMax;
+    const double Rf = kRfMin + static_cast<double>(distCur_) * kRdistMax;
 
     // Compute a good initial guess analytically to avoid slow N-R convergence.
     //
@@ -89,11 +89,15 @@ float ProcoRAT::processSample(float x, int ch) noexcept {
     vout = std::max(-kVswing, std::min(kVswing, vout));
     s.vout = vout;
 
+    // DC block: the asymmetric diode clip leaves a small DC offset; the real RAT's
+    // output coupling cap removes it. Do the same before the tone filter / volume.
+    const double dc = s.dcBlock.process(static_cast<float>(vout));
+
     // ── Stage 3: passive RC low-pass filter ("Filter" control) ────────────────
     // R = filter × 100 kΩ, C = 560 pF.
     // Turning filter toward 1 rolls off treble (darker, fc toward 2.84 kHz).
     // The 1-pole response is already updated in recalcFilters() via setParameter.
-    const double filtered = s.filterLP.process(static_cast<float>(vout));
+    const double filtered = s.filterLP.process(static_cast<float>(dc));
 
     // ── Stage 4: volume pot ───────────────────────────────────────────────────
     return static_cast<float>(filtered * static_cast<double>(volCur_));
@@ -124,6 +128,7 @@ void ProcoRAT::recalcFilters() noexcept {
 
     // Input HP: R=100 kΩ, C=22 nF → fc = 1/(2π·100k·22n) = 72.3 Hz.
     const auto hpC = Filters::highpass1pole(72.3, fs);
+    const auto dcC = Filters::highpass1pole(8.0, fs);   // output DC blocker
 
     // Filter LP: R = filter × 100 kΩ, C = 560 pF.
     // fc = 1/(2π·R·C); minimum R = 100 Ω to avoid division near zero.
@@ -136,6 +141,7 @@ void ProcoRAT::recalcFilters() noexcept {
     for (auto& c : ch_) {
         c.inputHP .setCoeffs(hpC);
         c.filterLP.setCoeffs(lpC);
+        c.dcBlock .setCoeffs(dcC);
     }
 }
 
@@ -150,26 +156,27 @@ void ProcoRAT::recalcFilters() noexcept {
 // while allowing convergence from up to ~2 V away from the solution.
 //
 double ProcoRAT::solveVout(double vin, double Rf, double x0) noexcept {
-    using std::sinh; using std::cosh;
+    using std::exp;
 
-    // Pre-compute invariants.
-    const double vinOverRin = vin / kRin;
+    // Asymmetric anti-parallel diodes: forward Is = kIs, reverse Is = kIs·kAsymN.
+    //   I_diode(v) = Is·e^{v/nVt} − (Is·kAsymN)·e^{−v/nVt}
+    // Solve f(v) = Vin/Rin + v/Rf + I_diode(v) = 0  (still strictly monotone).
+    //   f'(v) = 1/Rf + (Is/nVt)·e^{v/nVt} + (Is·kAsymN/nVt)·e^{−v/nVt}  > 0
+    const double vinOverRin = vin / kRin + kBiasI;   // signal + asymmetry bias current
     const double invRf      = 1.0 / Rf;
-    const double k2IsOvernVt = k2Is / knVt;   // 2·Is/nVt, for the derivative
+    const double IsR        = kIs * kAsymN;
+    const double IsOvernVt  = kIs  / knVt;
+    const double IsROvernVt = IsR  / knVt;
 
-    // Clamp x to the physically reachable range: diodes hard-limit output to
-    // ≈ ±0.65 V; allow ±0.8 V margin so the N-R can approach from either side.
-    // This also prevents sinh/cosh overflow for any pathological initial guess.
     x0 = std::max(-0.8, std::min(0.8, x0));
     double x = x0;
 
     for (int i = 0; i < 32; ++i) {
-        const double u  = x / knVt;
-        const double sh = sinh(u);
-        const double ch = cosh(u);
+        const double ep = exp(x / knVt);
+        const double en = 1.0 / ep;             // e^{−x/nVt}
 
-        const double F  = vinOverRin + x * invRf + k2Is * sh;
-        const double Fp = invRf + k2IsOvernVt * ch;   // always > 0 (monotone function)
+        const double F  = vinOverRin + x * invRf + kIs * ep - IsR * en;
+        const double Fp = invRf + IsOvernVt * ep + IsROvernVt * en;   // > 0 (monotone)
 
         const double dx = -F / Fp;
         x = std::max(-0.8, std::min(0.8, x + dx));   // stay in physical range
