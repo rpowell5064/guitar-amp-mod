@@ -1,32 +1,32 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // GuitarAmp Suite — Amp LV2 plugin
 //
-// Ports the VST amp model selector (5 algorithmic amps) plus a full power-amp
-// stage with bypass. Neural/NAM model loading has been removed — use a dedicated
-// NAM block on the pi-Stomp instead.
+// Five algorithmic amp models + a full power-amp stage, PLUS a NAM (Neural Amp
+// Modeler) slot: model index 5 ("Neural (NAM)") runs a user-loaded .nam capture
+// instead of the algorithmic amp. The .nam file is chosen in mod-ui's file
+// browser (mod:fileTypes → the NAM user-files folder) and delivered as a
+// patch:Set(atom:Path); it is loaded on the LV2 worker thread and swapped in with
+// a single pointer assignment, so the RT thread never allocates or blocks. The
+// bundled NAM core parses both legacy (WaveNet/LSTM, "a1") and the new container/
+// slimmable ("a2") formats. When NAM is selected the shared power-amp is bypassed
+// (a capture already includes the whole amp).
 //
-// Analog model switches rebuild the amp off the audio thread (a fresh
-// AmpBlockExtended allocates its OversamplingWrapper), so the LV2 Worker
-// extension is used: the worker builds the new instance and the audio thread
-// swaps it in with a single pointer assignment, freeing the old one back on the
-// worker thread — the real-time thread never allocates or blocks.
-//
-// The power amp (PowerAmpProcessor) is a separate stage after the amp. It is
-// auto-bypassed for the Sunn Model T — that model is a *complete* amp (its own
-// 6550 power stage + output transformer + NFB), so the shared PA would double-
-// stack the power section. Every other model is preamp-only and needs the PA.
+// Analog model switches rebuild the amp off the audio thread via the same worker.
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
 #include "AmpBlockExtended.h"
 #include "PowerAmpProcessor.h"
+#include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
 #include <cstring>
+#include <cstdint>
 
-#define AMP_URI "https://rpowell5064.github.io/guitaramp-suite/amp"
+#define AMP_URI     "https://rpowell5064.github.io/guitaramp-suite/amp"
+#define AMP_NAM_URI AMP_URI "#nammodel"
+static constexpr int kPathMax = 1024;
 
-// LV2 model index (0..4) → AmpModel enum. NAM is no longer selectable, so the
-// list skips NeuralCustom.
+// LV2 model index (0..4) → AmpModel enum. Index 5 = NAM (handled separately).
 static const AmpModel kModelMap[5] = {
     AmpModel::FenderDeluxe,        // 0
     AmpModel::MarshallJCM800,      // 1
@@ -34,34 +34,14 @@ static const AmpModel kModelMap[5] = {
     AmpModel::SunnModelT,          // 3
     AmpModel::OrangeRockerverb50,  // 4
 };
-// LV2 model index → canonical model index (0=Fender..5=Rockerverb, with NAM=3)
-// used by PowerAmpProcessor::getDefaultsForModel and the VST. The LV2 list omits
-// NAM, so Sunn/Rockerverb shift down by one relative to the canonical ordering.
 static const int kCanonical[5] = { 0, 1, 2, 4, 5 };
 static constexpr int kSunnIdx  = 3;        // Sunn's LV2 model index
-static constexpr int kMaxModel = 4;
+static constexpr int kNamIdx   = 5;        // NAM slot
+static constexpr int kMaxModel = 4;        // highest algorithmic model index
 static constexpr int kMaxBlock = 512;      // internal processing chunk
 
-// Per-model power tube (TubeType: 0=6L6GC, 1=EL34, 2=EL84, 3=KT88), matching
-// AmpModelFactory::recommendedTubeType, LV2-indexed.
-static const int kModelTube[5] = {
-    0,  // 0 Fender     → 6L6GC
-    1,  // 1 Marshall   → EL34
-    1,  // 2 EVH        → EL34
-    0,  // 3 Sunn       → 6L6GC
-    1,  // 4 Rockerverb → EL34
-};
-
-// Per-model output loudness makeup (linear), LV2-indexed. The clean amps (Fender)
-// are much quieter than the high-gain ones; this lifts them toward a common level
-// so switching models doesn't jump in volume. Reference (1.0) = Marshall JCM800.
-static const float kModelMakeup[5] = {
-    1.8f,  // 0 Fender Deluxe   (+5 dB)
-    1.0f,  // 1 Marshall JCM800 (reference)
-    1.4f,  // 2 EVH 5150 III    (+2.9 dB — was quieter than JCM800/Rockerverb at matched settings)
-    1.0f,  // 3 Sunn Model T
-    1.15f, // 4 Orange Rockerverb
-};
+static const int kModelTube[5] = { 0, 1, 1, 0, 1 };
+static const float kModelMakeup[5] = { 1.8f, 1.0f, 1.4f, 1.0f, 1.15f };
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -70,16 +50,24 @@ enum AmpPorts {
     P_PA_BYPASS, P_PA_TUBE, P_PA_PRES, P_PA_DEPTH, P_PA_SAG, P_PA_MASTER,
     P_PA_NFB, P_PA_RESON, P_PA_AIR, P_PA_AUTO,
     P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2,  // Sunn Brite-channel
+    P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file)
     P_N_PORTS
 };
 
-enum WorkType { WORK_LOAD, WORK_FREE };
+enum WorkType { WORK_LOAD, WORK_FREE, WORK_NAM_LOAD, WORK_NAM_FREE };
 
-// Message passed between the audio thread and the worker thread.
 struct WorkMsg {
     WorkType          type;
-    AmpBlockExtended* amp;       // FREE: instance to delete; LOAD reply: new instance
-    int               modelIdx;  // model to pre-set on the new instance
+    AmpBlockExtended* amp = nullptr;   // amp LOAD reply / FREE target
+    NamModel*         nam = nullptr;   // NAM LOAD reply / FREE target
+    int               modelIdx = 0;
+    char              path[kPathMax] = {0};
+};
+
+struct URIs {
+    LV2_URID atom_Object, atom_Path, atom_URID;
+    LV2_URID patch_Set, patch_Get, patch_property, patch_value;
+    LV2_URID nam_file;
 };
 
 static int clampIdx(float v, int lo, int hi) {
@@ -92,39 +80,63 @@ static int clampIdx(float v, int lo, int hi) {
 struct AmpPlugin {
     double rate = 48000.0;
 
-    AmpBlockExtended* amp = nullptr;   // double-buffered: swapped on model change
+    AmpBlockExtended* amp = nullptr;   // double-buffered algo amp
     PowerAmpProcessor pa;
+    NamModel*         nam = nullptr;   // swapped in by the worker on file load
 
-    float* ctrl[P_N_PORTS] = {};       // control/audio port buffers
+    float* ctrl[P_N_PORTS] = {};
+    const LV2_Atom_Sequence* control = nullptr;
+    LV2_Atom_Sequence*       notify  = nullptr;
 
     int  lastModel = -1;
     int  lastTube  = -1;
+    char namPath[kPathMax] = {0};
+    float mono[kMaxBlock], monoOut[kMaxBlock];
 
     LV2_Worker_Schedule* schedule = nullptr;
+    LV2_URID_Map*        map      = nullptr;
+    LV2_Atom_Forge       forge;
+    URIs                 uris;
 };
 
-// Schedule an off-thread rebuild of the amp instance on a model change: the
-// worker builds a fresh AmpBlockExtended (where the OversamplingWrapper
-// allocation happens) and the audio thread swaps it in.
+static void mapURIs(AmpPlugin* p) {
+    LV2_URID_Map* m = p->map;
+    p->uris.atom_Object    = m->map(m->handle, LV2_ATOM__Object);
+    p->uris.atom_Path      = m->map(m->handle, LV2_ATOM__Path);
+    p->uris.atom_URID      = m->map(m->handle, LV2_ATOM__URID);
+    p->uris.patch_Set      = m->map(m->handle, LV2_PATCH__Set);
+    p->uris.patch_Get      = m->map(m->handle, LV2_PATCH__Get);
+    p->uris.patch_property = m->map(m->handle, LV2_PATCH__property);
+    p->uris.patch_value    = m->map(m->handle, LV2_PATCH__value);
+    p->uris.nam_file       = m->map(m->handle, AMP_NAM_URI);
+}
+static void writeNamToNotify(AmpPlugin* p) {
+    const URIs& u = p->uris;
+    LV2_Atom_Forge_Frame frame;
+    lv2_atom_forge_frame_time(&p->forge, 0);
+    lv2_atom_forge_object(&p->forge, &frame, 0, u.patch_Set);
+    lv2_atom_forge_key(&p->forge, u.patch_property);
+    lv2_atom_forge_urid(&p->forge, u.nam_file);
+    lv2_atom_forge_key(&p->forge, u.patch_value);
+    lv2_atom_forge_path(&p->forge, p->namPath, static_cast<uint32_t>(std::strlen(p->namPath)));
+    lv2_atom_forge_pop(&p->forge, &frame);
+}
+
 static LV2_Worker_Status scheduleRebuild(AmpPlugin* p, int modelIdx) {
-    WorkMsg msg;
-    msg.type     = WORK_LOAD;
-    msg.amp      = nullptr;
-    msg.modelIdx = modelIdx;
+    WorkMsg msg; msg.type = WORK_LOAD; msg.modelIdx = modelIdx;
     return p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
 }
 
-// ── LV2 lifecycle ─────────────────────────────────────────────────────────────
+// ── Lifecycle ──────────────────────────────────────────────────────────────
 static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
                                    const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) AmpPlugin;
     if (!p) return nullptr;
-
     p->schedule = static_cast<LV2_Worker_Schedule*>(lv2_find_feature(features, LV2_WORKER__schedule));
-    if (!p->schedule) {   // required feature
-        delete p;
-        return nullptr;
-    }
+    p->map      = static_cast<LV2_URID_Map*>(lv2_find_feature(features, LV2_URID__map));
+    if (!p->schedule || !p->map) { delete p; return nullptr; }
+    mapURIs(p);
+    lv2_atom_forge_init(&p->forge, p->map);
 
     p->rate = rate;
     p->amp = new(std::nothrow) AmpBlockExtended;
@@ -132,86 +144,141 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->amp->prepare(rate, kMaxBlock, 2);
     p->amp->setAmpModel(AmpModel::MarshallJCM800);
     p->lastModel = 1;
-
     p->pa.prepare(rate, kMaxBlock, 2);
     return p;
 }
 
 static void amp_connect_port(LV2_Handle h, uint32_t port, void* data) {
     auto* p = static_cast<AmpPlugin*>(h);
-    if (port < P_N_PORTS) p->ctrl[port] = static_cast<float*>(data);
+    if (port == P_CONTROL)     p->control = static_cast<const LV2_Atom_Sequence*>(data);
+    else if (port == P_NOTIFY) p->notify  = static_cast<LV2_Atom_Sequence*>(data);
+    else if (port < P_N_PORTS) p->ctrl[port] = static_cast<float*>(data);
 }
 
-// ── Worker thread: build new amp instance / free old instance ─────────────────
+// ── Worker thread ────────────────────────────────────────────────────────────
 static LV2_Worker_Status amp_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
                                   LV2_Worker_Respond_Handle handle,
                                   uint32_t, const void* data) {
     auto* p = static_cast<AmpPlugin*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
 
-    if (msg->type == WORK_FREE) {
-        delete msg->amp;
+    if (msg->type == WORK_FREE)     { delete msg->amp; return LV2_WORKER_SUCCESS; }
+    if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
+
+    if (msg->type == WORK_NAM_LOAD) {
+        auto* nm = new(std::nothrow) NamModel;
+        if (!nm) return LV2_WORKER_ERR_NO_SPACE;
+        if (nm->loadFromFile(msg->path)) nm->reset(p->rate, kMaxBlock);
+        WorkMsg reply; reply.type = WORK_NAM_LOAD; reply.nam = nm;
+        respond(handle, sizeof(reply), &reply);
         return LV2_WORKER_SUCCESS;
     }
 
-    // WORK_LOAD — build a fresh amp off the RT thread (analog models allocate
-    // their OversamplingWrapper here).
+    // WORK_LOAD — build a fresh algo amp off the RT thread.
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
     na->setAmpModel(kModelMap[clampIdx(static_cast<float>(msg->modelIdx), 0, kMaxModel)]);
-
-    WorkMsg reply;
-    reply.type     = WORK_LOAD;
-    reply.amp      = na;
-    reply.modelIdx = msg->modelIdx;
+    WorkMsg reply; reply.type = WORK_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
 }
 
-// Runs on the audio thread (host calls it at the top of run()) — pointer swap only.
 static LV2_Worker_Status amp_work_response(LV2_Handle h, uint32_t, const void* data) {
     auto* p = static_cast<AmpPlugin*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
-
+    if (msg->type == WORK_NAM_LOAD) {
+        NamModel* old = p->nam;
+        p->nam = msg->nam;
+        WorkMsg freeMsg; freeMsg.type = WORK_NAM_FREE; freeMsg.nam = old;
+        p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
+        return LV2_WORKER_SUCCESS;
+    }
+    // WORK_LOAD reply — swap the algo amp.
     AmpBlockExtended* old = p->amp;
-    p->amp = msg->amp;                       // atomic-enough: single pointer store
-    // The new instance was built with this model; if the port has since moved on,
-    // run() will see the mismatch and schedule another rebuild (converges).
+    p->amp = msg->amp;
     p->lastModel = msg->modelIdx;
-
-    WorkMsg freeMsg;                         // free the old instance off the RT thread
-    freeMsg.type = WORK_FREE;
-    freeMsg.amp  = old;
+    WorkMsg freeMsg; freeMsg.type = WORK_FREE; freeMsg.amp = old;
     p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
     return LV2_WORKER_SUCCESS;
 }
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 static void amp_run(LV2_Handle h, uint32_t n) {
-    DenormalGuard denormalGuard;   // flush denormals: keeps CPU flat into decay/silence
-                                   // (prevents xrun-induced note cut-outs on the pi-Stomp)
+    DenormalGuard denormalGuard;
     auto* p = static_cast<AmpPlugin*>(h);
+    const URIs& u = p->uris;
 
-    const int modelIdx = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);
-
-    AmpBlockExtended* amp = p->amp;
-
-    // Whole-plugin bypass.
-    const bool fullBypass = *p->ctrl[P_BYPASS] > 0.5f;
-    amp->setBypass(fullBypass);
-
-    // Model switch — rebuilt off the audio thread (analog models allocate an
-    // OversamplingWrapper). lastModel is committed only if the request was queued,
-    // so a momentarily-full worker queue can't strand a stale model.
-    if (modelIdx != p->lastModel) {
-        if (scheduleRebuild(p, modelIdx) == LV2_WORKER_SUCCESS)
-            p->lastModel = modelIdx;
+    // Open the notify sequence + handle incoming NAM file set/get.
+    const bool haveNotify = (p->notify != nullptr);
+    LV2_Atom_Forge_Frame seqFrame;
+    if (haveNotify) {
+        lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), p->notify->atom.size);
+        lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
+    }
+    if (p->control) {
+        LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
+            if (ev->body.type != u.atom_Object) continue;
+            const auto* obj = reinterpret_cast<const LV2_Atom_Object*>(&ev->body);
+            if (obj->body.otype == u.patch_Set) {
+                const LV2_Atom *prop = nullptr, *val = nullptr;
+                lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
+                if (prop && prop->type == u.atom_URID &&
+                    reinterpret_cast<const LV2_Atom_URID*>(prop)->body == u.nam_file &&
+                    val && val->type == u.atom_Path) {
+                    const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                    std::strncpy(p->namPath, path, kPathMax - 1); p->namPath[kPathMax - 1] = '\0';
+                    WorkMsg msg; msg.type = WORK_NAM_LOAD;
+                    std::strncpy(msg.path, p->namPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
+                    p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+                }
+            } else if (obj->body.otype == u.patch_Get && haveNotify) {
+                writeNamToNotify(p);
+            }
+        }
     }
 
-    // Preamp / model parameters.
+    const int  modelIdx   = clampIdx(*p->ctrl[P_MODEL], 0, kNamIdx);
+    const bool isNam       = (modelIdx == kNamIdx);
+    const bool fullBypass  = *p->ctrl[P_BYPASS] > 0.5f;
+    float* inL  = p->ctrl[P_IN_L];  float* inR  = p->ctrl[P_IN_R];
+    float* outL = p->ctrl[P_OUT_L]; float* outR = p->ctrl[P_OUT_R];
+
+    if (fullBypass) {
+        if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
+        if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
+        if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+        return;
+    }
+
+    if (isNam) {
+        // ── Neural (NAM) path ── mono capture; bypass the algo amp + power amp.
+        const float outGain = *p->ctrl[P_MASTER];   // master = simple output trim
+        if (p->nam && p->nam->isLoaded()) {
+            for (uint32_t off = 0; off < n; off += kMaxBlock) {
+                const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
+                for (int i = 0; i < len; ++i) p->mono[i] = 0.5f * (inL[off + i] + inR[off + i]);
+                p->nam->processBuffer(p->mono, p->monoOut, len);
+                for (int i = 0; i < len; ++i) { const float y = p->monoOut[i] * outGain; outL[off + i] = y; outR[off + i] = y; }
+            }
+        } else {  // no model loaded yet → pass through
+            if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
+            if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
+        }
+        if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+        return;
+    }
+
+    // ── Algorithmic amp path ──
+    AmpBlockExtended* amp = p->amp;
+    amp->setBypass(false);
+
+    if (modelIdx != p->lastModel) {
+        if (scheduleRebuild(p, modelIdx) == LV2_WORKER_SUCCESS) p->lastModel = modelIdx;
+    }
+
     if (modelIdx == kSunnIdx) {
-        amp->setParameter("vol1",         *p->ctrl[P_GAIN]);      // "Normal Vol"
+        amp->setParameter("vol1",         *p->ctrl[P_GAIN]);
         amp->setParameter("vol2",         *p->ctrl[P_SUNN_V2]);
         amp->setParameter("channel_link", *p->ctrl[P_SUNN_LNK]);
         amp->setParameter("bass1",        *p->ctrl[P_BASS]);
@@ -231,12 +298,9 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("presence", *p->ctrl[P_PRES]);
     amp->setParameter("master",   *p->ctrl[P_MASTER]);
     amp->setParameter("sag",      *p->ctrl[P_SAG]);
-    amp->setParameter("channel",  *p->ctrl[P_CHANNEL]);    // EVH / Rockerverb mode
-    amp->setParameter("resonance",*p->ctrl[P_RESON]);      // EVH resonance
+    amp->setParameter("channel",  *p->ctrl[P_CHANNEL]);
+    amp->setParameter("resonance",*p->ctrl[P_RESON]);
 
-    // Power-amp parameters. In Auto mode the voicing + tube follow the selected
-    // amp model (getDefaultsForModel + per-model tube table); the pamp_* knobs
-    // are honoured only when Auto is off.
     int desiredTube;
     if (*p->ctrl[P_PA_AUTO] > 0.5f) {
         const auto d = PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]);
@@ -245,7 +309,6 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("depth",    d.depth);
         p->pa.setParameter("nfb",      d.nfb);
         p->pa.setParameter("sag",      d.sag);
-        // resonance and airFeel have no per-model default — stay user-controlled.
         p->pa.setParameter("resonance", *p->ctrl[P_PA_RESON]);
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
         desiredTube = kModelTube[modelIdx];
@@ -259,51 +322,69 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
         desiredTube = clampIdx(*p->ctrl[P_PA_TUBE], 0, 3);
     }
-    if (desiredTube != p->lastTube) {
-        p->lastTube = desiredTube;
-        p->pa.setTubeType(static_cast<TubeType>(desiredTube));
-    }
+    if (desiredTube != p->lastTube) { p->lastTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
 
-    // Auto-bypass the modeled power amp for Sunn — the Sunn model is a *complete*
-    // amp (its own 6550 power stage + output transformer + NFB internally), so
-    // running the shared PowerAmpProcessor after it double-stacks the power
-    // section. Every other analog model is preamp-only and needs the PA.
-    const bool paBypass = fullBypass ||
-                          (*p->ctrl[P_PA_BYPASS] > 0.5f) ||
-                          (modelIdx == kSunnIdx);
+    const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);
     p->pa.setBypass(paBypass);
 
-    // Process in <= kMaxBlock chunks so internal scratch buffers never overflow.
-    float* inL  = p->ctrl[P_IN_L];
-    float* inR  = p->ctrl[P_IN_R];
-    float* outL = p->ctrl[P_OUT_L];
-    float* outR = p->ctrl[P_OUT_R];
     for (uint32_t off = 0; off < n; off += kMaxBlock) {
-        const int len = static_cast<int>((n - off > kMaxBlock) ? kMaxBlock : (n - off));
+        const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
         float* ins[2]  = { inL  + off, inR  + off };
         float* outs[2] = { outL + off, outR + off };
         amp->process(ins, outs, len, 2);
-        p->pa.process(outs, outs, len, 2);   // in-place; honors its own bypass
+        p->pa.process(outs, outs, len, 2);
     }
+    const float mk = kModelMakeup[modelIdx];
+    if (mk != 1.0f) for (uint32_t i = 0; i < n; ++i) { outL[i] *= mk; outR[i] *= mk; }
 
-    // Per-model loudness makeup (skip on full bypass so true bypass stays unity).
-    if (!fullBypass) {
-        const float mk = kModelMakeup[modelIdx];
-        if (mk != 1.0f)
-            for (uint32_t i = 0; i < n; ++i) { outL[i] *= mk; outR[i] *= mk; }
-    }
+    if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }
 
 static void amp_cleanup(LV2_Handle h) {
     auto* p = static_cast<AmpPlugin*>(h);
     delete p->amp;
+    delete p->nam;
     delete p;
 }
 
-// ── Extension data ────────────────────────────────────────────────────────────
+// ── State (persist the loaded NAM path) ───────────────────────────────────────
+static LV2_State_Status amp_save(LV2_Handle h, LV2_State_Store_Function store,
+                                 LV2_State_Handle handle, uint32_t flags,
+                                 const LV2_Feature* const* features) {
+    auto* p = static_cast<AmpPlugin*>(h);
+    if (p->namPath[0] == '\0') return LV2_STATE_SUCCESS;
+    auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
+    char* ap = mapPath ? mapPath->abstract_path(mapPath->handle, p->namPath) : p->namPath;
+    store(handle, p->uris.nam_file, ap, std::strlen(ap) + 1, p->uris.atom_Path,
+          flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+    if (mapPath && ap != p->namPath) free(ap);
+    return LV2_STATE_SUCCESS;
+}
+static LV2_State_Status amp_restore(LV2_Handle h, LV2_State_Retrieve_Function retrieve,
+                                    LV2_State_Handle handle, uint32_t,
+                                    const LV2_Feature* const* features) {
+    auto* p = static_cast<AmpPlugin*>(h);
+    size_t size = 0; uint32_t type = 0, vflags = 0;
+    const void* val = retrieve(handle, p->uris.nam_file, &size, &type, &vflags);
+    if (!val || type != p->uris.atom_Path) return LV2_STATE_SUCCESS;
+    auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
+    const char* ap = static_cast<const char*>(val);
+    char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
+    auto* nm = new(std::nothrow) NamModel;   // restore() is not RT — load directly
+    if (nm && nm->loadFromFile(path)) {
+        nm->reset(p->rate, kMaxBlock);
+        delete p->nam; p->nam = nm;
+        std::strncpy(p->namPath, path, kPathMax - 1); p->namPath[kPathMax - 1] = '\0';
+    } else delete nm;
+    if (mapPath && path != ap) free(path);
+    return LV2_STATE_SUCCESS;
+}
+
 static const void* amp_extension_data(const char* uri) {
     static const LV2_Worker_Interface worker = { amp_work, amp_work_response, nullptr };
+    static const LV2_State_Interface  state  = { amp_save, amp_restore };
     if (!std::strcmp(uri, LV2_WORKER__interface)) return &worker;
+    if (!std::strcmp(uri, LV2_STATE__interface))  return &state;
     return nullptr;
 }
 

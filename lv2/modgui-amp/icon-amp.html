@@ -26,6 +26,17 @@
         {{/controls.0}}
     </div>
 
+    <!-- ── NAM model file picker (Model = Neural (NAM) only) ────────────── -->
+    <div rata-role="namgroup" class="mod-pagroup mod-hidden">
+        <span class="mod-section-label">NAM MODEL FILE</span>
+        {{#effect.parameters.0}}{{#path}}
+        <div class="mod-enumerated mod-model-select" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">
+            <div mod-role="input-parameter-value" rata-role="Nam" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- choose a NAM file --</div>
+            <div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>
+        </div>
+        {{/path}}{{/effect.parameters.0}}
+    </div>
+
     <!-- ── PREAMP / TONE knobs (always shown) ──────────────────────────── -->
     <div class="mod-control-group mod-knobs clearfix">
         {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="gainlabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.1}}
