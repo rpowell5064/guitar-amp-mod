@@ -49,7 +49,7 @@ CP = [
     ("makeup",  "Makeup",    "f", 0, 10, 0, None),
 ]
 FZ = [
-    ("pedal",     "Pedal",      "e", 0, 1, 0, [("Italian Hero",0),("Tone Bender MkII",1)]),
+    ("pedal",     "Pedal",      "e", 0, 1, 0, [("Italian Hero",0),("I know it",1)]),
     ("mode",      "Variant",    "e", 0, 5, 2, [("Delta",0),("Ovis",1),("Gotham",2),("Cold War",3),("Red Bear",4),("Boutique",5)]),
     ("sustain",   "Sustain",    "f", 0, 1, 0.55, None),
     ("tone",      "Tone",       "f", 0, 1, 0.5, None),

@@ -46,8 +46,8 @@ PED = {
     knobs("Pre-Delay","Decay","Damping","Mod Depth","Mod Rate","Mix")),
  "utility": dict(w=320,h=300,tw=160,title="INPUT TRIM",tag=f"gain {DOT} phase {DOT} hum filter", body=
     '<div class="mod-control-group mod-knobs clearfix">' + knob("Gain") + sw("Phase") + sw("Hum Filter") + '</div>'),
- "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"Tone Bender MkII {DOT} germanium", body=
-    modelrow("PEDAL","Tone Bender MkII") +
+ "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"I know it {DOT} germanium", body=
+    modelrow("PEDAL","I know it") +
     knobs("Attack","Bias","Level","Input Trim","Ge Temp")),
 }
 

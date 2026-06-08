@@ -46,11 +46,17 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-sub {
     font-size: 10px; font-weight: 600; letter-spacing: .8px; line-height: 1; margin-top: 7px; color: #828893;
 }
+/* CSS hexagon emblem (transparent bg, crisp gradient — no raster logo.jpg) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hx-logo {
-    position: absolute; top: -4px; right: 0; width: 60px; height: 60px;
-    background-image: url(/resources/logo.jpg{{{ns}}});
-    background-size: contain; background-repeat: no-repeat; background-position: center right;
-    mix-blend-mode: screen; pointer-events: none;
+    position: absolute; top: 2px; right: 2px; width: 46px; height: 52px; pointer-events: none;
+    background: linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%);
+    clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    filter: drop-shadow(0 0 10px rgba(120,90,255,.55));
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hx-logo::after {
+    content: ""; position: absolute; left: 5px; top: 5px; right: 5px; bottom: 5px;
+    background: #0c0e14;
+    clip-path: polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
 }
 
 /* GLOBAL POWER / BYPASS */
@@ -68,6 +74,10 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-rack {
     position: absolute; top: 90px; left: 20px; right: 20px; bottom: 14px;
     display: flex; flex-wrap: wrap; align-content: flex-start; gap: 10px;
+    /* Lift the whole rack above the full-pedal drag-handle overlay so tile
+       grips, slot selectors, On/Off and More buttons are actually clickable.
+       (The header band stays below the overlay = the grab area for the pedal.) */
+    z-index: 30;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .clearfix::after { content:""; display:table; clear:both; }
 
