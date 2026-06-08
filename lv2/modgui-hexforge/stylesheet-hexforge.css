@@ -14,7 +14,7 @@
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
     width: 1300px;
-    height: 1000px;
+    height: 1060px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -106,12 +106,12 @@
    grips / slot selectors / On-Off / More are clickable (header is the grab area). */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-rack {
     position: absolute; top: 160px; left: 24px; right: 24px; bottom: 14px;
-    display: flex; flex-wrap: wrap; align-content: flex-start; align-items: flex-start;
-    gap: 13px; z-index: 30; overflow: visible;   /* visible so dropdowns + More popups aren't clipped */
+    display: flex; flex-wrap: wrap; align-content: flex-start; align-items: stretch;
+    gap: 13px; z-index: 30; overflow: visible;   /* stretch: each row matches its tallest tile (uniform, no overflow) */
 }
 
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tile {
-    width: 240px; box-sizing: border-box; position: relative; height: 400px;  /* uniform, roomy */
+    width: 240px; box-sizing: border-box; position: relative; min-height: 400px;  /* grows to fit, never clips */
     background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.20));
     border: 1px solid rgba(255,255,255,.07);
     border-top: 2px solid var(--acc);
