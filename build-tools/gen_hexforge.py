@@ -147,9 +147,11 @@ UNIT = {"db": "units:db", "ms": "units:ms", "hz": "units:hz"}
 
 # ── Build the ordered control-port list ───────────────────────────────────────
 # Each entry: dict(enum, sym, name, kind, mn, mx, df, scale)
-def mkport(enum, sym, name, kind, mn, mx, df, scale, short=None):
+def mkport(enum, sym, name, kind, mn, mx, df, scale, short=None, hidden=False):
+    # hidden=True → pprops:notOnGUI: kept out of MOD's generic/advanced control list
+    # (still driven by the custom modgui). Used for the chain-plumbing slot ports.
     return dict(enum=enum, sym=sym, name=name, kind=kind, mn=mn, mx=mx, df=df,
-                scale=scale, short=short or name)
+                scale=scale, short=short or name, hidden=hidden)
 
 ctrl = []
 # global bypass first
@@ -166,7 +168,7 @@ for suf, nm, kind, mn, mx, df, sc in IT:
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
     posscale = [(str(k), k) for k in range(1, 10)]   # 1..9 dropdown for reordering
-    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 9, dpos, posscale, "Slot"))
+    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 9, dpos, posscale, "Slot", hidden=True))
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, 1, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
@@ -204,12 +206,13 @@ def ttl_ctrl(c, index):
     out.append('        lv2:index %d ; lv2:symbol "%s" ; lv2:name "%s" ;' % (index, c["sym"], c["name"]))
     if c["kind"] in UNIT:
         out.append("        units:unit %s ;" % UNIT[c["kind"]])
-    if c["kind"] == "t":
-        out.append("        lv2:portProperty lv2:toggled ;")
-    elif c["kind"] == "i":
-        out.append("        lv2:portProperty lv2:integer ;")
-    elif c["kind"] == "e":
-        out.append("        lv2:portProperty lv2:integer, lv2:enumeration ;")
+    props = []
+    if   c["kind"] == "t": props = ["lv2:toggled"]
+    elif c["kind"] == "i": props = ["lv2:integer"]
+    elif c["kind"] == "e": props = ["lv2:integer", "lv2:enumeration"]
+    if c.get("hidden"):    props.append("pprops:notOnGUI")
+    if props:
+        out.append("        lv2:portProperty %s ;" % ", ".join(props))
     out.append("        lv2:default %s ; lv2:minimum %s ; lv2:maximum %s%s" % (
         fmt(c["df"], integral), fmt(c["mn"], integral), fmt(c["mx"], integral),
         " ;" if c["kind"] == "e" else ""))
@@ -233,6 +236,7 @@ def emit_ttl():
     L.append("@prefix work:  <http://lv2plug.in/ns/ext/worker#> .")
     L.append("@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .")
     L.append("@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .")
+    L.append("@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .")
     L.append("@prefix modgui:<http://moddevices.com/ns/modgui#> .")
     L.append("@prefix doap:  <http://usefulinc.com/ns/doap#> .")
     L.append("@prefix foaf:  <http://xmlns.com/foaf/0.1/> .")
@@ -400,13 +404,19 @@ def tile(pfx, title, accent, keys):
     head.append(render_enable(pfx))
     head.append('</div>')
 
-    # Key controls show inline; everything else lives behind a floating "More" popup
-    # (overlay, so it doesn't grow the tile). Conditional controls are hidden by
+    # Everything shows inline (taller uniform tiles) so there are no More popups
+    # overlapping neighbours — EXCEPT the amp, whose power-amp + Sunn brite channel
+    # are too many to fit, so its deep controls stay in a floating "More" (which
+    # opens upward from the bottom row). Conditional controls are hidden by
     # script-hexforge.js when they don't apply.
-    keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table if r[0] in keys)
+    if pfx == "amp":
+        keyhtml  = "".join(render_ctrl(CTRL_BY_SYM["amp_" + r[0]]) for r in table if r[0] in keys)
+        morehtml = "".join(render_ctrl(CTRL_BY_SYM["amp_" + r[0]]) for r in table if r[0] not in keys)
+    else:
+        keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
+        morehtml = ""
     if pfx == "cab":
         keyhtml = IR_PICKER + keyhtml
-    morehtml = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table if r[0] not in keys)
 
     cls = "hf-tile hf-locked" if locked else "hf-tile"
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]

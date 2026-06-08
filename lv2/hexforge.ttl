@@ -9,6 +9,7 @@
 @prefix work:  <http://lv2plug.in/ns/ext/worker#> .
 @prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
 @prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
@@ -96,7 +97,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 12 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -140,7 +141,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 19 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 2 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -197,7 +198,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 28 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 3 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -258,7 +259,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 38 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 4 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -305,7 +306,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 46 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 5 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -453,7 +454,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 75 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -486,7 +487,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 80 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 7 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -528,7 +529,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 87 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 8 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
@@ -597,7 +598,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 97 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 9 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;

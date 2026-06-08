@@ -14,7 +14,7 @@
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
     width: 1300px;
-    height: 812px;
+    height: 856px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -101,7 +101,7 @@
 }
 
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tile {
-    width: 240px; box-sizing: border-box; position: relative; height: 280px;  /* uniform */
+    width: 240px; box-sizing: border-box; position: relative; height: 312px;  /* uniform */
     background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(0,0,0,.20));
     border: 1px solid rgba(255,255,255,.07);
     border-top: 2px solid var(--acc);
