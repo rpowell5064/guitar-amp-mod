@@ -40,17 +40,20 @@ echo "== sanity-check staged bundle =="
 so=$(find "$BUNDLE"  -maxdepth 1 -name '*.so'        | wc -l)
 ttl=$(find "$BUNDLE" -maxdepth 1 -name '*.ttl'       | wc -l)
 gui=$(find "$BUNDLE" -maxdepth 1 -type d -name 'modgui-*' | wc -l)
-echo "   .so=$so  ttl=$ttl  modgui=$gui   (expect 9 / 10 / 9)"
-if [ "$so" -ne 9 ] || [ "$ttl" -ne 10 ] || [ "$gui" -ne 9 ]; then
+echo "   .so=$so  ttl=$ttl  modgui=$gui   (expect 11 / 12 / 11)"
+if [ "$so" -ne 11 ] || [ "$ttl" -ne 12 ] || [ "$gui" -ne 11 ]; then
     echo "!! staged bundle incomplete — aborting"; exit 1
 fi
 # every modgui dir must carry its rendered art + stylesheet
-for m in amp cab drive delay gate comp modfx reverb utility; do
-    for f in "stylesheet-$m.css" "icon-$m.html" "screenshot-$m.png" "thumbnail-$m.png" "logo.jpg"; do
+for m in amp cab drive delay gate comp modfx reverb utility fuzz hexforge; do
+    for f in "stylesheet-$m.css" "icon-$m.html" "screenshot-$m.png" "thumbnail-$m.png"; do
         [ -f "$BUNDLE/modgui-$m/$f" ] || { echo "!! missing modgui-$m/$f"; exit 1; }
     done
+    # branding image: logo.jpg on the pedals, logo.png on the Hex Forge container
+    [ -f "$BUNDLE/modgui-$m/logo.jpg" ] || [ -f "$BUNDLE/modgui-$m/logo.png" ] || \
+        { echo "!! missing modgui-$m logo"; exit 1; }
 done
-echo "   modgui assets present for all 9 pedals"
+echo "   modgui assets present for all 11 plugins"
 
 echo "== assemble tarball =="
 rm -rf "$DIST/$PKG"; mkdir -p "$DIST/$PKG"

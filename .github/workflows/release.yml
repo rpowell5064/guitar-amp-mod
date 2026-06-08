@@ -1,0 +1,70 @@
+name: Build & Release (pi-Stomp aarch64)
+
+# Builds the portable aarch64 Hex Chain LV2 bundle and, when a v* tag is pushed,
+# publishes it as a GitHub Release. Runs on a free arm64 hosted runner (public
+# repos), so the bundle is native aarch64.
+#
+# NOTE: the DSP engine lives in the PRIVATE submodule `GuitarAmpSimulator`, which
+# the default GITHUB_TOKEN cannot read. For CI to build you must add a repo secret
+# `SUBMODULE_TOKEN` = a (fine-grained) PAT with read access to that repo. Without it
+# the submodule checkout fails — build the tarball on the Pi instead
+# (`bash build-tools/package_bundle.sh <ver>`) and upload it to the release manually.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for a manual build (e.g. 1.1.0)'
+        required: false
+        default: '0.0.0-dev'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          # Falls back to the default token if SUBMODULE_TOKEN is not set (works
+          # only if the submodule repo is public).
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential pkg-config lv2-dev git ca-certificates
+
+      - name: Determine version
+        id: ver
+        run: |
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            echo "ver=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "ver=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build portable aarch64 bundle
+        run: bash build-tools/package_bundle.sh "${{ steps.ver.outputs.ver }}"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: guitaramp-suite-aarch64
+          path: dist/*.tar.gz
+
+      - name: Publish GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
+            --title "Hex Chain ${GITHUB_REF_NAME}" \
+            --notes "Portable aarch64 (armv8-a) build of the Hex Chain LV2 suite for MOD / pi-Stomp (11 plugins incl. Hex Forge). Extract on your Pi and run \`install.sh\`. Dual-licensed **GPL-3.0-or-later + commercial** — see LICENSING.md."
