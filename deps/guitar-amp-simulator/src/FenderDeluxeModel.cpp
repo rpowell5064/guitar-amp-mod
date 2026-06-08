@@ -29,6 +29,8 @@ void FenderDeluxeModel::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.sagEnv = 0.0f;
 
         c.airLP.setCoeffs(Filters::lowpass1pole(18000.0, oversampledFs_));
+        c.voiceShelf.setCoeffs(Filters::highshelf(2800.0, 13.0, oversampledFs_));
+        c.voiceCut.setCoeffs(Filters::peaking(900.0, -2.0, 1.0, oversampledFs_));
     }
     reset();
 }
@@ -43,6 +45,8 @@ void FenderDeluxeModel::reset() noexcept {
         c.stage2.reset();
         c.tonestack.reset();
         c.airLP.reset();
+        c.voiceShelf.reset();
+        c.voiceCut.reset();
         c.sagEnv = 0.0f;
     }
 }
@@ -75,6 +79,10 @@ float FenderDeluxeModel::processSample(float x, int channel) noexcept {
 
     // Air rolloff (6V6 output transformer)
     x = c.airLP.process(x);
+
+    // Voicing correction (restore bright Fender DI voice; lows kept tight)
+    x = c.voiceShelf.process(x);
+    x = c.voiceCut.process(x);
 
     // Master volume
     x *= m;

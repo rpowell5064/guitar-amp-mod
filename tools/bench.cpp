@@ -92,9 +92,18 @@ int main() {
     { OversamplingWrapper f(std::make_unique<EHXBigMuff>()); f.prepare(FS,NB,1); f.setParameter("era",2);
       run("Fuzz (Muff)", 1, [&](float**i,float**o,int n,int c){f.process(i,o,n,c);}, false); }
 
+    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::FenderDeluxe);
+      PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_6L6GC);
+      run("Amp: Fender + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
+    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::MarshallJCM800);
+      PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_EL34);
+      run("Amp: JCM800 + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
     { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::EVH5150III);
       PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_EL34);
-      run("Amp: 5150 + power amp", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, false); }
+      run("Amp: 5150 + power amp", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
+    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::OrangeRockerverb50);
+      PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_EL34);
+      run("Amp: Rockerverb + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
     // Sunn Model T: its PA is internal, so measure the amp block alone — in each
     // channel-link mode. Parallel/Series run BOTH preamp channels (≈2x triodes).
     // Silence column flags denormal/decay cost (relevant to "notes cut out").
