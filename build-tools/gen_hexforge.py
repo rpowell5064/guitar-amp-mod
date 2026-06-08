@@ -317,10 +317,10 @@ TILES = [
     ("it",  "Input Trim", "#7d8590", ["gain","phase","hum"]),
     ("gt",  "Gate",       "#19e0ff", ["thresh","release"]),
     ("cp",  "Comp",       "#38d39f", ["type","thresh","ratio","makeup"]),
-    ("fz",  "Fuzz",       "#eb5046", ["pedal","sustain","tone","volume"]),
+    ("fz",  "Fuzz",       "#eb5046", ["pedal","mode","sustain","tone","volume"]),
     ("dr",  "Drive",      "#ff8a3d", ["model","drive","tone","level"]),
-    ("amp", "Amp",        "#ff2bd6", ["model","gain","master"]),
-    ("cab", "Cabinet",    "#b07cff", ["mix"]),
+    ("amp", "Amp",        "#ff2bd6", ["model","gain","bass","mid","treble","presence","master"]),
+    ("cab", "Cabinet",    "#b07cff", ["lowcut","highcut","mix"]),
     ("md",  "Mod FX",     "#4db5ff", ["type","rate","depth","mix"]),
     ("dl",  "Delay",      "#ffd23d", ["type","time","feedback","mix"]),
     ("rv",  "Reverb",     "#5ce6c8", ["decay","damping","mix"]),
@@ -397,18 +397,22 @@ def tile(pfx, title, accent, keys):
     head.append(render_enable(pfx))
     head.append('</div>')
 
-    # All controls visible inline (no "More" — taller tiles instead). Conditional
-    # controls are hidden by script-hexforge.js when they don't apply.
+    # Key controls show inline; everything else lives behind a floating "More" popup
+    # (overlay, so it doesn't grow the tile). Conditional controls are hidden by
+    # script-hexforge.js when they don't apply.
+    keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table if r[0] in keys)
     if pfx == "cab":
-        body = IR_PICKER + "".join(render_ctrl(CTRL_BY_SYM["cab_" + r[0]]) for r in table)
-    else:
-        body = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
+        keyhtml = IR_PICKER + keyhtml
+    morehtml = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table if r[0] not in keys)
 
     cls = "hf-tile hf-locked" if locked else "hf-tile"
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]
     out = ['<div class="%s" data-block="%s"%s style="--acc:%s">' % (cls, pfx, posattr, accent)]
     out += head
-    out.append('<div class="hf-key clearfix">%s</div>' % body)
+    out.append('<div class="hf-key clearfix">%s</div>' % keyhtml)
+    if morehtml:
+        out.append('<div class="hf-morewrap"><button type="button" class="hf-morebtn">More ▾</button>'
+                   '<div class="hf-more clearfix">%s</div></div>' % morehtml)
     out.append('</div>')
     return "".join(out)
 
