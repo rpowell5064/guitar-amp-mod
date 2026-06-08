@@ -37,7 +37,7 @@ PED = {
  "gate": dict(w=360,h=300,tw=180,title="GATE",tag=f"noise gate {DOT} hysteresis", body=
     knobs("Threshold","Attack","Hold","Release","Hysteresis")),
  "comp": dict(w=420,h=340,tw=210,title="COMPRESSOR",tag=f"VCA glue {DOT} FET squash", body=
-    modelrow("MODEL","5 Amp Creature") +
+    modelrow("MODEL","5 Creature Amp") +
     '<div class="mod-control-group mod-row-mixed clearfix">' + sel("4:1","mod-mini-select") + '<span class="mod-inline-label">Ratio</span></div>' +
     knobs("Threshold","Attack","Release","Knee","Makeup")),
  "modfx": dict(w=400,h=352,tw=200,title="MODULATION",tag=f"chorus {DOT} rotary vibe", body=
