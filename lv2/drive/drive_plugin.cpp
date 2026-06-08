@@ -12,6 +12,7 @@
 #include "OverdriveBlock.h"
 #include "OverdriveFactory.h"
 #include "NamModel.h"
+#include "DenormalGuard.h"
 #include <new>
 #include <cstring>
 #include <cstdint>
@@ -134,6 +135,7 @@ static LV2_Worker_Status drive_work_response(LV2_Handle h, uint32_t, const void*
 }
 
 static void drive_run(LV2_Handle h, uint32_t n) {
+    DenormalGuard denormalGuard;   // flush denormals (NAM state can spike CPU in decay/silence)
     auto* p = static_cast<DrivePlugin*>(h);
     const URIs& u = p->uris;
 

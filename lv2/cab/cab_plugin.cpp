@@ -15,6 +15,7 @@
 #include "CabinetBlock.h"
 #include "DefaultCabIR.h"
 #include "NamModel.h"
+#include "DenormalGuard.h"
 #include <new>
 #include <cstring>
 #include <cstdint>
@@ -229,6 +230,7 @@ static LV2_Worker_Status cab_work_response(LV2_Handle h, uint32_t, const void* d
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 static void cab_run(LV2_Handle h, uint32_t n) {
+    DenormalGuard denormalGuard;   // flush denormals (NAM/IR state can spike CPU in decay/silence)
     auto* p = static_cast<CabPlugin*>(h);
     const URIs& u = p->uris;
 
