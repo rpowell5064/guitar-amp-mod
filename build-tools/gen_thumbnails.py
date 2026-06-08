@@ -27,27 +27,28 @@ PED = {
     knobs("Low Cut","High Cut","Mix") +
     f'<div class="mod-irloader-group"><span class="mod-section-label">IMPULSE RESPONSE</span>{sel("-- choose an IR file --","")}</div>'
     '<div class="mod-control-group mod-switches clearfix">' + sw("Bypass") + '</div>'),
- "drive": dict(w=360,h=300,tw=180,title="DRIVE",tag=f"TS-808 {DOT} Life Pedal {DOT} ProCo RAT", body=
+ "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"TS-808 {DOT} Life Pedal {DOT} ProCo RAT", body=
     modelrow("PEDAL MODEL","TS-808") + knobs("Drive","Tone","Level","Mix")),
- "delay": dict(w=480,h=450,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} echorec", body=
-    modelrow("DELAY TYPE","Echorec") +
+ "delay": dict(w=480,h=450,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} drum echo", body=
+    modelrow("DELAY TYPE","Echo Wreck") +
     '<div class="mod-echogroup"><div class="mod-heads-row"><span class="mod-section-label">ECHO HEADS</span>' + sel("11: All Heads") + '</div></div>' +
     knobs("Time","Feedback","Mix","Width") +
     '<div class="mod-tapegroup"><div class="mod-section-divider"></div><span class="mod-section-label">TAPE MOTION</span><div class="mod-control-group mod-knobs clearfix">' + knob("Wow") + knob("Flutter") + '</div></div>'),
  "gate": dict(w=360,h=300,tw=180,title="GATE",tag=f"noise gate {DOT} hysteresis", body=
     knobs("Threshold","Attack","Hold","Release","Hysteresis")),
- "comp": dict(w=420,h=340,tw=210,title="COMPRESSOR",tag=f"VCA {DOT} 1176-style", body=
-    modelrow("MODEL","VCA") +
+ "comp": dict(w=420,h=340,tw=210,title="COMPRESSOR",tag=f"VCA glue {DOT} FET squash", body=
+    modelrow("MODEL","Glue Crew") +
     '<div class="mod-control-group mod-row-mixed clearfix">' + sel("4:1","mod-mini-select") + '<span class="mod-inline-label">Ratio</span></div>' +
     knobs("Threshold","Attack","Release","Knee","Makeup")),
- "modfx": dict(w=400,h=300,tw=200,title="MODULATION",tag=f"CE-2 chorus {DOT} uni-vibe", body=
-    modelrow("MODEL","CE-2 Chorus") + knobs("Rate","Depth","Mix","Width")),
+ "modfx": dict(w=400,h=352,tw=200,title="MODULATION",tag=f"chorus {DOT} rotary vibe", body=
+    modelrow("MODEL","Lush-2") + knobs("Rate","Depth","Mix","Width")),
  "reverb": dict(w=480,h=320,tw=240,title="REVERB",tag="modulated reverb", body=
     knobs("Pre-Delay","Decay","Damping","Mod Depth","Mod Rate","Mix")),
- "utility": dict(w=320,h=240,tw=160,title="INPUT TRIM",tag=f"gain {DOT} phase {DOT} hum filter", body=
+ "utility": dict(w=320,h=300,tw=160,title="INPUT TRIM",tag=f"gain {DOT} phase {DOT} hum filter", body=
     '<div class="mod-control-group mod-knobs clearfix">' + knob("Gain") + sw("Phase") + sw("Hum Filter") + '</div>'),
- "fuzz": dict(w=360,h=300,tw=180,title="FUZZ",tag=f"6 fuzz eras {DOT} sustain {DOT} tone {DOT} volume", body=
-    modelrow("ERA","Gotham") + knobs("Sustain","Tone","Volume")),
+ "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"Tone Bender MkII {DOT} germanium", body=
+    modelrow("PEDAL","Tone Bender MkII") +
+    knobs("Attack","Bias","Level","Input Trim","Ge Temp")),
 }
 
 def render(p, d):
