@@ -267,7 +267,7 @@ def emit_ttl():
     L.append('    rdfs:label "Hex Chain — Hex Forge" ;')
     L.append('    mod:label  "Hex Forge" ;')
     L.append('    mod:brand  "Hex Chain" ;')
-    L.append("    doap:license <http://opensource.org/licenses/MIT> ;")
+    L.append("    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;")
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")

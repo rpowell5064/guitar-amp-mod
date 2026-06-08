@@ -6,7 +6,7 @@ PREFIX_ADD = ("@prefix doap:  <http://usefulinc.com/ns/doap#> .\n"
               "@prefix foaf:  <http://xmlns.com/foaf/0.1/> .")
 
 BRAND_ANCHOR = '    mod:brand  "Hex Chain" ;'
-META_ADD = ('    doap:license <http://opensource.org/licenses/MIT> ;\n'
+META_ADD = ('    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;\n'
             '    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;\n'
             '                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;')
 

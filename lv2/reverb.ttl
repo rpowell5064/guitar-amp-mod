@@ -11,7 +11,7 @@
     rdfs:label "Hex Chain — Reverb" ;
     mod:label  "Reverb" ;
     mod:brand  "Hex Chain" ;
-    doap:license <http://opensource.org/licenses/MIT> ;
+    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
