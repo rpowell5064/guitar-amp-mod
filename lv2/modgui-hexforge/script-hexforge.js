@@ -67,9 +67,10 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-sunn', m === 3);
         show(icon, 'amp', '.c-amp-chan', m === 2 || m === 4);
         show(icon, 'amp', '.c-amp-reso', m === 2);
-        show(icon, 'amp', '.c-amp-pa',   m !== 3);
-        show(icon, 'amp', '.c-amp-paman', m !== 3 && !a);
-        tileOf(icon, 'amp').find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : 'Gain');
+        show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
+        show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
+        show(icon, 'amp', '.c-amp-nam',  m === 5);   // NAM file picker
+        tileOf(icon, 'amp').find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 5 ? 'Output' : 'Gain'));
     }
     function applyFuzz(icon) {
         var p = icon.data('hf_fz_p'); if (p == null) p = 0;
@@ -86,9 +87,9 @@ function (event, funcs) {
         show(icon, 'dl', '.c-dl-heads', t === 2);
     }
 
-    function setIr(icon, value) {
-        var box = icon.find('[rata-role=Ir]');
-        if (value == null || value === 'None' || value === '') { box.text('-- choose an IR file --'); return; }
+    function setFile(icon, rata, value, empty) {
+        var box = icon.find('[rata-role=' + rata + ']');
+        if (value == null || value === 'None' || value === '') { box.text(empty); return; }
         var label = null;
         icon.find('[mod-role=enumeration-option]').each(function () {
             if (this.getAttribute('mod-parameter-value') == value)
@@ -97,6 +98,7 @@ function (event, funcs) {
         if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
         box.text(label);
     }
+    function setIr(icon, value) { setFile(icon, 'Ir', value, '-- choose an IR file --'); }
 
     if (event.type == 'start') {
         var icon = event.icon;
@@ -128,7 +130,9 @@ function (event, funcs) {
         if ('fz_pedal' in map)      icon.data('hf_fz_p', parseInt(map.fz_pedal, 10));
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
-        show(icon, 'dr', '.c-dr-oct', parseInt(map.dr_model || 0, 10) === 1);
+        var drm = parseInt(map.dr_model || 0, 10);
+        show(icon, 'dr', '.c-dr-oct', drm === 1);
+        show(icon, 'dr', '.c-dr-nam', drm === 3);
         ['it'].concat(BLOCKS).forEach(function (b) {
             if ((b + '_enable') in map) tileOf(icon, b).toggleClass('hf-off', !(map[b + '_enable'] > 0.5));
             if ((b + '_pos') in map)    tileOf(icon, b).attr('data-pos', parseInt(map[b + '_pos'], 10));
@@ -149,13 +153,21 @@ function (event, funcs) {
         } else if (s === 'fz_pedal') {
             icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
         } else if (s === 'dr_model') {
-            show(icon, 'dr', '.c-dr-oct', parseInt(event.value, 10) === 1);
+            var dm = parseInt(event.value, 10);
+            show(icon, 'dr', '.c-dr-oct', dm === 1);
+            show(icon, 'dr', '.c-dr-nam', dm === 3);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'clip') {
             icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
         } else if (event.uri && event.uri.indexOf('#irfile') >= 0) {
             setIr(icon, event.value);
+        } else if (event.uri && event.uri.indexOf('#ampnam') >= 0) {
+            setFile(icon, 'AmpNam', event.value, '-- choose a NAM file --');
+        } else if (event.uri && event.uri.indexOf('#drnam') >= 0) {
+            setFile(icon, 'DrNam', event.value, '-- choose a NAM file --');
+        } else if (event.uri && event.uri.indexOf('#cabnam') >= 0) {
+            setFile(icon, 'CabNam', event.value, '-- choose a NAM file --');
         }
     }
 }

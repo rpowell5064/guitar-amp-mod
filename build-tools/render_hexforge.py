@@ -13,7 +13,7 @@ W, H = 1300, 1060
 # Conditional classes hidden in the default selection (amp=Crunchy, PA Auto on,
 # fuzz=Italian Hero, drive=Green Man, delay=Digital) — mirror script-hexforge.js
 # so the static screenshot reflects the real default view.
-DEFAULT_HIDDEN = ["c-amp-sunn", "c-amp-chan", "c-amp-reso", "c-amp-paman",
+DEFAULT_HIDDEN = ["c-amp-nam", "c-dr-nam", "c-amp-sunn", "c-amp-chan", "c-amp-reso", "c-amp-paman",
                   "c-fz-tb", "c-dr-oct", "c-dl-tape", "c-dl-heads"]
 
 def strip_mustache(html):

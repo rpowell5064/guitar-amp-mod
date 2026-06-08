@@ -59,7 +59,7 @@ FZ = [
     ("getemp",    "Ge Temp",    "f", 0, 1, 0.4, None),
 ]
 DR = [
-    ("model",  "Model",  "e", 0, 2, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2)]),
+    ("model",  "Model",  "e", 0, 3, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3)]),
     ("drive",  "Drive",  "f", 0, 1, 0.5, None),
     ("tone",   "Tone",   "f", 0, 1, 0.5, None),
     ("level",  "Level",  "f", 0, 1, 0.5, None),
@@ -67,7 +67,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 4, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4)]),
+    ("model",         "Model",        "e", 0, 5, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -254,6 +254,14 @@ def emit_ttl():
     L.append("    rdfs:range atom:Path ;")
     L.append('    mod:fileTypes "cabsim,ir,wav,audio" .')
     L.append("")
+    L.append("# NAM neural-capture file params (Amp slot 5 / Drive slot 3 / Cab dual-mode).")
+    for frag, lbl in (("ampnam", "Amp NAM"), ("drnam", "Drive NAM"), ("cabnam", "Cabinet NAM")):
+        L.append("<%s#%s>" % (URI, frag))
+        L.append("    a lv2:Parameter ;")
+        L.append('    rdfs:label "%s" ;' % lbl)
+        L.append("    rdfs:range atom:Path ;")
+        L.append('    mod:fileTypes "nammodel,nam" .')
+        L.append("")
     L.append("<%s>" % URI)
     L.append("    a lv2:Plugin, lv2:AmplifierPlugin ;")
     L.append('    rdfs:label "Hex Chain — Hex Forge" ;')
@@ -270,7 +278,8 @@ def emit_ttl():
     L.append("    lv2:optionalFeature lv2:hardRTCapable ;")
     L.append("    lv2:extensionData state:interface , work:interface ;")
     L.append("")
-    L.append("    patch:writable <%s#irfile> ;" % URI)
+    # Order here = effect.parameters order in the modgui: 0 irfile,1 ampnam,2 drnam,3 cabnam.
+    L.append("    patch:writable <%s#irfile> , <%s#ampnam> , <%s#drnam> , <%s#cabnam> ;" % (URI, URI, URI, URI))
     L.append("")
     # audio ports
     L.append("    lv2:port [")
@@ -385,6 +394,15 @@ IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</sp
     '<div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
     '</div>{{/path}}{{/effect.parameters.0}}</div>')
 
+def nam_picker(idx, rata, cls):
+    # NAM file picker bound to effect.parameters.<idx> (1=amp,2=drive,3=cab).
+    return ('<div class="hf-ir %s"><span class="hf-sel-label">NAM Model</span>'
+            '{{#effect.parameters.%d}}{{#path}}'
+            '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
+            '<div mod-role="input-parameter-value" rata-role="%s" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- choose a NAM file --</div>'
+            '<div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
+            '</div>{{/path}}{{/effect.parameters.%d}}</div>') % (cls, idx, rata, idx)
+
 def render_pos(pfx):
     c = CTRL_BY_SYM[pfx + "_pos"]
     opts = "".join('<div mod-role="enumeration-option" mod-port-value="%d">%s</div>' % (v, lbl) for lbl, v in c["scale"])
@@ -421,8 +439,13 @@ def tile(pfx, title, accent, keys):
     else:
         keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
         morehtml = ""
-    if pfx == "cab":
-        keyhtml = IR_PICKER + keyhtml
+    # NAM pickers: amp/drive shown only on the Neural slot (cond class); cab always.
+    if pfx == "amp":
+        keyhtml = nam_picker(1, "AmpNam", "c-amp-nam") + keyhtml
+    elif pfx == "dr":
+        keyhtml = nam_picker(2, "DrNam", "c-dr-nam") + keyhtml
+    elif pfx == "cab":
+        keyhtml = IR_PICKER + nam_picker(3, "CabNam", "") + keyhtml
 
     cls = "hf-tile hf-locked" if locked else "hf-tile"
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]

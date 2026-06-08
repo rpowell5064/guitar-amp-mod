@@ -41,6 +41,7 @@
 #include "DelayBlock.h"
 #include "DelayFactory.h"
 #include "PlateReverbBlock.h"
+#include "NamModel.h"
 #include "DenormalGuard.h"
 
 #include <new>
@@ -52,8 +53,13 @@
 #include <fstream>
 #include <algorithm>
 
-#define HEXFORGE_URI    "https://rpowell5064.github.io/guitaramp-suite/hexforge"
-#define HEXFORGE_IR_URI HEXFORGE_URI "#irfile"
+#define HEXFORGE_URI     "https://rpowell5064.github.io/guitaramp-suite/hexforge"
+#define HEXFORGE_IR_URI  HEXFORGE_URI "#irfile"
+#define HEXFORGE_AMPNAM  HEXFORGE_URI "#ampnam"
+#define HEXFORGE_DRNAM   HEXFORGE_URI "#drnam"
+#define HEXFORGE_CABNAM  HEXFORGE_URI "#cabnam"
+static constexpr int kAmpNamIdx = 5;   // amp model slot = Neural (NAM)
+static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
 
 static constexpr int kMaxBlock = 512;
 static constexpr int kPathMax  = 1024;
@@ -109,18 +115,20 @@ static const int kEnablePort[B_COUNT] = {
 };
 
 // ── Worker messaging ──────────────────────────────────────────────────────────
-enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR };
+enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE };
 struct WorkMsg {
     WorkType          type;
     AmpBlockExtended* amp = nullptr;   // AMP_LOAD reply / AMP_FREE target
+    NamModel*         nam = nullptr;   // NAM_LOAD reply / NAM_FREE target
     int               modelIdx = 0;
-    char              path[kPathMax] = {0};   // CAB_IR
+    int               namSlot  = 0;    // 0=amp 1=drive 2=cab
+    char              path[kPathMax] = {0};   // CAB_IR / NAM_LOAD
 };
 
 struct URIs {
     LV2_URID atom_Object, atom_Path, atom_URID;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID ir_file;
+    LV2_URID ir_file, amp_nam, dr_nam, cab_nam;
 };
 
 struct HexForge {
@@ -139,6 +147,9 @@ struct HexForge {
     ModulationBlock   modfx;
     DelayBlock        delay;
     PlateReverbBlock  reverb;
+    NamModel*         ampNam = nullptr;   // worker-loaded neural captures
+    NamModel*         drNam  = nullptr;
+    NamModel*         cabNam = nullptr;
 
     // model-switch caches
     int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0;
@@ -149,11 +160,14 @@ struct HexForge {
     const LV2_Atom_Sequence* control = nullptr;
     LV2_Atom_Sequence*       notify  = nullptr;
 
-    // IR state
-    char irPath[kPathMax] = {0};
+    // file-load state
+    char irPath[kPathMax]     = {0};
+    char ampNamPath[kPathMax] = {0};
+    char drNamPath[kPathMax]  = {0};
+    char cabNamPath[kPathMax] = {0};
 
     // scratch
-    float mono[kMaxBlock];
+    float mono[kMaxBlock], monoOut[kMaxBlock];
     int   clipHold = 0;   // samples remaining to keep the CLIP indicator lit
 
     // host features
@@ -224,16 +238,19 @@ static void mapURIs(HexForge* p) {
     p->uris.patch_property= m->map(m->handle, LV2_PATCH__property);
     p->uris.patch_value   = m->map(m->handle, LV2_PATCH__value);
     p->uris.ir_file       = m->map(m->handle, HEXFORGE_IR_URI);
+    p->uris.amp_nam       = m->map(m->handle, HEXFORGE_AMPNAM);
+    p->uris.dr_nam        = m->map(m->handle, HEXFORGE_DRNAM);
+    p->uris.cab_nam       = m->map(m->handle, HEXFORGE_CABNAM);
 }
-static void writeIRToNotify(HexForge* p) {
+static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
     const URIs& u = p->uris;
     LV2_Atom_Forge_Frame frame;
     lv2_atom_forge_frame_time(&p->forge, 0);
     lv2_atom_forge_object(&p->forge, &frame, 0, u.patch_Set);
     lv2_atom_forge_key(&p->forge, u.patch_property);
-    lv2_atom_forge_urid(&p->forge, u.ir_file);
+    lv2_atom_forge_urid(&p->forge, prop);
     lv2_atom_forge_key(&p->forge, u.patch_value);
-    lv2_atom_forge_path(&p->forge, p->irPath, static_cast<uint32_t>(std::strlen(p->irPath)));
+    lv2_atom_forge_path(&p->forge, path, static_cast<uint32_t>(std::strlen(path)));
     lv2_atom_forge_pop(&p->forge, &frame);
 }
 
@@ -289,9 +306,18 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* p = static_cast<HexForge*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == W_AMP_FREE) { delete msg->amp; return LV2_WORKER_SUCCESS; }
+    if (msg->type == W_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
         if (loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
+        return LV2_WORKER_SUCCESS;
+    }
+    if (msg->type == W_NAM_LOAD) {
+        auto* nm = new(std::nothrow) NamModel;
+        if (!nm) return LV2_WORKER_ERR_NO_SPACE;
+        if (nm->loadFromFile(msg->path)) nm->reset(p->rate, kMaxBlock);
+        WorkMsg reply; reply.type = W_NAM_LOAD; reply.nam = nm; reply.namSlot = msg->namSlot;
+        respond(handle, sizeof(reply), &reply);
         return LV2_WORKER_SUCCESS;
     }
     // W_AMP_LOAD — build a fresh amp off the RT thread.
@@ -306,6 +332,15 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
 static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* data) {
     auto* p = static_cast<HexForge*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
+    if (msg->type == W_NAM_LOAD) {
+        NamModel** slot = (msg->namSlot == 0) ? &p->ampNam
+                        : (msg->namSlot == 1) ? &p->drNam : &p->cabNam;
+        NamModel* old = *slot;
+        *slot = msg->nam;
+        WorkMsg freeMsg; freeMsg.type = W_NAM_FREE; freeMsg.nam = old;
+        p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
+        return LV2_WORKER_SUCCESS;
+    }
     if (msg->type != W_AMP_LOAD) return LV2_WORKER_SUCCESS;
     AmpBlockExtended* old = p->amp;
     p->amp = msg->amp;
@@ -351,17 +386,24 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (obj->body.otype == u.patch_Set) {
                 const LV2_Atom *prop=nullptr, *val=nullptr;
                 lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
-                if (prop && prop->type==u.atom_URID &&
-                    reinterpret_cast<const LV2_Atom_URID*>(prop)->body==u.ir_file &&
-                    val && val->type==u.atom_Path) {
-                    const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
-                    std::strncpy(p->irPath, path, kPathMax-1); p->irPath[kPathMax-1]='\0';
-                    WorkMsg msg; msg.type=W_CAB_IR;
-                    std::strncpy(msg.path, p->irPath, kPathMax-1); msg.path[kPathMax-1]='\0';
+                if (!prop || prop->type!=u.atom_URID || !val || val->type!=u.atom_Path) continue;
+                const LV2_URID which = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
+                const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                char* dst = nullptr; WorkMsg msg;
+                if      (which == u.ir_file) { dst = p->irPath;     msg.type = W_CAB_IR; }
+                else if (which == u.amp_nam) { dst = p->ampNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 0; }
+                else if (which == u.dr_nam)  { dst = p->drNamPath;  msg.type = W_NAM_LOAD; msg.namSlot = 1; }
+                else if (which == u.cab_nam) { dst = p->cabNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 2; }
+                if (dst) {
+                    std::strncpy(dst, path, kPathMax-1); dst[kPathMax-1]='\0';
+                    std::strncpy(msg.path, dst, kPathMax-1); msg.path[kPathMax-1]='\0';
                     p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
                 }
             } else if (obj->body.otype == u.patch_Get && haveNotify) {
-                writeIRToNotify(p);
+                writeFileToNotify(p, u.ir_file, p->irPath);
+                writeFileToNotify(p, u.amp_nam, p->ampNamPath);
+                writeFileToNotify(p, u.dr_nam, p->drNamPath);
+                writeFileToNotify(p, u.cab_nam, p->cabNamPath);
             }
         }
     }
@@ -416,16 +458,17 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->fuzzBender->setParameter("getemp",    *p->ports[HF_FZ_GETEMP]);
     // Drive
     p->drive.setBypass(false);
-    const int driveModel = clampi(*p->ports[HF_DR_MODEL], 0, 2);
-    if (driveModel != p->lastDriveModel) { p->lastDriveModel = driveModel; p->drive.setType(kDriveMap[driveModel]); }
+    const int driveModel = clampi(*p->ports[HF_DR_MODEL], 0, kDrNamIdx);
+    if (driveModel <= 2 && driveModel != p->lastDriveModel) { p->lastDriveModel = driveModel; p->drive.setType(kDriveMap[driveModel]); }
     p->drive.setParameter("drive",  *p->ports[HF_DR_DRIVE]);
     p->drive.setParameter("tone",   *p->ports[HF_DR_TONE]);
     p->drive.setParameter("level",  *p->ports[HF_DR_LEVEL]);
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, 4);
-    if (ampModel != p->lastAmpModel) {
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kAmpNamIdx);
+    const int ampAlgo  = (ampModel <= 4) ? ampModel : 1;   // NAM(5) → safe table index
+    if (ampModel <= 4 && ampModel != p->lastAmpModel) {   // rebuild only for algo models
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
             p->lastAmpModel = ampModel;
@@ -457,13 +500,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("resonance", *p->ports[HF_AMP_RESONANCE]);
     int desiredTube;
     if (*p->ports[HF_AMP_PAMP_AUTO] > 0.5f) {
-        const auto d = PowerAmpProcessor::getDefaultsForModel(kCanonical[ampModel]);
+        const auto d = PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]);
         p->pa.setParameter("master", d.master); p->pa.setParameter("presence", d.presence);
         p->pa.setParameter("depth", d.depth);   p->pa.setParameter("nfb", d.nfb);
         p->pa.setParameter("sag", d.sag);
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
         p->pa.setParameter("airFeel",   *p->ports[HF_AMP_PAMP_AIRFEEL]);
-        desiredTube = kAmpTube[ampModel];
+        desiredTube = kAmpTube[ampAlgo];
     } else {
         p->pa.setParameter("presence",  *p->ports[HF_AMP_PAMP_PRESENCE]);
         p->pa.setParameter("depth",     *p->ports[HF_AMP_PAMP_DEPTH]);
@@ -477,7 +520,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);
-    const float ampMakeup = kAmpMakeup[ampModel];
+    const float ampMakeup = kAmpMakeup[ampAlgo];
     // Cab
     p->cab.setBypass(false);
     p->cab.setParameter("lowCutHz",  *p->ports[HF_CAB_LOWCUT]);
@@ -551,17 +594,44 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 case B_GATE:  runMono(p->gate, L, R, len, p->mono, stereo); break;
                 case B_COMP:  runMono(p->comp, L, R, len, p->mono, stereo); break;
                 case B_FUZZ:  runMono(fuzzPedal==0 ? *p->fuzzMuff : *p->fuzzBender, L, R, len, p->mono, stereo); break;
-                case B_DRIVE: runMono(p->drive, L, R, len, p->mono, stereo); break;
+                case B_DRIVE:
+                    if (driveModel == kDrNamIdx && p->drNam && p->drNam->isLoaded()) {
+                        // Neural drive: mono; Level (x2) + Mix dry/wet.
+                        if (!stereo) for (int i=0;i<len;++i) p->mono[i]=L[i];
+                        else         for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);
+                        p->drNam->processBuffer(p->mono, p->monoOut, len);
+                        const float mix=*p->ports[HF_DR_MIX], wet=*p->ports[HF_DR_LEVEL]*2.0f*mix, dry=1.0f-mix;
+                        for (int i=0;i<len;++i){ float o=dry*p->mono[i]+wet*p->monoOut[i]; L[i]=o; R[i]=o; }
+                    } else runMono(p->drive, L, R, len, p->mono, stereo);
+                    break;
                 case B_AMP: {
                     if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
-                    float* io[2] = { L, R };
-                    amp->process(io, io, len, 2);
-                    p->pa.process(io, io, len, 2);
-                    if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
+                    if (ampModel == kAmpNamIdx && p->ampNam && p->ampNam->isLoaded()) {
+                        // Neural amp: mono capture -> both; Master = output trim; no power amp.
+                        for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);
+                        p->ampNam->processBuffer(p->mono, p->monoOut, len);
+                        const float trim=*p->ports[HF_AMP_MASTER];
+                        for (int i=0;i<len;++i){ float y=p->monoOut[i]*trim; L[i]=y; R[i]=y; }
+                    } else {
+                        float* io[2] = { L, R };
+                        amp->process(io, io, len, 2);
+                        p->pa.process(io, io, len, 2);
+                        if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
+                    }
                     stereo = true;
                     break;
                 }
-                case B_CAB:    runStereo(p->cab,    L, R, len, stereo); break;
+                case B_CAB:
+                    if (p->cabNam && p->cabNam->isLoaded()) {
+                        // Neural cab/rig overrides the IR convolver; Mix = dry/wet.
+                        if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
+                        for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);
+                        p->cabNam->processBuffer(p->mono, p->monoOut, len);
+                        const float mix=*p->ports[HF_CAB_MIX], dry=1.0f-mix;
+                        for (int i=0;i<len;++i){ float w=p->monoOut[i]*mix; L[i]=dry*L[i]+w; R[i]=dry*R[i]+w; }
+                        stereo = true;
+                    } else runStereo(p->cab, L, R, len, stereo);
+                    break;
                 case B_MODFX:  runStereo(p->modfx,  L, R, len, stereo); break;
                 case B_DELAY:  runStereo(p->delay,  L, R, len, stereo); break;
                 case B_REVERB: runStereo(p->reverb, L, R, len, stereo); break;
@@ -593,6 +663,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
 static void hf_cleanup(LV2_Handle h) {
     auto* p = static_cast<HexForge*>(h);
     delete p->amp;
+    delete p->ampNam; delete p->drNam; delete p->cabNam;
     delete p;
 }
 
@@ -601,30 +672,58 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
                                 LV2_State_Handle handle, uint32_t flags,
                                 const LV2_Feature* const* features) {
     auto* p = static_cast<HexForge*>(h);
-    if (p->irPath[0]=='\0') return LV2_STATE_SUCCESS;
     auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
-    char* ap = mapPath ? mapPath->abstract_path(mapPath->handle, p->irPath) : p->irPath;
-    store(handle, p->uris.ir_file, ap, std::strlen(ap)+1, p->uris.atom_Path,
-          flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
-    if (mapPath && ap != p->irPath) free(ap);
+    auto saveOne = [&](LV2_URID prop, const char* raw) {
+        if (raw[0] == '\0') return;
+        char* ap = mapPath ? mapPath->abstract_path(mapPath->handle, const_cast<char*>(raw)) : const_cast<char*>(raw);
+        store(handle, prop, ap, std::strlen(ap)+1, p->uris.atom_Path,
+              flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+        if (mapPath && ap != raw) free(ap);
+    };
+    saveOne(p->uris.ir_file, p->irPath);
+    saveOne(p->uris.amp_nam, p->ampNamPath);
+    saveOne(p->uris.dr_nam,  p->drNamPath);
+    saveOne(p->uris.cab_nam, p->cabNamPath);
     return LV2_STATE_SUCCESS;
 }
 static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function retrieve,
                                    LV2_State_Handle handle, uint32_t,
                                    const LV2_Feature* const* features) {
     auto* p = static_cast<HexForge*>(h);
-    size_t size=0; uint32_t type=0, vflags=0;
-    const void* val = retrieve(handle, p->uris.ir_file, &size, &type, &vflags);
-    if (!val || type != p->uris.atom_Path) return LV2_STATE_SUCCESS;
     auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
-    const char* ap = static_cast<const char*>(val);
-    char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
-    std::vector<float> L, R;
-    if (loadIRFile(path, p->rate, L, R)) {
-        p->cab.setIR(L, R.empty()?nullptr:&R);
-        std::strncpy(p->irPath, path, kPathMax-1); p->irPath[kPathMax-1]='\0';
+    size_t size=0; uint32_t type=0, vflags=0;
+
+    auto absOf = [&](const void* val) -> char* {
+        const char* ap = static_cast<const char*>(val);
+        return mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
+    };
+    // IR
+    const void* irv = retrieve(handle, p->uris.ir_file, &size, &type, &vflags);
+    if (irv && type == p->uris.atom_Path) {
+        char* path = absOf(irv);
+        std::vector<float> L, R;
+        if (loadIRFile(path, p->rate, L, R)) {
+            p->cab.setIR(L, R.empty()?nullptr:&R);
+            std::strncpy(p->irPath, path, kPathMax-1); p->irPath[kPathMax-1]='\0';
+        }
+        if (mapPath && path != irv) free(path);
     }
-    if (mapPath && path != ap) free(path);
+    // NAM x3
+    auto restoreNam = [&](LV2_URID prop, NamModel** slot, char* pathDst) {
+        const void* v = retrieve(handle, prop, &size, &type, &vflags);
+        if (!v || type != p->uris.atom_Path) return;
+        char* path = absOf(v);
+        auto* nm = new(std::nothrow) NamModel;
+        if (nm && nm->loadFromFile(path)) {
+            nm->reset(p->rate, kMaxBlock);
+            delete *slot; *slot = nm;
+            std::strncpy(pathDst, path, kPathMax-1); pathDst[kPathMax-1]='\0';
+        } else delete nm;
+        if (mapPath && path != v) free(path);
+    };
+    restoreNam(p->uris.amp_nam, &p->ampNam, p->ampNamPath);
+    restoreNam(p->uris.dr_nam,  &p->drNam,  p->drNamPath);
+    restoreNam(p->uris.cab_nam, &p->cabNam, p->cabNamPath);
     return LV2_STATE_SUCCESS;
 }
 
