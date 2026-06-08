@@ -64,6 +64,11 @@ private:
         TriodeComponent  stage4;       // kMarshallV4
         BiquadFilter     presenceF;    // high shelf @ 4 kHz
         BiquadFilter     airLP;        // 1-pole LP @ 14 kHz
+        // Post-clipping body restore: the pre-gain HPFs are raised to keep the bass
+        // OUT of the cold-clipper stages (kills the flubby even-harmonic bass: h2 was
+        // 36% vs a real 800's 7%). This shelf adds the low-mid body back AFTER all the
+        // distortion, so the tone keeps Marshall chunk but the bass stays tight/clean.
+        BiquadFilter     bodyShelf;    // low-shelf @ ~180 Hz
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

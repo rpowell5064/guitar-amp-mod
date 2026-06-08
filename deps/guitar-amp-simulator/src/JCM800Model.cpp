@@ -11,13 +11,17 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
     masterSmooth_.setCurrentAndTargetValue(master_);
 
     for (auto& c : ch_) {
-        c.inputHPF.setCoeffs(Filters::highpass1pole(45.0, oversampledFs_));
+        // Pre-gain bass tightening: raised so the low end isn't over-clipped by the
+        // cold-clipper stages (nam_compare: bass was 49-65% THD / h2 36% vs a real
+        // JCM800's 20-31% / 7%). Tighter bass INTO the gain = the mids drive the crunch
+        // like a real 800; the post-gain tonestack still restores the low-mid body.
+        c.inputHPF.setCoeffs(Filters::highpass1pole(60.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kMarshallV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(70.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(110.0, oversampledFs_));
 
         c.stage2.prepare(oversampledFs_, TriodeComponent::kMarshallV2);
-        c.inter23HPF.setCoeffs(Filters::highpass1pole(55.0, oversampledFs_));
+        c.inter23HPF.setCoeffs(Filters::highpass1pole(90.0, oversampledFs_));
         c.inter23LP.setCoeffs(Filters::lowpass1pole(8000.0, oversampledFs_));
 
         c.stage3.prepare(oversampledFs_, TriodeComponent::kMarshallV3);
@@ -45,6 +49,7 @@ void JCM800Model::recalcFilters() noexcept {
     for (auto& c : ch_) {
         c.presenceF.setCoeffs(Filters::highshelf(4000.0, presDb, oversampledFs_));
         c.airLP.setCoeffs(Filters::lowpass1pole(14000.0, oversampledFs_));
+        c.bodyShelf.setCoeffs(Filters::lowshelf(200.0, 3.0, oversampledFs_));
     }
 }
 
@@ -64,6 +69,7 @@ void JCM800Model::reset() noexcept {
         c.stage4.reset();
         c.presenceF.reset();
         c.airLP.reset();
+        c.bodyShelf.reset();
         c.sagEnv = 0.0f;
     }
 }
@@ -104,6 +110,9 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     // Power-stage shaping
     x = c.presenceF.process(x);
     x = c.airLP.process(x);
+
+    // Restore low-mid body after all clipping (bass stays tight, not flubby)
+    x = c.bodyShelf.process(x);
 
     // Supply sag (EL34 B+ under drive)
     const float sagAttack = 1.0f - c.sagDecay;
