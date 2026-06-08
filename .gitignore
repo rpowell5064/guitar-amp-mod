@@ -21,6 +21,12 @@ build-tools/out/
 *.ilk
 *.exp
 
+# NAM captures of real amps/pedals — licensed third-party content, kept local
+# only as offline tuning references (never committed/distributed).
+*.nam
+nam_refs/
+nam_models/
+
 # Claude Code working files (never distribute)
 .claude/
 CLAUDE.md
