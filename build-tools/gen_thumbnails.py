@@ -27,7 +27,7 @@ PED = {
     knobs("Low Cut","High Cut","Mix") +
     f'<div class="mod-irloader-group"><span class="mod-section-label">IMPULSE RESPONSE</span>{sel("-- choose an IR file --","")}</div>'
     '<div class="mod-control-group mod-switches clearfix">' + sw("Bypass") + '</div>'),
- "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"Green Man {DOT} New Dawn {DOT} Dear Vermin Boy", body=
+ "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"Green Man {DOT} New Dawn {DOT} Dear Rodent Boy", body=
     modelrow("PEDAL MODEL","Green Man") + knobs("Drive","Tone","Level","Mix")),
  "delay": dict(w=480,h=450,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} drum echo", body=
     modelrow("DELAY TYPE","Echo Wreck") +
@@ -46,8 +46,8 @@ PED = {
     knobs("Pre-Delay","Decay","Damping","Mod Depth","Mod Rate","Mix")),
  "utility": dict(w=320,h=300,tw=160,title="INPUT TRIM",tag=f"gain {DOT} phase {DOT} hum filter", body=
     '<div class="mod-control-group mod-knobs clearfix">' + knob("Gain") + sw("Phase") + sw("Hum Filter") + '</div>'),
- "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"I know it {DOT} germanium", body=
-    modelrow("PEDAL","I know it") +
+ "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"I Know It {DOT} germanium", body=
+    modelrow("PEDAL","I Know It") +
     knobs("Attack","Bias","Level","Input Trim","Ge Temp")),
 }
 

@@ -49,7 +49,7 @@ CP = [
     ("makeup",  "Makeup",    "f", 0, 10, 0, None),
 ]
 FZ = [
-    ("pedal",     "Pedal",      "e", 0, 1, 0, [("Italian Hero",0),("I know it",1)]),
+    ("pedal",     "Pedal",      "e", 0, 1, 0, [("Italian Hero",0),("I Know It",1)]),
     ("mode",      "Variant",    "e", 0, 5, 2, [("Delta",0),("Ovis",1),("Gotham",2),("Cold War",3),("Red Bear",4),("Boutique",5)]),
     ("sustain",   "Sustain",    "f", 0, 1, 0.55, None),
     ("tone",      "Tone",       "f", 0, 1, 0.5, None),
@@ -59,7 +59,7 @@ FZ = [
     ("getemp",    "Ge Temp",    "f", 0, 1, 0.4, None),
 ]
 DR = [
-    ("model",  "Model",  "e", 0, 2, 0, [("Green Man",0),("New Dawn",1),("Dear Vermin Boy",2)]),
+    ("model",  "Model",  "e", 0, 2, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2)]),
     ("drive",  "Drive",  "f", 0, 1, 0.5, None),
     ("tone",   "Tone",   "f", 0, 1, 0.5, None),
     ("level",  "Level",  "f", 0, 1, 0.5, None),
@@ -389,7 +389,7 @@ def tile(pfx, title, accent, keys):
     head = ['<div class="hf-thead">']
     if locked:
         head.append('<span class="hf-grip hf-grip-lock">⌗</span>')
-        head.append('<span class="hf-posn hf-posn-lock">1</span>')
+        head.append('<span class="hf-posn hf-posn-lock">0</span>')   # locked pre-block = slot 0
     else:
         head.append('<span class="hf-grip" title="Drag to reorder">⋮⋮</span>')
         head.append(render_pos(pfx))
@@ -397,20 +397,18 @@ def tile(pfx, title, accent, keys):
     head.append(render_enable(pfx))
     head.append('</div>')
 
+    # All controls visible inline (no "More" — taller tiles instead). Conditional
+    # controls are hidden by script-hexforge.js when they don't apply.
     if pfx == "cab":
-        keyhtml = IR_PICKER + render_ctrl(CTRL_BY_SYM["cab_mix"])
+        body = IR_PICKER + "".join(render_ctrl(CTRL_BY_SYM["cab_" + r[0]]) for r in table)
     else:
-        keyhtml = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table if r[0] in keys)
-    morehtml = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table if r[0] not in keys)
+        body = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
 
     cls = "hf-tile hf-locked" if locked else "hf-tile"
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]
     out = ['<div class="%s" data-block="%s"%s style="--acc:%s">' % (cls, pfx, posattr, accent)]
     out += head
-    out.append('<div class="hf-key clearfix">%s</div>' % keyhtml)
-    if morehtml:
-        out.append('<div class="hf-morewrap"><button type="button" class="hf-morebtn">More ▾</button>'
-                   '<div class="hf-more clearfix">%s</div></div>' % morehtml)
+    out.append('<div class="hf-key clearfix">%s</div>' % body)
     out.append('</div>')
     return "".join(out)
 

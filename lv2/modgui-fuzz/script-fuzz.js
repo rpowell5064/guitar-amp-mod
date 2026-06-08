@@ -9,7 +9,7 @@ function (event, funcs) {
         // Shared knobs relabeled per pedal
         icon.find('[rata-role=sustainlabel]').text(tb ? 'Attack' : 'Sustain');
         icon.find('[rata-role=volumelabel]').text(tb ? 'Level'  : 'Volume');
-        icon.find('[rata-role=tagline]').text(tb ? 'I know it · germanium'
+        icon.find('[rata-role=tagline]').text(tb ? 'I Know It · germanium'
                                                  : 'Italian Hero · 6 variants');
     }
 
