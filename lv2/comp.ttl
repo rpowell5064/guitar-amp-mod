@@ -30,8 +30,8 @@
         lv2:index 2 ; lv2:symbol "comp_type" ; lv2:name "Type" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
-        lv2:scalePoint [ rdfs:label "Glue Crew"    ; rdf:value 0 ] ;
-        lv2:scalePoint [ rdfs:label "FET Accompli" ; rdf:value 1 ]
+        lv2:scalePoint [ rdfs:label "5 Amp Creature" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Once76" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "threshold" ; lv2:name "Threshold" ;

@@ -27,8 +27,8 @@ PED = {
     knobs("Low Cut","High Cut","Mix") +
     f'<div class="mod-irloader-group"><span class="mod-section-label">IMPULSE RESPONSE</span>{sel("-- choose an IR file --","")}</div>'
     '<div class="mod-control-group mod-switches clearfix">' + sw("Bypass") + '</div>'),
- "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"TS-808 {DOT} Life Pedal {DOT} ProCo RAT", body=
-    modelrow("PEDAL MODEL","TS-808") + knobs("Drive","Tone","Level","Mix")),
+ "drive": dict(w=360,h=344,tw=180,title="DRIVE",tag=f"Tube Screech {DOT} Life Sentence {DOT} Sewer Rat", body=
+    modelrow("PEDAL MODEL","Tube Screech") + knobs("Drive","Tone","Level","Mix")),
  "delay": dict(w=480,h=450,tw=180,title="DELAY",tag=f"digital {DOT} tape {DOT} drum echo", body=
     modelrow("DELAY TYPE","Echo Wreck") +
     '<div class="mod-echogroup"><div class="mod-heads-row"><span class="mod-section-label">ECHO HEADS</span>' + sel("11: All Heads") + '</div></div>' +
@@ -37,7 +37,7 @@ PED = {
  "gate": dict(w=360,h=300,tw=180,title="GATE",tag=f"noise gate {DOT} hysteresis", body=
     knobs("Threshold","Attack","Hold","Release","Hysteresis")),
  "comp": dict(w=420,h=340,tw=210,title="COMPRESSOR",tag=f"VCA glue {DOT} FET squash", body=
-    modelrow("MODEL","Glue Crew") +
+    modelrow("MODEL","5 Amp Creature") +
     '<div class="mod-control-group mod-row-mixed clearfix">' + sel("4:1","mod-mini-select") + '<span class="mod-inline-label">Ratio</span></div>' +
     knobs("Threshold","Attack","Release","Knee","Makeup")),
  "modfx": dict(w=400,h=352,tw=200,title="MODULATION",tag=f"chorus {DOT} rotary vibe", body=
