@@ -39,7 +39,7 @@
 .mod-pedal-guitaramp-comp{{{cns}}} .mod-knob { display:inline-block; height:94px; width:80px; overflow: visible; position:relative; vertical-align:top; }
 .mod-pedal-guitaramp-comp{{{cns}}} .mod-knob .mod-knob-image { background-image:url(/resources/knobs/knob.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 46px; height:46px; width:46px; margin:4px auto 0; }
 .mod-pedal-guitaramp-comp{{{cns}}} .mod-knob .mod-knob-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; text-transform:uppercase; text-align:center; display:block; margin-top:4px; }
-.mod-pedal-guitaramp-comp{{{cns}}} .mod-row-mixed { width:420px; margin-top:4px; text-align:center; }
+.mod-pedal-guitaramp-comp{{{cns}}} .mod-row-mixed { width:420px; margin-top:4px; text-align:center; position:relative; }
 .mod-pedal-guitaramp-comp{{{cns}}} .mod-switch { display:inline-block; cursor:pointer; width:84px; height:44px; position:relative; text-align:center; vertical-align:middle; }
 .mod-pedal-guitaramp-comp{{{cns}}} .mod-switch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 22px; height:22px; width:44px; margin:0 auto; }
 .mod-pedal-guitaramp-comp{{{cns}}} .mod-switch-image.on { background-position:-44px 0; }
