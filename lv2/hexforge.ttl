@@ -73,7 +73,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 9 ;
+    lv2:microVersion 10 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -370,7 +370,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 48 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 49 ; lv2:symbol "amp_model" ; lv2:name "Amp Model" ;
@@ -594,7 +594,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 89 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 90 ; lv2:symbol "dl_type" ; lv2:name "Delay Type" ;
@@ -663,7 +663,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 99 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 100 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay" ;

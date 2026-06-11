@@ -168,9 +168,9 @@ ctrl.append(mkport("IT_ENABLE", "it_enable", "Input Trim Enable", "t", 0, 1, 1, 
 for suf, nm, kind, mn, mx, df, sc in IT:
     ctrl.append(mkport("IT_" + suf.upper(), "it_" + suf, "IT " + nm, kind, mn, mx, df, sc, nm))
 # movable blocks: pos, enable, params
-# Fresh Hex Forge starts with ONLY Input Trim, Gate and Cabinet engaged; every
-# other block starts bypassed so the user builds the chain up from a clean state.
-OFF_BY_DEFAULT = {"cp", "fz", "dr", "amp", "md", "dl", "rv"}   # all but Gate + Cabinet
+# Fresh Hex Forge starts with a usable core chain engaged: Input Trim, Gate, Amp,
+# Cabinet, Delay and Reverb. Comp, Fuzz, Drive and Mod start bypassed.
+OFF_BY_DEFAULT = {"cp", "fz", "dr", "md"}   # off: Comp, Fuzz, Drive, Mod
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
     posscale = [(str(k), k) for k in range(1, 10)]   # 1..9 dropdown for reordering
@@ -323,7 +323,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 9 ;")
+    L.append("    lv2:microVersion 10 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
