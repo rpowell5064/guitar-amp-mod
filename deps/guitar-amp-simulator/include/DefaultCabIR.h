@@ -4,62 +4,81 @@
 #include <cmath>
 #include <cstdint>
 
-// Generates a synthetic Celestion Greenback-style 4×12 cabinet IR.
+// Generates a synthetic Celestion Vintage 30 (4×12, closed-back) close-miked
+// with a Shure SM57 — the de-facto standard modern guitar cab tone, used when
+// no user IR is loaded.
 //
-// Approach: exponentially decaying noise burst (fixed seed → deterministic)
-// filtered through a Greenback frequency-response biquad stack. Captures the
-// essential cab character — LF thump, slight bark around 2.5 kHz, and the
-// aggressive HF rolloff that kills preamp fizz — without requiring any IR file.
+// Approach: a unit impulse filtered through a V30+SM57 frequency-response
+// biquad stack, so the IR's magnitude response is exactly the designed voicing
+// (smooth, no random notches — a single noise realisation rippled the curve and
+// drifted the peaks). This is also a fair model of a close-miked single speaker,
+// which has little comb filtering. The cascade's natural ringing supplies the
+// short decay; the tail is faded out to avoid a truncation click.
 //
-// Length ~46 ms (scales with sampleRate so the response is SR-independent).
+// Character — tight closed-back chunk, scooped lower mids, the V30's forward
+// upper-mid "honk" ~1.9 kHz, the SM57/cone-breakup bite ~4 kHz, and a steep top
+// that dies ~5 kHz (bright but fizz-free) — without requiring an IR file.
+//
+// Length ~40 ms (scales with sampleRate so the response is SR-independent).
 namespace DefaultCabIR {
 
 inline std::vector<float> generate(double sampleRate) {
-    const int len = static_cast<int>(sampleRate * 0.046);
+    const int len = static_cast<int>(sampleRate * 0.040);
 
-    // ── Exponentially decaying noise burst ────────────────────────────────────
-    // Fixed LCG seed → same IR shape every time at a given SR.
-    std::vector<float> ir(static_cast<size_t>(len));
-    uint32_t rng = 0x12345678u;
-    const double tau = sampleRate * 0.012; // 12 ms decay time constant
-    for (int i = 0; i < len; ++i) {
-        rng = rng * 1664525u + 1013904223u; // Numerical Recipes LCG
-        const float noise = static_cast<float>(static_cast<int32_t>(rng)) / 2147483648.0f;
-        ir[i] = noise * static_cast<float>(std::exp(-i / tau));
-    }
+    // ── Unit impulse excitation ───────────────────────────────────────────────
+    std::vector<float> ir(static_cast<size_t>(len), 0.0f);
+    ir[0] = 1.0f;
 
-    // ── Greenback 4×12 frequency shaping ─────────────────────────────────────
-    // Open-back LF rolloff (collapses below 80 Hz — no bass boom)
+    // ── V30 + SM57 frequency shaping ─────────────────────────────────────────
+    // Closed-back LF rolloff: collapses below ~70 Hz, slight resonant lift to
+    // keep the low-end "chunk".
     BiquadFilter hp;
-    hp.setCoeffs(Filters::highpass(80.0, 0.707, sampleRate));
+    hp.setCoeffs(Filters::highpass(72.0, 1.0, sampleRate));
 
-    // Primary HF rolloff — two cascaded LP stages for 24 dB/oct steepness.
-    // This is the most important stage: kills the "fizz" above ~5 kHz.
-    BiquadFilter lp1, lp2;
-    lp1.setCoeffs(Filters::lowpass(4800.0, 0.6, sampleRate));
-    lp2.setCoeffs(Filters::lowpass(4800.0, 0.9, sampleRate));
+    // Closed-back cabinet/speaker resonance: tight thump ~100 Hz (+2.5 dB).
+    BiquadFilter thump;
+    thump.setCoeffs(Filters::peaking(100.0, 2.5, 1.2, sampleRate));
 
-    // Cabinet body resonance: low-mid thump around 200 Hz (+3 dB)
-    BiquadFilter body;
-    body.setCoeffs(Filters::peaking(200.0, 3.0, 1.5, sampleRate));
+    // V30 scooped lower mids ~440 Hz (-3 dB) — the classic "scoop".
+    BiquadFilter scoop;
+    scoop.setCoeffs(Filters::peaking(440.0, -3.0, 1.0, sampleRate));
 
-    // Greenback "bark": cone breakup bite at 2.5 kHz (+2 dB)
+    // Subtle nasal dip ~750 Hz (-1.5 dB).
+    BiquadFilter nasal;
+    nasal.setCoeffs(Filters::peaking(750.0, -1.5, 1.6, sampleRate));
+
+    // V30 signature: forward upper-mid "honk"/cut ~1.9 kHz (+4.5 dB).
+    BiquadFilter honk;
+    honk.setCoeffs(Filters::peaking(1900.0, 4.5, 1.0, sampleRate));
+
+    // SM57 presence + cone-breakup bite ~4 kHz (+3 dB) — the on-axis "edge".
     BiquadFilter bite;
-    bite.setCoeffs(Filters::peaking(2500.0, 2.0, 1.2, sampleRate));
+    bite.setCoeffs(Filters::peaking(4000.0, 3.0, 1.8, sampleRate));
 
-    // Slight mid dip at 800 Hz (-1.5 dB) — open-back hollow character
-    BiquadFilter midDip;
-    midDip.setCoeffs(Filters::peaking(800.0, -1.5, 0.9, sampleRate));
+    // Steep HF rolloff — two cascaded LP stages (~24 dB/oct). The speaker dies
+    // ~5 kHz: bright enough for V30 sizzle, steep enough to kill preamp fizz.
+    BiquadFilter lp1, lp2;
+    lp1.setCoeffs(Filters::lowpass(5200.0, 0.7, sampleRate));
+    lp2.setCoeffs(Filters::lowpass(5200.0, 1.0, sampleRate));
 
     for (int i = 0; i < len; ++i) {
         float x = ir[i];
         x = hp.process(x);
+        x = thump.process(x);
+        x = scoop.process(x);
+        x = nasal.process(x);
+        x = honk.process(x);
+        x = bite.process(x);
         x = lp1.process(x);
         x = lp2.process(x);
-        x = body.process(x);
-        x = bite.process(x);
-        x = midDip.process(x);
         ir[i] = x;
+    }
+
+    // ── Raised-cosine fade over the last 25% (kill any truncation click) ──────
+    const int fade = len / 4;
+    for (int i = 0; i < fade; ++i) {
+        const float w = 0.5f * (1.0f + std::cos(static_cast<float>(M_PI) * i / fade));
+        ir[len - fade + i] *= w;
     }
 
     // ── Normalise to 50% peak ─────────────────────────────────────────────────
