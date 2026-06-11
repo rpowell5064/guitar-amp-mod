@@ -121,30 +121,28 @@ static int clampi(float v, int lo, int hi) {
 // has to be found by hand. It only ever turns the gain *down* (never boosts noise).
 // A fast safety limiter just under the digital ceiling catches transients, so it
 // also can't clip. Transparent on quiet material; turns hot amp/NAM signals down.
+// Transparent peak limiter / clip protector. The master Output level is applied
+// FIRST (so "auto" sounds exactly like manual at the same setting); the limiter
+// only reduces gain when a post-level peak would breach the ceiling. Attack is
+// sample-accurate (no sample passes the ceiling) and release is smooth so steady,
+// non-clipping signals are left completely untouched — it does NOT pull the level
+// down to the knob value the way the old AGC did.
 struct AutoOutput {
-    float gain = 1.0f, peak = 0.0f, limEnv = 1.0f;
-    float peakDecay = 0.0f, gainSmooth = 0.0f, limRel = 0.0f;
-    static constexpr float kCeiling = 0.98f;
+    float env = 1.0f;          // limiter gain envelope, <= 1.0
+    float rel = 0.0f;          // release coefficient
+    static constexpr float kCeiling = 0.95f;   // ~-0.45 dBFS, headroom below full scale
     void prepare(double sr) noexcept {
-        const float s = static_cast<float>(sr);
-        peakDecay  = std::exp(-1.0f / (1.5f  * s));   // peak-hold decays ~1.5 s
-        gainSmooth = std::exp(-1.0f / (0.25f * s));   // gain glides ~0.25 s (no zipper)
-        limRel     = std::exp(-1.0f / (0.05f * s));   // safety-limiter release ~50 ms
+        rel = std::exp(-1.0f / (0.120f * static_cast<float>(sr)));   // ~120 ms release
     }
-    void reset() noexcept { gain = 1.0f; peak = 0.0f; limEnv = 1.0f; }
-    void process(float* L, float* R, uint32_t n, float target) noexcept {
-        if (target < 0.01f) target = 0.01f;
+    void reset() noexcept { env = 1.0f; }
+    void process(float* L, float* R, uint32_t n, float level) noexcept {
         for (uint32_t i = 0; i < n; ++i) {
-            const float a = std::fmax(std::fabs(L[i]), std::fabs(R[i]));
-            peak = (a > peak) ? a : peak * peakDecay;
-            const float want = (peak > 1e-6f) ? std::fmin(1.0f, target / peak) : 1.0f;  // reduce only
-            gain = gainSmooth * gain + (1.0f - gainSmooth) * want;
-            float l = L[i] * gain, r = R[i] * gain;
-            const float p2 = std::fmax(std::fabs(l), std::fabs(r));        // safety limiter
-            const float des = (p2 > kCeiling) ? kCeiling / p2 : 1.0f;
-            if (des < limEnv) limEnv = des;
-            else limEnv = limRel * limEnv + (1.0f - limRel) * des;
-            L[i] = l * limEnv; R[i] = r * limEnv;
+            const float l = L[i] * level, r = R[i] * level;          // master level first
+            const float a = std::fmax(std::fabs(l), std::fabs(r));   // stereo-linked peak
+            const float des = (a > kCeiling) ? kCeiling / a : 1.0f;  // gain needed to stay under ceiling
+            if (des < env) env = des;                                // instant attack: never clip
+            else           env = rel * env + (1.0f - rel) * des;     // smooth release back to unity
+            L[i] = l * env; R[i] = r * env;
         }
     }
 };
@@ -959,7 +957,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // ── Master output level (the "Output" stage — last in the chain) ──
     const float outLevel = *p->ports[HF_OUT_LEVEL];
     if (*p->ports[HF_OUT_AUTO] > 0.5f) {
-        // Auto: Output knob is the target peak; ride the gain to it (clip-safe).
+        // Auto: apply the Output knob as master gain, then limit only peaks that
+        // would clip (transparent below the ceiling — same loudness as manual).
         p->autoOut.process(outL, outR, n, outLevel);
     } else {
         // Manual: Output knob is a fixed master gain.
