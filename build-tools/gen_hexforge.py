@@ -34,7 +34,7 @@ IT = [
 ]
 GT = [
     ("thresh",  "Threshold",  "db", -80, 0, -60, None),
-    ("attack",  "Attack",     "ms", 0.1, 50, 5, None),
+    ("attack",  "Attack",     "ms", 0.1, 50, 0.1, None),
     ("hold",    "Hold",       "ms", 0, 500, 50, None),
     ("release", "Release",    "ms", 10, 2000, 100, None),
     ("hyst",    "Hysteresis", "db", 0, 20, 6, None),
@@ -125,7 +125,7 @@ RV = [
     ("predelay", "Pre-Delay", "ms", 0, 100, 10, None),
     ("decay",    "Decay",     "f", 0.1, 8, 1.5, None),
     ("damping",  "Damping",   "f", 0, 0.99, 0.3, None),
-    ("moddepth", "Mod Depth", "f", 0, 1, 0.5, None),
+    ("moddepth", "Mod Depth", "f", 0, 1, 0.0, None),
     ("modrate",  "Mod Rate",  "f", 0.01, 5, 0.8, None),
     ("mix",      "Mix",       "f", 0, 1, 0.15, None),
 ]
@@ -162,7 +162,7 @@ ctrl.append(mkport("BYPASS", "bypass", "Bypass", "t", 0, 1, 0, None))
 # +12 dB make-up boost; the linear knob throw is a natural dB taper. Default
 # -13 dB ~= the old 0.23 linear gain so loudness is unchanged. Shown in the top
 # Output strip, not as a chain tile. (The plugin converts dB -> linear gain.)
-ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "db", -60, 12, -13, None, "Master"))
+ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "db", -60, 12, -20, None, "Master"))
 # output clip indicator (plugin -> UI): 1 while the output is hitting full scale.
 ctrl.append(mkport("CLIP", "clip", "Clip", "f", 0, 1, 0, None, "Clip", out=True))
 # input trim (locked): enable + params, no pos. Per-block toggles use ENABLE
@@ -326,7 +326,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 11 ;")
+    L.append("    lv2:microVersion 12 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
