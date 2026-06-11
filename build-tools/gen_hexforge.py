@@ -326,7 +326,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 12 ;")
+    L.append("    lv2:microVersion 13 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -401,16 +401,18 @@ def emit_ttl():
 TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV}
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
-    ("it",  "Input Trim", "#7d8590", ["gain","phase","hum"]),
-    ("gt",  "Gate",       "#19e0ff", ["thresh","release"]),
-    ("cp",  "Comp",       "#38d39f", ["type","thresh","ratio","makeup"]),
-    ("fz",  "Fuzz",       "#eb5046", ["pedal","mode","sustain","tone","volume"]),
-    ("dr",  "Drive",      "#ff8a3d", ["model","drive","tone","level"]),
-    ("amp", "Amp",        "#ff2bd6", ["model","gain","bass","mid","treble","presence","master"]),
-    ("cab", "Cabinet",    "#b07cff", ["lowcut","highcut","mix"]),
-    ("md",  "Mod FX",     "#4db5ff", ["type","rate","depth","mix"]),
-    ("dl",  "Delay",      "#ffd23d", ["type","time","feedback","mix"]),
-    ("rv",  "Reverb",     "#5ce6c8", ["decay","damping","mix"]),
+    # Accents match each standalone pedal's brand color (its .hx-title / border-top)
+    # so the Hex Forge tiles read as the same effects, not a different palette.
+    ("it",  "Input Trim", "#6eaf87", ["gain","phase","hum"]),                                 # utility
+    ("gt",  "Gate",       "#8c9baf", ["thresh","release"]),                                   # gate
+    ("cp",  "Comp",       "#4687eb", ["type","thresh","ratio","makeup"]),                     # comp
+    ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
+    ("dr",  "Drive",      "#eb5046", ["model","drive","tone","level"]),                       # drive
+    ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
+    ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
+    ("md",  "Mod FX",     "#a56eeb", ["type","rate","depth","mix"]),                          # modfx
+    ("dl",  "Delay",      "#3cc8be", ["type","time","feedback","mix"]),                       # delay
+    ("rv",  "Reverb",     "#5f73e1", ["decay","damping","mix"]),                              # reverb
 ]
 
 # Conditional-visibility classes: a control is shown/hidden by script-hexforge.js
