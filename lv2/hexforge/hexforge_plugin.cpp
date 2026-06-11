@@ -130,9 +130,9 @@ static int clampi(float v, int lo, int hi) {
 struct AutoOutput {
     float env = 1.0f;          // limiter gain envelope, <= 1.0
     float rel = 0.0f;          // release coefficient
-    static constexpr float kCeiling = 0.95f;   // ~-0.45 dBFS, headroom below full scale
+    static constexpr float kCeiling = 0.98f;   // ~-0.18 dBFS: only catch true overs
     void prepare(double sr) noexcept {
-        rel = std::exp(-1.0f / (0.120f * static_cast<float>(sr)));   // ~120 ms release
+        rel = std::exp(-1.0f / (0.045f * static_cast<float>(sr)));   // ~45 ms release (less dulling)
     }
     void reset() noexcept { env = 1.0f; }
     void process(float* L, float* R, uint32_t n, float level) noexcept {
