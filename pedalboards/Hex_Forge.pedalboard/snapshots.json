@@ -1,0 +1,167 @@
+{
+    "current": 0,
+    "snapshots": [
+        {
+            "name": "Default",
+            "data": {
+                "stereo": {
+                    "bypassed": false,
+                    "parameters": {},
+                    "ports": {
+                        "gain": 0.0,
+                        "enable": 1.0,
+                        "mute": 0.0
+                    },
+                    "preset": "",
+                    "bpm": 120.0,
+                    "bpb": 4.0
+                },
+                "hexforge": {
+                    "bypassed": false,
+                    "parameters": {
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#ampnam": [
+                            "",
+                            "p"
+                        ],
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#cabnam": [
+                            "",
+                            "p"
+                        ],
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#drnam": [
+                            "",
+                            "p"
+                        ],
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#irfile": [
+                            "",
+                            "p"
+                        ],
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_apply": [
+                            "",
+                            "s"
+                        ],
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_index": [
+                            "",
+                            "s"
+                        ],
+                        "https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name": [
+                            "",
+                            "s"
+                        ]
+                    },
+                    "ports": {
+                        "bypass": 0.0,
+                        "out_level": 1.0,
+                        "it_enable": 1.0,
+                        "it_gain": 0.0,
+                        "it_phase": 0.0,
+                        "it_hum": 0.0,
+                        "gt_pos": 1.0,
+                        "gt_enable": 1.0,
+                        "gt_thresh": -60.0,
+                        "gt_attack": 5.0,
+                        "gt_hold": 50.0,
+                        "gt_release": 100.0,
+                        "gt_hyst": 6.0,
+                        "cp_pos": 2.0,
+                        "cp_enable": 1.0,
+                        "cp_type": 0.0,
+                        "cp_thresh": -18.0,
+                        "cp_ratio": 1.0,
+                        "cp_attack": 5.0,
+                        "cp_release": 5.0,
+                        "cp_knee": 3.0,
+                        "cp_makeup": 0.0,
+                        "fz_pos": 3.0,
+                        "fz_enable": 0.0,
+                        "fz_pedal": 0.0,
+                        "fz_mode": 2.0,
+                        "fz_sustain": 0.550000011920929,
+                        "fz_tone": 0.5,
+                        "fz_volume": 0.6499999761581421,
+                        "fz_bias": 0.5,
+                        "fz_inputtrim": 0.5,
+                        "fz_getemp": 0.4000000059604645,
+                        "dr_pos": 4.0,
+                        "dr_enable": 0.0,
+                        "dr_model": 0.0,
+                        "dr_drive": 0.5,
+                        "dr_tone": 0.5,
+                        "dr_level": 0.5,
+                        "dr_mix": 1.0,
+                        "dr_octave": 0.30000001192092896,
+                        "amp_pos": 5.0,
+                        "amp_enable": 1.0,
+                        "amp_model": 1.0,
+                        "amp_gain": 0.5,
+                        "amp_bass": 0.5,
+                        "amp_mid": 0.5,
+                        "amp_treble": 0.5,
+                        "amp_presence": 0.5,
+                        "amp_master": 0.699999988079071,
+                        "amp_sag": 0.30000001192092896,
+                        "amp_channel": 0.0,
+                        "amp_resonance": 0.0,
+                        "amp_sunn_vol2": 0.5,
+                        "amp_sunn_link": 0.0,
+                        "amp_pamp_bypass": 0.0,
+                        "amp_pamp_tube": 1.0,
+                        "amp_pamp_presence": 0.550000011920929,
+                        "amp_pamp_depth": 0.18000000715255737,
+                        "amp_pamp_sag": 0.33000001311302185,
+                        "amp_pamp_master": 0.6200000047683716,
+                        "amp_pamp_nfb": 0.41999998688697815,
+                        "amp_pamp_resonance": 0.5,
+                        "amp_pamp_airfeel": 0.0,
+                        "amp_pamp_auto": 1.0,
+                        "amp_sunn_bass2": 0.5,
+                        "amp_sunn_mid2": 0.5,
+                        "amp_sunn_treble2": 0.5,
+                        "amp_sunn_bright1": 0.0,
+                        "amp_sunn_bright2": 0.0,
+                        "cab_pos": 6.0,
+                        "cab_enable": 1.0,
+                        "cab_lowcut": 80.0,
+                        "cab_highcut": 16000.0,
+                        "cab_mix": 1.0,
+                        "md_pos": 7.0,
+                        "md_enable": 0.0,
+                        "md_type": 0.0,
+                        "md_rate": 0.5,
+                        "md_depth": 0.5,
+                        "md_mix": 0.5,
+                        "md_width": 0.5,
+                        "dl_pos": 8.0,
+                        "dl_enable": 1.0,
+                        "dl_type": 0.0,
+                        "dl_time": 250.0,
+                        "dl_feedback": 0.4000000059604645,
+                        "dl_mix": 0.30000001192092896,
+                        "dl_width": 0.5,
+                        "dl_wow": 0.003000000026077032,
+                        "dl_flutter": 0.0010000000474974513,
+                        "dl_heads": 10.0,
+                        "rv_pos": 9.0,
+                        "rv_enable": 1.0,
+                        "rv_predelay": 10.0,
+                        "rv_decay": 1.5,
+                        "rv_damping": 0.30000001192092896,
+                        "rv_moddepth": 0.5,
+                        "rv_modrate": 0.800000011920929,
+                        "rv_mix": 0.30000001192092896,
+                        "sw_a": 0.0,
+                        "sw_b": 0.0,
+                        "sw_c": 0.0,
+                        "sw_d": 0.0,
+                        "ps_bank_up": 0.0,
+                        "ps_bank_dn": 0.0,
+                        "ps_save": 0.0,
+                        "ps_move_up": 0.0,
+                        "ps_move_dn": 0.0,
+                        "ps_goto": -1.0
+                    },
+                    "preset": ""
+                }
+            }
+        }
+    ]
+}

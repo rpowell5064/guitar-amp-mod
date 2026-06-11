@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-# One-off: bind the pi-Stomp footswitch CCs to Hex Forge's A/B/C/D switch ports.
+# DEV/PACKAGING HELPER — end users do NOT run this. It bakes the pi-Stomp
+# footswitch CC bindings into a pedalboard's TTL so the switches drive Hex Forge.
+# The shipped factory pedalboard (pedalboards/Hex_Forge.pedalboard, installed by
+# install.sh) already carries these bindings, so a normal install needs nothing.
+# Use this only to (re)generate that mapping in a fresh/hand-built pedalboard.
+#
 # CC60->sw_a, CC61->sw_b, CC62->sw_c, CC63->sw_d (channel 13 = MIDI ch 14).
 # Rebuilds each <hexforge/sw_X> block so any prior (wrong) binding is replaced.
 import re, sys

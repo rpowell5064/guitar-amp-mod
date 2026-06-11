@@ -58,6 +58,12 @@ echo "   modgui assets present for all 11 plugins"
 echo "== assemble tarball =="
 rm -rf "$DIST/$PKG"; mkdir -p "$DIST/$PKG"
 cp -r "$BUNDLE" "$DIST/$PKG/"
+# Factory pedalboard(s) — ship Hex Forge pre-wired so the pi-Stomp footswitches
+# (CC 60-63 -> A/B/C/D) work on load with no MIDI setup by the user.
+if [ -d "$ROOT/pedalboards" ]; then
+    cp -r "$ROOT/pedalboards" "$DIST/$PKG/pedalboards"
+    echo "   included $(find "$ROOT/pedalboards" -maxdepth 1 -name '*.pedalboard' | wc -l) factory pedalboard(s)"
+fi
 cp "$ROOT/build-tools/pkg/install.sh"  "$DIST/$PKG/install.sh"
 cp "$ROOT/build-tools/pkg/README.txt"  "$DIST/$PKG/README.txt"
 cp "$ROOT/LICENSE"                     "$DIST/$PKG/LICENSE"

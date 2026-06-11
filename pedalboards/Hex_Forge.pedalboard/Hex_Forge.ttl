@@ -1,0 +1,902 @@
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix ingen: <http://drobilla.net/ns/ingen#> .
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix pedal: <http://moddevices.com/ns/modpedal#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+
+_:b1
+    ingen:tail <hexforge/out_l> ;
+    ingen:head <playback_1> .
+
+_:b2
+    ingen:tail <capture_1> ;
+    ingen:head <hexforge/in_l> .
+
+<hexforge>
+    ingen:canvasX 1919.1 ;
+    ingen:canvasY 558.1 ;
+    ingen:enabled true ;
+    ingen:polyphonic false ;
+    lv2:microVersion 7 ;
+    lv2:minorVersion 1 ;
+    mod:builderVersion 0 ;
+    mod:releaseNumber 0 ;
+    lv2:port <hexforge/in_l> ,
+             <hexforge/in_r> ,
+             <hexforge/out_l> ,
+             <hexforge/out_r> ,
+             <hexforge/bypass> ,
+             <hexforge/out_level> ,
+             <hexforge/it_enable> ,
+             <hexforge/it_gain> ,
+             <hexforge/it_phase> ,
+             <hexforge/it_hum> ,
+             <hexforge/gt_pos> ,
+             <hexforge/gt_enable> ,
+             <hexforge/gt_thresh> ,
+             <hexforge/gt_attack> ,
+             <hexforge/gt_hold> ,
+             <hexforge/gt_release> ,
+             <hexforge/gt_hyst> ,
+             <hexforge/cp_pos> ,
+             <hexforge/cp_enable> ,
+             <hexforge/cp_type> ,
+             <hexforge/cp_thresh> ,
+             <hexforge/cp_ratio> ,
+             <hexforge/cp_attack> ,
+             <hexforge/cp_release> ,
+             <hexforge/cp_knee> ,
+             <hexforge/cp_makeup> ,
+             <hexforge/fz_pos> ,
+             <hexforge/fz_enable> ,
+             <hexforge/fz_pedal> ,
+             <hexforge/fz_mode> ,
+             <hexforge/fz_sustain> ,
+             <hexforge/fz_tone> ,
+             <hexforge/fz_volume> ,
+             <hexforge/fz_bias> ,
+             <hexforge/fz_inputtrim> ,
+             <hexforge/fz_getemp> ,
+             <hexforge/dr_pos> ,
+             <hexforge/dr_enable> ,
+             <hexforge/dr_model> ,
+             <hexforge/dr_drive> ,
+             <hexforge/dr_tone> ,
+             <hexforge/dr_level> ,
+             <hexforge/dr_mix> ,
+             <hexforge/dr_octave> ,
+             <hexforge/amp_pos> ,
+             <hexforge/amp_enable> ,
+             <hexforge/amp_model> ,
+             <hexforge/amp_gain> ,
+             <hexforge/amp_bass> ,
+             <hexforge/amp_mid> ,
+             <hexforge/amp_treble> ,
+             <hexforge/amp_presence> ,
+             <hexforge/amp_master> ,
+             <hexforge/amp_sag> ,
+             <hexforge/amp_channel> ,
+             <hexforge/amp_resonance> ,
+             <hexforge/amp_sunn_vol2> ,
+             <hexforge/amp_sunn_link> ,
+             <hexforge/amp_pamp_bypass> ,
+             <hexforge/amp_pamp_tube> ,
+             <hexforge/amp_pamp_presence> ,
+             <hexforge/amp_pamp_depth> ,
+             <hexforge/amp_pamp_sag> ,
+             <hexforge/amp_pamp_master> ,
+             <hexforge/amp_pamp_nfb> ,
+             <hexforge/amp_pamp_resonance> ,
+             <hexforge/amp_pamp_airfeel> ,
+             <hexforge/amp_pamp_auto> ,
+             <hexforge/amp_sunn_bass2> ,
+             <hexforge/amp_sunn_mid2> ,
+             <hexforge/amp_sunn_treble2> ,
+             <hexforge/amp_sunn_bright1> ,
+             <hexforge/amp_sunn_bright2> ,
+             <hexforge/cab_pos> ,
+             <hexforge/cab_enable> ,
+             <hexforge/cab_lowcut> ,
+             <hexforge/cab_highcut> ,
+             <hexforge/cab_mix> ,
+             <hexforge/md_pos> ,
+             <hexforge/md_enable> ,
+             <hexforge/md_type> ,
+             <hexforge/md_rate> ,
+             <hexforge/md_depth> ,
+             <hexforge/md_mix> ,
+             <hexforge/md_width> ,
+             <hexforge/dl_pos> ,
+             <hexforge/dl_enable> ,
+             <hexforge/dl_type> ,
+             <hexforge/dl_time> ,
+             <hexforge/dl_feedback> ,
+             <hexforge/dl_mix> ,
+             <hexforge/dl_width> ,
+             <hexforge/dl_wow> ,
+             <hexforge/dl_flutter> ,
+             <hexforge/dl_heads> ,
+             <hexforge/rv_pos> ,
+             <hexforge/rv_enable> ,
+             <hexforge/rv_predelay> ,
+             <hexforge/rv_decay> ,
+             <hexforge/rv_damping> ,
+             <hexforge/rv_moddepth> ,
+             <hexforge/rv_modrate> ,
+             <hexforge/rv_mix> ,
+             <hexforge/sw_a> ,
+             <hexforge/sw_b> ,
+             <hexforge/sw_c> ,
+             <hexforge/sw_d> ,
+             <hexforge/ps_bank_up> ,
+             <hexforge/ps_bank_dn> ,
+             <hexforge/ps_save> ,
+             <hexforge/ps_move_up> ,
+             <hexforge/ps_move_dn> ,
+             <hexforge/ps_goto> ,
+             <hexforge/out_auto> ,
+             <hexforge/clip> ,
+             <hexforge/ps_bank> ,
+             <hexforge/ps_slot> ,
+             <hexforge/midi_in> ,
+             <hexforge/:bypass> ;
+    lv2:prototype <https://rpowell5064.github.io/guitaramp-suite/hexforge> ;
+    pedal:instanceNumber 2 ;
+    pedal:preset <> ;
+    a ingen:Block .
+
+<hexforge/in_l>
+    a lv2:AudioPort ,
+        lv2:InputPort .
+
+<hexforge/in_r>
+    a lv2:AudioPort ,
+        lv2:InputPort .
+
+<hexforge/in_l>
+    a lv2:AudioPort ,
+        lv2:OutputPort .
+
+<hexforge/in_r>
+    a lv2:AudioPort ,
+        lv2:OutputPort .
+
+<hexforge/midi_in>
+    atom:bufferType atom:Sequence ;
+    atom:supports midi:MidiEvent ;
+    a atom:AtomPort ,
+        lv2:InputPort .
+
+<hexforge/bypass>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/out_level>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/it_enable>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/it_gain>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/it_phase>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/it_hum>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_pos>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_enable>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_thresh>
+    ingen:value -60.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_attack>
+    ingen:value 5.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_hold>
+    ingen:value 50.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_release>
+    ingen:value 100.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/gt_hyst>
+    ingen:value 6.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_pos>
+    ingen:value 2.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_enable>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_type>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_thresh>
+    ingen:value -18.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_ratio>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_attack>
+    ingen:value 5.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_release>
+    ingen:value 5.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_knee>
+    ingen:value 3.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cp_makeup>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_pos>
+    ingen:value 3.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_enable>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_pedal>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_mode>
+    ingen:value 2.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_sustain>
+    ingen:value 0.550000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_tone>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_volume>
+    ingen:value 0.650000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_bias>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_inputtrim>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/fz_getemp>
+    ingen:value 0.400000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_pos>
+    ingen:value 4.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_enable>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_model>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_drive>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_tone>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_level>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_mix>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dr_octave>
+    ingen:value 0.300000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pos>
+    ingen:value 5.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_enable>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_model>
+    ingen:value 2.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_gain>
+    ingen:value 0.330000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_bass>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_mid>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_treble>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_presence>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_master>
+    ingen:value 0.580000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sag>
+    ingen:value 0.300000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_channel>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_resonance>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_vol2>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_link>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_bypass>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_tube>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_presence>
+    ingen:value 0.550000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_depth>
+    ingen:value 0.180000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_sag>
+    ingen:value 0.330000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_master>
+    ingen:value 0.620000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_nfb>
+    ingen:value 0.420000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_resonance>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_airfeel>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_pamp_auto>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_bass2>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_mid2>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_treble2>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_bright1>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/amp_sunn_bright2>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cab_pos>
+    ingen:value 6.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cab_enable>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cab_lowcut>
+    ingen:value 80.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cab_highcut>
+    ingen:value 16000.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/cab_mix>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_pos>
+    ingen:value 7.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_enable>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_type>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_rate>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_depth>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_mix>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/md_width>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_pos>
+    ingen:value 8.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_enable>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_type>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_time>
+    ingen:value 250.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_feedback>
+    ingen:value 0.400000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_mix>
+    ingen:value 0.300000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_width>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_wow>
+    ingen:value 0.003000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_flutter>
+    ingen:value 0.001000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/dl_heads>
+    ingen:value 10.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_pos>
+    ingen:value 9.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_enable>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_predelay>
+    ingen:value 10.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_decay>
+    ingen:value 1.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_damping>
+    ingen:value 0.300000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_moddepth>
+    ingen:value 0.500000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_modrate>
+    ingen:value 0.800000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/rv_mix>
+    ingen:value 0.300000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/sw_a>
+    ingen:value 1.000000 ;
+    midi:binding [
+        midi:channel 13 ;
+        midi:controllerNumber 60 ;
+        lv2:minimum 0.000000 ;
+        lv2:maximum 1.000000 ;
+        a midi:Controller ;
+    ] ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/sw_b>
+    ingen:value 0.000000 ;
+    midi:binding [
+        midi:channel 13 ;
+        midi:controllerNumber 61 ;
+        lv2:minimum 0.000000 ;
+        lv2:maximum 1.000000 ;
+        a midi:Controller ;
+    ] ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/sw_c>
+    ingen:value 0.000000 ;
+    midi:binding [
+        midi:channel 13 ;
+        midi:controllerNumber 62 ;
+        lv2:minimum 0.000000 ;
+        lv2:maximum 1.000000 ;
+        a midi:Controller ;
+    ] ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/sw_d>
+    ingen:value 0.000000 ;
+    midi:binding [
+        midi:channel 13 ;
+        midi:controllerNumber 63 ;
+        lv2:minimum 0.000000 ;
+        lv2:maximum 1.000000 ;
+        a midi:Controller ;
+    ] ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/ps_bank_up>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/ps_bank_dn>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/ps_save>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/ps_move_up>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/ps_move_dn>
+    ingen:value 0.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/ps_goto>
+    ingen:value -1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/out_auto>
+    ingen:value 1.000000 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<hexforge/clip>
+    a lv2:ControlPort ,
+        lv2:OutputPort .
+
+<hexforge/ps_bank>
+    a lv2:ControlPort ,
+        lv2:OutputPort .
+
+<hexforge/ps_slot>
+    a lv2:ControlPort ,
+        lv2:OutputPort .
+
+<hexforge/:bypass>
+    ingen:value 0 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<:bpb>
+    ingen:value 4.000000 ;
+    lv2:index 0 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<:bpm>
+    ingen:value 104.809998 ;
+    lv2:index 1 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<:rolling>
+    ingen:value 0 ;
+    lv2:index 2 ;
+    a lv2:ControlPort ,
+        lv2:InputPort .
+
+<control_in>
+    atom:bufferType atom:Sequence ;
+    lv2:index 3 ;
+    lv2:name "Control In" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "control_in" ;
+    <http://lv2plug.in/ns/ext/resize-port#minimumSize> 4096 ;
+    a atom:AtomPort ,
+        lv2:InputPort .
+
+<control_out>
+    atom:bufferType atom:Sequence ;
+    lv2:index 4 ;
+    lv2:name "Control Out" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "control_out" ;
+    <http://lv2plug.in/ns/ext/resize-port#minimumSize> 4096 ;
+    a atom:AtomPort ,
+        lv2:OutputPort .
+
+<capture_1>
+    lv2:index 5 ;
+    lv2:name "Capture 1" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "capture_1" ;
+    a lv2:AudioPort ,
+        lv2:InputPort .
+
+<capture_2>
+    lv2:index 6 ;
+    lv2:name "Capture 2" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "capture_2" ;
+    a lv2:AudioPort ,
+        lv2:InputPort .
+
+<playback_1>
+    lv2:index 7 ;
+    lv2:name "Playback 1" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "playback_1" ;
+    a lv2:AudioPort ,
+        lv2:OutputPort .
+
+<playback_2>
+    lv2:index 8 ;
+    lv2:name "Playback 2" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "playback_2" ;
+    a lv2:AudioPort ,
+        lv2:OutputPort .
+
+<serial_midi_in>
+    atom:bufferType atom:Sequence ;
+    atom:supports midi:MidiEvent ;
+    lv2:index 9 ;
+    lv2:name "DIN MIDI In" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "serial_midi_in" ;
+    <http://lv2plug.in/ns/ext/resize-port#minimumSize> 4096 ;
+    a atom:AtomPort ,
+        lv2:InputPort .
+
+<serial_midi_out>
+    atom:bufferType atom:Sequence ;
+    atom:supports midi:MidiEvent ;
+    lv2:index 10 ;
+    lv2:name "DIN MIDI In" ;
+    lv2:portProperty lv2:connectionOptional ;
+    lv2:symbol "serial_midi_out" ;
+    <http://lv2plug.in/ns/ext/resize-port#minimumSize> 4096 ;
+    a atom:AtomPort ,
+        lv2:OutputPort .
+
+<midi_separated_mode>
+    ingen:value 1 ;
+    lv2:index 11 ;
+    a atom:AtomPort ,
+        lv2:InputPort .
+
+<midi_loopback>
+    ingen:value 0 ;
+    lv2:index 12 ;
+    a atom:AtomPort ,
+        lv2:InputPort .
+
+<>
+    doap:name "Hex Forge" ;
+    pedal:unitName "Unknown" ;
+    pedal:unitModel "None" ;
+    pedal:width 5120 ;
+    pedal:height 2750 ;
+    pedal:addressings <addressings.json> ;
+    pedal:screenshot <screenshot.png> ;
+    pedal:thumbnail <thumbnail.png> ;
+    pedal:version 23 ;
+    ingen:polyphony 1 ;
+    ingen:arc _:b1 ,
+              _:b2 ;
+    ingen:block <hexforge> ;
+    lv2:port <:bpb> ,
+             <:bpm> ,
+             <:rolling> ,
+             <midi_separated_mode> ,
+             <midi_loopback> ,
+             <control_in> ,
+             <control_out> ,
+             <serial_midi_in> ,
+             <serial_midi_out> ,
+             <capture_1> ,
+             <capture_2> ,
+             <playback_1> ,
+             <playback_2> ;
+    lv2:extensionData <http://lv2plug.in/ns/ext/state#interface> ;
+    a lv2:Plugin ,
+        ingen:Graph ,
+        pedal:Pedalboard .

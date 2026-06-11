@@ -12,6 +12,24 @@ mkdir -p "$DEST"
 rm -rf "$DEST/guitaramp-suite.lv2"
 cp -r "$HERE/guitaramp-suite.lv2" "$DEST/"
 
+# Factory pedalboard(s): Hex Forge ships pre-wired so the pi-Stomp footswitches
+# (CC 60-63 -> A/B/C/D) work the moment you load it — no MIDI setup needed.
+# Installed non-destructively: an existing pedalboard of the same name is kept.
+if [ -d "$HERE/pedalboards" ]; then
+    if [ -d "$HOME/data/.pedalboards" ]; then PB="$HOME/data/.pedalboards"   # pi-Stomp layout
+    else PB="$HOME/.pedalboards"; fi
+    mkdir -p "$PB"
+    for pb in "$HERE"/pedalboards/*.pedalboard; do
+        [ -e "$pb" ] || continue
+        name="$(basename "$pb")"
+        if [ -e "$PB/$name" ]; then
+            echo "Pedalboard $name already present in $PB — leaving your copy untouched"
+        else
+            cp -r "$pb" "$PB/" && echo "Installed factory pedalboard: $name -> $PB"
+        fi
+    done
+fi
+
 echo "Restarting MOD (mod-host, mod-ui)..."
 if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files 2>/dev/null | grep -q '^mod-host'; then
     sudo systemctl restart mod-host mod-ui \
