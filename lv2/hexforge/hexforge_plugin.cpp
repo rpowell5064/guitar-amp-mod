@@ -47,6 +47,7 @@
 #include <new>
 #include <cstring>
 #include <cstdint>
+#include <cstdio>
 #include <cmath>
 #include <memory>
 #include <vector>
@@ -61,8 +62,34 @@
 static constexpr int kAmpNamIdx = 5;   // amp model slot = Neural (NAM)
 static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
 
+// pi-Stomp footswitches emit CC 60..63 (one per switch). A received CC in this
+// range is one switch "press" → preset recall / bank combo. Change here if the
+// pi-Stomp config uses a different base CC.
+static constexpr int kMidiBaseCC = 60;
+#define LV2_MIDI_MidiEvent_URI "http://lv2plug.in/ns/ext/midi#MidiEvent"
+
 static constexpr int kMaxBlock = 512;
 static constexpr int kPathMax  = 1024;
+
+// ── Preset engine ─────────────────────────────────────────────────────────────
+// Hex Forge owns its own preset store: 8 banks × 4 slots (A/B/C/D) = 32 presets.
+// A preset is a full snapshot of every user parameter plus the four file paths.
+static constexpr int kBanks = 8, kSlots = 4;
+struct Preset {
+    bool  used = false;
+    char  name[32] = {0};
+    float vals[HF_N_PORTS] = {};
+    char  irPath[kPathMax]     = {0};
+    char  ampNamPath[kPathMax] = {0};
+    char  drNamPath[kPathMax]  = {0};
+    char  cabNamPath[kPathMax] = {0};
+};
+// A "param port" is a user-facing control captured by presets: everything from
+// the Output level through the last block param, excluding the global Bypass,
+// the Clip output, and the preset command/status ports (all ≥ HF_SW_A).
+static inline bool isParamPort(int i) {
+    return i >= HF_OUT_LEVEL && i < HF_SW_A && i != HF_CLIP;
+}
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
 static const AmpModel kAmpMap[5] = {
@@ -87,6 +114,40 @@ static int clampi(float v, int lo, int hi) {
     int i = static_cast<int>(v + 0.5f);
     return i < lo ? lo : (i > hi ? hi : i);
 }
+
+// ── Auto output level (clip-safe AGC) ─────────────────────────────────────────
+// When engaged, it RIDES the master gain so the signal's (slowly-decaying) peak
+// sits at the target level (the Output knob) — so the level sets itself and never
+// has to be found by hand. It only ever turns the gain *down* (never boosts noise).
+// A fast safety limiter just under the digital ceiling catches transients, so it
+// also can't clip. Transparent on quiet material; turns hot amp/NAM signals down.
+struct AutoOutput {
+    float gain = 1.0f, peak = 0.0f, limEnv = 1.0f;
+    float peakDecay = 0.0f, gainSmooth = 0.0f, limRel = 0.0f;
+    static constexpr float kCeiling = 0.98f;
+    void prepare(double sr) noexcept {
+        const float s = static_cast<float>(sr);
+        peakDecay  = std::exp(-1.0f / (1.5f  * s));   // peak-hold decays ~1.5 s
+        gainSmooth = std::exp(-1.0f / (0.25f * s));   // gain glides ~0.25 s (no zipper)
+        limRel     = std::exp(-1.0f / (0.05f * s));   // safety-limiter release ~50 ms
+    }
+    void reset() noexcept { gain = 1.0f; peak = 0.0f; limEnv = 1.0f; }
+    void process(float* L, float* R, uint32_t n, float target) noexcept {
+        if (target < 0.01f) target = 0.01f;
+        for (uint32_t i = 0; i < n; ++i) {
+            const float a = std::fmax(std::fabs(L[i]), std::fabs(R[i]));
+            peak = (a > peak) ? a : peak * peakDecay;
+            const float want = (peak > 1e-6f) ? std::fmin(1.0f, target / peak) : 1.0f;  // reduce only
+            gain = gainSmooth * gain + (1.0f - gainSmooth) * want;
+            float l = L[i] * gain, r = R[i] * gain;
+            const float p2 = std::fmax(std::fabs(l), std::fabs(r));        // safety limiter
+            const float des = (p2 > kCeiling) ? kCeiling / p2 : 1.0f;
+            if (des < limEnv) limEnv = des;
+            else limEnv = limRel * limEnv + (1.0f - limRel) * des;
+            L[i] = l * limEnv; R[i] = r * limEnv;
+        }
+    }
+};
 
 // ── Power-line hum twin-notch (mirrors the standalone Input Trim) ──────────────
 static BiquadCoeffs makeNotch(double fc, double Q, double fs) noexcept {
@@ -126,9 +187,11 @@ struct WorkMsg {
 };
 
 struct URIs {
-    LV2_URID atom_Object, atom_Path, atom_URID;
+    LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
     LV2_URID ir_file, amp_nam, dr_nam, cab_nam;
+    LV2_URID ps_name, ps_index, ps_apply, preset_blob;
+    LV2_URID midi_MidiEvent;
 };
 
 struct HexForge {
@@ -147,6 +210,7 @@ struct HexForge {
     ModulationBlock   modfx;
     DelayBlock        delay;
     PlateReverbBlock  reverb;
+    AutoOutput        autoOut;        // auto-leveling clip protection on the master output
     NamModel*         ampNam = nullptr;   // worker-loaded neural captures
     NamModel*         drNam  = nullptr;
     NamModel*         cabNam = nullptr;
@@ -155,10 +219,29 @@ struct HexForge {
     int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0;
     int lastModfxType = 0, lastDelayType = 0;
 
-    // ports
-    float* ports[HF_N_PORTS] = {};
+    // ports — `ports[]` are the pointers the DSP reads. For param ports they are
+    // redirected to point at eff[] (the preset/override layer); for everything
+    // else they point at the host buffer (hostPorts[]). See hf_run priming.
+    float* ports[HF_N_PORTS]     = {};
+    float* hostPorts[HF_N_PORTS] = {};
     const LV2_Atom_Sequence* control = nullptr;
+    const LV2_Atom_Sequence* midiIn  = nullptr;   // footswitch CCs (pi-Stomp)
     LV2_Atom_Sequence*       notify  = nullptr;
+
+    // preset engine
+    Preset presets[kBanks][kSlots];
+    int    curBank = 0, curSlot = 0;
+    float  eff[HF_N_PORTS]      = {};   // effective param values the DSP runs on
+    float  lastPort[HF_N_PORTS] = {};   // last host value seen (live-edit detect)
+    bool   primed = false;              // ports[] redirected + eff[] seeded
+    bool   pendingRecall = false;       // apply restored active preset on first run
+    float  swPrev[4]  = {0,0,0,0};      // sw_a..sw_d edge state
+    float  cmdPrev[5] = {0,0,0,0,0};    // bank_up/dn, save, move_up/dn edge state
+    int    lastGoto   = -1;             // last ps_goto target serviced
+    // Double-tap bank nav: double-tap A = bank down, D = bank up.
+    int64_t sampleClock = 0;            // running sample counter
+    int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
+    int64_t lastEdgeSample[4] = {-100000000,-100000000,-100000000,-100000000};  // sw debounce
 
     // file-load state
     char irPath[kPathMax]     = {0};
@@ -233,6 +316,8 @@ static void mapURIs(HexForge* p) {
     p->uris.atom_Object   = m->map(m->handle, LV2_ATOM__Object);
     p->uris.atom_Path     = m->map(m->handle, LV2_ATOM__Path);
     p->uris.atom_URID     = m->map(m->handle, LV2_ATOM__URID);
+    p->uris.atom_String   = m->map(m->handle, LV2_ATOM__String);
+    p->uris.atom_Chunk    = m->map(m->handle, LV2_ATOM__Chunk);
     p->uris.patch_Set     = m->map(m->handle, LV2_PATCH__Set);
     p->uris.patch_Get     = m->map(m->handle, LV2_PATCH__Get);
     p->uris.patch_property= m->map(m->handle, LV2_PATCH__property);
@@ -241,6 +326,11 @@ static void mapURIs(HexForge* p) {
     p->uris.amp_nam       = m->map(m->handle, HEXFORGE_AMPNAM);
     p->uris.dr_nam        = m->map(m->handle, HEXFORGE_DRNAM);
     p->uris.cab_nam       = m->map(m->handle, HEXFORGE_CABNAM);
+    p->uris.ps_name       = m->map(m->handle, HEXFORGE_URI "#ps_name");
+    p->uris.ps_index      = m->map(m->handle, HEXFORGE_URI "#ps_index");
+    p->uris.ps_apply      = m->map(m->handle, HEXFORGE_URI "#ps_apply");
+    p->uris.preset_blob   = m->map(m->handle, HEXFORGE_URI "#preset_blob");
+    p->uris.midi_MidiEvent= m->map(m->handle, LV2_MIDI_MidiEvent_URI);
 }
 static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
     const URIs& u = p->uris;
@@ -252,6 +342,128 @@ static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
     lv2_atom_forge_key(&p->forge, u.patch_value);
     lv2_atom_forge_path(&p->forge, path, static_cast<uint32_t>(std::strlen(path)));
     lv2_atom_forge_pop(&p->forge, &frame);
+}
+
+// ── Preset engine: notify emitters + recall/save/bank/move ────────────────────
+// All of these run inside hf_run with the notify forge sequence already open, so
+// they may append patch:Set messages to the UI.
+static void forgeStringSet(HexForge* p, LV2_URID prop, const char* s) {
+    const URIs& u = p->uris;
+    LV2_Atom_Forge_Frame frame;
+    lv2_atom_forge_frame_time(&p->forge, 0);
+    lv2_atom_forge_object(&p->forge, &frame, 0, u.patch_Set);
+    lv2_atom_forge_key(&p->forge, u.patch_property);
+    lv2_atom_forge_urid(&p->forge, prop);
+    lv2_atom_forge_key(&p->forge, u.patch_value);
+    lv2_atom_forge_string(&p->forge, s, static_cast<uint32_t>(std::strlen(s)));
+    lv2_atom_forge_pop(&p->forge, &frame);
+}
+// "bank|slot|name0|name1|...|name31" — drives the UI bank indicator + name list.
+static void emitIndex(HexForge* p) {
+    if (!p->notify) return;
+    char buf[2048]; int o = 0;
+    o += std::snprintf(buf, sizeof(buf), "%d|%d", p->curBank, p->curSlot);
+    for (int b = 0; b < kBanks; ++b)
+        for (int s = 0; s < kSlots; ++s) {
+            const Preset& pr = p->presets[b][s];
+            const char* nm = (pr.used && pr.name[0]) ? pr.name : "";
+            o += std::snprintf(buf + o, sizeof(buf) - o, "|%s", nm);
+            if (o >= (int)sizeof(buf) - 40) { b = kBanks; break; }
+        }
+    forgeStringSet(p, p->uris.ps_index, buf);
+}
+// "sym=val;sym=val;..." for every param port — the UI replays it via set_port_value.
+static void emitApply(HexForge* p) {
+    if (!p->notify) return;
+    char buf[6144]; int o = 0; buf[0] = '\0';
+    for (int i = 0; i < HF_N_PORTS; ++i)
+        if (isParamPort(i) && o < (int)sizeof(buf) - 40)
+            o += std::snprintf(buf + o, sizeof(buf) - o, "%s=%g;", HF_PORT_SYM[i], p->eff[i]);
+    forgeStringSet(p, p->uris.ps_apply, buf);
+}
+// Schedule a worker (re)load for a file slot whose path changed (empty path =
+// clear: NAM loads an unloaded model the DSP ignores; IR resets to the default).
+static void schedPath(HexForge* p, char* cur, const char* want, WorkType wt, int namSlot) {
+    if (std::strcmp(cur, want) == 0) return;
+    std::strncpy(cur, want, kPathMax - 1); cur[kPathMax - 1] = '\0';
+    WorkMsg m; m.type = wt; m.namSlot = namSlot;
+    std::strncpy(m.path, want, kPathMax - 1); m.path[kPathMax - 1] = '\0';
+    p->schedule->schedule_work(p->schedule->handle, sizeof(m), &m);
+}
+// Publish the active bank/slot/name to a status file the pi-Stomp LCD reads
+// ("<bank><slot> <name>", e.g. "1A Clean"). Written only on preset changes.
+static void hfWriteStatus(HexForge* p) {
+    FILE* f = std::fopen("/tmp/hexforge_status", "w");
+    if (!f) return;
+    const Preset& pr = p->presets[p->curBank][p->curSlot];
+    std::fprintf(f, "%d%c %s\n", p->curBank + 1, 'A' + p->curSlot,
+                 (pr.used && pr.name[0]) ? pr.name : "(empty)");
+    std::fclose(f);
+}
+// Recall: move the active position to (bank,slot). If the slot holds a preset,
+// load its params into eff[] and (re)load its files; if empty, just move the
+// cursor (sound unchanged) so the UI can Save the current sound into it.
+static void psRecall(HexForge* p, int bank, int slot) {
+    p->curBank = bank & (kBanks - 1);
+    p->curSlot = slot & (kSlots - 1);
+    const Preset& pr = p->presets[p->curBank][p->curSlot];
+    hfWriteStatus(p);
+    if (pr.used) {
+        for (int i = 0; i < HF_N_PORTS; ++i) if (isParamPort(i)) {
+            p->eff[i] = pr.vals[i];
+            p->lastPort[i] = p->hostPorts[i] ? *p->hostPorts[i] : pr.vals[i];
+        }
+        schedPath(p, p->irPath,     pr.irPath,     W_CAB_IR,   0);
+        schedPath(p, p->ampNamPath, pr.ampNamPath, W_NAM_LOAD, 0);
+        schedPath(p, p->drNamPath,  pr.drNamPath,  W_NAM_LOAD, 1);
+        schedPath(p, p->cabNamPath, pr.cabNamPath, W_NAM_LOAD, 2);
+        if (p->notify) {   // best-effort UI sync; headless recall still changes sound
+            emitApply(p);
+            writeFileToNotify(p, p->uris.ir_file, p->irPath);
+            writeFileToNotify(p, p->uris.amp_nam, p->ampNamPath);
+            writeFileToNotify(p, p->uris.dr_nam,  p->drNamPath);
+            writeFileToNotify(p, p->uris.cab_nam, p->cabNamPath);
+        }
+    }
+    emitIndex(p);
+}
+// Save: overwrite the active slot with the live (edited) settings + current files.
+static void psSave(HexForge* p) {
+    Preset& pr = p->presets[p->curBank][p->curSlot];
+    for (int i = 0; i < HF_N_PORTS; ++i) if (isParamPort(i)) pr.vals[i] = p->eff[i];
+    std::strncpy(pr.irPath,     p->irPath,     kPathMax - 1); pr.irPath[kPathMax - 1] = '\0';
+    std::strncpy(pr.ampNamPath, p->ampNamPath, kPathMax - 1); pr.ampNamPath[kPathMax - 1] = '\0';
+    std::strncpy(pr.drNamPath,  p->drNamPath,  kPathMax - 1); pr.drNamPath[kPathMax - 1] = '\0';
+    std::strncpy(pr.cabNamPath, p->cabNamPath, kPathMax - 1); pr.cabNamPath[kPathMax - 1] = '\0';
+    if (pr.name[0] == '\0')
+        std::snprintf(pr.name, sizeof(pr.name), "%c%d", 'A' + p->curSlot, p->curBank + 1);
+    pr.used = true;
+    emitIndex(p);
+    hfWriteStatus(p);
+}
+static void psBankDelta(HexForge* p, int d) { psRecall(p, p->curBank + d, p->curSlot); }
+// A footswitch tap. Single tap recalls that slot immediately (no delay).
+// Double-tapping A or D within ~0.4 s navigates banks — A = down, D = up — and
+// lands on that same slot letter in the new bank.
+static void psSwitchPress(HexForge* p, int sw) {
+    const int64_t now = p->sampleClock;
+    const int64_t win = static_cast<int64_t>(p->rate * 0.4);
+    const bool dbl = (now - p->lastTapSample[sw]) < win;
+    p->lastTapSample[sw] = now;
+    if      (sw == 0 && dbl) psRecall(p, p->curBank - 1, 0);   // double-tap A → bank down, slot A
+    else if (sw == 3 && dbl) psRecall(p, p->curBank + 1, 3);   // double-tap D → bank up, slot D
+    else                     psRecall(p, p->curBank, sw);      // single tap → recall this slot
+}
+// Move the active preset earlier/later across the flat 32-slot order (= "sort").
+// The cursor follows the moved preset; no audio change (same preset content).
+static void psMoveDelta(HexForge* p, int d) {
+    int flat = p->curBank * kSlots + p->curSlot, tgt = flat + d;
+    if (tgt < 0 || tgt >= kBanks * kSlots) return;
+    Preset tmp = p->presets[p->curBank][p->curSlot];
+    p->presets[p->curBank][p->curSlot] = p->presets[tgt / kSlots][tgt % kSlots];
+    p->presets[tgt / kSlots][tgt % kSlots] = tmp;
+    p->curBank = tgt / kSlots; p->curSlot = tgt % kSlots;
+    emitIndex(p);
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -290,6 +502,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->delay.prepare(rate, kMaxBlock, 2);
     p->delay.setType(DelayFactory::fromIndex(0));
     p->reverb.prepare(rate, kMaxBlock, 2);
+    p->autoOut.prepare(rate);
     return p;
 }
 
@@ -297,7 +510,13 @@ static void hf_connect_port(LV2_Handle h, uint32_t port, void* data) {
     auto* p = static_cast<HexForge*>(h);
     if (port == HF_CONTROL)      p->control = static_cast<const LV2_Atom_Sequence*>(data);
     else if (port == HF_NOTIFY)  p->notify  = static_cast<LV2_Atom_Sequence*>(data);
-    else if (port < HF_N_PORTS)  p->ports[port] = static_cast<float*>(data);
+    else if (port == HF_MIDI_IN) p->midiIn  = static_cast<const LV2_Atom_Sequence*>(data);
+    else if (port < HF_N_PORTS) {
+        p->hostPorts[port] = static_cast<float*>(data);
+        // Once primed, param ports stay pointed at eff[]; only re-point others.
+        if (!p->primed || !isParamPort(static_cast<int>(port)))
+            p->ports[port] = static_cast<float*>(data);
+    }
 }
 
 // ── Worker ────────────────────────────────────────────────────────────────────
@@ -309,7 +528,8 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     if (msg->type == W_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
-        if (loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
+        if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
+        else p->cab.setIR(DefaultCabIR::generate(p->rate));   // empty path = clear to default
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type == W_NAM_LOAD) {
@@ -372,6 +592,23 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<HexForge*>(h);
     const URIs& u = p->uris;
 
+    // ── Prime the preset override layer (once, after all ports are connected) ──
+    // Param ports are redirected to read eff[]; everything else reads the host
+    // buffer. Done before the atom loop so a first-cycle patch:Get sees real values.
+    if (!p->primed) {
+        for (int i=0;i<HF_N_PORTS;++i) {
+            if (i==HF_CONTROL || i==HF_NOTIFY || i==HF_MIDI_IN) continue;
+            if (isParamPort(i)) {
+                p->eff[i]      = p->hostPorts[i] ? *p->hostPorts[i] : 0.0f;
+                p->lastPort[i] = p->eff[i];
+                p->ports[i]    = &p->eff[i];
+            } else {
+                p->ports[i]    = p->hostPorts[i];
+            }
+        }
+        p->primed = true;
+    }
+
     // ── Atom: IR file set / get, + open notify sequence ──
     const bool haveNotify = (p->notify != nullptr);
     LV2_Atom_Forge_Frame seqFrame;
@@ -386,8 +623,22 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (obj->body.otype == u.patch_Set) {
                 const LV2_Atom *prop=nullptr, *val=nullptr;
                 lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
-                if (!prop || prop->type!=u.atom_URID || !val || val->type!=u.atom_Path) continue;
+                if (!prop || prop->type!=u.atom_URID || !val) continue;
                 const LV2_URID which = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
+                // Rename the active preset (UI -> plugin, String value).
+                if (val->type == u.atom_String) {
+                    if (which == u.ps_name) {
+                        const char* s = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                        Preset& pr = p->presets[p->curBank][p->curSlot];
+                        std::strncpy(pr.name, s, sizeof(pr.name)-1); pr.name[sizeof(pr.name)-1]='\0';
+                        for (char* c=pr.name; *c; ++c) if (*c=='|') *c=' ';   // keep index delimiter clean
+                        pr.used = true;
+                        if (haveNotify) emitIndex(p);
+                        hfWriteStatus(p);
+                    }
+                    continue;
+                }
+                if (val->type != u.atom_Path) continue;
                 const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
                 char* dst = nullptr; WorkMsg msg;
                 if      (which == u.ir_file) { dst = p->irPath;     msg.type = W_CAB_IR; }
@@ -404,9 +655,72 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 writeFileToNotify(p, u.amp_nam, p->ampNamPath);
                 writeFileToNotify(p, u.dr_nam, p->drNamPath);
                 writeFileToNotify(p, u.cab_nam, p->cabNamPath);
+                forgeStringSet(p, u.ps_name, p->presets[p->curBank][p->curSlot].name);
+                emitIndex(p);
+                emitApply(p);   // sync knobs to the active preset's effective values
             }
         }
     }
+
+    // ── Preset engine: detect live edits, run commands ──
+    p->sampleClock += static_cast<int64_t>(n);   // for double-tap timing
+    // A knob/host move on any param port overrides its recalled value.
+    for (int i=0;i<HF_N_PORTS;++i) if (isParamPort(i)) {
+        const float hv = p->hostPorts[i] ? *p->hostPorts[i] : p->lastPort[i];
+        if (hv != p->lastPort[i]) { p->eff[i] = hv; p->lastPort[i] = hv; }
+    }
+    // Apply a preset restored from State (first run after hf_restore).
+    if (p->pendingRecall) { p->pendingRecall = false; psRecall(p, p->curBank, p->curSlot); }
+    // Command edges (rising 0->1). The four A/B/C/D switches feed the combo
+    // detector (single press → recall; two within the window → bank). They reach
+    // the plugin either as MIDI-bound control ports (pi-Stomp footswitches send
+    // CC 127 on press → port 1) or pulsed by the modgui buttons. The bank/save/
+    // move pulses come from the custom modgui.
+    auto rose = [&](int port, float& prev)->bool {
+        const float v = p->hostPorts[port] ? *p->hostPorts[port] : 0.0f;
+        const bool r = (prev < 0.5f && v >= 0.5f); prev = v; return r;
+    };
+    // A/B/C/D switches recall on EITHER edge (so each press selects its preset,
+    // whether the MIDI-bound toggle flips on or off). An ~80 ms debounce drops the
+    // modgui button's quick 1->0 release pulse so it counts as one press.
+    auto swEdge = [&](int port, float& prev, int sw)->bool {
+        const float v = p->hostPorts[port] ? *p->hostPorts[port] : 0.0f;
+        const bool flipped = (v >= 0.5f) != (prev >= 0.5f); prev = v;
+        if (!flipped) return false;
+        if (p->sampleClock - p->lastEdgeSample[sw] < static_cast<int64_t>(p->rate * 0.08)) return false;
+        p->lastEdgeSample[sw] = p->sampleClock;
+        return true;
+    };
+    if (swEdge(HF_SW_A, p->swPrev[0], 0)) psSwitchPress(p, 0);
+    if (swEdge(HF_SW_B, p->swPrev[1], 1)) psSwitchPress(p, 1);
+    if (swEdge(HF_SW_C, p->swPrev[2], 2)) psSwitchPress(p, 2);
+    if (swEdge(HF_SW_D, p->swPrev[3], 3)) psSwitchPress(p, 3);
+    if (rose(HF_PS_BANK_UP, p->cmdPrev[0])) psBankDelta(p, +1);
+    if (rose(HF_PS_BANK_DN, p->cmdPrev[1])) psBankDelta(p, -1);
+    if (rose(HF_PS_SAVE,    p->cmdPrev[2])) psSave(p);
+    if (rose(HF_PS_MOVE_UP, p->cmdPrev[3])) psMoveDelta(p, -1);
+    if (rose(HF_PS_MOVE_DN, p->cmdPrev[4])) psMoveDelta(p, +1);
+    // Direct jump from the UI list: recall when ps_goto changes to a valid index.
+    {
+        const float gf = p->hostPorts[HF_PS_GOTO] ? *p->hostPorts[HF_PS_GOTO] : -1.0f;
+        const int g = static_cast<int>(std::lround(gf));
+        if (g >= 0 && g < kBanks * kSlots && g != p->lastGoto) { p->lastGoto = g; psRecall(p, g / kSlots, g % kSlots); }
+        else if (g < 0) p->lastGoto = -1;
+    }
+    // ── Footswitch MIDI (pi-Stomp CC 60..63): each CC message = one switch press ──
+    if (p->midiIn) {
+        LV2_ATOM_SEQUENCE_FOREACH(p->midiIn, ev) {
+            if (ev->body.type != u.midi_MidiEvent || ev->body.size < 3) continue;
+            const uint8_t* m = static_cast<const uint8_t*>(LV2_ATOM_BODY_CONST(&ev->body));
+            if ((m[0] & 0xF0) != 0xB0) continue;            // Control Change, any channel
+            if (m[2] < 64) continue;                        // press-down only (ignore the release = value 0)
+            const int sw = static_cast<int>(m[1]) - kMidiBaseCC;
+            if (sw >= 0 && sw <= 3) psSwitchPress(p, sw);
+        }
+    }
+    // Mirror the active bank/slot to the UI output ports.
+    if (p->ports[HF_PS_BANK]) *p->ports[HF_PS_BANK] = static_cast<float>(p->curBank);
+    if (p->ports[HF_PS_SLOT]) *p->ports[HF_PS_SLOT] = static_cast<float>(p->curSlot);
 
     float* inL  = p->ports[HF_IN_L];
     float* inR  = p->ports[HF_IN_R];
@@ -644,8 +958,15 @@ static void hf_run(LV2_Handle h, uint32_t n) {
 
     // ── Master output level (the "Output" stage — last in the chain) ──
     const float outLevel = *p->ports[HF_OUT_LEVEL];
-    if (outLevel != 1.0f)
-        for (uint32_t i = 0; i < n; ++i) { outL[i] *= outLevel; outR[i] *= outLevel; }
+    if (*p->ports[HF_OUT_AUTO] > 0.5f) {
+        // Auto: Output knob is the target peak; ride the gain to it (clip-safe).
+        p->autoOut.process(outL, outR, n, outLevel);
+    } else {
+        // Manual: Output knob is a fixed master gain.
+        if (outLevel != 1.0f)
+            for (uint32_t i = 0; i < n; ++i) { outL[i] *= outLevel; outR[i] *= outLevel; }
+        p->autoOut.reset();
+    }
 
     // ── Clip indicator: latch for ~250 ms whenever the output hits full scale ──
     float peak = 0.0f;
@@ -684,6 +1005,31 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
     saveOne(p->uris.amp_nam, p->ampNamPath);
     saveOne(p->uris.dr_nam,  p->drNamPath);
     saveOne(p->uris.cab_nam, p->cabNamPath);
+
+    // ── Preset store: one self-describing Chunk holding all 8×4 presets ──
+    std::vector<uint8_t> blob;
+    auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
+    auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
+    auto putPath  = [&](const char* raw){   // stored portable (abstract)
+        char* ap = (raw[0] && mapPath) ? mapPath->abstract_path(mapPath->handle, const_cast<char*>(raw)) : nullptr;
+        const char* s = ap ? ap : raw;
+        uint32_t len = static_cast<uint32_t>(std::strlen(s));
+        putU32(len); putBytes(s, len);
+        if (ap) free(ap);
+    };
+    putU32(2);                  // version (2 adds the port-count field below)
+    putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
+    for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
+        const Preset& pr = p->presets[b][s];
+        putU32(pr.used ? 1u : 0u);
+        putBytes(pr.name, sizeof(pr.name));
+        putBytes(pr.vals, sizeof(pr.vals));
+        putPath(pr.irPath); putPath(pr.ampNamPath); putPath(pr.drNamPath); putPath(pr.cabNamPath);
+    }
+    putU32(static_cast<uint32_t>(p->curBank));
+    putU32(static_cast<uint32_t>(p->curSlot));
+    store(handle, p->uris.preset_blob, blob.data(), blob.size(), p->uris.atom_Chunk,
+          flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
     return LV2_STATE_SUCCESS;
 }
 static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function retrieve,
@@ -724,6 +1070,49 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
     restoreNam(p->uris.amp_nam, &p->ampNam, p->ampNamPath);
     restoreNam(p->uris.dr_nam,  &p->drNam,  p->drNamPath);
     restoreNam(p->uris.cab_nam, &p->cabNam, p->cabNamPath);
+
+    // ── Preset store ──
+    const void* bv = retrieve(handle, p->uris.preset_blob, &size, &type, &vflags);
+    if (bv && type == p->uris.atom_Chunk && size >= 12) {
+        const uint8_t* d = static_cast<const uint8_t*>(bv); size_t off = 0;
+        auto getU32 = [&](uint32_t& v)->bool { if (off+4>size) return false; std::memcpy(&v, d+off, 4); off+=4; return true; };
+        auto getPath = [&](char* dst){
+            uint32_t len=0; dst[0]='\0';
+            if (!getU32(len) || off+len>size) { off = size; return; }
+            char tmp[kPathMax]; uint32_t m = len < kPathMax-1 ? len : kPathMax-1;
+            std::memcpy(tmp, d+off, m); tmp[m]='\0'; off += len;
+            if (tmp[0] && mapPath) { char* ab = mapPath->absolute_path(mapPath->handle, tmp);
+                std::strncpy(dst, ab, kPathMax-1); dst[kPathMax-1]='\0'; if (ab != tmp) free(ab); }
+            else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
+        };
+        uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
+        if (ver != 2) return LV2_STATE_SUCCESS;     // older/unknown layout — start fresh
+        getU32(np);                                 // param-port count at save time
+        const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
+        for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
+            uint32_t used=0; getU32(used);
+            char name[32] = {0}; if (off+sizeof(name)<=size){ std::memcpy(name,d+off,sizeof(name)); off+=sizeof(name); }
+            float vals[HF_N_PORTS]; for (int i=0;i<HF_N_PORTS;++i) vals[i]=0.0f;
+            if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
+            else off = size;
+            char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
+            getPath(ir); getPath(an); getPath(dn); getPath(cn);
+            if (b<kBanks && s<kSlots) {     // ignore extras if a future build grows the grid
+                Preset& pr = p->presets[b][s];
+                pr.used = (used != 0);
+                std::memcpy(pr.name, name, sizeof(pr.name)); pr.name[sizeof(pr.name)-1]='\0';
+                std::memcpy(pr.vals, vals, sizeof(pr.vals));
+                std::strncpy(pr.irPath,ir,kPathMax-1);     pr.irPath[kPathMax-1]='\0';
+                std::strncpy(pr.ampNamPath,an,kPathMax-1); pr.ampNamPath[kPathMax-1]='\0';
+                std::strncpy(pr.drNamPath,dn,kPathMax-1);  pr.drNamPath[kPathMax-1]='\0';
+                std::strncpy(pr.cabNamPath,cn,kPathMax-1); pr.cabNamPath[kPathMax-1]='\0';
+            }
+        }
+        uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
+        p->curBank = cb < kBanks ? cb : 0;
+        p->curSlot = cs < kSlots ? cs : 0;
+        p->pendingRecall = true;   // first run applies the active preset to the DSP
+    }
     return LV2_STATE_SUCCESS;
 }
 

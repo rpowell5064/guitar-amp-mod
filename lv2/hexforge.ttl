@@ -10,6 +10,7 @@
 @prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
 @prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
@@ -40,6 +41,29 @@
     rdfs:range atom:Path ;
     mod:fileTypes "nammodel,nam" .
 
+# Preset-engine string params. The plugin owns the 8x4 preset store in
+# State; these carry only small status/command strings over the atom ports.
+#   ps_name  : UI<->plugin — renames the active preset.
+#   ps_index : plugin->UI — "bank|slot|name0|..|name31" for the list.
+#   ps_apply : plugin->UI — "sym=val;.." snapshot so the UI re-syncs knobs.
+# Declared writable so mod-ui delivers their patch:Set notify messages to the
+# custom modgui exactly like the file-picker params (alphabetical indices:
+# ampnam=0 cabnam=1 drnam=2 irfile=3 ps_apply=4 ps_index=5 ps_name=6).
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name>
+    a lv2:Parameter ;
+    rdfs:label "Preset Name" ;
+    rdfs:range atom:String .
+
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_index>
+    a lv2:Parameter ;
+    rdfs:label "Preset Index" ;
+    rdfs:range atom:String .
+
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_apply>
+    a lv2:Parameter ;
+    rdfs:label "Preset Apply" ;
+    rdfs:range atom:String .
+
 <https://rpowell5064.github.io/guitaramp-suite/hexforge>
     a lv2:Plugin, lv2:AmplifierPlugin ;
     rdfs:label "Hex Chain — Hex Forge" ;
@@ -49,14 +73,15 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 2 ;
+    lv2:microVersion 9 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
 
-    patch:writable <https://rpowell5064.github.io/guitaramp-suite/hexforge#irfile> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ampnam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#drnam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#cabnam> ;
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/hexforge#irfile> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ampnam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#drnam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#cabnam> ,
+                   <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_index> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_apply> ;
 
     lv2:port [
         a lv2:AudioPort, lv2:InputPort ;
@@ -82,7 +107,7 @@
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
-        rsz:minimumSize 8192 ;
+        rsz:minimumSize 16384 ;
         lv2:index 5 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
@@ -92,7 +117,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "out_level" ; lv2:name "Output Level" ;
-        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+        lv2:default 0.23 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 8 ; lv2:symbol "clip" ; lv2:name "Clip" ;
@@ -111,12 +136,12 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "it_phase" ; lv2:name "IT Phase" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 12 ; lv2:symbol "it_hum" ; lv2:name "IT Hum Filter" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 13 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position" ;
@@ -179,7 +204,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 21 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 22 ; lv2:symbol "cp_type" ; lv2:name "Comp Type" ;
@@ -345,7 +370,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 48 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 49 ; lv2:symbol "amp_model" ; lv2:name "Amp Model" ;
@@ -569,7 +594,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 89 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 90 ; lv2:symbol "dl_type" ; lv2:name "Delay Type" ;
@@ -590,7 +615,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 93 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix" ;
-        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+        lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 94 ; lv2:symbol "dl_width" ; lv2:name "Delay Width" ;
@@ -638,7 +663,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 99 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 100 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay" ;
@@ -663,7 +688,78 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 105 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix" ;
-        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+        lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 106 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 107 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 108 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 109 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 110 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 111 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 112 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 113 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 114 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 115 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        lv2:portProperty lv2:integer, pprops:notOnGUI ;
+        lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 31
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 116 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 7
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 117 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 118 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports midi:MidiEvent ;
+        rsz:minimumSize 4096 ;
+        lv2:index 119 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -876,5 +972,31 @@
             lv2:index 98 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate"
         ] , [
             lv2:index 99 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix"
+        ] , [
+            lv2:index 100 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+        ] , [
+            lv2:index 101 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+        ] , [
+            lv2:index 102 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+        ] , [
+            lv2:index 103 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+        ] , [
+            lv2:index 104 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+        ] , [
+            lv2:index 105 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+        ] , [
+            lv2:index 106 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+        ] , [
+            lv2:index 107 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+        ] , [
+            lv2:index 108 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+        ] , [
+            lv2:index 109 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+        ] , [
+            lv2:index 110 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank"
+        ] , [
+            lv2:index 111 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot"
+        ] , [
+            lv2:index 112 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ]
     ] .

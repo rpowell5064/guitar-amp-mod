@@ -44,6 +44,20 @@ if(GUITARAMP_ARCH_FLAGS)
     endforeach()
 endif()
 
+# ── NamCore optimization (the NAM neural inference — by far the heaviest DSP) ──
+# The submodule applies -O3 -ffast-math -march=native to GuitarAmpSim ONLY; NamCore
+# inherits just -O3 from the Release build type. Without -ffast-math (FMA
+# contraction, Eigen fast paths) and CPU tuning, the WaveNet/LSTM inference runs
+# well below the Pi's capability and stutters. Give NamCore the same flags.
+# (-march=native is right for the on-device native build; cross/portable builds
+#  already received GUITARAMP_ARCH_FLAGS in the loop above.)
+if(NOT MSVC)
+    target_compile_options(NamCore PRIVATE -ffast-math)
+    if(NOT GUITARAMP_ARCH_FLAGS)
+        target_compile_options(NamCore PRIVATE -march=native)
+    endif()
+endif()
+
 # ── NAM only where it is actually used ────────────────────────────────────────
 # The submodule links NamCore into GuitarAmpSim PUBLIC with --whole-archive, which
 # forces the entire NAM core (+ Eigen + its mutable global registries) into EVERY

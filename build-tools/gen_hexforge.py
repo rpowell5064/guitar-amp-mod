@@ -29,8 +29,8 @@ def fmt(v, integral):
 # scalepoints only for kind 'e'.
 IT = [
     ("gain",  "Gain",       "db", -20, 20, 0, None),
-    ("phase", "Phase",      "t",  0, 1, 0, None),
-    ("hum",   "Hum Filter", "t",  0, 1, 0, None),
+    ("phase", "Phase",      "t",  0, 1, 1, None),
+    ("hum",   "Hum Filter", "t",  0, 1, 1, None),
 ]
 GT = [
     ("thresh",  "Threshold",  "db", -80, 0, -60, None),
@@ -111,7 +111,7 @@ DL = [
     ("type",    "Type",     "e", 0, 2, 0, [("Digital",0),("Tape",1),("Echo Wreck",2)]),
     ("time",    "Time",     "ms", 1, 2000, 250, None),
     ("feedback","Feedback", "f", 0, 0.98, 0.4, None),
-    ("mix",     "Mix",      "f", 0, 1, 0.3, None),
+    ("mix",     "Mix",      "f", 0, 1, 0.15, None),
     ("width",   "Width",    "f", 0, 1, 0.5, None),
     ("wow",     "Wow",      "f", 0, 0.05, 0.003, None),
     ("flutter", "Flutter",  "f", 0, 0.02, 0.001, None),
@@ -127,7 +127,7 @@ RV = [
     ("damping",  "Damping",   "f", 0, 0.99, 0.3, None),
     ("moddepth", "Mod Depth", "f", 0, 1, 0.5, None),
     ("modrate",  "Mod Rate",  "f", 0.01, 5, 0.8, None),
-    ("mix",      "Mix",       "f", 0, 1, 0.3, None),
+    ("mix",      "Mix",       "f", 0, 1, 0.15, None),
 ]
 
 # Movable blocks in canonical default order. (prefix, Title, params, default-pos)
@@ -159,7 +159,7 @@ ctrl = []
 ctrl.append(mkport("BYPASS", "bypass", "Bypass", "t", 0, 1, 0, None))
 # master output level — applied LAST in the chain (the "Output" stage that feeds
 # the device). Shown in the top Output strip, not as a chain tile.
-ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "f", 0, 1, 1.0, None, "Master"))
+ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "f", 0, 1, 0.23, None, "Master"))
 # output clip indicator (plugin -> UI): 1 while the output is hitting full scale.
 ctrl.append(mkport("CLIP", "clip", "Clip", "f", 0, 1, 0, None, "Clip", out=True))
 # input trim (locked): enable + params, no pos. Per-block toggles use ENABLE
@@ -168,8 +168,9 @@ ctrl.append(mkport("IT_ENABLE", "it_enable", "Input Trim Enable", "t", 0, 1, 1, 
 for suf, nm, kind, mn, mx, df, sc in IT:
     ctrl.append(mkport("IT_" + suf.upper(), "it_" + suf, "IT " + nm, kind, mn, mx, df, sc, nm))
 # movable blocks: pos, enable, params
-# Blocks that start OFF on a fresh Hex Forge (engage them as needed).
-OFF_BY_DEFAULT = {"fz", "dr", "md"}   # Fuzz, Drive, Modulation
+# Fresh Hex Forge starts with ONLY Input Trim, Gate and Cabinet engaged; every
+# other block starts bypassed so the user builds the chain up from a clean state.
+OFF_BY_DEFAULT = {"cp", "fz", "dr", "amp", "md", "dl", "rv"}   # all but Gate + Cabinet
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
     posscale = [(str(k), k) for k in range(1, 10)]   # 1..9 dropdown for reordering
@@ -178,6 +179,30 @@ for pfx, title, params, dpos in MOVABLE:
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
+
+# ── Preset / bank command + status ports ──────────────────────────────────────
+# A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
+# These are left visible/addressable (NOT hidden) so the four physical
+# footswitches can be mapped to them in MOD's addressing UI (Phase B). The
+# bank/save/move commands are pulsed by the custom modgui only, so they're hidden
+# from the generic control list. ps_bank/ps_slot are outputs the UI mirrors.
+N_PRESET_CMD_FIRST = len(ctrl)   # first preset-command port (for the C++ engine)
+for sw, nm in (("a", "A"), ("b", "B"), ("c", "C"), ("d", "D")):
+    ctrl.append(mkport("SW_" + sw.upper(), "sw_" + sw, "Preset " + nm, "t", 0, 1, 0, None, "Preset " + nm))
+ctrl.append(mkport("PS_BANK_UP", "ps_bank_up", "Bank Up",      "t", 0, 1, 0, None, "Bank+", hidden=True))
+ctrl.append(mkport("PS_BANK_DN", "ps_bank_dn", "Bank Down",    "t", 0, 1, 0, None, "Bank-", hidden=True))
+ctrl.append(mkport("PS_SAVE",    "ps_save",    "Save Preset",  "t", 0, 1, 0, None, "Save",  hidden=True))
+ctrl.append(mkport("PS_MOVE_UP", "ps_move_up", "Move Earlier", "t", 0, 1, 0, None, "Move+", hidden=True))
+ctrl.append(mkport("PS_MOVE_DN", "ps_move_dn", "Move Later",   "t", 0, 1, 0, None, "Move-", hidden=True))
+# Jump directly to a flat preset index (bank*4+slot). The UI list sets this; the
+# plugin recalls when it changes to a value >= 0. -1 = idle.
+ctrl.append(mkport("PS_GOTO", "ps_goto", "Go To Preset", "i", -1, 31, -1, None, "GoTo", hidden=True))
+ctrl.append(mkport("PS_BANK", "ps_bank", "Active Bank", "i", 0, 7, 0, None, "Bank", out=True))
+ctrl.append(mkport("PS_SLOT", "ps_slot", "Active Slot", "i", 0, 3, 0, None, "Slot", out=True))
+# Output auto-limit: when on, a transparent peak limiter on the master output keeps
+# it from clipping (ceiling ~0.95). Added at the END so it's outside the preset
+# param range (it's a global preference, and keeps the preset blob layout stable).
+ctrl.append(mkport("OUT_AUTO", "out_auto", "Output Auto-Limit", "t", 0, 1, 1, None, "Auto"))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -197,9 +222,21 @@ def emit_header():
     for c in ctrl:
         lines.append("    HF_%s," % c["enum"])
         idx += 1
+    lines.append("    HF_MIDI_IN,")   # MIDI input atom port (last index)
+    idx += 1
     lines.append("    HF_N_PORTS")
     lines.append("};")
     lines.append("static_assert(HF_N_PORTS == %d, \"port count drift\");" % idx)
+    lines.append("")
+    # Port symbol table (index -> lv2:symbol). The preset engine emits the recalled
+    # snapshot as "sym=val;.." so the modgui can re-sync each knob by symbol.
+    syms = ['"in_l"', '"in_r"', '"out_l"', '"out_r"', '"control"', '"notify"']
+    syms += ['"%s"' % c["sym"] for c in ctrl]
+    syms += ['"midi_in"']
+    lines.append("static const char* const HF_PORT_SYM[HF_N_PORTS] = {")
+    for i in range(0, len(syms), 6):
+        lines.append("    " + ", ".join(syms[i:i+6]) + ",")
+    lines.append("};")
     lines.append("")
     return "\n".join(lines)
 
@@ -243,6 +280,7 @@ def emit_ttl():
     L.append("@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .")
     L.append("@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .")
     L.append("@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .")
+    L.append("@prefix midi:  <http://lv2plug.in/ns/ext/midi#> .")
     L.append("@prefix modgui:<http://moddevices.com/ns/modgui#> .")
     L.append("@prefix doap:  <http://usefulinc.com/ns/doap#> .")
     L.append("@prefix foaf:  <http://xmlns.com/foaf/0.1/> .")
@@ -262,6 +300,20 @@ def emit_ttl():
         L.append("    rdfs:range atom:Path ;")
         L.append('    mod:fileTypes "nammodel,nam" .')
         L.append("")
+    L.append("# Preset-engine string params. The plugin owns the 8x4 preset store in")
+    L.append("# State; these carry only small status/command strings over the atom ports.")
+    L.append("#   ps_name  : UI<->plugin — renames the active preset.")
+    L.append('#   ps_index : plugin->UI — "bank|slot|name0|..|name31" for the list.')
+    L.append('#   ps_apply : plugin->UI — "sym=val;.." snapshot so the UI re-syncs knobs.')
+    L.append("# Declared writable so mod-ui delivers their patch:Set notify messages to the")
+    L.append("# custom modgui exactly like the file-picker params (alphabetical indices:")
+    L.append("# ampnam=0 cabnam=1 drnam=2 irfile=3 ps_apply=4 ps_index=5 ps_name=6).")
+    for frag, lbl in (("ps_name", "Preset Name"), ("ps_index", "Preset Index"), ("ps_apply", "Preset Apply")):
+        L.append("<%s#%s>" % (URI, frag))
+        L.append("    a lv2:Parameter ;")
+        L.append('    rdfs:label "%s" ;' % lbl)
+        L.append("    rdfs:range atom:String .")
+        L.append("")
     L.append("<%s>" % URI)
     L.append("    a lv2:Plugin, lv2:AmplifierPlugin ;")
     L.append('    rdfs:label "Hex Chain — Hex Forge" ;')
@@ -271,7 +323,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 2 ;")
+    L.append("    lv2:microVersion 9 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -279,7 +331,8 @@ def emit_ttl():
     L.append("    lv2:extensionData state:interface , work:interface ;")
     L.append("")
     # Order here = effect.parameters order in the modgui: 0 irfile,1 ampnam,2 drnam,3 cabnam.
-    L.append("    patch:writable <%s#irfile> , <%s#ampnam> , <%s#drnam> , <%s#cabnam> ;" % (URI, URI, URI, URI))
+    L.append("    patch:writable <%s#irfile> , <%s#ampnam> , <%s#drnam> , <%s#cabnam> ," % (URI, URI, URI, URI))
+    L.append("                   <%s#ps_name> , <%s#ps_index> , <%s#ps_apply> ;" % (URI, URI, URI))
     L.append("")
     # audio ports
     L.append("    lv2:port [")
@@ -306,11 +359,20 @@ def emit_ttl():
     L.append("        atom:bufferType atom:Sequence ;")
     L.append("        atom:supports patch:Message ;")
     L.append("        lv2:designation lv2:control ;")
-    L.append("        rsz:minimumSize 8192 ;")
+    L.append("        rsz:minimumSize 16384 ;")
     L.append('        lv2:index 5 ; lv2:symbol "notify" ; lv2:name "Notify"')
     # control ports
     for i, c in enumerate(ctrl):
         L.append(ttl_ctrl(c, NFIXED + i))
+    # MIDI input (last port; index after all control ports so none shift). The
+    # pi-Stomp footswitches emit CC 60..63 — Hex Forge reads them here for preset
+    # recall + bank combos. Kept off the modgui:port list (it's not a control).
+    L.append("    ] , [")
+    L.append("        a lv2:InputPort, atom:AtomPort ;")
+    L.append("        atom:bufferType atom:Sequence ;")
+    L.append("        atom:supports midi:MidiEvent ;")
+    L.append("        rsz:minimumSize 4096 ;")
+    L.append('        lv2:index %d ; lv2:symbol "midi_in" ; lv2:name "MIDI In"' % (NFIXED + len(ctrl)))
     L.append("    ] ;")
     L.append("")
     # modgui
@@ -461,6 +523,34 @@ def tile(pfx, title, accent, keys):
     out.append('</div>')
     return "".join(out)
 
+# ── Preset / bank strip ───────────────────────────────────────────────────────
+# Plain buttons; script-hexforge.js wires their clicks to pulse the command ports
+# (set_port_value 1 then 0) and renders the active bank/slot/name + the 32-preset
+# list from the ps_bank/ps_slot/ps_index notifications. Rename is done in MOD's
+# generic "Preset Name" parameter field (no JS parameter setter exists).
+PRESETS_PANEL = (
+    '  <div class="hf-presets">\n'
+    '    <span class="hf-ps-mark"></span>\n'
+    '    <span class="hf-ps-title">PRESETS</span>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-bankdn" title="Bank down (hold A+B on the pedal)">◀</button>\n'
+    '    <span class="hf-ps-bank" rata-role="psbank">BANK 1</span>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-bankup" title="Bank up (hold C+D on the pedal)">▶</button>\n'
+    '    <span class="hf-ps-slots">\n'
+    '      <button type="button" class="hf-ps-slot" data-slot="0">A</button>\n'
+    '      <button type="button" class="hf-ps-slot" data-slot="1">B</button>\n'
+    '      <button type="button" class="hf-ps-slot" data-slot="2">C</button>\n'
+    '      <button type="button" class="hf-ps-slot" data-slot="3">D</button>\n'
+    '    </span>\n'
+    '    <input type="text" class="hf-ps-name" rata-role="psname" maxlength="31" spellcheck="false" placeholder="(unnamed)" title="Preset name — type and press Enter to rename" />\n'
+    '    <span class="hf-ps-spacer"></span>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-save" title="Save over the current preset">SAVE</button>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-mvup" title="Move preset earlier in the list">▲</button>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-mvdn" title="Move preset later in the list">▼</button>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-toggle" title="Show all presets">≡</button>\n'
+    '    <div class="hf-ps-list" rata-role="pslist"></div>\n'
+    '  </div>\n'
+)
+
 def emit_icon():
     tiles = "\n      ".join(tile(*t) for t in TILES)
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
@@ -478,8 +568,10 @@ def emit_icon():
         '    <span class="hf-out-spacer"></span>\n'
         '    <span class="hf-clip" rata-role="clip">CLIP</span>\n'
         '    <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
+        '    ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '    ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
         '  </div>\n'
+        + PRESETS_PANEL +
         '  <div class="hf-rack">\n      ' + tiles + '\n  </div>\n'
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'

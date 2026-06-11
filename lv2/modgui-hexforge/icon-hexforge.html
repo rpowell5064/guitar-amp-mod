@@ -13,7 +13,28 @@
     <span class="hf-out-spacer"></span>
     <span class="hf-clip" rata-role="clip">CLIP</span>
     <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>
+    <div class="hf-sw" title="Auto"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="out_auto" mod-widget="switch"></div><span class="hf-sw-t">Auto</span></div>
     <div class="hf-knob" title="Master"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="out_level"></div><span class="hf-knob-t" rata-role="lbl-out_level">Master</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="out_level"></span></div>
+  </div>
+  <div class="hf-presets">
+    <span class="hf-ps-mark"></span>
+    <span class="hf-ps-title">PRESETS</span>
+    <button type="button" class="hf-ps-btn hf-ps-bankdn" title="Bank down (hold A+B on the pedal)">◀</button>
+    <span class="hf-ps-bank" rata-role="psbank">BANK 1</span>
+    <button type="button" class="hf-ps-btn hf-ps-bankup" title="Bank up (hold C+D on the pedal)">▶</button>
+    <span class="hf-ps-slots">
+      <button type="button" class="hf-ps-slot" data-slot="0">A</button>
+      <button type="button" class="hf-ps-slot" data-slot="1">B</button>
+      <button type="button" class="hf-ps-slot" data-slot="2">C</button>
+      <button type="button" class="hf-ps-slot" data-slot="3">D</button>
+    </span>
+    <input type="text" class="hf-ps-name" rata-role="psname" maxlength="31" spellcheck="false" placeholder="(unnamed)" title="Preset name — type and press Enter to rename" />
+    <span class="hf-ps-spacer"></span>
+    <button type="button" class="hf-ps-btn hf-ps-save" title="Save over the current preset">SAVE</button>
+    <button type="button" class="hf-ps-btn hf-ps-mvup" title="Move preset earlier in the list">▲</button>
+    <button type="button" class="hf-ps-btn hf-ps-mvdn" title="Move preset later in the list">▼</button>
+    <button type="button" class="hf-ps-btn hf-ps-toggle" title="Show all presets">≡</button>
+    <div class="hf-ps-list" rata-role="pslist"></div>
   </div>
   <div class="hf-rack">
       <div class="hf-tile hf-locked" data-block="it" style="--acc:#7d8590"><div class="hf-thead"><span class="hf-grip hf-grip-lock">⌗</span><span class="hf-posn hf-posn-lock">0</span><span class="hf-name">Input Trim</span><div class="hf-on" title="Block on/off"><div class="hf-on-img" mod-role="input-control-port" mod-port-symbol="it_enable" mod-widget="switch"></div></div></div><div class="hf-key clearfix"><div class="hf-knob" title="Gain"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="it_gain"></div><span class="hf-knob-t" rata-role="lbl-it_gain">Gain</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="it_gain"></span></div><div class="hf-sw" title="Phase"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="it_phase" mod-widget="switch"></div><span class="hf-sw-t">Phase</span></div><div class="hf-sw" title="Hum Filter"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="it_hum" mod-widget="switch"></div><span class="hf-sw-t">Hum Filter</span></div></div></div>

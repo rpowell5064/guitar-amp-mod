@@ -100,6 +100,80 @@ function (event, funcs) {
     }
     function setIr(icon, value) { setFile(icon, 'Ir', value, '-- choose an IR file --'); }
 
+    // ── Presets: pulse command ports, render bank/slot/name + the 32-slot list ──
+    var SW = ['sw_a', 'sw_b', 'sw_c', 'sw_d'];
+    var PS_NAME_URI = 'https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name';
+    function psPulse(fns, sym) {
+        if (!fns || typeof fns.set_port_value !== 'function') return;
+        fns.set_port_value(sym, 1);
+        setTimeout(function () { fns.set_port_value(sym, 0); }, 40);   // clean rising edge
+    }
+    function psGoto(fns, flat) {
+        if (!fns || typeof fns.set_port_value !== 'function') return;
+        fns.set_port_value('ps_goto', flat);
+        setTimeout(function () { fns.set_port_value('ps_goto', -1); }, 60);   // back to idle so a re-pick re-fires
+    }
+    function psBankLabel(icon) {
+        var b = icon.data('ps_bank'); if (b == null) b = 0;
+        var s = icon.data('ps_slot'); if (s == null) s = 0;
+        icon.find('[rata-role=psbank]').text('BANK ' + (b + 1));
+        icon.find('.hf-ps-slot').each(function () {
+            this.classList.toggle('hf-ps-on', parseInt(this.getAttribute('data-slot'), 10) === s);
+        });
+    }
+    function psRenderList(icon, fns) {
+        var box = icon.find('[rata-role=pslist]'); if (!box.length) return;
+        var names = icon.data('ps_names') || [];
+        var ab = icon.data('ps_bank') || 0, as = icon.data('ps_slot') || 0;
+        var html = '';
+        for (var b = 0; b < 8; b++) {
+            html += '<div class="hf-ps-bankrow"><span class="hf-ps-banknum">B' + (b + 1) + '</span>';
+            for (var s = 0; s < 4; s++) {
+                var flat = b * 4 + s, nm = names[flat] || '';
+                var active = (b === ab && s === as) ? ' hf-ps-active' : '';
+                var empty = nm ? '' : ' hf-ps-empty';
+                html += '<button type="button" class="hf-ps-item' + active + empty + '" data-flat="' + flat + '">'
+                      + '<b>' + 'ABCD'.charAt(s) + '</b> ' + (nm || '—') + '</button>';
+            }
+            html += '</div>';
+        }
+        box[0].innerHTML = html;
+        box.find('.hf-ps-item').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                psGoto(fns, parseInt(el.getAttribute('data-flat'), 10));
+                box.removeClass('hf-ps-open');
+            });
+        });
+    }
+    // Set the name input without clobbering what the user is currently typing.
+    function psSetName(icon, nm) {
+        var el = icon.find('[rata-role=psname]')[0];
+        if (el && document.activeElement !== el) el.value = (nm == null ? '' : '' + nm);
+    }
+    // Replay the recalled snapshot ("sym=val;..") onto the host ports so the knobs,
+    // tiles and conditional controls follow the preset. The block-order (_pos)
+    // ports need care: writing them one-by-one through the normal change handler
+    // would call moveToSlot for each and renumber the whole rack, scrambling the
+    // permutation. So for _pos we set the tile's data-pos FIRST (which makes the
+    // echoed change a recognised no-op), push the value, then resort once at the end.
+    function psApply(fns, str, icon) {
+        if (!fns || typeof fns.set_port_value !== 'function' || !str) return;
+        var sawPos = false;
+        ('' + str).split(';').forEach(function (kv) {
+            var i = kv.indexOf('='); if (i < 0) return;
+            var sym = kv.substring(0, i), val = parseFloat(kv.substring(i + 1));
+            if (!sym || isNaN(val)) return;
+            if (/_pos$/.test(sym)) {
+                tileOf(icon, sym.replace(/_pos$/, '')).attr('data-pos', val);
+                sawPos = true;
+            }
+            fns.set_port_value(sym, val);
+        });
+        if (sawPos) resort(icon);
+    }
+
     if (event.type == 'start') {
         var icon = event.icon;
         icon.find('.hf-morebtn').each(function () {
@@ -138,6 +212,43 @@ function (event, funcs) {
             if ((b + '_pos') in map)    tileOf(icon, b).attr('data-pos', parseInt(map[b + '_pos'], 10));
         });
         resort(icon);
+
+        // Preset strip: wire the buttons to pulse the command ports.
+        function wire(sel, fn) { icon.find(sel).each(function () { var el = this;
+            el.addEventListener('click', function (e) { e.stopPropagation(); fn(); }); }); }
+        wire('.hf-ps-bankdn', function () { psPulse(funcs, 'ps_bank_dn'); });
+        wire('.hf-ps-bankup', function () { psPulse(funcs, 'ps_bank_up'); });
+        wire('.hf-ps-save',   function () { psPulse(funcs, 'ps_save'); });
+        wire('.hf-ps-mvup',   function () { psPulse(funcs, 'ps_move_up'); });
+        wire('.hf-ps-mvdn',   function () { psPulse(funcs, 'ps_move_dn'); });
+        wire('.hf-ps-toggle', function () { icon.find('[rata-role=pslist]').toggleClass('hf-ps-open'); });
+        icon.find('.hf-ps-slot').each(function () { var el = this;
+            el.addEventListener('click', function (e) { e.stopPropagation();
+                psPulse(funcs, SW[parseInt(el.getAttribute('data-slot'), 10)]); }); });
+        // Name input → send the rename as an atom:String patch (valuetype 's').
+        icon.find('.hf-ps-name').each(function () {
+            var el = this;
+            el.addEventListener('mousedown', function (e) { e.stopPropagation(); });   // focus, don't drag the pedal
+            var commit = function () {
+                if (funcs && typeof funcs.patch_set === 'function')
+                    funcs.patch_set(PS_NAME_URI, 's', el.value.replace(/\|/g, ' '));
+                el.blur();
+            };
+            el.addEventListener('change', commit);
+            el.addEventListener('keydown', function (e) { if (e.keyCode === 13) { e.preventDefault(); commit(); } });
+        });
+        if ('ps_bank' in map) icon.data('ps_bank', parseInt(map.ps_bank, 10));
+        if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));
+        psBankLabel(icon); psRenderList(icon, funcs);
+        // Re-sync each block's dimmed/active look from the actual on-off switch once
+        // mod-ui has applied the initial port values (some builds don't pass them in
+        // event.ports), so bypassed blocks always show dimmed and active ones bright.
+        setTimeout(function () {
+            ['it'].concat(BLOCKS).forEach(function (b) {
+                var img = tileOf(icon, b).find('.hf-on-img');
+                if (img.length) tileOf(icon, b).toggleClass('hf-off', img.hasClass('off'));
+            });
+        }, 350);
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
         if (s && /_pos$/.test(s)) {
@@ -160,6 +271,10 @@ function (event, funcs) {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'clip') {
             icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
+        } else if (s === 'ps_bank') {
+            icon.data('ps_bank', parseInt(event.value, 10)); psBankLabel(icon); psRenderList(icon, funcs);
+        } else if (s === 'ps_slot') {
+            icon.data('ps_slot', parseInt(event.value, 10)); psBankLabel(icon); psRenderList(icon, funcs);
         } else if (event.uri && event.uri.indexOf('#irfile') >= 0) {
             setIr(icon, event.value);
         } else if (event.uri && event.uri.indexOf('#ampnam') >= 0) {
@@ -168,6 +283,18 @@ function (event, funcs) {
             setFile(icon, 'DrNam', event.value, '-- choose a NAM file --');
         } else if (event.uri && event.uri.indexOf('#cabnam') >= 0) {
             setFile(icon, 'CabNam', event.value, '-- choose a NAM file --');
+        } else if (event.uri && event.uri.indexOf('#ps_index') >= 0) {
+            var parts = ('' + event.value).split('|');
+            if (parts.length >= 2) {
+                var pb = parseInt(parts[0], 10), ps = parseInt(parts[1], 10);
+                icon.data('ps_bank', pb); icon.data('ps_slot', ps); icon.data('ps_names', parts.slice(2));
+                psBankLabel(icon); psRenderList(icon, funcs);
+                psSetName(icon, parts[2 + pb * 4 + ps]);
+            }
+        } else if (event.uri && event.uri.indexOf('#ps_name') >= 0) {
+            psSetName(icon, event.value);
+        } else if (event.uri && event.uri.indexOf('#ps_apply') >= 0) {
+            psApply(funcs, event.value, icon);
         }
     }
 }

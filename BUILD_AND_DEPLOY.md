@@ -140,6 +140,44 @@ The `amp` plugin mirrors the VST's amp section:
 
 > NAM models are expected at 48 kHz — run the pi-Stomp engine at 48 kHz.
 
+## Hex Forge: presets, banks & footswitch mapping
+
+Hex Forge stores its **own** presets — 8 banks × 4 slots (A/B/C/D) = 32 presets —
+entirely inside the plugin and persisted via LV2 `state:interface` (the
+`#preset_blob` property), so they survive pedalboard save/load and reboots.
+
+**In the web UI** (`pistomp.local`): the **PRESETS** strip above the tile rack has
+the A/B/C/D slot buttons, bank `◀ ▶` arrows, **SAVE** (overwrites the loaded
+preset in place — no re-naming), **Move ▲/▼** (sort a preset earlier/later), and
+`≡` to open the full 32-preset list (click any entry to jump to it). Rename the
+active preset in MOD's generic-controls **"Preset Name"** field (custom modgui
+JS can't set a string parameter, so rename lives in the gear panel).
+
+**On the hardware** — map the four physical footswitches to the plugin's control
+ports in MOD's addressing UI:
+
+| Footswitch | Port symbol | Action |
+|-----------|-------------|--------|
+| A | `sw_a` | recall slot A in the current bank |
+| B | `sw_b` | recall slot B |
+| C | `sw_c` | recall slot C |
+| D | `sw_d` | recall slot D |
+
+Address each as a **momentary** switch (press = 1 while held, release = 0) — the
+plugin reads press/hold timing, so latching toggles won't drive the bank chords.
+
+- **Single tap** of A/B/C/D recalls that slot instantly (sound + loaded NAM/IR
+  follow, even with no browser attached).
+- **Hold A+B together ~0.5 s → bank down; hold C+D together ~0.5 s → bank up.**
+  The same slot letter is reloaded in the new bank. (Accepted tradeoff: because
+  taps fire instantly, a chord briefly recalls the first tapped slot before the
+  0.5 s hold completes.)
+
+Like the rest of the suite, recall changes the **sound** but can't move the
+host's on-screen knobs (LV2 plugins can't write their own control input ports);
+the plugin instead runs the recalled values through an internal override layer
+and pushes a snapshot to the web UI so the knobs follow there when it's open.
+
 ## Known limitations (not blockers, but be aware)
 
 1. **Model switching is fully RT-safe.** Both NAM loads *and* amp-model changes
