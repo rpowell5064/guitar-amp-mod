@@ -158,8 +158,11 @@ ctrl = []
 # global bypass first
 ctrl.append(mkport("BYPASS", "bypass", "Bypass", "t", 0, 1, 0, None))
 # master output level — applied LAST in the chain (the "Output" stage that feeds
-# the device). Shown in the top Output strip, not as a chain tile.
-ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "f", 0, 1, 0.23, None, "Master"))
+# the device). dB-scaled like the stock MOD gain block: 0 dB = unity, with up to
+# +12 dB make-up boost; the linear knob throw is a natural dB taper. Default
+# -13 dB ~= the old 0.23 linear gain so loudness is unchanged. Shown in the top
+# Output strip, not as a chain tile. (The plugin converts dB -> linear gain.)
+ctrl.append(mkport("OUT_LEVEL", "out_level", "Output Level", "db", -60, 12, -13, None, "Master"))
 # output clip indicator (plugin -> UI): 1 while the output is hitting full scale.
 ctrl.append(mkport("CLIP", "clip", "Clip", "f", 0, 1, 0, None, "Clip", out=True))
 # input trim (locked): enable + params, no pos. Per-block toggles use ENABLE
@@ -323,7 +326,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 10 ;")
+    L.append("    lv2:microVersion 11 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")

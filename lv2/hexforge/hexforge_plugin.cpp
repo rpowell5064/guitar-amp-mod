@@ -121,27 +121,45 @@ static int clampi(float v, int lo, int hi) {
 // has to be found by hand. It only ever turns the gain *down* (never boosts noise).
 // A fast safety limiter just under the digital ceiling catches transients, so it
 // also can't clip. Transparent on quiet material; turns hot amp/NAM signals down.
-// Transparent peak limiter / clip protector. The master Output level is applied
-// FIRST (so "auto" sounds exactly like manual at the same setting); the limiter
-// only reduces gain when a post-level peak would breach the ceiling. Attack is
-// sample-accurate (no sample passes the ceiling) and release is smooth so steady,
-// non-clipping signals are left completely untouched — it does NOT pull the level
-// down to the knob value the way the old AGC did.
+// dB -> linear gain. -60 dB (the port floor) is treated as a hard mute.
+static inline float dbToGain(float db) noexcept {
+    return db <= -59.5f ? 0.0f : std::pow(10.0f, db * 0.05f);
+}
+// linear gain -> dB, for migrating v2 presets (which stored out_level as 0..1).
+static inline float linToDb(float lin) noexcept {
+    return lin <= 1e-4f ? -60.0f : std::fmax(-60.0f, 20.0f * std::log10(lin));
+}
+
+// Master output stage: a smoothed gain (the dB-scaled Output knob, applied like
+// the stock MOD gain block) followed by an optional transparent peak limiter.
+// The gain is applied FIRST and smoothed (~10 ms) so knob moves never zipper;
+// when limiting is on, the limiter only reduces when a post-gain peak would
+// breach the ceiling — sample-accurate attack (nothing clips) with a short
+// release so it doesn't dull the tone. Below the ceiling it is fully transparent.
 struct AutoOutput {
-    float env = 1.0f;          // limiter gain envelope, <= 1.0
-    float rel = 0.0f;          // release coefficient
+    float env  = 1.0f;         // limiter gain envelope, <= 1.0
+    float lvlZ = 1.0f;         // smoothed master gain
+    float rel = 0.0f, lvlCoef = 0.0f;
+    bool  primed = false;
     static constexpr float kCeiling = 0.98f;   // ~-0.18 dBFS: only catch true overs
     void prepare(double sr) noexcept {
-        rel = std::exp(-1.0f / (0.045f * static_cast<float>(sr)));   // ~45 ms release (less dulling)
+        const float s = static_cast<float>(sr);
+        rel     = std::exp(-1.0f / (0.045f * s));   // ~45 ms limiter release (low dulling)
+        lvlCoef = std::exp(-1.0f / (0.010f * s));   // ~10 ms gain smoothing (no zipper)
     }
     void reset() noexcept { env = 1.0f; }
-    void process(float* L, float* R, uint32_t n, float level) noexcept {
+    void process(float* L, float* R, uint32_t n, float gain, bool limit) noexcept {
+        if (!primed) { lvlZ = gain; primed = true; }
         for (uint32_t i = 0; i < n; ++i) {
-            const float l = L[i] * level, r = R[i] * level;          // master level first
-            const float a = std::fmax(std::fabs(l), std::fabs(r));   // stereo-linked peak
-            const float des = (a > kCeiling) ? kCeiling / a : 1.0f;  // gain needed to stay under ceiling
+            lvlZ = lvlCoef * lvlZ + (1.0f - lvlCoef) * gain;         // smoothed master gain
+            float l = L[i] * lvlZ, r = R[i] * lvlZ;
+            float des = 1.0f;
+            if (limit) {
+                const float a = std::fmax(std::fabs(l), std::fabs(r));   // stereo-linked peak
+                des = (a > kCeiling) ? kCeiling / a : 1.0f;
+            }
             if (des < env) env = des;                                // instant attack: never clip
-            else           env = rel * env + (1.0f - rel) * des;     // smooth release back to unity
+            else           env = rel * env + (1.0f - rel) * des;     // release toward des (1.0 when off)
             L[i] = l * env; R[i] = r * env;
         }
     }
@@ -955,17 +973,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     }
 
     // ── Master output level (the "Output" stage — last in the chain) ──
-    const float outLevel = *p->ports[HF_OUT_LEVEL];
-    if (*p->ports[HF_OUT_AUTO] > 0.5f) {
-        // Auto: apply the Output knob as master gain, then limit only peaks that
-        // would clip (transparent below the ceiling — same loudness as manual).
-        p->autoOut.process(outL, outR, n, outLevel);
-    } else {
-        // Manual: Output knob is a fixed master gain.
-        if (outLevel != 1.0f)
-            for (uint32_t i = 0; i < n; ++i) { outL[i] *= outLevel; outR[i] *= outLevel; }
-        p->autoOut.reset();
-    }
+    // The knob is in dB (0 dB = unity, up to +12 dB boost); convert to a linear
+    // gain and apply it smoothed. Auto-Limit only adds the clip-safe limiter on
+    // top — below the ceiling both modes sound identical.
+    const float outGain = dbToGain(*p->ports[HF_OUT_LEVEL]);
+    const bool  outLimit = *p->ports[HF_OUT_AUTO] > 0.5f;
+    p->autoOut.process(outL, outR, n, outGain, outLimit);
 
     // ── Clip indicator: latch for ~250 ms whenever the output hits full scale ──
     float peak = 0.0f;
@@ -1016,7 +1029,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(2);                  // version (2 adds the port-count field below)
+    putU32(3);                  // version (3: out_level is dB; v2 stored it linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1085,7 +1098,8 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver != 2) return LV2_STATE_SUCCESS;     // older/unknown layout — start fresh
+        if (ver != 2 && ver != 3) return LV2_STATE_SUCCESS;  // unknown layout — start fresh
+        const bool migrateOutDb = (ver == 2);       // v2 stored out_level as 0..1 linear
         getU32(np);                                 // param-port count at save time
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -1094,6 +1108,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             float vals[HF_N_PORTS]; for (int i=0;i<HF_N_PORTS;++i) vals[i]=0.0f;
             if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
             else off = size;
+            if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);  // 0..1 -> dB
             char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
             getPath(ir); getPath(an); getPath(dn); getPath(cn);
             if (b<kBanks && s<kSlots) {     // ignore extras if a future build grows the grid
