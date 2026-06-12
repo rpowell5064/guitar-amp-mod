@@ -98,7 +98,12 @@ function (event, funcs) {
         if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
         box.text(label);
     }
-    function setIr(icon, value) { setFile(icon, 'Ir', value, '-- choose an IR file --'); }
+    // Empty / sentinel IR path == the always-available built-in Factory Cab.
+    function setIr(icon, value) {
+        if (value == null || value === 'None' || value === '' || value === '@factory')
+            value = '@factory';
+        setFile(icon, 'Ir', value, 'Factory Cab (built-in)');
+    }
 
     // ── Presets: pulse command ports, render bank/slot/name + the 32-slot list ──
     var SW = ['sw_a', 'sw_b', 'sw_c', 'sw_d'];
@@ -221,6 +226,8 @@ function (event, funcs) {
         wire('.hf-ps-save',   function () { psPulse(funcs, 'ps_save'); });
         wire('.hf-ps-mvup',   function () { psPulse(funcs, 'ps_move_up'); });
         wire('.hf-ps-mvdn',   function () { psPulse(funcs, 'ps_move_dn'); });
+        wire('.hf-ps-backup', function () { psPulse(funcs, 'ps_backup'); });
+        wire('.hf-ps-restore',function () { psPulse(funcs, 'ps_restore'); });
         wire('.hf-ps-toggle', function () { icon.find('[rata-role=pslist]').toggleClass('hf-ps-open'); });
         icon.find('.hf-ps-slot').each(function () { var el = this;
             el.addEventListener('click', function (e) { e.stopPropagation();

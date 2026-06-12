@@ -11,11 +11,11 @@ name: Build & Release (pi-Stomp aarch64)
 # (`bash build-tools/package_bundle.sh <ver>`) and upload it to the release manually.
 
 on:
-  # Auto-release on tag is DISABLED until CI can reach the private submodule.
-  # Add a SUBMODULE_TOKEN secret (fine-grained PAT, read-only Contents on
-  # GuitarAmpSimulator), then re-enable by uncommenting:
-  #   push:
-  #     tags: ['v*']
+  # The DSP repo (guitar-amp-simulator) is now PUBLIC, so CI can build with the
+  # default token. Pushing a v* tag auto-builds the aarch64 bundle and publishes
+  # the GitHub Release.
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       version:

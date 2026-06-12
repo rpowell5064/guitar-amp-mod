@@ -4,73 +4,75 @@
 #include <cmath>
 #include <cstdint>
 
-// Generates a synthetic Celestion Vintage 30 (4×12, closed-back) close-miked
-// with a Shure SM57 — the de-facto standard modern guitar cab tone, used when
-// no user IR is loaded.
+// The built-in "Factory Cab" impulse response, used whenever no user IR is
+// loaded (and selectable by name in the IR picker so it is always available).
 //
-// Approach: a unit impulse filtered through a V30+SM57 frequency-response
-// biquad stack, so the IR's magnitude response is exactly the designed voicing
-// (smooth, no random notches — a single noise realisation rippled the curve and
-// drifted the peaks). This is also a fair model of a close-miked single speaker,
-// which has little comb filtering. The cascade's natural ringing supplies the
-// short decay; the tail is faded out to avoid a truncation click.
+// This is a *synthetic* voicing — NOT a captured/sampled IR — so it carries no
+// licensing restrictions and ships freely. Its frequency response was tuned to
+// match the character of a modern, dark-and-tight production 4×12 cab capture
+// (close-miked, mids-forward with a deep low-mid notch and a steep top): a
+// legal look-alike of the cab voicing used while dialing in the factory presets.
 //
-// Character — tight closed-back chunk, scooped lower mids, the V30's forward
-// upper-mid "honk" ~1.9 kHz, the SM57/cone-breakup bite ~4 kHz, and a steep top
-// that dies ~5 kHz (bright but fizz-free) — without requiring an IR file.
+// Approach: a unit impulse filtered through a biquad stack, so the IR's
+// magnitude response IS the designed voicing (smooth, no random notches). The
+// cascade's natural ringing supplies the short decay; the tail is faded out to
+// avoid a truncation click.
 //
-// Length ~40 ms (scales with sampleRate so the response is SR-independent).
+// Measured character (relative dB, ~0.95 dB RMS to the reference capture):
+//   body peak ~150 Hz, low-mid scoop with a deep notch ~600 Hz, a post-notch
+//   shoulder ~1 kHz, presence push ~1.9 kHz, a forward bite ~4–5 kHz, then a
+//   steep cliff above ~6 kHz (dark/smooth — almost nothing past 7 kHz).
+//
+// Length ~45 ms (scales with sampleRate so the response is SR-independent).
 namespace DefaultCabIR {
 
 inline std::vector<float> generate(double sampleRate) {
-    const int len = static_cast<int>(sampleRate * 0.040);
+    const int len = static_cast<int>(sampleRate * 0.045);
 
     // ── Unit impulse excitation ───────────────────────────────────────────────
     std::vector<float> ir(static_cast<size_t>(len), 0.0f);
     ir[0] = 1.0f;
 
-    // ── V30 + SM57 frequency shaping ─────────────────────────────────────────
-    // Closed-back LF rolloff: collapses below ~70 Hz, slight resonant lift to
-    // keep the low-end "chunk".
-    BiquadFilter hp;
-    hp.setCoeffs(Filters::highpass(72.0, 1.0, sampleRate));
-
-    // Closed-back cabinet/speaker resonance: tight thump ~100 Hz (+2.5 dB).
-    BiquadFilter thump;
-    thump.setCoeffs(Filters::peaking(100.0, 2.5, 1.2, sampleRate));
-
-    // V30 scooped lower mids ~440 Hz (-3 dB) — the classic "scoop".
-    BiquadFilter scoop;
-    scoop.setCoeffs(Filters::peaking(440.0, -3.0, 1.0, sampleRate));
-
-    // Subtle nasal dip ~750 Hz (-1.5 dB).
-    BiquadFilter nasal;
-    nasal.setCoeffs(Filters::peaking(750.0, -1.5, 1.6, sampleRate));
-
-    // V30 signature: forward upper-mid "honk"/cut ~1.9 kHz (+4.5 dB).
-    BiquadFilter honk;
-    honk.setCoeffs(Filters::peaking(1900.0, 4.5, 1.0, sampleRate));
-
-    // SM57 presence + cone-breakup bite ~4 kHz (+3 dB) — the on-axis "edge".
-    BiquadFilter bite;
-    bite.setCoeffs(Filters::peaking(4000.0, 3.0, 1.8, sampleRate));
-
-    // Steep HF rolloff — two cascaded LP stages (~24 dB/oct). The speaker dies
-    // ~5 kHz: bright enough for V30 sizzle, steep enough to kill preamp fizz.
-    BiquadFilter lp1, lp2;
-    lp1.setCoeffs(Filters::lowpass(5200.0, 0.7, sampleRate));
-    lp2.setCoeffs(Filters::lowpass(5200.0, 1.0, sampleRate));
+    // ── Cab voicing: biquad cascade (frequencies absolute Hz → SR-independent) ─
+    // Closed-back low-end: collapses below ~90 Hz (−18 dB by 40 Hz).
+    BiquadFilter hp;     hp.setCoeffs   (Filters::highpass (92.0,  0.82, sampleRate));
+    // Overall dark tilt: shelve the whole top down ~6 dB above ~360 Hz.
+    BiquadFilter tilt;   tilt.setCoeffs (Filters::highshelf(360.0, -6.0, sampleRate));
+    // Body resonance ~150 Hz (the response's peak).
+    BiquadFilter body;   body.setCoeffs (Filters::peaking  (150.0,  2.2, 1.0, sampleRate));
+    // Deep low-mid notch ~600 Hz (the signature "scoop" dip).
+    BiquadFilter notch;  notch.setCoeffs(Filters::peaking  (600.0, -6.0, 2.9, sampleRate));
+    // Post-notch shoulder ~1 kHz so the scoop doesn't swallow the low mids.
+    BiquadFilter shldr;  shldr.setCoeffs(Filters::peaking  (1050.0, 3.6, 1.1, sampleRate));
+    // Upper-mid dip ~1.5 kHz then the forward presence push ~1.9 kHz.
+    BiquadFilter dip1;   dip1.setCoeffs (Filters::peaking  (1500.0,-3.2, 3.0, sampleRate));
+    BiquadFilter pres;   pres.setCoeffs (Filters::peaking  (1900.0, 3.0, 1.6, sampleRate));
+    // Presence trough ~3 kHz then the cone-breakup bite ~4.7 kHz.
+    BiquadFilter dip2;   dip2.setCoeffs (Filters::peaking  (3000.0,-3.8, 2.2, sampleRate));
+    BiquadFilter bite;   bite.setCoeffs (Filters::peaking  (4700.0, 2.2, 1.8, sampleRate));
+    // Steep top cliff: three cascaded LP stages near ~6 kHz (the speaker dies
+    // ~6–7 kHz) plus a deep notch ~7.9 kHz to kill any residual fizz.
+    BiquadFilter lp1, lp2, lp3, fizz;
+    lp1.setCoeffs (Filters::lowpass(5900.0, 1.50, sampleRate));
+    lp2.setCoeffs (Filters::lowpass(5900.0, 0.85, sampleRate));
+    lp3.setCoeffs (Filters::lowpass(6100.0, 0.70, sampleRate));
+    fizz.setCoeffs(Filters::peaking(7900.0, -9.0, 2.2, sampleRate));
 
     for (int i = 0; i < len; ++i) {
         float x = ir[i];
         x = hp.process(x);
-        x = thump.process(x);
-        x = scoop.process(x);
-        x = nasal.process(x);
-        x = honk.process(x);
+        x = tilt.process(x);
+        x = body.process(x);
+        x = notch.process(x);
+        x = shldr.process(x);
+        x = dip1.process(x);
+        x = pres.process(x);
+        x = dip2.process(x);
         x = bite.process(x);
         x = lp1.process(x);
         x = lp2.process(x);
+        x = lp3.process(x);
+        x = fizz.process(x);
         ir[i] = x;
     }
 

@@ -1,6 +1,9 @@
-// Offline verification: generate the synthetic default cab IR and print its
-// magnitude response (DFT) at log-spaced frequencies, so we can confirm the
-// voicing matches the intended V30+SM57 target before shipping.
+// Offline verification: generate the synthetic default cab IR (the built-in
+// "Factory Cab") and print its magnitude response (DFT) at log-spaced
+// frequencies, so we can confirm the voicing matches the intended target (a
+// legal synthetic look-alike of a dark, mids-forward production 4x12 capture:
+// body ~150 Hz, deep notch ~600 Hz, presence ~1.9 kHz, steep cliff >6 kHz)
+// before shipping.
 //
 //   g++ -O2 -I deps/guitar-amp-simulator/include tools/cab_ir_response.cpp -o /tmp/cabresp
 //   /tmp/cabresp

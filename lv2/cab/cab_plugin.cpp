@@ -203,8 +203,10 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == WORK_IR) {
         std::vector<float> L, R;
-        if (loadIRFile(msg->path, p->rate, L, R))
+        if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
             p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
+        else
+            p->dsp.setIR(DefaultCabIR::generate(p->rate));   // empty/sentinel → built-in Factory Cab
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
@@ -251,7 +253,9 @@ static void cab_run(LV2_Handle h, uint32_t n) {
                 const LV2_URID which = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
                 const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
                 if (which == u.ir_file) {
-                    std::strncpy(p->irPath, path, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
+                    // "Factory Cab" sentinel → clear IR to the built-in default.
+                    const char* eff = (std::strcmp(path, "@factory") == 0) ? "" : path;
+                    std::strncpy(p->irPath, eff, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
                     WorkMsg msg; msg.type = WORK_IR;
                     std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
                     p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);

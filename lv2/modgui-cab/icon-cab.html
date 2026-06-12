@@ -38,9 +38,10 @@
         {{#path}}
         <div class="mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">
             <div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">
-                -- choose an IR file --
+                Factory Cab (built-in)
             </div>
             <div class="mod-enumerated-list">
+                <div mod-role="enumeration-option" mod-parameter-value="@factory">Factory Cab (built-in)</div>
                 {{#files}}
                 <div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>
                 {{/files}}

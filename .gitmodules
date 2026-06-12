@@ -1,3 +1,3 @@
 [submodule "deps/guitar-amp-simulator"]
 	path = deps/guitar-amp-simulator
-	url = ../GuitarAmpSimulator
+	url = https://github.com/rpowell5064/guitar-amp-simulator.git

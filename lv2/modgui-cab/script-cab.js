@@ -4,8 +4,9 @@ function (event, funcs) {
     // restore), so setting the text here is what makes the name persist.
     function set_irfile(icon, value) {
         var box = icon.find('[rata-role=Ir]');
-        if (value == null || value == 'None' || value == '') {
-            box.text('-- choose an IR file --');
+        // Empty / sentinel path == the always-available built-in Factory Cab.
+        if (value == null || value == 'None' || value == '' || value == '@factory') {
+            box.text('Factory Cab (built-in)');
             return;
         }
         // Prefer the matching list option's label so the text matches the list.

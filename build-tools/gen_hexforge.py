@@ -197,6 +197,13 @@ ctrl.append(mkport("PS_BANK_DN", "ps_bank_dn", "Bank Down",    "t", 0, 1, 0, Non
 ctrl.append(mkport("PS_SAVE",    "ps_save",    "Save Preset",  "t", 0, 1, 0, None, "Save",  hidden=True))
 ctrl.append(mkport("PS_MOVE_UP", "ps_move_up", "Move Earlier", "t", 0, 1, 0, None, "Move+", hidden=True))
 ctrl.append(mkport("PS_MOVE_DN", "ps_move_dn", "Move Later",   "t", 0, 1, 0, None, "Move-", hidden=True))
+# Backup / restore the WHOLE preset store (all 32) to a file outside the plugin
+# instance ($HOME/.config/hexchain/hexforge-presets.dat), so presets survive
+# deleting+re-adding the plugin and bundle updates. The store is also auto-backed
+# up on every save and auto-restored on a fresh instance — these just give the
+# user explicit control. Pulsed by the custom modgui only → hidden.
+ctrl.append(mkport("PS_BACKUP",  "ps_backup",  "Backup Presets",  "t", 0, 1, 0, None, "Backup",  hidden=True))
+ctrl.append(mkport("PS_RESTORE", "ps_restore", "Restore Presets", "t", 0, 1, 0, None, "Restore", hidden=True))
 # Jump directly to a flat preset index (bank*4+slot). The UI list sets this; the
 # plugin recalls when it changes to a value >= 0. -1 = idle.
 ctrl.append(mkport("PS_GOTO", "ps_goto", "Go To Preset", "i", -1, 31, -1, None, "GoTo", hidden=True))
@@ -456,11 +463,15 @@ def render_ctrl(c):
 
 # IMPORTANT: mod-ui sorts effect.parameters ALPHABETICALLY by URI, so the array
 # indices are: ampnam=0, cabnam=1, drnam=2, irfile=3 (NOT declaration order).
+# The Factory Cab is a static, always-present option (sentinel "@factory" → the
+# built-in DefaultCabIR). It heads the list so it's selectable even after a user
+# loads their own IR. The placeholder shows it too, since empty path = default.
 IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
     '{{#effect.parameters.3}}{{#path}}'
     '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
-    '<div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- choose an IR file --</div>'
-    '<div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
+    '<div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">Factory Cab (built-in)</div>'
+    '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory Cab (built-in)</div>'
+    '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
     '</div>{{/path}}{{/effect.parameters.3}}</div>')
 
 def nam_picker(idx, rata, cls):
@@ -552,6 +563,8 @@ PRESETS_PANEL = (
     '    <button type="button" class="hf-ps-btn hf-ps-mvup" title="Move preset earlier in the list">▲</button>\n'
     '    <button type="button" class="hf-ps-btn hf-ps-mvdn" title="Move preset later in the list">▼</button>\n'
     '    <button type="button" class="hf-ps-btn hf-ps-toggle" title="Show all presets">≡</button>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-backup" title="Back up all 32 presets to disk (survives delete/re-add &amp; updates)">⭳</button>\n'
+    '    <button type="button" class="hf-ps-btn hf-ps-restore" title="Restore all presets from the last backup on disk">⭱</button>\n'
     '    <div class="hf-ps-list" rata-role="pslist"></div>\n'
     '  </div>\n'
 )

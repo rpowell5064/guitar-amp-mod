@@ -51,8 +51,11 @@
 #include <cmath>
 #include <memory>
 #include <vector>
+#include <string>
 #include <fstream>
 #include <algorithm>
+#include <cstdlib>
+#include <sys/stat.h>
 
 #define HEXFORGE_URI     "https://rpowell5064.github.io/guitaramp-suite/hexforge"
 #define HEXFORGE_IR_URI  HEXFORGE_URI "#irfile"
@@ -70,6 +73,11 @@ static constexpr int kMidiBaseCC = 60;
 
 static constexpr int kMaxBlock = 512;
 static constexpr int kPathMax  = 1024;
+
+// Sentinel "path" for the always-available built-in Factory Cab IR. The modgui
+// IR picker offers it as a static option; selecting it clears the IR back to the
+// synthesized DefaultCabIR (stored as an empty path so it round-trips cleanly).
+static const char* const kFactoryIR = "@factory";
 
 // ── Preset engine ─────────────────────────────────────────────────────────────
 // Hex Forge owns its own preset store: 8 banks × 4 slots (A/B/C/D) = 32 presets.
@@ -252,7 +260,7 @@ struct HexForge {
     bool   primed = false;              // ports[] redirected + eff[] seeded
     bool   pendingRecall = false;       // apply restored active preset on first run
     float  swPrev[4]  = {0,0,0,0};      // sw_a..sw_d edge state
-    float  cmdPrev[5] = {0,0,0,0,0};    // bank_up/dn, save, move_up/dn edge state
+    float  cmdPrev[7] = {0,0,0,0,0,0,0}; // bank_up/dn, save, move_up/dn, backup, restore edge state
     int    lastGoto   = -1;             // last ps_goto target serviced
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
@@ -416,6 +424,98 @@ static void hfWriteStatus(HexForge* p) {
                  (pr.used && pr.name[0]) ? pr.name : "(empty)");
     std::fclose(f);
 }
+// ── Preset store backup file (survives delete/re-add + bundle updates) ─────────
+// The preset store also lives in a single file OUTSIDE the plugin instance, so a
+// fresh instance can recover all 32 presets after the plugin is deleted+re-added
+// or the bundle is updated. Same self-describing layout as the State blob
+// (version 3) but with raw absolute file paths (no LV2 mapPath outside State).
+static std::string hfBackupDir() {
+    const char* home = std::getenv("HOME");
+    return (home && home[0]) ? std::string(home) + "/.config/hexchain" : std::string("/tmp");
+}
+static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
+    auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
+    auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
+    auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
+    putU32(3); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
+    for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
+        const Preset& pr = p->presets[b][s];
+        putU32(pr.used ? 1u : 0u);
+        putBytes(pr.name, sizeof(pr.name));
+        putBytes(pr.vals, sizeof(pr.vals));
+        putPath(pr.irPath); putPath(pr.ampNamPath); putPath(pr.drNamPath); putPath(pr.cabNamPath);
+    }
+    putU32(static_cast<uint32_t>(p->curBank));
+    putU32(static_cast<uint32_t>(p->curSlot));
+}
+static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
+    size_t off = 0;
+    auto getU32  = [&](uint32_t& v)->bool { if (off+4>size) return false; std::memcpy(&v, d+off, 4); off+=4; return true; };
+    auto getPath = [&](char* dst){ uint32_t len=0; dst[0]='\0';
+        if (!getU32(len) || off+len>size) { off=size; return; }
+        uint32_t m = len < kPathMax-1 ? len : kPathMax-1;
+        std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
+    uint32_t ver=0, nb=0, ns=0, np=0;
+    if (!getU32(ver)) return false; getU32(nb); getU32(ns);
+    if (ver != 2 && ver != 3) return false;
+    const bool migrateOutDb = (ver == 2);
+    getU32(np);
+    const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
+    for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
+        uint32_t used=0; getU32(used);
+        char name[32] = {0}; if (off+sizeof(name)<=size){ std::memcpy(name,d+off,sizeof(name)); off+=sizeof(name); }
+        float vals[HF_N_PORTS]; for (int i=0;i<HF_N_PORTS;++i) vals[i]=0.0f;
+        if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
+        else off = size;
+        if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);
+        char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
+        getPath(ir); getPath(an); getPath(dn); getPath(cn);
+        if (b<kBanks && s<kSlots) {
+            Preset& pr = p->presets[b][s];
+            pr.used = (used != 0);
+            std::memcpy(pr.name, name, sizeof(pr.name)); pr.name[sizeof(pr.name)-1]='\0';
+            std::memcpy(pr.vals, vals, sizeof(pr.vals));
+            std::strncpy(pr.irPath,ir,kPathMax-1);     pr.irPath[kPathMax-1]='\0';
+            std::strncpy(pr.ampNamPath,an,kPathMax-1); pr.ampNamPath[kPathMax-1]='\0';
+            std::strncpy(pr.drNamPath,dn,kPathMax-1);  pr.drNamPath[kPathMax-1]='\0';
+            std::strncpy(pr.cabNamPath,cn,kPathMax-1); pr.cabNamPath[kPathMax-1]='\0';
+        }
+    }
+    uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
+    p->curBank = cb < kBanks ? cb : 0;
+    p->curSlot = cs < kSlots ? cs : 0;
+    return true;
+}
+// Write the store to the backup file (atomic: tmp + rename). Called on every
+// save/rename/move and on board save — light, user-triggered file I/O.
+static void hfWriteBackup(HexForge* p) {
+    std::string dir = hfBackupDir();
+    const char* home = std::getenv("HOME");
+    if (home && home[0]) { std::string cfg = std::string(home) + "/.config"; ::mkdir(cfg.c_str(), 0755); }
+    ::mkdir(dir.c_str(), 0755);
+    const std::string path = dir + "/hexforge-presets.dat";
+    const std::string tmp  = path + ".tmp";
+    std::vector<uint8_t> blob; hfSerialize(p, blob);
+    FILE* f = std::fopen(tmp.c_str(), "wb");
+    if (!f) return;
+    std::fwrite(blob.data(), 1, blob.size(), f);
+    std::fclose(f);
+    std::rename(tmp.c_str(), path.c_str());
+}
+// Load the store from the backup file into presets[]. Returns true on success.
+static bool hfLoadBackup(HexForge* p) {
+    const std::string path = hfBackupDir() + "/hexforge-presets.dat";
+    FILE* f = std::fopen(path.c_str(), "rb");
+    if (!f) return false;
+    std::fseek(f, 0, SEEK_END); long sz = std::ftell(f); std::fseek(f, 0, SEEK_SET);
+    if (sz <= 0) { std::fclose(f); return false; }
+    std::vector<uint8_t> blob(static_cast<size_t>(sz));
+    size_t rd = std::fread(blob.data(), 1, static_cast<size_t>(sz), f);
+    std::fclose(f);
+    if (rd != static_cast<size_t>(sz)) return false;
+    return hfDeserialize(p, blob.data(), blob.size());
+}
+
 // Recall: move the active position to (bank,slot). If the slot holds a preset,
 // load its params into eff[] and (re)load its files; if empty, just move the
 // cursor (sound unchanged) so the UI can Save the current sound into it.
@@ -456,6 +556,7 @@ static void psSave(HexForge* p) {
     pr.used = true;
     emitIndex(p);
     hfWriteStatus(p);
+    hfWriteBackup(p);   // keep the off-instance backup current
 }
 static void psBankDelta(HexForge* p, int d) { psRecall(p, p->curBank + d, p->curSlot); }
 // A footswitch tap. Single tap recalls that slot immediately (no delay).
@@ -480,6 +581,37 @@ static void psMoveDelta(HexForge* p, int d) {
     p->presets[tgt / kSlots][tgt % kSlots] = tmp;
     p->curBank = tgt / kSlots; p->curSlot = tgt % kSlots;
     emitIndex(p);
+    hfWriteBackup(p);
+}
+
+// ── Factory presets (Bank 1 / A–D) ────────────────────────────────────────────
+// A fresh Hex Forge instance starts with Bank 1 pre-filled with these four
+// sounds (Clean / Crunch / Rhythm / Lead) so it's a usable rig the moment it
+// loads — the same starting point as the factory pedalboard. Values were
+// captured from the dialed-in rig; the IR slot is left empty so they use the
+// built-in Factory Cab (no licensed IR file is referenced). hf_restore still
+// overwrites these from saved State, so a user's own presets always win.
+static const char* const kFactoryName[kSlots] = { "Clean", "Crunch", "Rhythm", "Lead" };
+static const float kFactoryVals[kSlots][HF_N_PORTS] = {
+// Clean
+{ 0, 0, 0, 0, 0, 0, 0, -20.04, 0, 1, 0, 0, 1, 1, 0, -60, 5, 50, 100, 6, 2, 0, 0, -20, 1, 5, 5, 3, 0, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.19, 0.5, 0.58, 1, 0.3, 5, 1, 0, 0.5775, 0.615, 0.635, 0.605, 0.5, 0.7525, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 16000, 1, 7, 0, 0, 0.5, 0.5, 0.5, 0.5, 8, 1, 2, 250, 0.21315, 0.3, 0.5, 0.003, 0.001, 3, 9, 1, 10, 1.5, 0.3, 0, 0.01, 0.335, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+// Crunch
+{ 0, 0, 0, 0, 0, 0, 0, -20.58, 0, 1, 0, 0, 1, 1, 1, -60, 5, 50, 100, 6, 2, 1, 0, -20, 1, 5, 5, 3, 0, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 0, 0, 0.145, 0.555, 0.6525, 1, 0.3, 5, 1, 1, 0.2275, 0.365, 0.6825, 0.66, 0.3975, 0.495, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 8660, 1, 7, 0, 0, 0.5, 0.5, 0.5, 0.5, 8, 0, 0, 250, 0.4, 0.3, 0.5, 0.003, 0.001, 10, 9, 1, 10, 1.5, 0.3, 0.5, 0.8, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+// Rhythm
+{ 0, 0, 0, 0, 0, 0, 0, -20, 0, 1, 0, 1, 1, 1, 1, -52, 0.1, 101.25, 213.975, 6, 2, 1, 0, -20, 0, 1.725, 6.85, 3, 2.05, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.02, 0.5775, 1, 1, 0.3, 5, 1, 2, 0.6225, 0.415, 0.755, 0.72, 0.5, 0.3525, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 8705, 1, 7, 0, 0, 0.5, 0.5, 0.5, 0.5, 8, 0, 0, 250, 0.4, 0.3, 0.5, 0.003, 0.001, 10, 9, 1, 10, 1.5, 0.3, 0.0175, 0.01, 0.1175, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+// Lead
+{ 0, 0, 0, 0, 0, 0, 0, -20.58, 0, 1, 0, 1, 1, 1, 1, -61.6, 0.1, 67.5, 238.85, 6, 2, 1, 0, -18, 0, 2.775, 6.175, 3, 0.55, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.0625, 0.6, 0.7175, 1, 0.3, 5, 1, 4, 0.6075, 0.45, 0.7475, 0.7675, 0.6025, 0.47, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 9470, 1, 7, 1, 0, 0.12, 0.6125, 0.5, 0.5, 8, 1, 0, 445.777, 0.31605, 0.17, 0.5, 0.003, 0.001, 10, 9, 1, 10, 1.5, 0.3, 0, 0.01, 0.1475, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+};
+static void psInitDefaults(HexForge* p) {
+    for (int s = 0; s < kSlots; ++s) {
+        Preset& pr = p->presets[0][s];
+        pr.used = true;
+        std::snprintf(pr.name, sizeof(pr.name), "%s", kFactoryName[s]);
+        std::memcpy(pr.vals, kFactoryVals[s], sizeof(pr.vals));
+        pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
+    }
+    p->curBank = 0; p->curSlot = 0;
+    p->pendingRecall = true;   // a fresh instance starts on Bank 1 / A (Clean)
 }
 
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
@@ -519,6 +651,8 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->delay.setType(DelayFactory::fromIndex(0));
     p->reverb.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
+    psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)
+    hfLoadBackup(p);     // recover the user's full preset store across delete/re-add + updates
     return p;
 }
 
@@ -651,6 +785,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         pr.used = true;
                         if (haveNotify) emitIndex(p);
                         hfWriteStatus(p);
+                        hfWriteBackup(p);
                     }
                     continue;
                 }
@@ -662,7 +797,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 else if (which == u.dr_nam)  { dst = p->drNamPath;  msg.type = W_NAM_LOAD; msg.namSlot = 1; }
                 else if (which == u.cab_nam) { dst = p->cabNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 2; }
                 if (dst) {
-                    std::strncpy(dst, path, kPathMax-1); dst[kPathMax-1]='\0';
+                    // "Factory Cab" sentinel → clear IR to the built-in default.
+                    const char* eff = (dst == p->irPath && std::strcmp(path, kFactoryIR) == 0) ? "" : path;
+                    std::strncpy(dst, eff, kPathMax-1); dst[kPathMax-1]='\0';
                     std::strncpy(msg.path, dst, kPathMax-1); msg.path[kPathMax-1]='\0';
                     p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
                 }
@@ -716,6 +853,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (rose(HF_PS_SAVE,    p->cmdPrev[2])) psSave(p);
     if (rose(HF_PS_MOVE_UP, p->cmdPrev[3])) psMoveDelta(p, -1);
     if (rose(HF_PS_MOVE_DN, p->cmdPrev[4])) psMoveDelta(p, +1);
+    if (rose(HF_PS_BACKUP,  p->cmdPrev[5])) hfWriteBackup(p);              // snapshot all 32 to disk
+    if (rose(HF_PS_RESTORE, p->cmdPrev[6]) && hfLoadBackup(p))            // pull the backup into this instance
+        psRecall(p, p->curBank, p->curSlot);                             // re-applies sound + refreshes the UI list
     // Direct jump from the UI list: recall when ps_goto changes to a valid index.
     {
         const float gf = p->hostPorts[HF_PS_GOTO] ? *p->hostPorts[HF_PS_GOTO] : -1.0f;
@@ -1042,6 +1182,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
     putU32(static_cast<uint32_t>(p->curSlot));
     store(handle, p->uris.preset_blob, blob.data(), blob.size(), p->uris.atom_Chunk,
           flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+    hfWriteBackup(p);   // mirror the store to the off-instance backup on every board save
     return LV2_STATE_SUCCESS;
 }
 static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function retrieve,
