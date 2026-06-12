@@ -8,8 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 FetchContent_Declare(NeuralAmpModelerCore
     GIT_REPOSITORY https://github.com/sdatkinson/NeuralAmpModelerCore.git
-    GIT_TAG        main
-    GIT_SHALLOW    TRUE
+    # Pin to a known-good commit (v0.5.3+6) — upstream `main` later changed the
+    # nam::DSP API (removed ResetAndPrewarm), which broke fresh CI builds. This is
+    # the exact NAM core the verified on-device builds use. (Not a tag tip, so
+    # GIT_SHALLOW must be FALSE to fetch an arbitrary SHA.)
+    GIT_TAG        5edb0bae2a7456816a3ee3b8909d6c8a6fbd0ad9
+    GIT_SHALLOW    FALSE
     GIT_PROGRESS   TRUE)
 # Populate sources only — do NOT run NAMCore's CMakeLists (it builds tools we don't need).
 FetchContent_GetProperties(NeuralAmpModelerCore)
