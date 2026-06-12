@@ -31,10 +31,16 @@ if [ -d "$HERE/pedalboards" ]; then
 fi
 
 echo "Restarting MOD (mod-host, mod-ui)..."
-if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files 2>/dev/null | grep -q '^mod-host'; then
-    sudo systemctl restart mod-host mod-ui \
-        && echo "  services restarted" \
-        || echo "  (could not restart automatically — restart MOD manually)"
+# NB: detect with `systemctl cat`, NOT `list-unit-files | grep -q`. Under this
+# script's `set -o pipefail`, `grep -q` exits on the first match and the large
+# `systemctl list-unit-files` producer then dies of SIGPIPE (exit 141), which
+# pipefail propagates as a failed condition — so the restart was wrongly skipped.
+if command -v systemctl >/dev/null 2>&1 && systemctl cat mod-host.service >/dev/null 2>&1; then
+    if sudo systemctl restart mod-host mod-ui; then
+        echo "  services restarted"
+    else
+        echo "  (could not restart automatically — restart MOD manually)"
+    fi
 else
     echo "  (mod-host service not found — restart your MOD host manually)"
 fi
@@ -42,7 +48,7 @@ fi
 echo "Verifying..."
 if command -v lv2ls >/dev/null 2>&1; then
     n=$(LV2_PATH="$DEST" lv2ls 2>/dev/null | grep -c 'guitaramp-suite' || true)
-    echo "  Hex Chain plugins visible to lv2ls: $n (expect 9)"
+    echo "  Hex Chain plugins visible to lv2ls: $n (expect 11)"
 fi
 
 echo
