@@ -212,6 +212,12 @@ void PowerAmpProcessor::recalcFilters() {
     // Bloom envelope smoothing (~100ms).
     bloomEnvCoef = static_cast<float>(std::exp(-1.0 / (0.100 * sr)));
 
+    // Post-saturation sag-VCA envelope: slow-ish 2.5 ms attack lets the pick
+    // transient overshoot before the VCA clamps (= bloom); 13 ms release sets the
+    // recovery τ (matches the JCM800 capture's ~13 ms).
+    bloomVcaAttCoef = static_cast<float>(std::exp(-1.0 / (0.0025 * sr)));
+    bloomVcaRelCoef = static_cast<float>(std::exp(-1.0 / (0.0130 * sr)));
+
     // Early reflection tap lengths in samples (1.7ms / 4.1ms / 8.3ms).
     erTap[0] = std::min(static_cast<int>(0.0017 * sr), kERBufLen - 1);
     erTap[1] = std::min(static_cast<int>(0.0041 * sr), kERBufLen - 1);
@@ -238,6 +244,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         nfbPrev[c]      = 0.0f;
         xfmrSatState[c] = 0.0f;
         bloomEnv[c]     = 0.0f;
+        bloomVcaEnv[c]  = 0.0f;
     }
     sagEnv    = 0.0f;
     ripplePhase = 0.0f;
@@ -269,6 +276,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "presence") { presence  = c01; needFilters = true; }
     else if (id == "depth")    { depth     = c01; needFilters = true; }
     else if (id == "sag")      { sagAmount = c01; }
+    else if (id == "bloomvca") { bloomVcaDepth = c01; }
     else if (id == "master")   { masterVol = c01; }
     else if (id == "nfb")      { nfbAmount = c01; needFilters = true; }
     else if (id == "resonance"){ resonance = c01; needFilters = true; }
@@ -283,6 +291,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "presence") return presence;
     if (id == "depth")    return depth;
     if (id == "sag")      return sagAmount;
+    if (id == "bloomvca") return bloomVcaDepth;
     if (id == "master")   return masterVol;
     if (id == "nfb")      return nfbAmount;
     if (id == "resonance")return resonance;
@@ -295,15 +304,20 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
 // ─────────────────────────────────────────────────────────────────────────────
 PowerAmpProcessor::AmpDefaults
 PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
-    //                           master  presence  depth   nfb     sag
+    //                           master  presence  depth   nfb     sag    bloomVca
+    // bloomVca = post-saturation sag-VCA depth, tuned per amp vs the JFE captures:
+    //   JCM800 wants bloom (NAM 1.53 dB) + recovery (13 ms); Fender's pushed 6V6 sags
+    //   hard (driven comp gap) but stays clean when quiet (env-gated); Rockerverb a
+    //   touch; EVH already blooms in its own preamp (matches), so 0 — no double-count.
     switch (idx) {
-        case 0: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.74f }; // Fender Deluxe Reverb AB763
-        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f }; // Marshall JCM800 2203
-        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f }; // EVH 5150 III
-        case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f }; // NAM neutral
-        case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f }; // Sunn Model T
-        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f }; // Orange Rockerverb 100 MKII
-        default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f };
+        case 0: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.74f,  0.15f }; // Fender Deluxe Reverb AB763
+        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f }; // Marshall JCM800 2203
+        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f }; // EVH 5150 III
+        case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral
+        case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550)
+        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f }; // Orange Rockerverb 100 MKII
+        case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f }; // Friedman BE-Deluxe (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
+        default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }
 
@@ -454,6 +468,22 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             // Advance circular buffer write position once per native-rate sample.
             erWritePos = (erWritePos + 1) % kERBufLen;
         }
+    }
+
+    // ── Post-saturation sag VCA (per-amp bloom + recovery) ───────────────────
+    // Applied AFTER the waveshaper so the limiter can't re-normalise it away (the
+    // pre-saturation sag above is masked — verified with nam_compare). Pre-master so
+    // the depth tracks tube-side level, not the volume knob. Env-gated: stays clean
+    // when quiet, compresses + blooms when driven. Depth 0 ⇒ no-op (EVH/Sunn/NAM).
+    if (bloomVcaDepth > 0.0f) {
+        for (int ch = 0; ch < chCount; ++ch)
+            for (int i = 0; i < numSamples; ++i) {
+                const float a = std::abs(out[ch][i]);
+                float& e = bloomVcaEnv[ch];
+                e = (a > e) ? (bloomVcaAttCoef * e + (1.0f - bloomVcaAttCoef) * a)
+                            : (bloomVcaRelCoef * e + (1.0f - bloomVcaRelCoef) * a);
+                out[ch][i] *= std::max(1.0f - bloomVcaDepth * e, 0.3f); // floor ≈ -10 dB
+            }
     }
 
     // ── Master volume ─────────────────────────────────────────────────────────

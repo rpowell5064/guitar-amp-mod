@@ -8,8 +8,10 @@ const SunnPowerAmp6550::Params SunnPowerAmp6550::kModelT = {
     0.984f,
     -4.0f, 4.0f, 2.0f,  // wider range → gradual saturation, no hard LUT clipping
     0.10f,               // softer class-AB crossover (6550 idles at 65 mA, very soft)
-    1.0f, 200.0f, 0.5f, 15.0f,
-    0.22f, 0.12f
+    1.0f, 200.0f, 2.0f, 12.0f,
+    0.45f, 0.75f   // post-sat VCA depths (B+, screen). Larger than the old pre-sat
+                   // values because the VCA is clean (no downstream limiter to fight)
+                   // and the user sag knob (~0.3) scales them down. Tuned vs modelT.nam.
 };
 
 // ─── Physics ──────────────────────────────────────────────────────────────────
@@ -154,29 +156,34 @@ float SunnPowerAmp6550::process(float x, float sagDepth) noexcept {
     const float negOut = lookupN(x);
     float y = xoverBlend(posOut, negOut, x, params_.xoverSoft);
 
-    // Supply sag is driven by the OUTPUT level (≈ tube current), NOT the raw input.
-    // The preamp/PI makeup drive pushes |x| far past the LUT range; tracking the
-    // unbounded input made the sag envelope run away and choke sustained distorted
-    // notes (they dropped out). The waveshaper output y is bounded to ~[-1,1], so the
-    // envelope can't run away and the sag stays a musical compression, not a gate.
-    const float level = std::abs(y);
+    // Saturate FIRST, then apply sag as a post-saturation VCA. A pre-saturation droop
+    // is masked: the tanh limiter immediately re-normalises the level back up, so the
+    // compression never reaches the output (verified with nam_compare — pre-sat sag
+    // depth changes moved the feel metrics ~0 vs the Model T capture). Applied after
+    // the limiter, the same droop reads as real, recoverable compression.
+    const float yout = softSaturate(y);
 
-    // B+ sag envelope (slow, RC model of filter cap + transformer resistance)
+    // Sag envelopes track the saturated OUTPUT (≈ plate/screen current). Bounded to
+    // ~[-1,1] so the envelope can't run away and choke sustained notes (the old
+    // dropout regression came from tracking the unbounded preamp drive).
+    const float level = std::abs(yout);
+
+    // B+ sag (slow, RC of filter cap + transformer R) — sustained compression.
     if (level > bPlusEnv_)
         bPlusEnv_ = bpAttCoef_ * bPlusEnv_ + (1.0f - bpAttCoef_) * level;
     else
         bPlusEnv_ = bpRelCoef_ * bPlusEnv_ + (1.0f - bpRelCoef_) * level;
 
-    // Screen sag envelope (fast — screens droop sooner than plates)
+    // Screen sag (fast — screens droop sooner than plates) — carries the ~10 ms
+    // recovery the Model T NAM capture shows.
     if (level > screenEnv_)
         screenEnv_ = scAttCoef_ * screenEnv_ + (1.0f - scAttCoef_) * level;
     else
         screenEnv_ = scRelCoef_ * screenEnv_ + (1.0f - scRelCoef_) * level;
 
-    // Sag scaling: B+ droop reduces effective plate voltage → compression.
-    // Screen droop is faster and slightly less deep (screens have their own cap).
-    const float bSagFactor  = 1.0f - sagDepth * params_.bPlusSag  * bPlusEnv_;
-    const float scSagFactor = 1.0f - sagDepth * params_.screenSag * screenEnv_ * 0.7f;
-
-    return softSaturate(y * bSagFactor * scSagFactor);
+    // Program-dependent gain reduction as a clean post-saturation VCA.
+    const float sagRed = sagDepth * (params_.bPlusSag  * bPlusEnv_
+                                   + params_.screenSag * screenEnv_);
+    const float vca = 1.0f - std::min(sagRed, 0.55f);   // floor ≈ -7 dB, never silence
+    return yout * vca;
 }

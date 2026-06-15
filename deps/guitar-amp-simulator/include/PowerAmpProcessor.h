@@ -38,6 +38,7 @@ public:
         float depth;   // LF resonance depth ("Resonance" control on real amps)
         float nfb;
         float sag;
+        float bloomVca; // post-saturation sag-VCA depth (bloom + recovery), per amp
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -85,6 +86,14 @@ private:
     float sagEnv        = 0.0f;
     float sagAttackCoef = 0.0f;
     float sagRelCoef    = 0.0f;
+
+    // ── Post-saturation sag VCA (per-channel, applied after the waveshaper) ───
+    // The pre-saturation sag above shapes tone but is masked by the waveshaper
+    // limiter; this clean output-side VCA delivers the recoverable compression and
+    // pick "bloom" the real power amp shows. Depth is per-amp (getDefaultsForModel).
+    float bloomVcaDepth     = 0.0f;
+    float bloomVcaEnv[kMaxCh] = {};
+    float bloomVcaAttCoef   = 0.0f, bloomVcaRelCoef = 0.0f;
 
     // ── Power-supply ripple LFO ────────────────────────────────────────────────
     float ripplePhase = 0.0f;
