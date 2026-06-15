@@ -64,6 +64,7 @@ public:
             case AmpModel::FenderDeluxe:        fid = FID::FenderDeluxe;        break;
             case AmpModel::MarshallJCM800:      fid = FID::MarshallJCM800;      break;
             case AmpModel::EVH5150III:          fid = FID::EVH5150;             break;
+            case AmpModel::FriedmanBEDeluxe:    fid = FID::FriedmanBEDeluxe;    break;
             default:                            isExtended = false;              break;
         }
 

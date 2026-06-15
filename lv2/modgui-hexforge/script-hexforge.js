@@ -66,6 +66,7 @@ function (event, funcs) {
         var a = icon.data('hf_amp_auto'); if (a == null) a = true;
         show(icon, 'amp', '.c-amp-sunn', m === 3);
         show(icon, 'amp', '.c-amp-chan', m === 2 || m === 4);
+        show(icon, 'amp', '.c-amp-be',   m === 6);   // Beardo BE: channel + Fat/C45/Sat
         show(icon, 'amp', '.c-amp-reso', m === 2);
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
@@ -165,7 +166,7 @@ function (event, funcs) {
     // echoed change a recognised no-op), push the value, then resort once at the end.
     function psApply(fns, str, icon) {
         if (!fns || typeof fns.set_port_value !== 'function' || !str) return;
-        var sawPos = false;
+        var sawPos = false, drm = null;
         ('' + str).split(';').forEach(function (kv) {
             var i = kv.indexOf('='); if (i < 0) return;
             var sym = kv.substring(0, i), val = parseFloat(kv.substring(i + 1));
@@ -173,10 +174,23 @@ function (event, funcs) {
             if (/_pos$/.test(sym)) {
                 tileOf(icon, sym.replace(/_pos$/, '')).attr('data-pos', val);
                 sawPos = true;
-            }
+            } else if (/_enable$/.test(sym)) {
+                // Tile dimming follows the enable port directly (don't wait for an echo).
+                tileOf(icon, sym.replace(/_enable$/, '')).toggleClass('hf-off', !(val > 0.5));
+            } else if (sym === 'amp_model')        icon.data('hf_amp_m', parseInt(val, 10));
+            else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
+            else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
+            else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
+            else if (sym === 'dr_model')           drm = parseInt(val, 10);
             fns.set_port_value(sym, val);
         });
         if (sawPos) resort(icon);
+        // Refresh conditional controls + the "More" panel deterministically: the
+        // change events that normally drive applyAmp/applyFuzz/applyDelay don't fire
+        // reliably for ports written by set_port_value, so a recall would otherwise
+        // leave the wrong amp controls shown and stale tile dimming.
+        applyAmp(icon); applyFuzz(icon); applyDelay(icon);
+        if (drm != null) { show(icon, 'dr', '.c-dr-oct', drm === 1); show(icon, 'dr', '.c-dr-nam', drm === 3); }
     }
 
     if (event.type == 'start') {

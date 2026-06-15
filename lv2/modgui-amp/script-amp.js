@@ -1,6 +1,7 @@
 function (event, funcs) {
     // Model-aware control visibility. LV2 model indices:
-    //   0 Fender, 1 Marshall, 2 EVH, 3 Sunn Model T, 4 Orange Rockerverb, 5 NAM
+    //   0 Fender, 1 Marshall, 2 EVH, 3 Sunn Model T, 4 Orange Rockerverb, 5 NAM,
+    //   6 Beardo BE (Friedman)
     function update_model(icon, value) {
         var m = parseInt(value, 10);
         var nam = (m === 5);
@@ -8,6 +9,8 @@ function (event, funcs) {
         icon.find('[rata-role=sunngroup]').toggleClass('mod-hidden', m !== 3);
         // Channel toggle: EVH (2) + Rockerverb (4)
         icon.find('[rata-role=channelctl]').toggleClass('mod-hidden', !(m === 2 || m === 4));
+        // Beardo BE (6): 3-way channel + Fat/C45/Sat
+        icon.find('[rata-role=friedmangroup]').toggleClass('mod-hidden', m !== 6);
         // Resonance: EVH (2) only
         icon.find('[rata-role=resonancectl]').toggleClass('mod-hidden', m !== 2);
         // Power-amp section: hidden for Sunn (auto-bypassed) and NAM (capture has its own)

@@ -100,14 +100,17 @@ static inline bool isParamPort(int i) {
 }
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
-static const AmpModel kAmpMap[5] = {
+static const AmpModel kAmpMap[7] = {
     AmpModel::FenderDeluxe, AmpModel::MarshallJCM800, AmpModel::EVH5150III,
     AmpModel::SunnModelT,   AmpModel::OrangeRockerverb50,
+    AmpModel::NeuralCustom,        // 5 = NAM (placeholder; not built as an algo amp)
+    AmpModel::FriedmanBEDeluxe,    // 6 = Beardo BE
 };
-static const int   kCanonical[5] = { 0, 1, 2, 4, 5 };   // PowerAmp default lookup
-static constexpr int kSunnIdx = 3;
-static const int   kAmpTube[5]   = { 0, 1, 1, 0, 1 };   // 6L6/EL34/EL34/6L6/EL34
-static const float kAmpMakeup[5] = { 1.8f, 1.0f, 1.4f, 1.0f, 1.15f };
+static const int   kCanonical[7] = { 0, 1, 2, 4, 5, 3, 6 };   // PowerAmp default lookup
+static constexpr int kSunnIdx     = 3;
+static constexpr int kFriedmanIdx = 6;
+static const int   kAmpTube[7]   = { 0, 1, 1, 0, 1, 0, 1 };   // 6L6/EL34/EL34/6L6/—/EL34
+static const float kAmpMakeup[7] = { 1.8f, 1.0f, 1.4f, 1.24f, 1.15f, 1.0f, 1.0f };  // [3] Sunn sag-VCA comp; [6] Friedman (tune by ear)
 
 static const OverdriveType kDriveMap[3] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
@@ -694,7 +697,7 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
-    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, 4)]);
+    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kFriedmanIdx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
@@ -936,9 +939,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kAmpNamIdx);
-    const int ampAlgo  = (ampModel <= 4) ? ampModel : 1;   // NAM(5) → safe table index
-    if (ampModel <= 4 && ampModel != p->lastAmpModel) {   // rebuild only for algo models
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kFriedmanIdx);
+    const int ampAlgo  = (ampModel <= 4) ? ampModel
+                       : (ampModel == kFriedmanIdx ? 6 : 1);   // NAM(5)→1 safe, Beardo BE(6)→6
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx);
+    if (ampIsAlgo && ampModel != p->lastAmpModel) {   // rebuild only for algo models
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
             p->lastAmpModel = ampModel;
@@ -968,6 +973,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("sag",       *p->ports[HF_AMP_SAG]);
     amp->setParameter("channel",   *p->ports[HF_AMP_CHANNEL]);
     amp->setParameter("resonance", *p->ports[HF_AMP_RESONANCE]);
+    // Beardo BE (Friedman): its own 3-way channel (Clean/BE/HBE) + voicing toggles.
+    if (ampModel == kFriedmanIdx) {
+        amp->setParameter("channel", *p->ports[HF_AMP_FR_CHANNEL]);
+        amp->setParameter("fat",     *p->ports[HF_AMP_FR_FAT]);
+        amp->setParameter("c45",     *p->ports[HF_AMP_FR_C45]);
+        amp->setParameter("sat",     *p->ports[HF_AMP_FR_SAT]);
+    }
     int desiredTube;
     if (*p->ports[HF_AMP_PAMP_AUTO] > 0.5f) {
         const auto d = PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]);
@@ -987,6 +999,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("airFeel",   *p->ports[HF_AMP_PAMP_AIRFEEL]);
         desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 3);
     }
+    // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
+    p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).bloomVca);
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);

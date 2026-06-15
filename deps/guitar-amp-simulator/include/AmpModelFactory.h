@@ -18,9 +18,10 @@ public:
         MarshallJCM800     = 2,
         FenderDeluxe       = 3,
         EVH5150            = 4,
+        FriedmanBEDeluxe   = 5,
     };
 
-    static constexpr int kNumModels = 5;
+    static constexpr int kNumModels = 6;
 
     // Returns ownership of a newly constructed model. Never returns null;
     // unknown IDs fall back to SunnModelT.

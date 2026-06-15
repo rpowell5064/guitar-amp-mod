@@ -12,7 +12,8 @@ enum class AmpModel {
     EVH5150III,        // Modern high-gain, tight and scooped
     NeuralCustom,      // User-loaded NAM model
     SunnModelT,        // High-headroom clean/dirty, 6L6GC
-    OrangeRockerverb50 // EL34 British, clean+dirty channels
+    OrangeRockerverb50,// EL34 British, clean+dirty channels
+    FriedmanBEDeluxe   // Hot-rodded Marshall, 3-channel (Clean/BE/HBE), EL34
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

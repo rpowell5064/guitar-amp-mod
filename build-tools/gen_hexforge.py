@@ -67,7 +67,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 5, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5)]),
+    ("model",         "Model",        "e", 0, 6, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -182,6 +182,19 @@ for pfx, title, params, dpos in MOVABLE:
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
+
+# Beardo BE (Friedman) amp controls — its own 3-way channel + Fat/C45/Sat toggles.
+# Appended at the END of the param range (right before the preset command ports) so
+# the existing preset blob layout is preserved (the cab/mod/delay/reverb block ports
+# keep their indices); old presets simply default these to Clean/off.
+AMP_FR = [
+    ("fr_channel", "BE Chan", "e", 0, 2, 1, [("Clean", 0), ("BE", 1), ("HBE", 2)]),
+    ("fr_fat",     "Fat",     "t", 0, 1, 0, None),
+    ("fr_c45",     "C45",     "t", 0, 1, 0, None),
+    ("fr_sat",     "Sat",     "t", 0, 1, 0, None),
+]
+for suf, nm, kind, mn, mx, df, sc in AMP_FR:
+    ctrl.append(mkport("AMP_" + suf.upper(), "amp_" + suf, "Amp " + nm, kind, mn, mx, df, sc, nm))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -431,6 +444,9 @@ COND = {
     "amp_sunn_bright1":"c-amp-sunn", "amp_sunn_bright2":"c-amp-sunn",
     "amp_channel":"c-amp-chan",          # EVH(2)/Rockerverb(4)
     "amp_resonance":"c-amp-reso",        # EVH(2)
+    # Beardo BE / Friedman (model 6): 3-way channel + Fat/C45/Sat
+    "amp_fr_channel":"c-amp-be", "amp_fr_fat":"c-amp-be",
+    "amp_fr_c45":"c-amp-be", "amp_fr_sat":"c-amp-be",
     # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
     "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
     "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
@@ -516,6 +532,9 @@ def tile(pfx, title, accent, keys):
     if pfx == "amp":
         keyhtml  = "".join(render_ctrl(CTRL_BY_SYM["amp_" + r[0]]) for r in table if r[0] in keys)
         morehtml = "".join(render_ctrl(CTRL_BY_SYM["amp_" + r[0]]) for r in table if r[0] not in keys)
+        # Beardo BE controls live at the end of the port list (preset-blob stability)
+        # but render in the amp tile's More popup, hidden unless model = Beardo BE.
+        morehtml += "".join(render_ctrl(CTRL_BY_SYM["amp_" + s[0]]) for s in AMP_FR)
     else:
         keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
         morehtml = ""

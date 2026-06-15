@@ -4,6 +4,7 @@
 #include "JCM800Model.h"
 #include "FenderDeluxeModel.h"
 #include "EVH5150Model.h"
+#include "FriedmanBEDeluxe.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -12,6 +13,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::MarshallJCM800:      return std::make_unique<JCM800Model>();
         case ModelID::FenderDeluxe:        return std::make_unique<FenderDeluxeModel>();
         case ModelID::EVH5150:             return std::make_unique<EVH5150Model>();
+        case ModelID::FriedmanBEDeluxe:    return std::make_unique<FriedmanBEDeluxe>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -32,6 +34,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::MarshallJCM800:      return "Marshall JCM800";
         case ModelID::FenderDeluxe:        return "Fender Deluxe Reverb";
         case ModelID::EVH5150:             return "EVH 5150 III";
+        case ModelID::FriedmanBEDeluxe:    return "Beardo BE";
         default:                           return "Unknown";
     }
 }
@@ -43,6 +46,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::MarshallJCM800:      return 1;  // EL34
         case ModelID::FenderDeluxe:        return 0;  // 6L6GC / 6V6
         case ModelID::EVH5150:             return 1;  // EL34
+        case ModelID::FriedmanBEDeluxe:    return 1;  // EL34
         default:                           return 1;
     }
 }
@@ -54,6 +58,7 @@ const char* const* AmpModelFactory::getAllModelNames() noexcept {
         "Marshall JCM800",
         "Fender Deluxe Reverb",
         "EVH 5150 III",
+        "Beardo BE",
         nullptr
     };
     return kNames;
@@ -65,5 +70,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Marshall JCM800")           return ModelID::MarshallJCM800;
     if (name == "Fender Deluxe Reverb")      return ModelID::FenderDeluxe;
     if (name == "EVH 5150 III")              return ModelID::EVH5150;
+    if (name == "Beardo BE")                 return ModelID::FriedmanBEDeluxe;
     return ModelID::SunnModelT;
 }

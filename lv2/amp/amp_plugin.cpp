@@ -26,22 +26,27 @@
 #define AMP_NAM_URI AMP_URI "#nammodel"
 static constexpr int kPathMax = 1024;
 
-// LV2 model index (0..4) → AmpModel enum. Index 5 = NAM (handled separately).
-static const AmpModel kModelMap[5] = {
+// LV2 model index → AmpModel enum. Index 5 = NAM (handled separately). Beardo BE
+// (Friedman) is index 6, AFTER NAM, so existing saved boards (which store the model
+// index) keep their meaning — inserting it earlier would shift NAM and break them.
+static const AmpModel kModelMap[7] = {
     AmpModel::FenderDeluxe,        // 0
     AmpModel::MarshallJCM800,      // 1
     AmpModel::EVH5150III,          // 2
     AmpModel::SunnModelT,          // 3
     AmpModel::OrangeRockerverb50,  // 4
+    AmpModel::NeuralCustom,        // 5 = NAM (handled separately; placeholder, never built here)
+    AmpModel::FriedmanBEDeluxe,    // 6 = Beardo BE
 };
-static const int kCanonical[5] = { 0, 1, 2, 4, 5 };
-static constexpr int kSunnIdx  = 3;        // Sunn's LV2 model index
-static constexpr int kNamIdx   = 5;        // NAM slot
-static constexpr int kMaxModel = 4;        // highest algorithmic model index
-static constexpr int kMaxBlock = 512;      // internal processing chunk
+static const int kCanonical[7] = { 0, 1, 2, 4, 5, 3, 6 };  // LV2 idx → getDefaultsForModel idx
+static constexpr int kSunnIdx     = 3;     // Sunn's LV2 model index
+static constexpr int kNamIdx      = 5;     // NAM slot
+static constexpr int kFriedmanIdx = 6;     // Beardo BE
+static constexpr int kMaxModel    = 6;     // highest selectable model index
+static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
-static const int kModelTube[5] = { 0, 1, 1, 0, 1 };
-static const float kModelMakeup[5] = { 1.8f, 1.0f, 1.4f, 1.0f, 1.15f };
+static const int kModelTube[7] = { 0, 1, 1, 0, 1, 0, 1 };  // [6] Friedman EL34
+static const float kModelMakeup[7] = { 1.8f, 1.0f, 1.4f, 1.24f, 1.15f, 1.0f, 1.0f };  // [3] Sunn sag-VCA comp; [6] Friedman (tune by ear)
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -50,6 +55,7 @@ enum AmpPorts {
     P_PA_BYPASS, P_PA_TUBE, P_PA_PRES, P_PA_DEPTH, P_PA_SAG, P_PA_MASTER,
     P_PA_NFB, P_PA_RESON, P_PA_AIR, P_PA_AUTO,
     P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2,  // Sunn Brite-channel
+    P_FR_CHANNEL, P_FR_FAT, P_FR_C45, P_FR_SAT,               // Beardo BE (Friedman) — 3-way channel + voicing toggles
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file)
     P_N_PORTS
 };
@@ -238,7 +244,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         }
     }
 
-    const int  modelIdx   = clampIdx(*p->ctrl[P_MODEL], 0, kNamIdx);
+    const int  modelIdx   = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);
     const bool isNam       = (modelIdx == kNamIdx);
     const bool fullBypass  = *p->ctrl[P_BYPASS] > 0.5f;
     float* inL  = p->ctrl[P_IN_L];  float* inR  = p->ctrl[P_IN_R];
@@ -301,6 +307,14 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("channel",  *p->ctrl[P_CHANNEL]);
     amp->setParameter("resonance",*p->ctrl[P_RESON]);
 
+    // Beardo BE (Friedman) — its own 3-way channel (Clean/BE/HBE) + voicing toggles.
+    if (modelIdx == kFriedmanIdx) {
+        amp->setParameter("channel", *p->ctrl[P_FR_CHANNEL]);
+        amp->setParameter("fat",     *p->ctrl[P_FR_FAT]);
+        amp->setParameter("c45",     *p->ctrl[P_FR_C45]);
+        amp->setParameter("sat",     *p->ctrl[P_FR_SAT]);
+    }
+
     int desiredTube;
     if (*p->ctrl[P_PA_AUTO] > 0.5f) {
         const auto d = PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]);
@@ -322,6 +336,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
         desiredTube = clampIdx(*p->ctrl[P_PA_TUBE], 0, 3);
     }
+    // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
+    p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).bloomVca);
     if (desiredTube != p->lastTube) { p->lastTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
 
     const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);
