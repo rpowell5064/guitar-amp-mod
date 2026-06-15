@@ -186,6 +186,8 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 0, true,  "Sunn Model T"}; return true; }
     if (name == "rockerverb" || name == "orange")
                               { out = {AmpModel::OrangeRockerverb50, 5, 1, false, "Orange Rockerverb 50"}; return true; }
+    if (name == "friedman" || name == "beardo" || name == "be")
+                              { out = {AmpModel::FriedmanBEDeluxe, 6, 1, false, "Beardo BE (Friedman)"}; return true; }
     // ── drive pedals (OverdriveBlock path; drive/tone/level via --gain/--tone/--level) ──
     if (name == "rat" || name == "rodent" || name == "dearrodentboy")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "ProCo RAT (Dear Rodent Boy)", true, OverdriveType::ProcoRAT}; return true; }
@@ -202,6 +204,7 @@ struct Knobs {
     float presence = 0.5f, master = 0.7f, sag = 0.3f;
     float channel = 0.0f, reson = 0.5f;
     float tone = 0.5f, level = 0.7f;   // drive-pedal: tone=filter, level=volume (gain=drive)
+    float fat = 0.0f, c45 = 0.0f, sat = 0.0f;  // Friedman BE-Deluxe voicing toggles
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -227,6 +230,11 @@ static void runDriveModel(const ModelSpec& m, const Knobs& k, double sr,
         std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
     }
 }
+
+// When set (via --nopa), bypass the shared PowerAmpProcessor so the algorithmic
+// PREAMP can be A/B'd directly against a preamp-only capture (e.g. the BE-100
+// "[PRE] ... Noon" captures), removing power-amp colour + unknown-knob confounds.
+static bool g_bypassPA = false;
 
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
@@ -256,6 +264,9 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     amp.setParameter("sag", k.sag);
     amp.setParameter("channel", k.channel);
     amp.setParameter("resonance", k.reson);
+    amp.setParameter("fat", k.fat);   // Friedman toggles (ignored by other models)
+    amp.setParameter("c45", k.c45);
+    amp.setParameter("sat", k.sat);
 
     PowerAmpProcessor pa;
     pa.prepare(sr, BLK, 1);
@@ -265,12 +276,14 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("depth", d.depth);
     pa.setParameter("nfb", d.nfb);
     pa.setParameter("sag", d.sag);
+    pa.setParameter("bloomvca", d.bloomVca);
     pa.setParameter("resonance", 0.5f);
     pa.setParameter("airFeel", 0.0f);
     pa.setTubeType(static_cast<TubeType>(m.tube));
     // Sunn is a complete amp (own power stage) — the plugin bypasses the external
     // PA for it, so mirror that here or the comparison double-stacks power amps.
-    pa.setBypass(m.sunn);
+    // --nopa also bypasses it, to A/B the preamp alone vs a preamp-only capture.
+    pa.setBypass(m.sunn || g_bypassPA);
 
     out.assign(in.size(), 0.0f);
     std::vector<float> scratch(BLK);
@@ -405,6 +418,154 @@ static ThdResult thdAtLevel(NamModel& nam, const ModelSpec& m, const Knobs& k,
     return { inDb, thdOf(nOut, cycles, N), thdOf(mOut, cycles, N) };
 }
 
+// ── "Feel" / dynamics report ─────────────────────────────────────────────────
+// Every metric above is steady-state (sustained tones, dropped warmup) and so
+// is blind to what players call "feel": how the amp's gain tracks pick dynamics
+// over time. These three deterministic, reproducible excitations expose exactly
+// that and A/B it against the capture — the levers are PowerSupplySag depth/
+// release and the power-amp bias-shift asymmetry, not injected randomness.
+struct FrameEnv { std::vector<double> v; int hop; };
+static FrameEnv frameRms(const std::vector<float>& x, double sr,
+                         double winMs = 5.0, double hopMs = 1.0) {
+    const int win = std::max(1, int(sr * winMs * 1e-3));
+    const int hop = std::max(1, int(sr * hopMs * 1e-3));
+    FrameEnv e; e.hop = hop;
+    for (size_t c = 0; c + size_t(win) <= x.size(); c += size_t(hop))
+        e.v.push_back(rms(x.data() + c, size_t(win)));
+    return e;
+}
+static void appendSilence(std::vector<float>& s, double sr, double durS) {
+    s.insert(s.end(), size_t(sr * durS), 0.0f);
+}
+// Hard-gated sine burst (instant onset = pick attack). Phase runs off the global
+// sample index so successive segments stay phase-continuous.
+static void appendBurst(std::vector<float>& s, double sr, double f, double A, double durS) {
+    const size_t n = size_t(sr * durS), base = s.size();
+    for (size_t i = 0; i < n; ++i)
+        s.push_back(float(A * std::sin(2.0 * M_PI * f * double(base + i) / sr)));
+}
+static double lin(double db) { return std::pow(10.0, db / 20.0); }
+
+static void feelReport(NamModel& nam, const ModelSpec& m, const Knobs& k, double sr) {
+    std::printf("\n══════════ FEEL / DYNAMICS (transient · compression · sag) ══════════\n");
+    const double probe = 1000.0;
+
+    // ── A. Attack transient & sag "bloom" ────────────────────────────────────
+    // A stiff amp tracks the gate flat; a sagging amp overshoots on the transient
+    // then droops to a lower sustain. peak/sustain (dB) is that bloom.
+    {
+        std::vector<float> in;
+        appendSilence(in, sr, 0.30);
+        const size_t onset = in.size();
+        appendBurst(in, sr, probe, lin(-6.0), 0.30);
+        appendSilence(in, sr, 0.10);
+
+        std::vector<float> nO, mO;
+        runNam(nam, sr, in, nO);
+        runModel(m, k, sr, in, mO);
+
+        auto stats = [&](const std::vector<float>& y, double& atkMs, double& bloomDb) {
+            FrameEnv e = frameRms(y, sr);
+            if (e.v.empty()) { atkMs = bloomDb = 0.0; return; }
+            const int f0 = std::min(int(onset / e.hop), int(e.v.size()) - 1);
+            double pk = 0;
+            for (int i = f0; i < int(e.v.size()); ++i) pk = std::max(pk, e.v[i]);
+            int a = f0;
+            for (int i = f0; i < int(e.v.size()); ++i) if (e.v[i] >= 0.9 * pk) { a = i; break; }
+            atkMs = (a - f0) * e.hop * 1000.0 / sr;
+            const int burstEndF = int((onset + size_t(sr * 0.30)) / e.hop);
+            const int s0 = std::max(f0, burstEndF - int(0.06 * sr / e.hop));
+            double sus = 0; int c = 0;
+            for (int i = s0; i < burstEndF && i < int(e.v.size()); ++i) { sus += e.v[i]; ++c; }
+            sus = c ? sus / c : pk;
+            bloomDb = (sus > 1e-9) ? 20.0 * std::log10(pk / sus) : 0.0;
+        };
+        double na, nb, ma, mb;
+        stats(nO, na, nb); stats(mO, ma, mb);
+        std::printf("\n── A. attack & sag bloom (1 kHz burst @ -6 dBFS) ──\n");
+        std::printf("  %-6s  %12s  %14s\n", "", "attack->90%", "peak/sustain");
+        std::printf("  %-6s  %9.1f ms  %11.2f dB\n", "NAM",   na, nb);
+        std::printf("  %-6s  %9.1f ms  %11.2f dB\n", "model", ma, mb);
+        std::printf("  delta(model-NAM): attack %+.1f ms   bloom %+.2f dB\n", ma - na, mb - nb);
+        if (mb < nb - 0.5)      std::printf("    -> model too STIFF: less bloom than the amp (raise sag depth/release)\n");
+        else if (mb > nb + 0.5) std::printf("    -> model too SPONGY: more droop than the amp (lower sag depth)\n");
+    }
+
+    // ── B. Dynamic compression curve (touch sensitivity) ─────────────────────
+    // Output gain per input level; a tube amp's gain falls as you dig in. The
+    // loud-minus-quiet gain delta is the single clearest "touch" number.
+    {
+        const double levels[] = { -30, -24, -18, -12, -6, 0 };
+        const int NL = int(sizeof(levels) / sizeof(double));
+        std::vector<float> in; std::vector<size_t> mStart(NL), mLen(NL);
+        for (int i = 0; i < NL; ++i) {
+            appendSilence(in, sr, 0.20);              // let the supply recover between steps
+            const size_t bs = in.size();
+            appendBurst(in, sr, probe, lin(levels[i]), 0.15);
+            mLen[i]   = size_t(sr * 0.06);            // measure last 60 ms
+            mStart[i] = bs + size_t(sr * 0.15) - mLen[i];
+        }
+        std::vector<float> nO, mO;
+        runNam(nam, sr, in, nO);
+        runModel(m, k, sr, in, mO);
+        std::printf("\n── B. dynamic gain curve (1 kHz, gain = out-in) ──\n");
+        std::printf("  %-9s  %9s  %10s\n", "in(dBFS)", "NAM(dB)", "model(dB)");
+        double nGq = 0, nGl = 0, mGq = 0, mGl = 0;
+        for (int i = 0; i < NL; ++i) {
+            const double inR = lin(levels[i]) / std::sqrt(2.0);
+            const double nG  = dbfs(rms(nO.data() + mStart[i], mLen[i])) - dbfs(inR);
+            const double mG  = dbfs(rms(mO.data() + mStart[i], mLen[i])) - dbfs(inR);
+            std::printf("  %-9.0f  %+9.1f  %+10.1f\n", levels[i], nG, mG);
+            if (i == 0)      { nGq = nG; mGq = mG; }
+            if (i == NL - 1) { nGl = nG; mGl = mG; }
+        }
+        const double nC = nGl - nGq, mC = mGl - mGq;
+        std::printf("  compression (loud-quiet gain): NAM %+.1f dB   model %+.1f dB   delta %+.1f dB\n",
+                    nC, mC, mC - nC);
+        if (mC > nC + 1.0)      std::printf("    -> model compresses LESS than the amp (stiffer touch)\n");
+        else if (mC < nC - 1.0) std::printf("    -> model compresses MORE than the amp (squishier touch)\n");
+    }
+
+    // ── C. Sag recovery time ──────────────────────────────────────────────────
+    // Loud burst pulls the supply down; the quiet probe's gain climbs back as the
+    // filter caps recharge. τ63 is the time to recover 63 % of the way to rest.
+    {
+        std::vector<float> in;
+        appendSilence(in, sr, 0.20);
+        appendBurst(in, sr, probe, lin(0.0),   0.25);   // pull-down
+        const size_t probeStart = in.size();
+        appendBurst(in, sr, probe, lin(-24.0), 0.60);   // quiet recovery probe
+        std::vector<float> nO, mO;
+        runNam(nam, sr, in, nO);
+        runModel(m, k, sr, in, mO);
+        auto recoverMs = [&](const std::vector<float>& y) -> double {
+            FrameEnv e = frameRms(y, sr);
+            const int p0 = int(probeStart / e.hop);
+            if (p0 >= int(e.v.size())) return 0.0;
+            const double init = e.v[p0], rest = e.v.back(), span = rest - init;
+            if (rest < 1e-9 || std::fabs(span) < rest * 0.02) return 0.0;   // ~no sag
+            const double target = init + 0.63 * span;
+            for (int i = p0; i < int(e.v.size()); ++i)
+                if ((span > 0 && e.v[i] >= target) || (span < 0 && e.v[i] <= target))
+                    return (i - p0) * e.hop * 1000.0 / sr;
+            return -1.0;
+        };
+        const double nR = recoverMs(nO), mR = recoverMs(mO);
+        std::printf("\n── C. sag recovery (0 dBFS pull-down -> -24 dBFS probe) ──\n");
+        auto show = [&](const char* tag, double v) {
+            if (v == 0.0)      std::printf("  %-6s  ~no sag (stiff supply)\n", tag);
+            else if (v < 0)    std::printf("  %-6s  >600 ms (did not settle)\n", tag);
+            else               std::printf("  %-6s  tau63 = %.0f ms\n", tag, v);
+        };
+        show("NAM", nR); show("model", mR);
+        if (nR > 0 && mR > 0)
+            std::printf("  delta: %+.0f ms (model %s)\n", mR - nR,
+                        mR < nR ? "recovers faster - less sag" : "recovers slower - more sag");
+    }
+    std::printf("\nFeel notes: bloom (A) and compression (B) are the primary touch levers;\n"
+                "tune PowerSupplySag depth/release and the power-amp bias-shift to close them.\n");
+}
+
 // ── CLI ──────────────────────────────────────────────────────────────────────
 static const char* argVal(int argc, char** argv, const char* flag) {
     for (int i = 1; i < argc - 1; ++i) if (!std::strcmp(argv[i], flag)) return argv[i + 1];
@@ -433,6 +594,7 @@ int main(int argc, char** argv) {
     if (const char* s = argVal(argc, argv, "--sr")) sr = std::atof(s);
     double inLevelDb = -18.0;
     if (const char* s = argVal(argc, argv, "--inlevel")) inLevelDb = std::atof(s);
+    for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--nopa")) g_bypassPA = true;
 
     Knobs k;
     auto knob = [&](const char* flag, float& dst) {
@@ -442,6 +604,7 @@ int main(int argc, char** argv) {
     knob("--treble", k.treble); knob("--presence", k.presence); knob("--master", k.master);
     knob("--sag", k.sag);     knob("--channel", k.channel); knob("--reson", k.reson);
     knob("--tone", k.tone);   knob("--level", k.level);   // drive-pedal filter/volume
+    knob("--fat", k.fat);     knob("--c45", k.c45);       knob("--sat", k.sat);  // Friedman toggles
 
     // Load the reference capture.
     NamModel nam;
@@ -545,6 +708,8 @@ int main(int argc, char** argv) {
 
     harmonicReport(nam, spec, k, sr, -12.0, 110.0);
     harmonicReport(nam, spec, k, sr, -12.0, 220.0);
+
+    feelReport(nam, spec, k, sr);
 
     std::printf("\nDone.\n");
     return 0;

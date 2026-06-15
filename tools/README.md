@@ -14,6 +14,16 @@ It reports:
   across four input levels — flags "too clean" / "too saturated".
 - **Loudness / clean gain** — output RMS and the makeup factor that would match NAM
   (informs `kModelMakeup[]` in `lv2/amp/amp_plugin.cpp`).
+- **Feel / dynamics** — the time-domain behavior the steady-state metrics miss, A/B'd
+  against the capture. Three deterministic excitations (no randomness):
+  - **A. attack & sag bloom** — hard-gated burst; reports attack-to-90 % time and the
+    peak/sustain ratio (the transient overshoot-then-droop a sagging supply produces).
+  - **B. dynamic gain curve** — a -30…0 dBFS staircase; output gain per step and the
+    loud-minus-quiet compression delta (the clearest single "touch" number).
+  - **C. sag recovery** — a loud pull-down followed by a quiet probe; reports τ63, the
+    time the supply takes to recharge.
+  The levers for closing these deltas are `PowerSupplySag` depth/release and the
+  power-amp bias-shift — *not* injected randomness, so results stay reproducible.
 
 ## Choosing reference captures (important)
 
