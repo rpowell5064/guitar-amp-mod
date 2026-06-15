@@ -8,11 +8,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(FetchContent)
 FetchContent_Declare(NeuralAmpModelerCore
     GIT_REPOSITORY https://github.com/sdatkinson/NeuralAmpModelerCore.git
-    # Pin to a known-good commit (v0.5.3+6) — upstream `main` later changed the
-    # nam::DSP API (removed ResetAndPrewarm), which broke fresh CI builds. This is
-    # the exact NAM core the verified on-device builds use. (Not a tag tip, so
-    # GIT_SHALLOW must be FALSE to fetch an arbitrary SHA.)
-    GIT_TAG        5edb0bae2a7456816a3ee3b8909d6c8a6fbd0ad9
+    # Pin to the known-good commit d65cf21 — it has ResetAndPrewarm() as a nam::DSP
+    # method, which NamModel.cpp calls. (The previous pin 5edb0ba does NOT have that
+    # method and fails a fresh build; it worked locally only because the sibling-repo
+    # FETCHCONTENT override bypassed the pin. Verified on-device 2026-06-15.)
+    # Not a tag tip, so GIT_SHALLOW must be FALSE to fetch an arbitrary SHA.
+    GIT_TAG        d65cf2114e4a9e083292b235af1a24789d6fe128
     GIT_SHALLOW    FALSE
     GIT_PROGRESS   TRUE)
 # Populate sources only — do NOT run NAMCore's CMakeLists (it builds tools we don't need).
