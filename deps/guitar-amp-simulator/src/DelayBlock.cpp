@@ -85,6 +85,10 @@ void DelayBlock::setParameter(const std::string& id, float v) {
     else if (id == "tapeAge")      pTapeAge_      = v;
     else if (id == "headMask")     pHeadMask_     = static_cast<int>(v) & 0x1F;
     else if (id == "noiseLevel")   pNoiseLevel_   = v;
+    else if (id == "pattern")      pPattern_      = static_cast<int>(v + 0.5f);
+    else if (id == "ducking")      pDucking_      = v;
+    else if (id == "modDepth")     pModDepth_     = v;
+    else if (id == "modRate")      pModRate_      = v;
 
     if (model_)    model_->setParameter(id, v);
     if (oldModel_) oldModel_->setParameter(id, v);  // keep old model in sync during fade
@@ -104,6 +108,10 @@ float DelayBlock::getParameter(const std::string& id) const {
     if (id == "tapeAge")      return pTapeAge_;
     if (id == "headMask")     return static_cast<float>(pHeadMask_);
     if (id == "noiseLevel")   return pNoiseLevel_;
+    if (id == "pattern")      return static_cast<float>(pPattern_);
+    if (id == "ducking")      return pDucking_;
+    if (id == "modDepth")     return pModDepth_;
+    if (id == "modRate")      return pModRate_;
     return 0.0f;
 }
 
@@ -120,4 +128,8 @@ void DelayBlock::applyStoredParams(DelayBase& m) const noexcept {
     m.setParameter("tapeAge",      pTapeAge_);
     m.setParameter("headMask",     static_cast<float>(pHeadMask_));
     m.setParameter("noiseLevel",   pNoiseLevel_);
+    m.setParameter("pattern",      static_cast<float>(pPattern_));
+    m.setParameter("ducking",      pDucking_);
+    m.setParameter("modDepth",     pModDepth_);
+    m.setParameter("modRate",      pModRate_);
 }

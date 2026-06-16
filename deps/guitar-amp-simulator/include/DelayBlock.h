@@ -45,6 +45,10 @@ private:
     float pTapeAge_      =   0.5f;   // Tape
     int   pHeadMask_     = 0x0F;     // Echorec
     float pNoiseLevel_   =   0.0f;   // Echorec
+    int   pPattern_      = 1;        // Seraph (0=Unison 1=Dotted8th 2=Triplet 3=Eighth)
+    float pDucking_      =   0.0f;   // Seraph
+    float pModDepth_     =   0.0f;   // Seraph
+    float pModRate_      =   0.3f;   // Seraph
 
     void applyStoredParams(DelayBase& m) const noexcept;
 };

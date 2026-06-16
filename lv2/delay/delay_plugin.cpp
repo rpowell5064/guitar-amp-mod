@@ -19,6 +19,10 @@ enum DelayPorts {
     P_FLUTTER = 10,
     P_BYPASS  = 11,
     P_HEADS   = 12,   // Echorec rotary program (0..11); ignored by Digital/Tape
+    P_PATTERN = 13,   // Seraph: engine-B rhythm ratio (0..3)
+    P_DUCK    = 14,   // Seraph: dynamic ducking amount
+    P_MODDEP  = 15,   // Seraph: modulation depth
+    P_MODRATE = 16,   // Seraph: modulation rate
     P_N_PORTS
 };
 
@@ -65,6 +69,10 @@ static void delay_run(LV2_Handle h, uint32_t n) {
     p->dsp.setParameter("stereoWidth",  *p->ports[P_WIDTH]);
     p->dsp.setParameter("wowDepth",     *p->ports[P_WOW]);
     p->dsp.setParameter("flutterDepth", *p->ports[P_FLUTTER]);
+    p->dsp.setParameter("pattern",      *p->ports[P_PATTERN]);   // Seraph
+    p->dsp.setParameter("ducking",      *p->ports[P_DUCK]);      // Seraph
+    p->dsp.setParameter("modDepth",     *p->ports[P_MODDEP]);    // Seraph
+    p->dsp.setParameter("modRate",      *p->ports[P_MODRATE]);   // Seraph
 
     int prog = static_cast<int>(*p->ports[P_HEADS] + 0.5f);
     prog = (prog < 0) ? 0 : (prog > 11) ? 11 : prog;

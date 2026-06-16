@@ -4,8 +4,10 @@ function (event, funcs) {
     function update_type(icon, value) {
         var t = parseInt(value, 10);
         // Wow/Flutter: Tape (1) + Echorec (2).  Echo Heads: Echorec (2) only.
-        icon.find('[rata-role=tapegroup]').toggleClass('mod-hidden', t === 0);
+        // Pattern/Ducking/Modulation: Seraph (3) only.
+        icon.find('[rata-role=tapegroup]').toggleClass('mod-hidden', t !== 1 && t !== 2);
         icon.find('[rata-role=echogroup]').toggleClass('mod-hidden', t !== 2);
+        icon.find('[rata-role=seraphgroup]').toggleClass('mod-hidden', t !== 3);
     }
 
     if (event.type == 'start') {

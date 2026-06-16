@@ -176,7 +176,7 @@ struct AutoOutput {
     }
 };
 
-// ── Power-line hum twin-notch (mirrors the standalone Input Trim) ──────────────
+// ── RBJ notch (used by the hum notch comb below) ──────────────────────────────
 static BiquadCoeffs makeNotch(double fc, double Q, double fs) noexcept {
     const double w = 2.0 * M_PI * fc / fs, a = std::sin(w) / (2.0 * Q), c = std::cos(w);
     const double a0 = 1.0 + a;
@@ -185,10 +185,115 @@ static BiquadCoeffs makeNotch(double fc, double Q, double fs) noexcept {
     k.a1 = (-2.0*c)/a0; k.a2 = (1.0-a)/a0;
     return k;
 }
-struct HumFilter {
-    BiquadFilter n50, n60;
-    void prepare(double sr) noexcept { n50.setCoeffs(makeNotch(50.0,35.0,sr)); n60.setCoeffs(makeNotch(60.0,35.0,sr)); }
-    float process(float x) noexcept { return n60.process(n50.process(x)); }
+
+// ── Power-line hum notch comb (Input Trim "Hum Filter") ────────────────────────
+// A real humbucker nulls hum with two reverse-wound coils (a spatial differential
+// null); that can't be reproduced from one already-captured signal. This instead
+// *attenuates* 60 Hz mains hum with a cascade of fixed RBJ notches at the harmonic
+// series (60/120/.../360 Hz). Being LTI it can ONLY remove energy, never
+// synthesise a tone -> no phantom / "out of time" notes. (An adaptive-LMS version
+// was tried and rejected: time-varying cancellers build weights from sustained or
+// abruptly-stopped notes and then *emit* a decaying 60/120/180/240 Hz tone, which
+// is exactly the artifact that showed up on the device -- see tools/hum_cancel.py.)
+// 60 Hz mains (North America). Tuned + verified there: ~15 dB reduction of the hum
+// stack, each line killed deeply, ~1 dB static impact on a low B1, transient ring
+// no worse than the old twin-notch. Replaces the old fixed 50/60 Hz twin-notch.
+struct HumNotchComb {
+    static constexpr int kN = 6;
+    BiquadFilter notch[kN];
+    void prepare(double sr) noexcept {
+        static const double f[kN] = {60.0, 120.0, 180.0, 240.0, 300.0, 360.0};
+        for (int k = 0; k < kN; ++k) notch[k].setCoeffs(makeNotch(f[k], 18.0, sr));
+    }
+    void reset() noexcept { for (auto& b : notch) b.reset(); }
+    float process(float x) noexcept {
+        for (int k = 0; k < kN; ++k) x = notch[k].process(x);
+        return x;
+    }
+};
+
+// ── Single-coil -> humbucker voicing (Input Trim) ─────────────────────────────
+// Re-voices a Tele-style single coil toward one of three target bridge humbuckers
+// (HB Model port). Each model is a recipe of up to 5 dB-based biquad bands plus an
+// output level match (a humbucker is hotter, so it also drives the chain harder).
+// `amount` (0..1) scales every dB toward 0, so amount=0 (or toggle off) is a true
+// bypass for every model. Curves derived + verified against modeled pickup
+// responses in tools/pickup_voicing.py (Texas Special bridge source; max err
+// '59 Bucker 1.53 / Norse Hammer 2.19 / Modern Flux 1.66 dB over 80 Hz..8 kHz).
+struct PickupVoicer {
+    enum { kMaxBands = 5 };
+    enum BandKind { OFF, PEAK, LOSHELF, HISHELF };
+    struct Band   { BandKind kind; double fc, dB, Q; };
+    struct Recipe { Band band[kMaxBands]; double levelDb; };
+
+    // model 0='59 Bucker (PAF), 1=Norse Hammer (Ragnarok), 2=Modern Flux (Fishman Modern)
+    static const Recipe& recipe(int model) noexcept {
+        static const Recipe kR[3] = {
+            // '59 Bucker — warm, mid-forward, smooth rolled-off top
+            {{ {PEAK,2000.0,+2.5,0.9}, {PEAK,4500.0,-5.0,1.8}, {HISHELF,4000.0,-13.0,0.0},
+               {OFF,0,0,0}, {OFF,0,0,0} }, 4.0},
+            // Norse Hammer — hot ceramic: tight bass, chunky low-mids, present, dark smooth top
+            {{ {LOSHELF,90.0,-2.5,0.0}, {PEAK,340.0,+2.0,0.8}, {PEAK,2000.0,+2.5,1.0},
+               {PEAK,4500.0,-5.0,1.8}, {HISHELF,3800.0,-15.0,0.0} }, 7.0},
+            // Modern Flux — active hi-fi: tight bass, mid scoop, broad presence dip, extended top
+            {{ {LOSHELF,95.0,-2.0,0.0}, {PEAK,450.0,-3.0,1.0}, {PEAK,4800.0,-8.0,1.1},
+               {HISHELF,7000.0,+1.0,0.0}, {OFF,0,0,0} }, 5.5},
+        };
+        return kR[(model < 0 || model > 2) ? 0 : model];
+    }
+
+    BiquadFilter f[kMaxBands];
+    int    nActive  = 0;
+    float  gain     = 1.0f;
+    double curRate  = 0.0;
+    int    curModel = -1;
+    float  curAmt   = -1.0f;   // force a recompute on the first prepare
+
+    void prepare(double sr, int model, float amount) noexcept {
+        if (sr == curRate && model == curModel && amount == curAmt) return;
+        curRate = sr; curModel = model; curAmt = amount;
+        const Recipe& r = recipe(model);
+        nActive = 0;
+        for (int i = 0; i < kMaxBands; ++i) {
+            const Band& b = r.band[i];
+            if (b.kind == OFF) continue;
+            const double g = b.dB * amount;
+            BiquadCoeffs c;
+            switch (b.kind) {
+                case PEAK:    c = Filters::peaking  (b.fc, g, b.Q, sr); break;
+                case LOSHELF: c = Filters::lowshelf (b.fc, g,      sr); break;
+                case HISHELF: c = Filters::highshelf(b.fc, g,      sr); break;
+                default:      break;
+            }
+            f[nActive++].setCoeffs(c);
+        }
+        gain = std::pow(10.0f, static_cast<float>(r.levelDb * amount) / 20.0f);
+    }
+    void reset() noexcept { for (auto& bq : f) bq.reset(); }
+    float process(float x) noexcept {
+        for (int i = 0; i < nActive; ++i) x = f[i].process(x);
+        return x * gain;
+    }
+};
+
+// ── Output boost (Input Trim) ─────────────────────────────────────────────────
+// Pickup-agnostic "make it hotter" stage: an output level boost plus a low-mid
+// "beef" bump (peaking @ 250 Hz) that scales with the boost so it fattens single
+// coils and thickens humbuckers. `amtDb` is the boost in dB (0..12); the beef
+// reaches +3 dB at full boost. amtDb=0 -> unity gain + flat = true bypass.
+struct OutputBoost {
+    BiquadFilter beef;
+    float  gain    = 1.0f;
+    double curRate = 0.0;
+    float  curAmt  = -1.0f;
+    void prepare(double sr, float amtDb) noexcept {
+        if (sr == curRate && amtDb == curAmt) return;
+        curRate = sr; curAmt = amtDb;
+        beef.setCoeffs(Filters::peaking(250.0, 3.0 * (amtDb / 12.0), 0.7, sr));
+        gain = std::pow(10.0f, amtDb / 20.0f);
+    }
+    void reset() noexcept { beef.reset(); }
+    float process(float x) noexcept { return beef.process(x) * gain; }
 };
 
 // ── Movable-block identity ────────────────────────────────────────────────────
@@ -225,7 +330,9 @@ struct HexForge {
     double rate = 48000.0;
 
     // DSP blocks
-    HumFilter         trimHum;
+    HumNotchComb      trimHum;
+    PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
+    OutputBoost       trimBoost;        // pickup-agnostic output boost + beef (Input Trim)
     NoiseGateBlock    gate;
     CompressorBlock   comp;
     std::unique_ptr<OversamplingWrapper> fuzzMuff;   // Italian Hero
@@ -436,11 +543,42 @@ static std::string hfBackupDir() {
     const char* home = std::getenv("HOME");
     return (home && home[0]) ? std::string(home) + "/.config/hexchain" : std::string("/tmp");
 }
+// Reconstruct an old positional value array (the npc old values sit at the start
+// of vals[], rest zero) onto the CURRENT (v7) port layout, inserting defaults for
+// ports that didn't exist in `srcVer`. Two insertion regions, both mid-enum:
+//   * Input-Trim voicing/boost block, 5 contiguous ports [HF_IT_HUMBK..HF_IT_BOOSTAMT],
+//     added incrementally: v4 humbk+hbamt, v5 hbmodel, v6 boost+boostamt.
+//   * Delay Seraph block, 4 contiguous ports [HF_DL_PATTERN..HF_DL_MODRATE], added v7.
+// Done as a single left-to-right walk over the new layout: gap slots get defaults,
+// every other slot consumes the next old value (preserves order across both gaps).
+static_assert(HF_IT_HBAMT == HF_IT_HUMBK + 1 && HF_IT_HBMODEL == HF_IT_HUMBK + 2 &&
+              HF_IT_BOOST == HF_IT_HUMBK + 3 && HF_IT_BOOSTAMT == HF_IT_HUMBK + 4,
+              "voicing/boost ports must be contiguous for the preset migration");
+static_assert(HF_DL_DUCKING == HF_DL_PATTERN + 1 && HF_DL_MODDEPTH == HF_DL_PATTERN + 2 &&
+              HF_DL_MODRATE == HF_DL_PATTERN + 3 && HF_DL_PATTERN > HF_IT_BOOSTAMT,
+              "Seraph delay ports must be contiguous and after the IT block");
+static void migratePorts(float* vals, uint32_t srcVer) noexcept {
+    static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
+    static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
+    const int itExisting = (srcVer < 4) ? 0 : (srcVer == 4) ? 2 : (srcVer == 5) ? 3 : 5;
+    const int itAt = HF_IT_HUMBK + itExisting, itEnd = HF_IT_HUMBK + 5;   // IT gap [itAt,itEnd)
+    const bool dlGap = (srcVer < 7);
+    const int dlAt = HF_DL_PATTERN, dlEnd = HF_DL_PATTERN + 4;            // DL gap [dlAt,dlEnd)
+
+    float old[HF_N_PORTS];
+    std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
+    int o = 0;
+    for (int i = 0; i < HF_N_PORTS; ++i) {
+        if      (i >= itAt && i < itEnd)             vals[i] = vdef[i - HF_IT_HUMBK];
+        else if (dlGap && i >= dlAt && i < dlEnd)    vals[i] = ddef[i - dlAt];
+        else                                         vals[i] = old[o++];
+    }
+}
 static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(3); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
+    putU32(7); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -460,8 +598,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver != 2 && ver != 3) return false;
+    if (ver < 2 || ver > 7) return false;
     const bool migrateOutDb = (ver == 2);
+    const bool needMigrate  = (ver < 7);   // voicing/boost (v4-6) + Seraph delay (v7) ports
     getU32(np);
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
     for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -470,6 +609,7 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         float vals[HF_N_PORTS]; for (int i=0;i<HF_N_PORTS;++i) vals[i]=0.0f;
         if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
         else off = size;
+        if (needMigrate) migratePorts(vals, ver);   // insert voicing/boost + Seraph ports (defaults)
         if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);
         char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
         getPath(ir); getPath(an); getPath(dn); getPath(cn);
@@ -630,6 +770,8 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
 
     p->rate = rate;
     p->trimHum.prepare(rate);
+    p->trimVoice.reset();   // coeffs are set lazily in run() from the live HB Amount port
+    p->trimBoost.reset();
     p->gate.prepare(rate, kMaxBlock, 1);
     p->comp.prepare(rate, kMaxBlock, 1);
     // Build fuzz models directly (NOT via OverdriveFactory) — same as the fuzz plugin.
@@ -901,6 +1043,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     const float itGain    = std::pow(10.0f, *p->ports[HF_IT_GAIN]/20.0f)
                             * ((*p->ports[HF_IT_PHASE] > 0.5f) ? -1.0f : 1.0f);
     const bool  itHum     = *p->ports[HF_IT_HUM] > 0.5f;
+    const bool  itHB      = *p->ports[HF_IT_HUMBK] > 0.5f;
+    const int   itHBModel = (int)(*p->ports[HF_IT_HBMODEL] + 0.5f);
+    if (itHB) p->trimVoice.prepare(p->rate, itHBModel, *p->ports[HF_IT_HBAMT]);   // recompute on model/amount change
+    const bool  itBoost   = *p->ports[HF_IT_BOOST] > 0.5f;
+    if (itBoost) p->trimBoost.prepare(p->rate, *p->ports[HF_IT_BOOSTAMT]);
     // Gate
     p->gate.setBypass(false);
     p->gate.setParameter("threshold",  *p->ports[HF_GT_THRESH]);
@@ -1020,7 +1167,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->modfx.setParameter("stereoWidth", *p->ports[HF_MD_WIDTH]);
     // Delay
     p->delay.setBypass(false);
-    const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 2);
+    const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 3);
     if (delayType != p->lastDelayType) { p->lastDelayType = delayType; p->delay.setType(DelayFactory::fromIndex(delayType)); }
     p->delay.setParameter("timeMs",       *p->ports[HF_DL_TIME]);
     p->delay.setParameter("feedback",     *p->ports[HF_DL_FEEDBACK]);
@@ -1029,6 +1176,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->delay.setParameter("wowDepth",     *p->ports[HF_DL_WOW]);
     p->delay.setParameter("flutterDepth", *p->ports[HF_DL_FLUTTER]);
     p->delay.setParameter("headMask", static_cast<float>(kEchorecProgram[clampi(*p->ports[HF_DL_HEADS],0,11)]));
+    p->delay.setParameter("pattern",  *p->ports[HF_DL_PATTERN]);    // Seraph
+    p->delay.setParameter("ducking",  *p->ports[HF_DL_DUCKING]);    // Seraph
+    p->delay.setParameter("modDepth", *p->ports[HF_DL_MODDEPTH]);   // Seraph
+    p->delay.setParameter("modRate",  *p->ports[HF_DL_MODRATE]);    // Seraph
     // Reverb
     p->reverb.setBypass(false);
     p->reverb.setParameter("preDelayMs", *p->ports[HF_RV_PREDELAY]);
@@ -1066,6 +1217,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             for (int i=0;i<len;++i) {
                 float x = L[i];
                 if (itHum) x = p->trimHum.process(x);
+                if (itHB)    x = p->trimVoice.process(x);   // single-coil -> humbucker voicing
+                if (itBoost) x = p->trimBoost.process(x);   // output boost + beef
                 x *= itGain;
                 L[i] = x; R[i] = x;
             }
@@ -1183,7 +1336,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(3);                  // version (3: out_level is dB; v2 stored it linear)
+    putU32(7);                  // version (7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1253,8 +1406,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver != 2 && ver != 3) return LV2_STATE_SUCCESS;  // unknown layout — start fresh
-        const bool migrateOutDb = (ver == 2);       // v2 stored out_level as 0..1 linear
+        if (ver < 2 || ver > 7) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
+        const bool needMigrate  = (ver < 7);      // voicing/boost (v4-6) + Seraph delay (v7) ports
         getU32(np);                                 // param-port count at save time
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -1263,6 +1417,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             float vals[HF_N_PORTS]; for (int i=0;i<HF_N_PORTS;++i) vals[i]=0.0f;
             if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
             else off = size;
+            if (needMigrate) migratePorts(vals, ver);                 // insert voicing/boost + Seraph ports
             if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);  // 0..1 -> dB
             char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
             getPath(ir); getPath(an); getPath(dn); getPath(cn);

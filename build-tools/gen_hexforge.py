@@ -31,6 +31,20 @@ IT = [
     ("gain",  "Gain",       "db", -20, 20, 0, None),
     ("phase", "Phase",      "t",  0, 1, 1, None),
     ("hum",   "Hum Filter", "t",  0, 1, 1, None),
+    # Single-coil -> humbucker voicing (off by default). When engaged, re-voices a
+    # Tele single coil toward one of three target bridge humbuckers (verified in
+    # tools/pickup_voicing.py). HB Amount scales the whole voicing 0..100%.
+    # NOTE: humbk/hbamt keep their v4 port indices (13/14); hbmodel is appended
+    # after hbamt so existing saved boards stay aligned (see preset migration).
+    ("humbk",   "Humbucker", "t", 0, 1, 0, None),
+    ("hbamt",   "HB Amount", "f", 0, 1, 1.0, None),
+    ("hbmodel", "HB Model",  "e", 0, 2, 0,
+        [("'59 Bucker", 0), ("Norse Hammer", 1), ("Modern Flux", 2)]),
+    # Output boost (off by default): pickup-agnostic level + low-mid "beef" bump.
+    # Fattens single coils / thickens humbuckers. Appended after the voicing ports
+    # so prior port indices stay put (see preset migration). Amount 0 dB = bypass.
+    ("boost",    "Boost",     "t",  0, 1, 0, None),
+    ("boostamt", "Boost Amt", "db", 0, 12, 4, None),
 ]
 GT = [
     ("thresh",  "Threshold",  "db", -80, 0, -60, None),
@@ -108,7 +122,7 @@ MD = [
     ("width", "Width", "f", 0, 1, 0.5, None),
 ]
 DL = [
-    ("type",    "Type",     "e", 0, 2, 0, [("Digital",0),("Tape",1),("Echo Wreck",2)]),
+    ("type",    "Type",     "e", 0, 3, 0, [("Digital",0),("Tape",1),("Echo Wreck",2),("Seraph",3)]),
     ("time",    "Time",     "ms", 1, 2000, 250, None),
     ("feedback","Feedback", "f", 0, 0.98, 0.4, None),
     ("mix",     "Mix",      "f", 0, 1, 0.15, None),
@@ -120,6 +134,11 @@ DL = [
         ("5: Heads 1+2",4),("6: Heads 2+3",5),("7: Heads 3+4",6),
         ("8: Heads 1+2+3",7),("9: Heads 2+3+4",8),("10: Heads 1+3+4",9),
         ("11: All Heads",10),("12: All + Dense",11)]),
+    # Seraph (dual-delay) params — shown only when Type=Seraph (c-dl-seraph).
+    ("pattern",  "Pattern",   "e", 0, 3, 1, [("Unison",0),("Dotted 8th",1),("Triplet",2),("Eighth",3)]),
+    ("ducking",  "Ducking",   "f", 0, 1, 0.0, None),
+    ("moddepth", "Mod Depth", "f", 0, 1, 0.0, None),
+    ("modrate",  "Mod Rate",  "f", 0, 1, 0.3, None),
 ]
 RV = [
     ("predelay", "Pre-Delay", "ms", 0, 100, 10, None),
@@ -423,7 +442,7 @@ TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"d
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
     # so the Hex Forge tiles read as the same effects, not a different palette.
-    ("it",  "Input Trim", "#6eaf87", ["gain","phase","hum"]),                                 # utility
+    ("it",  "Input Trim", "#6eaf87", ["gain","phase","hum","humbk","hbmodel","hbamt","boost","boostamt"]),  # utility
     ("gt",  "Gate",       "#8c9baf", ["thresh","release"]),                                   # gate
     ("cp",  "Comp",       "#4687eb", ["type","thresh","ratio","makeup"]),                     # comp
     ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
@@ -457,8 +476,11 @@ COND = {
     "fz_bias":"c-fz-tb", "fz_inputtrim":"c-fz-tb", "fz_getemp":"c-fz-tb",
     # drive — Octave only on New Dawn (model 1)
     "dr_octave":"c-dr-oct",
-    # delay — Wow/Flutter for Tape(1)/Echo Wreck(2); Heads for Echo Wreck(2)
+    # delay — Wow/Flutter for Tape(1)/Echo Wreck(2); Heads for Echo Wreck(2);
+    # Pattern/Ducking/Mod for Seraph(3)
     "dl_wow":"c-dl-tape", "dl_flutter":"c-dl-tape", "dl_heads":"c-dl-heads",
+    "dl_pattern":"c-dl-seraph", "dl_ducking":"c-dl-seraph",
+    "dl_moddepth":"c-dl-seraph", "dl_modrate":"c-dl-seraph",
 }
 
 def render_ctrl(c):

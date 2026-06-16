@@ -6,7 +6,8 @@
 enum class DelayType {
     Digital = 0,
     Tape    = 1,
-    Echorec = 2
+    Echorec = 2,
+    Seraph  = 3   // Keeley Halo-style dual delay
 };
 
 class DelayFactory {

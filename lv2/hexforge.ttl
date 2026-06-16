@@ -145,7 +145,34 @@
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 13 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position" ;
+        lv2:index 13 ; lv2:symbol "it_humbk" ; lv2:name "IT Humbucker" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "it_hbamt" ; lv2:name "IT HB Amount" ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 15 ; lv2:symbol "it_hbmodel" ; lv2:name "IT HB Model" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "'59 Bucker" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Norse Hammer" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Modern Flux" ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "it_boost" ; lv2:name "IT Boost" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 17 ; lv2:symbol "it_boostamt" ; lv2:name "IT Boost Amt" ;
+        units:unit units:db ;
+        lv2:default 4.0 ; lv2:minimum 0.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 18 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -159,37 +186,37 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 14 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable" ;
+        lv2:index 19 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 15 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold" ;
+        lv2:index 20 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold" ;
         units:unit units:db ;
         lv2:default -60.0 ; lv2:minimum -80.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 16 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack" ;
+        lv2:index 21 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack" ;
         units:unit units:ms ;
         lv2:default 0.1 ; lv2:minimum 0.1 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 17 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold" ;
+        lv2:index 22 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold" ;
         units:unit units:ms ;
         lv2:default 50.0 ; lv2:minimum 0.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 18 ; lv2:symbol "gt_release" ; lv2:name "Gate Release" ;
+        lv2:index 23 ; lv2:symbol "gt_release" ; lv2:name "Gate Release" ;
         units:unit units:ms ;
         lv2:default 100.0 ; lv2:minimum 10.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 19 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis" ;
+        lv2:index 24 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis" ;
         units:unit units:db ;
         lv2:default 6.0 ; lv2:minimum 0.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 20 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position" ;
+        lv2:index 25 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 2 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -203,24 +230,24 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 21 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable" ;
+        lv2:index 26 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 22 ; lv2:symbol "cp_type" ; lv2:name "Comp Type" ;
+        lv2:index 27 ; lv2:symbol "cp_type" ; lv2:name "Comp Type" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "5 Creature Amp" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Once76" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 23 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold" ;
+        lv2:index 28 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold" ;
         units:unit units:db ;
         lv2:default -18.0 ; lv2:minimum -60.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 24 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio" ;
+        lv2:index 29 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "2:1" ; rdf:value 0 ] ;
@@ -230,23 +257,23 @@
         lv2:scalePoint [ rdfs:label "Limit" ; rdf:value 4 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 25 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack" ;
+        lv2:index 30 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack" ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 26 ; lv2:symbol "cp_release" ; lv2:name "Comp Release" ;
+        lv2:index 31 ; lv2:symbol "cp_release" ; lv2:name "Comp Release" ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 27 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee" ;
+        lv2:index 32 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee" ;
         lv2:default 3.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 28 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup" ;
+        lv2:index 33 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 29 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position" ;
+        lv2:index 34 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 3 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -260,19 +287,19 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 30 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable" ;
+        lv2:index 35 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 31 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal" ;
+        lv2:index 36 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Italian Hero" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "I Know It" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 32 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant" ;
+        lv2:index 37 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Delta" ; rdf:value 0 ] ;
@@ -283,31 +310,31 @@
         lv2:scalePoint [ rdfs:label "Boutique" ; rdf:value 5 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 33 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain" ;
+        lv2:index 38 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain" ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 34 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone" ;
+        lv2:index 39 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 35 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume" ;
+        lv2:index 40 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume" ;
         lv2:default 0.65 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 36 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias" ;
+        lv2:index 41 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 37 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim" ;
+        lv2:index 42 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 38 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp" ;
+        lv2:index 43 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp" ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 39 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position" ;
+        lv2:index 44 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 4 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -321,12 +348,12 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 40 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable" ;
+        lv2:index 45 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 41 ; lv2:symbol "dr_model" ; lv2:name "Drive Model" ;
+        lv2:index 46 ; lv2:symbol "dr_model" ; lv2:name "Drive Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Green Man" ; rdf:value 0 ] ;
@@ -335,27 +362,27 @@
         lv2:scalePoint [ rdfs:label "Neural (NAM)" ; rdf:value 3 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 42 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive" ;
+        lv2:index 47 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 43 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone" ;
+        lv2:index 48 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 44 ; lv2:symbol "dr_level" ; lv2:name "Drive Level" ;
+        lv2:index 49 ; lv2:symbol "dr_level" ; lv2:name "Drive Level" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 45 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix" ;
+        lv2:index 50 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix" ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 46 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave" ;
+        lv2:index 51 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave" ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 47 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position" ;
+        lv2:index 52 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 5 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -369,12 +396,12 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 48 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable" ;
+        lv2:index 53 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 49 ; lv2:symbol "amp_model" ; lv2:name "Amp Model" ;
+        lv2:index 54 ; lv2:symbol "amp_model" ; lv2:name "Amp Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 6 ;
         lv2:scalePoint [ rdfs:label "Clean Meanie" ; rdf:value 0 ] ;
@@ -386,48 +413,48 @@
         lv2:scalePoint [ rdfs:label "Beardo BE" ; rdf:value 6 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 50 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain" ;
+        lv2:index 55 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 51 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass" ;
+        lv2:index 56 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 52 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid" ;
+        lv2:index 57 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 53 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble" ;
+        lv2:index 58 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 54 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence" ;
+        lv2:index 59 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 55 ; lv2:symbol "amp_master" ; lv2:name "Amp Master" ;
+        lv2:index 60 ; lv2:symbol "amp_master" ; lv2:name "Amp Master" ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 56 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag" ;
+        lv2:index 61 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag" ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 57 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel" ;
+        lv2:index 62 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 58 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance" ;
+        lv2:index 63 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 59 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol" ;
+        lv2:index 64 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 60 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link" ;
+        lv2:index 65 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Independent" ; rdf:value 0 ] ;
@@ -435,12 +462,12 @@
         lv2:scalePoint [ rdfs:label "Series" ; rdf:value 2 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 61 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass" ;
+        lv2:index 66 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 62 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube" ;
+        lv2:index 67 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
@@ -449,63 +476,63 @@
         lv2:scalePoint [ rdfs:label "KT88" ; rdf:value 3 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 63 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence" ;
+        lv2:index 68 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence" ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 64 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth" ;
+        lv2:index 69 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth" ;
         lv2:default 0.18 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 65 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag" ;
+        lv2:index 70 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag" ;
         lv2:default 0.33 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 66 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master" ;
+        lv2:index 71 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master" ;
         lv2:default 0.62 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 67 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB" ;
+        lv2:index 72 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB" ;
         lv2:default 0.42 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 68 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance" ;
+        lv2:index 73 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 69 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel" ;
+        lv2:index 74 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 70 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto" ;
+        lv2:index 75 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 71 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass" ;
+        lv2:index 76 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 72 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid" ;
+        lv2:index 77 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 73 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble" ;
+        lv2:index 78 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 74 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I" ;
+        lv2:index 79 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 75 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II" ;
+        lv2:index 80 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 76 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position" ;
+        lv2:index 81 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -519,26 +546,26 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 77 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable" ;
+        lv2:index 82 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 78 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut" ;
+        lv2:index 83 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut" ;
         units:unit units:hz ;
         lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 79 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut" ;
+        lv2:index 84 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut" ;
         units:unit units:hz ;
         lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 80 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix" ;
+        lv2:index 85 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix" ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 81 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position" ;
+        lv2:index 86 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 7 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -552,35 +579,35 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 82 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable" ;
+        lv2:index 87 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 83 ; lv2:symbol "md_type" ; lv2:name "Modulation Type" ;
+        lv2:index 88 ; lv2:symbol "md_type" ; lv2:name "Modulation Type" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Lush-2" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Uni-Verse" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 84 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate" ;
+        lv2:index 89 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 85 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth" ;
+        lv2:index 90 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 86 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix" ;
+        lv2:index 91 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 87 ; lv2:symbol "md_width" ; lv2:name "Modulation Width" ;
+        lv2:index 92 ; lv2:symbol "md_width" ; lv2:name "Modulation Width" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 88 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position" ;
+        lv2:index 93 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 8 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -594,45 +621,46 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 89 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable" ;
+        lv2:index 94 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 90 ; lv2:symbol "dl_type" ; lv2:name "Delay Type" ;
+        lv2:index 95 ; lv2:symbol "dl_type" ; lv2:name "Delay Type" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Digital" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Tape" ; rdf:value 1 ] ;
-        lv2:scalePoint [ rdfs:label "Echo Wreck" ; rdf:value 2 ]
+        lv2:scalePoint [ rdfs:label "Echo Wreck" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Seraph" ; rdf:value 3 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 91 ; lv2:symbol "dl_time" ; lv2:name "Delay Time" ;
+        lv2:index 96 ; lv2:symbol "dl_time" ; lv2:name "Delay Time" ;
         units:unit units:ms ;
         lv2:default 250.0 ; lv2:minimum 1.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 92 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback" ;
+        lv2:index 97 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback" ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 0.98
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 93 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix" ;
+        lv2:index 98 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix" ;
         lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 94 ; lv2:symbol "dl_width" ; lv2:name "Delay Width" ;
+        lv2:index 99 ; lv2:symbol "dl_width" ; lv2:name "Delay Width" ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 95 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow" ;
+        lv2:index 100 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow" ;
         lv2:default 0.003 ; lv2:minimum 0.0 ; lv2:maximum 0.05
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 96 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter" ;
+        lv2:index 101 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter" ;
         lv2:default 0.001 ; lv2:minimum 0.0 ; lv2:maximum 0.02
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 97 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads" ;
+        lv2:index 102 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 10 ; lv2:minimum 0 ; lv2:maximum 11 ;
         lv2:scalePoint [ rdfs:label "1: Head 1" ; rdf:value 0 ] ;
@@ -649,7 +677,28 @@
         lv2:scalePoint [ rdfs:label "12: All + Dense" ; rdf:value 11 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 98 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position" ;
+        lv2:index 103 ; lv2:symbol "dl_pattern" ; lv2:name "Delay Pattern" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:scalePoint [ rdfs:label "Unison" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Dotted 8th" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Triplet" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Eighth" ; rdf:value 3 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 104 ; lv2:symbol "dl_ducking" ; lv2:name "Delay Ducking" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 105 ; lv2:symbol "dl_moddepth" ; lv2:name "Delay Mod Depth" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 106 ; lv2:symbol "dl_modrate" ; lv2:name "Delay Mod Rate" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 107 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 9 ; lv2:minimum 1 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -663,37 +712,37 @@
         lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 99 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable" ;
+        lv2:index 108 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 100 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay" ;
+        lv2:index 109 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay" ;
         units:unit units:ms ;
         lv2:default 10.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 101 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay" ;
+        lv2:index 110 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay" ;
         lv2:default 1.5 ; lv2:minimum 0.1 ; lv2:maximum 8.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 102 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping" ;
+        lv2:index 111 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping" ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 0.99
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 103 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth" ;
+        lv2:index 112 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 104 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate" ;
+        lv2:index 113 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate" ;
         lv2:default 0.8 ; lv2:minimum 0.01 ; lv2:maximum 5.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 105 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix" ;
+        lv2:index 114 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix" ;
         lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 106 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan" ;
+        lv2:index 115 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -701,92 +750,92 @@
         lv2:scalePoint [ rdfs:label "HBE" ; rdf:value 2 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 107 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat" ;
+        lv2:index 116 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 108 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45" ;
+        lv2:index 117 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 109 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat" ;
+        lv2:index 118 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 110 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:index 119 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 111 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:index 120 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 112 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:index 121 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 113 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:index 122 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 114 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        lv2:index 123 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 115 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        lv2:index 124 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 116 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        lv2:index 125 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 117 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        lv2:index 126 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 118 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        lv2:index 127 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 119 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
+        lv2:index 128 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 120 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
+        lv2:index 129 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 121 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        lv2:index 130 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 31
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 122 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        lv2:index 131 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 7
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 123 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        lv2:index 132 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 124 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        lv2:index 133 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
@@ -794,7 +843,7 @@
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 125 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 134 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -822,228 +871,246 @@
         ] , [
             lv2:index 6 ; lv2:symbol "it_hum" ; lv2:name "IT Hum Filter"
         ] , [
-            lv2:index 7 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position"
+            lv2:index 7 ; lv2:symbol "it_humbk" ; lv2:name "IT Humbucker"
         ] , [
-            lv2:index 8 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable"
+            lv2:index 8 ; lv2:symbol "it_hbamt" ; lv2:name "IT HB Amount"
         ] , [
-            lv2:index 9 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold"
+            lv2:index 9 ; lv2:symbol "it_hbmodel" ; lv2:name "IT HB Model"
         ] , [
-            lv2:index 10 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack"
+            lv2:index 10 ; lv2:symbol "it_boost" ; lv2:name "IT Boost"
         ] , [
-            lv2:index 11 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold"
+            lv2:index 11 ; lv2:symbol "it_boostamt" ; lv2:name "IT Boost Amt"
         ] , [
-            lv2:index 12 ; lv2:symbol "gt_release" ; lv2:name "Gate Release"
+            lv2:index 12 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position"
         ] , [
-            lv2:index 13 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis"
+            lv2:index 13 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable"
         ] , [
-            lv2:index 14 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position"
+            lv2:index 14 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold"
         ] , [
-            lv2:index 15 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable"
+            lv2:index 15 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack"
         ] , [
-            lv2:index 16 ; lv2:symbol "cp_type" ; lv2:name "Comp Type"
+            lv2:index 16 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold"
         ] , [
-            lv2:index 17 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold"
+            lv2:index 17 ; lv2:symbol "gt_release" ; lv2:name "Gate Release"
         ] , [
-            lv2:index 18 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio"
+            lv2:index 18 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis"
         ] , [
-            lv2:index 19 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack"
+            lv2:index 19 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position"
         ] , [
-            lv2:index 20 ; lv2:symbol "cp_release" ; lv2:name "Comp Release"
+            lv2:index 20 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable"
         ] , [
-            lv2:index 21 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee"
+            lv2:index 21 ; lv2:symbol "cp_type" ; lv2:name "Comp Type"
         ] , [
-            lv2:index 22 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup"
+            lv2:index 22 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold"
         ] , [
-            lv2:index 23 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position"
+            lv2:index 23 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio"
         ] , [
-            lv2:index 24 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable"
+            lv2:index 24 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack"
         ] , [
-            lv2:index 25 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal"
+            lv2:index 25 ; lv2:symbol "cp_release" ; lv2:name "Comp Release"
         ] , [
-            lv2:index 26 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant"
+            lv2:index 26 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee"
         ] , [
-            lv2:index 27 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain"
+            lv2:index 27 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup"
         ] , [
-            lv2:index 28 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone"
+            lv2:index 28 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position"
         ] , [
-            lv2:index 29 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume"
+            lv2:index 29 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable"
         ] , [
-            lv2:index 30 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias"
+            lv2:index 30 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal"
         ] , [
-            lv2:index 31 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim"
+            lv2:index 31 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant"
         ] , [
-            lv2:index 32 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp"
+            lv2:index 32 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain"
         ] , [
-            lv2:index 33 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position"
+            lv2:index 33 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone"
         ] , [
-            lv2:index 34 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable"
+            lv2:index 34 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume"
         ] , [
-            lv2:index 35 ; lv2:symbol "dr_model" ; lv2:name "Drive Model"
+            lv2:index 35 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias"
         ] , [
-            lv2:index 36 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive"
+            lv2:index 36 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim"
         ] , [
-            lv2:index 37 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone"
+            lv2:index 37 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp"
         ] , [
-            lv2:index 38 ; lv2:symbol "dr_level" ; lv2:name "Drive Level"
+            lv2:index 38 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position"
         ] , [
-            lv2:index 39 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix"
+            lv2:index 39 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable"
         ] , [
-            lv2:index 40 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave"
+            lv2:index 40 ; lv2:symbol "dr_model" ; lv2:name "Drive Model"
         ] , [
-            lv2:index 41 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position"
+            lv2:index 41 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive"
         ] , [
-            lv2:index 42 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable"
+            lv2:index 42 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone"
         ] , [
-            lv2:index 43 ; lv2:symbol "amp_model" ; lv2:name "Amp Model"
+            lv2:index 43 ; lv2:symbol "dr_level" ; lv2:name "Drive Level"
         ] , [
-            lv2:index 44 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain"
+            lv2:index 44 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix"
         ] , [
-            lv2:index 45 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass"
+            lv2:index 45 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave"
         ] , [
-            lv2:index 46 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid"
+            lv2:index 46 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position"
         ] , [
-            lv2:index 47 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble"
+            lv2:index 47 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable"
         ] , [
-            lv2:index 48 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence"
+            lv2:index 48 ; lv2:symbol "amp_model" ; lv2:name "Amp Model"
         ] , [
-            lv2:index 49 ; lv2:symbol "amp_master" ; lv2:name "Amp Master"
+            lv2:index 49 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain"
         ] , [
-            lv2:index 50 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag"
+            lv2:index 50 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass"
         ] , [
-            lv2:index 51 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel"
+            lv2:index 51 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid"
         ] , [
-            lv2:index 52 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance"
+            lv2:index 52 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble"
         ] , [
-            lv2:index 53 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol"
+            lv2:index 53 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence"
         ] , [
-            lv2:index 54 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link"
+            lv2:index 54 ; lv2:symbol "amp_master" ; lv2:name "Amp Master"
         ] , [
-            lv2:index 55 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass"
+            lv2:index 55 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag"
         ] , [
-            lv2:index 56 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube"
+            lv2:index 56 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel"
         ] , [
-            lv2:index 57 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence"
+            lv2:index 57 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance"
         ] , [
-            lv2:index 58 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth"
+            lv2:index 58 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol"
         ] , [
-            lv2:index 59 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag"
+            lv2:index 59 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link"
         ] , [
-            lv2:index 60 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master"
+            lv2:index 60 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass"
         ] , [
-            lv2:index 61 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB"
+            lv2:index 61 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube"
         ] , [
-            lv2:index 62 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance"
+            lv2:index 62 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence"
         ] , [
-            lv2:index 63 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel"
+            lv2:index 63 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth"
         ] , [
-            lv2:index 64 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto"
+            lv2:index 64 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag"
         ] , [
-            lv2:index 65 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass"
+            lv2:index 65 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master"
         ] , [
-            lv2:index 66 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid"
+            lv2:index 66 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB"
         ] , [
-            lv2:index 67 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble"
+            lv2:index 67 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance"
         ] , [
-            lv2:index 68 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I"
+            lv2:index 68 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel"
         ] , [
-            lv2:index 69 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II"
+            lv2:index 69 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto"
         ] , [
-            lv2:index 70 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position"
+            lv2:index 70 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass"
         ] , [
-            lv2:index 71 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable"
+            lv2:index 71 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid"
         ] , [
-            lv2:index 72 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut"
+            lv2:index 72 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble"
         ] , [
-            lv2:index 73 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut"
+            lv2:index 73 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I"
         ] , [
-            lv2:index 74 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix"
+            lv2:index 74 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II"
         ] , [
-            lv2:index 75 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position"
+            lv2:index 75 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position"
         ] , [
-            lv2:index 76 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable"
+            lv2:index 76 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable"
         ] , [
-            lv2:index 77 ; lv2:symbol "md_type" ; lv2:name "Modulation Type"
+            lv2:index 77 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut"
         ] , [
-            lv2:index 78 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate"
+            lv2:index 78 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut"
         ] , [
-            lv2:index 79 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth"
+            lv2:index 79 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix"
         ] , [
-            lv2:index 80 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix"
+            lv2:index 80 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position"
         ] , [
-            lv2:index 81 ; lv2:symbol "md_width" ; lv2:name "Modulation Width"
+            lv2:index 81 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable"
         ] , [
-            lv2:index 82 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position"
+            lv2:index 82 ; lv2:symbol "md_type" ; lv2:name "Modulation Type"
         ] , [
-            lv2:index 83 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable"
+            lv2:index 83 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate"
         ] , [
-            lv2:index 84 ; lv2:symbol "dl_type" ; lv2:name "Delay Type"
+            lv2:index 84 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth"
         ] , [
-            lv2:index 85 ; lv2:symbol "dl_time" ; lv2:name "Delay Time"
+            lv2:index 85 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix"
         ] , [
-            lv2:index 86 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback"
+            lv2:index 86 ; lv2:symbol "md_width" ; lv2:name "Modulation Width"
         ] , [
-            lv2:index 87 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix"
+            lv2:index 87 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position"
         ] , [
-            lv2:index 88 ; lv2:symbol "dl_width" ; lv2:name "Delay Width"
+            lv2:index 88 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable"
         ] , [
-            lv2:index 89 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow"
+            lv2:index 89 ; lv2:symbol "dl_type" ; lv2:name "Delay Type"
         ] , [
-            lv2:index 90 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter"
+            lv2:index 90 ; lv2:symbol "dl_time" ; lv2:name "Delay Time"
         ] , [
-            lv2:index 91 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads"
+            lv2:index 91 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback"
         ] , [
-            lv2:index 92 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position"
+            lv2:index 92 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix"
         ] , [
-            lv2:index 93 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable"
+            lv2:index 93 ; lv2:symbol "dl_width" ; lv2:name "Delay Width"
         ] , [
-            lv2:index 94 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay"
+            lv2:index 94 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow"
         ] , [
-            lv2:index 95 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay"
+            lv2:index 95 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter"
         ] , [
-            lv2:index 96 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping"
+            lv2:index 96 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads"
         ] , [
-            lv2:index 97 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth"
+            lv2:index 97 ; lv2:symbol "dl_pattern" ; lv2:name "Delay Pattern"
         ] , [
-            lv2:index 98 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate"
+            lv2:index 98 ; lv2:symbol "dl_ducking" ; lv2:name "Delay Ducking"
         ] , [
-            lv2:index 99 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix"
+            lv2:index 99 ; lv2:symbol "dl_moddepth" ; lv2:name "Delay Mod Depth"
         ] , [
-            lv2:index 100 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan"
+            lv2:index 100 ; lv2:symbol "dl_modrate" ; lv2:name "Delay Mod Rate"
         ] , [
-            lv2:index 101 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat"
+            lv2:index 101 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position"
         ] , [
-            lv2:index 102 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45"
+            lv2:index 102 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable"
         ] , [
-            lv2:index 103 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat"
+            lv2:index 103 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay"
         ] , [
-            lv2:index 104 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+            lv2:index 104 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay"
         ] , [
-            lv2:index 105 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+            lv2:index 105 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping"
         ] , [
-            lv2:index 106 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+            lv2:index 106 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth"
         ] , [
-            lv2:index 107 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+            lv2:index 107 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate"
         ] , [
-            lv2:index 108 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+            lv2:index 108 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix"
         ] , [
-            lv2:index 109 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+            lv2:index 109 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan"
         ] , [
-            lv2:index 110 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+            lv2:index 110 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat"
         ] , [
-            lv2:index 111 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+            lv2:index 111 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45"
         ] , [
-            lv2:index 112 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+            lv2:index 112 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat"
         ] , [
-            lv2:index 113 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+            lv2:index 113 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
         ] , [
-            lv2:index 114 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+            lv2:index 114 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
         ] , [
-            lv2:index 115 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+            lv2:index 115 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
         ] , [
-            lv2:index 116 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank"
+            lv2:index 116 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
         ] , [
-            lv2:index 117 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot"
+            lv2:index 117 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
         ] , [
-            lv2:index 118 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
+            lv2:index 118 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+        ] , [
+            lv2:index 119 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+        ] , [
+            lv2:index 120 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+        ] , [
+            lv2:index 121 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+        ] , [
+            lv2:index 122 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+        ] , [
+            lv2:index 123 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+        ] , [
+            lv2:index 124 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+        ] , [
+            lv2:index 125 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank"
+        ] , [
+            lv2:index 126 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot"
+        ] , [
+            lv2:index 127 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ]
     ] .

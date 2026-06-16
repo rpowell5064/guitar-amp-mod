@@ -35,10 +35,11 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "delay_type" ; lv2:name "Type" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Digital" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Tape"    ; rdf:value 1 ] ;
-        lv2:scalePoint [ rdfs:label "Echo Wreck" ; rdf:value 2 ]
+        lv2:scalePoint [ rdfs:label "Echo Wreck" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Seraph" ; rdf:value 3 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "time_ms" ; lv2:name "Time" ;
@@ -87,6 +88,28 @@
         lv2:scalePoint [ rdfs:label "10: Heads 1+3+4" ; rdf:value 9 ] ;
         lv2:scalePoint [ rdfs:label "11: All Heads"   ; rdf:value 10 ] ;
         lv2:scalePoint [ rdfs:label "12: All + Dense" ; rdf:value 11 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 13 ; lv2:symbol "pattern" ; lv2:name "Pattern" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        # Seraph: engine-B delay as a rhythmic ratio of engine-A. Ignored by others.
+        lv2:scalePoint [ rdfs:label "Unison"     ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Dotted 8th" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Triplet"    ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Eighth"     ; rdf:value 3 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "ducking" ; lv2:name "Ducking" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 15 ; lv2:symbol "mod_depth" ; lv2:name "Mod Depth" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "mod_rate" ; lv2:name "Mod Rate" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
@@ -120,5 +143,13 @@
             lv2:index 7 ; lv2:symbol "bypass"        ; lv2:name "Bypass"
         ] , [
             lv2:index 8 ; lv2:symbol "heads"         ; lv2:name "Heads"
+        ] , [
+            lv2:index 9 ; lv2:symbol "pattern"       ; lv2:name "Pattern"
+        ] , [
+            lv2:index 10 ; lv2:symbol "ducking"      ; lv2:name "Ducking"
+        ] , [
+            lv2:index 11 ; lv2:symbol "mod_depth"    ; lv2:name "Mod Depth"
+        ] , [
+            lv2:index 12 ; lv2:symbol "mod_rate"     ; lv2:name "Mod Rate"
         ]
     ] .

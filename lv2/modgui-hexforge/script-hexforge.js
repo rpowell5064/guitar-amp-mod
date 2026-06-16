@@ -86,6 +86,7 @@ function (event, funcs) {
         var t = icon.data('hf_dl_t'); if (t == null) t = 0;
         show(icon, 'dl', '.c-dl-tape', t === 1 || t === 2);
         show(icon, 'dl', '.c-dl-heads', t === 2);
+        show(icon, 'dl', '.c-dl-seraph', t === 3);   // Seraph dual-delay params
     }
 
     function setFile(icon, rata, value, empty) {

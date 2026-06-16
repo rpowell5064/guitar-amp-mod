@@ -59,6 +59,29 @@
         </div>
     </div>
 
+    <!-- Seraph: dual-delay Pattern + Ducking + Modulation — shown for Seraph only -->
+    <div rata-role="seraphgroup" class="mod-seraphgroup mod-hidden">
+        <div class="mod-section-divider"></div>
+        <div class="mod-heads-row">
+            <span class="mod-section-label">PATTERN</span>
+            {{#controls.9}}
+            <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                <div class="mod-enumerated-list">
+                    {{#scalePoints}}
+                    <div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>
+                    {{/scalePoints}}
+                </div>
+            </div>
+            {{/controls.9}}
+        </div>
+        <div class="mod-control-group mod-knobs clearfix">
+            {{#controls.10}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.10}}
+            {{#controls.11}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.11}}
+            {{#controls.12}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.12}}
+        </div>
+    </div>
+
     <div class="hx-logo"></div>
 
     <div class="mod-pedal-input">

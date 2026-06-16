@@ -92,6 +92,7 @@
 
 /* SHOW / HIDE */
 .mod-pedal-guitaramp-delay{{{cns}}} .mod-tapegroup { display: block; }
+.mod-pedal-guitaramp-delay{{{cns}}} .mod-seraphgroup { display: block; }
 .mod-pedal-guitaramp-delay{{{cns}}} .mod-hidden { display: none !important; }
 
 

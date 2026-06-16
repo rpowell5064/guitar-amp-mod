@@ -48,6 +48,31 @@ protected:
         return buf[r0] + frac * (buf[r1] - buf[r0]);
     }
 
+    // ── Fractional read, 4-point 3rd-order Hermite interpolation ──────────
+    // Smoother than linear (lower distortion on modulated/short delays).
+    // delaySamples must satisfy 1 ≤ delaySamples ≤ bufLen-3.
+    static float readFracHermite(const std::vector<float>& buf,
+                                 float delaySamples, int writeIdx) noexcept {
+        const int bufLen = static_cast<int>(buf.size());
+        const int intDel = static_cast<int>(delaySamples);
+        const float frac = delaySamples - static_cast<float>(intDel);
+        // xm1 is one sample newer than the read point, x0..x2 progressively older
+        const float xm1 = buf[(writeIdx - intDel + 1 + bufLen * 2) % bufLen];
+        const float x0  = buf[(writeIdx - intDel     + bufLen * 2) % bufLen];
+        const float x1  = buf[(writeIdx - intDel - 1 + bufLen * 2) % bufLen];
+        const float x2  = buf[(writeIdx - intDel - 2 + bufLen * 2) % bufLen];
+        const float c0 = x0;
+        const float c1 = 0.5f * (x1 - xm1);
+        const float c2 = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
+        const float c3 = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
+        return ((c3 * frac + c2) * frac + c1) * frac + c0;
+    }
+
+    // ── Cheap odd soft-clip saturation (bounded, ARM-friendly, no tanh) ───
+    static float softClip(float x) noexcept {
+        return x * (27.0f + x * x) / (27.0f + 9.0f * x * x);
+    }
+
     // ── Exponential parameter smoother (1-pole IIR) ───────────────────────
     // Advances one sample per tick().  Call from advanceSmoothing() then read
     // current() in processSample().
