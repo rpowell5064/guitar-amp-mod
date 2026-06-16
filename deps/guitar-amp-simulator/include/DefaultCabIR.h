@@ -83,11 +83,15 @@ inline std::vector<float> generate(double sampleRate) {
         ir[len - fade + i] *= w;
     }
 
-    // ── Normalise to 50% peak ─────────────────────────────────────────────────
+    // ── Normalise to 0 dBFS peak ──────────────────────────────────────────────
+    // Match the convention of commercial cab IRs (peak-normalised to ~full
+    // scale); user-loaded .wav IRs are convolved as-authored with no scaling, so
+    // a 0.5 peak here would make the Factory Cab sit 6 dB (≈half the volume)
+    // under every loaded IR.
     float peak = 0.0f;
     for (float v : ir) peak = std::max(peak, std::abs(v));
     if (peak > 0.0f) {
-        const float scale = 0.5f / peak;
+        const float scale = 1.0f / peak;
         for (float& v : ir) v *= scale;
     }
 
