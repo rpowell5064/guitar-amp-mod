@@ -10,6 +10,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/delay>
     a lv2:Plugin, lv2:DelayPlugin ;
     rdfs:label "Hex Chain — Delay" ;
+    doap:name  "Hex Chain Delay" ;
     mod:label  "Delay" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

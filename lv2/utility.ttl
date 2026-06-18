@@ -9,6 +9,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/utility>
     a lv2:Plugin, lv2:UtilityPlugin ;
     rdfs:label "Hex Chain — Input Trim" ;
+    doap:name  "Hex Chain Input Trim" ;
     mod:label  "Input Trim" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

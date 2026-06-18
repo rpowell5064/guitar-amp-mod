@@ -9,6 +9,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/gate>
     a lv2:Plugin, lv2:GatePlugin ;
     rdfs:label "Hex Chain — Noise Gate" ;
+    doap:name  "Hex Chain Noise Gate" ;
     mod:label  "Gate" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

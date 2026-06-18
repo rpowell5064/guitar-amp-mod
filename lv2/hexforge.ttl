@@ -67,6 +67,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/hexforge>
     a lv2:Plugin, lv2:AmplifierPlugin ;
     rdfs:label "Hex Chain — Hex Forge" ;
+    doap:name  "Hex Forge" ;
     mod:label  "Hex Forge" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

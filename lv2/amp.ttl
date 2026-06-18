@@ -23,6 +23,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/amp>
     a lv2:Plugin, lv2:AmplifierPlugin ;
     rdfs:label "Hex Chain — Amp" ;
+    doap:name  "Hex Chain Amp" ;
     mod:label  "Amp" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;
