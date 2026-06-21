@@ -129,6 +129,9 @@ jobs:
             git config --global --add safe.directory "*"
             bash build-tools/patchstorage/build_target.sh patchbox-os-arm32
           '
+          # the container writes dist/ as root — hand it back so the host metadata
+          # step (runner user) can write plugins.json / LISTINGS.md into it.
+          sudo chown -R "$(id -u):$(id -g)" dist
 
       - name: Generate listing metadata
         run: |
