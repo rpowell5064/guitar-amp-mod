@@ -26,10 +26,23 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 #   OFF (default)          → Pi 5 (Cortex-A76 + dot-product) when cross-compiling, or
 #                            the host's -march=native for an on-device/personal build.
 option(GUITARAMP_PORTABLE "Generic baseline build for redistribution" OFF)
+# Explicit arch profile, overriding auto-detection. REQUIRED when CMake can't infer
+# the real target ISA — e.g. an armv7 (arm32v7) container on an aarch64 host, where
+# CMAKE_SYSTEM_PROCESSOR reports the host's "aarch64" even though the compiler is
+# 32-bit armhf. Values: armv7 | armv8 | x86 | native | auto (default).
+set(GUITARAMP_ARCH "auto" CACHE STRING "Arch flag profile: armv7|armv8|x86|native|auto")
 # Arch flags are appended AFTER the submodule's -march=native so they win. They
-# must match the target ISA — a cross-compile for armv7 must NOT inherit aarch64
-# or -march=native flags, or cc1plus errors out. Key off CMAKE_SYSTEM_PROCESSOR.
-if(GUITARAMP_PORTABLE)
+# must match the target ISA — a build for armv7 must NOT inherit aarch64 or
+# -march=native flags, or cc1plus errors out ("lacks an FPU").
+if(GUITARAMP_ARCH STREQUAL "armv7")
+    set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon-vfpv4)            # patchbox-os-arm32
+elseif(GUITARAMP_ARCH STREQUAL "armv8")
+    set(GUITARAMP_ARCH_FLAGS -march=armv8-a)
+elseif(GUITARAMP_ARCH STREQUAL "x86")
+    set(GUITARAMP_ARCH_FLAGS -march=x86-64-v2 -mtune=generic)
+elseif(GUITARAMP_ARCH STREQUAL "native")
+    set(GUITARAMP_ARCH_FLAGS)
+elseif(GUITARAMP_PORTABLE)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(GUITARAMP_ARCH_FLAGS -march=armv8-a)                       # any Pi 4/5 (rpi-aarch64)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
