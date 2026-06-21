@@ -25,14 +25,39 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 #                            any Pi 4/5-class pi-Stomp. Use this for redistribution.
 #   OFF (default)          → Pi 5 (Cortex-A76 + dot-product) when cross-compiling, or
 #                            the host's -march=native for an on-device/personal build.
-option(GUITARAMP_PORTABLE "Generic aarch64 (armv8-a) build for redistribution" OFF)
+option(GUITARAMP_PORTABLE "Generic baseline build for redistribution" OFF)
+# Arch flags are appended AFTER the submodule's -march=native so they win. They
+# must match the target ISA — a cross-compile for armv7 must NOT inherit aarch64
+# or -march=native flags, or cc1plus errors out. Key off CMAKE_SYSTEM_PROCESSOR.
 if(GUITARAMP_PORTABLE)
-    set(GUITARAMP_ARCH_FLAGS -march=armv8-a)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(GUITARAMP_ARCH_FLAGS -march=armv8-a)                       # any Pi 4/5 (rpi-aarch64)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon -mfloat-abi=hard)  # patchbox-os-arm32
+    else()
+        set(GUITARAMP_ARCH_FLAGS -march=x86-64-v2 -mtune=generic)      # portable linux-amd64
+    endif()
 elseif(CMAKE_CROSSCOMPILING)
-    set(GUITARAMP_ARCH_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon -mfloat-abi=hard)  # armhf cross
+    else()
+        set(GUITARAMP_ARCH_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)  # Pi 5 cross
+    endif()
 else()
-    set(GUITARAMP_ARCH_FLAGS)   # keep the submodule's -march=native
+    set(GUITARAMP_ARCH_FLAGS)   # native on-device/personal build: keep -march=native
 endif()
+
+# ── NAM availability ──────────────────────────────────────────────────────────
+# NAM (Neural Amp Modeler) is by far the heaviest DSP and depends on NamCore +
+# Eigen. On weak / 32-bit targets (patchbox-os-arm32 → MODEP on Pi 3/4) it would
+# never run in realtime, so we compile it out entirely:
+#   GUITARAMP_DISABLE_NAM=ON →
+#     • the amp/drive/cab/hexforge plugins get -DGUITARAMP_NO_NAM and include the
+#       header-only NamModelStub.h instead of NamModel.h (no nam:: symbols), and
+#     • NamCore is NOT linked into them. The algorithmic models stay intact.
+# The "Neural (NAM)" model option is stripped from the TTL at packaging time, so
+# the UI never offers it on these targets.
+option(GUITARAMP_DISABLE_NAM "Compile out NAM/Eigen (weak/32-bit targets)" OFF)
 
 # ── DSP engine (submodule) ────────────────────────────────────────────────────
 # Provides: GuitarAmpSim (static, all DSP) + NamCore (static, NAM inference)
@@ -132,9 +157,33 @@ add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
 # whole-archived NamCore so the model-parser static initializers register.
 # --whole-archive is required: those registrations live in objects nothing
 # references by name otherwise.
-foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
-    target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-endforeach()
+#
+# When GUITARAMP_DISABLE_NAM is set we do the opposite: the four plugins compile
+# with -DGUITARAMP_NO_NAM (→ NamModelStub.h, no nam:: references) and we don't
+# link NamCore at all. We also drop NamCore — and the submodule's NAM example
+# exes — from the default build so the heavy Eigen archive isn't compiled and any
+# stray NAM reference fails loudly at the plugin link instead of silently pulling
+# the library back in.
+if(GUITARAMP_DISABLE_NAM)
+    foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
+        target_compile_definitions(${_P} PRIVATE GUITARAMP_NO_NAM)
+    endforeach()
+    # Sever GuitarAmpSim's own dependency on NamCore (parent already cleared the
+    # INTERFACE part for non-NAM plugins) and keep NamCore/examples out of ALL.
+    set_property(TARGET GuitarAmpSim PROPERTY LINK_LIBRARIES "")
+    if(TARGET NamCore)
+        set_target_properties(NamCore PROPERTIES EXCLUDE_FROM_ALL ON)
+    endif()
+    foreach(_E TestNam GuitarAmpExample)
+        if(TARGET ${_E})
+            set_target_properties(${_E} PROPERTIES EXCLUDE_FROM_ALL ON)
+        endif()
+    endforeach()
+else()
+    foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
+        target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+    endforeach()
+endif()
 
 # ── Install into one LV2 bundle ───────────────────────────────────────────────
 # RELATIVE to the install prefix — so `cmake --install --prefix <dir>` works.

@@ -1,0 +1,96 @@
+{
+  "_comment": "Single source of truth for PatchStorage listing metadata. One entry per plugin short-name (matches the LV2 URI suffix and the <name>.lv2 bundle). generate_metadata.py renders this into the uploader's plugins.json plus a ready-to-paste LISTINGS.md per target. 'nam' marks the four NAM-capable plugins: NAM is present on linux-amd64 + rpi-aarch64 and compiled out on patchbox-os-arm32.",
+  "source_code_url": "https://github.com/rpowell5064/guitaramp-suite",
+  "donate_url": null,
+  "license": "GPL-3.0-or-later",
+  "plugins": {
+    "amp": {
+      "title": "Hex Chain Amp",
+      "categories": ["Simulator"],
+      "tags": ["guitar", "amp-simulator", "amp"],
+      "nam": true,
+      "short": "Six algorithmic guitar amps + a full power-amp stage.",
+      "long": "Six original amp voicings (clean to high-gain) with a shared, footswitch-friendly tone stack and a modeled power-amp section (sag, presence, depth, resonance). On 64-bit/desktop targets a Neural (NAM) slot loads your own .nam captures; on 32-bit (patchbox-os-arm32) NAM is omitted and the algorithmic models run alone. Amp names are original parodies and not affiliated with any manufacturer."
+    },
+    "cab": {
+      "title": "Hex Chain Cab",
+      "categories": ["Simulator"],
+      "tags": ["guitar", "cabinet", "ir-loader"],
+      "nam": true,
+      "short": "Cabinet sim: load your own .wav IRs (and .nam rigs on 64-bit).",
+      "long": "A convolution cabinet that loads user .wav impulse responses, with low/high cut and dry/wet mix. On 64-bit/desktop targets it can also load full-rig .nam captures that override the IR. On 32-bit (patchbox-os-arm32) the NAM path is omitted; IR loading is unchanged. Ships with an embedded default cab so it makes sound out of the box."
+    },
+    "drive": {
+      "title": "Hex Chain Drive",
+      "categories": ["Distortion"],
+      "tags": ["guitar", "overdrive", "boost"],
+      "nam": true,
+      "short": "Three original overdrive/boost voicings.",
+      "long": "Three original drive/boost pedal voicings (Green Man / New Dawn / Dear Rodent Boy) with level and mix. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures; on 32-bit (patchbox-os-arm32) NAM is omitted. Names are original parodies and not affiliated with any manufacturer."
+    },
+    "fuzz": {
+      "title": "Hex Chain Fuzz",
+      "categories": ["Distortion"],
+      "tags": ["guitar", "fuzz", "muff"],
+      "nam": false,
+      "short": "Multi-era Muff-style fuzz + germanium Tone Bender voicing.",
+      "long": "A multi-era big-muff-style fuzz with several voicings plus a component-accurate germanium Tone Bender MkII model, oversampled for clean high-gain. Names are original parodies and not affiliated with any manufacturer."
+    },
+    "gate": {
+      "title": "Hex Chain Gate",
+      "categories": ["Dynamics"],
+      "tags": ["guitar", "noise-gate", "gate"],
+      "nam": false,
+      "short": "Low-CPU noise gate for high-gain rigs.",
+      "long": "A clean, low-CPU noise gate with threshold and timing controls — tames hum and hiss in front of or after high-gain amps. Runs comfortably on every target including 32-bit Pi."
+    },
+    "comp": {
+      "title": "Hex Chain Compressor",
+      "categories": ["Dynamics"],
+      "tags": ["guitar", "compressor", "dynamics"],
+      "nam": false,
+      "short": "Transparent guitar/bass compressor.",
+      "long": "A musical, low-CPU compressor for evening out picking dynamics and adding sustain. Runs on every target including 32-bit Pi."
+    },
+    "modfx": {
+      "title": "Hex Chain Modulation",
+      "categories": ["Modulator"],
+      "tags": ["guitar", "chorus", "phaser"],
+      "nam": false,
+      "short": "Chorus / flanger / phaser in one block.",
+      "long": "A modulation block with chorus, flanger and phaser voicings and unity-gain wet/dry mix so engaging it never drops level. Light on CPU; runs on every target."
+    },
+    "delay": {
+      "title": "Hex Chain Delay",
+      "categories": ["Delay"],
+      "tags": ["guitar", "delay", "echo"],
+      "nam": false,
+      "short": "Digital / tape / multi-head / dual-delay echoes.",
+      "long": "A delay block spanning clean digital, tape (wow/flutter), a multi-head rotary echo and a dual-delay 'Seraph' mode with pattern, ducking and modulation. Unity-gain mix so it never drops level."
+    },
+    "reverb": {
+      "title": "Hex Chain Reverb",
+      "categories": ["Reverb"],
+      "tags": ["guitar", "reverb", "plate"],
+      "nam": false,
+      "short": "Plate reverb with unity-gain mix.",
+      "long": "A smooth plate reverb with size/tone/mix and unity-gain wet/dry blend so engaging it never drops level. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind."
+    },
+    "utility": {
+      "title": "Hex Chain Utility",
+      "categories": ["Utility"],
+      "tags": ["guitar", "utility", "gain"],
+      "nam": false,
+      "short": "Gain / phase / hum-filter utility.",
+      "long": "A small utility block: clean gain trim, phase invert and a fixed 60 Hz hum-filter comb. Minimal CPU; runs on every target."
+    },
+    "hexforge": {
+      "title": "Hex Forge",
+      "categories": ["Simulator"],
+      "tags": ["guitar", "amp-simulator", "multi-effect"],
+      "nam": true,
+      "short": "The whole Hex Chain rig in one reorderable plugin.",
+      "long": "Hex Forge is the flagship: the entire Hex Chain signal chain — gate, comp, drive, amp, cab, modulation, delay, reverb, utility — in one reorderable, per-block-bypassable plugin with a built-in 8x4 preset/bank engine and A/B/C/D footswitch recall. On 64-bit/desktop targets the amp/drive/cab slots load .nam captures; on 32-bit (patchbox-os-arm32) NAM is compiled out and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop."
+    }
+  }
+}

@@ -35,3 +35,16 @@ NAM core / Eigen are fetched at configure time. Targets install into one bundle,
 `guitaramp-suite.lv2`. See `build-tools/` for the pi-Stomp deploy and offline
 analysis tooling. (On a 2 GB Pi, build the NAM-linked targets one at a time with
 `-j1`.)
+
+## Distribution
+
+- **pi-Stomp / MOD (tarball):** the portable aarch64 bundle is published on GitHub
+  Releases — extract on your Pi and run `install.sh`
+  (`bash build-tools/package_bundle.sh <ver>` builds it locally).
+- **PatchStorage.com:** the suite also ships as individual per-plugin listings
+  (plus the Hex Forge flagship) for the three LV2 build targets PatchStorage
+  supports — `linux-amd64` (desktop hosts), `rpi-aarch64` (Pi 4/5, 64-bit MODEP,
+  Aida DSP OS, MOD), and `patchbox-os-arm32` (32-bit MODEP on Pi 3/4). NAM is
+  included on the two 64-bit targets and compiled out on 32-bit (the algorithmic
+  models remain). See [`build-tools/patchstorage/README.md`](build-tools/patchstorage/README.md)
+  for the build → metadata → upload runbook and how to add a new device/target.
