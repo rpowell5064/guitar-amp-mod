@@ -181,12 +181,11 @@ if(GUITARAMP_DISABLE_NAM)
     foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
         target_compile_definitions(${_P} PRIVATE GUITARAMP_NO_NAM)
     endforeach()
-    # Sever GuitarAmpSim's own dependency on NamCore (parent already cleared the
-    # INTERFACE part for non-NAM plugins) and keep NamCore/examples out of ALL.
-    set_property(TARGET GuitarAmpSim PROPERTY LINK_LIBRARIES "")
-    if(TARGET NamCore)
-        set_target_properties(NamCore PROPERTIES EXCLUDE_FROM_ALL ON)
-    endif()
+    # Do NOT sever GuitarAmpSim's NamCore dependency: GuitarAmpSim still compiles
+    # NamModel.cpp and needs NamCore's headers (get_dsp.h) on its include path.
+    # NamCore is simply never linked into our plugins — the stub (GUITARAMP_NO_NAM)
+    # means they don't reference any NAM object, so none is pulled into their .so.
+    # Skip the NAM example exes to save (emulated) build time.
     foreach(_E TestNam GuitarAmpExample)
         if(TARGET ${_E})
             set_target_properties(${_E} PROPERTIES EXCLUDE_FROM_ALL ON)
