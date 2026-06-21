@@ -79,8 +79,8 @@ jobs:
 
   # ── PatchStorage per-plugin bundles for all three LV2 build targets ───────────
   # Produces dist/patchstorage/<target>/<plugin>.lv2 + plugins.json + LISTINGS.md,
-  # ready for the patchstorage-lv2-uploader. NAM is compiled out + stripped on the
-  # 32-bit target. Upload to PatchStorage stays a manual, credentialed step.
+  # ready for the patchstorage-lv2-uploader. NAM is hidden (stripped from the TTL)
+  # on the 32-bit target. The upload-patchstorage job below publishes these.
   patchstorage:
     strategy:
       fail-fast: false
@@ -151,8 +151,8 @@ jobs:
 
   # ── Publish the per-plugin bundles to PatchStorage.com ────────────────────────
   # Runs after the three target builds, on a v* tag OR a manual dispatch with
-  # publish_patchstorage=true. No-ops (skips) unless the PATCHSTORAGE_USERNAME /
-  # PATCHSTORAGE_PASSWORD secrets are set. The uploader exchanges username+password
+  # publish_patchstorage=true. No-ops (skips) unless the PATCH_USERNAME /
+  # PATCH_PASSWORD secrets are set. The uploader exchanges username+password
   # for a Bearer token at /auth/token; GitHub masks the secret in logs. The uploader
   # skips bundles already owned by another user and updates the maintainer's own.
   upload-patchstorage:
@@ -166,11 +166,11 @@ jobs:
       - name: Guard — require PatchStorage credentials
         id: guard
         env:
-          PS_USER: ${{ secrets.PATCHSTORAGE_USERNAME }}
-          PS_PASS: ${{ secrets.PATCHSTORAGE_PASSWORD }}
+          PS_USER: ${{ secrets.PATCH_USERNAME }}
+          PS_PASS: ${{ secrets.PATCH_PASSWORD }}
         run: |
           if [ -z "$PS_USER" ] || [ -z "$PS_PASS" ]; then
-            echo "PATCHSTORAGE_USERNAME / PATCHSTORAGE_PASSWORD not set — skipping upload."
+            echo "PATCH_USERNAME / PATCH_PASSWORD not set — skipping upload."
             echo "go=false" >> "$GITHUB_OUTPUT"
           else
             echo "go=true" >> "$GITHUB_OUTPUT"
@@ -213,6 +213,6 @@ jobs:
         if: steps.guard.outputs.go == 'true'
         working-directory: uploader
         env:
-          PS_USER: ${{ secrets.PATCHSTORAGE_USERNAME }}
-          PS_PASS: ${{ secrets.PATCHSTORAGE_PASSWORD }}
+          PS_USER: ${{ secrets.PATCH_USERNAME }}
+          PS_PASS: ${{ secrets.PATCH_PASSWORD }}
         run: python ./uploader.py push all --username "$PS_USER" --password "$PS_PASS" < /dev/null
