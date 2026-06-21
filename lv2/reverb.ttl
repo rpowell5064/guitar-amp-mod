@@ -12,7 +12,7 @@
     doap:name  "Hex Chain Reverb" ;
     mod:label  "Reverb" ;
     mod:brand  "Hex Chain" ;
-    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;

@@ -208,7 +208,15 @@ jobs:
       - name: Prepare bundles (generate patchstorage.json + tars)
         if: steps.guard.outputs.go == 'true'
         working-directory: uploader
-        run: python ./uploader.py prepare all < /dev/null
+        run: |
+          # The uploader prints "Prepared: N" / "Failed: M" and exits 0 either way,
+          # so inspect the output and fail the job if any bundle failed.
+          out=$(python ./uploader.py prepare all < /dev/null 2>&1) || true
+          echo "$out"
+          if echo "$out" | grep -qE "Failed: [1-9]"; then
+            echo "::error::prepare reported failures — see log"; exit 1; fi
+          if ! echo "$out" | grep -qE "Prepared: [1-9]"; then
+            echo "::error::prepare produced 0 bundles"; exit 1; fi
 
       - name: Push to PatchStorage
         if: steps.guard.outputs.go == 'true'
@@ -216,4 +224,11 @@ jobs:
         env:
           PS_USER: ${{ secrets.PATCH_USERNAME }}
           PS_PASS: ${{ secrets.PATCH_PASSWORD }}
-        run: python ./uploader.py push all --username "$PS_USER" --password "$PS_PASS" < /dev/null
+        run: |
+          # Same deal — push exits 0 even on per-plugin errors. Fail on error
+          # markers; "Published:" lines confirm real uploads ("Skip:" is benign).
+          out=$(python ./uploader.py push all --username "$PS_USER" --password "$PS_PASS" < /dev/null 2>&1) || true
+          echo "$out"
+          if echo "$out" | grep -qiE "^Error:|Traceback|Failed to"; then
+            echo "::error::push reported errors — see log"; exit 1; fi
+          echo "Published $(echo "$out" | grep -c 'Published:') bundle(s); skipped $(echo "$out" | grep -c 'Skip:')."
