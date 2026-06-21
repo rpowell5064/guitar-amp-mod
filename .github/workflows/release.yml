@@ -194,7 +194,8 @@ jobs:
         run: |
           set -e
           git clone --depth 1 https://github.com/patchstorage/patchstorage-lv2-uploader uploader
-          pip install -q -r uploader/requirements.txt 2>/dev/null || pip install -q click requests
+          # the uploader has no requirements.txt; its third-party imports are these
+          pip install -q click rdflib requests
           for t in linux-amd64 rpi-aarch64 patchbox-os-arm32; do
             mkdir -p "uploader/plugins/$t"
             cp -r ps-artifacts/patchstorage-$t/*.lv2 "uploader/plugins/$t/"
