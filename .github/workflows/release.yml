@@ -22,6 +22,11 @@ on:
         description: 'Version for a manual build (e.g. 1.1.0)'
         required: false
         default: '0.0.0-dev'
+      publish_patchstorage:
+        description: 'Also upload the per-plugin bundles to PatchStorage'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: write
@@ -143,3 +148,71 @@ jobs:
         with:
           name: patchstorage-${{ matrix.target }}
           path: dist/patchstorage/${{ matrix.target }}
+
+  # ── Publish the per-plugin bundles to PatchStorage.com ────────────────────────
+  # Runs after the three target builds, on a v* tag OR a manual dispatch with
+  # publish_patchstorage=true. No-ops (skips) unless the PATCHSTORAGE_USERNAME /
+  # PATCHSTORAGE_PASSWORD secrets are set. The uploader exchanges username+password
+  # for a Bearer token at /auth/token; GitHub masks the secret in logs. The uploader
+  # skips bundles already owned by another user and updates the maintainer's own.
+  upload-patchstorage:
+    needs: patchstorage
+    if: ${{ github.ref_type == 'tag' || inputs.publish_patchstorage }}
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard — require PatchStorage credentials
+        id: guard
+        env:
+          PS_USER: ${{ secrets.PATCHSTORAGE_USERNAME }}
+          PS_PASS: ${{ secrets.PATCHSTORAGE_PASSWORD }}
+        run: |
+          if [ -z "$PS_USER" ] || [ -z "$PS_PASS" ]; then
+            echo "PATCHSTORAGE_USERNAME / PATCHSTORAGE_PASSWORD not set — skipping upload."
+            echo "go=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "go=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download all target bundles
+        if: steps.guard.outputs.go == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: patchstorage-*
+          path: ps-artifacts
+
+      - name: Set up Python
+        if: steps.guard.outputs.go == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Lay out the uploader tree
+        if: steps.guard.outputs.go == 'true'
+        run: |
+          set -e
+          git clone --depth 1 https://github.com/patchstorage/patchstorage-lv2-uploader uploader
+          pip install -q -r uploader/requirements.txt 2>/dev/null || pip install -q click requests
+          for t in linux-amd64 rpi-aarch64 patchbox-os-arm32; do
+            mkdir -p "uploader/plugins/$t"
+            cp -r ps-artifacts/patchstorage-$t/*.lv2 "uploader/plugins/$t/"
+          done
+          # fold our license/category/source overrides into the uploader's plugins.json
+          python build-tools/patchstorage/merge_plugins_json.py \
+            --uploader uploader/plugins.json \
+            --ours ps-artifacts/patchstorage-rpi-aarch64/plugins.json
+
+      - name: Prepare bundles (generate patchstorage.json + tars)
+        if: steps.guard.outputs.go == 'true'
+        working-directory: uploader
+        run: python ./uploader.py prepare all < /dev/null
+
+      - name: Push to PatchStorage
+        if: steps.guard.outputs.go == 'true'
+        working-directory: uploader
+        env:
+          PS_USER: ${{ secrets.PATCHSTORAGE_USERNAME }}
+          PS_PASS: ${{ secrets.PATCHSTORAGE_PASSWORD }}
+        run: python ./uploader.py push all --username "$PS_USER" --password "$PS_PASS" < /dev/null
