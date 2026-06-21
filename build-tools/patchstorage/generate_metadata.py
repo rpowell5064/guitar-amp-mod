@@ -22,6 +22,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 NAM_TARGETS = {"linux-amd64", "rpi-aarch64"}   # targets that ship NAM
+# The uploader's licenses.json matches this string to a PatchStorage license id
+# (gpl-3-0 -> id 4178). The SPDX "GPL-3.0-or-later" is NOT a recognized key, so we
+# emit the canonical token here while keeping the human label for LISTINGS.md.
+UPLOADER_LICENSE = "gpl-3-0"
 
 
 def main():
@@ -47,7 +51,7 @@ def main():
         uploader[f"{name}.lv2"] = {
             "source_code_url": meta["source_code_url"],
             "donate_url": meta["donate_url"],
-            "license": meta["license"],
+            "license": UPLOADER_LICENSE,
             "categories": m["categories"],
         }
     (args.out / "plugins.json").write_text(

@@ -62,13 +62,47 @@ tagged release / manual dispatch and uploads each target as an artifact.
 
 ## Upload to PatchStorage
 
-Upload stays a manual, credentialed step (it needs your PatchStorage account):
+### Automated (CI)
+
+The `upload-patchstorage` job in `release.yml` publishes all three targets after the
+builds. It runs on a `v*` tag, or on a manual dispatch with
+`publish_patchstorage=true`, and **no-ops unless two repo secrets are set**:
+
+| Secret | Value |
+|---|---|
+| `PATCHSTORAGE_USERNAME` | your PatchStorage username |
+| `PATCHSTORAGE_PASSWORD` | your PatchStorage password (or application password) |
+
+The uploader POSTs username+password to `/auth/token` for a Bearer token; GitHub
+masks the secret in logs. Set them once:
+
+```bash
+gh secret set PATCHSTORAGE_USERNAME --body '<your_user>'
+gh secret set PATCHSTORAGE_PASSWORD            # paste the password when prompted
+```
+
+Then publish the current bundles without cutting a release:
+
+```bash
+gh workflow run release.yml -f publish_patchstorage=true
+```
+
+The job downloads the three target artifacts, lays them out as
+`plugins/<target>/<name>.lv2/`, merges our `plugins.json` (license `gpl-3-0`,
+categories) into the uploader's, runs `prepare all`, then `push all`. The uploader
+skips bundles already owned by another user and updates the maintainer's own.
+
+### Manual (local)
 
 ```bash
 git clone https://github.com/patchstorage/patchstorage-lv2-uploader
-# copy the built bundles into the uploader's per-target layout:
-#   patchstorage-lv2-uploader/plugins/<target>/<plugin>.lv2/
-# merge our generated plugins.json into the uploader's plugins.json
+for t in linux-amd64 rpi-aarch64 patchbox-os-arm32; do
+  gh run download <run-id> -n patchstorage-$t -D patchstorage-lv2-uploader/plugins/$t
+done
+python build-tools/patchstorage/merge_plugins_json.py \
+  --uploader patchstorage-lv2-uploader/plugins.json \
+  --ours patchstorage-lv2-uploader/plugins/rpi-aarch64/plugins.json
+cd patchstorage-lv2-uploader
 python ./uploader.py prepare all
 python ./uploader.py push all --username <patchstorage_username>
 ```
