@@ -127,7 +127,7 @@ jobs:
               cmake build-essential pkg-config lv2-dev python3 git ca-certificates
             git config --global --add safe.directory /src
             git config --global --add safe.directory "*"
-            bash build-tools/patchstorage/build_target.sh patchbox-os-arm32
+            VERBOSE=1 bash build-tools/patchstorage/build_target.sh patchbox-os-arm32
           '
 
       - name: Generate listing metadata

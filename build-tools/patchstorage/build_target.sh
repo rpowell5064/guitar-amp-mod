@@ -62,7 +62,7 @@ if [ -z "$JOBS" ]; then
     else JOBS=$(nproc); fi
 fi
 echo "== [$TARGET] build -j$JOBS"
-cmake --build "$BUILD" -j"$JOBS"
+cmake --build "$BUILD" -j"$JOBS" ${VERBOSE:+--verbose}
 
 echo "== [$TARGET] install to staging"
 cmake --install "$BUILD" --prefix "$STAGE" >/dev/null

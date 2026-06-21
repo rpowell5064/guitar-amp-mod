@@ -20,10 +20,13 @@ set(CMAKE_SYSTEM_PROCESSOR arm)
 set(CMAKE_C_COMPILER   arm-linux-gnueabihf-gcc)
 set(CMAKE_CXX_COMPILER arm-linux-gnueabihf-g++)
 
-# Raspberry Pi 3/4 (32-bit): Cortex-A53/A72, NEON, hard-float ABI. armv7-a keeps
-# one binary that runs across that whole 32-bit Pi range.
-set(CMAKE_C_FLAGS_INIT   "-march=armv7-a -mfpu=neon -mfloat-abi=hard")
-set(CMAKE_CXX_FLAGS_INIT "-march=armv7-a -mfpu=neon -mfloat-abi=hard")
+# Raspberry Pi 2/3/4 (32-bit): Cortex-A7/A53/A72, NEON, hard-float ABI. armv7-a
+# keeps one binary that runs across that whole 32-bit Pi range. The
+# arm-linux-gnueabihf toolchain defaults to -mfloat-abi=hard, so we don't pass it
+# explicitly (passing it can trip "selected architecture lacks an FPU" depending
+# on flag ordering); -mfpu=neon-vfpv4 selects the FPU.
+set(CMAKE_C_FLAGS_INIT   "-march=armv7-a -mfpu=neon-vfpv4")
+set(CMAKE_CXX_FLAGS_INIT "-march=armv7-a -mfpu=neon-vfpv4")
 
 # Set SYSROOT to a Patchbox / Pi OS (32-bit) rootfs. Override on the command line:
 #   -DCMAKE_SYSROOT=/path/to/patchbox-armhf-sysroot

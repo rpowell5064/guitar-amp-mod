@@ -33,13 +33,13 @@ if(GUITARAMP_PORTABLE)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(GUITARAMP_ARCH_FLAGS -march=armv8-a)                       # any Pi 4/5 (rpi-aarch64)
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
-        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon -mfloat-abi=hard)  # patchbox-os-arm32
+        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon-vfpv4)  # patchbox-os-arm32 (Pi 2/3/4; gnueabihf = hard-float by default)
     else()
         set(GUITARAMP_ARCH_FLAGS -march=x86-64-v2 -mtune=generic)      # portable linux-amd64
     endif()
 elseif(CMAKE_CROSSCOMPILING)
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
-        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon -mfloat-abi=hard)  # armhf cross
+        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon-vfpv4)  # armhf cross (gnueabihf = hard-float)
     else()
         set(GUITARAMP_ARCH_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)  # Pi 5 cross
     endif()
