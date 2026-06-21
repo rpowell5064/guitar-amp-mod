@@ -227,7 +227,9 @@ jobs:
         run: |
           # Same deal — push exits 0 even on per-plugin errors. Fail on error
           # markers; "Published:" lines confirm real uploads ("Skip:" is benign).
-          out=$(python ./uploader.py push all --username "$PS_USER" --password "$PS_PASS" < /dev/null 2>&1) || true
+          # --auto: non-interactively create new listings and update existing ones
+          # when version/targets differ (adds the new arch targets); no TTY prompts.
+          out=$(python ./uploader.py push all --auto --username "$PS_USER" --password "$PS_PASS" < /dev/null 2>&1) || true
           echo "$out"
           if echo "$out" | grep -qiE "^Error:|Traceback|Failed to"; then
             echo "::error::push reported errors — see log"; exit 1; fi
