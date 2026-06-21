@@ -14,11 +14,7 @@
 #include "lv2_util.h"
 #include "CabinetBlock.h"
 #include "DefaultCabIR.h"
-#ifdef GUITARAMP_NO_NAM
-#include "NamModelStub.h"   // NAM compiled out (weak/32-bit targets); no NamCore/Eigen
-#else
 #include "NamModel.h"
-#endif
 #include "DenormalGuard.h"
 #include <new>
 #include <cstring>

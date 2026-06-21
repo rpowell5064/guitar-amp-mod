@@ -37,16 +37,17 @@ case "$TARGET" in
         #   (b) native build inside an armv7 (arm32v7) container — no sysroot; the
         #       arch baseline comes from GUITARAMP_PORTABLE (-> armv7-a+neon+hard).
         SYSROOT="${2:-${ARMHF_SYSROOT:-}}"
+        # NAM is built in but HIDDEN on 32-bit (stripped from the TTL below), not
+        # compiled out — see the NAM note in CMakeLists.txt.
         if [ -n "$SYSROOT" ]; then
             CMAKE_ARGS+=(-DCMAKE_TOOLCHAIN_FILE="$ROOT/armhf-toolchain.cmake"
-                         -DCMAKE_SYSROOT="$SYSROOT"
-                         -DGUITARAMP_DISABLE_NAM=ON)
+                         -DCMAKE_SYSROOT="$SYSROOT")
         else
             # Native build inside an armv7 (arm32v7) container. On an aarch64 host
             # CMAKE_SYSTEM_PROCESSOR misreports "aarch64", so pin the arch profile
             # explicitly to armv7 rather than relying on auto-detection.
             echo "== [$TARGET] no sysroot given — assuming native armv7 host (container)"
-            CMAKE_ARGS+=(-DGUITARAMP_ARCH=armv7 -DGUITARAMP_DISABLE_NAM=ON)
+            CMAKE_ARGS+=(-DGUITARAMP_ARCH=armv7)
         fi
         STRIP_NAM="--strip-nam" ;;
     *)

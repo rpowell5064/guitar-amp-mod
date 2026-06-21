@@ -14,10 +14,13 @@ search result / likes / downloads, which is the point — maximum discoverabilit
 | `patchbox-os-arm32` | 32-bit MODEP / Patchbox OS on Pi 3/4 (largest hobbyist base) | armv7-a+neon hard-float | ❌ off |
 
 NAM (Neural Amp Modeler) is the heaviest DSP and depends on NamCore + Eigen. On the
-32-bit target it would never run in realtime, so it is **compiled out**
-(`-DGUITARAMP_DISABLE_NAM=ON` → `NamModelStub.h`) and the "Neural (NAM)" model
-option + NAM file pickers are **stripped from the TTL** at packaging time. All
-algorithmic amp/drive/cab models stay intact.
+32-bit target it would never run in realtime, so it is **hidden**: NAM is still
+built into the binary (a true compile-out is unsafe — `AmpBlock.h`/`NamOverdrive.h`
+embed `NamModel` by value, so stubbing it only in the plugin TUs would be an ABI
+mismatch vs GuitarAmpSim), but the "Neural (NAM)" model option and the NAM file
+pickers are **stripped from the TTL** at packaging time (`split_bundle.py
+--strip-nam`), so the 32-bit UI never exposes NAM. All algorithmic amp/drive/cab
+models stay intact.
 
 ## Files
 
@@ -79,7 +82,8 @@ plugin's `modgui-<name>/screenshot-<name>.png`.
    needed — it's already built. If it's a genuinely new ABI:
 2. Add a toolchain file (mirror `armhf-toolchain.cmake` / `aarch64-toolchain.cmake`)
    and an arch branch in the top-level `CMakeLists.txt` (`GUITARAMP_ARCH_FLAGS`).
-3. Add a `case` in `build_target.sh` (set NAM on/off, `--strip-nam` accordingly).
+3. Add a `case` in `build_target.sh` (set the arch profile, `--strip-nam` if the
+   target should hide NAM).
 4. Add a matrix entry in `.github/workflows/release.yml` (job `patchstorage`).
 5. If NAM-disabled, add the target name to nothing else — `generate_metadata.py`
    keys NAM off any target not in its `NAM_TARGETS` set (update that set if the

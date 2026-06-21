@@ -45,6 +45,6 @@ analysis tooling. (On a 2 GB Pi, build the NAM-linked targets one at a time with
   (plus the Hex Forge flagship) for the three LV2 build targets PatchStorage
   supports — `linux-amd64` (desktop hosts), `rpi-aarch64` (Pi 4/5, 64-bit MODEP,
   Aida DSP OS, MOD), and `patchbox-os-arm32` (32-bit MODEP on Pi 3/4). NAM is
-  included on the two 64-bit targets and compiled out on 32-bit (the algorithmic
-  models remain). See [`build-tools/patchstorage/README.md`](build-tools/patchstorage/README.md)
+  exposed on the two 64-bit targets and hidden on 32-bit (stripped from the UI;
+  the algorithmic models remain). See [`build-tools/patchstorage/README.md`](build-tools/patchstorage/README.md)
   for the build → metadata → upload runbook and how to add a new device/target.

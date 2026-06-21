@@ -61,16 +61,14 @@ else()
 endif()
 
 # ── NAM availability ──────────────────────────────────────────────────────────
-# NAM (Neural Amp Modeler) is by far the heaviest DSP and depends on NamCore +
-# Eigen. On weak / 32-bit targets (patchbox-os-arm32 → MODEP on Pi 3/4) it would
-# never run in realtime, so we compile it out entirely:
-#   GUITARAMP_DISABLE_NAM=ON →
-#     • the amp/drive/cab/hexforge plugins get -DGUITARAMP_NO_NAM and include the
-#       header-only NamModelStub.h instead of NamModel.h (no nam:: symbols), and
-#     • NamCore is NOT linked into them. The algorithmic models stay intact.
-# The "Neural (NAM)" model option is stripped from the TTL at packaging time, so
-# the UI never offers it on these targets.
-option(GUITARAMP_DISABLE_NAM "Compile out NAM/Eigen (weak/32-bit targets)" OFF)
+# NAM (Neural Amp Modeler, the heaviest DSP) is built into amp/drive/cab/hexforge
+# on every target. On weak / 32-bit targets (patchbox-os-arm32 → MODEP on Pi 3/4)
+# it would never run in realtime, so it is HIDDEN there rather than offered:
+# split_bundle.py --strip-nam removes the NAM file-picker parameter + the
+# "Neural (NAM)" model option from the TTL at packaging time, so the 32-bit UI
+# never exposes NAM. (A true compile-out is unsafe: AmpBlock.h / NamOverdrive.h
+# embed NamModel by value, so stubbing it in the plugin TUs only would create an
+# ABI/size mismatch vs GuitarAmpSim.)
 
 # ── DSP engine (submodule) ────────────────────────────────────────────────────
 # Provides: GuitarAmpSim (static, all DSP) + NamCore (static, NAM inference)
@@ -169,33 +167,11 @@ add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
 # -> NamOverdrive); Hex Forge embeds both. Give these — and only these — the
 # whole-archived NamCore so the model-parser static initializers register.
 # --whole-archive is required: those registrations live in objects nothing
-# references by name otherwise.
-#
-# When GUITARAMP_DISABLE_NAM is set we do the opposite: the four plugins compile
-# with -DGUITARAMP_NO_NAM (→ NamModelStub.h, no nam:: references) and we don't
-# link NamCore at all. We also drop NamCore — and the submodule's NAM example
-# exes — from the default build so the heavy Eigen archive isn't compiled and any
-# stray NAM reference fails loudly at the plugin link instead of silently pulling
-# the library back in.
-if(GUITARAMP_DISABLE_NAM)
-    foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
-        target_compile_definitions(${_P} PRIVATE GUITARAMP_NO_NAM)
-    endforeach()
-    # Do NOT sever GuitarAmpSim's NamCore dependency: GuitarAmpSim still compiles
-    # NamModel.cpp and needs NamCore's headers (get_dsp.h) on its include path.
-    # NamCore is simply never linked into our plugins — the stub (GUITARAMP_NO_NAM)
-    # means they don't reference any NAM object, so none is pulled into their .so.
-    # Skip the NAM example exes to save (emulated) build time.
-    foreach(_E TestNam GuitarAmpExample)
-        if(TARGET ${_E})
-            set_target_properties(${_E} PROPERTIES EXCLUDE_FROM_ALL ON)
-        endif()
-    endforeach()
-else()
-    foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
-        target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-    endforeach()
-endif()
+# references by name otherwise. (On the 32-bit target NAM is hidden via the TTL
+# strip, not unlinked — see the NAM availability note above.)
+foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
+    target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+endforeach()
 
 # ── Install into one LV2 bundle ───────────────────────────────────────────────
 # RELATIVE to the install prefix — so `cmake --install --prefix <dir>` works.
