@@ -10,6 +10,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/comp>
     a lv2:Plugin, lv2:CompressorPlugin ;
     rdfs:label "Hex Chain — Compressor" ;
+    doap:name  "Hex Chain Compressor" ;
     mod:label  "Compressor" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

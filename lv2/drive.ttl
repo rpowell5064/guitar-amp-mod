@@ -22,6 +22,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/drive>
     a lv2:Plugin, lv2:DistortionPlugin ;
     rdfs:label "Hex Chain — Drive/Boost" ;
+    doap:name  "Hex Chain Drive" ;
     mod:label  "Drive" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

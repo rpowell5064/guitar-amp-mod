@@ -33,6 +33,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/cab>
     a lv2:Plugin, lv2:FilterPlugin ;
     rdfs:label "Hex Chain — Cabinet" ;
+    doap:name  "Hex Chain Cabinet" ;
     mod:label  "Cabinet" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

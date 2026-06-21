@@ -71,3 +71,75 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
             --title "Hex Chain ${GITHUB_REF_NAME}" \
             --notes "Portable aarch64 (armv8-a) build of the Hex Chain LV2 suite for MOD / pi-Stomp (11 plugins incl. Hex Forge). Extract on your Pi and run \`install.sh\`. Dual-licensed **GPL-3.0-or-later + commercial** — see LICENSING.md."
+
+  # ── PatchStorage per-plugin bundles for all three LV2 build targets ───────────
+  # Produces dist/patchstorage/<target>/<plugin>.lv2 + plugins.json + LISTINGS.md,
+  # ready for the patchstorage-lv2-uploader. NAM is compiled out + stripped on the
+  # 32-bit target. Upload to PatchStorage stays a manual, credentialed step.
+  patchstorage:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-amd64
+            runs-on: ubuntu-24.04
+            mode: native
+          - target: rpi-aarch64
+            runs-on: ubuntu-24.04-arm
+            mode: native
+          - target: patchbox-os-arm32
+            runs-on: ubuntu-24.04-arm
+            mode: arm32-container
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+
+      # Native targets (linux-amd64, rpi-aarch64): build straight on the runner.
+      - name: Install build dependencies (native)
+        if: matrix.mode == 'native'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake build-essential pkg-config lv2-dev python3 git ca-certificates
+      - name: Build per-plugin bundles (native)
+        if: matrix.mode == 'native'
+        run: bash build-tools/patchstorage/build_target.sh "${{ matrix.target }}"
+
+      # 32-bit target: build natively inside an armv7 (arm32v7) Debian container so
+      # the .so files are genuine 32-bit ARM. binfmt lets the arm64 runner execute
+      # the 32-bit userspace. Checkout/metadata run on the host (JS actions need a
+      # host-arch node), only the compile runs in the container.
+      - name: Set up binfmt (arm32)
+        if: matrix.mode == 'arm32-container'
+        uses: docker/setup-qemu-action@v3
+      - name: Build per-plugin bundles (arm32 container)
+        if: matrix.mode == 'arm32-container'
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src arm32v7/debian:bookworm bash -c '
+            set -e
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              cmake build-essential pkg-config lv2-dev python3 git ca-certificates
+            git config --global --add safe.directory /src
+            git config --global --add safe.directory "*"
+            bash build-tools/patchstorage/build_target.sh patchbox-os-arm32
+          '
+          # the container writes dist/ as root — hand it back so the host metadata
+          # step (runner user) can write plugins.json / LISTINGS.md into it.
+          sudo chown -R "$(id -u):$(id -g)" dist
+
+      - name: Generate listing metadata
+        run: |
+          python3 build-tools/patchstorage/generate_metadata.py \
+            --target "${{ matrix.target }}" --out "dist/patchstorage/${{ matrix.target }}"
+
+      - name: Upload PatchStorage bundles
+        uses: actions/upload-artifact@v4
+        with:
+          name: patchstorage-${{ matrix.target }}
+          path: dist/patchstorage/${{ matrix.target }}

@@ -25,14 +25,50 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 #                            any Pi 4/5-class pi-Stomp. Use this for redistribution.
 #   OFF (default)          → Pi 5 (Cortex-A76 + dot-product) when cross-compiling, or
 #                            the host's -march=native for an on-device/personal build.
-option(GUITARAMP_PORTABLE "Generic aarch64 (armv8-a) build for redistribution" OFF)
-if(GUITARAMP_PORTABLE)
+option(GUITARAMP_PORTABLE "Generic baseline build for redistribution" OFF)
+# Explicit arch profile, overriding auto-detection. REQUIRED when CMake can't infer
+# the real target ISA — e.g. an armv7 (arm32v7) container on an aarch64 host, where
+# CMAKE_SYSTEM_PROCESSOR reports the host's "aarch64" even though the compiler is
+# 32-bit armhf. Values: armv7 | armv8 | x86 | native | auto (default).
+set(GUITARAMP_ARCH "auto" CACHE STRING "Arch flag profile: armv7|armv8|x86|native|auto")
+# Arch flags are appended AFTER the submodule's -march=native so they win. They
+# must match the target ISA — a build for armv7 must NOT inherit aarch64 or
+# -march=native flags, or cc1plus errors out ("lacks an FPU").
+if(GUITARAMP_ARCH STREQUAL "armv7")
+    set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon-vfpv4)            # patchbox-os-arm32
+elseif(GUITARAMP_ARCH STREQUAL "armv8")
     set(GUITARAMP_ARCH_FLAGS -march=armv8-a)
+elseif(GUITARAMP_ARCH STREQUAL "x86")
+    set(GUITARAMP_ARCH_FLAGS -march=x86-64-v2 -mtune=generic)
+elseif(GUITARAMP_ARCH STREQUAL "native")
+    set(GUITARAMP_ARCH_FLAGS)
+elseif(GUITARAMP_PORTABLE)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(GUITARAMP_ARCH_FLAGS -march=armv8-a)                       # any Pi 4/5 (rpi-aarch64)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
+        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon-vfpv4)  # patchbox-os-arm32 (Pi 2/3/4; gnueabihf = hard-float by default)
+    else()
+        set(GUITARAMP_ARCH_FLAGS -march=x86-64-v2 -mtune=generic)      # portable linux-amd64
+    endif()
 elseif(CMAKE_CROSSCOMPILING)
-    set(GUITARAMP_ARCH_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "^arm" AND NOT CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(GUITARAMP_ARCH_FLAGS -march=armv7-a -mfpu=neon-vfpv4)  # armhf cross (gnueabihf = hard-float)
+    else()
+        set(GUITARAMP_ARCH_FLAGS -march=armv8.2-a+dotprod -mtune=cortex-a76)  # Pi 5 cross
+    endif()
 else()
-    set(GUITARAMP_ARCH_FLAGS)   # keep the submodule's -march=native
+    set(GUITARAMP_ARCH_FLAGS)   # native on-device/personal build: keep -march=native
 endif()
+
+# ── NAM availability ──────────────────────────────────────────────────────────
+# NAM (Neural Amp Modeler, the heaviest DSP) is built into amp/drive/cab/hexforge
+# on every target. On weak / 32-bit targets (patchbox-os-arm32 → MODEP on Pi 3/4)
+# it would never run in realtime, so it is HIDDEN there rather than offered:
+# split_bundle.py --strip-nam removes the NAM file-picker parameter + the
+# "Neural (NAM)" model option from the TTL at packaging time, so the 32-bit UI
+# never exposes NAM. (A true compile-out is unsafe: AmpBlock.h / NamOverdrive.h
+# embed NamModel by value, so stubbing it in the plugin TUs only would create an
+# ABI/size mismatch vs GuitarAmpSim.)
 
 # ── DSP engine (submodule) ────────────────────────────────────────────────────
 # Provides: GuitarAmpSim (static, all DSP) + NamCore (static, NAM inference)
@@ -131,7 +167,8 @@ add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
 # -> NamOverdrive); Hex Forge embeds both. Give these — and only these — the
 # whole-archived NamCore so the model-parser static initializers register.
 # --whole-archive is required: those registrations live in objects nothing
-# references by name otherwise.
+# references by name otherwise. (On the 32-bit target NAM is hidden via the TTL
+# strip, not unlinked — see the NAM availability note above.)
 foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
     target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
 endforeach()

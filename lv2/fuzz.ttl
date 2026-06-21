@@ -9,6 +9,7 @@
 <https://rpowell5064.github.io/guitaramp-suite/fuzz>
     a lv2:Plugin, lv2:DistortionPlugin ;
     rdfs:label "Hex Chain — Fuzz" ;
+    doap:name  "Hex Chain Fuzz" ;
     mod:label  "Fuzz" ;
     mod:brand  "Hex Chain" ;
     doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;

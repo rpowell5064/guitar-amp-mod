@@ -14,7 +14,7 @@ W, H = 1300, 1060
 # fuzz=Italian Hero, drive=Green Man, delay=Digital) — mirror script-hexforge.js
 # so the static screenshot reflects the real default view.
 DEFAULT_HIDDEN = ["c-amp-nam", "c-dr-nam", "c-amp-sunn", "c-amp-chan", "c-amp-reso", "c-amp-paman",
-                  "c-fz-tb", "c-dr-oct", "c-dl-tape", "c-dl-heads"]
+                  "c-amp-be", "c-fz-tb", "c-dr-oct", "c-dl-tape", "c-dl-heads", "c-dl-seraph"]
 
 def strip_mustache(html):
     # Drop the audio-port loops entirely (no jacks in a static render).
