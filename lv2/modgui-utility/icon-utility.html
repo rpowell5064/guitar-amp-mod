@@ -8,11 +8,25 @@
     <div class="hx-header">
         <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
         <div class="hx-title">INPUT TRIM</div>
-        <div class="hx-tag">gain · phase · hum filter</div>
+        <div class="hx-tag">gain · single-coil→humbucker · hum filter</div>
+    </div>
+
+    <!-- ── HB MODEL selector (single-coil -> humbucker voicing) ────────── -->
+    <div class="mod-amp-modelrow">
+        <span class="mod-section-label">HB MODEL</span>
+        {{#controls.3}}
+        <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+            <div class="mod-enumerated-list">
+                {{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}
+            </div>
+        </div>
+        {{/controls.3}}
     </div>
 
     <div class="mod-control-group mod-knobs clearfix">
         {{#controls.0}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.0}}
+        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
         {{#controls.1}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.1}}
         {{#controls.2}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.2}}
     </div>

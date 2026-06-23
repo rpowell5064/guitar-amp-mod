@@ -10,8 +10,8 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 300px;
-    width: 320px;
+    height: 360px;
+    width: 440px;
     position: absolute;
     border-radius: 12px;
     border-top: 2px solid #6eaf87;
@@ -26,7 +26,7 @@
 .mod-pedal-guitaramp-utility{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:9px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-pedal-input,
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-pedal-output { top:110px; }
-.mod-pedal-guitaramp-utility{{{cns}}} .mod-powerswitch { margin-left:245px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
+.mod-pedal-guitaramp-utility{{{cns}}} .mod-powerswitch { margin-left:365px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-powerswitch-image.off { background-position:0 0; }
@@ -35,7 +35,7 @@
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-titlerow { margin-top:58px; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-amp-modelrow { margin-top:58px; padding:0 24px; position:relative; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-control-group { position:relative; text-align:center; }
-.mod-pedal-guitaramp-utility{{{cns}}} .mod-knobs { margin-top:80px; width:320px; }
+.mod-pedal-guitaramp-utility{{{cns}}} .mod-knobs { margin-top:80px; width:440px; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-knob { display:inline-block; height:92px; width:96px; overflow: visible; position:relative; vertical-align:top; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-knob .mod-knob-image { background-image:url(/resources/knobs/knob.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 56px; height:56px; width:56px; margin:4px auto 0; }
 .mod-pedal-guitaramp-utility{{{cns}}} .mod-knob .mod-knob-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; text-transform:uppercase; text-align:center; display:block; margin-top:4px; }

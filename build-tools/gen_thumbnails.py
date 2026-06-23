@@ -44,8 +44,9 @@ PED = {
     modelrow("MODEL","Lush-2") + knobs("Rate","Depth","Mix","Width")),
  "reverb": dict(w=480,h=320,tw=240,title="REVERB",tag="modulated reverb", body=
     knobs("Pre-Delay","Decay","Damping","Mod Depth","Mod Rate","Mix")),
- "utility": dict(w=320,h=300,tw=160,title="INPUT TRIM",tag=f"gain {DOT} phase {DOT} hum filter", body=
-    '<div class="mod-control-group mod-knobs clearfix">' + knob("Gain") + sw("Phase") + sw("Hum Filter") + '</div>'),
+ "utility": dict(w=440,h=360,tw=220,title="INPUT TRIM",tag=f"gain {DOT} single-coil→humbucker {DOT} hum filter", body=
+    modelrow("HB MODEL","'59 Bucker") +
+    '<div class="mod-control-group mod-knobs clearfix">' + knob("Gain") + knob("HB Amount") + sw("Phase") + sw("Hum Filter") + '</div>'),
  "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"I Know It {DOT} germanium", body=
     modelrow("PEDAL","I Know It") +
     knobs("Attack","Bias","Level","Input Trim","Ge Temp")),

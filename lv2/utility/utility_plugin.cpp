@@ -1,5 +1,6 @@
 #include "lv2_util.h"
 #include "BiquadFilter.h"
+#include "PickupVoicer.h"
 #include <lv2/core/lv2.h>
 #include <cmath>
 #include <new>
@@ -7,11 +8,13 @@
 #define UTILITY_URI "https://rpowell5064.github.io/guitaramp-suite/utility"
 
 enum UtilPorts {
-    P_IN      = 0,
-    P_OUT     = 1,
-    P_GAIN_DB = 2,
-    P_PHASE   = 3,
-    P_HUM     = 4,
+    P_IN        = 0,
+    P_OUT       = 1,
+    P_GAIN_DB   = 2,
+    P_PHASE     = 3,
+    P_HUM       = 4,
+    P_HB_MODEL  = 5,   // single-coil -> humbucker model (enum 0..2)
+    P_HB_AMOUNT = 6,   // voicing amount 0..1 (0 = bypass)
     P_N_PORTS
 };
 
@@ -46,9 +49,10 @@ struct HumFilter {
 };
 
 struct UtilityPlugin {
-    HumFilter hum;
-    float*    ports[P_N_PORTS];
-    float     sr = 44100.0f;
+    HumFilter    hum;
+    PickupVoicer voice;        // single-coil -> humbucker voicing
+    float*       ports[P_N_PORTS];
+    float        sr = 44100.0f;
 };
 
 static LV2_Handle util_instantiate(const LV2_Descriptor*, double rate,
@@ -69,16 +73,22 @@ static void util_run(LV2_Handle h, uint32_t n) {
     const float gainLin  = std::pow(10.0f, *p->ports[P_GAIN_DB] / 20.0f);
     const float sign     = (*p->ports[P_PHASE] > 0.5f) ? -1.0f : 1.0f;
     const bool  humOn    = *p->ports[P_HUM] > 0.5f;
+    const float hbAmount = *p->ports[P_HB_AMOUNT];
+    const bool  hbOn     = hbAmount > 0.0f;
+    const int   hbModel  = static_cast<int>(*p->ports[P_HB_MODEL] + 0.5f);
     const float scale    = gainLin * sign;
     const float* src     = p->ports[P_IN];
     float*       dst     = p->ports[P_OUT];
 
-    if (humOn) {
-        for (uint32_t i = 0; i < n; ++i)
-            dst[i] = p->hum.process(src[i]) * scale;
-    } else {
-        for (uint32_t i = 0; i < n; ++i)
-            dst[i] = src[i] * scale;
+    // Recompute the voicing only when model/amount change (cheap, guarded inside).
+    if (hbOn) p->voice.prepare(p->sr, hbModel, hbAmount);
+
+    // Chain (matches the Hex Forge Input Trim order): hum -> humbucker voice -> gain/phase.
+    for (uint32_t i = 0; i < n; ++i) {
+        float x = src[i];
+        if (humOn) x = p->hum.process(x);
+        if (hbOn)  x = p->voice.process(x);
+        dst[i] = x * scale;
     }
 }
 
