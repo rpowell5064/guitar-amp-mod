@@ -49,6 +49,9 @@ PED = {
  "fuzz": dict(w=360,h=384,tw=180,title="FUZZ",tag=f"I Know It {DOT} germanium", body=
     modelrow("PEDAL","I Know It") +
     knobs("Attack","Bias","Level","Input Trim","Ge Temp")),
+ "nail": dict(w=360,h=360,tw=180,title="NAIL",tag=f"industrial distortion {DOT} 3 modes", body=
+    modelrow("MODE","Delicate") +
+    knobs("Drive","Filter","Texture","Level")),
 }
 
 def render(p, d):

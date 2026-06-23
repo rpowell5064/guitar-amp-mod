@@ -159,6 +159,10 @@ add_lv2_plugin(guitaramp_cab lv2/cab/cab_plugin.cpp)
 # no NAM, so it is NOT in the whole-archive NamCore list below.
 add_lv2_plugin(guitaramp_fuzz lv2/fuzz/fuzz_plugin.cpp)
 
+# Nail: three-mode industrial distortion (NailDistortion). Constructed directly,
+# no NAM — NOT in the whole-archive NamCore list below.
+add_lv2_plugin(guitaramp_nail lv2/nail/nail_plugin.cpp)
+
 # Hex Forge super-block: hosts every Hex Chain DSP block in one reorderable chain.
 # Embeds the amp (+ drive overdrive), so it joins the whole-archive NamCore list.
 add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
@@ -181,7 +185,7 @@ set(BUNDLE_DIR "lib/lv2/guitaramp-suite.lv2")
 install(TARGETS
     guitaramp_gate guitaramp_comp guitaramp_drive guitaramp_modfx
     guitaramp_delay guitaramp_reverb guitaramp_amp guitaramp_cab
-    guitaramp_utility guitaramp_fuzz guitaramp_hexforge
+    guitaramp_utility guitaramp_fuzz guitaramp_nail guitaramp_hexforge
     DESTINATION ${BUNDLE_DIR}
 )
 
@@ -199,6 +203,7 @@ install(FILES
     lv2/cab.ttl
     lv2/utility.ttl
     lv2/fuzz.ttl
+    lv2/nail.ttl
     lv2/hexforge.ttl
     DESTINATION ${BUNDLE_DIR}
 )
@@ -206,7 +211,7 @@ install(FILES
 # MOD-UI modgui resources: one dir per plugin, named exactly as that plugin's
 # modgui:resourcesDirectory in its TTL (modgui-amp, modgui-cab, …). Each carries
 # the stylesheet/icon/script, screenshot/thumbnail/logo, and knob/switch sprites.
-foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz hexforge)
+foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge)
     install(DIRECTORY lv2/modgui-${_m} DESTINATION ${BUNDLE_DIR})
 endforeach()
 
