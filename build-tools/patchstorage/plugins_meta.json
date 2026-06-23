@@ -85,12 +85,12 @@
       "long": "A smooth plate reverb with size/tone/mix and unity-gain wet/dry blend so engaging it never drops level. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind."
     },
     "utility": {
-      "title": "Hex Chain Utility",
+      "title": "Hex Chain Input Trim",
       "categories": ["Utility"],
-      "tags": ["guitar", "utility", "gain", "phase", "hum-filter", "pi-stomp"],
+      "tags": ["guitar", "input-trim", "gain", "phase", "hum-filter", "humbucker", "pickup-voicing", "pi-stomp"],
       "nam": false,
-      "short": "Gain / phase / hum-filter utility.",
-      "long": "A small utility block: clean gain trim, phase invert and a fixed 60 Hz hum-filter comb. Minimal CPU; runs on every target."
+      "short": "Gain / phase / hum-filter + single-coil→humbucker voicing.",
+      "long": "A small front-of-chain utility: clean gain trim, phase invert, a fixed 60 Hz hum-filter comb, and a single-coil→humbucker voicing. The voicing re-voices a single-coil pickup toward one of three target bridge humbuckers — '59 Bucker (warm vintage PAF), Norse Hammer (hot ceramic) or Modern Flux (active hi-fi) — with an Amount control (0 = bypass). Minimal CPU; runs on every target."
     },
     "hexforge": {
       "title": "Hex Forge",
