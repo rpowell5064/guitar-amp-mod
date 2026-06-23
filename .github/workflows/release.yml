@@ -73,9 +73,16 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
-            --title "Hex Chain ${GITHUB_REF_NAME}" \
-            --notes "Portable aarch64 (armv8-a) build of the Hex Chain LV2 suite for MOD / pi-Stomp (11 plugins incl. Hex Forge). Extract on your Pi and run \`install.sh\`. Dual-licensed **GPL-3.0-or-later + commercial** — see LICENSING.md."
+          notes="Portable aarch64 (armv8-a) build of the Hex Chain LV2 suite for MOD / pi-Stomp (12 plugins incl. Nail + Hex Forge). Extract on your Pi and run \`install.sh\`. Dual-licensed **GPL-3.0-or-later + commercial** — see LICENSING.md."
+          # Idempotent: if the release already exists (e.g. a re-cut of the same
+          # tag), refresh its asset + notes instead of failing on "already exists".
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" dist/*.tar.gz --clobber
+            gh release edit   "${GITHUB_REF_NAME}" --title "Hex Chain ${GITHUB_REF_NAME}" --notes "$notes"
+          else
+            gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz \
+              --title "Hex Chain ${GITHUB_REF_NAME}" --notes "$notes"
+          fi
 
   # ── PatchStorage per-plugin bundles for all three LV2 build targets ───────────
   # Produces dist/patchstorage/<target>/<plugin>.lv2 + plugins.json + LISTINGS.md,
