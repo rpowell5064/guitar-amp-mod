@@ -53,6 +53,9 @@ def main():
             "donate_url": meta["donate_url"],
             "license": UPLOADER_LICENSE,
             "categories": m["categories"],
+            # The uploader's get_tags() does `tags.extend(overwrites['tags'])`, so
+            # these reach the listing (merged with its lv2-plugin/modgui defaults).
+            "tags": m["tags"],
         }
     (args.out / "plugins.json").write_text(
         json.dumps(uploader, indent=2) + "\n", encoding="utf-8")

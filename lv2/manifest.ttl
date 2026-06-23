@@ -51,6 +51,11 @@
     lv2:binary <guitaramp_fuzz.so> ;
     rdfs:seeAlso <fuzz.ttl> .
 
+<https://rpowell5064.github.io/guitaramp-suite/nail>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_nail.so> ;
+    rdfs:seeAlso <nail.ttl> .
+
 <https://rpowell5064.github.io/guitaramp-suite/hexforge>
     a lv2:Plugin ;
     lv2:binary <guitaramp_hexforge.so> ;
