@@ -3,15 +3,20 @@
 #include <algorithm>
 
 // ── Per-mode voicing table ──────────────────────────────────────────────────
-// Delicate (2) is the Swollen-Pickle-leaning Muff. Dahnward (1) reuses inHp/gain/
-// asym/interLp/outScale for its scooped preamp (toneLp/toneHp unused — it voices
-// through the swept band-pass instead). Broke (0) is still a PLACEHOLDER Muff
-// voicing until its digital decimator/bit-reduction topology lands (phase 3).
+// Each mode reuses the shared fields differently (toneLp/toneHp are only the Muff
+// tone stack — 0 means "no tone stack, voiced elsewhere"):
+//   Broke      — inHp/gain/outScale; hard-clips + decimates (asym/interLp unused).
+//   Dahnward   — inHp/gain/asym/interLp/outScale; voices through the swept BP.
+//   Delicate   — full Muff (uses every field).
+//   Con Molars — inHp/gain/asym/interLp/outScale; cab freqs are fixed in code.
+//   Tusk       — inHp/gain/asym/interLp/outScale; ring carrier from FILTER in code.
 //          inHp   gLo   gHi    asym  interLp  toneLp  toneHp  outScale
 const NailDistortion::Voicing NailDistortion::kMode[kNumModes] = {
-    { 40.0f, 2.0f, 110.0f, 0.03f, 6000.0f, 380.0f, 1400.0f, 0.95f }, // 0 Broke    (PLACEHOLDER: bright, harsh, aggressive)
-    { 30.0f, 3.0f, 100.0f, 0.10f, 3200.0f,    0.0f,    0.0f, 0.95f }, // 1 Dahnward (scooped high-gain preamp → resonant sweep)
-    { 28.0f, 2.0f,  76.0f, 0.07f, 3800.0f,  290.0f, 1900.0f, 1.05f }, // 2 Delicate (REAL: fat lows, gentle scoop, hot)
+    { 50.0f, 3.0f,  40.0f, 0.00f,    0.0f,   0.0f,    0.0f, 0.80f }, // 0 Broke      (crude digital hard-clip + decimate/bitcrush)
+    { 90.0f, 6.0f, 165.0f, 0.14f, 5200.0f,   0.0f,    0.0f, 0.90f }, // 1 Dahnward   (Metal-Zone-leaning: tight lows, buzzy bite, mid push)
+    { 28.0f, 2.0f,  76.0f, 0.07f, 3800.0f, 290.0f, 1900.0f, 1.05f }, // 2 Delicate   (Muff: fat lows, gentle scoop, hot)
+    { 110.0f, 2.5f, 70.0f, 0.05f, 5000.0f,   0.0f,    0.0f, 0.40f }, // 3 Con Molars (bright clip → miked speaker/cab voicing; level-matched via probe)
+    { 80.0f, 5.0f, 120.0f, 0.08f, 4000.0f,   0.0f,    0.0f, 0.60f }, // 4 Tusk       (high-sustain clip → ring modulator)
 };
 
 // ── prepare ───────────────────────────────────────────────────────────────────
@@ -40,6 +45,13 @@ void NailDistortion::reset() noexcept {
         c.toneLP .reset();
         c.toneHP .reset();
         c.sweepBP.reset();
+        c.crushLP.reset();
+        c.cabHP  .reset();
+        c.cabMid .reset();
+        c.cabLP  .reset();
+        c.decPhase   = 1.0f; // latch a fresh sample on the very first decimated sample
+        c.decHold    = 0.0f;
+        c.ringPhase  = 0.0f; // Tusk ring carrier
     }
     driveSmooth_.setCurrentAndTargetValue(drive_);
     volSmooth_  .setCurrentAndTargetValue(volume_);
@@ -58,10 +70,11 @@ void NailDistortion::advanceSmoothing() noexcept {
 
 float NailDistortion::processSample(float x, int ch) noexcept {
     switch (mode_) {
-        case 1: // Dahnward — scooped preamp + resonant band-pass sweep
-            return processDahnward(x, ch);
-        case 0: // Broke    — TODO(phase 3): digital decimate + bit-reduction
-        case 2: // Delicate — real voiced Muff path
+        case 0: return processBroke(x, ch);      // digital decimate + bit-reduction
+        case 1: return processDahnward(x, ch);   // scooped preamp + resonant sweep
+        case 3: return processConMolars(x, ch);  // bright clip → speaker/cab voicing
+        case 4: return processTusk(x, ch);       // high-sustain clip → ring modulator
+        case 2: // Delicate — Muff path
         default:
             return processMuff(x, ch);
     }
@@ -99,7 +112,7 @@ float NailDistortion::processMuff(float x, int ch) noexcept {
 // Scooped, claustrophobic, mechanical: a high-gain asymmetric preamp stage feeds
 // a swept resonant band-pass. The band-pass is BLENDED over the saturated body so
 // it reads as a resonant "vent" peak rather than a thin wah. FILTER sweeps the
-// centre (tone_ → 300 Hz..3 kHz); TEXTURE sets the Q (texture_ → 0.7..6).
+// centre (tone_ → 300 Hz..5 kHz, MT-2 mid range); TEXTURE sets the Q (→ 2..18).
 
 float NailDistortion::processDahnward(float x, int ch) noexcept {
     const Voicing& m = kMode[mode_];
@@ -113,10 +126,104 @@ float NailDistortion::processDahnward(float x, int ch) noexcept {
     // Interstage bandwidth limit tames the high-gain fizz before the resonator.
     y = s.stageLP.process(y);
 
-    // Resonant band-pass (0 dB peak) blended over the body. Body keeps weight so
-    // high-Q settings stay musical instead of vanishing to a sine at the centre.
+    // Resonant band-pass (0 dB peak) blended over the body. Tilted toward the
+    // band-pass so the swept peak reads strongly; a little body keeps it from
+    // collapsing to a pure sine at high Q.
     const float bp = s.sweepBP.process(y);
-    const float out = 0.35f * y + 0.9f * bp;
+    const float out = 0.22f * y + 1.15f * bp;
+
+    return out * (volCur_ * 2.0f * m.outScale);
+}
+
+// ── processBroke ────────────────────────────────────────────────────────────────
+// Early, white-noise-fuzz, direct-to-tape: a crude digital unit with the cab sim
+// bypassed. Hard (clamped) digital clipping → sample-rate decimation (sample &
+// hold) → bit-reduction → a "cab-defeat" tilt LP. TEXTURE drives the crush depth
+// (both decimation rate and bit depth); FILTER opens the tilt from dark/cab-ish to
+// bright/white. The decimation deliberately aliases — that IS the lo-fi crunch —
+// but everything here is bounded (clamp/quantise/1-pole), so it can't blow up.
+
+float NailDistortion::processBroke(float x, int ch) noexcept {
+    const Voicing& m = kMode[mode_];
+    auto&          s = ch_[ch];
+
+    const float coupled = s.inputHP.process(x);
+    const float gain    = m.gLo + driveCur_ * (m.gHi - m.gLo);
+
+    // Crude digital hard clip (clamp, not tanh — brittle/square, not smooth).
+    float v = std::clamp(gain * coupled, -1.0f, 1.0f);
+
+    // Sample-rate decimation: hold the latched sample, latch a new one when the
+    // phase (advancing at targetRate/fs per oversampled sample) wraps past 1.
+    const float targetRate = 18000.0f - texture_ * 15500.0f;   // 18 kHz .. 2.5 kHz
+    s.decPhase += targetRate / static_cast<float>(fs_);
+    if (s.decPhase >= 1.0f) { s.decHold = v; s.decPhase -= 1.0f; }
+    v = s.decHold;
+
+    // Bit-reduction: quantise to ~12 bits (clean) down to ~5 bits (gritty).
+    const float bits = 12.0f - texture_ * 7.0f;                 // 12 .. 5 bits
+    const float half = std::exp2(bits) * 0.5f;                  // levels over [-1,1]
+    v = std::round(v * half) / half;
+
+    // Cab-defeat tilt LP (cutoff set from FILTER in updateSweep): dark → open/white.
+    v = s.crushLP.process(v);
+
+    return v * (volCur_ * 2.0f * m.outScale);
+}
+
+// ── processConMolars ────────────────────────────────────────────────────────────
+// Later era: software fuzz RE-AMPED through a real miked cabinet. A bright, hot
+// clip is run into a fixed speaker voicing (low-cut → mid presence → top roll-off)
+// so it reads as a tighter, drier, mid-forward rock guitar rather than a smeared
+// industrial wall. FILTER tilts cab brightness (rolled ↔ present); TEXTURE blends
+// cab amount (full re-amped cab ↔ raw low-cut "in-the-box").
+
+float NailDistortion::processConMolars(float x, int ch) noexcept {
+    const Voicing& m = kMode[mode_];
+    auto&          s = ch_[ch];
+
+    const float coupled = s.inputHP.process(x);
+    const float gain    = m.gLo + driveCur_ * (m.gHi - m.gLo);
+    float       y       = clipStage(coupled, gain, m.asym);
+    y = s.stageLP.process(y);
+
+    // Speaker voicing: low-cut → mid presence → top roll-off.
+    const float hp  = s.cabHP.process(y);     // tighten the lows
+    const float mid = s.cabMid.process(hp);   // forward midrange (the "amp in a room")
+    const float lp  = s.cabLP.process(mid);   // speaker top roll-off
+
+    // FILTER → brightness tilt (full roll-off ↔ present); TEXTURE → cab amount
+    // (full re-amped speaker ↔ raw low-cut clip, the "in-the-box" extreme).
+    const float cabOut = (1.0f - tone_) * lp + tone_ * mid;
+    const float out    = (1.0f - texture_) * cabOut + texture_ * hp;
+
+    return out * (volCur_ * 2.0f * m.outScale);
+}
+
+// ── processTusk ─────────────────────────────────────────────────────────────────
+// "Vocal/animal" texture: a high-sustain soft clip (heavy tanh compression = long
+// singing sustain) feeding a RING MODULATOR — the one documented effect on that
+// guest part. The ring is a TOGGLE (ringOn_), OFF by default, so selecting Tusk
+// gives a clean sustain lead until you switch it in. When on: FILTER tunes the
+// carrier (30 Hz wobble → ~1.5 kHz inharmonic clang, set in updateSweep); TEXTURE
+// blends ring depth (0 = dry sustain, 1 = full metallic ring).
+
+float NailDistortion::processTusk(float x, int ch) noexcept {
+    const Voicing& m = kMode[mode_];
+    auto&          s = ch_[ch];
+
+    const float coupled = s.inputHP.process(x);
+    const float gain    = m.gLo + driveCur_ * (m.gHi - m.gLo);
+    float       y       = clipStage(coupled, gain, m.asym);   // singing sustain
+    y = s.stageLP.process(y);
+
+    if (!ringOn_) return y * (volCur_ * 2.0f * m.outScale);   // ring bypassed
+
+    // Ring modulator: multiply by a sine carrier; advance + wrap the phase.
+    s.ringPhase += ringInc_;
+    if (s.ringPhase >= 2.0f * (float)M_PI) s.ringPhase -= 2.0f * (float)M_PI;
+    const float ringed = y * std::sin(s.ringPhase);
+    const float out    = (1.0f - texture_) * y + texture_ * ringed;
 
     return out * (volCur_ * 2.0f * m.outScale);
 }
@@ -130,6 +237,7 @@ void NailDistortion::setParameter(const std::string& id, float v) noexcept {
         if (mode_ != modeApplied_) recalcFilters();   // reload coeffs on change
         return;
     }
+    if (id == "ring") { ringOn_ = (v > 0.5f); return; }   // Tusk ring-mod toggle
     const float c = std::clamp(v, 0.0f, 1.0f);
     if      (id == "drive")   { drive_   = c; driveSmooth_.setTargetValue(c); }
     else if (id == "tone")    { tone_    = c; if (tone_    != sweepToneApplied_) updateSweep(); }
@@ -144,6 +252,7 @@ float NailDistortion::getParameter(const std::string& id) const noexcept {
     if (id == "tone")    return tone_;
     if (id == "texture") return texture_;
     if (id == "level")   return volume_;
+    if (id == "ring")    return ringOn_ ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -174,25 +283,53 @@ void NailDistortion::recalcFilters() noexcept {
             c.toneHP.setCoeffs(toneHpC);
         }
     }
+
+    // Con Molars speaker voicing — fixed miked-cab curve: tight low-cut, forward
+    // mids, rolled-off top. (Static per mode; FILTER/TEXTURE blend it in-sample.)
+    const auto cabHpC  = Filters::highpass(120.0,  kQ,  fs_);
+    const auto cabMidC = Filters::peaking (1900.0, 5.0, 1.1, fs_);
+    const auto cabLpC  = Filters::lowpass (5500.0, kQ,  fs_);
+    for (auto& c : ch_) {
+        c.cabHP .setCoeffs(cabHpC);
+        c.cabMid.setCoeffs(cabMidC);
+        c.cabLP .setCoeffs(cabLpC);
+    }
     modeApplied_ = mode_;
 
-    updateSweep();   // keep Dahnward's band-pass coeffs current after a reload
+    updateSweep();   // keep Dahnward BP + Broke cab-defeat LP coeffs current
 }
 
 // ── updateSweep ───────────────────────────────────────────────────────────────
-// Recompute the Dahnward resonant band-pass from the FILTER/TEXTURE knobs. Cheap
-// but not free (sin/cos/pow), so callers only invoke it when a value has moved.
+// Recompute the FILTER-driven filters from the FILTER/TEXTURE knobs: Dahnward's
+// resonant band-pass and Broke's cab-defeat tilt LP. Cheap but not free (sin/cos/
+// pow), so callers only invoke it when a value has actually moved. Both filters
+// are recomputed regardless of mode (the unused one just sits idle) — simpler than
+// branching, and it's only on a knob move.
 
 void NailDistortion::updateSweep() noexcept {
     if (fs_ <= 0.0) return;
 
-    // FILTER → centre 300 Hz..3 kHz (log); TEXTURE → Q 0.7..6.0.
-    double sweepHz = 300.0 * std::pow(10.0, static_cast<double>(tone_));
+    // Dahnward: FILTER → centre 300 Hz..5 kHz (log, MT-2 parametric-mid range);
+    // TEXTURE → Q 2.0..18.0.
+    double sweepHz = 300.0 * std::pow(10.0, static_cast<double>(tone_) * 1.222);
     sweepHz = std::min(sweepHz, fs_ * 0.45);          // stay clear of Nyquist
-    const double Q = 0.7 + static_cast<double>(texture_) * 5.3;
-
+    const double Q = 2.0 + static_cast<double>(texture_) * 16.0;
     const auto bpC = Filters::bandpass(sweepHz, Q, fs_);
-    for (auto& c : ch_) c.sweepBP.setCoeffs(bpC);
+
+    // Broke: FILTER → cab-defeat tilt, dark/cab-ish (3.5 kHz) → open/white (16 kHz).
+    const double defeatHz = std::min(3500.0 + static_cast<double>(tone_) * 12500.0,
+                                     fs_ * 0.45);
+    const auto crushC = Filters::lowpass1pole(defeatHz, fs_);
+
+    for (auto& c : ch_) {
+        c.sweepBP.setCoeffs(bpC);
+        c.crushLP.setCoeffs(crushC);
+    }
+
+    // Tusk: FILTER → ring carrier 30 Hz (wobble) .. ~1.5 kHz (metallic clang), log.
+    const double ringHz = std::min(30.0 * std::pow(10.0, static_cast<double>(tone_) * 1.70),
+                                   fs_ * 0.45);
+    ringInc_ = static_cast<float>(2.0 * M_PI * ringHz / fs_);
 
     sweepToneApplied_ = tone_;
     sweepTexApplied_  = texture_;

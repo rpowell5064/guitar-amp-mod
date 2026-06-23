@@ -21,10 +21,11 @@ enum NailPorts {
     P_OUT     = 1,
     P_MODE    = 2,   // mode selector (enum 0..2)
     P_DRIVE   = 3,   // gain / sustain
-    P_FILTER  = 4,   // FILTER knob → tone (modes repurpose in later phases)
-    P_TEXTURE = 5,   // crush / resonance (reserved, phases 2/3)
+    P_FILTER  = 4,   // FILTER knob → tone / sweep / cab-defeat / cab-bright / ring-freq
+    P_TEXTURE = 5,   // TEXTURE knob → Q / crush / cab-mix / ring-depth
     P_LEVEL   = 6,   // output volume
-    P_BYPASS  = 7,
+    P_RING    = 7,   // Tusk ring-mod toggle (off by default)
+    P_BYPASS  = 8,
     P_N_PORTS
 };
 
@@ -65,6 +66,7 @@ static void nail_run(LV2_Handle h, uint32_t n) {
     p->nail->setParameter("tone",    *p->ports[P_FILTER]);
     p->nail->setParameter("texture", *p->ports[P_TEXTURE]);
     p->nail->setParameter("level",   *p->ports[P_LEVEL]);
+    p->nail->setParameter("ring",    *p->ports[P_RING]);
     p->nail->process(ins, outs, static_cast<int>(n), 1);
 }
 

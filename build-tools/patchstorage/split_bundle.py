@@ -21,10 +21,45 @@ amp/drive/cab/hexforge TTL:
 so mod-ui never renders a NAM file browser or offers the Neural model.
 """
 import argparse
+import json
 import re
 import shutil
 import sys
 from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+# Listing descriptions (rendered into each bundle TTL as rdfs:comment, which is
+# what PatchStorage's uploader reads via bundle.get_comment() for the listing body).
+META_PLUGINS = json.loads(
+    (HERE / "plugins_meta.json").read_text(encoding="utf-8"))["plugins"]
+
+
+def inject_comment(ttl_text: str, name: str) -> str:
+    """Add rdfs:comment (the listing description) to the PLUGIN stanza if absent.
+    Anchors on the plugin subject URI (…/guitaramp-suite/<name>>) so it is not
+    confused with a parameter's rdfs:label (amp/cab/hexforge define NAM/IR file
+    params, with their own labels, ahead of the plugin stanza)."""
+    m = META_PLUGINS.get(name)
+    if not m or "rdfs:comment" in ttl_text:
+        return ttl_text
+    # Triple-quoted Turtle long-string: safe for the punctuation in our copy
+    # (no embedded triple-quote, and it never ends on a lone double-quote).
+    comment = f'    rdfs:comment """{m["long"]}""" ;'
+    # Plugin subject ends in "/<name>>"; param subjects end in "#frag>", so this
+    # substring only hits the plugin definition.
+    subj = f"/guitaramp-suite/{name}>"
+    lines = ttl_text.splitlines()
+    for i, line in enumerate(lines):
+        if line.lstrip().startswith("<") and subj in line:
+            j = i
+            while j < len(lines) and "a lv2:Plugin" not in lines[j]:
+                j += 1
+            if j < len(lines):                       # insert after the type line
+                lines.insert(j + 1, comment)
+                return "\n".join(lines) + ("\n" if ttl_text.endswith("\n") else "")
+            break
+    return ttl_text  # no plugin subject found — leave untouched rather than risk bad Turtle
+
 
 # URI fragments of the NAM file parameters (NOT #irfile, which stays on cab/hexforge).
 NAM_FRAGMENTS = {"nammodel", "namfile", "ampnam", "drnam", "cabnam"}
@@ -146,6 +181,7 @@ def main():
                     f in ttl_text for f in ("#nammodel", "#namfile", "#ampnam",
                                             "#drnam", "#cabnam")):
                 sys.exit(f"!! NAM strip incomplete for {name}.ttl")
+        ttl_text = inject_comment(ttl_text, name)   # listing description -> rdfs:comment
         (dest / ttl).write_text(ttl_text, encoding="utf-8")
 
         if src_gui.is_dir():
