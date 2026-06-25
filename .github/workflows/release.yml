@@ -33,12 +33,16 @@ permissions:
 
 jobs:
   build:
-    # Build on 22.04 (glibc 2.35), NOT 24.04 (glibc 2.39 / "trixie"): the binaries
-    # must load on Debian Bookworm (glibc 2.36) — Zynthian, Pi OS Bookworm and the
-    # pi-Stomp all run Bookworm. Linking against the older glibc is forward-
-    # compatible (runs on Bookworm AND anything newer); building on 24.04 hard-
-    # requires glibc 2.39 and fails to load on Bookworm.
-    runs-on: ubuntu-22.04-arm
+    # Build inside Debian Bookworm (glibc 2.36 + GCC 12) — NOT ubuntu-24.04 (glibc
+    # 2.39 / "trixie") and NOT ubuntu-22.04 (GCC 11). Two constraints meet here:
+    #   * runtime: the binaries must load on Debian Bookworm (glibc 2.36) — Zynthian,
+    #     Pi OS Bookworm and the pi-Stomp all run it. Building on trixie hard-
+    #     requires glibc 2.39 and won't load on Bookworm.
+    #   * compile: the NAM core uses std::atomic<std::shared_ptr<>> (C++20), which
+    #     libstdc++ only implements in GCC 12+. GCC 11 (22.04) static-asserts out.
+    # Bookworm satisfies both and mirrors the pi-Stomp's own toolchain. The
+    # arm64v8 image runs natively on the arm64 host (no qemu).
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
@@ -49,12 +53,6 @@ jobs:
           # only if the submodule repo is public).
           token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            cmake build-essential pkg-config lv2-dev git ca-certificates
-
       - name: Determine version
         id: ver
         run: |
@@ -64,8 +62,20 @@ jobs:
             echo "ver=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Build portable aarch64 bundle
-        run: bash build-tools/package_bundle.sh "${{ steps.ver.outputs.ver }}"
+      - name: Build portable aarch64 bundle (Bookworm container)
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src arm64v8/debian:bookworm bash -c '
+            set -e
+            apt-get update
+            apt-get install -y --no-install-recommends \
+              cmake build-essential pkg-config lv2-dev git ca-certificates
+            git config --global --add safe.directory /src
+            git config --global --add safe.directory "*"
+            bash build-tools/package_bundle.sh "${{ steps.ver.outputs.ver }}"
+          '
+          # the container writes dist/ as root — hand it back to the runner user so
+          # the upload + release steps below can read the tarball.
+          sudo chown -R "$(id -u):$(id -g)" dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -98,19 +108,22 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 22.04 (glibc 2.35), not 24.04 (2.39): keep the binaries loadable on
-          # Debian Bookworm (glibc 2.36). Same reason as the build job above.
+          # Every target builds inside Debian Bookworm (glibc 2.36 + GCC 12) so the
+          # binaries load on Bookworm (Zynthian / Pi OS / pi-Stomp) AND the NAM
+          # core's std::atomic<std::shared_ptr<>> (C++20, needs GCC 12+) compiles.
+          # qemu/binfmt is only needed when the container arch != the host arch.
           - target: linux-amd64
-            runs-on: ubuntu-22.04
-            mode: native
+            runs-on: ubuntu-24.04
+            image: amd64/debian:bookworm
+            qemu: false
           - target: rpi-aarch64
-            runs-on: ubuntu-22.04-arm
-            mode: native
-          # arm32 host runner glibc is irrelevant — the compile runs inside the
-          # arm32v7/debian:bookworm container; the host only runs JS actions/binfmt.
+            runs-on: ubuntu-24.04-arm
+            image: arm64v8/debian:bookworm
+            qemu: false
           - target: patchbox-os-arm32
             runs-on: ubuntu-24.04-arm
-            mode: arm32-container
+            image: arm32v7/debian:bookworm
+            qemu: true
     runs-on: ${{ matrix.runs-on }}
     steps:
       - name: Checkout (with submodules)
@@ -120,35 +133,23 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
 
-      # Native targets (linux-amd64, rpi-aarch64): build straight on the runner.
-      - name: Install build dependencies (native)
-        if: matrix.mode == 'native'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            cmake build-essential pkg-config lv2-dev python3 git ca-certificates
-      - name: Build per-plugin bundles (native)
-        if: matrix.mode == 'native'
-        run: bash build-tools/patchstorage/build_target.sh "${{ matrix.target }}"
-
-      # 32-bit target: build natively inside an armv7 (arm32v7) Debian container so
-      # the .so files are genuine 32-bit ARM. binfmt lets the arm64 runner execute
-      # the 32-bit userspace. Checkout/metadata run on the host (JS actions need a
-      # host-arch node), only the compile runs in the container.
-      - name: Set up binfmt (arm32)
-        if: matrix.mode == 'arm32-container'
+      # Cross-arch only (the arm32 container on an arm64 host) needs binfmt/qemu.
+      - name: Set up binfmt (cross-arch container)
+        if: matrix.qemu
         uses: docker/setup-qemu-action@v3
-      - name: Build per-plugin bundles (arm32 container)
-        if: matrix.mode == 'arm32-container'
+
+      # Compile inside the Bookworm container; checkout + metadata run on the host
+      # (JS actions need a host-arch node), only the compile runs in the container.
+      - name: Build per-plugin bundles (Bookworm container)
         run: |
-          docker run --rm -v "$PWD:/src" -w /src arm32v7/debian:bookworm bash -c '
+          docker run --rm -v "$PWD:/src" -w /src ${{ matrix.image }} bash -c '
             set -e
             apt-get update
             apt-get install -y --no-install-recommends \
               cmake build-essential pkg-config lv2-dev python3 git ca-certificates
             git config --global --add safe.directory /src
             git config --global --add safe.directory "*"
-            bash build-tools/patchstorage/build_target.sh patchbox-os-arm32
+            bash build-tools/patchstorage/build_target.sh ${{ matrix.target }}
           '
           # the container writes dist/ as root — hand it back so the host metadata
           # step (runner user) can write plugins.json / LISTINGS.md into it.
