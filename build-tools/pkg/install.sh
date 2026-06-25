@@ -46,9 +46,12 @@ else
 fi
 
 echo "Verifying..."
+# Expected count is derived from the installed manifest (one lv2:binary per plugin),
+# so adding/removing a plugin never makes this message stale or wrong.
+want=$(grep -c 'lv2:binary' "$DEST/guitaramp-suite.lv2/manifest.ttl" 2>/dev/null || echo '?')
 if command -v lv2ls >/dev/null 2>&1; then
     n=$(LV2_PATH="$DEST" lv2ls 2>/dev/null | grep -c 'guitaramp-suite' || true)
-    echo "  Hex Chain plugins visible to lv2ls: $n (expect 11)"
+    echo "  Hex Chain plugins visible to lv2ls: $n (expect $want)"
 fi
 
 echo

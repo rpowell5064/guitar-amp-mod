@@ -16,7 +16,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 2 ;
+    lv2:microVersion 3 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

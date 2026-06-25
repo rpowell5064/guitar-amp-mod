@@ -33,7 +33,12 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04-arm
+    # Build on 22.04 (glibc 2.35), NOT 24.04 (glibc 2.39 / "trixie"): the binaries
+    # must load on Debian Bookworm (glibc 2.36) — Zynthian, Pi OS Bookworm and the
+    # pi-Stomp all run Bookworm. Linking against the older glibc is forward-
+    # compatible (runs on Bookworm AND anything newer); building on 24.04 hard-
+    # requires glibc 2.39 and fails to load on Bookworm.
+    runs-on: ubuntu-22.04-arm
     steps:
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
@@ -93,12 +98,16 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # 22.04 (glibc 2.35), not 24.04 (2.39): keep the binaries loadable on
+          # Debian Bookworm (glibc 2.36). Same reason as the build job above.
           - target: linux-amd64
-            runs-on: ubuntu-24.04
+            runs-on: ubuntu-22.04
             mode: native
           - target: rpi-aarch64
-            runs-on: ubuntu-24.04-arm
+            runs-on: ubuntu-22.04-arm
             mode: native
+          # arm32 host runner glibc is irrelevant — the compile runs inside the
+          # arm32v7/debian:bookworm container; the host only runs JS actions/binfmt.
           - target: patchbox-os-arm32
             runs-on: ubuntu-24.04-arm
             mode: arm32-container
