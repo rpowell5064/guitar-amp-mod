@@ -1,104 +1,314 @@
 {
-  "_comment": "Single source of truth for PatchStorage listing metadata. One entry per plugin short-name (matches the LV2 URI suffix and the <name>.lv2 bundle). generate_metadata.py renders this into the uploader's plugins.json (source/donate/license/categories/tags) plus a ready-to-paste LISTINGS.md per target; split_bundle.py injects 'long' into each bundle TTL as rdfs:comment, which is what PatchStorage shows as the listing description. Every 'long' ends with the same Source/Support footer so the GitHub + Buy-Me-a-Coffee links show in the listing body too (in addition to the structured source_code_url/donate_url fields below). 'nam' marks the NAM-capable plugins: NAM is present on linux-amd64 + rpi-aarch64 and hidden on patchbox-os-arm32.",
+  "_comment": "Single source of truth for PatchStorage listing metadata. One entry per plugin short-name (matches the LV2 URI suffix and the <name>.lv2 bundle). generate_metadata.py renders this into the uploader's plugins.json (source/donate/license/categories/tags) plus a LISTINGS.md per target; split_bundle.py injects 'long' into each bundle TTL as rdfs:comment, which is what PatchStorage shows as the listing description. Source/donate links live ONLY in the structured source_code_url/donate_url fields (which become the profile/listing buttons) — NOT repeated in the description body. 'nam' marks the NAM-capable plugins: NAM is present on linux-amd64 + rpi-aarch64 and hidden on patchbox-os-arm32.",
   "source_code_url": "https://github.com/rpowell5064/guitar-amp-mod",
   "donate_url": "https://buymeacoffee.com/rpowell5064",
   "license": "GPL-3.0-or-later",
   "plugins": {
     "amp": {
       "title": "Hex Chain Amp",
-      "categories": ["Simulator"],
-      "tags": ["guitar", "amp-simulator", "amp", "distortion", "tube", "neural-amp-modeler", "nam", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Simulator"
+      ],
+      "tags": [
+        "guitar",
+        "amp-simulator",
+        "amp",
+        "distortion",
+        "tube",
+        "neural-amp-modeler",
+        "nam",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": true,
       "short": "Six original guitar-amp voicings + a modeled power-amp stage, plus a NAM loader for your own captures.",
-      "long": "A complete guitar amp in one plugin. Six original preamp voicings run from sparkling clean to saturated high-gain, each feeding a modeled power-amp section — sag, presence, depth and resonance — for real cab-pushing feel rather than a flat distortion. A shared, footswitch-friendly tone stack keeps switching between voicings fast on stage.\n\nOn 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures to sit alongside the algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted and the six models run on their own. Works standalone or as part of the Hex Chain suite / Hex Forge.\n\nFree and open source (GPL-3). Amp names are original parodies and are not affiliated with any manufacturer.\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A complete guitar amp in one plugin. Six original preamp voicings run from sparkling clean to saturated high-gain, each feeding a modeled power-amp section — sag, presence, depth and resonance — for real cab-pushing feel rather than a flat distortion. A shared, footswitch-friendly tone stack keeps switching between voicings fast on stage.\n\nOn 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures to sit alongside the algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted and the six models run on their own. Works standalone or as part of the Hex Chain suite / Hex Forge.\n\nFree and open source (GPL-3). Amp names are original parodies and are not affiliated with any manufacturer."
     },
     "cab": {
       "title": "Hex Chain Cab",
-      "categories": ["Simulator"],
-      "tags": ["guitar", "cabinet", "ir-loader", "cabsim", "impulse-response", "neural-amp-modeler", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Simulator"
+      ],
+      "tags": [
+        "guitar",
+        "cabinet",
+        "ir-loader",
+        "cabsim",
+        "impulse-response",
+        "neural-amp-modeler",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": true,
       "short": "Cabinet sim: load your own .wav IRs (and .nam rigs on 64-bit).",
-      "long": "A convolution cabinet that loads your own .wav impulse responses, with low-cut, high-cut and dry/wet mix to dial the speaker voicing to taste. On 64-bit/desktop targets it can also load full-rig .nam captures that override the IR for amp-in-a-box tones. On 32-bit (patchbox-os-arm32) the NAM path is omitted; IR loading is unchanged.\n\nShips with an embedded default cab so it makes sound out of the box. Free and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A convolution cabinet that loads your own .wav impulse responses, with low-cut, high-cut and dry/wet mix to dial the speaker voicing to taste. On 64-bit/desktop targets it can also load full-rig .nam captures that override the IR for amp-in-a-box tones. On 32-bit (patchbox-os-arm32) the NAM path is omitted; IR loading is unchanged.\n\nShips with an embedded default cab so it makes sound out of the box. Free and open source (GPL-3)."
     },
     "drive": {
       "title": "Hex Chain Drive",
-      "categories": ["Distortion"],
-      "tags": ["guitar", "overdrive", "boost", "distortion", "pedal", "neural-amp-modeler", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Distortion"
+      ],
+      "tags": [
+        "guitar",
+        "overdrive",
+        "boost",
+        "distortion",
+        "pedal",
+        "neural-amp-modeler",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": true,
       "short": "Three original overdrive/boost voicings.",
-      "long": "Three original drive and boost voicings — Green Man, New Dawn and Dear Rodent Boy — covering transparent clean boost, mid-pushed overdrive and tight, focused gain, each with level and mix. Stack them in front of the Hex Chain Amp or your own rig.\n\nOn 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted. Free and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer.\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "Three original drive and boost voicings — Green Man, New Dawn and Dear Rodent Boy — covering transparent clean boost, mid-pushed overdrive and tight, focused gain, each with level and mix. Stack them in front of the Hex Chain Amp or your own rig.\n\nOn 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted. Free and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer."
     },
     "fuzz": {
       "title": "Hex Chain Fuzz",
-      "categories": ["Distortion"],
-      "tags": ["guitar", "fuzz", "muff", "tone-bender", "germanium", "distortion", "pedal", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Distortion"
+      ],
+      "tags": [
+        "guitar",
+        "fuzz",
+        "muff",
+        "tone-bender",
+        "germanium",
+        "distortion",
+        "pedal",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Multi-era Muff-style fuzz + germanium Tone Bender voicing.",
-      "long": "A multi-era big-muff-style fuzz with several voicings, plus a component-accurate germanium Tone Bender MkII model. Oversampled for clean, defined high-gain without the aliasing fizz that plagues naive digital fuzz — from creamy sustain to spitty vintage grit.\n\nWorks standalone or in the Hex Chain suite. Free and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer.\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A multi-era big-muff-style fuzz with several voicings, plus a component-accurate germanium Tone Bender MkII model. Oversampled for clean, defined high-gain without the aliasing fizz that plagues naive digital fuzz — from creamy sustain to spitty vintage grit.\n\nWorks standalone or in the Hex Chain suite. Free and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer."
     },
     "nail": {
       "title": "Hex Chain Nail",
-      "categories": ["Distortion"],
-      "tags": ["guitar", "distortion", "industrial", "fuzz", "bitcrusher", "ring-modulator", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Distortion"
+      ],
+      "tags": [
+        "guitar",
+        "distortion",
+        "industrial",
+        "fuzz",
+        "bitcrusher",
+        "ring-modulator",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Five-mode industrial distortion: fuzz, resonant filter, bitcrush, cab re-amp, ring-mod.",
-      "long": "An industrial distortion block with five distinct topologies — each its own circuit, not one voicing knob: Broke (crude digital hard-clip with sample-rate decimation + bit-reduction), Dahnward (scooped high-gain preamp into a sweepable resonant band-pass), Delicate (a Swollen-Pickle-leaning big-muff), Con Molars (a bright clip re-amped through a fixed miked-speaker voicing) and Yo, Hey Adrian! (a high-sustain clip into a switchable ring modulator). Controls: Mode, Drive, Filter, Texture, Level, plus a Ring Mod toggle for the Yo, Hey Adrian! mode. Oversampled; works standalone or in the Hex Chain suite.\n\nAmp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a JCM 800-style Marshall works. Free and open source (GPL-3). Names are original and are not affiliated with any artist or manufacturer.\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "An industrial distortion block with five distinct topologies — each its own circuit, not one voicing knob: Broke (crude digital hard-clip with sample-rate decimation + bit-reduction), Dahnward (scooped high-gain preamp into a sweepable resonant band-pass), Delicate (a Swollen-Pickle-leaning big-muff), Con Molars (a bright clip re-amped through a fixed miked-speaker voicing) and Yo, Hey Adrian! (a high-sustain clip into a switchable ring modulator). Controls: Mode, Drive, Filter, Texture, Level, plus a Ring Mod toggle for the Yo, Hey Adrian! mode. Oversampled; works standalone or in the Hex Chain suite.\n\nAmp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a JCM 800-style Marshall works. Free and open source (GPL-3). Names are original and are not affiliated with any artist or manufacturer."
     },
     "gate": {
       "title": "Hex Chain Gate",
-      "categories": ["Dynamics"],
-      "tags": ["guitar", "noise-gate", "gate", "dynamics", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Dynamics"
+      ],
+      "tags": [
+        "guitar",
+        "noise-gate",
+        "gate",
+        "dynamics",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Low-CPU noise gate for high-gain rigs.",
-      "long": "A clean, low-CPU noise gate with threshold and timing controls — tames hum and hiss in front of or after high-gain amps without chopping your sustain. Runs comfortably on every target including 32-bit Pi.\n\nFree and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A clean, low-CPU noise gate with threshold and timing controls — tames hum and hiss in front of or after high-gain amps without chopping your sustain. Runs comfortably on every target including 32-bit Pi.\n\nFree and open source (GPL-3)."
     },
     "comp": {
       "title": "Hex Chain Compressor",
-      "categories": ["Dynamics"],
-      "tags": ["guitar", "compressor", "dynamics", "sustain", "bass", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Dynamics"
+      ],
+      "tags": [
+        "guitar",
+        "compressor",
+        "dynamics",
+        "sustain",
+        "bass",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Transparent guitar/bass compressor.",
-      "long": "A musical, low-CPU compressor for evening out picking dynamics and adding sustain — equally at home on guitar and bass, in front of a dirt pedal or across a clean signal. Runs on every target including 32-bit Pi.\n\nFree and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A musical, low-CPU compressor for evening out picking dynamics and adding sustain — equally at home on guitar and bass, in front of a dirt pedal or across a clean signal. Runs on every target including 32-bit Pi.\n\nFree and open source (GPL-3)."
     },
     "modfx": {
       "title": "Hex Chain Modulation",
-      "categories": ["Modulator"],
-      "tags": ["guitar", "chorus", "phaser", "flanger", "modulation", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Modulator"
+      ],
+      "tags": [
+        "guitar",
+        "chorus",
+        "phaser",
+        "flanger",
+        "modulation",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Chorus / flanger / phaser in one block.",
-      "long": "A modulation block with chorus, flanger and phaser voicings and a unity-gain wet/dry mix, so engaging it never drops your level. Light on CPU; runs on every target including 32-bit Pi.\n\nFree and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A modulation block with chorus, flanger and phaser voicings and a unity-gain wet/dry mix, so engaging it never drops your level. Light on CPU; runs on every target including 32-bit Pi.\n\nFree and open source (GPL-3)."
     },
     "delay": {
       "title": "Hex Chain Delay",
-      "categories": ["Delay"],
-      "tags": ["guitar", "delay", "echo", "tape-delay", "multi-head", "modulation", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Delay"
+      ],
+      "tags": [
+        "guitar",
+        "delay",
+        "echo",
+        "tape-delay",
+        "multi-head",
+        "modulation",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Digital / tape / multi-head / dual-delay echoes.",
-      "long": "A delay block spanning clean digital, tape (wow/flutter), a multi-head rotary echo and a dual-delay 'Seraph' mode with pattern, ducking and modulation. Unity-gain mix so engaging it never drops your level.\n\nFree and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A delay block spanning clean digital, tape (wow/flutter), a multi-head rotary echo and a dual-delay 'Seraph' mode with pattern, ducking and modulation. Unity-gain mix so engaging it never drops your level.\n\nFree and open source (GPL-3)."
     },
     "reverb": {
       "title": "Hex Chain Reverb",
-      "categories": ["Reverb"],
-      "tags": ["guitar", "reverb", "plate", "ambience", "modulation", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Reverb"
+      ],
+      "tags": [
+        "guitar",
+        "reverb",
+        "plate",
+        "ambience",
+        "modulation",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Plate reverb with unity-gain mix.",
-      "long": "A smooth plate reverb with size, tone and mix and a unity-gain wet/dry blend so engaging it never drops your level — from a tight room to long, lush ambience. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind.\n\nFree and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A smooth plate reverb with size, tone and mix and a unity-gain wet/dry blend so engaging it never drops your level — from a tight room to long, lush ambience. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind.\n\nFree and open source (GPL-3)."
     },
     "utility": {
       "title": "Hex Chain Input Trim",
-      "categories": ["Utility"],
-      "tags": ["guitar", "input-trim", "gain", "phase", "hum-filter", "humbucker", "pickup-voicing", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Utility"
+      ],
+      "tags": [
+        "guitar",
+        "input-trim",
+        "gain",
+        "phase",
+        "hum-filter",
+        "humbucker",
+        "pickup-voicing",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": false,
       "short": "Gain / phase / hum-filter + single-coil→humbucker voicing.",
-      "long": "A small but handy front-of-chain utility: clean gain trim, phase invert, a fixed 60 Hz hum-filter comb, and a single-coil→humbucker voicing. The voicing re-voices a single-coil pickup toward one of three target bridge humbuckers — '59 Bucker (warm vintage PAF), Norse Hammer (hot ceramic) or Modern Flux (active hi-fi) — with an Amount control (0 = bypass). Minimal CPU; runs on every target.\n\nFree and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer.\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "A small but handy front-of-chain utility: clean gain trim, phase invert, a fixed 60 Hz hum-filter comb, and a single-coil→humbucker voicing. The voicing re-voices a single-coil pickup toward one of three target bridge humbuckers — '59 Bucker (warm vintage PAF), Norse Hammer (hot ceramic) or Modern Flux (active hi-fi) — with an Amount control (0 = bypass). Minimal CPU; runs on every target.\n\nFree and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer."
     },
     "hexforge": {
       "title": "Hex Forge",
-      "categories": ["Simulator"],
-      "tags": ["guitar", "amp-simulator", "multi-effect", "all-in-one", "pedalboard", "presets", "neural-amp-modeler", "nam", "pi-stomp", "mod-devices", "lv2", "free", "open-source"],
+      "categories": [
+        "Simulator"
+      ],
+      "tags": [
+        "guitar",
+        "amp-simulator",
+        "multi-effect",
+        "all-in-one",
+        "pedalboard",
+        "presets",
+        "neural-amp-modeler",
+        "nam",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
       "nam": true,
       "short": "Your entire guitar rig — amp, cab, drives and effects — in one reorderable plugin with presets and footswitch recall.",
-      "long": "Hex Forge is the flagship: the whole Hex Chain signal chain in a single plugin. Gate, compressor, drive, amp, cab, modulation, delay, reverb and an input-trim/utility block are all here — each independently bypassable and freely reorderable — so you build a complete board without patching nine separate plugins.\n\nA built-in 8x4 preset/bank engine with A/B/C/D footswitch recall (and hold-both bank chords) lets you switch whole rigs hands-free. The factory pedalboard ships pre-wired, so the pi-Stomp footswitches work the moment you load it — no MIDI setup.\n\nOn 64-bit/desktop targets the amp, drive and cab slots load your own .nam captures; on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).\n\n— Source & docs: https://github.com/rpowell5064/guitar-amp-mod  ·  Support the project: https://buymeacoffee.com/rpowell5064"
+      "long": "Hex Forge is the flagship: the whole Hex Chain signal chain in a single plugin. Gate, compressor, drive, amp, cab, modulation, delay, reverb and an input-trim/utility block are all here — each independently bypassable and freely reorderable — so you build a complete board without patching nine separate plugins.\n\nA built-in 8x4 preset/bank engine with A/B/C/D footswitch recall (and hold-both bank chords) lets you switch whole rigs hands-free. The factory pedalboard ships pre-wired, so the pi-Stomp footswitches work the moment you load it — no MIDI setup.\n\nOn 64-bit/desktop targets the amp, drive and cab slots load your own .nam captures; on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3)."
+    },
+    "wah": {
+      "title": "Hex Chain Wah",
+      "categories": [
+        "Filter"
+      ],
+      "tags": [
+        "guitar",
+        "wah",
+        "auto-wah",
+        "filter",
+        "envelope-filter",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
+      "nam": false,
+      "short": "Auto-wah + fixed cocked-wah filter.",
+      "long": "A wah with two modes: Auto, an envelope filter that sweeps with your picking dynamics, and Fixed, a parked \"cocked-wah\" midrange honk — so it works as a saved preset with no expression pedal needed. Resonance and range controls shape the vowel. Light on CPU; runs on every target including 32-bit Pi.\n\nWorks standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3)."
+    },
+    "octave": {
+      "title": "Hex Chain Octave",
+      "categories": [
+        "Modulator"
+      ],
+      "tags": [
+        "guitar",
+        "octave",
+        "sub-octave",
+        "octaver",
+        "pitch",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
+      "nam": false,
+      "short": "Analog-style sub-octave + octave-up.",
+      "long": "An analog-voiced octaver (OC-2 style): a flip-flop sub-octave plus a rectifier octave-up, blended with dry. Monophonic tracking — clean and singing on single notes, gnarlier on chords. Up, Sub and Dry controls set the blend. Light on CPU; runs on every target including 32-bit Pi.\n\nWorks standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3)."
     }
   }
 }

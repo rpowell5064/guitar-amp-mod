@@ -1,0 +1,71 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix modgui:<http://moddevices.com/ns/modgui#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+<https://rpowell5064.github.io/guitaramp-suite/octave>
+    a lv2:Plugin ;
+    rdfs:label "Hex Chain — Octave" ;
+    doap:name  "Hex Chain Octave" ;
+    mod:label  "Octave" ;
+    mod:brand  "Hex Chain" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 1 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L"
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R"
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "up" ; lv2:name "Octave Up" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "down" ; lv2:name "Sub Octave" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "dry" ; lv2:name "Dry" ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] ;
+
+    modgui:gui [
+        modgui:resourcesDirectory <modgui-octave> ;
+        modgui:iconTemplate <modgui-octave/icon-octave.html> ;
+        modgui:stylesheet <modgui-octave/stylesheet-octave.css> ;
+        modgui:screenshot <modgui-octave/screenshot-octave.png> ;
+        modgui:thumbnail <modgui-octave/thumbnail-octave.png> ;
+        modgui:brand "Hex Chain" ;
+        modgui:label "Octave" ;
+        modgui:model "mod-pedal-guitaramp-octave" ;
+        modgui:port [
+            lv2:index 0 ; lv2:symbol "up"     ; lv2:name "Octave Up"
+        ] , [
+            lv2:index 1 ; lv2:symbol "down"   ; lv2:name "Sub Octave"
+        ] , [
+            lv2:index 2 ; lv2:symbol "dry"    ; lv2:name "Dry"
+        ] , [
+            lv2:index 3 ; lv2:symbol "bypass" ; lv2:name "Bypass"
+        ]
+    ] .

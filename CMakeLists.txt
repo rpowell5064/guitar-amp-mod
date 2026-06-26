@@ -163,6 +163,11 @@ add_lv2_plugin(guitaramp_fuzz lv2/fuzz/fuzz_plugin.cpp)
 # no NAM — NOT in the whole-archive NamCore list below.
 add_lv2_plugin(guitaramp_nail lv2/nail/nail_plugin.cpp)
 
+# Wah + Octave: the two newest Hex Chain blocks as standalone pedals (WahBlock /
+# OctaveBlock — header-only DSP). No NAM.
+add_lv2_plugin(guitaramp_wah    lv2/wah/wah_plugin.cpp)
+add_lv2_plugin(guitaramp_octave lv2/octave/octave_plugin.cpp)
+
 # Hex Forge super-block: hosts every Hex Chain DSP block in one reorderable chain.
 # Embeds the amp (+ drive overdrive), so it joins the whole-archive NamCore list.
 add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
@@ -186,6 +191,7 @@ install(TARGETS
     guitaramp_gate guitaramp_comp guitaramp_drive guitaramp_modfx
     guitaramp_delay guitaramp_reverb guitaramp_amp guitaramp_cab
     guitaramp_utility guitaramp_fuzz guitaramp_nail guitaramp_hexforge
+    guitaramp_wah guitaramp_octave
     DESTINATION ${BUNDLE_DIR}
 )
 
@@ -205,13 +211,15 @@ install(FILES
     lv2/fuzz.ttl
     lv2/nail.ttl
     lv2/hexforge.ttl
+    lv2/wah.ttl
+    lv2/octave.ttl
     DESTINATION ${BUNDLE_DIR}
 )
 
 # MOD-UI modgui resources: one dir per plugin, named exactly as that plugin's
 # modgui:resourcesDirectory in its TTL (modgui-amp, modgui-cab, …). Each carries
 # the stylesheet/icon/script, screenshot/thumbnail/logo, and knob/switch sprites.
-foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge)
+foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge wah octave)
     install(DIRECTORY lv2/modgui-${_m} DESTINATION ${BUNDLE_DIR})
 endforeach()
 

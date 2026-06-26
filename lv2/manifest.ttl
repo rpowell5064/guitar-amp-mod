@@ -60,3 +60,13 @@
     a lv2:Plugin ;
     lv2:binary <guitaramp_hexforge.so> ;
     rdfs:seeAlso <hexforge.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/wah>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_wah.so> ;
+    rdfs:seeAlso <wah.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/octave>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_octave.so> ;
+    rdfs:seeAlso <octave.ttl> .
