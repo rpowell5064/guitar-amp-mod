@@ -374,6 +374,7 @@ def emit_ttl():
     L.append("<%s>" % URI)
     L.append("    a lv2:Plugin, lv2:AmplifierPlugin ;")
     L.append('    rdfs:label "Hex Chain — Hex Forge" ;')
+    L.append('    doap:name  "Hex Forge" ;')
     L.append('    mod:label  "Hex Forge" ;')
     L.append('    mod:brand  "Hex Chain" ;')
     L.append("    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;")
