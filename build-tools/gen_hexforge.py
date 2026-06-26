@@ -377,11 +377,13 @@ def emit_ttl():
     L.append('    doap:name  "Hex Forge" ;')
     L.append('    mod:label  "Hex Forge" ;')
     L.append('    mod:brand  "Hex Chain" ;')
-    L.append("    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;")
+    # http:// (not https://) — the PatchStorage uploader's licenses.json keys the
+    # GPL-3 mapping on the http form; https fails prepare with "Missing license ID".
+    L.append("    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;")
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 13 ;")
+    L.append("    lv2:microVersion 15 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")

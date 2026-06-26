@@ -70,11 +70,11 @@
     doap:name  "Hex Forge" ;
     mod:label  "Hex Forge" ;
     mod:brand  "Hex Chain" ;
-    doap:license <https://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 13 ;
+    lv2:microVersion 15 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
