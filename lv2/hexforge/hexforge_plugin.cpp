@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
 #include "hexforge_ports.h"
+#include "hexforge_factory_presets.h"   // band/song factory presets (Banks 2..6), generated
 
 #include "BiquadFilter.h"
 #include "PickupVoicer.h"
@@ -31,6 +32,7 @@
 #include "CompressorBlock.h"
 #include "OversamplingWrapper.h"
 #include "EHXBigMuff.h"
+#include "Octavia.h"
 #include "ToneBenderMkII.h"
 #include "OverdriveBlock.h"
 #include "AmpBlockExtended.h"
@@ -42,6 +44,8 @@
 #include "DelayBlock.h"
 #include "DelayFactory.h"
 #include "PlateReverbBlock.h"
+#include "WahBlock.h"
+#include "OctaveBlock.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 
@@ -101,17 +105,19 @@ static inline bool isParamPort(int i) {
 }
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
-static const AmpModel kAmpMap[7] = {
+static const AmpModel kAmpMap[8] = {
     AmpModel::FenderDeluxe, AmpModel::MarshallJCM800, AmpModel::EVH5150III,
     AmpModel::SunnModelT,   AmpModel::OrangeRockerverb50,
     AmpModel::NeuralCustom,        // 5 = NAM (placeholder; not built as an algo amp)
     AmpModel::FriedmanBEDeluxe,    // 6 = Beardo BE
+    AmpModel::HiwattDR103,         // 7 = Hiwatt (high-headroom British clean)
 };
-static const int   kCanonical[7] = { 0, 1, 2, 4, 5, 3, 6 };   // PowerAmp default lookup
+static const int   kCanonical[8] = { 0, 1, 2, 4, 5, 3, 6, 0 };   // PowerAmp default lookup ([7] Hiwatt → clean PA)
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
-static const int   kAmpTube[7]   = { 0, 1, 1, 0, 1, 0, 1 };   // 6L6/EL34/EL34/6L6/—/EL34
-static const float kAmpMakeup[7] = { 1.8f, 1.0f, 1.4f, 1.24f, 1.15f, 1.0f, 1.0f };  // [3] Sunn sag-VCA comp; [6] Friedman (tune by ear)
+static constexpr int kHiwattIdx   = 7;
+static const int   kAmpTube[8]   = { 0, 1, 1, 0, 1, 0, 1, 1 };   // 6L6/EL34/EL34/6L6/—/EL34/EL34
+static const float kAmpMakeup[8] = { 2.75f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender + [3] Sunn + [7] Hiwatt boosted: clean models were too quiet vs distorted (measured -8 dB), now level-/perceptually-matched
 
 static const OverdriveType kDriveMap[3] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
@@ -238,14 +244,14 @@ struct OutputBoost {
 };
 
 // ── Movable-block identity ────────────────────────────────────────────────────
-enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_COUNT };
+enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_COUNT };
 static const int kPosPort[B_COUNT] = {
     HF_GT_POS, HF_CP_POS, HF_FZ_POS, HF_DR_POS, HF_AMP_POS,
-    HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS,
+    HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS,
 };
 static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
-    HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE,
+    HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE,
 };
 
 // ── Worker messaging ──────────────────────────────────────────────────────────
@@ -278,6 +284,7 @@ struct HexForge {
     CompressorBlock   comp;
     std::unique_ptr<OversamplingWrapper> fuzzMuff;   // Italian Hero
     std::unique_ptr<OversamplingWrapper> fuzzBender; // Tone Bender MkII
+    std::unique_ptr<OversamplingWrapper> fuzzOctavia;// Octavia (octave-up)
     OverdriveBlock    drive;
     AmpBlockExtended* amp = nullptr;                  // swapped on model change
     PowerAmpProcessor pa;
@@ -285,6 +292,8 @@ struct HexForge {
     ModulationBlock   modfx;
     DelayBlock        delay;
     PlateReverbBlock  reverb;
+    WahBlock          wah;
+    OctaveBlock       octave;
     AutoOutput        autoOut;        // auto-leveling clip protection on the master output
     NamModel*         ampNam = nullptr;   // worker-loaded neural captures
     NamModel*         drNam  = nullptr;
@@ -498,13 +507,20 @@ static_assert(HF_IT_HBAMT == HF_IT_HUMBK + 1 && HF_IT_HBMODEL == HF_IT_HUMBK + 2
 static_assert(HF_DL_DUCKING == HF_DL_PATTERN + 1 && HF_DL_MODDEPTH == HF_DL_PATTERN + 2 &&
               HF_DL_MODRATE == HF_DL_PATTERN + 3 && HF_DL_PATTERN > HF_IT_BOOSTAMT,
               "Seraph delay ports must be contiguous and after the IT block");
+//   * Wah + Octave blocks, 13 contiguous ports [HF_WH_POS..HF_OC_DRY], added v8.
+static_assert(HF_OC_DRY == HF_WH_POS + 12 && HF_WH_POS > HF_DL_MODRATE,
+              "Wah+Octave ports must be contiguous and after the Delay block");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
+    static const float wodef[13] = {10.0f, 0.0f, 0.0f, 0.4f, 0.7f, 0.5f, 0.6f, 0.8f,   // Wah: pos,en,type,freq,depth,sens,q,mix
+                                    11.0f, 0.0f, 0.0f, 0.5f, 1.0f};                     // Octave: pos,en,up,down,dry
     const int itExisting = (srcVer < 4) ? 0 : (srcVer == 4) ? 2 : (srcVer == 5) ? 3 : 5;
     const int itAt = HF_IT_HUMBK + itExisting, itEnd = HF_IT_HUMBK + 5;   // IT gap [itAt,itEnd)
     const bool dlGap = (srcVer < 7);
     const int dlAt = HF_DL_PATTERN, dlEnd = HF_DL_PATTERN + 4;            // DL gap [dlAt,dlEnd)
+    const bool woGap = (srcVer < 8);
+    const int woAt = HF_WH_POS, woEnd = HF_WH_POS + 13;                   // Wah+Octave gap [woAt,woEnd)
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -512,6 +528,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     for (int i = 0; i < HF_N_PORTS; ++i) {
         if      (i >= itAt && i < itEnd)             vals[i] = vdef[i - HF_IT_HUMBK];
         else if (dlGap && i >= dlAt && i < dlEnd)    vals[i] = ddef[i - dlAt];
+        else if (woGap && i >= woAt && i < woEnd)    vals[i] = wodef[i - woAt];
         else                                         vals[i] = old[o++];
     }
 }
@@ -519,7 +536,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(7); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
+    putU32(8); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -539,9 +556,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 7) return false;
+    if (ver < 2 || ver > 8) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 7);   // voicing/boost (v4-6) + Seraph delay (v7) ports
+    const bool needMigrate  = (ver < 8);   // voicing/boost (v4-6) + Seraph delay (v7) + Wah/Octave (v8)
     getU32(np);
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
     for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -556,6 +573,10 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         getPath(ir); getPath(an); getPath(dn); getPath(cn);
         if (b<kBanks && s<kSlots) {
             Preset& pr = p->presets[b][s];
+            // Don't let an empty backup slot wipe a factory-seeded preset: this is how
+            // new factory presets (e.g. the Banks 2..6 band/song set) reach users whose
+            // saved store predates them. A user's own saved preset (used=1) still wins.
+            if (used == 0 && pr.used) continue;
             pr.used = (used != 0);
             std::memcpy(pr.name, name, sizeof(pr.name)); pr.name[sizeof(pr.name)-1]='\0';
             std::memcpy(pr.vals, vals, sizeof(pr.vals));
@@ -687,11 +708,27 @@ static const float kFactoryVals[kSlots][HF_N_PORTS] = {
 { 0, 0, 0, 0, 0, 0, 0, -20.58, 0, 1, 0, 1, 1, 1, 1, -61.6, 0.1, 67.5, 238.85, 6, 2, 1, 0, -18, 0, 2.775, 6.175, 3, 0.55, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.0625, 0.6, 0.7175, 1, 0.3, 5, 1, 4, 0.6075, 0.45, 0.7475, 0.7675, 0.6025, 0.47, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 9470, 1, 7, 1, 0, 0.12, 0.6125, 0.5, 0.5, 8, 1, 0, 445.777, 0.31605, 0.17, 0.5, 0.003, 0.001, 10, 9, 1, 10, 1.5, 0.3, 0, 0.01, 0.1475, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 static void psInitDefaults(HexForge* p) {
+    // Bank 1 (index 0): the stock Clean/Crunch/Rhythm/Lead. kFactoryVals were captured
+    // as v3-layout positional rows (before the IT voicing/boost + Seraph delay ports
+    // existed), so run them through the same migration the backup loader uses to land
+    // them on the current v7 layout — otherwise a fresh instance loads them shifted.
     for (int s = 0; s < kSlots; ++s) {
         Preset& pr = p->presets[0][s];
         pr.used = true;
         std::snprintf(pr.name, sizeof(pr.name), "%s", kFactoryName[s]);
         std::memcpy(pr.vals, kFactoryVals[s], sizeof(pr.vals));
+        migratePorts(pr.vals, 3);
+        pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
+    }
+    // Band/song presets (Banks 3..7; Bank 2 left free for the user) — generated in
+    // the current v7 layout, so they seed directly without migration.
+    for (int i = 0; i < kFactoryExtraCount; ++i) {
+        const HfFactoryPreset& fp = kFactoryExtra[i];
+        if (fp.bank < 0 || fp.bank >= kBanks || fp.slot < 0 || fp.slot >= kSlots) continue;
+        Preset& pr = p->presets[fp.bank][fp.slot];
+        pr.used = true;
+        std::snprintf(pr.name, sizeof(pr.name), "%s", fp.name);
+        std::memcpy(pr.vals, fp.vals, sizeof(pr.vals));
         pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
     }
     p->curBank = 0; p->curSlot = 0;
@@ -718,9 +755,11 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     // Build fuzz models directly (NOT via OverdriveFactory) — same as the fuzz plugin.
     p->fuzzMuff   = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
     p->fuzzBender = std::make_unique<OversamplingWrapper>(std::make_unique<ToneBenderMkII>());
-    if (!p->fuzzMuff || !p->fuzzBender) { delete p; return nullptr; }
+    p->fuzzOctavia= std::make_unique<OversamplingWrapper>(std::make_unique<Octavia>());
+    if (!p->fuzzMuff || !p->fuzzBender || !p->fuzzOctavia) { delete p; return nullptr; }
     p->fuzzMuff->prepare(rate, kMaxBlock, 1);
     p->fuzzBender->prepare(rate, kMaxBlock, 1);
+    p->fuzzOctavia->prepare(rate, kMaxBlock, 1);
     p->fuzzMuff->setParameter("era", 2.0f);
     p->drive.prepare(rate, kMaxBlock, 1);
     p->drive.setType(kDriveMap[0]);
@@ -736,6 +775,8 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->delay.prepare(rate, kMaxBlock, 2);
     p->delay.setType(DelayFactory::fromIndex(0));
     p->reverb.prepare(rate, kMaxBlock, 2);
+    p->wah.prepare(rate, kMaxBlock, 2);
+    p->octave.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
     psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)
     hfLoadBackup(p);     // recover the user's full preset store across delete/re-add + updates
@@ -780,7 +821,7 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
-    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kFriedmanIdx)]);
+    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kHiwattIdx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
@@ -1006,8 +1047,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->comp.setParameter("knee",      *p->ports[HF_CP_KNEE]);
     p->comp.setParameter("makeup",    *p->ports[HF_CP_MAKEUP]);
     // Fuzz (which pedal chosen at process time)
-    const int fuzzPedal = clampi(*p->ports[HF_FZ_PEDAL], 0, 1);
-    p->fuzzMuff->setBypass(false); p->fuzzBender->setBypass(false);
+    const int fuzzPedal = clampi(*p->ports[HF_FZ_PEDAL], 0, 2);
+    p->fuzzMuff->setBypass(false); p->fuzzBender->setBypass(false); p->fuzzOctavia->setBypass(false);
     p->fuzzMuff->setParameter("era",   *p->ports[HF_FZ_MODE]);
     p->fuzzMuff->setParameter("drive", *p->ports[HF_FZ_SUSTAIN]);
     p->fuzzMuff->setParameter("tone",  *p->ports[HF_FZ_TONE]);
@@ -1017,6 +1058,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->fuzzBender->setParameter("bias",      *p->ports[HF_FZ_BIAS]);
     p->fuzzBender->setParameter("inputtrim", *p->ports[HF_FZ_INPUTTRIM]);
     p->fuzzBender->setParameter("getemp",    *p->ports[HF_FZ_GETEMP]);
+    p->fuzzOctavia->setParameter("drive", *p->ports[HF_FZ_SUSTAIN]);
+    p->fuzzOctavia->setParameter("tone",  *p->ports[HF_FZ_TONE]);
+    p->fuzzOctavia->setParameter("level", *p->ports[HF_FZ_VOLUME]);
     // Drive
     p->drive.setBypass(false);
     const int driveModel = clampi(*p->ports[HF_DR_MODEL], 0, kDrNamIdx);
@@ -1027,10 +1071,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kFriedmanIdx);
-    const int ampAlgo  = (ampModel <= 4) ? ampModel
-                       : (ampModel == kFriedmanIdx ? 6 : 1);   // NAM(5)→1 safe, Beardo BE(6)→6
-    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx);
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kHiwattIdx);
+    const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo BE, 7=Hiwatt identity
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx);
     if (ampIsAlgo && ampModel != p->lastAmpModel) {   // rebuild only for algo models
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
@@ -1100,7 +1143,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("mix",       *p->ports[HF_CAB_MIX]);
     // Modfx
     p->modfx.setBypass(false);
-    const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 1);
+    const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 5);
     if (modfxType != p->lastModfxType) { p->lastModfxType = modfxType; p->modfx.setType(ModulationFactory::fromIndex(modfxType)); }
     p->modfx.setParameter("rate",        *p->ports[HF_MD_RATE]);
     p->modfx.setParameter("depth",       *p->ports[HF_MD_DEPTH]);
@@ -1129,12 +1172,25 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->reverb.setParameter("modDepth",   *p->ports[HF_RV_MODDEPTH]);
     p->reverb.setParameter("modRate",    *p->ports[HF_RV_MODRATE]);
     p->reverb.setParameter("mix",        *p->ports[HF_RV_MIX]);
+    // Wah
+    p->wah.setBypass(false);
+    p->wah.setParameter("type",  *p->ports[HF_WH_TYPE]);
+    p->wah.setParameter("freq",  *p->ports[HF_WH_FREQ]);
+    p->wah.setParameter("depth", *p->ports[HF_WH_DEPTH]);
+    p->wah.setParameter("sens",  *p->ports[HF_WH_SENS]);
+    p->wah.setParameter("q",     *p->ports[HF_WH_Q]);
+    p->wah.setParameter("mix",   *p->ports[HF_WH_MIX]);
+    // Octave
+    p->octave.setBypass(false);
+    p->octave.setParameter("up",   *p->ports[HF_OC_UP]);
+    p->octave.setParameter("down", *p->ports[HF_OC_DOWN]);
+    p->octave.setParameter("dry",  *p->ports[HF_OC_DRY]);
 
     // ── Resolve chain order (Input Trim locked first; rest sorted by pos) ──
     int order[B_COUNT];
     for (int i=0;i<B_COUNT;++i) order[i] = i;
     int posv[B_COUNT];
-    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 9);
+    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 11);
     // stable selection sort by (pos, canonical index)
     for (int a=0;a<B_COUNT-1;++a) {
         int best=a;
@@ -1171,7 +1227,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             switch (id) {
                 case B_GATE:  runMono(p->gate, L, R, len, p->mono, stereo); break;
                 case B_COMP:  runMono(p->comp, L, R, len, p->mono, stereo); break;
-                case B_FUZZ:  runMono(fuzzPedal==0 ? *p->fuzzMuff : *p->fuzzBender, L, R, len, p->mono, stereo); break;
+                case B_FUZZ:  runMono(fuzzPedal==0 ? *p->fuzzMuff : (fuzzPedal==1 ? *p->fuzzBender : *p->fuzzOctavia), L, R, len, p->mono, stereo); break;
                 case B_DRIVE:
                     if (driveModel == kDrNamIdx && p->drNam && p->drNam->isLoaded()) {
                         // Neural drive: mono; Level (x2) + Mix dry/wet.
@@ -1213,6 +1269,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 case B_MODFX:  runStereo(p->modfx,  L, R, len, stereo); break;
                 case B_DELAY:  runStereo(p->delay,  L, R, len, stereo); break;
                 case B_REVERB: runStereo(p->reverb, L, R, len, stereo); break;
+                case B_WAH:    runMono(p->wah, L, R, len, p->mono, stereo); break;
+                case B_OCTAVE: runMono(p->octave, L, R, len, p->mono, stereo); break;
             }
         }
         // If nothing ever spread to stereo, R already mirrors L (mono blocks wrote both;
@@ -1277,7 +1335,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(7);                  // version (7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(8);                  // version (8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1347,9 +1405,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 7) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 8) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 7);      // voicing/boost (v4-6) + Seraph delay (v7) ports
+        const bool needMigrate  = (ver < 8);      // voicing/boost (v4-6) + Seraph delay (v7) + Wah/Octave (v8)
         getU32(np);                                 // param-port count at save time
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -1364,6 +1422,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             getPath(ir); getPath(an); getPath(dn); getPath(cn);
             if (b<kBanks && s<kSlots) {     // ignore extras if a future build grows the grid
                 Preset& pr = p->presets[b][s];
+                if (used == 0 && pr.used) continue;   // keep factory-seeded preset in an empty restored slot
                 pr.used = (used != 0);
                 std::memcpy(pr.name, name, sizeof(pr.name)); pr.name[sizeof(pr.name)-1]='\0';
                 std::memcpy(pr.vals, vals, sizeof(pr.vals));

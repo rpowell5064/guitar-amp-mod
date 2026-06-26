@@ -13,7 +13,8 @@ enum class AmpModel {
     NeuralCustom,      // User-loaded NAM model
     SunnModelT,        // High-headroom clean/dirty, 6L6GC
     OrangeRockerverb50,// EL34 British, clean+dirty channels
-    FriedmanBEDeluxe   // Hot-rodded Marshall, 3-channel (Clean/BE/HBE), EL34
+    FriedmanBEDeluxe,  // Hot-rodded Marshall, 3-channel (Clean/BE/HBE), EL34
+    HiwattDR103        // High-headroom British clean (Gilmour platform), EL34
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

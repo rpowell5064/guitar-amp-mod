@@ -19,9 +19,10 @@ public:
         FenderDeluxe       = 3,
         EVH5150            = 4,
         FriedmanBEDeluxe   = 5,
+        HiwattDR103        = 6,
     };
 
-    static constexpr int kNumModels = 6;
+    static constexpr int kNumModels = 7;
 
     // Returns ownership of a newly constructed model. Never returns null;
     // unknown IDs fall back to SunnModelT.

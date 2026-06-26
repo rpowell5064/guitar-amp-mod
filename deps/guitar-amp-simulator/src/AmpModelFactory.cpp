@@ -5,6 +5,7 @@
 #include "FenderDeluxeModel.h"
 #include "EVH5150Model.h"
 #include "FriedmanBEDeluxe.h"
+#include "HiwattDR103Model.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -14,6 +15,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::FenderDeluxe:        return std::make_unique<FenderDeluxeModel>();
         case ModelID::EVH5150:             return std::make_unique<EVH5150Model>();
         case ModelID::FriedmanBEDeluxe:    return std::make_unique<FriedmanBEDeluxe>();
+        case ModelID::HiwattDR103:         return std::make_unique<HiwattDR103Model>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -35,6 +37,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::FenderDeluxe:        return "Fender Deluxe Reverb";
         case ModelID::EVH5150:             return "EVH 5150 III";
         case ModelID::FriedmanBEDeluxe:    return "Beardo BE";
+        case ModelID::HiwattDR103:         return "Hiwatt DR103";
         default:                           return "Unknown";
     }
 }
@@ -47,6 +50,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::FenderDeluxe:        return 0;  // 6L6GC / 6V6
         case ModelID::EVH5150:             return 1;  // EL34
         case ModelID::FriedmanBEDeluxe:    return 1;  // EL34
+        case ModelID::HiwattDR103:         return 1;  // EL34
         default:                           return 1;
     }
 }
@@ -59,6 +63,7 @@ const char* const* AmpModelFactory::getAllModelNames() noexcept {
         "Fender Deluxe Reverb",
         "EVH 5150 III",
         "Beardo BE",
+        "Hiwatt DR103",
         nullptr
     };
     return kNames;
@@ -71,5 +76,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Fender Deluxe Reverb")      return ModelID::FenderDeluxe;
     if (name == "EVH 5150 III")              return ModelID::EVH5150;
     if (name == "Beardo BE")                 return ModelID::FriedmanBEDeluxe;
+    if (name == "Hiwatt DR103")              return ModelID::HiwattDR103;
     return ModelID::SunnModelT;
 }

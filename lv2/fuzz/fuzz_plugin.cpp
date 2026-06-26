@@ -2,6 +2,7 @@
 #include "OversamplingWrapper.h"
 #include "EHXBigMuff.h"
 #include "ToneBenderMkII.h"
+#include "Octavia.h"
 #include <memory>
 #include <cstring>
 #include <new>
@@ -38,6 +39,7 @@ enum FuzzPorts {
 struct FuzzPlugin {
     std::unique_ptr<OversamplingWrapper> ih;   // Italian Hero (Muff)
     std::unique_ptr<OversamplingWrapper> tb;   // Tone Bender MkII
+    std::unique_ptr<OversamplingWrapper> oc;   // Octavia (octave-up fuzz)
     float* ports[P_N_PORTS] = {};
 };
 
@@ -49,9 +51,11 @@ static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
     // zero NAM code — fuzz does not link NamCore, and the factory references it.
     p->ih = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
     p->tb = std::make_unique<OversamplingWrapper>(std::make_unique<ToneBenderMkII>());
-    if (!p->ih || !p->tb) { delete p; return nullptr; }
+    p->oc = std::make_unique<OversamplingWrapper>(std::make_unique<Octavia>());
+    if (!p->ih || !p->tb || !p->oc) { delete p; return nullptr; }
     p->ih->prepare(rate, 512, 1);
     p->tb->prepare(rate, 512, 1);
+    p->oc->prepare(rate, 512, 1);
     p->ih->setParameter("era", 2.0f);   // default Italian Hero variant: Gotham
     return p;
 }
@@ -81,7 +85,7 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
         p->ih->setParameter("tone",  *p->ports[P_TONE]);
         p->ih->setParameter("level", *p->ports[P_VOLUME]);
         p->ih->process(ins, outs, static_cast<int>(n), 1);
-    } else {
+    } else if (pedal == 1) {
         // ── Tone Bender MkII ──
         p->tb->setParameter("attack",    *p->ports[P_SUSTAIN]);
         p->tb->setParameter("level",     *p->ports[P_VOLUME]);
@@ -89,6 +93,12 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
         p->tb->setParameter("inputtrim", *p->ports[P_TRIM]);
         p->tb->setParameter("getemp",    *p->ports[P_TEMP]);
         p->tb->process(ins, outs, static_cast<int>(n), 1);
+    } else {
+        // ── Octavia (octave-up fuzz) ──
+        p->oc->setParameter("drive", *p->ports[P_SUSTAIN]);
+        p->oc->setParameter("tone",  *p->ports[P_TONE]);
+        p->oc->setParameter("level", *p->ports[P_VOLUME]);
+        p->oc->process(ins, outs, static_cast<int>(n), 1);
     }
 }
 

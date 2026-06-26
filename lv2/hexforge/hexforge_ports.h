@@ -111,6 +111,19 @@ enum HexForgePort {
     HF_RV_MODDEPTH,
     HF_RV_MODRATE,
     HF_RV_MIX,
+    HF_WH_POS,
+    HF_WH_ENABLE,
+    HF_WH_TYPE,
+    HF_WH_FREQ,
+    HF_WH_DEPTH,
+    HF_WH_SENS,
+    HF_WH_Q,
+    HF_WH_MIX,
+    HF_OC_POS,
+    HF_OC_ENABLE,
+    HF_OC_UP,
+    HF_OC_DOWN,
+    HF_OC_DRY,
     HF_AMP_FR_CHANNEL,
     HF_AMP_FR_FAT,
     HF_AMP_FR_C45,
@@ -133,7 +146,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 135, "port count drift");
+static_assert(HF_N_PORTS == 148, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -155,8 +168,10 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "dl_time", "dl_feedback", "dl_mix", "dl_width", "dl_wow", "dl_flutter",
     "dl_heads", "dl_pattern", "dl_ducking", "dl_moddepth", "dl_modrate", "rv_pos",
     "rv_enable", "rv_predelay", "rv_decay", "rv_damping", "rv_moddepth", "rv_modrate",
-    "rv_mix", "amp_fr_channel", "amp_fr_fat", "amp_fr_c45", "amp_fr_sat", "sw_a",
-    "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save",
-    "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank",
-    "ps_slot", "out_auto", "midi_in",
+    "rv_mix", "wh_pos", "wh_enable", "wh_type", "wh_freq", "wh_depth",
+    "wh_sens", "wh_q", "wh_mix", "oc_pos", "oc_enable", "oc_up",
+    "oc_down", "oc_dry", "amp_fr_channel", "amp_fr_fat", "amp_fr_c45", "amp_fr_sat",
+    "sw_a", "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn",
+    "ps_save", "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto",
+    "ps_bank", "ps_slot", "out_auto", "midi_in",
 };

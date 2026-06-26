@@ -5,6 +5,10 @@
 enum class ModulationType {
     CE2_Chorus = 0,
     UniVibe    = 1,
+    Phaser     = 2,
+    Flanger    = 3,
+    Tremolo    = 4,
+    Rotary     = 5,
 };
 
 class ModulationFactory {

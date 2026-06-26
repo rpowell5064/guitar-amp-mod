@@ -63,7 +63,7 @@ CP = [
     ("makeup",  "Makeup",    "f", 0, 10, 0, None),
 ]
 FZ = [
-    ("pedal",     "Pedal",      "e", 0, 1, 0, [("Italian Hero",0),("I Know It",1)]),
+    ("pedal",     "Pedal",      "e", 0, 2, 0, [("Italian Hero",0),("I Know It",1),("Octavia",2)]),
     ("mode",      "Variant",    "e", 0, 5, 2, [("Delta",0),("Ovis",1),("Gotham",2),("Cold War",3),("Red Bear",4),("Boutique",5)]),
     ("sustain",   "Sustain",    "f", 0, 1, 0.55, None),
     ("tone",      "Tone",       "f", 0, 1, 0.5, None),
@@ -81,7 +81,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 6, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6)]),
+    ("model",         "Model",        "e", 0, 7, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hiwatt",7)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -115,7 +115,7 @@ CAB = [
     ("mix",     "Mix",      "f", 0, 1, 1.0, None),
 ]
 MD = [
-    ("type",  "Type",  "e", 0, 1, 0, [("Lush-2",0),("Uni-Verse",1)]),
+    ("type",  "Type",  "e", 0, 5, 0, [("Lush-2",0),("Uni-Verse",1),("Phaser",2),("Flanger",3),("Tremolo",4),("Rotary",5)]),
     ("rate",  "Rate",  "f", 0, 1, 0.5, None),
     ("depth", "Depth", "f", 0, 1, 0.5, None),
     ("mix",   "Mix",   "f", 0, 1, 0.5, None),
@@ -148,6 +148,19 @@ RV = [
     ("modrate",  "Mod Rate",  "f", 0.01, 5, 0.8, None),
     ("mix",      "Mix",       "f", 0, 1, 0.15, None),
 ]
+WAH = [
+    ("type",  "Mode",      "e", 0, 1, 0, [("Auto",0),("Fixed",1)]),
+    ("freq",  "Freq",      "f", 0, 1, 0.4, None),
+    ("depth", "Range",     "f", 0, 1, 0.7, None),
+    ("sens",  "Sens",      "f", 0, 1, 0.5, None),
+    ("q",     "Resonance", "f", 0, 1, 0.6, None),
+    ("mix",   "Mix",       "f", 0, 1, 0.8, None),
+]
+OCTAVE = [
+    ("up",   "Octave Up",  "f", 0, 1, 0.0, None),
+    ("down", "Sub Octave", "f", 0, 1, 0.5, None),
+    ("dry",  "Dry",        "f", 0, 1, 1.0, None),
+]
 
 # Movable blocks in canonical default order. (prefix, Title, params, default-pos)
 MOVABLE = [
@@ -160,6 +173,8 @@ MOVABLE = [
     ("md",  "Modulation", MD,  7),
     ("dl",  "Delay",      DL,  8),
     ("rv",  "Reverb",     RV,  9),
+    ("wh",  "Wah",        WAH, 10),
+    ("oc",  "Octave",     OCTAVE, 11),
 ]
 
 UNIT = {"db": "units:db", "ms": "units:ms", "hz": "units:hz"}
@@ -192,12 +207,12 @@ for suf, nm, kind, mn, mx, df, sc in IT:
 # movable blocks: pos, enable, params
 # Fresh Hex Forge starts with a usable core chain engaged: Input Trim, Gate, Amp,
 # Cabinet, Delay and Reverb. Comp, Fuzz, Drive and Mod start bypassed.
-OFF_BY_DEFAULT = {"cp", "fz", "dr", "md"}   # off: Comp, Fuzz, Drive, Mod
+OFF_BY_DEFAULT = {"cp", "fz", "dr", "md", "wh", "oc"}   # off: Comp, Fuzz, Drive, Mod, Wah, Octave
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
-    posscale = [(str(k), k) for k in range(1, 10)]   # 1..9 dropdown for reordering
+    posscale = [(str(k), k) for k in range(1, 12)]   # 1..11 dropdown for reordering
     en_def = 0 if pfx in OFF_BY_DEFAULT else 1
-    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 9, dpos, posscale, "Slot", hidden=True))
+    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 11, dpos, posscale, "Slot", hidden=True))
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
@@ -437,7 +452,7 @@ def emit_ttl():
     return "\n".join(L)
 
 # ── Emit the modgui icon HTML (10 logo-free tiles) ────────────────────────────
-TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV}
+TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE}
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
@@ -452,6 +467,8 @@ TILES = [
     ("md",  "Mod FX",     "#a56eeb", ["type","rate","depth","mix"]),                          # modfx
     ("dl",  "Delay",      "#3cc8be", ["type","time","feedback","mix"]),                       # delay
     ("rv",  "Reverb",     "#5f73e1", ["decay","damping","mix"]),                              # reverb
+    ("wh",  "Wah",        "#c46eff", ["type","freq","depth","sens","q","mix"]),               # wah
+    ("oc",  "Octave",     "#5fd0a0", ["up","down","dry"]),                                    # octave
 ]
 
 # Conditional-visibility classes: a control is shown/hidden by script-hexforge.js
@@ -471,8 +488,9 @@ COND = {
     "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
     "amp_pamp_tube":"c-amp-paman", "amp_pamp_presence":"c-amp-paman", "amp_pamp_depth":"c-amp-paman",
     "amp_pamp_sag":"c-amp-paman", "amp_pamp_master":"c-amp-paman", "amp_pamp_nfb":"c-amp-paman",
-    # fuzz — Italian Hero(0) vs I know it(1)
-    "fz_mode":"c-fz-ih", "fz_tone":"c-fz-ih",
+    # fuzz — Variant only on Italian Hero(0); Tone shared by Italian Hero + Octavia(2)
+    # (always shown — Tone Bender just ignores it); Bias/Trim/Temp only on I Know It(1).
+    "fz_mode":"c-fz-ih",
     "fz_bias":"c-fz-tb", "fz_inputtrim":"c-fz-tb", "fz_getemp":"c-fz-tb",
     # drive — Octave only on New Dawn (model 1)
     "dr_octave":"c-dr-oct",
