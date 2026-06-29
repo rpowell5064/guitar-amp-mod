@@ -128,6 +128,17 @@ enum HexForgePort {
     HF_AMP_FR_FAT,
     HF_AMP_FR_C45,
     HF_AMP_FR_SAT,
+    HF_GT_BYPASS,
+    HF_CP_BYPASS,
+    HF_FZ_BYPASS,
+    HF_DR_BYPASS,
+    HF_AMP_BYPASS,
+    HF_CAB_BYPASS,
+    HF_MD_BYPASS,
+    HF_DL_BYPASS,
+    HF_RV_BYPASS,
+    HF_WH_BYPASS,
+    HF_OC_BYPASS,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -143,10 +154,12 @@ enum HexForgePort {
     HF_PS_BANK,
     HF_PS_SLOT,
     HF_OUT_AUTO,
+    HF_IN_METER,
+    HF_OUT_METER,
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 148, "port count drift");
+static_assert(HF_N_PORTS == 161, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -171,7 +184,9 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "rv_mix", "wh_pos", "wh_enable", "wh_type", "wh_freq", "wh_depth",
     "wh_sens", "wh_q", "wh_mix", "oc_pos", "oc_enable", "oc_up",
     "oc_down", "oc_dry", "amp_fr_channel", "amp_fr_fat", "amp_fr_c45", "amp_fr_sat",
-    "sw_a", "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn",
-    "ps_save", "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto",
-    "ps_bank", "ps_slot", "out_auto", "midi_in",
+    "gt_bypass", "cp_bypass", "fz_bypass", "dr_bypass", "amp_bypass", "cab_bypass",
+    "md_bypass", "dl_bypass", "rv_bypass", "wh_bypass", "oc_bypass", "sw_a",
+    "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save",
+    "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank",
+    "ps_slot", "out_auto", "in_meter", "out_meter", "midi_in",
 };

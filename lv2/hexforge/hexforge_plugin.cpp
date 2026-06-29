@@ -117,7 +117,7 @@ static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;
 static const int   kAmpTube[8]   = { 0, 1, 1, 0, 1, 0, 1, 1 };   // 6L6/EL34/EL34/6L6/—/EL34/EL34
-static const float kAmpMakeup[8] = { 2.75f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender + [3] Sunn + [7] Hiwatt boosted: clean models were too quiet vs distorted (measured -8 dB), now level-/perceptually-matched
+static const float kAmpMakeup[8] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender/clean +1.6dB kept; [3] Sunn back to 3.0 (the +2.5dB makeup over-drove the master limiter — Sunn loudness now comes from the preset master Output instead); [7] Hiwatt
 
 static const OverdriveType kDriveMap[3] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
@@ -253,6 +253,13 @@ static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
     HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE,
 };
+// enable = chain membership (1 = in chain, 0 = removed/palette); bypass = active(0)/
+// bypassed(1). A block runs iff enable==1 && bypass==0. Bypassed blocks stay in the chain
+// (greyed in the UI) but pass dry, keeping their settings — for live A/B.
+static const int kBypassPort[B_COUNT] = {
+    HF_GT_BYPASS, HF_CP_BYPASS, HF_FZ_BYPASS, HF_DR_BYPASS, HF_AMP_BYPASS,
+    HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS,
+};
 
 // ── Worker messaging ──────────────────────────────────────────────────────────
 enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE };
@@ -269,7 +276,7 @@ struct URIs {
     LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
     LV2_URID ir_file, amp_nam, dr_nam, cab_nam;
-    LV2_URID ps_name, ps_index, ps_apply, preset_blob;
+    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters;
     LV2_URID midi_MidiEvent;
 };
 
@@ -322,6 +329,9 @@ struct HexForge {
     float  swPrev[4]  = {0,0,0,0};      // sw_a..sw_d edge state
     float  cmdPrev[7] = {0,0,0,0,0,0,0}; // bank_up/dn, save, move_up/dn, backup, restore edge state
     int    lastGoto   = -1;             // last ps_goto target serviced
+    float  meterIn = 0.0f, meterOut = 0.0f;  // smoothed peak level meters (-> in_meter/out_meter)
+    float  meterSentIn = -1.0f, meterSentOut = -1.0f;  // last values pushed to UI (deadband)
+    uint32_t meterFrames = 0;                // throttle for the #meters notify (UI)
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -414,6 +424,7 @@ static void mapURIs(HexForge* p) {
     p->uris.ps_index      = m->map(m->handle, HEXFORGE_URI "#ps_index");
     p->uris.ps_apply      = m->map(m->handle, HEXFORGE_URI "#ps_apply");
     p->uris.preset_blob   = m->map(m->handle, HEXFORGE_URI "#preset_blob");
+    p->uris.meters        = m->map(m->handle, HEXFORGE_URI "#meters");
     p->uris.midi_MidiEvent= m->map(m->handle, LV2_MIDI_MidiEvent_URI);
 }
 static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
@@ -510,6 +521,9 @@ static_assert(HF_DL_DUCKING == HF_DL_PATTERN + 1 && HF_DL_MODDEPTH == HF_DL_PATT
 //   * Wah + Octave blocks, 13 contiguous ports [HF_WH_POS..HF_OC_DRY], added v8.
 static_assert(HF_OC_DRY == HF_WH_POS + 12 && HF_WH_POS > HF_DL_MODRATE,
               "Wah+Octave ports must be contiguous and after the Delay block");
+//   * Per-block bypass, 11 contiguous toggles [HF_GT_BYPASS..HF_OC_BYPASS], added v9.
+static_assert(HF_OC_BYPASS == HF_GT_BYPASS + 10 && HF_GT_BYPASS > HF_OC_DRY && HF_OC_BYPASS < HF_SW_A,
+              "bypass ports must be contiguous, after the param blocks and before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -521,6 +535,11 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     const int dlAt = HF_DL_PATTERN, dlEnd = HF_DL_PATTERN + 4;            // DL gap [dlAt,dlEnd)
     const bool woGap = (srcVer < 8);
     const int woAt = HF_WH_POS, woEnd = HF_WH_POS + 13;                   // Wah+Octave gap [woAt,woEnd)
+    // v9 inserted 11 per-block bypass toggles [HF_GT_BYPASS..HF_OC_BYPASS] BEFORE the command
+    // ports, so a v8 blob's command/status values shift up by 11; the new bypass slots default
+    // to 0 (active). This is a positional insert (not a trailing append) — the gap is required.
+    const bool byGap = (srcVer < 9);
+    const int byAt = HF_GT_BYPASS, byEnd = HF_GT_BYPASS + B_COUNT;        // bypass gap [byAt,byEnd), default 0
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -529,6 +548,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         if      (i >= itAt && i < itEnd)             vals[i] = vdef[i - HF_IT_HUMBK];
         else if (dlGap && i >= dlAt && i < dlEnd)    vals[i] = ddef[i - dlAt];
         else if (woGap && i >= woAt && i < woEnd)    vals[i] = wodef[i - woAt];
+        else if (byGap && i >= byAt && i < byEnd)    vals[i] = 0.0f;       // new bypass = active
         else                                         vals[i] = old[o++];
     }
 }
@@ -536,7 +556,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(8); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
+    putU32(9); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);   // v9: + per-block bypass
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -556,9 +576,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 8) return false;
+    if (ver < 2 || ver > 9) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 8);   // voicing/boost (v4-6) + Seraph delay (v7) + Wah/Octave (v8)
+    const bool needMigrate  = (ver < 9);   // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9)
     getU32(np);
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
     for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -698,8 +718,8 @@ static void psMoveDelta(HexForge* p, int d) {
 // overwrites these from saved State, so a user's own presets always win.
 static const char* const kFactoryName[kSlots] = { "Clean", "Crunch", "Rhythm", "Lead" };
 static const float kFactoryVals[kSlots][HF_N_PORTS] = {
-// Clean
-{ 0, 0, 0, 0, 0, 0, 0, -20.04, 0, 1, 0, 0, 1, 1, 0, -60, 5, 50, 100, 6, 2, 0, 0, -20, 1, 5, 5, 3, 0, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.19, 0.5, 0.58, 1, 0.3, 5, 1, 0, 0.5775, 0.615, 0.635, 0.605, 0.5, 0.7525, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 16000, 1, 7, 0, 0, 0.5, 0.5, 0.5, 0.5, 8, 1, 2, 250, 0.21315, 0.3, 0.5, 0.003, 0.001, 3, 9, 1, 10, 1.5, 0.3, 0, 0.01, 0.335, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
+// Clean  (out_level -24.0 dB: user's hand-dialed master Output, 2026-06-29)
+{ 0, 0, 0, 0, 0, 0, 0, -24, 0, 1, 0, 0, 1, 1, 0, -60, 5, 50, 100, 6, 2, 0, 0, -20, 1, 5, 5, 3, 0, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.19, 0.5, 0.58, 1, 0.3, 5, 1, 0, 0.5775, 0.615, 0.635, 0.605, 0.5, 0.7525, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 16000, 1, 7, 0, 0, 0.5, 0.5, 0.5, 0.5, 8, 1, 2, 250, 0.21315, 0.3, 0.5, 0.003, 0.001, 3, 9, 1, 10, 1.5, 0.3, 0, 0.01, 0.335, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 // Crunch
 { 0, 0, 0, 0, 0, 0, 0, -20.58, 0, 1, 0, 0, 1, 1, 1, -60, 5, 50, 100, 6, 2, 1, 0, -20, 1, 5, 5, 3, 0, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 0, 0, 0.145, 0.555, 0.6525, 1, 0.3, 5, 1, 1, 0.2275, 0.365, 0.6825, 0.66, 0.3975, 0.495, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 8660, 1, 7, 0, 0, 0.5, 0.5, 0.5, 0.5, 8, 0, 0, 250, 0.4, 0.3, 0.5, 0.003, 0.001, 10, 9, 1, 10, 1.5, 0.3, 0.5, 0.8, 0.3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 // Rhythm
@@ -1198,8 +1218,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (posv[order[b]] < posv[order[best]]) best=b;
         if (best!=a) { int t=order[a]; order[a]=order[best]; order[best]=t; }
     }
-    bool enabled[B_COUNT];
-    for (int i=0;i<B_COUNT;++i) enabled[i] = (*p->ports[kEnablePort[i]] > 0.5f);
+    bool enabled[B_COUNT];   // "run this block": in the chain AND not bypassed
+    for (int i=0;i<B_COUNT;++i)
+        enabled[i] = (*p->ports[kEnablePort[i]] > 0.5f) && (*p->ports[kBypassPort[i]] <= 0.5f);
 
     // ── Process in <= kMaxBlock chunks; each chunk runs the whole chain ──
     for (uint32_t off=0; off<n; off+=kMaxBlock) {
@@ -1296,6 +1317,38 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (p->ports[HF_CLIP]) *p->ports[HF_CLIP] = (p->clipHold > 0) ? 1.0f : 0.0f;
     if (p->clipHold > 0)   p->clipHold -= static_cast<int>(n);
 
+    // ── Input / output level meters: smoothed peak, mapped -60..0 dB -> 0..1 ──
+    float ipk = 0.0f;
+    if (inL && inR) for (uint32_t i = 0; i < n; ++i) {
+        float a = std::fabs(inL[i]); if (a > ipk) ipk = a;
+        a = std::fabs(inR[i]);       if (a > ipk) ipk = a;
+    }
+    p->meterIn  = std::fmax(p->meterIn  * 0.82f, ipk);
+    p->meterOut = std::fmax(p->meterOut * 0.82f, peak);   // 'peak' = output peak from the clip scan
+    auto mnorm = [](float pk) -> float {
+        if (pk < 1.0e-4f) return 0.0f;
+        float v = (20.0f * std::log10(pk) + 60.0f) / 60.0f;
+        return v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
+    };
+    const float mIn  = mnorm(p->meterIn);
+    const float mOut = mnorm(p->meterOut);
+    if (p->ports[HF_IN_METER])  *p->ports[HF_IN_METER]  = mIn;
+    if (p->ports[HF_OUT_METER]) *p->ports[HF_OUT_METER] = mOut;
+    // Push to the custom modgui via the notify atom (~25 Hz) — output control ports
+    // don't reliably reach the icon's change callback on MODEP, so reuse the preset
+    // UI's atom channel.
+    p->meterFrames += n;
+    if (haveNotify && p->meterFrames >= (uint32_t)(p->rate / 14.0f)) {
+        p->meterFrames = 0;
+        // Deadband: only push when a bar moved >~1.5% — steady levels/silence cost nothing,
+        // which keeps mod-ui's browser UI from churning on a constant atom stream.
+        if (std::fabs(mIn - p->meterSentIn) > 0.015f || std::fabs(mOut - p->meterSentOut) > 0.015f) {
+            p->meterSentIn = mIn; p->meterSentOut = mOut;
+            char mbuf[24]; std::snprintf(mbuf, sizeof(mbuf), "%.3f|%.3f", mIn, mOut);
+            forgeStringSet(p, p->uris.meters, mbuf);
+        }
+    }
+
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }
 
@@ -1335,7 +1388,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(8);                  // version (8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(9);                  // version (9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1405,9 +1458,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 8) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 9) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 8);      // voicing/boost (v4-6) + Seraph delay (v7) + Wah/Octave (v8)
+        const bool needMigrate  = (ver < 9);      // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9)
         getU32(np);                                 // param-port count at save time
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {

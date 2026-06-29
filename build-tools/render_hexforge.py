@@ -9,7 +9,7 @@ BASE = os.path.join(REPO, "lv2", "modgui-hexforge")
 OUT  = os.path.join(os.environ["TEMP"], "hxthumb")
 os.makedirs(OUT, exist_ok=True)
 CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-W, H = 1300, 1060
+W, H = 1300, 936
 # Conditional classes hidden in the default selection (amp=Crunchy, PA Auto on,
 # fuzz=Italian Hero, drive=Green Man, delay=Digital) — mirror script-hexforge.js
 # so the static screenshot reflects the real default view.
@@ -31,14 +31,16 @@ def build(open_tiles=False):
     fileurl = "file:///" + BASE.replace("\\", "/") + "/"
     css = css.replace("url(/resources/", "url(" + fileurl)
     html = strip_mustache(open(os.path.join(BASE, "icon-hexforge.html"), encoding="utf-8").read())
-    # Default switches/powerswitch to "on" (enable=1 default) so tiles look engaged.
-    html = html.replace('class="hf-on-img"', 'class="hf-on-img on"')
+    # Default switches/powerswitch to "on" so controls look engaged.
     html = html.replace('class="hf-sw-img"', 'class="hf-sw-img on"')
     html = html.replace('class="mod-powerswitch-image"', 'class="mod-powerswitch-image on"')
     for cls in DEFAULT_HIDDEN:
         html = html.replace(cls + '"', cls + ' mod-hidden"')
-    if open_tiles:
-        html = html.replace('class="hf-tile"', 'class="hf-tile hf-open"')
+    # Node-chain UI: the detail panel is hidden until a node is selected by the JS,
+    # which doesn't run in a static render. Inject a default selection (Amp) so the
+    # screenshot shows a populated chain node + its detail panel.
+    html = html.replace('class="hf-node" data-block="amp"', 'class="hf-node hf-sel" data-block="amp"')
+    html = html.replace('class="hf-detail-panel" data-block="amp"', 'class="hf-detail-panel hf-sel" data-block="amp"')
     page = ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
             'html,body{margin:0;padding:0;background:#0b0d12;}' + css + '</style></head><body>'
             + html + '</body></html>')

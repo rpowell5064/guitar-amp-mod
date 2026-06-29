@@ -230,6 +230,19 @@ AMP_FR = [
 for suf, nm, kind, mn, mx, df, sc in AMP_FR:
     ctrl.append(mkport("AMP_" + suf.upper(), "amp_" + suf, "Amp " + nm, kind, mn, mx, df, sc, nm))
 
+# Per-block real BYPASS (active vs greyed-bypassed, for live A/B). Default 0 = active.
+# Appended as a contiguous group at the END of the param range (after AMP_FR, before the
+# preset command ports) so every existing param index is unchanged and isParamPort still
+# captures them; old preset blobs leave these as trailing zero-fill = 0 = active. Order
+# matches MOVABLE (= the C++ Block enum) so kBypassPort[] aligns 1:1. Visible (not hidden)
+# so a footswitch/MIDI can be addressed to a block's bypass in MOD, like sw_a..d.
+# Membership (in-chain vs palette) stays on <pfx>_enable; the DSP runs a block iff
+# enable==1 && bypass==0. Input Trim is locked in the chain, so its it_enable doubles as
+# its active/bypass dot (no it_bypass).
+for pfx, title, params, dpos in MOVABLE:
+    P = pfx.upper()
+    ctrl.append(mkport(P + "_BYPASS", pfx + "_bypass", title + " Bypass", "t", 0, 1, 0, None, "Byp"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -260,6 +273,10 @@ ctrl.append(mkport("PS_SLOT", "ps_slot", "Active Slot", "i", 0, 3, 0, None, "Slo
 # it from clipping (ceiling ~0.95). Added at the END so it's outside the preset
 # param range (it's a global preference, and keeps the preset blob layout stable).
 ctrl.append(mkport("OUT_AUTO", "out_auto", "Output Auto-Limit", "t", 0, 1, 1, None, "Auto"))
+# Input / output level meters (plugin -> UI). Output ports, appended at the very END so
+# the param/preset layout is untouched (not preset-captured). 0..1 dB-scaled (-60..0 dB).
+ctrl.append(mkport("IN_METER",  "in_meter",  "Input Level",  "f", 0, 1, 0, None, "In",  out=True))
+ctrl.append(mkport("OUT_METER", "out_meter", "Output Level", "f", 0, 1, 0, None, "Out", out=True))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -364,8 +381,8 @@ def emit_ttl():
     L.append('#   ps_apply : plugin->UI — "sym=val;.." snapshot so the UI re-syncs knobs.')
     L.append("# Declared writable so mod-ui delivers their patch:Set notify messages to the")
     L.append("# custom modgui exactly like the file-picker params (alphabetical indices:")
-    L.append("# ampnam=0 cabnam=1 drnam=2 irfile=3 ps_apply=4 ps_index=5 ps_name=6).")
-    for frag, lbl in (("ps_name", "Preset Name"), ("ps_index", "Preset Index"), ("ps_apply", "Preset Apply")):
+    L.append("# ampnam=0 cabnam=1 drnam=2 irfile=3 meters=4 ps_apply=5 ps_index=6 ps_name=7).")
+    for frag, lbl in (("ps_name", "Preset Name"), ("ps_index", "Preset Index"), ("ps_apply", "Preset Apply"), ("meters", "Level Meters")):
         L.append("<%s#%s>" % (URI, frag))
         L.append("    a lv2:Parameter ;")
         L.append('    rdfs:label "%s" ;' % lbl)
@@ -383,7 +400,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 15 ;")
+    L.append("    lv2:microVersion 17 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -392,7 +409,7 @@ def emit_ttl():
     L.append("")
     # Order here = effect.parameters order in the modgui: 0 irfile,1 ampnam,2 drnam,3 cabnam.
     L.append("    patch:writable <%s#irfile> , <%s#ampnam> , <%s#drnam> , <%s#cabnam> ," % (URI, URI, URI, URI))
-    L.append("                   <%s#ps_name> , <%s#ps_index> , <%s#ps_apply> ;" % (URI, URI, URI))
+    L.append("                   <%s#ps_name> , <%s#ps_index> , <%s#ps_apply> , <%s#meters> ;" % (URI, URI, URI, URI))
     L.append("")
     # audio ports
     L.append("    lv2:port [")
@@ -553,53 +570,69 @@ def render_enable(pfx):
     return ('<div class="hf-on" title="Block on/off"><div class="hf-on-img" mod-role="input-control-port" '
             'mod-port-symbol="%s_enable" mod-widget="switch"></div></div>') % pfx
 
-def tile(pfx, title, accent, keys):
-    table = TABLES[pfx]
+# ── Chain node (small clickable card in the signal strip) ─────────────────────
+# AxeFX/Quad-Cortex-style: each block is a node. Click a node to show its controls
+# in the detail panel below; click the power dot to bypass it (greyed, dry, settings
+# kept); drag to reorder. Removed blocks live in the "+ Add" palette. Input Trim is
+# locked first (no remove/reorder); its dot toggles it_enable (it has no bypass port).
+def node(pfx, title, accent):
     locked = (pfx == "it")
-    head = ['<div class="hf-thead">']
-    if locked:
-        head.append('<span class="hf-grip hf-grip-lock">⌗</span>')
-        head.append('<span class="hf-posn hf-posn-lock">0</span>')   # locked pre-block = slot 0
-    else:
-        head.append('<span class="hf-grip" title="Drag to reorder">⋮⋮</span>')
-        head.append(render_pos(pfx))
-    head.append('<span class="hf-name">%s</span>' % title)
-    head.append(render_enable(pfx))
-    head.append('</div>')
-
-    # Everything shows inline (taller uniform tiles) so there are no More popups
-    # overlapping neighbours — EXCEPT the amp, whose power-amp + Sunn brite channel
-    # are too many to fit, so its deep controls stay in a floating "More" (which
-    # opens upward from the bottom row). Conditional controls are hidden by
-    # script-hexforge.js when they don't apply.
-    if pfx == "amp":
-        keyhtml  = "".join(render_ctrl(CTRL_BY_SYM["amp_" + r[0]]) for r in table if r[0] in keys)
-        morehtml = "".join(render_ctrl(CTRL_BY_SYM["amp_" + r[0]]) for r in table if r[0] not in keys)
-        # Beardo BE controls live at the end of the port list (preset-blob stability)
-        # but render in the amp tile's More popup, hidden unless model = Beardo BE.
-        morehtml += "".join(render_ctrl(CTRL_BY_SYM["amp_" + s[0]]) for s in AMP_FR)
-    else:
-        keyhtml  = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + r[0]]) for r in table)
-        morehtml = ""
-    # NAM pickers: amp/drive shown only on the Neural slot (cond class); cab always.
-    # effect.parameters indices (alphabetical by URI): ampnam=0, cabnam=1, drnam=2, irfile=3
-    if pfx == "amp":
-        keyhtml = nam_picker(0, "AmpNam", "c-amp-nam") + keyhtml
-    elif pfx == "dr":
-        keyhtml = nam_picker(2, "DrNam", "c-dr-nam") + keyhtml
-    elif pfx == "cab":
-        keyhtml = IR_PICKER + nam_picker(1, "CabNam", "") + keyhtml
-
-    cls = "hf-tile hf-locked" if locked else "hf-tile"
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]
-    out = ['<div class="%s" data-block="%s"%s style="--acc:%s">' % (cls, pfx, posattr, accent)]
-    out += head
-    out.append('<div class="hf-key clearfix">%s</div>' % keyhtml)
-    if morehtml:
-        out.append('<div class="hf-morewrap"><button type="button" class="hf-morebtn">More ▾</button>'
-                   '<div class="hf-more clearfix">%s</div></div>' % morehtml)
+    drag    = "" if locked else ' draggable="true"'
+    cls     = "hf-node hf-node-lock" if locked else "hf-node"
+    out = ['<div class="%s" data-block="%s"%s style="--acc:%s" title="%s"%s>' % (cls, pfx, posattr, accent, title, drag)]
+    # power/bypass dot — JS-driven (script-hexforge.js writes the port + greys the node);
+    # IT has no bypass port so its dot toggles it_enable (locked, can't be removed).
+    out.append('<div class="hf-node-dot" title="Bypass (A/B)"></div>')
+    out.append('<span class="hf-node-name">%s</span>' % title)
+    # Hidden mod-widget binds so external/footswitch/preset changes to these ports still
+    # echo to the modgui change handler (which keeps the node grey/membership in sync).
+    binds = ['<div mod-role="input-control-port" mod-port-symbol="%s" mod-widget="switch"></div>'
+             % ("it_enable" if locked else (pfx + "_bypass"))]
+    if not locked:
+        binds.append('<div mod-role="input-control-port" mod-port-symbol="%s_enable" mod-widget="switch"></div>' % pfx)
+    out.append('<div class="hf-node-bind">' + "".join(binds) + '</div>')
     out.append('</div>')
     return "".join(out)
+
+# ── Detail panel (the selected block's full controls, shown at the bottom) ─────
+# Reuses render_ctrl + the COND conditional-visibility classes. Only one panel is
+# visible at a time (the selected node's). There's room for every control now, so
+# the Amp's power-amp / Beardo / Sunn controls render inline — no "More" popup.
+def panel(pfx, title, accent, keys):
+    locked = (pfx == "it")
+    table = TABLES[pfx]
+    head = ['<div class="hf-dhead">']
+    head.append('<span class="hf-dname">%s</span>' % title)
+    if not locked:
+        head.append('<span class="hf-dslot"><span class="hf-dslot-lbl">SLOT</span>%s</span>' % render_pos(pfx))
+        head.append('<button type="button" class="hf-dremove" title="Remove this effect from the chain">REMOVE ✕</button>')
+    head.append('</div>')
+    # Split controls so the wide dropdowns (model/type/etc. + file pickers) sit on their
+    # own top row, and the knobs/switches form a uniform grid below — every knob row then
+    # left-aligns, instead of row 2 starting under a wide selector in row 1.
+    if pfx == "amp":
+        syms = ["amp_" + r[0] for r in table] + ["amp_" + s[0] for s in AMP_FR]
+        pickers = nam_picker(0, "AmpNam", "c-amp-nam")
+    elif pfx == "dr":
+        syms = ["dr_" + r[0] for r in table]; pickers = nam_picker(2, "DrNam", "c-dr-nam")
+    elif pfx == "cab":
+        syms = ["cab_" + r[0] for r in table]; pickers = IR_PICKER + nam_picker(1, "CabNam", "")
+    else:
+        syms = [pfx + "_" + r[0] for r in table]; pickers = ""
+    sels  = "".join(render_ctrl(CTRL_BY_SYM[s]) for s in syms if CTRL_BY_SYM[s]["kind"] == "e")
+    knobs = "".join(render_ctrl(CTRL_BY_SYM[s]) for s in syms if CTRL_BY_SYM[s]["kind"] != "e")
+    selrow = pickers + sels
+    body = ""
+    if selrow: body += '<div class="hf-dselects clearfix">%s</div>' % selrow
+    if knobs:  body += '<div class="hf-dknobs clearfix">%s</div>' % knobs
+    if pfx == "it":   # live input level meter on the Input Trim block (front of chain)
+        body = ('<div class="hf-inmeter"><span class="hf-inmeter-lbl">INPUT LEVEL</span>'
+                '<div class="hf-meter hf-meter-h"><div class="hf-meter-fill" rata-role="imeter"></div></div>'
+                '</div>') + body
+    cls = "hf-detail-panel hf-detail-lock" if locked else "hf-detail-panel"
+    return ('<div class="%s" data-block="%s" style="--acc:%s">%s<div class="hf-dbody">%s</div></div>'
+            % (cls, pfx, accent, "".join(head), body))
 
 # ── Preset / bank strip ───────────────────────────────────────────────────────
 # Plain buttons; script-hexforge.js wires their clicks to pulse the command ports
@@ -632,27 +665,38 @@ PRESETS_PANEL = (
 )
 
 def emit_icon():
-    tiles = "\n      ".join(tile(*t) for t in TILES)
+    nodes  = "".join(node(t[0], t[1], t[2]) for t in TILES)
+    panels = "\n      ".join(panel(*t) for t in TILES)
+    chain = (
+        '  <div class="hf-chain">\n'
+        '    <span class="hf-end hf-in">IN</span>\n'
+        '    <div class="hf-nodes" rata-role="nodes">' + nodes + '</div>\n'
+        '    <span class="hf-end hf-out2">OUT</span>\n'
+        '    <div class="hf-addwrap">\n'
+        '      <button type="button" class="hf-add" title="Add an effect to the chain">＋ ADD</button>\n'
+        '      <div class="hf-palette" rata-role="palette"></div>\n'
+        '    </div>\n'
+        '  </div>\n')
+    detail = '  <div class="hf-detail" rata-role="detail">\n      ' + panels + '\n  </div>\n'
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
         '  <div mod-role="drag-handle" class="mod-drag-handle"></div>\n'
         '  <div class="mod-powerswitch" mod-role="bypass"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '  <div class="hf-header">\n'
         '    <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>\n'
         '    <div class="hf-title">HEX FORGE</div>\n'
-        '    <div class="hf-sub">prewired rig · drag a tile or pick its slot to reorder · per-block on/off</div>\n'
+        '    <div class="hf-sub">click a node to edit it · ＋ to add · power dot bypasses · drag to reorder</div>\n'
         '    <div class="hx-logo"></div>\n'
         '  </div>\n'
         '  <div class="hf-out">\n'
         '    <span class="hf-out-mark"></span>\n'
         '    <span class="hf-out-name">Output</span>\n'
-        '    <span class="hf-out-spacer"></span>\n'
+        '    <div class="hf-meter hf-meter-h" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
         '    <span class="hf-clip" rata-role="clip">CLIP</span>\n'
         '    <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
         '    ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '    ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
         '  </div>\n'
-        + PRESETS_PANEL +
-        '  <div class="hf-rack">\n      ' + tiles + '\n  </div>\n'
+        + PRESETS_PANEL + chain + detail +
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'
         '    <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>\n'

@@ -47,7 +47,7 @@ static constexpr int kMaxModel    = 7;     // highest selectable model index (Hi
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
 static const int kModelTube[8] = { 0, 1, 1, 0, 1, 0, 1, 1 };  // [6] Friedman EL34; [7] Hiwatt EL34
-static const float kModelMakeup[8] = { 2.75f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender + [3] Sunn + [7] Hiwatt boosted: clean models were too quiet vs distorted
+static const float kModelMakeup[8] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender/clean +1.6dB kept; [3] Sunn back to 3.0 (the makeup boost over-drove the output); [7] Hiwatt
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
