@@ -35,7 +35,7 @@
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-titlerow { margin-top:58px; }
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-amp-modelrow { margin-top:80px; padding:0 24px; position:relative; }
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-control-group { position:relative; text-align:center; }
-.mod-pedal-guitaramp-octave{{{cns}}} .mod-knobs { margin-top:8px; width:400px; }
+.mod-pedal-guitaramp-octave{{{cns}}} .mod-knobs { margin-top:104px; width:400px; }  /* clear the absolute hx-header (no MODE row here to space it) */
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-knob { display:inline-block; height:92px; width:96px; overflow: visible; position:relative; vertical-align:top; }
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-knob .mod-knob-image { background-image:url(/resources/knobs/knob.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 56px; height:56px; width:56px; margin:4px auto 0; }
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-knob .mod-knob-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; text-transform:uppercase; text-align:center; display:block; margin-top:4px; }
