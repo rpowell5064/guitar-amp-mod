@@ -100,78 +100,73 @@ def add(*p): PRESETS.extend(p)
 # placeholder here; the measure step rewrites each to loudness-match the stock 4.
 OUT = -20.0
 
-# ── Bank 3 — Ghost I (Opus = Orange; Impera = Friedman, user pref) ────────────
+# Presets are grouped by BAND/ARTIST into banks (2026-06-29 user request); bank index
+# N == UI "Bank N+1". 6 banks (3-8) for 8 artists, so Ghost spans 2 banks by album and
+# the doom singletons (Sleep, Electric Wizard) ride in the Hendrix / Mastodon banks.
+# IMPORTANT: the calibration tables below are keyed by NAME (not flat index) so this
+# kind of rearrange never has to touch them again.
+
+# ── Bank 3 — GHOST · Opus Eponymous (Orange Thunderverb era) ─────────────────
 add(
-  preset(2, 0, "Sermon Crunch", out_level=OUT,           # Ghost — Opus Eponymous rhythm
-    # SG -> Orange Thunderverb 50: warm, mid-forward, gain backed off, '70s.
-    amp={"model":"Tangerang","gain":0.5,"bass":0.45,"mid":0.68,"treble":0.55,"presence":0.42,"master":0.45,"sag":0.35},
-    gt={"enable":1,"thresh":-55,"attack":3,"hold":60,"release":140,"hyst":6},
-    cab={"lowcut":90,"highcut":8200}),
-  preset(2, 1, "Candlelit Clean", out_level=OUT,         # Ghost — Opus clean
+  preset(2, 0, "Candlelit Clean", out_level=OUT,         # Ghost — Opus clean
     # Orange clean + dark analog delay (Carbon Copy) + a little room.
     amp={"model":"Tangerang","gain":0.2,"bass":0.5,"mid":0.6,"treble":0.5,"presence":0.4,"master":0.5,"sag":0.3},
     cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},  # density/loudness
     dl={"enable":1,"type":"Tape","time":420,"feedback":0.28,"mix":0.16,"wow":0.003,"flutter":0.001},
     rv={"enable":1,"decay":1.8,"damping":0.4,"mix":0.14},
     cab={"lowcut":85,"highcut":8500}),
-  preset(2, 2, "Imperial Rhythm", out_level=OUT,         # Ghost — Impera rhythm (Friedman BE, Akesson's BE-100)
+  preset(2, 1, "Sermon Crunch", out_level=OUT,           # Ghost — Opus Eponymous rhythm
+    # SG -> Orange Thunderverb 50: warm, mid-forward, gain backed off, '70s.
+    amp={"model":"Tangerang","gain":0.5,"bass":0.45,"mid":0.68,"treble":0.55,"presence":0.42,"master":0.45,"sag":0.35},
+    gt={"enable":1,"thresh":-55,"attack":3,"hold":60,"release":140,"hyst":6},
+    cab={"lowcut":90,"highcut":8200}),
+  preset(2, 2, "Sermon Rhythm", out_level=OUT,           # Ghost — Opus rhythm, higher gain than Sermon Crunch
+    # Same Orange Thunderverb voicing as Sermon Crunch, pushed: more gain + TS tighten + tighter gate.
+    amp={"model":"Tangerang","gain":0.68,"bass":0.45,"mid":0.7,"treble":0.56,"presence":0.45,"master":0.45,"sag":0.35},
+    dr={"enable":1,"model":"Green Man","drive":0.03,"tone":0.55,"level":0.85,"mix":1.0},   # TS boost (drive ~0)
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
+    cab={"lowcut":90,"highcut":8200}),
+  preset(2, 3, "Sermon Solo", out_level=OUT,             # Ghost — early (B.C.) album lead: reverb + Seraph delay
+    # Singing, mid-forward Opus-era lead over the Orange platform; soaked in Seraph + room.
+    amp={"model":"Tangerang","gain":0.6,"bass":0.45,"mid":0.72,"treble":0.58,"presence":0.5,"master":0.46,"sag":0.35},
+    dr={"enable":1,"model":"Green Man","drive":0.04,"tone":0.58,"level":0.82,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
+    dl={"enable":1,"type":"Seraph","time":420,"feedback":0.33,"mix":0.2,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.18,"modrate":0.3},
+    rv={"enable":1,"predelay":20,"decay":2.2,"damping":0.4,"mix":0.18},
+    cab={"lowcut":88,"highcut":8800}),
+)
+
+# ── Bank 4 — GHOST · Impera & Skeleta (Friedman BE era) ──────────────────────
+add(
+  preset(3, 0, "Imperial Rhythm", out_level=OUT,         # Ghost — Impera rhythm (Friedman BE, Akesson's BE-100)
     amp={"model":"Beardo BE","fr_channel":"BE","fr_fat":1,"gain":0.55,"bass":0.5,"mid":0.62,"treble":0.55,"presence":0.45,"master":0.45},
     dr={"enable":1,"model":"Green Man","drive":0.03,"tone":0.55,"level":0.85,"mix":1.0},   # TS boost (drive ~0)
     gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
     cab={"lowcut":88,"highcut":8400}),
-  preset(2, 3, "Imperial Lead", out_level=OUT,           # Ghost — Impera lead (Friedman HBE)
+  preset(3, 1, "Imperial Lead", out_level=OUT,           # Ghost — Impera lead (Friedman HBE)
     amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.62,"bass":0.48,"mid":0.66,"treble":0.56,"presence":0.5,"master":0.46},
     dr={"enable":1,"model":"Green Man","drive":0.04,"tone":0.58,"level":0.8,"mix":1.0},
     gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
-    dl={"enable":1,"type":"Digital","time":400,"feedback":0.3,"mix":0.16},
+    dl={"enable":1,"type":"Seraph","time":400,"feedback":0.3,"mix":0.16,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.15,"modrate":0.3},
     rv={"enable":1,"decay":1.6,"mix":0.1},
     cab={"lowcut":88,"highcut":8800}),
-)
-
-# ── Bank 4 — Ghost Skeleta (Friedman) + A Perfect Circle ─────────────────────
-add(
-  preset(3, 0, "Cardinal Rhythm", out_level=OUT,         # Ghost — Skeleta rhythm (Friedman HBE, tight modern)
+  preset(3, 2, "Cardinal Rhythm", out_level=OUT,         # Ghost — Skeleta rhythm (Friedman HBE, tight modern)
     amp={"model":"Beardo BE","fr_channel":"HBE","fr_fat":1,"gain":0.6,"bass":0.55,"mid":0.6,"treble":0.54,"presence":0.48,"master":0.45},
     dr={"enable":1,"model":"Green Man","drive":0.03,"tone":0.55,"level":0.85,"mix":1.0},
     gt={"enable":1,"thresh":-48,"attack":0.5,"hold":50,"release":140,"hyst":8},
     cab={"lowcut":90,"highcut":8200}),
-  preset(3, 1, "Cardinal Lead", out_level=OUT,           # Ghost — Skeleta lead (Friedman HBE + sat)
+  preset(3, 3, "Cardinal Lead", out_level=OUT,           # Ghost — Skeleta lead (Friedman HBE + sat)
     amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.66,"bass":0.5,"mid":0.64,"treble":0.56,"presence":0.52,"master":0.46},
     dr={"enable":1,"model":"Green Man","drive":0.04,"tone":0.58,"level":0.82,"mix":1.0},
     gt={"enable":1,"thresh":-48,"attack":0.5,"hold":55,"release":150,"hyst":6},
-    dl={"enable":1,"type":"Digital","time":380,"feedback":0.3,"mix":0.14},
+    dl={"enable":1,"type":"Seraph","time":380,"feedback":0.3,"mix":0.14,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.15,"modrate":0.3},
     rv={"enable":1,"decay":1.7,"mix":0.1},
     cab={"lowcut":90,"highcut":8700}),
-  preset(3, 2, "Vanishing Drive", out_level=OUT,         # A Perfect Circle — Mer de Noms distorted
-    # Les Paul -> Friedman-modded Marshall: needs BITE -> HBE + C45 bright cap + TS tighten.
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_c45":1,"fr_fat":1,"gain":0.6,"bass":0.48,"mid":0.66,"treble":0.58,"presence":0.55,"master":0.46},
-    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.6,"level":0.8,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
-    md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.4,"mix":0.25,"width":0.5},   # Howerdel ambience on dirt
-    dl={"enable":1,"type":"Digital","time":380,"feedback":0.25,"mix":0.14},
-    rv={"enable":1,"decay":1.6,"mix":0.12},
-    cab={"lowcut":86,"highcut":8800}),
-  preset(3, 3, "Dreamlit Shimmer", out_level=OUT,        # A Perfect Circle — dreamy chorusy clean
-    # Howerdel the "effects guy": lush chorus + ambient delay + big reverb on a clean amp.
-    amp={"model":"Clean Meanie","gain":0.3,"bass":0.5,"mid":0.55,"treble":0.52,"presence":0.45,"master":0.5,"sag":0.3},
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},
-    md={"enable":1,"type":"Lush-2","rate":0.35,"depth":0.5,"mix":0.4,"width":0.6},
-    dl={"enable":1,"type":"Digital","time":450,"feedback":0.38,"mix":0.25,"width":0.6},
-    rv={"enable":1,"predelay":20,"decay":3.0,"damping":0.35,"mix":0.28},
-    cab={"lowcut":80,"highcut":12000}),
 )
 
-# ── Bank 5 — Pink Floyd + Hendrix (classic / psych) ──────────────────────────
+# ── Bank 5 — PINK FLOYD ──────────────────────────────────────────────────────
 add(
-  preset(4, 0, "Berlin Wall Pulse", out_level=OUT,       # Pink Floyd — Run Like Hell
-    # Strat, palm-muted, huge dotted delay soaked in chorus.
-    amp={"model":"Clean Meanie","gain":0.4,"bass":0.45,"mid":0.5,"treble":0.6,"presence":0.55,"master":0.55},
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":4},
-    md={"enable":1,"type":"Lush-2","rate":0.4,"depth":0.55,"mix":0.4,"width":0.7},
-    dl={"enable":1,"type":"Digital","time":440,"feedback":0.4,"mix":0.28,"width":0.6},
-    rv={"enable":1,"decay":1.8,"mix":0.12},
-    cab={"lowcut":85,"highcut":11000}),
-  preset(4, 1, "Dark Side Air", out_level=OUT,           # Pink Floyd — Breathe
+  preset(4, 0, "Dark Side Air", out_level=OUT,           # Pink Floyd — Breathe
     # Strat warm clean, compressed, spacious, a hint of vibe.
     amp={"model":"Clean Meanie","gain":0.3,"bass":0.55,"mid":0.5,"treble":0.48,"presence":0.45,"master":0.5},
     cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},
@@ -179,6 +174,14 @@ add(
     dl={"enable":1,"type":"Digital","time":420,"feedback":0.3,"mix":0.16},   # Breathe's gentle echo
     rv={"enable":1,"predelay":25,"decay":2.6,"damping":0.35,"mix":0.24},
     cab={"lowcut":80,"highcut":10000}),
+  preset(4, 1, "Berlin Wall Pulse", out_level=OUT,       # Pink Floyd — Run Like Hell
+    # Strat, palm-muted, huge dotted delay soaked in chorus.
+    amp={"model":"Clean Meanie","gain":0.4,"bass":0.45,"mid":0.5,"treble":0.6,"presence":0.55,"master":0.55},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":4},
+    md={"enable":1,"type":"Lush-2","rate":0.4,"depth":0.55,"mix":0.4,"width":0.7},
+    dl={"enable":1,"type":"Digital","time":440,"feedback":0.4,"mix":0.28,"width":0.6},
+    rv={"enable":1,"decay":1.8,"mix":0.12},
+    cab={"lowcut":85,"highcut":11000}),
   preset(4, 2, "Numb Sustain", out_level=OUT,            # Pink Floyd — Gilmour Big Muff + Binson Echorec lead
     # Ram's-Head Muff (Ovis) Vol4/Tone6/Sus6 + Dyna Comp + Hiwatt clean platform + Binson (Echo Wreck).
     fz={"enable":1,"pedal":"Italian Hero","mode":"Ovis","sustain":0.6,"tone":0.6,"volume":0.45},
@@ -188,7 +191,28 @@ add(
     dl={"enable":1,"type":"Echo Wreck","time":430,"feedback":0.33,"mix":0.22,"heads":10,"wow":0.002,"flutter":0.001},
     rv={"enable":1,"decay":2.0,"mix":0.12},
     cab={"lowcut":80,"highcut":9500}),
-  preset(4, 3, "Little Feather", out_level=OUT,          # Jimi Hendrix — Little Wing
+)
+
+# ── Bank 6 — JIMI HENDRIX (+ Sleep, doom singleton) ──────────────────────────
+add(
+  preset(5, 0, "Mauve Haze", out_level=OUT,              # Jimi Hendrix — Purple Haze
+    # Germanium Fuzz Face (I Know It / Tone Bender) into a lower-gain Marshall plexi.
+    fz={"enable":1,"pedal":"I Know It","sustain":0.7,"volume":0.55,"bias":0.55,"inputtrim":0.45,"getemp":0.4},
+    amp={"model":"Crunchy","gain":0.4,"bass":0.5,"mid":0.62,"treble":0.6,"presence":0.5,"master":0.5},
+    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":6},
+    cab={"lowcut":80,"highcut":8800},
+    rv={"enable":1,"decay":1.3,"mix":0.08}),
+  preset(5, 1, "Hazy Solo", out_level=OUT,               # Jimi Hendrix — Purple Haze SOLO
+    # Octavia octave-up fuzz + a parked (cocked) wah into a plexi — the ring-modulated
+    # octave-fuzz lead. (Mauve Haze, two slots up, is the germanium Fuzz Face riff tone.)
+    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.55,"q":0.65,"mix":0.6},   # cocked-wah honk
+    fz={"enable":1,"pedal":"Octavia","sustain":0.7,"tone":0.5,"volume":0.6},
+    amp={"model":"Crunchy","gain":0.45,"bass":0.5,"mid":0.62,"treble":0.62,"presence":0.55,"master":0.55},
+    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":6},
+    dl={"enable":1,"type":"Seraph","time":400,"feedback":0.3,"mix":0.15,"width":0.6,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.15,"modrate":0.3},
+    rv={"enable":1,"decay":1.5,"mix":0.1},
+    cab={"lowcut":80,"highcut":9000}),
+  preset(5, 2, "Little Feather", out_level=OUT,          # Jimi Hendrix — Little Wing
     # Strat neck, warm clean with light breakup, rotary-speaker swirl (Little Wing was tracked
     # through a rotating cab).
     amp={"model":"Clean Meanie","gain":0.38,"bass":0.5,"mid":0.55,"treble":0.5,"presence":0.48,"master":0.55},
@@ -196,49 +220,7 @@ add(
     md={"enable":1,"type":"Rotary","rate":0.3,"depth":0.5,"mix":0.5,"width":0.7},
     rv={"enable":1,"predelay":15,"decay":2.2,"mix":0.18},
     cab={"lowcut":82,"highcut":10000}),
-)
-
-# ── Bank 6 — Prog / Djent (Periphery + Mastodon) ─────────────────────────────
-# Modeled on the user's stock "Rhythm" (Gainzilla/EVH, mids 0.75, master 0.35,
-# TS drive 0.02 / level 1.0) — the proven non-fizzy djent recipe in this DSP.
-add(
-  preset(5, 0, "Flatliner", out_level=OUT,               # Periphery — Flatline
-    amp={"model":"Gainzilla","gain":0.55,"bass":0.42,"mid":0.72,"treble":0.6,"presence":0.45,"master":0.38,"channel":1,"resonance":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.02,"tone":0.55,"level":1.0,"mix":1.0},   # TS tighten
-    gt={"enable":1,"thresh":-45,"attack":0.1,"hold":40,"release":120,"hyst":8},           # surgical djent gate
-    cab={"lowcut":100,"highcut":8000}),
-  preset(5, 1, "Prayer Djent", out_level=OUT,            # Periphery — Prayer Position
-    amp={"model":"Gainzilla","gain":0.55,"bass":0.42,"mid":0.7,"treble":0.6,"presence":0.45,"master":0.38,"channel":1,"resonance":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.02,"tone":0.58,"level":1.0,"mix":1.0},
-    gt={"enable":1,"thresh":-45,"attack":0.1,"hold":40,"release":110,"hyst":8},
-    cab={"lowcut":95,"highcut":8200}),
-  preset(5, 2, "Skye Crusher", out_level=OUT,            # Mastodon — Crack the Skye rhythm (JCM800 + OD808)
-    amp={"model":"Crunchy","gain":0.45,"bass":0.42,"mid":0.7,"treble":0.62,"presence":0.45,"master":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.9,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":50,"release":130,"hyst":6},
-    md={"enable":1,"type":"Phaser","rate":0.2,"depth":0.45,"mix":0.3},   # Crack the Skye MXR Phase 90
-    rv={"enable":1,"decay":1.6,"mix":0.1},
-    cab={"lowcut":85,"highcut":8500}),
-  preset(5, 3, "Skye Soar", out_level=OUT,               # Mastodon — Crack the Skye lead (JCM800 + boost + octave + delay)
-    amp={"model":"Crunchy","gain":0.55,"bass":0.45,"mid":0.72,"treble":0.62,"presence":0.5,"master":0.46},
-    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.85,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":55,"release":150,"hyst":6},
-    oc={"enable":1,"pos":2,"up":0.35,"down":0.0,"dry":1.0},   # "The Czar" POG octave-up, in front of the amp
-    dl={"enable":1,"type":"Digital","time":420,"feedback":0.32,"mix":0.16},
-    rv={"enable":1,"decay":1.7,"mix":0.1},
-    cab={"lowcut":85,"highcut":8800}),
-)
-
-# ── Bank 7 — Fuzz & Doom ─────────────────────────────────────────────────────
-add(
-  preset(6, 0, "Mauve Haze", out_level=OUT,              # Jimi Hendrix — Purple Haze
-    # Germanium Fuzz Face (I Know It / Tone Bender) into a lower-gain Marshall plexi.
-    fz={"enable":1,"pedal":"I Know It","sustain":0.7,"volume":0.55,"bias":0.55,"inputtrim":0.45,"getemp":0.4},
-    amp={"model":"Crunchy","gain":0.4,"bass":0.5,"mid":0.62,"treble":0.6,"presence":0.5,"master":0.5},
-    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":6},
-    cab={"lowcut":80,"highcut":8800},
-    rv={"enable":1,"decay":1.3,"mix":0.08}),
-  preset(6, 1, "Holy Smoke", out_level=OUT,              # Sleep — Dragonaut / Holy Mountain
+  preset(5, 3, "Holy Smoke", out_level=OUT,              # Sleep — Dragonaut / Holy Mountain
     # Les Paul -> Muff-style fuzz + comp-for-sustain -> Orange wall, downtuned, huge low end.
     fz={"enable":1,"pedal":"Italian Hero","mode":"Red Bear","sustain":0.7,"tone":0.45,"volume":0.55},
     cp={"enable":1,"type":0,"ratio":1,"thresh":-22,"makeup":2},
@@ -246,7 +228,33 @@ add(
     gt={"enable":1,"thresh":-56,"attack":3,"hold":200,"release":400,"hyst":6},   # gentle (preserve the wall)
     rv={"enable":1,"predelay":30,"decay":3.2,"damping":0.5,"mix":0.18},          # cavernous doom space
     cab={"lowcut":72,"highcut":7000}),
-  preset(6, 2, "Wizard's Doom", out_level=OUT,           # Electric Wizard — Funeralopolis / Dopethrone
+)
+
+# ── Bank 7 — MASTODON · Crack the Skye (+ Electric Wizard, doom singleton) ────
+add(
+  preset(6, 0, "Skye Crusher", out_level=OUT,            # Mastodon — Crack the Skye rhythm (JCM800 + OD808)
+    amp={"model":"Crunchy","gain":0.45,"bass":0.42,"mid":0.7,"treble":0.62,"presence":0.45,"master":0.45},
+    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.9,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":50,"release":130,"hyst":6},
+    md={"enable":1,"type":"Phaser","rate":0.2,"depth":0.45,"mix":0.3},   # Crack the Skye MXR Phase 90
+    rv={"enable":1,"decay":1.6,"mix":0.1},
+    cab={"lowcut":85,"highcut":8500}),
+  preset(6, 1, "Skye (No Mod)", out_level=OUT,           # Mastodon — Crack the Skye rhythm, phaser removed
+    # = Skye Crusher (JCM800 + OD808) with the MXR Phase 90 dropped.
+    amp={"model":"Crunchy","gain":0.45,"bass":0.42,"mid":0.7,"treble":0.62,"presence":0.45,"master":0.45},
+    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.9,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":50,"release":130,"hyst":6},
+    rv={"enable":1,"decay":1.6,"mix":0.1},
+    cab={"lowcut":85,"highcut":8500}),
+  preset(6, 2, "Skye Soar", out_level=OUT,               # Mastodon — Crack the Skye lead (JCM800 + boost + octave + delay)
+    amp={"model":"Crunchy","gain":0.55,"bass":0.45,"mid":0.72,"treble":0.62,"presence":0.5,"master":0.46},
+    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.85,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":55,"release":150,"hyst":6},
+    oc={"enable":1,"pos":2,"up":0.35,"down":0.0,"dry":1.0},   # "The Czar" POG octave-up, in front of the amp
+    dl={"enable":1,"type":"Seraph","time":420,"feedback":0.32,"mix":0.16,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.15,"modrate":0.3},
+    rv={"enable":1,"decay":1.7,"mix":0.1},
+    cab={"lowcut":85,"highcut":8800}),
+  preset(6, 3, "Wizard's Doom", out_level=OUT,           # Electric Wizard — Funeralopolis / Dopethrone
     # SG -> Green-Russian Muff (Red Bear) -> Sunn Model T (series), very downtuned, dark + cavernous.
     # Fuzz pulled back from sustain 0.8/vol 0.55 — it was ~12 dB too hot (excess saturation/noise).
     fz={"enable":1,"pedal":"Italian Hero","mode":"Red Bear","sustain":0.62,"tone":0.4,"volume":0.4},
@@ -255,42 +263,81 @@ add(
     gt={"enable":1,"thresh":-56,"attack":3,"hold":200,"release":400,"hyst":6},
     cab={"lowcut":66,"highcut":6500},
     rv={"enable":1,"decay":2.2,"damping":0.4,"mix":0.12}),
-  preset(6, 3, "Hazy Solo", out_level=OUT,               # Jimi Hendrix — Purple Haze SOLO
-    # Octavia octave-up fuzz + a parked (cocked) wah into a plexi — the ring-modulated
-    # octave-fuzz lead. (Mauve Haze, two slots up, is the germanium Fuzz Face riff tone.)
-    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.55,"q":0.65,"mix":0.6},   # cocked-wah honk
-    fz={"enable":1,"pedal":"Octavia","sustain":0.7,"tone":0.5,"volume":0.6},
-    amp={"model":"Crunchy","gain":0.45,"bass":0.5,"mid":0.62,"treble":0.62,"presence":0.55,"master":0.55},
-    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":6},
-    rv={"enable":1,"decay":1.5,"mix":0.1},
-    cab={"lowcut":80,"highcut":9000}),
+)
+
+# ── Bank 8 — A PERFECT CIRCLE + PERIPHERY (modern prog/alt) ──────────────────
+# Periphery modeled on the user's stock "Rhythm" (Gainzilla/EVH, mids 0.75, master
+# 0.35, TS drive 0.02 / level 1.0) — the proven non-fizzy djent recipe in this DSP.
+add(
+  preset(7, 0, "Vanishing Drive", out_level=OUT,         # A Perfect Circle — Mer de Noms distorted
+    # Les Paul -> Friedman-modded Marshall: needs BITE -> HBE + C45 bright cap + TS tighten.
+    amp={"model":"Beardo BE","fr_channel":"HBE","fr_c45":1,"fr_fat":1,"gain":0.6,"bass":0.48,"mid":0.66,"treble":0.58,"presence":0.55,"master":0.46},
+    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.6,"level":0.8,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
+    md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.4,"mix":0.25,"width":0.5},   # Howerdel ambience on dirt
+    dl={"enable":1,"type":"Digital","time":380,"feedback":0.25,"mix":0.14},
+    rv={"enable":1,"decay":1.6,"mix":0.12},
+    cab={"lowcut":86,"highcut":8800}),
+  preset(7, 1, "Dreamlit Shimmer", out_level=OUT,        # A Perfect Circle — dreamy chorusy clean
+    # Howerdel the "effects guy": lush chorus + ambient delay + big reverb on a clean amp.
+    amp={"model":"Clean Meanie","gain":0.3,"bass":0.5,"mid":0.55,"treble":0.52,"presence":0.45,"master":0.5,"sag":0.3},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},
+    md={"enable":1,"type":"Lush-2","rate":0.35,"depth":0.5,"mix":0.4,"width":0.6},
+    dl={"enable":1,"type":"Digital","time":450,"feedback":0.38,"mix":0.25,"width":0.6},
+    rv={"enable":1,"predelay":20,"decay":3.0,"damping":0.35,"mix":0.28},
+    cab={"lowcut":80,"highcut":12000}),
+  preset(7, 2, "Flatliner", out_level=OUT,               # Periphery — Flatline
+    amp={"model":"Gainzilla","gain":0.55,"bass":0.42,"mid":0.72,"treble":0.6,"presence":0.45,"master":0.38,"channel":1,"resonance":0.45},
+    dr={"enable":1,"model":"Green Man","drive":0.02,"tone":0.55,"level":1.0,"mix":1.0},   # TS tighten
+    gt={"enable":1,"thresh":-45,"attack":0.1,"hold":40,"release":120,"hyst":8},           # surgical djent gate
+    cab={"lowcut":100,"highcut":8000}),
+  preset(7, 3, "Prayer Djent", out_level=OUT,            # Periphery — Prayer Position
+    amp={"model":"Gainzilla","gain":0.55,"bass":0.42,"mid":0.7,"treble":0.6,"presence":0.45,"master":0.38,"channel":1,"resonance":0.45},
+    dr={"enable":1,"model":"Green Man","drive":0.02,"tone":0.58,"level":1.0,"mix":1.0},
+    gt={"enable":1,"thresh":-45,"attack":0.1,"hold":40,"release":110,"hyst":8},
+    cab={"lowcut":95,"highcut":8200}),
 )
 
 # ── Loudness calibration ─────────────────────────────────────────────────────
-# Measured on-device 2026-06-25 with build-tools/hexforge_meas.cpp (a worker-capable
-# LV2 host; DI from build-tools/gen_di.py): each preset recalled, a sustained DI
-# power chord run through it with the
-# output auto-limiter OFF, output RMS captured in dBFS at out_level = -20. Because
-# out_level is an exact linear post-gain, out_level_final = -20 + (target - measured)
-# lands each preset on the target loudness in one pass. Targets replicate the stock
-# set the user dialed by ear: clean ~ -7.3 dBFS RMS, dirty/dense ~ -13.5 dBFS RMS
-# (the stock Crunch/Rhythm/Lead average). Re-run hf_meas and update this table if a
-# preset's voicing/gain changes (which shifts its intrinsic level).
+# Measured on-device with build-tools/hexforge_meas.cpp (a worker-capable LV2 host;
+# DI from build-tools/gen_di.py): each preset recalled, a sustained DI power chord run
+# through it with the output auto-limiter OFF, output RMS captured in dBFS at out_level
+# = -20. Because out_level is an exact linear post-gain, out_level_final = -20 + (target
+# - measured) lands each preset on the target loudness in one pass. Dirty/dense target
+# ~ -13.1 dBFS RMS (the stock Crunch/Rhythm/Lead average).
+# KEYED BY PRESET NAME (not flat index) so rearranging banks never invalidates it.
+# Re-run hf_meas + update an entry only when a preset's voicing/gain changes.
 MEAS_RMS_AT_M20 = {
-    8:-11.46, 9:-11.07, 10:-15.64, 11:-15.05, 12:-15.57, 13:-15.84, 14:-15.67,
-    15:-3.99, 16:-4.66, 17:-5.52, 18:-0.17, 19:-9.55, 20:-13.56, 21:-13.44,
-    22:-16.21, 23:-15.91, 24:-13.81, 25:-11.16, 26:5.80, 27:-14.35,
-    # 15/16/17/19 Clean Meanie +3.7dB, 18 Numb/Hiwatt +11.5dB, 26 Wizard/Sunn +7.5dB (clean-amp makeup boost)
+    "Sermon Crunch":-11.46, "Candlelit Clean":-11.07, "Imperial Rhythm":-15.64,
+    "Imperial Lead":-15.05, "Cardinal Rhythm":-15.57, "Cardinal Lead":-15.84,
+    "Vanishing Drive":-15.67, "Dreamlit Shimmer":-2.39, "Berlin Wall Pulse":-3.06,
+    "Dark Side Air":-3.92, "Numb Sustain":-0.17, "Little Feather":-7.95,
+    "Flatliner":-13.56, "Prayer Djent":-13.44, "Skye Crusher":-16.21, "Skye Soar":-15.91,
+    "Mauve Haze":-13.81, "Holy Smoke":-11.16, "Wizard's Doom":5.80, "Hazy Solo":-14.35,
+    "Skye (No Mod)":-15.59, "Sermon Rhythm":-13.34, "Sermon Solo":-13.48,
 }
-CLEAN_FLAT = {9, 15, 16, 17, 19}   # clean/edge presets target the stock Clean level
-TARGET_CLEAN, TARGET_DIRTY = -3.5, -13.1   # cleans pushed hotter (denser via comp + clean-amp
-                                           # makeup boost) so they don't feel quiet next to distortion
-def _flat(p): return p["bank"] * G_SLOTS + p["slot"]
+# Cleans: the user set the master Output for every generated clean preset to a FIXED
+# -5.90 dB by ear (their stock Bank-1 Clean is the reference, left alone). So the cleans
+# bypass the RMS calibration entirely.
+CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather"}
+SUNN_NAMES  = {"Wizard's Doom"}   # Sunn Model T dark voicing perceives quiet -> lifted via the
+                                  # master Output target (NOT amp makeup, which over-drove the limiter).
+TARGET_DIRTY, TARGET_SUNN, CLEAN_OUT = -13.1, -10.5, -5.9
+# Hand-dialed master Output values the user set by ear on-device (2026-06-29); these are
+# the final word and win over the clean-pin / RMS calibration for the named presets.
+MANUAL_OUT = {
+    "Candlelit Clean": -10.0, "Sermon Crunch": -19.7, "Numb Sustain": -27.2,
+    "Little Feather": -1.3, "Wizard's Doom": -17.3, "Dreamlit Shimmer": -1.5,
+}
 for _p in PRESETS:
-    _fl = _flat(_p)
-    if _fl in MEAS_RMS_AT_M20:
-        _target = TARGET_CLEAN if _fl in CLEAN_FLAT else TARGET_DIRTY
-        _out = -20.0 + (_target - MEAS_RMS_AT_M20[_fl])
+    _nm = _p["name"]
+    if _nm in MANUAL_OUT:
+        _p["vals"][SYM_IDX["out_level"]] = MANUAL_OUT[_nm]
+    elif _nm in CLEAN_NAMES:
+        _p["vals"][SYM_IDX["out_level"]] = CLEAN_OUT
+    elif _nm in MEAS_RMS_AT_M20:
+        _target = TARGET_SUNN if _nm in SUNN_NAMES else TARGET_DIRTY
+        _out = -20.0 + (_target - MEAS_RMS_AT_M20[_nm])
         _p["vals"][SYM_IDX["out_level"]] = round(max(-40.0, min(6.0, _out)), 1)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -318,6 +365,8 @@ def _migrate(old, src_ver):
     dl_at = SYM_IDX["dl_pattern"]; dl_end = dl_at + 4
     wo_gap = src_ver < 8
     wo_at = SYM_IDX["wh_pos"]; wo_end = wo_at + 13
+    by_gap = src_ver < 9                                  # v9: 11 per-block bypass toggles
+    by_at = SYM_IDX["gt_bypass"]; by_end = by_at + 11     # default 0 = active
     out = [0.0] * N_PORTS; o = 0
     for i in range(N_PORTS):
         if it_at <= i < it_end:
@@ -326,6 +375,8 @@ def _migrate(old, src_ver):
             out[i] = ddef[i - dl_at]
         elif wo_gap and wo_at <= i < wo_end:
             out[i] = wodef[i - wo_at]
+        elif by_gap and by_at <= i < by_end:
+            out[i] = 0.0
         else:
             out[i] = old[o] if o < len(old) else 0.0; o += 1
     return out
@@ -378,7 +429,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 148, "port count drift: got %d" % N_PORTS
+    assert N_PORTS == 161, "port count drift: got %d" % N_PORTS
     # guard against typos / duplicate slots
     seen = set()
     for p in PRESETS:
