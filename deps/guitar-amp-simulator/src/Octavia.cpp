@@ -30,13 +30,13 @@ float Octavia::processSample(float x, int ch) noexcept {
     const float cond = s.inputHP.process(x);
     // Pre-rectifier fuzz. Moderate→high gain; lower drive stays sine-ish (clean octave),
     // higher drive squares up for the gnarly intermod fuzz.
-    const float gain = 2.0f + 40.0f * driveCur_;
+    const float gain = 2.0f + 28.0f * driveCur_;   // softened 40->28: less pre-rectifier squaring = cleaner, less gnarly octave
     const float fz   = std::tanh(gain * cond);
     // Full-wave rectifier → octave up.
     const float rect = std::fabs(fz);
     const float oct  = s.octHP.process(rect);     // strip DC
-    // A touch of the fundamental fuzz keeps some body under the octave.
-    float y = 0.85f * oct + 0.15f * fz;
+    // A touch more fundamental under the octave = smoother, less ring-mod harshness.
+    float y = 0.80f * oct + 0.20f * fz;
     y = s.toneLP.process(y);
     return levelCur_ * 2.0f * y;
 }

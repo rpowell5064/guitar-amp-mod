@@ -40,3 +40,8 @@ ir_refs/
 .claude/
 CLAUDE.md
 CLAUDE.local.md
+
+# Faceplate SOURCE material art (~2.5 MB each; regen-only inputs to make_faceplates.py).
+# The OUTPUT faceplate-*.png shipped in lv2/modgui-hexforge/ ARE committed.
+build-tools/materials/
+build-tools/tubehex_src.png

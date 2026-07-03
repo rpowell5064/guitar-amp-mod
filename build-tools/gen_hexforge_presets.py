@@ -65,11 +65,12 @@ def _base_vals():
         v[SYM_IDX[pfx + "_enable"]] = float(en)
     return v
 
-def preset(bank, slot, name, out_level=-20.0, **blocks):
+def preset(bank, slot, name, out_level=-20.0, cab_ir="", **blocks):
     """Build one factory preset. `blocks` maps a block prefix -> {param: value}.
     Param keys are the suffixes from gen_hexforge.py's tables (e.g. amp={'model':'Beardo BE'}).
     Enum params accept either the integer or the scalePoint label string. Use
-    enable=1/0 inside a block to engage/bypass it."""
+    enable=1/0 inside a block to engage/bypass it. `cab_ir` picks a built-in cab
+    sentinel (e.g. "@vox2x12"); empty = the Factory Cab (@factory / V30)."""
     if not (0 <= bank < G_BANKS and 0 <= slot < G_SLOTS):
         raise ValueError("bank/slot out of range: %d/%d" % (bank, slot))
     v = _base_vals()
@@ -78,9 +79,9 @@ def preset(bank, slot, name, out_level=-20.0, **blocks):
         for key, val in params.items():
             sym = pfx + "_" + key
             v[SYM_IDX[sym]] = _resolve(sym, val)
-    return dict(bank=bank, slot=slot, name=name, vals=v)
+    return dict(bank=bank, slot=slot, name=name, cab=cab_ir, vals=v)
 
-G_BANKS, G_SLOTS = 8, 4
+G_BANKS, G_SLOTS = 32, 4
 
 # ─────────────────────────────────────────────────────────────────────────────
 # The presets. Bank index 1 == "Bank 2" in the UI (Bank 1 / index 0 stays the
@@ -106,61 +107,114 @@ OUT = -20.0
 # IMPORTANT: the calibration tables below are keyed by NAME (not flat index) so this
 # kind of rearrange never has to touch them again.
 
+# ── Bank 2 (index 1) — NIRVANA · Nevermind (user request; slots B/C/D, A left free) ──
+add(
+  preset(1, 1, "Nevermind Verse", out_level=OUT,          # Smells Like Teen Spirit — clean verse
+    # Clean amp + a subtle Small Clone chorus (Nevermind Chorus) — the jangly verse figure.
+    # RESEARCHED (Butch Vig): clean Mesa/Vox platform + EHX Small Clone, depth switch UP. Mustang.
+    amp={"model":"Clean Meanie","gain":0.25,"bass":0.55,"mid":0.65,"treble":0.6,"presence":0.5,"master":0.7,"sag":0.3},
+    md={"enable":1,"type":"Nevermind Chorus","rate":0.42,"depth":1.0,"mix":0.68,"width":0.6},
+    rv={"enable":1,"predelay":8,"decay":0.9,"damping":0.6,"mix":0.14},
+    cab={"lowcut":85,"highcut":9500}),
+  preset(1, 2, "Nevermind Wall", out_level=OUT,           # Smells Like Teen Spirit — distorted (DS-1)
+    # Boss DS-1 (Grunge DS) into an edge-of-crunch Marshall — the pre-chorus/chorus wall.
+    # DS-1 tone backed off (it's the fizziest dirt in the suite) + amp gain/treble down.
+    # RESEARCHED: DS-1 (dist ~4 oclock, tone ~10 oclock) INTO a clean Fender Bassman -> Marshall
+    # cab; Small Clone runs AFTER the DS-1 to thicken the wall. Gate kills the DS-1 hiss.
+    dr={"enable":1,"model":"Grunge DS","drive":0.88,"tone":0.35,"level":1.0,"mix":1.0},
+    md={"enable":1,"type":"Nevermind Chorus","rate":0.42,"depth":1.0,"mix":0.4,"width":0.5},
+    amp={"model":"Clean Meanie","gain":0.35,"bass":0.6,"mid":0.7,"treble":0.55,"presence":0.5,"master":0.8,"sag":0.4},
+    gt={"enable":1,"thresh":-48,"attack":1.5,"hold":120,"release":250,"hyst":8},
+    cab_ir="@greenback",
+    cab={"lowcut":85,"highcut":8200}),
+  preset(1, 3, "Come As Water", out_level=OUT,            # Come As You Are — clean, deep chorus
+    # The underwater riff: clean amp, neck-pickup warmth, Small Clone (Nevermind Chorus) set DEEP.
+    # RESEARCHED (Vig: "AC30 with a Small Clone"): clean Vox + deep Small Clone, watery arpeggio.
+    amp={"model":"Chime Thirty","gain":0.3,"bass":0.4,"mid":0.55,"treble":0.6,"presence":0.5,"master":0.65,"sag":0.3},
+    md={"enable":1,"type":"Nevermind Chorus","rate":0.38,"depth":1.0,"mix":0.62,"width":0.6},
+    rv={"enable":1,"predelay":12,"decay":1.0,"damping":0.55,"mix":0.2},
+    cab={"lowcut":80,"highcut":9000}),
+)
+
 # ── Bank 3 — GHOST · Opus Eponymous (Orange Thunderverb era) ─────────────────
 add(
   preset(2, 0, "Candlelit Clean", out_level=OUT,         # Ghost — Opus clean
     # Orange clean + dark analog delay (Carbon Copy) + a little room.
-    amp={"model":"Tangerang","gain":0.2,"bass":0.5,"mid":0.6,"treble":0.5,"presence":0.4,"master":0.5,"sag":0.3},
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},  # density/loudness
-    dl={"enable":1,"type":"Tape","time":420,"feedback":0.28,"mix":0.16,"wow":0.003,"flutter":0.001},
-    rv={"enable":1,"decay":1.8,"damping":0.4,"mix":0.14},
+    # RESEARCHED: Orange Thunderverb 50 clean (Ghoul quote: back off gain, lean on mids), Gibson SG,
+    # Greenback 4x12; MXR Analog Chorus + Carbon Copy tape delay + Philosophers-Tone comp.
+    amp={"model":"Tangerang","gain":0.2,"bass":0.4,"mid":0.65,"treble":0.55,"presence":0.45,"master":0.65,"sag":0.6},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},
+    md={"enable":1,"type":"Lush-2","rate":0.25,"depth":0.3,"mix":0.3,"width":0.5},
+    dl={"enable":1,"type":"Tape","time":380,"feedback":0.25,"mix":0.16,"wow":0.003,"flutter":0.001},
+    rv={"enable":1,"predelay":15,"decay":1.6,"damping":0.6,"mix":0.2},
+    cab_ir="@greenback",
     cab={"lowcut":85,"highcut":8500}),
   preset(2, 1, "Sermon Crunch", out_level=OUT,           # Ghost — Opus Eponymous rhythm
     # SG -> Orange Thunderverb 50: warm, mid-forward, gain backed off, '70s.
-    amp={"model":"Tangerang","gain":0.5,"bass":0.45,"mid":0.68,"treble":0.55,"presence":0.42,"master":0.45,"sag":0.35},
-    gt={"enable":1,"thresh":-55,"attack":3,"hold":60,"release":140,"hyst":6},
+    # RESEARCHED: Thunderverb dirty low-gain + Pigtronix Fat Drive (TS-style) light boost; cranked-70s
+    # mid-pushed Orange crunch, NOT high gain. Greenback cab.
+    amp={"model":"Tangerang","gain":0.42,"bass":0.38,"mid":0.72,"treble":0.52,"presence":0.48,"master":0.7,"sag":0.65},
+    dr={"enable":1,"model":"Green Man","drive":0.3,"tone":0.55,"level":0.65,"mix":1.0},
+    gt={"enable":1,"thresh":-52,"attack":3,"hold":120,"release":260,"hyst":8},
+    cab_ir="@greenback",
     cab={"lowcut":90,"highcut":8200}),
   preset(2, 2, "Sermon Rhythm", out_level=OUT,           # Ghost — Opus rhythm, higher gain than Sermon Crunch
     # Same Orange Thunderverb voicing as Sermon Crunch, pushed: more gain + TS tighten + tighter gate.
-    amp={"model":"Tangerang","gain":0.68,"bass":0.45,"mid":0.7,"treble":0.56,"presence":0.45,"master":0.45,"sag":0.35},
-    dr={"enable":1,"model":"Green Man","drive":0.03,"tone":0.55,"level":0.85,"mix":1.0},   # TS boost (drive ~0)
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
+    # RESEARCHED: same Orange rig pushed harder (live JCM900 also used for grind); mid-forward.
+    amp={"model":"Tangerang","gain":0.58,"bass":0.4,"mid":0.68,"treble":0.55,"presence":0.5,"master":0.72,"sag":0.6},
+    dr={"enable":1,"model":"Green Man","drive":0.4,"tone":0.5,"level":0.6,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":130,"release":280,"hyst":8},
+    cab_ir="@greenback",
     cab={"lowcut":90,"highcut":8200}),
   preset(2, 3, "Sermon Solo", out_level=OUT,             # Ghost — early (B.C.) album lead: reverb + Seraph delay
     # Singing, mid-forward Opus-era lead over the Orange platform; soaked in Seraph + room.
-    amp={"model":"Tangerang","gain":0.6,"bass":0.45,"mid":0.72,"treble":0.58,"presence":0.5,"master":0.46,"sag":0.35},
-    dr={"enable":1,"model":"Green Man","drive":0.04,"tone":0.58,"level":0.82,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
-    dl={"enable":1,"type":"Seraph","time":420,"feedback":0.33,"mix":0.2,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.18,"modrate":0.3},
-    rv={"enable":1,"predelay":20,"decay":2.2,"damping":0.4,"mix":0.18},
+    # RESEARCHED: Ghost early lead — Orange + light TS boost, MXR chorus, Carbon Copy tape delay
+    # (~420ms/3 repeats per Guitar Chalk Lachryma), plate reverb ~30%.
+    amp={"model":"Tangerang","gain":0.52,"bass":0.38,"mid":0.65,"treble":0.6,"presence":0.55,"master":0.68,"sag":0.58},
+    dr={"enable":1,"model":"Green Man","drive":0.35,"tone":0.6,"level":0.7,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":130,"release":280,"hyst":8},
+    md={"enable":1,"type":"Lush-2","rate":0.2,"depth":0.25,"mix":0.25,"width":0.5},
+    dl={"enable":1,"type":"Tape","time":420,"feedback":0.35,"mix":0.28,"width":0.3,"wow":0.003,"flutter":0.001},
+    rv={"enable":1,"predelay":20,"decay":1.8,"damping":0.5,"mix":0.3},
+    cab_ir="@greenback",
     cab={"lowcut":88,"highcut":8800}),
 )
 
 # ── Bank 4 — GHOST · Impera & Skeleta (Friedman BE era) ──────────────────────
 add(
   preset(3, 0, "Imperial Rhythm", out_level=OUT,         # Ghost — Impera rhythm (Friedman BE, Akesson's BE-100)
-    amp={"model":"Beardo BE","fr_channel":"BE","fr_fat":1,"gain":0.55,"bass":0.5,"mid":0.62,"treble":0.55,"presence":0.45,"master":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.03,"tone":0.55,"level":0.85,"mix":1.0},   # TS boost (drive ~0)
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
+    # RESEARCHED (Akesson): Friedman BE-100 rhythm (BE channel) + TS/Sugar-Drive tightener, V30 4x12,
+    # tight+punchy dry, layered.
+    amp={"model":"Beardo BE","fr_channel":"BE","fr_fat":1,"gain":0.62,"bass":0.45,"mid":0.55,"treble":0.58,"presence":0.62,"master":0.68,"sag":0.45},
+    dr={"enable":1,"model":"Green Man","drive":0.25,"tone":0.65,"level":0.6,"mix":1.0},
+    gt={"enable":1,"thresh":-45,"attack":1,"hold":120,"release":250,"hyst":8},
     cab={"lowcut":88,"highcut":8400}),
   preset(3, 1, "Imperial Lead", out_level=OUT,           # Ghost — Impera lead (Friedman HBE)
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.62,"bass":0.48,"mid":0.66,"treble":0.56,"presence":0.5,"master":0.46},
-    dr={"enable":1,"model":"Green Man","drive":0.04,"tone":0.58,"level":0.8,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
-    dl={"enable":1,"type":"Seraph","time":400,"feedback":0.3,"mix":0.16,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.15,"modrate":0.3},
-    rv={"enable":1,"decay":1.6,"mix":0.1},
+    # RESEARCHED (Akesson): Impera lead = Friedman HBE (Plexi for solos) + MXR Sugar Drive (Klon) +
+    # MXR Phase 95 (frequent on leads) + melodic dual delay.
+    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.72,"bass":0.4,"mid":0.52,"treble":0.65,"presence":0.68,"master":0.65,"sag":0.4},
+    dr={"enable":1,"model":"Gilded Horse","drive":0.35,"tone":0.6,"level":0.7,"mix":1.0},
+    md={"enable":1,"type":"Phaser","rate":0.3,"depth":0.55,"mix":0.35},
+    gt={"enable":1,"thresh":-45,"attack":1,"hold":130,"release":280,"hyst":8},
+    dl={"enable":1,"type":"Seraph","time":320,"feedback":0.28,"mix":0.22,"width":0.45,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.12,"modrate":0.3},
+    rv={"enable":1,"predelay":15,"decay":1.4,"damping":0.45,"mix":0.28},
     cab={"lowcut":88,"highcut":8800}),
   preset(3, 2, "Cardinal Rhythm", out_level=OUT,         # Ghost — Skeleta rhythm (Friedman HBE, tight modern)
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_fat":1,"gain":0.6,"bass":0.55,"mid":0.6,"treble":0.54,"presence":0.48,"master":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.03,"tone":0.55,"level":0.85,"mix":1.0},
-    gt={"enable":1,"thresh":-48,"attack":0.5,"hold":50,"release":140,"hyst":8},
+    # RESEARCHED (Sound on Sound): Skeleta rhythm = tighter/more-modern than Impera; lower sag,
+    # slightly scooped bass for clarity.
+    amp={"model":"Beardo BE","fr_channel":"BE","fr_fat":1,"gain":0.65,"bass":0.42,"mid":0.5,"treble":0.62,"presence":0.65,"master":0.7,"sag":0.35},
+    dr={"enable":1,"model":"Green Man","drive":0.2,"tone":0.7,"level":0.58,"mix":1.0},
+    gt={"enable":1,"thresh":-45,"attack":0.5,"hold":120,"release":260,"hyst":8},
     cab={"lowcut":90,"highcut":8200}),
   preset(3, 3, "Cardinal Lead", out_level=OUT,           # Ghost — Skeleta lead (Friedman HBE + sat)
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.66,"bass":0.5,"mid":0.64,"treble":0.56,"presence":0.52,"master":0.46},
-    dr={"enable":1,"model":"Green Man","drive":0.04,"tone":0.58,"level":0.82,"mix":1.0},
-    gt={"enable":1,"thresh":-48,"attack":0.5,"hold":55,"release":150,"hyst":6},
-    dl={"enable":1,"type":"Seraph","time":380,"feedback":0.3,"mix":0.14,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.15,"modrate":0.3},
-    rv={"enable":1,"decay":1.7,"mix":0.1},
+    # RESEARCHED (Sound on Sound): Skeleta solos = vintage Boss OD-1 (flat, no mid-hump; RAT is closer
+    # than TS) into HBE + MXR phaser; very stiff/modern.
+    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.78,"bass":0.38,"mid":0.48,"treble":0.65,"presence":0.7,"master":0.65,"sag":0.32},
+    dr={"enable":1,"model":"Dear Rodent Boy","drive":0.4,"tone":0.45,"level":0.65,"mix":1.0},
+    md={"enable":1,"type":"Phaser","rate":0.28,"depth":0.5,"mix":0.3},
+    gt={"enable":1,"thresh":-45,"attack":0.5,"hold":120,"release":260,"hyst":8},
+    dl={"enable":1,"type":"Tape","time":350,"feedback":0.3,"mix":0.25,"width":0.35,"wow":0.002,"flutter":0.001},
+    rv={"enable":1,"predelay":18,"decay":1.5,"damping":0.42,"mix":0.3},
     cab={"lowcut":90,"highcut":8700}),
 )
 
@@ -168,28 +222,50 @@ add(
 add(
   preset(4, 0, "Dark Side Air", out_level=OUT,           # Pink Floyd — Breathe
     # Strat warm clean, compressed, spacious, a hint of vibe.
-    amp={"model":"Clean Meanie","gain":0.3,"bass":0.55,"mid":0.5,"treble":0.48,"presence":0.45,"master":0.5},
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},
-    md={"enable":1,"type":"Uni-Verse","rate":0.25,"depth":0.3,"mix":0.22},
-    dl={"enable":1,"type":"Digital","time":420,"feedback":0.3,"mix":0.16},   # Breathe's gentle echo
-    rv={"enable":1,"predelay":25,"decay":2.6,"damping":0.35,"mix":0.24},
+    # RESEARCHED (Gilmourish): Hiwatt DR103 dead clean into WEM/Fane (@hiwatt), NO comp (Gilmour had
+    # none until Animals 1977). Uni-Vibe in chorus mode + Binson (Echo Wreck) ~300ms; plate at mix.
+    amp={"model":"Hi-Volt","gain":0.15,"bass":0.55,"mid":0.45,"treble":0.45,"presence":0.55,"master":0.75,"sag":0.3},
+    md={"enable":1,"pos":4,"type":"Uni-Verse","rate":0.15,"depth":0.55,"mix":0.5,"width":0.5},   # Gilmour ran the Vibe pre-amp (pos 4 < amp 5); chorus-mode blend
+    dl={"enable":1,"type":"Echo Wreck","time":300,"feedback":0.35,"mix":0.25,"width":0.3,"heads":10,"wow":0.002,"flutter":0.001},
+    rv={"enable":1,"predelay":20,"decay":1.6,"damping":0.4,"mix":0.2},
+    cab_ir="@hiwatt",
     cab={"lowcut":80,"highcut":10000}),
   preset(4, 1, "Berlin Wall Pulse", out_level=OUT,       # Pink Floyd — Run Like Hell
     # Strat, palm-muted, huge dotted delay soaked in chorus.
-    amp={"model":"Clean Meanie","gain":0.4,"bass":0.45,"mid":0.5,"treble":0.6,"presence":0.55,"master":0.55},
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":4},
-    md={"enable":1,"type":"Lush-2","rate":0.4,"depth":0.55,"mix":0.4,"width":0.7},
-    dl={"enable":1,"type":"Digital","time":440,"feedback":0.4,"mix":0.28,"width":0.6},
-    rv={"enable":1,"decay":1.8,"mix":0.12},
+    # RESEARCHED (Gilmourish/kitrae): Hiwatt bright clean + mild boost, EHX Electric Mistress FLANGER
+    # (not chorus), dotted-8th 380ms (117 BPM) dual delay via Seraph, subtle Dynacomp.
+    amp={"model":"Hi-Volt","gain":0.2,"bass":0.5,"mid":0.45,"treble":0.6,"presence":0.6,"master":0.7,"sag":0.25},
+    dr={"enable":1,"model":"Green Man","drive":0.15,"tone":0.6,"level":0.55,"mix":0.4},
+    cp={"enable":1,"type":0,"ratio":1,"thresh":-20,"makeup":1},
+    md={"enable":1,"type":"Flanger","rate":0.12,"depth":0.4,"mix":0.4,"width":0.4},
+    dl={"enable":1,"type":"Seraph","time":380,"feedback":0.5,"mix":0.4,"width":0.4,"pattern":"Dotted 8th","ducking":0.1,"moddepth":0.05,"modrate":0.2},
+    rv={"enable":1,"decay":1.4,"mix":0.1},
+    cab_ir="@hiwatt",
     cab={"lowcut":85,"highcut":11000}),
   preset(4, 2, "Numb Sustain", out_level=OUT,            # Pink Floyd — Gilmour Big Muff + Binson Echorec lead
     # Ram's-Head Muff (Ovis) Vol4/Tone6/Sus6 + Dyna Comp + Hiwatt clean platform + Binson (Echo Wreck).
-    fz={"enable":1,"pedal":"Italian Hero","mode":"Ovis","sustain":0.6,"tone":0.6,"volume":0.45},
-    cp={"enable":1,"type":0,"ratio":1,"thresh":-20,"makeup":1},
-    amp={"model":"Hiwatt","gain":0.4,"bass":0.6,"mid":0.5,"treble":0.6,"presence":0.6,"master":0.6},
-    gt={"enable":1,"thresh":-58,"attack":2,"hold":200,"release":400,"hyst":6},   # tame Muff hiss, keep sustain
-    dl={"enable":1,"type":"Echo Wreck","time":430,"feedback":0.33,"mix":0.22,"heads":10,"wow":0.002,"flutter":0.001},
-    rv={"enable":1,"decay":2.0,"mix":0.12},
+    # RESEARCHED (Gilmourish/kitrae, 1980 photos): Rams-Head Muff (Ovis) Sus~0.75/Tone~0.38 dark/Vol~0.6
+    # into a CRANKED Hiwatt (master 0.9 — the violin sustain is amp-compression, not maxed fuzz). Comp
+    # BYPASSED for the solo. MXR Digital Delay 450ms (studio). Restrained treble/mid.
+    fz={"enable":1,"pedal":"Italian Hero","mode":"Ovis","sustain":0.75,"tone":0.38,"volume":0.6},
+    amp={"model":"Hi-Volt","gain":0.4,"bass":0.55,"mid":0.45,"treble":0.4,"presence":0.55,"master":0.9,"sag":0.4},
+    gt={"enable":1,"thresh":-56,"attack":2,"hold":200,"release":400,"hyst":8},
+    dl={"enable":1,"type":"Echo Wreck","time":450,"feedback":0.45,"mix":0.25,"heads":10,"wow":0.002,"flutter":0.001},
+    rv={"enable":1,"predelay":25,"decay":1.8,"damping":0.4,"mix":0.22},
+    cab={"lowcut":80,"highcut":9500}),
+  preset(4, 3, "Gravity Lead", out_level=-13.0,          # John Mayer — Klon-into-Dumble singing lead
+    # Strat neck -> Gilded Horse (Klon) as OD/boost -> warm edge-of-breakup Fender/Two-Rock clean,
+    # a touch of compression for the D-style smoothness, subtle tape + room. Gravity / Slow Dancing.
+    # RESEARCHED: Klon (Gilded Horse) as a LOW-gain always-on boost (gain~11:00) into a clean Two-Rock/
+    # Dumble-family platform; signature = Victoria Reverberato HARMONIC TREMOLO swirl + short analog
+    # slapback (Aqua Puss ~110ms, 1 repeat) + present spring reverb. Position-4 Strat.
+    amp={"model":"Clean Meanie","gain":0.3,"bass":0.5,"mid":0.6,"treble":0.55,"presence":0.5,"master":0.8,"sag":0.35},
+    dr={"enable":1,"model":"Gilded Horse","drive":0.25,"tone":0.6,"level":0.55,"mix":1.0},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":3},
+    md={"enable":1,"type":"Tremolo","rate":0.25,"depth":0.5,"mix":0.6,"width":0.4},
+    gt={"enable":1,"thresh":-58,"attack":2,"hold":150,"release":300,"hyst":8},
+    dl={"enable":1,"type":"Tape","time":110,"feedback":0.15,"mix":0.2,"wow":0.002,"flutter":0.001},
+    rv={"enable":1,"predelay":15,"decay":1.4,"damping":0.5,"mix":0.25},
     cab={"lowcut":80,"highcut":9500}),
 )
 
@@ -199,16 +275,16 @@ add(
     # Germanium Fuzz Face (I Know It / Tone Bender) into a lower-gain Marshall plexi.
     fz={"enable":1,"pedal":"I Know It","sustain":0.7,"volume":0.55,"bias":0.55,"inputtrim":0.45,"getemp":0.4},
     amp={"model":"Crunchy","gain":0.4,"bass":0.5,"mid":0.62,"treble":0.6,"presence":0.5,"master":0.5},
-    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":6},
+    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":8},
     cab={"lowcut":80,"highcut":8800},
     rv={"enable":1,"decay":1.3,"mix":0.08}),
   preset(5, 1, "Hazy Solo", out_level=OUT,               # Jimi Hendrix — Purple Haze SOLO
     # Octavia octave-up fuzz + a parked (cocked) wah into a plexi — the ring-modulated
     # octave-fuzz lead. (Mauve Haze, two slots up, is the germanium Fuzz Face riff tone.)
-    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.55,"q":0.65,"mix":0.6},   # cocked-wah honk
-    fz={"enable":1,"pedal":"Octavia","sustain":0.7,"tone":0.5,"volume":0.6},
-    amp={"model":"Crunchy","gain":0.45,"bass":0.5,"mid":0.62,"treble":0.62,"presence":0.55,"master":0.55},
-    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":6},
+    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.55,"q":0.55,"mix":0.42},  # cocked-wah honk (tamed)
+    fz={"enable":1,"pedal":"Octavia","sustain":0.62,"tone":0.5,"volume":0.4},  # Octavia is near-0dBFS; keep it near guitar level
+    amp={"model":"Crunchy","gain":0.3,"bass":0.5,"mid":0.62,"treble":0.55,"presence":0.5,"master":0.5},  # plexi kept fairly clean; the fuzz is the dirt
+    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":8},
     dl={"enable":1,"type":"Seraph","time":400,"feedback":0.3,"mix":0.15,"width":0.6,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.15,"modrate":0.3},
     rv={"enable":1,"decay":1.5,"mix":0.1},
     cab={"lowcut":80,"highcut":9000}),
@@ -225,7 +301,7 @@ add(
     fz={"enable":1,"pedal":"Italian Hero","mode":"Red Bear","sustain":0.7,"tone":0.45,"volume":0.55},
     cp={"enable":1,"type":0,"ratio":1,"thresh":-22,"makeup":2},
     amp={"model":"Tangerang","gain":0.45,"bass":0.6,"mid":0.55,"treble":0.45,"presence":0.4,"master":0.5,"sag":0.4},
-    gt={"enable":1,"thresh":-56,"attack":3,"hold":200,"release":400,"hyst":6},   # gentle (preserve the wall)
+    gt={"enable":1,"thresh":-56,"attack":3,"hold":200,"release":400,"hyst":8},   # gentle (preserve the wall)
     rv={"enable":1,"predelay":30,"decay":3.2,"damping":0.5,"mix":0.18},          # cavernous doom space
     cab={"lowcut":72,"highcut":7000}),
 )
@@ -233,34 +309,46 @@ add(
 # ── Bank 7 — MASTODON · Crack the Skye (+ Electric Wizard, doom singleton) ────
 add(
   preset(6, 0, "Skye Crusher", out_level=OUT,            # Mastodon — Crack the Skye rhythm (JCM800 + OD808)
-    amp={"model":"Crunchy","gain":0.45,"bass":0.42,"mid":0.7,"treble":0.62,"presence":0.45,"master":0.45},
+    # RESEARCHED (Kelliher): JCM800 2203 — "bass almost all the way up, mids in the middle, treble 3-4
+    # o'clock, DO NOT scoop mids" + TS9/OD808 boost (drive~0, level high) into a Greenback 1960B.
+    amp={"model":"Crunchy","gain":0.45,"bass":0.78,"mid":0.55,"treble":0.72,"presence":0.48,"master":0.45},
     dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.9,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":50,"release":130,"hyst":6},
-    md={"enable":1,"type":"Phaser","rate":0.2,"depth":0.45,"mix":0.3},   # Crack the Skye MXR Phase 90
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":120,"release":260,"hyst":8},
+    md={"enable":1,"type":"Phaser","rate":0.2,"depth":0.45,"mix":0.2},   # Phase 90 subtle, behind the mix
     rv={"enable":1,"decay":1.6,"mix":0.1},
+    cab_ir="@greenback",
     cab={"lowcut":85,"highcut":8500}),
   preset(6, 1, "Skye (No Mod)", out_level=OUT,           # Mastodon — Crack the Skye rhythm, phaser removed
     # = Skye Crusher (JCM800 + OD808) with the MXR Phase 90 dropped.
-    amp={"model":"Crunchy","gain":0.45,"bass":0.42,"mid":0.7,"treble":0.62,"presence":0.45,"master":0.45},
+    # RESEARCHED (Kelliher): = Skye Crusher (bass-up/mids-mid/treble-up JCM800 + OD808, Greenback) with
+    # the Phase 90 dropped.
+    amp={"model":"Crunchy","gain":0.45,"bass":0.78,"mid":0.55,"treble":0.72,"presence":0.48,"master":0.45},
     dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.9,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":50,"release":130,"hyst":6},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":120,"release":260,"hyst":8},
     rv={"enable":1,"decay":1.6,"mix":0.1},
+    cab_ir="@greenback",
     cab={"lowcut":85,"highcut":8500}),
   preset(6, 2, "Skye Soar", out_level=OUT,               # Mastodon — Crack the Skye lead (JCM800 + boost + octave + delay)
-    amp={"model":"Crunchy","gain":0.55,"bass":0.45,"mid":0.72,"treble":0.62,"presence":0.5,"master":0.46},
+    # RESEARCHED (Kelliher EQ + Hinds POG2 on "The Czar"): JCM800 bass-up/mids-mid/treble-up + TS boost,
+    # octave-up shimmer in front, RE-20/DD-6 dual delay. Greenback 1960B.
+    amp={"model":"Crunchy","gain":0.55,"bass":0.75,"mid":0.55,"treble":0.72,"presence":0.52,"master":0.46},
     dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.85,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":55,"release":150,"hyst":6},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":120,"release":260,"hyst":8},
     oc={"enable":1,"pos":2,"up":0.35,"down":0.0,"dry":1.0},   # "The Czar" POG octave-up, in front of the amp
     dl={"enable":1,"type":"Seraph","time":420,"feedback":0.32,"mix":0.16,"width":0.6,"pattern":"Dotted 8th","ducking":0.25,"moddepth":0.15,"modrate":0.3},
     rv={"enable":1,"decay":1.7,"mix":0.1},
+    cab_ir="@greenback",
     cab={"lowcut":85,"highcut":8800}),
   preset(6, 3, "Wizard's Doom", out_level=OUT,           # Electric Wizard — Funeralopolis / Dopethrone
     # SG -> Green-Russian Muff (Red Bear) -> Sunn Model T (series), very downtuned, dark + cavernous.
     # Fuzz pulled back from sustain 0.8/vol 0.55 — it was ~12 dB too hot (excess saturation/noise).
-    fz={"enable":1,"pedal":"Italian Hero","mode":"Red Bear","sustain":0.62,"tone":0.4,"volume":0.4},
-    amp={"model":"Doom Daddy","gain":0.55,"bass":0.7,"mid":0.5,"treble":0.4,"presence":0.38,"master":0.5,"sag":0.45,
+    # RESEARCHED: Dopethrone = Sound City 120 (EL34; Doom Daddy is the closest) + Boss FZ-2 "Fuzz II"
+    # which sits in GREEN RUSSIAN territory (Red Bear is the right target). Epiphone SG, B standard. @doom.
+    fz={"enable":1,"pedal":"Italian Hero","mode":"Red Bear","sustain":0.62,"tone":0.38,"volume":0.4},
+    amp={"model":"Doom Daddy","gain":0.55,"bass":0.72,"mid":0.5,"treble":0.4,"presence":0.38,"master":0.5,"sag":0.45,
          "sunn_link":"Series","sunn_vol2":0.5},
-    gt={"enable":1,"thresh":-56,"attack":3,"hold":200,"release":400,"hyst":6},
+    gt={"enable":1,"thresh":-56,"attack":3,"hold":200,"release":400,"hyst":8},
+    cab_ir="@doom",
     cab={"lowcut":66,"highcut":6500},
     rv={"enable":1,"decay":2.2,"damping":0.4,"mix":0.12}),
 )
@@ -271,31 +359,156 @@ add(
 add(
   preset(7, 0, "Vanishing Drive", out_level=OUT,         # A Perfect Circle — Mer de Noms distorted
     # Les Paul -> Friedman-modded Marshall: needs BITE -> HBE + C45 bright cap + TS tighten.
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_c45":1,"fr_fat":1,"gain":0.6,"bass":0.48,"mid":0.66,"treble":0.58,"presence":0.55,"master":0.46},
-    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.6,"level":0.8,"mix":1.0},
-    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":150,"hyst":6},
-    md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.4,"mix":0.25,"width":0.5},   # Howerdel ambience on dirt
-    dl={"enable":1,"type":"Digital","time":380,"feedback":0.25,"mix":0.14},
-    rv={"enable":1,"decay":1.6,"mix":0.12},
+    # RESEARCHED: Howerdels amp = a Dave-FRIEDMAN-modded 1978 Marshall JMP (NOT Mesa) into Greenback
+    # 4x12; mid-FORWARD (not djent-scooped), C# standard, layered. Subtle ambience, mostly dry.
+    amp={"model":"Beardo BE","fr_channel":"BE","fr_fat":1,"gain":0.62,"bass":0.55,"mid":0.6,"treble":0.55,"presence":0.5,"master":0.7,"sag":0.45},
+    dr={"enable":1,"model":"Green Man","drive":0.15,"tone":0.6,"level":0.62,"mix":1.0},
+    gt={"enable":1,"thresh":-45,"attack":1,"hold":130,"release":280,"hyst":8},
+    md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.4,"mix":0.22,"width":0.5},
+    dl={"enable":1,"type":"Digital","time":380,"feedback":0.25,"mix":0.12},
+    rv={"enable":1,"predelay":20,"decay":1.2,"damping":0.55,"mix":0.12},
+    cab_ir="@greenback",
     cab={"lowcut":86,"highcut":8800}),
   preset(7, 1, "Dreamlit Shimmer", out_level=OUT,        # A Perfect Circle — dreamy chorusy clean
     # Howerdel the "effects guy": lush chorus + ambient delay + big reverb on a clean amp.
-    amp={"model":"Clean Meanie","gain":0.3,"bass":0.5,"mid":0.55,"treble":0.52,"presence":0.45,"master":0.5,"sag":0.3},
+    # RESEARCHED: Howerdel is "an effects guy" — clean Gibson GA-15RV/Vox, warm (presence rolled off),
+    # wide CE-1/Lexicon chorus, tape/DL4 delay, huge Strymon/Lexicon hall (The Hollow tails).
+    amp={"model":"Clean Meanie","gain":0.2,"bass":0.5,"mid":0.45,"treble":0.55,"presence":0.4,"master":0.75,"sag":0.55},
     cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":5,"knee":3,"makeup":4},
-    md={"enable":1,"type":"Lush-2","rate":0.35,"depth":0.5,"mix":0.4,"width":0.6},
-    dl={"enable":1,"type":"Digital","time":450,"feedback":0.38,"mix":0.25,"width":0.6},
-    rv={"enable":1,"predelay":20,"decay":3.0,"damping":0.35,"mix":0.28},
+    md={"enable":1,"type":"Lush-2","rate":0.22,"depth":0.55,"mix":0.5,"width":0.9},
+    dl={"enable":1,"type":"Tape","time":480,"feedback":0.38,"mix":0.28,"width":0.8,"wow":0.003,"flutter":0.001},
+    rv={"enable":1,"predelay":35,"decay":3.2,"damping":0.4,"mix":0.38},
     cab={"lowcut":80,"highcut":12000}),
   preset(7, 2, "Flatliner", out_level=OUT,               # Periphery — Flatline
-    amp={"model":"Gainzilla","gain":0.55,"bass":0.42,"mid":0.72,"treble":0.6,"presence":0.45,"master":0.38,"channel":1,"resonance":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.02,"tone":0.55,"level":1.0,"mix":1.0},   # TS tighten
-    gt={"enable":1,"thresh":-45,"attack":0.1,"hold":40,"release":120,"hyst":8},           # surgical djent gate
-    cab={"lowcut":100,"highcut":8000}),
+    # RESEARCHED (Misha Mansoors own Fractal Tone Tour): PVH 6160 Block = 5150; Drive 6.5/Bass 5/Mid 5/
+    # Treble 6/Pres 5/Master 4, minimal sag. TS808 as a CLEAN boost (drive 0, level max). Drop Ab 7-str.
+    amp={"model":"Gainzilla","gain":0.65,"bass":0.5,"mid":0.5,"treble":0.6,"presence":0.5,"master":0.4,"channel":1,"resonance":0.5,"sag":0.2},
+    dr={"enable":1,"model":"Green Man","drive":0.0,"tone":0.5,"level":1.0,"mix":1.0},
+    gt={"enable":1,"thresh":-42,"attack":0.5,"hold":90,"release":200,"hyst":8},
+    cab={"lowcut":85,"highcut":7500}),
   preset(7, 3, "Prayer Djent", out_level=OUT,            # Periphery — Prayer Position
-    amp={"model":"Gainzilla","gain":0.55,"bass":0.42,"mid":0.7,"treble":0.6,"presence":0.45,"master":0.38,"channel":1,"resonance":0.45},
-    dr={"enable":1,"model":"Green Man","drive":0.02,"tone":0.58,"level":1.0,"mix":1.0},
-    gt={"enable":1,"thresh":-45,"attack":0.1,"hold":40,"release":110,"hyst":8},
-    cab={"lowcut":95,"highcut":8200}),
+    # RESEARCHED: same PVH 6160 core as Flatliner, slightly more bass/mid for chug weight, EVEN
+    # tighter (3 gates live), G# standard 7-str.
+    amp={"model":"Gainzilla","gain":0.65,"bass":0.55,"mid":0.52,"treble":0.58,"presence":0.48,"master":0.42,"channel":1,"resonance":0.5,"sag":0.18},
+    dr={"enable":1,"model":"Green Man","drive":0.0,"tone":0.48,"level":1.0,"mix":1.0},
+    gt={"enable":1,"thresh":-40,"attack":0.5,"hold":80,"release":180,"hyst":8},
+    cab={"lowcut":90,"highcut":7800}),
+)
+
+# ── Bank 9 (index 8) — VIBE & WAVE (Trower / Police / Cure / Chic) ────────────
+# Fun, distinctive tones that lean on the suite's oddball gear (Uni-Vibe, chorus,
+# flanger, comp) — deliberately NOT the overused modeler defaults.
+add(
+  preset(8, 0, "Bridge Vibe", out_level=-9.0,            # Robin Trower — Bridge of Sighs
+    # RESEARCHED: cranked Marshall JMP-100 (NOT Hiwatt) + Greenback 4x12, Dan Armstrong treble
+    # boost driving the input, SLOW liquid Uni-Vibe. Neve studio comp = the thick sustain.
+    dr={"enable":1,"model":"Gilded Horse","drive":0.22,"tone":0.6,"level":0.7,"mix":1.0},
+    amp={"model":"Crunchy","gain":0.6,"bass":0.45,"mid":0.55,"treble":0.6,"presence":0.5,"master":0.8,"sag":0.7},
+    cp={"enable":1,"type":0,"ratio":1,"thresh":-20,"makeup":1},
+    md={"enable":1,"pos":3,"type":"Uni-Verse","rate":0.28,"depth":0.72,"mix":0.62,"width":0.5},   # Trower ran the Vibe FIRST — pre-boost, pre-amp (pos 3 < drive 4 < amp 5); chorus-blend mix
+    rv={"enable":1,"predelay":15,"decay":1.8,"damping":0.6,"mix":0.22},
+    cab={"lowcut":80,"highcut":9000}),
+  preset(8, 1, "Bottle Jangle", out_level=OUT,           # The Police / Andy Summers — Message in a Bottle
+    # RESEARCHED: Tele w/PAF neck -> clean Fender Twin, MXR Dyna Comp always on, EHX Electric
+    # Mistress "more chorus than flange" (Flanger, slow/static), Echoplex slapback. Arpeggiated add9.
+    amp={"model":"Clean Meanie","gain":0.3,"bass":0.4,"mid":0.45,"treble":0.65,"presence":0.55,"master":0.6},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":4},
+    md={"enable":1,"type":"Flanger","rate":0.2,"depth":0.35,"mix":0.7,"width":0.5},
+    dl={"enable":1,"type":"Tape","time":120,"feedback":0.18,"mix":0.2,"width":0.6,"wow":0.003,"flutter":0.001},
+    rv={"enable":1,"predelay":8,"decay":1.4,"damping":0.45,"mix":0.2},
+    cab={"lowcut":85,"highcut":11000}),
+  preset(8, 2, "Forest Wash", out_level=OUT,             # The Cure — A Forest
+    # RESEARCHED (Mike Hedges): Roland JC-120 dead clean (no sag) + Jazzmaster, SLOW deep flanger
+    # (7 env-flangers, approximated static), tape-machine delay building across the song, cavernous verb.
+    amp={"model":"Clean Meanie","gain":0.2,"bass":0.5,"mid":0.6,"treble":0.5,"presence":0.4,"master":0.55,"sag":0.1},
+    md={"enable":1,"type":"Flanger","rate":0.08,"depth":0.65,"mix":0.55,"width":0.9},
+    dl={"enable":1,"type":"Tape","time":480,"feedback":0.45,"mix":0.32,"width":0.7,"wow":0.004,"flutter":0.002},
+    rv={"enable":1,"predelay":20,"decay":3.2,"damping":0.55,"mix":0.32},
+    cab={"lowcut":90,"highcut":9500}),
+  preset(8, 3, "Disco Chuck", out_level=OUT,             # Nile Rodgers / Chic — funk chucking
+    # RESEARCHED (Le Freak, Bob Clearmountain): Strat NECK single-coil + DI/Deluxe blend, console
+    # EQ = HPF 160Hz + 12k air + 4.8k mid. Bone-dry, BRIGHT, hard comp glue, gate for tight chucks.
+    amp={"model":"Clean Meanie","gain":0.25,"bass":0.35,"mid":0.6,"treble":0.75,"presence":0.65,"master":0.55},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-26,"attack":1,"release":4,"knee":2,"makeup":5},
+    gt={"enable":1,"thresh":-50,"attack":1,"hold":60,"release":120,"hyst":8},
+    cab={"lowcut":110,"highcut":12000}),
+)
+
+# ── Bank 10 (index 9) — TWANG & FUZZ (Dick Dale / Shadows / QOTSA / Ronson) ───
+add(
+  preset(9, 0, "Surf Splash", out_level=OUT,             # Dick Dale — Misirlou
+    # RESEARCHED: Misirlou has NO tremolo (that is fast tremolo-PICKING) — the hero is a Fender 6G15
+    # outboard SPRING reverb: bright, undamped, very wet. Fender Showman, bridge SC, staccato (gate).
+    amp={"model":"Clean Meanie","gain":0.15,"bass":0.45,"mid":0.5,"treble":0.8,"presence":0.75,"master":0.85},
+    gt={"enable":1,"thresh":-45,"attack":0.5,"hold":40,"release":90,"hyst":8},
+    rv={"enable":1,"predelay":5,"decay":2.6,"damping":0.15,"mix":0.6},
+    cab={"lowcut":80,"highcut":10500}),
+  preset(9, 1, "Apache Echo", out_level=OUT,             # The Shadows / Hank Marvin — Apache
+    # RESEARCHED: Vox AC15 (Chime Thirty) + Meazzi/Binson multi-head echo ~130ms (3 taps swelling).
+    # NO tremolo — Marvins "vibrato" is the Strat vibrato ARM. Clean bell-like twang, alnico cab.
+    amp={"model":"Chime Thirty","gain":0.2,"bass":0.4,"mid":0.55,"treble":0.7,"presence":0.6,"master":0.65,"sag":0.55},
+    dl={"enable":1,"type":"Echo Wreck","time":130,"feedback":0.35,"mix":0.4,"width":0.0,"heads":10,"wow":0.002,"flutter":0.001},
+    rv={"enable":1,"predelay":8,"decay":1.4,"damping":0.55,"mix":0.16},
+    cab={"lowcut":82,"highcut":9500}),
+  preset(9, 2, "Desert Robot", out_level=-15.5,          # QOTSA — No One Knows
+    # RESEARCHED (Eric Valentine): Hommes "No One Knows" dirt was a tiny SOLID-STATE Peavey Decade
+    # driven into saturation — NOT a Big Muff. Backline Plus (Peavey Backstage+) pushed harder now +
+    # a BOSS SD-1 (Super Nova) overdrive out front for the extra gain/grit the tone was missing (user
+    # request). SD-1 drive up, amp gain up = mid-forward, tight, saturated desert grind.
+    dr={"enable":1,"model":"Super Nova","drive":0.65,"tone":0.5,"level":0.72,"mix":1.0},
+    amp={"model":"Backline Plus","gain":0.62,"bass":0.58,"mid":0.82,"treble":0.68,"presence":0.5,"master":0.7},
+    gt={"enable":1,"thresh":-52,"attack":1.5,"hold":100,"release":220,"hyst":8},
+    rv={"enable":1,"decay":0.9,"damping":0.7,"mix":0.07},
+    cab={"lowcut":82,"highcut":8500}),
+  preset(9, 3, "Moondust Glam", out_level=-15.5,         # Bowie / Mick Ronson — Moonage Daydream
+    # RESEARCHED: Sola Sound Tone Bender MkI germanium -> COCKED Cry Baby (static upper-mid honk)
+    # -> Marshall Major (KT88) with volume FULL = power-amp sat. Les Paul Custom. Greenback cab.
+    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.72,"q":0.65,"mix":1.0},
+    fz={"enable":1,"pedal":"I Know It","sustain":0.78,"tone":0.6,"volume":0.6,"bias":0.55,"inputtrim":0.65,"getemp":0.45},
+    amp={"model":"Crunchy","gain":0.82,"bass":0.55,"mid":0.6,"treble":0.65,"presence":0.7,"master":0.9,"sag":0.7},
+    gt={"enable":1,"thresh":-50,"attack":2,"hold":140,"release":280,"hyst":8},
+    rv={"enable":1,"decay":1.5,"mix":0.1},
+    cab={"lowcut":80,"highcut":8800}),
+)
+
+# ── Bank 11 (index 10) — PSYCH & CHIME (Tame Impala / MBV / U2 / Queen) ───────
+# The two Vox (Chime Thirty) showcases live here.
+add(
+  preset(10, 0, "Innerspeaker Swirl", out_level=-15.5,   # Tame Impala — psych fuzz + phaser
+    # RESEARCHED: Fuzz Face-style germanium (Muff Ovis, sustain back) into a MID-FORWARD Vox AC30
+    # (Chime Thirty), slow Small Stone Phaser underneath, baked-in reverb. Thick, not swirly. Strat.
+    fz={"enable":1,"pedal":"Italian Hero","mode":"Ovis","sustain":0.72,"tone":0.45,"volume":0.42},
+    amp={"model":"Chime Thirty","gain":0.6,"bass":0.45,"mid":0.7,"treble":0.55,"presence":0.5,"master":0.75,"sag":0.6},
+    md={"enable":1,"type":"Phaser","rate":0.25,"depth":0.6,"mix":0.5},
+    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":8},
+    rv={"enable":1,"predelay":15,"decay":1.6,"damping":0.4,"mix":0.28},
+    cab={"lowcut":80,"highcut":9000}),
+  preset(10, 1, "Glide Wall", out_level=-16.0,           # My Bloody Valentine — shoegaze glide
+    # RESEARCHED (Kevin Shields/Loveless): raw open fuzz (Muff Delta, dark) into a CRANKED Vox AC30,
+    # tremolo (dual-amp trem character), huge near-reverse reverb wall (0 predelay, long, very wet). Jazzmaster glide.
+    fz={"enable":1,"pedal":"Italian Hero","mode":"Delta","sustain":0.82,"tone":0.4,"volume":0.5},
+    amp={"model":"Chime Thirty","gain":0.72,"bass":0.5,"mid":0.55,"treble":0.5,"presence":0.4,"master":0.85,"sag":0.7},
+    md={"enable":1,"type":"Tremolo","rate":0.52,"depth":0.7,"mix":0.9},
+    gt={"enable":1,"thresh":-54,"attack":2,"hold":180,"release":350,"hyst":8},
+    rv={"enable":1,"predelay":15,"decay":3.4,"damping":0.35,"mix":0.32},
+    cab={"lowcut":82,"highcut":9000}),
+  preset(10, 2, "Streets Chime", out_level=OUT,          # The Edge / U2 — dotted-eighth chime (Vox)
+    # RESEARCHED: SDD-3000 was a DUAL delay (dotted-8th ~350ms + secondary tap, panned L/R) — the
+    # Seraph dual-delay nails this. Pattern "Dotted 8th" @129BPM, 2-3 clean repeats, wide stereo,
+    # light ducking so the attack stays clear + a touch of mod for shimmer. Vox AC30 edge-of-breakup.
+    amp={"model":"Chime Thirty","gain":0.55,"bass":0.4,"mid":0.55,"treble":0.7,"presence":0.6,"master":0.8,"sag":0.5},
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":3},
+    dl={"enable":1,"type":"Seraph","time":350,"feedback":0.25,"mix":0.28,"width":0.9,"pattern":"Dotted 8th","ducking":0.15,"moddepth":0.1,"modrate":0.25},
+    rv={"enable":1,"predelay":20,"decay":1.2,"damping":0.5,"mix":0.14},
+    cab={"lowcut":85,"highcut":11000}),
+  preset(10, 3, "Regal Sustain", out_level=-13.0,        # Brian May / Queen — treble-boosted AC30 sing (Vox)
+    # RESEARCHED: Red Special (neck+mid out-of-phase) -> Dallas Rangemaster TREBLE BOOSTER (bright,
+    # bass-cut, low drive) -> Vox AC30 NORMAL channel CRANKED = the singing amp-sat sustain. No delay (studio).
+    dr={"enable":1,"model":"Green Man","drive":0.12,"tone":0.78,"level":0.85,"mix":1.0},
+    amp={"model":"Chime Thirty","gain":0.85,"bass":0.55,"mid":0.6,"treble":0.8,"presence":0.65,"master":0.9,"sag":0.75},
+    gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":8},
+    rv={"enable":1,"predelay":10,"decay":1.0,"damping":0.5,"mix":0.13},
+    cab={"lowcut":85,"highcut":9500}),
 )
 
 # ── Loudness calibration ─────────────────────────────────────────────────────
@@ -311,23 +524,39 @@ MEAS_RMS_AT_M20 = {
     "Sermon Crunch":-11.46, "Candlelit Clean":-11.07, "Imperial Rhythm":-15.64,
     "Imperial Lead":-15.05, "Cardinal Rhythm":-15.57, "Cardinal Lead":-15.84,
     "Vanishing Drive":-15.67, "Dreamlit Shimmer":-2.39, "Berlin Wall Pulse":-3.06,
-    "Dark Side Air":-3.92, "Numb Sustain":-0.17, "Little Feather":-7.95,
+    "Dark Side Air":-3.92, "Numb Sustain":-11.70, "Little Feather":-7.95,
     "Flatliner":-13.56, "Prayer Djent":-13.44, "Skye Crusher":-16.21, "Skye Soar":-15.91,
-    "Mauve Haze":-13.81, "Holy Smoke":-11.16, "Wizard's Doom":5.80, "Hazy Solo":-14.35,
+    "Mauve Haze":-13.81, "Holy Smoke":-10.89, "Wizard's Doom":5.80, "Hazy Solo":-13.84,
     "Skye (No Mod)":-15.59, "Sermon Rhythm":-13.34, "Sermon Solo":-13.48,
+    "Innerspeaker Swirl":-9.80, "Glide Wall":-11.79, "Moondust Glam":-13.89,   # re-measured after full re-author
+    # Re-measured 2026-07-02 after the fuzz/DS-1 restaging + Hiwatt makeup fix (4.9->1.3)
+    # + softened DS-1/Octavia clip (kClipHard 3->2.2, soft op-amp rail, Octavia gain 40->28):
+    "Nevermind Wall":-14.43, "Bridge Vibe":-16.69, "Desert Robot":-13.02,   # Bridge re-measured after vibe moved pre-amp
 }
 # Cleans: the user set the master Output for every generated clean preset to a FIXED
 # -5.90 dB by ear (their stock Bank-1 Clean is the reference, left alone). So the cleans
 # bypass the RMS calibration entirely.
-CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather"}
+CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
+               "Nevermind Verse", "Come As Water",
+               "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime"}
 SUNN_NAMES  = {"Wizard's Doom"}   # Sunn Model T dark voicing perceives quiet -> lifted via the
                                   # master Output target (NOT amp makeup, which over-drove the limiter).
 TARGET_DIRTY, TARGET_SUNN, CLEAN_OUT = -13.1, -10.5, -5.9
 # Hand-dialed master Output values the user set by ear on-device (2026-06-29); these are
 # the final word and win over the clean-pin / RMS calibration for the named presets.
 MANUAL_OUT = {
-    "Candlelit Clean": -10.0, "Sermon Crunch": -19.7, "Numb Sustain": -27.2,
+    "Candlelit Clean": -10.0, "Sermon Crunch": -19.7,
     "Little Feather": -1.3, "Wizard's Doom": -17.3, "Dreamlit Shimmer": -1.5,
+    # Fuzz leads read perceptually QUIETER than a distortion at the same RMS, so these two
+    # are pushed ~3-3.5 dB above the -13.1 dirty target for presence — but kept below where
+    # their peaks (Numb -2.7, Desert -4.0 dBFS at M20) would hit the limiter (no crushing).
+    "Numb Sustain": -14.0, "Desert Robot": -19.7, "Regal Sustain": -16.0,   # leads pushed loud (Desert now on Backline Plus w/ 2.5x makeup → lower out_level for the same ~-5.5 RMS)
+    "Gravity Lead": -27.5,   # re-authored w/ harmonic-trem + comp reads ~+15 dB hot; scales to -10 RMS (loud lead) w/o limiting
+    # ("Numb Sustain" was -27.2 as a workaround for the 4.9 Hiwatt makeup bug — now 1.3.)
+    # User still found them too quiet at -18.9 → pushed HARD to lead level (~-4.5/-5 RMS,
+    # +8-9 dB over the -13.1 dirty target). Peaks (Numb -2.4, Desert -3.6 @M20) now sit
+    # ~+3/+1.5 dB over the ceiling so the master limiter kisses transient attacks only —
+    # fine for sustained fuzz leads. If it pumps, lower crest via comp instead of out_level.
 }
 for _p in PRESETS:
     _nm = _p["name"]
@@ -418,11 +647,12 @@ def emit_header():
     L.append("// Extra band/song factory presets, Banks 2..6 (Bank 1 stays the stock 4).")
     L.append("#pragma once")
     L.append("#include \"hexforge_ports.h\"")
-    L.append("struct HfFactoryPreset { int bank; int slot; const char* name; float vals[HF_N_PORTS]; };")
+    L.append("struct HfFactoryPreset { int bank; int slot; const char* name; const char* cabIr; float vals[HF_N_PORTS]; };")
     L.append("static const HfFactoryPreset kFactoryExtra[] = {")
     for p in PRESETS:
         vals = ", ".join(_fmt(x) for x in p["vals"])
-        L.append('  { %d, %d, "%s", { %s } },' % (p["bank"], p["slot"], p["name"], vals))
+        cab = ('"%s"' % p["cab"]) if p.get("cab") else "nullptr"
+        L.append('  { %d, %d, "%s", %s, { %s } },' % (p["bank"], p["slot"], p["name"], cab, vals))
     L.append("};")
     L.append("static const int kFactoryExtraCount = %d;" % len(PRESETS))
     L.append("")
@@ -430,6 +660,21 @@ def emit_header():
 
 if __name__ == "__main__":
     assert N_PORTS == 161, "port count drift: got %d" % N_PORTS
+    # ── Auto-match a built-in cab to each preset from its amp model ──────────────
+    # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
+    # the Factory Cab (@factory / V30). See CabModels.h for the voicings.
+    _AMP_CAB = {0: "@american-ob",   # Clean Meanie (Fender)  → American open-back
+                1: "@greenback",     # Crunchy (JCM800)       → Greenback 4x12
+                3: "@doom",          # Doom Daddy (Sunn)      → big dark 4x12
+                7: "@hiwatt",        # Hi-Volt (Hiwatt)       → Hiwatt/Fane
+                8: "@vox2x12"}       # Chime Thirty (Vox)     → Vox alnico 2x12
+    _ai, _ae = SYM_IDX["amp_model"], SYM_IDX["amp_enable"]
+    for _p in PRESETS:
+        if _p.get("cab") or _p["vals"][_ae] < 0.5:
+            continue
+        _m = int(round(_p["vals"][_ai]))
+        if _m in _AMP_CAB:
+            _p["cab"] = _AMP_CAB[_m]
     # guard against typos / duplicate slots
     seen = set()
     for p in PRESETS:

@@ -33,6 +33,8 @@
 #include "AmpBlock.h"
 #include "OverdriveBlock.h"      // drive-pedal models (ProCo RAT etc.)
 #include "OverdriveFactory.h"
+#include "EHXBigMuff.h"          // Big Muff fuzz (not in OverdriveFactory)
+#include "OversamplingWrapper.h"
 #include "NamModel.h"
 
 #include <algorithm>
@@ -176,7 +178,8 @@ static void scaleToRms(std::vector<float>& x, double targetRms) {
 
 // ── Model spec: name → (AmpModel, plugin idx, tube idx), matching amp_plugin ─
 struct ModelSpec { AmpModel model; int idx; int tube; bool sunn; const char* label;
-                   bool drive = false; OverdriveType odtype = OverdriveType::ProcoRAT; };
+                   bool drive = false; OverdriveType odtype = OverdriveType::ProcoRAT;
+                   bool fuzz = false; int era = 2; };
 
 static bool resolveModel(std::string name, ModelSpec& out) {
     for (auto& c : name) c = char(std::tolower((unsigned char)c));
@@ -188,6 +191,10 @@ static bool resolveModel(std::string name, ModelSpec& out) {
                               { out = {AmpModel::OrangeRockerverb50, 5, 1, false, "Orange Rockerverb 50"}; return true; }
     if (name == "friedman" || name == "beardo" || name == "be")
                               { out = {AmpModel::FriedmanBEDeluxe, 6, 1, false, "Beardo BE (Friedman)"}; return true; }
+    if (name == "vox" || name == "chime" || name == "ac30" || name == "chimethirty")
+                              { out = {AmpModel::VoxAC30, 0, 2, false, "Vox AC30 Top Boost (Chime Thirty)"}; return true; }
+    if (name == "peavey" || name == "backline" || name == "backstage" || name == "backlineplus")
+                              { out = {AmpModel::PeaveyBackstage, 0, 0, false, "Peavey Backstage Plus (Backline Plus)"}; return true; }
     // ── drive pedals (OverdriveBlock path; drive/tone/level via --gain/--tone/--level) ──
     if (name == "rat" || name == "rodent" || name == "dearrodentboy")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "ProCo RAT (Dear Rodent Boy)", true, OverdriveType::ProcoRAT}; return true; }
@@ -195,6 +202,13 @@ static bool resolveModel(std::string name, ModelSpec& out) {
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "TS-808 (Green Man)", true, OverdriveType::TubeScreamer808}; return true; }
     if (name == "life" || name == "lifepedal" || name == "newdawn")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Life Pedal (New Dawn)", true, OverdriveType::LifePedal}; return true; }
+    if (name == "ds1" || name == "grungeds" || name == "grunge")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "DS-1 (Grunge DS)", true, OverdriveType::DS1}; return true; }
+    if (name == "sd1" || name == "superod" || name == "supernova")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Boss SD-1 (Super Nova)", true, OverdriveType::SuperOverdriveSD1}; return true; }
+    // ── Big Muff fuzz (EHXBigMuff, era via --era; sustain/tone/vol via --gain/--tone/--level) ──
+    if (name == "muff" || name == "bigmuff" || name == "italianhero")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Muff Fuzz (Italian Hero)"}; out.fuzz = true; return true; }
     return false;
 }
 
@@ -231,6 +245,28 @@ static void runDriveModel(const ModelSpec& m, const Knobs& k, double sr,
     }
 }
 
+// ── Run the Big Muff fuzz (EHXBigMuff in a 4x OversamplingWrapper, like the plugin) ──
+static void runFuzzModel(const ModelSpec& m, const Knobs& k, double sr,
+                         const std::vector<float>& in, std::vector<float>& out) {
+    constexpr int BLK = 512;
+    OversamplingWrapper w(std::make_unique<EHXBigMuff>(), 4);
+    w.prepare(sr, BLK, 1);
+    w.setBypass(false);
+    w.setParameter("era",   float(m.era));
+    w.setParameter("drive", k.gain);   // sustain pot
+    w.setParameter("tone",  k.tone);
+    w.setParameter("level", k.level);  // volume pot
+    out.assign(in.size(), 0.0f);
+    std::vector<float> scratch(BLK);
+    for (size_t off = 0; off < in.size(); off += BLK) {
+        const int len = int(std::min<size_t>(BLK, in.size() - off));
+        std::memcpy(scratch.data(), in.data() + off, size_t(len) * sizeof(float));
+        float* p = scratch.data();
+        w.process(&p, &p, len, 1);
+        std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
+    }
+}
+
 // When set (via --nopa), bypass the shared PowerAmpProcessor so the algorithmic
 // PREAMP can be A/B'd directly against a preamp-only capture (e.g. the BE-100
 // "[PRE] ... Noon" captures), removing power-amp colour + unknown-knob confounds.
@@ -239,6 +275,7 @@ static bool g_bypassPA = false;
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
                      const std::vector<float>& in, std::vector<float>& out) {
+    if (m.fuzz)  { runFuzzModel(m, k, sr, in, out);  return; }
     if (m.drive) { runDriveModel(m, k, sr, in, out); return; }
     constexpr int BLK = 512;
     AmpBlockExtended amp;
@@ -590,6 +627,7 @@ int main(int argc, char** argv) {
         return 2;
     }
 
+    if (const char* s = argVal(argc, argv, "--era")) spec.era = std::atoi(s);   // Muff era 0..5
     double sr = 48000.0;
     if (const char* s = argVal(argc, argv, "--sr")) sr = std::atof(s);
     double inLevelDb = -18.0;

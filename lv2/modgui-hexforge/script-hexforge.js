@@ -8,6 +8,19 @@ function (event, funcs) {
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
     var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc'];
 
+    // Node subtitle labels for model-bearing blocks — MUST mirror gen_hexforge.py's
+    // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
+    // the HTML instead; these are the ones we can't (enumerated → would show a number).
+    var NV = {
+        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus'],
+        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova'],
+        fz:  ['Italian Hero','I Know It','Octavia'],
+        md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
+        dl:  ['Digital','Tape','Echo Wreck','Seraph']
+    };
+    function setNodeVal(icon, pfx, txt) { icon.find('[rata-role=nv-' + pfx + ']').text(txt == null ? '' : txt); }
+    function setModelVal(icon, pfx, idx) { var a = NV[pfx]; setNodeVal(icon, pfx, (a && a[idx]) || ''); }
+
     function nodeOf(icon, b)  { return icon.find('.hf-node[data-block="' + b + '"]'); }
     function panelOf(icon, b) { return icon.find('.hf-detail-panel[data-block="' + b + '"]'); }
     function posOf(icon, b)   { var p = parseInt(nodeOf(icon, b).attr('data-pos'), 10); return isNaN(p) ? 99 : p; }
@@ -137,6 +150,15 @@ function (event, funcs) {
         });
     }
 
+    // ── Amp faceplate: per-model skin class (hf-face-mN) + big parody badge ──
+    function applyAmpFace(icon, m) {
+        var face = panelOf(icon, 'amp').find('.hf-amp-face');
+        if (!face.length) return;
+        var el = face[0];
+        el.className = el.className.replace(/\bhf-face-m\d+\b/g, '').replace(/\s+/g, ' ').replace(/\s+$/, '');
+        el.className += ' hf-face-m' + m;
+        face.find('[rata-role=amp-badge]').text((NV.amp && NV.amp[m]) || '');
+    }
     // ── Conditional control visibility, scoped to the block's DETAIL PANEL ──
     function show(icon, b, sel, on) { panelOf(icon, b).find(sel).toggleClass('mod-hidden', !on); }
     function applyAmp(icon) {
@@ -150,6 +172,8 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
         panelOf(icon, 'amp').find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 5 ? 'Output' : 'Gain'));
+        setModelVal(icon, 'amp', m);
+        applyAmpFace(icon, m);
     }
     function applyFuzz(icon) {
         var p = icon.data('hf_fz_p'); if (p == null) p = 0;
@@ -159,12 +183,14 @@ function (event, funcs) {
         var pn = panelOf(icon, 'fz');
         pn.find('[rata-role=lbl-fz_sustain]').text(tb ? 'Attack' : 'Sustain');
         pn.find('[rata-role=lbl-fz_volume]').text(tb ? 'Level' : 'Volume');
+        setModelVal(icon, 'fz', p);
     }
     function applyDelay(icon) {
         var t = icon.data('hf_dl_t'); if (t == null) t = 0;
         show(icon, 'dl', '.c-dl-tape', t === 1 || t === 2);
         show(icon, 'dl', '.c-dl-heads', t === 2);
         show(icon, 'dl', '.c-dl-seraph', t === 3);
+        setModelVal(icon, 'dl', t);
     }
 
     function setFile(icon, rata, value, empty) {
@@ -178,9 +204,18 @@ function (event, funcs) {
         if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
         box.text(label);
     }
+    var CAB_NAMES = { '@factory':'Factory Cab (V30 4x12)', '@vox2x12':'Chime 2x12 (Vox)',
+                      '@american-ob':'American Open-Back 2x12', '@greenback':'Greenback 4x12',
+                      '@hiwatt':'Hi-Volt 4x12 (Fane)', '@doom':'Doom 4x12' };
     function setIr(icon, value) {
-        if (value == null || value === 'None' || value === '' || value === '@factory') value = '@factory';
-        setFile(icon, 'Ir', value, 'Factory Cab (built-in)');
+        if (value == null || value === 'None' || value === '') value = '@factory';
+        if (CAB_NAMES[value]) {                      // built-in synthetic cab
+            setFile(icon, 'Ir', value, CAB_NAMES[value]);
+            setNodeVal(icon, 'cab', CAB_NAMES[value].replace(/ \(.*\)$/, ''));
+            return;
+        }
+        setFile(icon, 'Ir', value, null);            // user .wav → basename
+        setNodeVal(icon, 'cab', icon.find('[rata-role=Ir]').first().text());
     }
     // Level meters: the plugin sends in_meter/out_meter as 0..1 (dB-scaled); set the bar width.
     // Hot path (~14 Hz) — cache the raw DOM node (no jQuery .find() per tick) and skip sub-1%
@@ -224,8 +259,13 @@ function (event, funcs) {
         var box = icon.find('[rata-role=pslist]'); if (!box.length) return;
         var names = icon.data('ps_names') || [];
         var ab = icon.data('ps_bank') || 0, as = icon.data('ps_slot') || 0;
+        // Show every bank that has a preset, PLUS one empty "new" bank at the bottom —
+        // saving into it reveals the next, so the user grows banks on demand (up to 32).
+        var maxB = 0;
+        for (var i = 0; i < names.length; i++) if (names[i]) maxB = Math.floor(i / 4);
+        var showBanks = Math.min(Math.max(maxB + 2, ab + 2), 32);
         var html = '';
-        for (var b = 0; b < 8; b++) {
+        for (var b = 0; b < showBanks; b++) {
             html += '<div class="hf-ps-bankrow"><span class="hf-ps-banknum">B' + (b + 1) + '</span>';
             for (var s = 0; s < 4; s++) {
                 var flat = b * 4 + s, nm = names[flat] || '';
@@ -242,7 +282,7 @@ function (event, funcs) {
             el.addEventListener('click', function (e) {
                 e.stopPropagation();
                 psGoto(fns, parseInt(el.getAttribute('data-flat'), 10));
-                box.removeClass('hf-ps-open');
+                icon.find('[rata-role=psmenu]').removeClass('hf-ps-open');
             });
         });
     }
@@ -275,19 +315,21 @@ function (event, funcs) {
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
+            else if (sym === 'md_type')            setModelVal(icon, 'md', parseInt(val, 10));
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             fns.set_port_value(sym, val);
         });
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
-        if (drm != null) { show(icon, 'dr', '.c-dr-oct', drm === 1); show(icon, 'dr', '.c-dr-nam', drm === 3); }
+        if (drm != null) { show(icon, 'dr', '.c-dr-oct', drm === 1); show(icon, 'dr', '.c-dr-nam', drm === 3); setModelVal(icon, 'dr', drm); }
         selectNode(icon, icon.data('hf_sel'));   // keep selection valid + refresh the panel
     }
 
     if (event.type == 'start') {
         var icon = event.icon;
         setupNodes(icon, funcs);
+        // (Node connector is now a cheap CSS-scrolled baked strip — no JS animation loop.)
         // "+ ADD" palette toggle
         icon.find('.hf-add').each(function () {
             var el = this;
@@ -305,6 +347,9 @@ function (event, funcs) {
         var drm = parseInt(map.dr_model || 0, 10);
         show(icon, 'dr', '.c-dr-oct', drm === 1);
         show(icon, 'dr', '.c-dr-nam', drm === 3);
+        setModelVal(icon, 'dr', drm);
+        setModelVal(icon, 'md', parseInt(map.md_type || 0, 10));
+        setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
         if ('it_enable' in map) nodeOf(icon, 'it').toggleClass('hf-byp', !(map.it_enable > 0.5));
         // Movable blocks: membership (enable) → chain vs palette; bypass → grey; pos
@@ -326,7 +371,7 @@ function (event, funcs) {
         wire('.hf-ps-mvdn',   function () { psPulse(funcs, 'ps_move_dn'); });
         wire('.hf-ps-backup', function () { psPulse(funcs, 'ps_backup'); });
         wire('.hf-ps-restore',function () { psPulse(funcs, 'ps_restore'); });
-        wire('.hf-ps-toggle', function () { icon.find('[rata-role=pslist]').toggleClass('hf-ps-open'); });
+        wire('.hf-ps-toggle', function () { icon.find('[rata-role=psmenu]').toggleClass('hf-ps-open'); });
         icon.find('.hf-ps-slot').each(function () { var el = this;
             el.addEventListener('click', function (e) { e.stopPropagation();
                 psPulse(funcs, SW[parseInt(el.getAttribute('data-slot'), 10)]); }); });
@@ -371,6 +416,9 @@ function (event, funcs) {
             var dm = parseInt(event.value, 10);
             show(icon, 'dr', '.c-dr-oct', dm === 1);
             show(icon, 'dr', '.c-dr-nam', dm === 3);
+            setModelVal(icon, 'dr', dm);
+        } else if (s === 'md_type') {
+            setModelVal(icon, 'md', parseInt(event.value, 10));
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'clip') {

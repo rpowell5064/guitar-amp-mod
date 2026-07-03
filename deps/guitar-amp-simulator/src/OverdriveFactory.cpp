@@ -3,6 +3,9 @@
 #include "LifePedal.h"
 #include "ProcoRAT.h"
 #include "EHXBigMuff.h"
+#include "DS1Distortion.h"
+#include "KlonCentaur.h"
+#include "SuperOverdriveSD1.h"
 
 std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
     switch (type) {
@@ -11,6 +14,9 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
         case OverdriveType::NAM:             return std::make_unique<NamOverdrive>();
         case OverdriveType::ProcoRAT:        return std::make_unique<ProcoRAT>();
         case OverdriveType::BigMuffPi:       return std::make_unique<EHXBigMuff>();
+        case OverdriveType::DS1:             return std::make_unique<DS1Distortion>();
+        case OverdriveType::Klon:            return std::make_unique<KlonCentaur>();
+        case OverdriveType::SuperOverdriveSD1: return std::make_unique<SuperOverdriveSD1>();
         default:                             return std::make_unique<TubeScreamer808>();
     }
 }
@@ -33,6 +39,9 @@ const char* OverdriveFactory::modelName(OverdriveType type) noexcept {
         case OverdriveType::NAM:             return "NAM Overdrive";
         case OverdriveType::ProcoRAT:        return "ProCo RAT";
         case OverdriveType::BigMuffPi:       return "Big Muff Pi";
+        case OverdriveType::DS1:             return "DS-1";
+        case OverdriveType::Klon:            return "Klon Centaur";
+        case OverdriveType::SuperOverdriveSD1: return "Boss SD-1";
         default:                             return "Unknown";
     }
 }
@@ -44,6 +53,9 @@ OverdriveType OverdriveFactory::fromIndex(int index) noexcept {
         case 2:  return OverdriveType::NAM;
         case 3:  return OverdriveType::ProcoRAT;
         case 4:  return OverdriveType::BigMuffPi;
+        case 5:  return OverdriveType::DS1;
+        case 6:  return OverdriveType::Klon;
+        case 7:  return OverdriveType::SuperOverdriveSD1;
         default: return OverdriveType::TubeScreamer808;
     }
 }

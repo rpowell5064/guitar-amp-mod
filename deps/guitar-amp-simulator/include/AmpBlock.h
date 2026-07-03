@@ -14,7 +14,9 @@ enum class AmpModel {
     SunnModelT,        // High-headroom clean/dirty, 6L6GC
     OrangeRockerverb50,// EL34 British, clean+dirty channels
     FriedmanBEDeluxe,  // Hot-rodded Marshall, 3-channel (Clean/BE/HBE), EL34
-    HiwattDR103        // High-headroom British clean (Gilmour platform), EL34
+    HiwattDR103,       // High-headroom British clean (Gilmour platform), EL34
+    VoxAC30,           // Bright Class-A EL84 chime (AC30 Top Boost)
+    PeaveyBackstage    // Solid-state practice combo (Backline Plus / Peavey Backstage Plus)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

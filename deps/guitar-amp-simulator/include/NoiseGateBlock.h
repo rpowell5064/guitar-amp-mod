@@ -14,10 +14,10 @@ public:
 private:
     // Parameters (all user-facing)
     float thresholdDB  = -60.0f; // dBFS
-    float attackMs     =   5.0f;
-    float releaseMs    = 100.0f;
-    float holdMs       =  50.0f;
-    float hysteresisDB =   6.0f; // dead-band width
+    float attackMs     =   2.0f; // fast, punchy note onsets without clicking
+    float releaseMs    = 250.0f; // long, smooth fade so tails ring out (detection stays fast — see .cpp)
+    float holdMs       = 120.0f; // ride through note transitions / palm mutes before releasing
+    float hysteresisDB =   8.0f; // dead-band width (wider = no chatter)
 
     // Derived coefficients (recalculated in prepare/setParameter)
     float envAttack{}, envRelease{};

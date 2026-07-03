@@ -5,6 +5,7 @@
 #include "FlangerEffect.h"
 #include "TremoloEffect.h"
 #include "RotaryEffect.h"
+#include "SmallClone.h"
 
 std::unique_ptr<ModulationEffect> ModulationFactory::create(ModulationType type) {
     switch (type) {
@@ -14,6 +15,7 @@ std::unique_ptr<ModulationEffect> ModulationFactory::create(ModulationType type)
         case ModulationType::Flanger:    return std::make_unique<FlangerEffect>();
         case ModulationType::Tremolo:    return std::make_unique<TremoloEffect>();
         case ModulationType::Rotary:     return std::make_unique<RotaryEffect>();
+        case ModulationType::SmallClone: return std::make_unique<SmallClone>();
     }
     return std::make_unique<CE2Chorus>();
 }
@@ -25,6 +27,7 @@ ModulationType ModulationFactory::fromIndex(int idx) noexcept {
         case 3:  return ModulationType::Flanger;
         case 4:  return ModulationType::Tremolo;
         case 5:  return ModulationType::Rotary;
+        case 6:  return ModulationType::SmallClone;
         default: return ModulationType::CE2_Chorus;
     }
 }

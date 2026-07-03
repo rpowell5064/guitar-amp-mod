@@ -10,7 +10,10 @@ enum class OverdriveType {
     LifePedal       = 1,
     NAM             = 2,
     ProcoRAT        = 3,
-    BigMuffPi       = 4
+    BigMuffPi       = 4,
+    DS1             = 5,
+    Klon            = 6,
+    SuperOverdriveSD1 = 7
 };
 
 class OverdriveFactory {

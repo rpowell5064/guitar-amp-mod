@@ -5,14 +5,17 @@
 // ── Per-era component table ─────────────────────────────────────────────────
 // Values are component-informed approximations of the documented circuit
 // differences between Muff eras; tuned for musical separation between voicings.
-//          inHp   gLo   gHi   asym  interLp  toneLp  toneHp  outScale
+// Voiced against pedal-direct NAM captures (nam_refs/muff/): the Russian eras (3,4)
+// are DARK (outLp ~650), the US eras (0,2) brighter (~1300); inHp trims the hot low
+// end, asym raises the (previously absent) even harmonics, outScale hits capture level.
+//          inHp    gLo   gHi   asym  interLp  toneLp  toneHp  outScale  outLp
 const EHXBigMuff::Era EHXBigMuff::kEra[kNumEras] = {
-    { 34.0f, 2.0f, 80.0f, 0.00f, 5200.0f, 320.0f, 1800.0f, 0.95f }, // 0 Delta    (bright, clear)
-    { 32.0f, 2.0f, 78.0f, 0.06f, 4200.0f, 300.0f, 2200.0f, 0.92f }, // 1 Ovis     (scooped, smooth)
-    { 34.0f, 2.0f, 95.0f, 0.04f, 5000.0f, 310.0f, 2000.0f, 0.95f }, // 2 Gotham   (balanced, aggressive)
-    { 26.0f, 2.0f, 70.0f, 0.10f, 3500.0f, 280.0f, 1700.0f, 1.00f }, // 3 Cold War (smoother, fatter)
-    { 20.0f, 2.0f, 85.0f, 0.12f, 3000.0f, 260.0f, 1500.0f, 1.00f }, // 4 Red Bear (fat lows, thick)
-    { 46.0f, 2.0f, 72.0f, 0.05f, 5200.0f, 360.0f, 1400.0f, 1.12f }, // 5 Boutique (tight, mid push, hot)
+    { 120.0f, 2.0f, 80.0f, 0.18f, 5200.0f, 320.0f, 1800.0f, 1.55f, 1300.0f }, // 0 Delta    (≈ Bluebeard: bright US, less bass, hot)
+    {  50.0f, 2.0f, 78.0f, 0.18f, 4200.0f, 300.0f, 2200.0f, 1.00f,  900.0f }, // 1 Ovis     (Ram's Head — no capture, interpolated)
+    { 110.0f, 2.0f, 95.0f, 0.15f, 5000.0f, 310.0f, 2000.0f, 1.00f, 1300.0f }, // 2 Gotham   (≈ Cherub: bright US, high gain)
+    { 110.0f, 2.0f, 70.0f, 0.22f, 3500.0f, 280.0f, 1700.0f, 1.45f,  650.0f }, // 3 Cold War (≈ Civil War: dark Russian, louder)
+    {  40.0f, 2.0f, 85.0f, 0.20f, 3000.0f, 260.0f, 1500.0f, 1.03f,  650.0f }, // 4 Red Bear (≈ Black Russian: dark Russian, big bass)
+    {  55.0f, 2.0f, 72.0f, 0.12f, 5200.0f, 360.0f, 1400.0f, 1.15f, 1150.0f }, // 5 Boutique (no capture, interpolated)
 };
 
 // ── prepare ───────────────────────────────────────────────────────────────────
@@ -40,6 +43,7 @@ void EHXBigMuff::reset() noexcept {
         c.stageLP.reset();
         c.toneLP .reset();
         c.toneHP .reset();
+        c.outLP  .reset();
     }
     sustainSmooth_.setCurrentAndTargetValue(sustain_);
     volSmooth_    .setCurrentAndTargetValue(volume_);
@@ -78,10 +82,12 @@ float EHXBigMuff::processSample(float x, int ch) noexcept {
     // Tone stack: LP/HP voltage-divider blend; the corner gap sets the mid-scoop.
     const float lp    = s.toneLP.process(y);
     const float hp    = s.toneHP.process(y);
-    const float toned = (1.0f - tone_) * lp + tone_ * hp;
+    float toned = (1.0f - tone_) * lp + tone_ * hp;
+    toned = s.outLP.process(toned);   // Muff-dark post-tone rolloff (see recalcFilters)
 
-    // Volume pot [0,1] → [0,2] gain, with per-era output makeup.
-    return toned * (volCur_ * 2.0f * e.outScale);
+    // Volume pot → output. The 0.75 (was 2.0) brings the model down to the captured
+    // Muff level (~-16..-20 dBFS at noon) — it was ~+9 dB too loud (and slamming the amp).
+    return toned * (volCur_ * 0.75f * e.outScale);
 }
 
 // ── setParameter ──────────────────────────────────────────────────────────────
@@ -120,12 +126,18 @@ void EHXBigMuff::recalcFilters() noexcept {
     const auto lpC     = Filters::lowpass1pole (e.interLpHz, fs_);
     const auto toneLpC = Filters::lowpass (e.toneLpHz, kQ, fs_);
     const auto toneHpC = Filters::highpass(e.toneHpHz, kQ, fs_);
+    // Post-tone darkening: real Big Muffs are DARK, with a GENTLE (~-5 dB/oct) top
+    // rolloff from ~800 Hz. A 1-pole LP ~650 Hz matches the captured Muff slope (a
+    // 2-pole was too steep — right at 2k, too dark at 8k). Model was +11..+19 dB
+    // too bright @2-8k before this.
+    const auto outLpC  = Filters::lowpass1pole(e.outLpHz, fs_);
 
     for (auto& c : ch_) {
         c.inputHP.setCoeffs(hpC);
         c.stageLP.setCoeffs(lpC);
         c.toneLP .setCoeffs(toneLpC);
         c.toneHP .setCoeffs(toneHpC);
+        c.outLP  .setCoeffs(outLpC);
     }
     eraApplied_ = era_;
 }

@@ -64,7 +64,7 @@
         lv2:scalePoint [ rdfs:label "Tangerang"            ; rdf:value 4 ] ;
         lv2:scalePoint [ rdfs:label "Neural (NAM)"         ; rdf:value 5 ] ;
         lv2:scalePoint [ rdfs:label "Beardo BE"            ; rdf:value 6 ] ;
-        lv2:scalePoint [ rdfs:label "Hiwatt"               ; rdf:value 7 ]
+        lv2:scalePoint [ rdfs:label "Hi-Volt"              ; rdf:value 7 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "gain" ; lv2:name "Gain" ;

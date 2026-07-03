@@ -66,6 +66,7 @@ private:
         float toneLpHz;   // tone-stack bass-path corner
         float toneHpHz;   // tone-stack treble-path corner
         float outScale;   // output level makeup
+        float outLpHz;    // post-tone darkening corner (per-era: Russians dark ~650, US ~1300)
     };
     static const Era kEra[kNumEras];
 
@@ -86,6 +87,7 @@ private:
         BiquadFilter stageLP;   // interstage bandwidth
         BiquadFilter toneLP;    // tone bass path
         BiquadFilter toneHP;    // tone treble path
+        BiquadFilter outLP;     // post-tone darkening — real Muffs roll off hard above ~1-2 kHz
     };
     std::array<ChannelState, kMaxCh> ch_;
 

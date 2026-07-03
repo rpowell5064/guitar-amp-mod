@@ -6,6 +6,8 @@
 #include "EVH5150Model.h"
 #include "FriedmanBEDeluxe.h"
 #include "HiwattDR103Model.h"
+#include "VoxAC30Model.h"
+#include "PeaveyBackstageModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -16,6 +18,8 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::EVH5150:             return std::make_unique<EVH5150Model>();
         case ModelID::FriedmanBEDeluxe:    return std::make_unique<FriedmanBEDeluxe>();
         case ModelID::HiwattDR103:         return std::make_unique<HiwattDR103Model>();
+        case ModelID::VoxAC30:             return std::make_unique<VoxAC30Model>();
+        case ModelID::PeaveyBackstage:     return std::make_unique<PeaveyBackstageModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -38,6 +42,8 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::EVH5150:             return "EVH 5150 III";
         case ModelID::FriedmanBEDeluxe:    return "Beardo BE";
         case ModelID::HiwattDR103:         return "Hiwatt DR103";
+        case ModelID::VoxAC30:             return "Vox AC30 Top Boost";
+        case ModelID::PeaveyBackstage:     return "Peavey Backstage Plus";
         default:                           return "Unknown";
     }
 }
@@ -51,6 +57,8 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::EVH5150:             return 1;  // EL34
         case ModelID::FriedmanBEDeluxe:    return 1;  // EL34
         case ModelID::HiwattDR103:         return 1;  // EL34
+        case ModelID::VoxAC30:             return 2;  // EL84
+        case ModelID::PeaveyBackstage:     return 0;  // solid-state (no power tube)
         default:                           return 1;
     }
 }
@@ -64,6 +72,8 @@ const char* const* AmpModelFactory::getAllModelNames() noexcept {
         "EVH 5150 III",
         "Beardo BE",
         "Hiwatt DR103",
+        "Vox AC30 Top Boost",
+        "Peavey Backstage Plus",
         nullptr
     };
     return kNames;
@@ -77,5 +87,7 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "EVH 5150 III")              return ModelID::EVH5150;
     if (name == "Beardo BE")                 return ModelID::FriedmanBEDeluxe;
     if (name == "Hiwatt DR103")              return ModelID::HiwattDR103;
+    if (name == "Vox AC30 Top Boost")        return ModelID::VoxAC30;
+    if (name == "Peavey Backstage Plus")     return ModelID::PeaveyBackstage;
     return ModelID::SunnModelT;
 }

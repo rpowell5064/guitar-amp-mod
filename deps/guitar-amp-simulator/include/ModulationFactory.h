@@ -9,6 +9,7 @@ enum class ModulationType {
     Flanger    = 3,
     Tremolo    = 4,
     Rotary     = 5,
+    SmallClone = 6,
 };
 
 class ModulationFactory {

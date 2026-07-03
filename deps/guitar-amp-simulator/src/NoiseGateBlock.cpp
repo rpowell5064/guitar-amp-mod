@@ -18,7 +18,12 @@ void NoiseGateBlock::recalcCoeffs() {
     };
     // Envelope follower reacts slightly faster than the gate gain itself.
     envAttack   = makeCoeff(std::max(0.1f, attackMs  * 0.5f));
-    envRelease  = makeCoeff(std::max(0.1f, releaseMs * 0.5f));
+    // DECOUPLED detection: the envelope-release (how fast the gate DETECTS that the
+    // signal has dropped below the threshold) is capped fast (≤40 ms), independent of
+    // the gain-release (the fade-out time). So a long, smooth release lets note tails
+    // ring out and fade gracefully WITHOUT making the gate slow to clamp down on the
+    // between-notes interference. This is the key to "gate the noise, don't chop notes".
+    envRelease  = makeCoeff(std::clamp(releaseMs * 0.5f, 8.0f, 40.0f));
     gainAttack  = makeCoeff(std::max(0.1f, attackMs));
     gainRelease = makeCoeff(std::max(0.1f, releaseMs));
     holdSamplesTotal = static_cast<int>(holdMs * 0.001f * static_cast<float>(sampleRate));

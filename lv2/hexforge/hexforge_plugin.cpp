@@ -39,6 +39,7 @@
 #include "PowerAmpProcessor.h"
 #include "CabinetBlock.h"
 #include "DefaultCabIR.h"
+#include "CabModels.h"
 #include "ModulationBlock.h"
 #include "ModulationFactory.h"
 #include "DelayBlock.h"
@@ -69,6 +70,10 @@
 #define HEXFORGE_CABNAM  HEXFORGE_URI "#cabnam"
 static constexpr int kAmpNamIdx = 5;   // amp model slot = Neural (NAM)
 static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
+static constexpr int kDrDs1Idx  = 4;   // drive model slot = Grunge DS (DS-1)
+static constexpr int kDrKlonIdx = 5;   // drive model slot = Gilded Horse (Klon)
+static constexpr int kDrSd1Idx  = 6;   // drive model slot = Super Nova (Boss SD-1)
+static constexpr int kDrMax     = 6;   // highest dr_model index
 
 // pi-Stomp footswitches emit CC 60..63 (one per switch). A received CC in this
 // range is one switch "press" → preset recall / bank combo. Change here if the
@@ -85,9 +90,10 @@ static constexpr int kPathMax  = 1024;
 static const char* const kFactoryIR = "@factory";
 
 // ── Preset engine ─────────────────────────────────────────────────────────────
-// Hex Forge owns its own preset store: 8 banks × 4 slots (A/B/C/D) = 32 presets.
+// Hex Forge owns its own preset store: 32 banks × 4 slots (A/B/C/D) = 128 presets.
 // A preset is a full snapshot of every user parameter plus the four file paths.
-static constexpr int kBanks = 8, kSlots = 4;
+// (kBanks kept a power of two — the bank-wrap masks `& (kBanks-1)` depend on it.)
+static constexpr int kBanks = 32, kSlots = 4;
 struct Preset {
     bool  used = false;
     char  name[32] = {0};
@@ -105,22 +111,35 @@ static inline bool isParamPort(int i) {
 }
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
-static const AmpModel kAmpMap[8] = {
+static const AmpModel kAmpMap[10] = {
     AmpModel::FenderDeluxe, AmpModel::MarshallJCM800, AmpModel::EVH5150III,
     AmpModel::SunnModelT,   AmpModel::OrangeRockerverb50,
     AmpModel::NeuralCustom,        // 5 = NAM (placeholder; not built as an algo amp)
     AmpModel::FriedmanBEDeluxe,    // 6 = Beardo BE
     AmpModel::HiwattDR103,         // 7 = Hiwatt (high-headroom British clean)
+    AmpModel::VoxAC30,             // 8 = Vox AC30 Top Boost (EL84 chime)
+    AmpModel::PeaveyBackstage,     // 9 = Backline Plus (solid-state Peavey Backstage)
 };
-static const int   kCanonical[8] = { 0, 1, 2, 4, 5, 3, 6, 0 };   // PowerAmp default lookup ([7] Hiwatt → clean PA)
+static const int   kCanonical[10] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0 }; // PowerAmp default lookup ([7] Hiwatt, [8] Vox, [9] Backline → clean PA)
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;
-static const int   kAmpTube[8]   = { 0, 1, 1, 0, 1, 0, 1, 1 };   // 6L6/EL34/EL34/6L6/—/EL34/EL34
-static const float kAmpMakeup[8] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender/clean +1.6dB kept; [3] Sunn back to 3.0 (the +2.5dB makeup over-drove the master limiter — Sunn loudness now comes from the preset master Output instead); [7] Hiwatt
+static constexpr int kVoxIdx      = 8;
+static constexpr int kBacklineIdx = 9;
+static const int   kAmpTube[10]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0 }; // 6L6/EL34/EL34/6L6/—/EL34/EL34/EL84/SS(n-a)
+static const float kAmpMakeup[10] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 1.3f, 1.6f, 2.5f };  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe)
+// Soft ceiling on the amp INPUT: x -> A*tanh(x/A). Gives the amp headroom so a hot upstream
+// block (esp. the fuzz, which outputs ~0 dBFS = +14 dB over a guitar) can't slam the guitar-
+// level front-end into mush. Transparent at guitar level (~-0.2 dB @ -14 dBFS), soft-limits
+// hot peaks (-1.2 dB @ -6 dBFS, -3.7 dB @ 0 dBFS). Applied in the chain, NOT in the amp models,
+// so every model's NAM-tuned voicing is untouched. Lower A = more headroom (more taming).
+static constexpr float kAmpInputCeil = 0.75f;
 
-static const OverdriveType kDriveMap[3] = {
+// Indexed by dr_model port: 0/1/2/4/5 = algorithmic, 3 = NAM (special-cased, entry unused).
+static const OverdriveType kDriveMap[7] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
+    OverdriveType::ProcoRAT /* [3]=NAM placeholder, never used */, OverdriveType::DS1,
+    OverdriveType::Klon, OverdriveType::SuperOverdriveSD1,
 };
 
 // Binson Echorec rotary program -> playback-head bitmask (mirrors delay plugin).
@@ -456,7 +475,7 @@ static void forgeStringSet(HexForge* p, LV2_URID prop, const char* s) {
 // "bank|slot|name0|name1|...|name31" — drives the UI bank indicator + name list.
 static void emitIndex(HexForge* p) {
     if (!p->notify) return;
-    char buf[2048]; int o = 0;
+    char buf[6144]; int o = 0;   // 32 banks × 4 slots of names
     o += std::snprintf(buf, sizeof(buf), "%d|%d", p->curBank, p->curSlot);
     for (int b = 0; b < kBanks; ++b)
         for (int s = 0; s < kSlots; ++s) {
@@ -750,6 +769,8 @@ static void psInitDefaults(HexForge* p) {
         std::snprintf(pr.name, sizeof(pr.name), "%s", fp.name);
         std::memcpy(pr.vals, fp.vals, sizeof(pr.vals));
         pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
+        // Built-in cab sentinel (e.g. "@vox2x12") if the preset specifies one.
+        if (fp.cabIr && fp.cabIr[0]) { std::strncpy(pr.irPath, fp.cabIr, kPathMax-1); pr.irPath[kPathMax-1]='\0'; }
     }
     p->curBank = 0; p->curSlot = 0;
     p->pendingRecall = true;   // a fresh instance starts on Bank 1 / A (Clean)
@@ -825,8 +846,10 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     if (msg->type == W_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
-        if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
-        else p->cab.setIR(DefaultCabIR::generate(p->rate));   // empty path = clear to default
+        if (msg->path[0] == '@')                                          // built-in synthetic cab
+            p->cab.setIR(CabModels::generate(msg->path, p->rate));
+        else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
+        else p->cab.setIR(DefaultCabIR::generate(p->rate));   // empty path = clear to Factory Cab
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type == W_NAM_LOAD) {
@@ -841,7 +864,7 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
-    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kHiwattIdx)]);
+    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kBacklineIdx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
@@ -1083,17 +1106,17 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->fuzzOctavia->setParameter("level", *p->ports[HF_FZ_VOLUME]);
     // Drive
     p->drive.setBypass(false);
-    const int driveModel = clampi(*p->ports[HF_DR_MODEL], 0, kDrNamIdx);
-    if (driveModel <= 2 && driveModel != p->lastDriveModel) { p->lastDriveModel = driveModel; p->drive.setType(kDriveMap[driveModel]); }
+    const int driveModel = clampi(*p->ports[HF_DR_MODEL], 0, kDrMax);
+    if (driveModel != kDrNamIdx && driveModel != p->lastDriveModel) { p->lastDriveModel = driveModel; p->drive.setType(kDriveMap[driveModel]); }
     p->drive.setParameter("drive",  *p->ports[HF_DR_DRIVE]);
     p->drive.setParameter("tone",   *p->ports[HF_DR_TONE]);
     p->drive.setParameter("level",  *p->ports[HF_DR_LEVEL]);
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kHiwattIdx);
-    const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo BE, 7=Hiwatt identity
-    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx);
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kBacklineIdx);
+    const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx);
     if (ampIsAlgo && ampModel != p->lastAmpModel) {   // rebuild only for algo models
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
@@ -1163,7 +1186,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("mix",       *p->ports[HF_CAB_MIX]);
     // Modfx
     p->modfx.setBypass(false);
-    const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 5);
+    const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 6);
     if (modfxType != p->lastModfxType) { p->lastModfxType = modfxType; p->modfx.setType(ModulationFactory::fromIndex(modfxType)); }
     p->modfx.setParameter("rate",        *p->ports[HF_MD_RATE]);
     p->modfx.setParameter("depth",       *p->ports[HF_MD_DEPTH]);
@@ -1261,6 +1284,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     break;
                 case B_AMP: {
                     if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
+                    // Input headroom (see kAmpInputCeil): soft ceiling so a hot upstream block
+                    // can't slam the amp front-end. Applies to both NAM + algorithmic amps.
+                    { const float A = kAmpInputCeil, iA = 1.0f/A;
+                      for (int i=0;i<len;++i){ L[i]=A*std::tanh(L[i]*iA); R[i]=A*std::tanh(R[i]*iA); } }
                     if (ampModel == kAmpNamIdx && p->ampNam && p->ampNam->isLoaded()) {
                         // Neural amp: mono capture -> both; Master = output trim; no power amp.
                         for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);

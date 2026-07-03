@@ -10,7 +10,7 @@
 # (slot 1..9) and `bypass` control so the UI can reorder / toggle them.
 # Run from the repo root:  python build-tools/gen_hexforge.py
 # ─────────────────────────────────────────────────────────────────────────────
-import os
+import os, math
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URI  = "https://rpowell5064.github.io/guitaramp-suite/hexforge"
@@ -48,10 +48,10 @@ IT = [
 ]
 GT = [
     ("thresh",  "Threshold",  "db", -80, 0, -60, None),
-    ("attack",  "Attack",     "ms", 0.1, 50, 0.1, None),
-    ("hold",    "Hold",       "ms", 0, 500, 50, None),
-    ("release", "Release",    "ms", 10, 2000, 100, None),
-    ("hyst",    "Hysteresis", "db", 0, 20, 6, None),
+    ("attack",  "Attack",     "ms", 0.1, 50, 2, None),
+    ("hold",    "Hold",       "ms", 0, 500, 120, None),
+    ("release", "Release",    "ms", 10, 2000, 250, None),
+    ("hyst",    "Hysteresis", "db", 0, 20, 8, None),
 ]
 CP = [
     ("type",    "Type",      "e", 0, 1, 0, [("5 Creature Amp",0),("Once76",1)]),
@@ -73,7 +73,7 @@ FZ = [
     ("getemp",    "Ge Temp",    "f", 0, 1, 0.4, None),
 ]
 DR = [
-    ("model",  "Model",  "e", 0, 3, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3)]),
+    ("model",  "Model",  "e", 0, 6, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6)]),
     ("drive",  "Drive",  "f", 0, 1, 0.5, None),
     ("tone",   "Tone",   "f", 0, 1, 0.5, None),
     ("level",  "Level",  "f", 0, 1, 0.5, None),
@@ -81,7 +81,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 7, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hiwatt",7)]),
+    ("model",         "Model",        "e", 0, 9, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -115,7 +115,7 @@ CAB = [
     ("mix",     "Mix",      "f", 0, 1, 1.0, None),
 ]
 MD = [
-    ("type",  "Type",  "e", 0, 5, 0, [("Lush-2",0),("Uni-Verse",1),("Phaser",2),("Flanger",3),("Tremolo",4),("Rotary",5)]),
+    ("type",  "Type",  "e", 0, 6, 0, [("Lush-2",0),("Uni-Verse",1),("Phaser",2),("Flanger",3),("Tremolo",4),("Rotary",5),("Nevermind Chorus",6)]),
     ("rate",  "Rate",  "f", 0, 1, 0.5, None),
     ("depth", "Depth", "f", 0, 1, 0.5, None),
     ("mix",   "Mix",   "f", 0, 1, 0.5, None),
@@ -266,8 +266,8 @@ ctrl.append(mkport("PS_BACKUP",  "ps_backup",  "Backup Presets",  "t", 0, 1, 0, 
 ctrl.append(mkport("PS_RESTORE", "ps_restore", "Restore Presets", "t", 0, 1, 0, None, "Restore", hidden=True))
 # Jump directly to a flat preset index (bank*4+slot). The UI list sets this; the
 # plugin recalls when it changes to a value >= 0. -1 = idle.
-ctrl.append(mkport("PS_GOTO", "ps_goto", "Go To Preset", "i", -1, 31, -1, None, "GoTo", hidden=True))
-ctrl.append(mkport("PS_BANK", "ps_bank", "Active Bank", "i", 0, 7, 0, None, "Bank", out=True))
+ctrl.append(mkport("PS_GOTO", "ps_goto", "Go To Preset", "i", -1, 127, -1, None, "GoTo", hidden=True))
+ctrl.append(mkport("PS_BANK", "ps_bank", "Active Bank", "i", 0, 31, 0, None, "Bank", out=True))
 ctrl.append(mkport("PS_SLOT", "ps_slot", "Active Slot", "i", 0, 3, 0, None, "Slot", out=True))
 # Output auto-limit: when on, a transparent peak limiter on the master output keeps
 # it from clipping (ceiling ~0.95). Added at the END so it's outside the preset
@@ -400,7 +400,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 17 ;")
+    L.append("    lv2:microVersion 71 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -546,7 +546,12 @@ IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</sp
     '{{#effect.parameters.3}}{{#path}}'
     '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
     '<div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">Factory Cab (built-in)</div>'
-    '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory Cab (built-in)</div>'
+    '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory Cab (V30 4x12)</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@vox2x12">Chime 2x12 (Vox)</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@american-ob">American Open-Back 2x12</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@greenback">Greenback 4x12</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12 (Fane)</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
     '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
     '</div>{{/path}}{{/effect.parameters.3}}</div>')
 
@@ -570,6 +575,29 @@ def render_enable(pfx):
     return ('<div class="hf-on" title="Block on/off"><div class="hf-on-img" mod-role="input-control-port" '
             'mod-port-symbol="%s_enable" mod-widget="switch"></div></div>') % pfx
 
+# ── Node icon glyphs (inline SVG, one per block) ──────────────────────────────
+# Simple stroke-only line icons; CSS colours the stroke with the block accent
+# (var(--acc)). fill:none + stroke are set in stylesheet-hexforge.css (.hf-node-ico svg).
+ICON = {
+    "it":  '<svg viewBox="0 0 24 24"><line x1="3" y1="8" x2="21" y2="8"/><circle cx="9" cy="8" r="2.6"/><line x1="3" y1="16" x2="21" y2="16"/><circle cx="15" cy="16" r="2.6"/></svg>',
+    "gt":  '<svg viewBox="0 0 24 24"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 12l3-2.5 3 2.5-3 2.5z"/></svg>',
+    "cp":  '<svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0116 0"/><path d="M7.5 15.2 6 13M12 14.5V11.5M16.5 15.2 18 13"/><path d="M12 15l4.6-4.2"/><circle cx="12" cy="15" r="1.15"/></svg>',
+    "fz":  '<svg viewBox="0 0 24 24"><path d="M3 12h3l2-7 3 14 2-10 2 6 2-3h4"/></svg>',
+    "dr":  '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/></svg>',
+    "amp": '<svg viewBox="0 0 24 24"><path d="M7 16V9a5 5 0 0110 0v7z"/><path d="M12 6.5v6.5"/><path d="M9.6 12.6q2.4 2 4.8 0"/><path d="M9 16v2.6M12 16v3.4M15 16v2.6"/></svg>',
+    "cab": '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="7" r="1.4"/></svg>',
+    "md":  '<svg viewBox="0 0 24 24"><path d="M3 12c1.5-6 4.5-6 6 0s4.5 6 6 0 4.5-6 6 0"/></svg>',
+    "dl":  '<svg viewBox="0 0 24 24"><path d="M5 8v8"/><path d="M10 5v14"/><path d="M15 9v6"/><path d="M20 11v2"/></svg>',
+    "rv":  '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="1.8"/><path d="M7 13a5 5 0 0110 0"/><path d="M3.5 13a8.5 8.5 0 0117 0"/></svg>',
+    "wh":  '<svg viewBox="0 0 24 24"><path d="M3 18c4 0 4.5-12 9-12s5 12 9 12"/></svg>',
+    "oc":  '<svg viewBox="0 0 24 24"><path d="M7 15V6M4 9l3-3 3 3"/><path d="M17 9v9M14 15l3 3 3-3"/></svg>',
+}
+# Node subtitle source. Model-bearing blocks are JS-driven (rata-role=nv-<pfx>,
+# script-hexforge.js maps the model index → the parody label). Scalar blocks bind a
+# representative live value via mod-role so MOD populates value+unit automatically.
+NODE_VAL_SYM = {"it": "it_gain", "gt": "gt_thresh", "cp": "cp_thresh",
+                "rv": "rv_decay", "wh": "wh_freq", "oc": "oc_down"}
+
 # ── Chain node (small clickable card in the signal strip) ─────────────────────
 # AxeFX/Quad-Cortex-style: each block is a node. Click a node to show its controls
 # in the detail panel below; click the power dot to bypass it (greyed, dry, settings
@@ -584,7 +612,13 @@ def node(pfx, title, accent):
     # power/bypass dot — JS-driven (script-hexforge.js writes the port + greys the node);
     # IT has no bypass port so its dot toggles it_enable (locked, can't be removed).
     out.append('<div class="hf-node-dot" title="Bypass (A/B)"></div>')
+    out.append('<div class="hf-node-ico">%s</div>' % ICON[pfx])
     out.append('<span class="hf-node-name">%s</span>' % title)
+    # subtitle: scalar blocks bind a live value; model blocks get a JS-set label span
+    if pfx in NODE_VAL_SYM:
+        out.append('<span class="hf-node-val" mod-role="input-control-value" mod-port-symbol="%s"></span>' % NODE_VAL_SYM[pfx])
+    else:
+        out.append('<span class="hf-node-val" rata-role="nv-%s"></span>' % pfx)
     # Hidden mod-widget binds so external/footswitch/preset changes to these ports still
     # echo to the modgui change handler (which keeps the node grey/membership in sync).
     binds = ['<div mod-role="input-control-port" mod-port-symbol="%s" mod-widget="switch"></div>'
@@ -595,10 +629,107 @@ def node(pfx, title, accent):
     out.append('</div>')
     return "".join(out)
 
+# ── Amp faceplate: realistic per-model panel with grouped knob sections ───────
+# The amp block gets a special body: a "faceplate" (brushed panel + glowing tube row
+# + a big parody model badge + a tone-snapshot readout) housing the knobs in labelled
+# groups (Preamp / Tone Stack / Power Amp / channel-specific). script-hexforge.js swaps
+# the per-model skin class (hf-face-mN) + badge text, and drives the tone bars. Groups
+# whose whole contents are model-conditional carry the matching c-amp-* class on the
+# wrapper so applyAmp() hides the entire group (title included), not just the knobs.
+AMP_GROUPS = [
+    ("PREAMP",       None,          ["gain", "master", "sag", "channel", "resonance"]),
+    ("TONE STACK",   None,          ["bass", "mid", "treble", "presence"]),
+    ("POWER AMP",    "c-amp-pa",    ["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence",
+                                     "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb",
+                                     "pamp_resonance", "pamp_airfeel"]),
+    ("BRITE CHANNEL","c-amp-sunn",  ["sunn_vol2", "sunn_bass2", "sunn_mid2", "sunn_treble2",
+                                     "sunn_bright1", "sunn_bright2", "sunn_link"]),
+    ("BEARDO BE",    "c-amp-be",    ["fr_channel", "fr_fat", "fr_c45", "fr_sat"]),
+]
+
+def amp_body():
+    # Top row: NAM picker (conditional) + the model selector.
+    selrow = '<div class="hf-dselects clearfix">%s%s</div>' % (
+        nam_picker(0, "AmpNam", "c-amp-nam"), render_ctrl(CTRL_BY_SYM["amp_model"]))
+    groups = []
+    for gtitle, gcls, sufs in AMP_GROUPS:
+        ctrls = "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs)
+        wrap = "hf-agroup" + ((" " + gcls) if gcls else "")
+        groups.append('<div class="%s"><span class="hf-agroup-title">%s</span>'
+                      '<div class="hf-agroup-body">%s</div></div>' % (wrap, gtitle, ctrls))
+    # Amp-head look: a recessed tube-bay window (glowing tubes behind a grille) on top of
+    # a brushed control plate that holds the badge + knob groups. .hf-amp-face is the dark
+    # cabinet frame; per-model colour lives on .hf-amp-plate (var(--panel)).
+    face = ('<div class="hf-amp-face hf-face-m1">'
+            '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
+            '<div class="hf-amp-plate">'
+            '<div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>'
+            '<div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>'
+            '<div class="hf-amp-badge" rata-role="amp-badge">Crunchy McCrunchFace</div>'
+            '<div class="hf-agroups">' + "".join(groups) + '</div>'
+            '</div></div>')
+    return selrow + face
+
+# ── Shared "module plate" design for EVERY block ──────────────────────────────
+# The amp has its tube bay + control plate; every other block gets the SAME premium
+# brushed-metal plate (tinted with the block accent), corner screws, and its controls
+# ORGANISED into labelled groups. One consistent design language across the whole chain.
+SCREWS = ('<div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>'
+          '<div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>')
+
+def hex_rgba(h, a):
+    h = h.lstrip("#")
+    return "rgba(%d,%d,%d,%s)" % (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16), a)
+
+def darken(h, f):
+    """Scale a hex colour toward black by factor f — a painted-enclosure tone from the accent."""
+    h = h.lstrip("#")
+    return "#%02x%02x%02x" % (min(255, int(int(h[0:2], 16) * f)),
+                              min(255, int(int(h[2:4], 16) * f)),
+                              min(255, int(int(h[4:6], 16) * f)))
+
+# Per-block control grouping (title, conditional-class-or-None, [param suffixes]). Any
+# param not listed falls into a trailing "MORE" group so nothing is ever dropped.
+BLOCK_GROUPS = {
+    "it":  [("INPUT", None, ["gain", "phase", "hum"]),
+            ("HUMBUCKER VOICING", None, ["humbk", "hbmodel", "hbamt"]),
+            ("CLEAN BOOST", None, ["boost", "boostamt"])],
+    "gt":  [("NOISE GATE", None, ["thresh", "attack", "hold", "release", "hyst"])],
+    "cp":  [("COMPRESSOR", None, ["type", "ratio", "thresh", "attack", "release", "knee", "makeup"])],
+    "fz":  [("PEDAL", None, ["pedal", "mode"]),
+            ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp"])],
+    "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
+    "cab": [("CABINET", None, ["lowcut", "highcut", "mix"])],
+    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width"])],
+    "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
+            ("CHARACTER", "c-dl-tape", ["wow", "flutter", "heads"]),
+            ("SERAPH DUAL", "c-dl-seraph", ["pattern", "ducking", "moddepth", "modrate"])],
+    "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix"]),
+            ("MODULATION", None, ["moddepth", "modrate"])],
+    "wh":  [("WAH", None, ["type", "freq", "depth", "sens", "q", "mix"])],
+    "oc":  [("OCTAVE", None, ["up", "down", "dry"])],
+}
+
+def render_agroups(pfx, group_defs, all_sufs):
+    out, covered = [], set()
+    for gtitle, gcls, sufs in group_defs:
+        ctrls = ""
+        for s in sufs:
+            sym = pfx + "_" + s
+            if sym in CTRL_BY_SYM:
+                ctrls += render_ctrl(CTRL_BY_SYM[sym]); covered.add(s)
+        if ctrls:
+            wrap = "hf-agroup" + ((" " + gcls) if gcls else "")
+            out.append('<div class="%s"><span class="hf-agroup-title">%s</span>'
+                       '<div class="hf-agroup-body">%s</div></div>' % (wrap, gtitle, ctrls))
+    leftover = "".join(render_ctrl(CTRL_BY_SYM[pfx + "_" + s]) for s in all_sufs
+                       if s not in covered and (pfx + "_" + s) in CTRL_BY_SYM)
+    if leftover:
+        out.append('<div class="hf-agroup"><span class="hf-agroup-title">MORE</span>'
+                   '<div class="hf-agroup-body">%s</div></div>' % leftover)
+    return '<div class="hf-agroups">' + "".join(out) + '</div>'
+
 # ── Detail panel (the selected block's full controls, shown at the bottom) ─────
-# Reuses render_ctrl + the COND conditional-visibility classes. Only one panel is
-# visible at a time (the selected node's). There's room for every control now, so
-# the Amp's power-amp / Beardo / Sunn controls render inline — no "More" popup.
 def panel(pfx, title, accent, keys):
     locked = (pfx == "it")
     table = TABLES[pfx]
@@ -608,31 +739,26 @@ def panel(pfx, title, accent, keys):
         head.append('<span class="hf-dslot"><span class="hf-dslot-lbl">SLOT</span>%s</span>' % render_pos(pfx))
         head.append('<button type="button" class="hf-dremove" title="Remove this effect from the chain">REMOVE ✕</button>')
     head.append('</div>')
-    # Split controls so the wide dropdowns (model/type/etc. + file pickers) sit on their
-    # own top row, and the knobs/switches form a uniform grid below — every knob row then
-    # left-aligns, instead of row 2 starting under a wide selector in row 1.
     if pfx == "amp":
-        syms = ["amp_" + r[0] for r in table] + ["amp_" + s[0] for s in AMP_FR]
-        pickers = nam_picker(0, "AmpNam", "c-amp-nam")
-    elif pfx == "dr":
-        syms = ["dr_" + r[0] for r in table]; pickers = nam_picker(2, "DrNam", "c-dr-nam")
-    elif pfx == "cab":
-        syms = ["cab_" + r[0] for r in table]; pickers = IR_PICKER + nam_picker(1, "CabNam", "")
+        body = amp_body()            # amp keeps its tube bay + per-model faceplate
     else:
-        syms = [pfx + "_" + r[0] for r in table]; pickers = ""
-    sels  = "".join(render_ctrl(CTRL_BY_SYM[s]) for s in syms if CTRL_BY_SYM[s]["kind"] == "e")
-    knobs = "".join(render_ctrl(CTRL_BY_SYM[s]) for s in syms if CTRL_BY_SYM[s]["kind"] != "e")
-    selrow = pickers + sels
-    body = ""
-    if selrow: body += '<div class="hf-dselects clearfix">%s</div>' % selrow
-    if knobs:  body += '<div class="hf-dknobs clearfix">%s</div>' % knobs
-    if pfx == "it":   # live input level meter on the Input Trim block (front of chain)
-        body = ('<div class="hf-inmeter"><span class="hf-inmeter-lbl">INPUT LEVEL</span>'
-                '<div class="hf-meter hf-meter-h"><div class="hf-meter-fill" rata-role="imeter"></div></div>'
-                '</div>') + body
+        all_sufs = [r[0] for r in table]
+        pickers = (nam_picker(2, "DrNam", "c-dr-nam") if pfx == "dr"
+                   else (IR_PICKER + nam_picker(1, "CabNam", "") if pfx == "cab" else ""))
+        inner = SCREWS
+        if locked:   # live input level meter on the Input Trim block (front of chain)
+            inner += ('<div class="hf-inmeter"><span class="hf-inmeter-lbl">INPUT LEVEL</span>'
+                      '<div class="hf-meter hf-meter-h"><div class="hf-meter-fill" rata-role="imeter"></div></div></div>')
+        if pickers:
+            inner += '<div class="hf-dselects clearfix">%s</div>' % pickers
+        inner += render_agroups(pfx, BLOCK_GROUPS.get(pfx, [(title.upper(), None, all_sufs)]), all_sufs)
+        body = '<div class="hf-plate">%s</div>' % inner
+    style = "--acc:%s" % accent
+    if pfx != "amp":                 # painted pedal-enclosure colours derived from the accent
+        style += ";--encl1:%s;--encl2:%s" % (darken(accent, 0.42), darken(accent, 0.24))
     cls = "hf-detail-panel hf-detail-lock" if locked else "hf-detail-panel"
-    return ('<div class="%s" data-block="%s" style="--acc:%s">%s<div class="hf-dbody">%s</div></div>'
-            % (cls, pfx, accent, "".join(head), body))
+    return ('<div class="%s" data-block="%s" style="%s">%s<div class="hf-dbody">%s</div></div>'
+            % (cls, pfx, style, "".join(head), body))
 
 # ── Preset / bank strip ───────────────────────────────────────────────────────
 # Plain buttons; script-hexforge.js wires their clicks to pulse the command ports
@@ -664,13 +790,31 @@ PRESETS_PANEL = (
     '  </div>\n'
 )
 
+# Electric connector = the ORIGINAL live vector helix, made cheap. Four glowing strands (gentle
+# phase-offset sine waves) travel through the node strip. The fans previously spun on the SVG
+# drop-shadow BLUR filters, not the motion — so here the glow is faked with stacked wide/mid
+# low-opacity strokes (no filters), and it travels via a compositor CSS transform on <g> (one
+# wavelength = seamless), not a per-frame JS loop. The paths are static; CSS does all the motion.
+def _sine(ph):
+    pts = ["%.1f %.1f" % (x, 60 + 30 * math.sin(2 * math.pi * x / 750.0 + ph))
+           for x in range(-750, 1951, 16)]
+    return "M" + " L ".join(pts)
+
+_HXC = [("cyan", "#4ffcff"), ("blue", "#3a6bff"), ("purple", "#b44cff"), ("orange", "#ff7b2f")]
+def _layer(cls):
+    return "".join('<path class="hf-hs hf-hs-%s hf-hx-%s" d="%s"/>' % (cls, n, _sine(i * 0.7))
+                   for i, (n, _c) in enumerate(_HXC))
+HELIX_SVG = ('<div class="hf-helix"><svg class="hf-helix-svg" viewBox="0 0 1200 120" '
+             'preserveAspectRatio="none"><path class="hf-helix-base" d="M0 60 L1200 60"/>'
+             '<g class="hf-helix-spin">' + _layer("glow") + _layer("core") + '</g></svg></div>')
+
 def emit_icon():
     nodes  = "".join(node(t[0], t[1], t[2]) for t in TILES)
     panels = "\n      ".join(panel(*t) for t in TILES)
     chain = (
         '  <div class="hf-chain">\n'
         '    <span class="hf-end hf-in">IN</span>\n'
-        '    <div class="hf-nodes" rata-role="nodes">' + nodes + '</div>\n'
+        '    <div class="hf-nodes" rata-role="nodes">' + HELIX_SVG + nodes + '</div>\n'
         '    <span class="hf-end hf-out2">OUT</span>\n'
         '    <div class="hf-addwrap">\n'
         '      <button type="button" class="hf-add" title="Add an effect to the chain">＋ ADD</button>\n'
@@ -680,23 +824,47 @@ def emit_icon():
     detail = '  <div class="hf-detail" rata-role="detail">\n      ' + panels + '\n  </div>\n'
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
         '  <div mod-role="drag-handle" class="mod-drag-handle"></div>\n'
-        '  <div class="mod-powerswitch" mod-role="bypass"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
-        '  <div class="hf-header">\n'
-        '    <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>\n'
-        '    <div class="hf-title">HEX FORGE</div>\n'
-        '    <div class="hf-sub">click a node to edit it · ＋ to add · power dot bypasses · drag to reorder</div>\n'
-        '    <div class="hx-logo"></div>\n'
+        # UNIFIED TOOLBAR — brand (left) · preset recall (centre) · master output + latency (right).
+        # Consolidates the old header/output/presets strips into one bar. All wired controls kept.
+        '  <div class="hf-bar">\n'
+        '    <div class="hf-bar-brand"><span class="hx-mark"></span><span class="hf-title">HEX FORGE</span></div>\n'
+        '    <div class="hf-bar-presets">\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-bankdn" title="Bank down (hold A+B on the pedal)">◀</button>\n'
+        '      <span class="hf-ps-bank" rata-role="psbank">BANK 1</span>\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-bankup" title="Bank up (hold C+D on the pedal)">▶</button>\n'
+        '      <span class="hf-ps-slots">\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="0">A</button>\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="1">B</button>\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="2">C</button>\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="3">D</button>\n'
+        '      </span>\n'
+        '      <input type="text" class="hf-ps-name" rata-role="psname" maxlength="31" spellcheck="false" placeholder="(unnamed)" title="Preset name — type and press Enter to rename" />\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-save" title="Save over the current preset">SAVE</button>\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-toggle" title="Browse all presets &amp; manage">≡</button>\n'
+        # ≡ dropdown: a manage header (reorder + backup/restore) above the full 8×4 preset grid.
+        # Keeps those low-frequency actions out of the always-visible bar.
+        '      <div class="hf-ps-menu" rata-role="psmenu">\n'
+        '        <div class="hf-ps-menuhead">\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-mvup" title="Move this preset earlier in the list">▲ Earlier</button>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-mvdn" title="Move this preset later in the list">▼ Later</button>\n'
+        '          <span class="hf-ps-menusep"></span>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-backup" title="Back up all 32 presets to disk (survives delete/re-add &amp; updates)">⭳ Backup</button>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-restore" title="Restore all presets from the last backup on disk">⭱ Restore</button>\n'
+        '        </div>\n'
+        '        <div class="hf-ps-list" rata-role="pslist"></div>\n'
+        '      </div>\n'
+        '    </div>\n'
+        '    <div class="hf-bar-out">\n'
+        '      <span class="hf-out-name">OUT</span>\n'
+        '      <div class="hf-meter hf-meter-h" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
+        '      <span class="hf-clip" rata-role="clip">CLIP</span>\n'
+        '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
+        '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
+        '      ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
+        '      <div class="mod-powerswitch" mod-role="bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
+        '    </div>\n'
         '  </div>\n'
-        '  <div class="hf-out">\n'
-        '    <span class="hf-out-mark"></span>\n'
-        '    <span class="hf-out-name">Output</span>\n'
-        '    <div class="hf-meter hf-meter-h" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
-        '    <span class="hf-clip" rata-role="clip">CLIP</span>\n'
-        '    <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
-        '    ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
-        '    ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
-        '  </div>\n'
-        + PRESETS_PANEL + chain + detail +
+        + chain + detail +
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'
         '    <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>\n'
