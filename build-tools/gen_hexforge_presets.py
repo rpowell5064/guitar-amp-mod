@@ -610,7 +610,7 @@ MANUAL_OUT = {
     # are pushed ~3-3.5 dB above the -13.1 dirty target for presence — but kept below where
     # their peaks (Numb -2.7, Desert -4.0 dBFS at M20) would hit the limiter (no crushing).
     "Numb Sustain": -14.0, "Desert Robot": -19.7, "Regal Sustain": -16.0,   # leads pushed loud (Desert now on Backline Plus w/ 2.5x makeup → lower out_level for the same ~-5.5 RMS)
-    "Gravity Lead": -27.5,   # re-authored w/ harmonic-trem + comp reads ~+15 dB hot; scales to -10 RMS (loud lead) w/o limiting
+    "Gravity Lead": -23.0,   # clean-amp lead is peaky (crest ~9 dB); -23 → ~-6 RMS to sit with the other leads (~-5), master limiter tames the +3 dB peaks (was -27.5 = ~-10 RMS, ~5 dB below its siblings → felt low)
     # ("Numb Sustain" was -27.2 as a workaround for the 4.9 Hiwatt makeup bug — now 1.3.)
     # User still found them too quiet at -18.9 → pushed HARD to lead level (~-4.5/-5 RMS,
     # +8-9 dB over the -13.1 dirty target). Peaks (Numb -2.4, Desert -3.6 @M20) now sit
