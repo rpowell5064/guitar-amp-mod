@@ -446,7 +446,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 86 ;")
+    L.append("    lv2:microVersion 87 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -926,8 +926,7 @@ def emit_icon():
         '    </div>\n'
         '    <div class="hf-bar-out">\n'
         '      <button type="button" class="hf-tunerbtn" rata-role="tunerbtn" title="Strobe tuner — click to open / close">'
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg>'
-        '<span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_on"></span></button>\n'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg></button>\n'
         '      <span class="hf-bar-sep"></span>\n'
         '      <span class="hf-out-name">OUT</span>\n'
         '      <div class="hf-meter hf-meter-h" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
