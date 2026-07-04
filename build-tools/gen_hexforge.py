@@ -426,7 +426,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 76 ;")
+    L.append("    lv2:microVersion 77 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -677,9 +677,10 @@ def amp_body():
         nam_picker(0, "AmpNam", "c-amp-nam"), render_ctrl(CTRL_BY_SYM["amp_model"]))
     def rc(sufs):
         return "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs if ("amp_" + s) in CTRL_BY_SYM)
-    def agroup(title, sufs):
-        return ('<div class="hf-agroup"><span class="hf-agroup-title">%s</span>'
-                '<div class="hf-agroup-body">%s</div></div>') % (title, rc(sufs))
+    def agroup(title, sufs, gcls=""):
+        wrap = "hf-agroup" + ((" " + gcls) if gcls else "")
+        return ('<div class="%s"><span class="hf-agroup-title">%s</span>'
+                '<div class="hf-agroup-body">%s</div></div>') % (wrap, title, rc(sufs))
     # Front-panel faceplate: PREAMP + TONE STACK only (channel/resonance ride their own COND class).
     face = ('<div class="hf-amp-face hf-face-m1">'
             '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
@@ -689,11 +690,13 @@ def amp_body():
             + agroup("PREAMP", ["gain", "master", "sag", "channel", "resonance"])
             + agroup("TONE STACK", ["bass", "mid", "treble", "presence"])
             + '</div></div></div>')
-    # Power Amp — its own tolex chassis: switch rail + Valve Stage + Feel groups.
+    # Power Amp — its own tolex chassis: a switch rail (Bypass / Auto / Tube) over the knob
+    # groups. VALVE STAGE carries c-amp-paman so the WHOLE group (title included) disappears
+    # when PA Auto is on — no empty labelled box (this was the dreadful part). FEEL always shows.
     pa = ('<div class="hf-pa-face c-amp-pa"><div class="hf-pa-title">Power Amp</div>'
           '<div class="hf-pa-rail">' + rc(["pamp_bypass", "pamp_auto", "pamp_tube"]) + '</div>'
           '<div class="hf-agroups">'
-          + agroup("VALVE STAGE", ["pamp_presence", "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb"])
+          + agroup("VALVE STAGE", ["pamp_presence", "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb"], "c-amp-paman")
           + agroup("FEEL", ["pamp_resonance", "pamp_airfeel"])
           + '</div></div>')
     # Brite Channel (Sunn) + Beardo BE — each its own chassis.

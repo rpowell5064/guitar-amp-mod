@@ -665,6 +665,11 @@
     text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 14px rgba(46,205,255,.22);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-rail {
-    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 26px; margin-bottom: 14px;
+    display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 20px;
+    margin: 0 auto 14px; padding: 8px 20px; border-radius: 9px;
+    background: rgba(0,0,0,.26); border: 1px solid rgba(255,255,255,.07);
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-face .hf-agroups { justify-content: center; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-face .hf-agroups { justify-content: center; align-items: flex-start; }
+/* keep the power-amp chassis content from stretching to the full detail width when sparse */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-face { display: flex; flex-direction: column; align-items: center; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-face > .hf-pa-title { align-self: stretch; }
