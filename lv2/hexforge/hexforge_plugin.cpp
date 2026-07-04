@@ -310,6 +310,58 @@ struct URIs {
     LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
 };
 
+// ── Chromatic strobe tuner ── autocorrelation pitch detector on the dry input. Only runs
+// when the tuner is engaged. Reports note (0..11 = C..B, -1 = no pitch) + cents (-50..+50).
+struct TunerDetector {
+    static constexpr int kBuf = 2048;   // ~43 ms @ 48k → > 2 periods of low E (82 Hz)
+    float  buf[kBuf] = {0};
+    double corr[kBuf] = {0};
+    int    wr = 0, sinceCalc = 0;
+    double rate = 48000.0;
+    int    note = -1;
+    float  cents = 0.0f;
+    void prepare(double sr) noexcept {
+        rate = sr; wr = 0; sinceCalc = 0; note = -1; cents = 0.0f;
+        for (int i = 0; i < kBuf; ++i) buf[i] = 0.0f;
+    }
+    void reset() noexcept { note = -1; cents = 0.0f; }
+    void process(const float* mono, int n) noexcept {
+        for (int i = 0; i < n; ++i) { buf[wr] = mono[i]; wr = (wr + 1) & (kBuf - 1); }
+        sinceCalc += n;
+        if (sinceCalc >= 2048) { sinceCalc = 0; compute(); }
+    }
+    void compute() noexcept {
+        float w[kBuf];
+        for (int i = 0; i < kBuf; ++i) w[i] = buf[(wr + i) & (kBuf - 1)];
+        double rms = 1e-12; for (int i = 0; i < kBuf; ++i) rms += (double)w[i] * w[i];
+        const double c0 = rms;                 // == sum(w^2)
+        rms = std::sqrt(rms / kBuf);
+        if (rms < 0.004) { note = -1; return; }   // ~-48 dBFS gate → silence = no reading
+        const int minLag = (int)(rate / 1050.0);  // up to ~1050 Hz
+        const int maxLag = (int)(rate / 62.0);    // down to ~62 Hz (below low B)
+        double best = 0.0; int bestLag = 0;
+        for (int lag = minLag; lag <= maxLag && lag < kBuf; ++lag) {
+            double c = 0.0;
+            for (int i = 0; i + lag < kBuf; ++i) c += (double)w[i] * w[i + lag];
+            const double norm = c / c0;
+            corr[lag] = norm;
+            if (norm > best) { best = norm; bestLag = lag; }
+        }
+        if (bestLag <= minLag || best < 0.35) { note = -1; return; }
+        double refLag = bestLag;               // parabolic interpolation for sub-sample accuracy
+        if (bestLag > minLag && bestLag < maxLag) {
+            const double a = corr[bestLag - 1], b = corr[bestLag], cc = corr[bestLag + 1];
+            const double den = a - 2.0 * b + cc;
+            if (std::fabs(den) > 1e-12) refLag = bestLag + 0.5 * (a - cc) / den;
+        }
+        const double freq = rate / refLag;
+        const double midi = 69.0 + 12.0 * std::log2(freq / 440.0);
+        const long  nearest = std::lround(midi);
+        cents = (float)((midi - nearest) * 100.0);
+        note  = (int)(((nearest % 12) + 12) % 12);   // 0 = C .. 11 = B
+    }
+};
+
 struct HexForge {
     double rate = 48000.0;
 
@@ -341,6 +393,8 @@ struct HexForge {
     int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0, lastNailMode = 2;
     int lastModfxType = 0, lastDelayType = 0;
     float hostBpm = 120.0f;   // host tempo from time:Position events (tap-tempo / MIDI clock sync)
+    TunerDetector tuner;      // strobe tuner pitch detector (runs only when engaged)
+    int  lastTunerNote = -2;  // to notify the UI only on change (int output ports)
 
     // ports — `ports[]` are the pointers the DSP reads. For param ports they are
     // redirected to point at eff[] (the preset/override layer); for everything
@@ -853,6 +907,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->nail = std::make_unique<OversamplingWrapper>(std::make_unique<NailDistortion>());
     if (!p->nail) { delete p; return nullptr; }
     p->nail->prepare(rate, kMaxBlock, 1);
+    p->tuner.prepare(rate);
     p->nail->setParameter("mode", 2.0f);
     p->amp = new(std::nothrow) AmpBlockExtended;
     if (!p->amp) { delete p; return nullptr; }
@@ -1111,10 +1166,30 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     float* outL = p->ports[HF_OUT_L];
     float* outR = p->ports[HF_OUT_R];
 
-    // ── Global bypass: unity passthrough ──
+    // ── Strobe tuner: detect the dry input pitch when engaged; publish note + cents ──
+    const bool tunerOn   = p->ports[HF_TUNER_ON]   && *p->ports[HF_TUNER_ON]   > 0.5f;
+    const bool tunerMute = tunerOn && p->ports[HF_TUNER_MUTE] && *p->ports[HF_TUNER_MUTE] > 0.5f;
+    if (tunerOn) {
+        for (uint32_t off = 0; off < n; off += kMaxBlock) {
+            const int len = (int)((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
+            for (int i = 0; i < len; ++i) p->mono[i] = 0.5f * (inL[off+i] + inR[off+i]);
+            p->tuner.process(p->mono, len);
+        }
+        if (p->ports[HF_TUNER_NOTE])  *p->ports[HF_TUNER_NOTE]  = (float)p->tuner.note;
+        if (p->ports[HF_TUNER_CENTS]) *p->ports[HF_TUNER_CENTS] = p->tuner.cents;
+    } else if (p->tuner.note != -1) {
+        p->tuner.reset();
+        if (p->ports[HF_TUNER_NOTE])  *p->ports[HF_TUNER_NOTE]  = -1.0f;
+        if (p->ports[HF_TUNER_CENTS]) *p->ports[HF_TUNER_CENTS] = 0.0f;
+    }
+
+    // ── Global bypass: unity passthrough (or silence while tuning-muted) ──
     if (*p->ports[HF_BYPASS] > 0.5f) {
-        if (outL != inL) std::memcpy(outL, inL, sizeof(float)*n);
-        if (outR != inR) std::memcpy(outR, inR, sizeof(float)*n);
+        if (tunerMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
+        else {
+            if (outL != inL) std::memcpy(outL, inL, sizeof(float)*n);
+            if (outR != inR) std::memcpy(outR, inR, sizeof(float)*n);
+        }
         if (p->ports[HF_CLIP]) *p->ports[HF_CLIP] = 0.0f;
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
         return;
@@ -1428,6 +1503,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     const float outGain = dbToGain(*p->ports[HF_OUT_LEVEL]);
     const bool  outLimit = *p->ports[HF_OUT_AUTO] > 0.5f;
     p->autoOut.process(outL, outR, n, outGain, outLimit);
+
+    // Silence the output while tuning (mute engaged) — the tuner still reads the dry input.
+    if (tunerMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
 
     // ── Clip indicator: latch for ~250 ms whenever the output hits full scale ──
     float peak = 0.0f;

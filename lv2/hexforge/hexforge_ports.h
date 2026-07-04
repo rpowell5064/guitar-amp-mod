@@ -169,10 +169,14 @@ enum HexForgePort {
     HF_IN_METER,
     HF_OUT_METER,
     HF_OUT_MONO,
+    HF_TUNER_ON,
+    HF_TUNER_MUTE,
+    HF_TUNER_NOTE,
+    HF_TUNER_CENTS,
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 174, "port count drift");
+static_assert(HF_N_PORTS == 178, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -203,5 +207,6 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "nail_bypass", "dl_sync", "dl_div", "md_sync", "md_div", "sw_a",
     "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save",
     "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank",
-    "ps_slot", "out_auto", "in_meter", "out_meter", "out_mono", "midi_in",
+    "ps_slot", "out_auto", "in_meter", "out_meter", "out_mono", "tuner_on",
+    "tuner_mute", "tuner_note", "tuner_cents", "midi_in",
 };

@@ -314,6 +314,15 @@ ctrl.append(mkport("OUT_METER", "out_meter", "Output Level", "f", 0, 1, 0, None,
 # (blob v10 migration defaults it ON for pre-v10 saves).
 ctrl.append(mkport("OUT_MONO", "out_mono", "Output Mono Sum", "t", 0, 1, 1, None, "Mono"))
 
+# ── Strobe tuner ── a toggleable chromatic tuner strip at the bottom of the Forge. ALL global
+# (appended after the preset param range → NOT preset-captured, so no blob migration). tuner_on
+# shows + enables it; tuner_mute silences the output while tuning. note (-1=no pitch, 0..11 =
+# C..B) + cents (-50..+50) are OUTPUT ports the strobe UI reads to drive the disc + readout.
+ctrl.append(mkport("TUNER_ON",    "tuner_on",    "Tuner",       "t", 0, 1, 0, None, "Tuner"))
+ctrl.append(mkport("TUNER_MUTE",  "tuner_mute",  "Tuner Mute",  "t", 0, 1, 0, None, "Mute"))
+ctrl.append(mkport("TUNER_NOTE",  "tuner_note",  "Tuner Note",  "i", -1, 11, -1, None, "Note",  out=True))
+ctrl.append(mkport("TUNER_CENTS", "tuner_cents", "Tuner Cents", "f", -50, 50, 0, None, "Cents", out=True))
+
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
 # ── Fixed leading ports (audio + atom) ────────────────────────────────────────
@@ -437,7 +446,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 81 ;")
+    L.append("    lv2:microVersion 82 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -867,6 +876,18 @@ def emit_icon():
         '    </div>\n'
         '  </div>\n')
     detail = '  <div class="hf-detail" rata-role="detail">\n      ' + panels + '\n  </div>\n'
+    # Strobe tuner overlay — floats over the bottom of the detail panel when engaged (tuner_on).
+    # The disc spins at a rate/direction set by cents (still + green = in tune); note reads the pitch.
+    tuner = ('  <div class="hf-tuner mod-hidden" rata-role="tuner">\n'
+        '    <div class="hf-tuner-strobe"><div class="hf-tuner-ring" rata-role="tunerdisc"></div><div class="hf-tuner-dot"></div></div>\n'
+        '    <div class="hf-tuner-read">\n'
+        '      <div class="hf-tuner-note" rata-role="tunernote">–</div>\n'
+        '      <div class="hf-tuner-cents" rata-role="tunercents">no signal</div>\n'
+        '    </div>\n'
+        '    <div class="hf-tuner-mute" title="Mute output while tuning">' + render_ctrl(CTRL_BY_SYM["tuner_mute"]) + '</div>\n'
+        '    <span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_note"></span>\n'
+        '    <span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_cents"></span>\n'
+        '  </div>\n')
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
         '  <div mod-role="drag-handle" class="mod-drag-handle"></div>\n'
         # UNIFIED TOOLBAR — brand (left) · preset recall (centre) · master output + latency (right).
@@ -907,10 +928,11 @@ def emit_icon():
         '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
+        '      <div class="hf-tuner-tog" title="Strobe tuner">' + render_ctrl(CTRL_BY_SYM["tuner_on"]) + '</div>\n'
         '      <div class="mod-powerswitch" mod-role="bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '    </div>\n'
         '  </div>\n'
-        + chain + detail +
+        + chain + detail + tuner +
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'
         '    <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>\n'
