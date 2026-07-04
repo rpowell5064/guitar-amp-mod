@@ -478,6 +478,9 @@ function (event, funcs) {
         } else if (event.uri && event.uri.indexOf('#meters') >= 0) {
             var mv = ('' + event.value).split('|');
             if (mv.length >= 2) { setMeter(icon, 'imeter', parseFloat(mv[0])); setMeter(icon, 'ometer', parseFloat(mv[1])); }
+        } else if (event.uri && event.uri.indexOf('#tuner') >= 0) {
+            var tv = ('' + event.value).split('|');
+            if (tv.length >= 2) { tunerNote(icon, parseInt(tv[0], 10)); tunerCents(icon, parseFloat(tv[1])); }
         }
     }
 }

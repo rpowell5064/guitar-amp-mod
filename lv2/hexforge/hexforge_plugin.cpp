@@ -305,7 +305,7 @@ struct URIs {
     LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
     LV2_URID ir_file, amp_nam, dr_nam, cab_nam;
-    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters;
+    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner;
     LV2_URID midi_MidiEvent;
     LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
 };
@@ -313,7 +313,7 @@ struct URIs {
 // ── Chromatic strobe tuner ── autocorrelation pitch detector on the dry input. Only runs
 // when the tuner is engaged. Reports note (0..11 = C..B, -1 = no pitch) + cents (-50..+50).
 struct TunerDetector {
-    static constexpr int kBuf = 2048;   // ~43 ms @ 48k → > 2 periods of low E (82 Hz)
+    static constexpr int kBuf = 4096;   // ~85 ms @ 48k → several periods even at low E (82 Hz)
     float  buf[kBuf] = {0};
     double corr[kBuf] = {0};
     int    wr = 0, sinceCalc = 0;
@@ -328,32 +328,39 @@ struct TunerDetector {
     void process(const float* mono, int n) noexcept {
         for (int i = 0; i < n; ++i) { buf[wr] = mono[i]; wr = (wr + 1) & (kBuf - 1); }
         sinceCalc += n;
-        if (sinceCalc >= 2048) { sinceCalc = 0; compute(); }
+        if (sinceCalc >= 3072) { sinceCalc = 0; compute(); }   // recompute ~15x/s
     }
     void compute() noexcept {
         float w[kBuf];
         for (int i = 0; i < kBuf; ++i) w[i] = buf[(wr + i) & (kBuf - 1)];
-        double rms = 1e-12; for (int i = 0; i < kBuf; ++i) rms += (double)w[i] * w[i];
-        const double c0 = rms;                 // == sum(w^2)
-        rms = std::sqrt(rms / kBuf);
-        if (rms < 0.004) { note = -1; return; }   // ~-48 dBFS gate → silence = no reading
-        const int minLag = (int)(rate / 1050.0);  // up to ~1050 Hz
-        const int maxLag = (int)(rate / 62.0);    // down to ~62 Hz (below low B)
-        double best = 0.0; int bestLag = 0;
-        for (int lag = minLag; lag <= maxLag && lag < kBuf; ++lag) {
-            double c = 0.0;
-            for (int i = 0; i + lag < kBuf; ++i) c += (double)w[i] * w[i + lag];
-            const double norm = c / c0;
+        double e0 = 1e-12; for (int i = 0; i < kBuf; ++i) e0 += (double)w[i] * w[i];
+        const double meanPow = e0 / kBuf;
+        if (std::sqrt(meanPow) < 0.004) { note = -1; return; }   // ~-48 dBFS gate → silence
+        const int minLag = (int)(rate / 1050.0);   // up to ~1050 Hz
+        int maxLag = (int)(rate / 62.0);            // down to ~62 Hz (below low E)
+        if (maxLag >= kBuf) maxLag = kBuf - 1;
+        // Normalize each lag by BOTH the overlap length (kills the (N-lag) envelope that
+        // biased the peak toward shorter lags = sharp) and mean power → ~1.0 at the true period.
+        double gmax = 0.0;
+        for (int lag = minLag; lag <= maxLag; ++lag) {
+            double c = 0.0; const int ov = kBuf - lag;
+            for (int i = 0; i < ov; ++i) c += (double)w[i] * w[i + lag];
+            const double norm = (c / ov) / (meanPow + 1e-12);
             corr[lag] = norm;
-            if (norm > best) { best = norm; bestLag = lag; }
+            if (norm > gmax) gmax = norm;
         }
-        if (bestLag <= minLag || best < 0.35) { note = -1; return; }
+        if (gmax < 0.5) { note = -1; return; }
+        // Pick the FIRST local peak within 88% of the global max = the fundamental period
+        // (a plain global-max can land on 2x the period → an octave-down error).
+        const double pt = gmax * 0.88;
+        int bestLag = 0;
+        for (int lag = minLag + 1; lag < maxLag; ++lag)
+            if (corr[lag] >= pt && corr[lag] >= corr[lag-1] && corr[lag] > corr[lag+1]) { bestLag = lag; break; }
+        if (bestLag <= minLag) { note = -1; return; }
         double refLag = bestLag;               // parabolic interpolation for sub-sample accuracy
-        if (bestLag > minLag && bestLag < maxLag) {
-            const double a = corr[bestLag - 1], b = corr[bestLag], cc = corr[bestLag + 1];
-            const double den = a - 2.0 * b + cc;
-            if (std::fabs(den) > 1e-12) refLag = bestLag + 0.5 * (a - cc) / den;
-        }
+        const double a = corr[bestLag - 1], b = corr[bestLag], cc = corr[bestLag + 1];
+        const double den = a - 2.0 * b + cc;
+        if (std::fabs(den) > 1e-12) refLag = bestLag + 0.5 * (a - cc) / den;
         const double freq = rate / refLag;
         const double midi = 69.0 + 12.0 * std::log2(freq / 440.0);
         const long  nearest = std::lround(midi);
@@ -511,6 +518,7 @@ static void mapURIs(HexForge* p) {
     p->uris.ps_apply      = m->map(m->handle, HEXFORGE_URI "#ps_apply");
     p->uris.preset_blob   = m->map(m->handle, HEXFORGE_URI "#preset_blob");
     p->uris.meters        = m->map(m->handle, HEXFORGE_URI "#meters");
+    p->uris.tuner         = m->map(m->handle, HEXFORGE_URI "#tuner");
     p->uris.midi_MidiEvent= m->map(m->handle, LV2_MIDI_MidiEvent_URI);
     p->uris.time_Position = m->map(m->handle, LV2_TIME__Position);
     p->uris.time_bpm      = m->map(m->handle, LV2_TIME__beatsPerMinute);
@@ -1546,6 +1554,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             p->meterSentIn = mIn; p->meterSentOut = mOut;
             char mbuf[24]; std::snprintf(mbuf, sizeof(mbuf), "%.3f|%.3f", mIn, mOut);
             forgeStringSet(p, p->uris.meters, mbuf);
+        }
+        // Strobe tuner readout → same atom channel (output ports don't reach the modgui).
+        if (tunerOn) {
+            char tbuf[24]; std::snprintf(tbuf, sizeof(tbuf), "%d|%.1f", p->tuner.note, p->tuner.cents);
+            forgeStringSet(p, p->uris.tuner, tbuf);
         }
     }
 
