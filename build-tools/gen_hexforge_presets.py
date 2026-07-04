@@ -523,6 +523,50 @@ add(
     cab={"lowcut":85,"highcut":9500}),
 )
 
+# ── Bank 12 (index 11) — NINE INCH NAILS (the Nail industrial-distortion block; mode ↔ era) ──
+# The Nail's five topologies were built for exactly this: Broke=Broken-EP digital crush,
+# Dahnward=Downward-Spiral scoop, Delicate=Fragile Muff-wall, Con Molars=With-Teeth cab grind.
+# Nail sits at slot 4 (in front of the amp); amps stay tight/moderate so the Nail is the voice.
+add(
+  preset(11, 0, "March Stabs", out_level=OUT,           # March of the Pigs — The Downward Spiral (1994)
+    # The Downward Spiral's scooped, resonant, aggressive stab distortion. Nail "Dahnward" mode
+    # (the Downward voicing: scooped hi-gain -> interstage LP -> resonant band-pass) in FRONT of a
+    # tight Marshall; hard fast gate for the machine-stab, piano-bridge staccato rhythm.
+    nail={"enable":1,"pos":4,"mode":"Dahnward","drive":0.8,"tone":0.46,"texture":0.62,"level":0.55},
+    amp={"model":"Crunchy McCrunchFace","gain":0.35,"bass":0.5,"mid":0.5,"treble":0.6,"presence":0.6,"master":0.8,"sag":0.3},
+    gt={"enable":1,"thresh":-52,"attack":1.2,"hold":90,"release":180,"hyst":8},
+    cab_ir="@greenback",
+    cab={"lowcut":95,"highcut":7800}),
+  preset(11, 1, "World Went Away", out_level=OUT,       # The Day the World Went Away — The Fragile (1999)
+    # The Fragile's crushing wall: fat, saturated, Muff-leaning distortion. Nail "Delicate"
+    # (Swollen-Pickle-ish: fat lows, gentle scoop) into a thick amp + the big dark Doom cab with
+    # atmospheric reverb. The loud album guitar (not the acoustic "quiet" intro).
+    nail={"enable":1,"pos":4,"mode":"Delicate","drive":0.7,"tone":0.42,"texture":0.5,"level":0.5},
+    amp={"model":"Crunchy McCrunchFace","gain":0.3,"bass":0.6,"mid":0.4,"treble":0.5,"presence":0.45,"master":0.7,"sag":0.4},
+    rv={"enable":1,"predelay":14,"decay":2.2,"damping":0.45,"mix":0.22},
+    gt={"enable":1,"thresh":-58,"attack":2,"hold":160,"release":320,"hyst":8},
+    cab_ir="@doom",
+    cab={"lowcut":80,"highcut":7000}),
+  preset(11, 2, "Broken Crush", out_level=OUT,          # Broken EP — Wish / Happiness in Slavery (1992)
+    # The angriest NIN: harsh, lo-fi DIGITAL distortion. Nail "Broke" mode (hard-clip -> sample-rate
+    # decimation + bit-crush) into a clean/tight solid-state platform so the digital grit stays raw;
+    # brutal fast gate for the machine-gun rhythm.
+    nail={"enable":1,"pos":4,"mode":"Broke","drive":0.75,"tone":0.55,"texture":0.5,"level":0.32},
+    amp={"model":"Backline Plus","gain":0.25,"bass":0.5,"mid":0.6,"treble":0.6,"presence":0.55,"master":0.55,"sag":0.3},
+    gt={"enable":1,"thresh":-50,"attack":1.0,"hold":70,"release":150,"hyst":8},
+    cab_ir="@american-ob",
+    cab={"lowcut":90,"highcut":8500}),
+  preset(11, 3, "With Teeth", out_level=OUT,            # With Teeth — The Hand That Feeds / Only (2005)
+    # The 2005 return to a raw, direct live-band rock tone. Nail "Con Molars" (bright aggressive
+    # clip -> speaker/cab voicing: low-cut + mid push) into a real cranked Marshall for the
+    # in-the-room grind. Tighter, less scooped than the '90s eras.
+    nail={"enable":1,"pos":4,"mode":"Con Molars","drive":0.7,"tone":0.55,"texture":0.5,"level":0.58},
+    amp={"model":"Crunchy McCrunchFace","gain":0.5,"bass":0.5,"mid":0.58,"treble":0.58,"presence":0.55,"master":0.82,"sag":0.35},
+    gt={"enable":1,"thresh":-54,"attack":1.5,"hold":120,"release":220,"hyst":8},
+    cab_ir="@greenback",
+    cab={"lowcut":90,"highcut":8800}),
+)
+
 # ── Loudness calibration ─────────────────────────────────────────────────────
 # Measured on-device with build-tools/hexforge_meas.cpp (a worker-capable LV2 host;
 # DI from build-tools/gen_di.py): each preset recalled, a sustained DI power chord run
@@ -544,6 +588,9 @@ MEAS_RMS_AT_M20 = {
     # Re-measured 2026-07-02 after the fuzz/DS-1 restaging + Hiwatt makeup fix (4.9->1.3)
     # + softened DS-1/Octavia clip (kClipHard 3->2.2, soft op-amp rail, Octavia gain 40->28):
     "Nevermind Wall":-14.43, "Bridge Vibe":-16.69, "Desert Robot":-13.02,   # Bridge re-measured after vibe moved pre-amp
+    # NIN bank (2026-07-04) — the Nail block. World re-voiced off the Sunn (uncontrollable output)
+    # onto Crunchy; Broke mode runs hot so it lands at a low out_level (peaks then sit under 0 dBFS).
+    "March Stabs":-15.57, "World Went Away":-14.81, "Broken Crush":-4.92, "With Teeth":-14.27,
 }
 # Cleans: the user set the master Output for every generated clean preset to a FIXED
 # -5.90 dB by ear (their stock Bank-1 Clean is the reference, left alone). So the cleans
