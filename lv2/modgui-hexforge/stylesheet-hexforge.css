@@ -688,8 +688,8 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner {
     position: absolute; left: 24px; right: 24px; bottom: 16px; height: 128px; z-index: 50;
     display: flex; align-items: center; justify-content: center; gap: 40px;
-    background: linear-gradient(180deg, rgba(8,10,16,.94), rgba(6,7,11,.98));
-    background-image: var(--hex), linear-gradient(180deg, rgba(8,10,16,.94), rgba(6,7,11,.98));
+    background-color: #090b10;
+    background-image: var(--hex), linear-gradient(180deg, rgba(20,22,30,.98), rgba(6,7,11,1));
     background-repeat: repeat, no-repeat; background-size: var(--hexsz), 100% 100%;
     border: 1px solid rgba(120,90,255,.5); border-radius: 12px;
     box-shadow: 0 -6px 30px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
