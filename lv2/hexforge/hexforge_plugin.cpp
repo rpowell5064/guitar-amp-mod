@@ -99,7 +99,7 @@ static constexpr int kBanks = 32, kSlots = 4;
 // BUMP whenever the built-in factory presets change — on load, a saved store with an
 // older rev has its FACTORY slots refreshed from the binary (user slots untouched), so
 // preset fixes actually reach existing users instead of being overridden by the .dat.
-static constexpr uint32_t kFactoryRev = 2;   // 2: Gravity Lead out_level -27.5 -> -23.0 (was ~5 dB below its sibling leads)
+static constexpr uint32_t kFactoryRev = 3;   // 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus
 struct Preset {
     bool  used = false;
     char  name[32] = {0};

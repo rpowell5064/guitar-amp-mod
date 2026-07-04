@@ -194,7 +194,7 @@ add(
     # MXR Phase 95 (frequent on leads) + melodic dual delay.
     amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.72,"bass":0.4,"mid":0.52,"treble":0.65,"presence":0.68,"master":0.65,"sag":0.4},
     dr={"enable":1,"model":"Gilded Horse","drive":0.35,"tone":0.6,"level":0.7,"mix":1.0},
-    md={"enable":1,"type":"Phaser","rate":0.3,"depth":0.55,"mix":0.35},
+    md={"enable":1,"type":"Lush-2","rate":0.22,"depth":0.32,"mix":0.20,"width":0.35},  # subtle CE-2 chorus — user pref over the researched Phase 95 (phaser read wrong on-rig)
     gt={"enable":1,"thresh":-45,"attack":1,"hold":130,"release":280,"hyst":8},
     dl={"enable":1,"type":"Seraph","time":320,"feedback":0.28,"mix":0.22,"width":0.45,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.12,"modrate":0.3},
     rv={"enable":1,"predelay":15,"decay":1.4,"damping":0.45,"mix":0.28},
@@ -211,7 +211,7 @@ add(
     # than TS) into HBE + MXR phaser; very stiff/modern.
     amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.78,"bass":0.38,"mid":0.48,"treble":0.65,"presence":0.7,"master":0.65,"sag":0.32},
     dr={"enable":1,"model":"Dear Rodent Boy","drive":0.4,"tone":0.45,"level":0.65,"mix":1.0},
-    md={"enable":1,"type":"Phaser","rate":0.28,"depth":0.5,"mix":0.3},
+    md={"enable":1,"type":"Lush-2","rate":0.20,"depth":0.30,"mix":0.18,"width":0.30},  # subtle CE-2 chorus — user pref over the researched MXR phaser (phaser read wrong on-rig)
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":120,"release":260,"hyst":8},
     dl={"enable":1,"type":"Tape","time":350,"feedback":0.3,"mix":0.25,"width":0.35,"wow":0.002,"flutter":0.001},
     rv={"enable":1,"predelay":18,"decay":1.5,"damping":0.42,"mix":0.3},
