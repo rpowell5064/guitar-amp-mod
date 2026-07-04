@@ -63,14 +63,17 @@
       <div class="hf-detail-panel" data-block="oc" style="--acc:#5fd0a0;--encl1:#275743;--encl2:#163126"><div class="hf-dhead"><span class="hf-dname">Octave</span><span class="hf-dslot"><span class="hf-dslot-lbl">SLOT</span><div class="hf-posn mod-enumerated" mod-role="input-control-port" mod-port-symbol="oc_pos" mod-widget="custom-select" title="Slot"><div mod-role="input-control-value" mod-port-symbol="oc_pos" class="mod-enumerated-selected"></div><div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-port-value="1">1</div><div mod-role="enumeration-option" mod-port-value="2">2</div><div mod-role="enumeration-option" mod-port-value="3">3</div><div mod-role="enumeration-option" mod-port-value="4">4</div><div mod-role="enumeration-option" mod-port-value="5">5</div><div mod-role="enumeration-option" mod-port-value="6">6</div><div mod-role="enumeration-option" mod-port-value="7">7</div><div mod-role="enumeration-option" mod-port-value="8">8</div><div mod-role="enumeration-option" mod-port-value="9">9</div><div mod-role="enumeration-option" mod-port-value="10">10</div><div mod-role="enumeration-option" mod-port-value="11">11</div><div mod-role="enumeration-option" mod-port-value="12">12</div></div></div></span><button type="button" class="hf-dremove" title="Remove this effect from the chain">REMOVE ✕</button></div><div class="hf-dbody"><div class="hf-plate"><div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div><div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div><div class="hf-agroups"><div class="hf-agroup"><span class="hf-agroup-title">OCTAVE</span><div class="hf-agroup-body"><div class="hf-knob" title="Octave Up"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="oc_up"></div><span class="hf-knob-t" rata-role="lbl-oc_up">Octave Up</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="oc_up"></span></div><div class="hf-knob" title="Sub Octave"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="oc_down"></div><span class="hf-knob-t" rata-role="lbl-oc_down">Sub Octave</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="oc_down"></span></div><div class="hf-knob" title="Dry"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="oc_dry"></div><span class="hf-knob-t" rata-role="lbl-oc_dry">Dry</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="oc_dry"></span></div></div></div></div></div></div></div>
   </div>
   <div class="hf-tuner mod-hidden" rata-role="tuner">
-    <div class="hf-tuner-strobe"><div class="hf-tuner-ring" rata-role="tunerdisc"></div><div class="hf-tuner-dot"></div></div>
-    <div class="hf-tuner-read">
-      <div class="hf-tuner-note" rata-role="tunernote">–</div>
+    <div class="hf-tuner-note" rata-role="tunernote">–</div>
+    <div class="hf-tuner-meterwrap">
+      <div class="hf-tuner-scale"><span class="hf-tuner-lab">♭ flat</span><span class="hf-tuner-lab">in tune</span><span class="hf-tuner-lab">sharp ♯</span></div>
+      <div class="hf-tuner-meter">
+        <div class="hf-tuner-zone"></div>
+        <div class="hf-tuner-mid"></div>
+        <div class="hf-tuner-needle" rata-role="tunerdisc"></div>
+      </div>
       <div class="hf-tuner-cents" rata-role="tunercents">no signal</div>
     </div>
     <div class="hf-tuner-mute" title="Mute output while tuning"><div class="hf-sw" title="Mute"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="tuner_mute" mod-widget="switch"></div><span class="hf-sw-t">Mute</span></div></div>
-    <span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_note"></span>
-    <span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_cents"></span>
   </div>
   <div class="mod-pedal-input">
     {{#effect.ports.audio.input}}

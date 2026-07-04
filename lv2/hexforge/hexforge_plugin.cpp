@@ -313,22 +313,33 @@ struct URIs {
 // ── Chromatic strobe tuner ── autocorrelation pitch detector on the dry input. Only runs
 // when the tuner is engaged. Reports note (0..11 = C..B, -1 = no pitch) + cents (-50..+50).
 struct TunerDetector {
-    static constexpr int kBuf = 4096;   // ~85 ms @ 48k → several periods even at low E (82 Hz)
+    // Runs the autocorrelation at a 4:1-DECIMATED rate (48k→12k) — 16x fewer mults than at
+    // full rate, which is what kept CPU high. 12 kHz still covers guitar (fundamentals+lows).
+    static constexpr int kDec = 4;
+    static constexpr int kBuf = 1024;   // ~85 ms window at the decimated 12 kHz rate
     float  buf[kBuf] = {0};
     double corr[kBuf] = {0};
-    int    wr = 0, sinceCalc = 0;
-    double rate = 48000.0;
+    int    wr = 0, sinceCalc = 0, decCnt = 0;
+    double rate = 12000.0;              // DECIMATED rate
+    float  lp = 0.0f, lpCoef = 0.0f;    // one-pole anti-alias LP (runs at the full input rate)
     int    note = -1;
     float  cents = 0.0f;
     void prepare(double sr) noexcept {
-        rate = sr; wr = 0; sinceCalc = 0; note = -1; cents = 0.0f;
+        rate = sr / kDec;
+        lpCoef = (float)std::exp(-2.0 * M_PI * 3200.0 / sr);   // ~3.2 kHz LP before decimation
+        wr = sinceCalc = decCnt = 0; lp = 0.0f; note = -1; cents = 0.0f;
         for (int i = 0; i < kBuf; ++i) buf[i] = 0.0f;
     }
     void reset() noexcept { note = -1; cents = 0.0f; }
     void process(const float* mono, int n) noexcept {
-        for (int i = 0; i < n; ++i) { buf[wr] = mono[i]; wr = (wr + 1) & (kBuf - 1); }
-        sinceCalc += n;
-        if (sinceCalc >= 3072) { sinceCalc = 0; compute(); }   // recompute ~15x/s
+        for (int i = 0; i < n; ++i) {
+            lp = mono[i] + lpCoef * (lp - mono[i]);            // anti-alias then decimate
+            if (++decCnt >= kDec) {
+                decCnt = 0;
+                buf[wr] = lp; wr = (wr + 1) & (kBuf - 1);
+                if (++sinceCalc >= 1024) { sinceCalc = 0; compute(); }   // recompute ~12x/s
+            }
+        }
     }
     void compute() noexcept {
         float w[kBuf];

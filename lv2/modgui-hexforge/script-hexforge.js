@@ -27,23 +27,19 @@ function (event, funcs) {
     var NOTE_NAMES = ['C','C♯','D','D♯','E','F','F♯','G','G♯','A','A♯','B'];
     function tunerNote(icon, v) {
         var n = parseInt(v, 10), t = icon.find('[rata-role=tuner]');
-        if (n < 0 || isNaN(n)) { icon.find('[rata-role=tunernote]').text('–'); t.removeClass('hf-tuner-lit hf-tuner-intune'); icon.find('[rata-role=tunercents]').text('no signal'); }
-        else { icon.find('[rata-role=tunernote]').text(NOTE_NAMES[n]); t.addClass('hf-tuner-lit'); }
+        if (n < 0 || isNaN(n)) {
+            icon.find('[rata-role=tunernote]').text('–'); t.removeClass('hf-tuner-lit hf-tuner-intune');
+            icon.find('[rata-role=tunercents]').text('no signal');
+            var nd = icon.find('[rata-role=tunerdisc]')[0]; if (nd) nd.style.left = '50%';   // needle to centre
+        } else { icon.find('[rata-role=tunernote]').text(NOTE_NAMES[n]); t.addClass('hf-tuner-lit'); }
     }
     function tunerCents(icon, v) {
         var c = parseFloat(v); if (isNaN(c)) return;
-        var t = icon.find('[rata-role=tuner]'), ring = icon.find('[rata-role=tunerdisc]')[0];
-        var inTune = Math.abs(c) <= 3.5;
+        var t = icon.find('[rata-role=tuner]'), needle = icon.find('[rata-role=tunerdisc]')[0];
+        var inTune = Math.abs(c) <= 4;
         t.toggleClass('hf-tuner-intune', inTune);
         icon.find('[rata-role=tunercents]').text((c > 0 ? '+' : '') + c.toFixed(0) + ' cents' + (inTune ? ' • in tune' : (c > 0 ? ' • sharp' : ' • flat')));
-        if (!ring) return;
-        if (inTune) { ring.style.animationPlayState = 'paused'; }
-        else {
-            var dur = Math.max(0.12, 3.0 / Math.min(50, Math.abs(c)));   // faster spin = further out
-            ring.style.animationDuration = dur.toFixed(2) + 's';
-            ring.style.animationDirection = c > 0 ? 'normal' : 'reverse';
-            ring.style.animationPlayState = 'running';
-        }
+        if (needle) needle.style.left = (50 + Math.max(-50, Math.min(50, c))).toFixed(1) + '%';   // −50..+50 → 0..100%
     }
     function posOf(icon, b)   { var p = parseInt(nodeOf(icon, b).attr('data-pos'), 10); return isNaN(p) ? 99 : p; }
     function inChain(icon, b) { return nodeOf(icon, b).parent().hasClass('hf-nodes'); }

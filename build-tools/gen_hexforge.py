@@ -446,7 +446,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 84 ;")
+    L.append("    lv2:microVersion 85 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -879,14 +879,17 @@ def emit_icon():
     # Strobe tuner overlay — floats over the bottom of the detail panel when engaged (tuner_on).
     # The disc spins at a rate/direction set by cents (still + green = in tune); note reads the pitch.
     tuner = ('  <div class="hf-tuner mod-hidden" rata-role="tuner">\n'
-        '    <div class="hf-tuner-strobe"><div class="hf-tuner-ring" rata-role="tunerdisc"></div><div class="hf-tuner-dot"></div></div>\n'
-        '    <div class="hf-tuner-read">\n'
-        '      <div class="hf-tuner-note" rata-role="tunernote">–</div>\n'
+        '    <div class="hf-tuner-note" rata-role="tunernote">–</div>\n'
+        '    <div class="hf-tuner-meterwrap">\n'
+        '      <div class="hf-tuner-scale"><span class="hf-tuner-lab">♭ flat</span><span class="hf-tuner-lab">in tune</span><span class="hf-tuner-lab">sharp ♯</span></div>\n'
+        '      <div class="hf-tuner-meter">\n'
+        '        <div class="hf-tuner-zone"></div>\n'
+        '        <div class="hf-tuner-mid"></div>\n'
+        '        <div class="hf-tuner-needle" rata-role="tunerdisc"></div>\n'
+        '      </div>\n'
         '      <div class="hf-tuner-cents" rata-role="tunercents">no signal</div>\n'
         '    </div>\n'
         '    <div class="hf-tuner-mute" title="Mute output while tuning">' + render_ctrl(CTRL_BY_SYM["tuner_mute"]) + '</div>\n'
-        '    <span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_note"></span>\n'
-        '    <span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_cents"></span>\n'
         '  </div>\n')
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
         '  <div mod-role="drag-handle" class="mod-drag-handle"></div>\n'
