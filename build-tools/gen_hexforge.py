@@ -405,7 +405,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 73 ;")
+    L.append("    lv2:microVersion 74 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -641,39 +641,47 @@ def node(pfx, title, accent):
 # the per-model skin class (hf-face-mN) + badge text, and drives the tone bars. Groups
 # whose whole contents are model-conditional carry the matching c-amp-* class on the
 # wrapper so applyAmp() hides the entire group (title included), not just the knobs.
-AMP_GROUPS = [
-    ("PREAMP",       None,          ["gain", "master", "sag", "channel", "resonance"]),
-    ("TONE STACK",   None,          ["bass", "mid", "treble", "presence"]),
-    ("POWER AMP",    "c-amp-pa",    ["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence",
-                                     "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb",
-                                     "pamp_resonance", "pamp_airfeel"]),
-    ("BRITE CHANNEL","c-amp-sunn",  ["sunn_vol2", "sunn_bass2", "sunn_mid2", "sunn_treble2",
-                                     "sunn_bright1", "sunn_bright2", "sunn_link"]),
-    ("BEARDO BE",    "c-amp-be",    ["fr_channel", "fr_fat", "fr_c45", "fr_sat"]),
-]
+# Amp layout mirrors the standalone amp block: the front-panel faceplate holds only PREAMP +
+# TONE STACK, and each secondary section (Power Amp / Brite / Beardo) gets its OWN tolex chassis
+# below — a multi-panel "rig" look. Conditional visibility rides the per-control COND classes
+# (render_ctrl) plus the group's c-amp-* on each chassis wrapper (script-hexforge.js applyAmp()).
+SCREWS4 = ('<div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>'
+           '<div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>')
 
 def amp_body():
     # Top row: NAM picker (conditional) + the model selector.
     selrow = '<div class="hf-dselects clearfix">%s%s</div>' % (
         nam_picker(0, "AmpNam", "c-amp-nam"), render_ctrl(CTRL_BY_SYM["amp_model"]))
-    groups = []
-    for gtitle, gcls, sufs in AMP_GROUPS:
-        ctrls = "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs)
-        wrap = "hf-agroup" + ((" " + gcls) if gcls else "")
-        groups.append('<div class="%s"><span class="hf-agroup-title">%s</span>'
-                      '<div class="hf-agroup-body">%s</div></div>' % (wrap, gtitle, ctrls))
-    # Amp-head look: a recessed tube-bay window (glowing tubes behind a grille) on top of
-    # a brushed control plate that holds the badge + knob groups. .hf-amp-face is the dark
-    # cabinet frame; per-model colour lives on .hf-amp-plate (var(--panel)).
+    def rc(sufs):
+        return "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs if ("amp_" + s) in CTRL_BY_SYM)
+    def agroup(title, sufs):
+        return ('<div class="hf-agroup"><span class="hf-agroup-title">%s</span>'
+                '<div class="hf-agroup-body">%s</div></div>') % (title, rc(sufs))
+    # Front-panel faceplate: PREAMP + TONE STACK only (channel/resonance ride their own COND class).
     face = ('<div class="hf-amp-face hf-face-m1">'
             '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
-            '<div class="hf-amp-plate">'
-            '<div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>'
-            '<div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>'
+            '<div class="hf-amp-plate">' + SCREWS4 +
             '<div class="hf-amp-badge" rata-role="amp-badge">Crunchy McCrunchFace</div>'
-            '<div class="hf-agroups">' + "".join(groups) + '</div>'
-            '</div></div>')
-    return selrow + face
+            '<div class="hf-agroups">'
+            + agroup("PREAMP", ["gain", "master", "sag", "channel", "resonance"])
+            + agroup("TONE STACK", ["bass", "mid", "treble", "presence"])
+            + '</div></div></div>')
+    # Power Amp — its own tolex chassis: switch rail + Valve Stage + Feel groups.
+    pa = ('<div class="hf-pa-face c-amp-pa"><div class="hf-pa-title">Power Amp</div>'
+          '<div class="hf-pa-rail">' + rc(["pamp_bypass", "pamp_auto", "pamp_tube"]) + '</div>'
+          '<div class="hf-agroups">'
+          + agroup("VALVE STAGE", ["pamp_presence", "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb"])
+          + agroup("FEEL", ["pamp_resonance", "pamp_airfeel"])
+          + '</div></div>')
+    # Brite Channel (Sunn) + Beardo BE — each its own chassis.
+    def chassis(gcls, gtitle, sufs):
+        return ('<div class="hf-pa-face %s"><div class="hf-pa-title">%s</div>'
+                '<div class="hf-agroups"><div class="hf-agroup"><div class="hf-agroup-body">%s</div>'
+                '</div></div></div>') % (gcls, gtitle, rc(sufs))
+    brite = chassis("c-amp-sunn", "Brite Channel",
+                    ["sunn_vol2", "sunn_bass2", "sunn_mid2", "sunn_treble2", "sunn_bright1", "sunn_bright2", "sunn_link"])
+    beardo = chassis("c-amp-be", "Beardo BE", ["fr_channel", "fr_fat", "fr_c45", "fr_sat"])
+    return selrow + face + pa + brite + beardo
 
 # ── Shared "module plate" design for EVERY block ──────────────────────────────
 # The amp has its tube bay + control plate; every other block gets the SAME premium

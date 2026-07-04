@@ -644,3 +644,27 @@
     border-color: rgba(25,224,255,.35);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-slot { font-size: 14px; }
+
+/* ── Secondary amp sections as their own tolex chassis (Power Amp / Brite / Beardo) ──
+   mirrors the standalone amp block: the faceplate holds preamp+tone, these sit below it. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-face {
+    position: relative; margin: 12px 0 0; padding: 14px 18px 16px;
+    border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+    background-color: #14161c;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.05) 0, rgba(0,0,0,.30) 100%),
+        url(/resources/tolex.png{{{ns}}});
+    background-size: auto, cover; background-position: center, center; background-repeat: no-repeat, no-repeat;
+    box-shadow: inset 0 0 0 1px rgba(46,205,255,.14), inset 0 2px 24px rgba(46,205,255,.06),
+                inset 0 -18px 40px rgba(0,0,0,.42), 0 5px 14px rgba(0,0,0,.5);
+    text-align: center;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-title {
+    display: block; text-align: center; font-size: 13px; font-weight: 800; letter-spacing: 4px;
+    text-transform: uppercase; color: #cfe0ee; margin-bottom: 12px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 14px rgba(46,205,255,.22);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-rail {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 26px; margin-bottom: 14px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-pa-face .hf-agroups { justify-content: center; }
