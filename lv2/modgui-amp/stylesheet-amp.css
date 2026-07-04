@@ -330,3 +330,28 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: nowrap; gap: 6px 16px; justify-content: center; }
 /* group bodies size to their knobs (override the 760px .mod-knobs row width) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body.mod-knobs { width: auto; float: none; }
+
+/* ── POWER AMP: its own tolex chassis panel (matches the faceplate/cabinet) ── */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-face {
+    --acc:#19e0ff;
+    position: relative; margin: 0 12px 18px; padding: 14px 18px 18px;
+    border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
+    background-color: #14161c;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.05) 0, rgba(0,0,0,.30) 100%),
+        url(/resources/tolex.png{{{ns}}});
+    background-size: auto, cover; background-position: center, center; background-repeat: no-repeat, no-repeat;
+    box-shadow: inset 0 0 0 1px rgba(46,205,255,.14), inset 0 2px 24px rgba(46,205,255,.06),
+                inset 0 -18px 40px rgba(0,0,0,.42), 0 5px 14px rgba(0,0,0,.5);
+    text-align: center;
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-title {
+    display: block; text-align: center; font-size: 13px; font-weight: 800; letter-spacing: 4px;
+    text-transform: uppercase; color: #cfe0ee; margin-bottom: 12px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6), 0 0 14px rgba(46,205,255,.22);
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-rail {
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px 26px; margin-bottom: 14px;
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-rail .pa-tube { display: inline-flex; align-items: center; gap: 8px; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-rail .mod-switch { width: auto; padding: 0 10px; }
