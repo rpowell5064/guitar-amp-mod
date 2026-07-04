@@ -595,12 +595,15 @@
     box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -22px 46px rgba(0,0,0,.3), 0 4px 10px rgba(0,0,0,.55);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-amp-badge {
-    display: block; font-size: 23px; font-weight: 800; letter-spacing: 5px; text-transform: uppercase; color: var(--badge);
-    /* engraved-into-the-metal lettering (dark groove above, light catch below) + faint Hex glow;
-       text-stroke thickens the glyphs so the name never looks thin on any panel */
-    -webkit-text-stroke: 0.6px var(--badge);
-    text-shadow: 0 -1px 1px rgba(0,0,0,.5), 0 1px 0 rgba(255,255,255,.22), 0 0 15px rgba(46,205,255,.18);
-    margin-bottom: 13px;
+    /* Readability first: the model name sits on a dark pill so it's legible on ANY faceplate
+       art (light gold, silver, black, etc.). Consistent near-white text + strong shadow —
+       no per-faceplate colour guessing. */
+    display: block; width: fit-content; max-width: 94%; margin: 2px auto 12px;
+    font-size: 22px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;
+    color: #f4f8fc;
+    background: rgba(6,8,12,.76); border: 1px solid rgba(255,255,255,.16);
+    border-radius: 9px; padding: 5px 20px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.95), 0 0 12px rgba(46,205,255,.20);
 }
 /* dull-metal Phillips screws at the plate corners — each turned to a different angle */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-screw {
