@@ -12,7 +12,7 @@
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
     height: 880px;
-    width: 620px;
+    width: 760px;
     position: absolute;
     border-radius: 12px;
     border-top: 2px solid #ff963c;
@@ -110,7 +110,7 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knobs {
     margin-top: 8px;
-    width: 620px;
+    width: 760px;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knob {
     display: inline-block;
@@ -141,7 +141,7 @@
 
 /* MIXED ROW (switches + mini-selects) */
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-row-mixed {
-    width: 620px;
+    width: 760px;
     margin-top: 6px;
     text-align: center;
 }
@@ -254,7 +254,7 @@
 
 /* HEX CHAIN logo badge (black background dropped via screen blend) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hx-logo {
-    position: absolute; left: 16px; bottom: 14px; width: 120px; height: 120px;
+    position: absolute; right: 18px; bottom: 14px; width: 96px; height: 96px;
     background-image: url(/resources/logo.jpg{{{ns}}});
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
@@ -323,8 +323,9 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m8 { --panel:url(/resources/faceplate-m8.png{{{ns}}}); --tint:rgba(150,112,60,.36); --badge:#241606; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m9 { --panel:url(/resources/faceplate-m9.png{{{ns}}}); --tint:rgba(46,96,150,.34); --badge:#dbe7f5; }
 /* grouped knob fieldsets on the plate */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 8px 11px 9px; border-radius: 9px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-title { display: block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--acc); margin-bottom: 6px; text-shadow: 0 0 8px rgba(0,0,0,.5); text-align: center; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: wrap; gap: 8px 12px; justify-content: center; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body.mod-knobs { float: none; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 12px 18px 14px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-title { display: block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--acc); margin-bottom: 8px; text-shadow: 0 0 8px rgba(0,0,0,.5); text-align: center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: nowrap; gap: 6px 16px; justify-content: center; }
+/* group bodies size to their knobs (override the 760px .mod-knobs row width) */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body.mod-knobs { width: auto; float: none; }
