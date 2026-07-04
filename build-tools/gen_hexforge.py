@@ -161,6 +161,14 @@ OCTAVE = [
     ("down", "Sub Octave", "f", 0, 1, 0.5, None),
     ("dry",  "Dry",        "f", 0, 1, 1.0, None),
 ]
+# Nail — industrial distortion (NailDistortion, an OverdriveBase). 5 real topologies.
+NAIL = [
+    ("mode",    "Mode",    "e", 0, 4, 2, [("Broke",0),("Dahnward",1),("Delicate",2),("Con Molars",3),("Tusk",4)]),
+    ("drive",   "Drive",   "f", 0, 1, 0.6, None),
+    ("tone",    "Tone",    "f", 0, 1, 0.5, None),
+    ("texture", "Texture", "f", 0, 1, 0.4, None),
+    ("level",   "Level",   "f", 0, 1, 0.5, None),
+]
 
 # Movable blocks in canonical default order. (prefix, Title, params, default-pos)
 MOVABLE = [
@@ -210,7 +218,7 @@ for suf, nm, kind, mn, mx, df, sc in IT:
 OFF_BY_DEFAULT = {"cp", "fz", "dr", "md", "wh", "oc"}   # off: Comp, Fuzz, Drive, Mod, Wah, Octave
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
-    posscale = [(str(k), k) for k in range(1, 12)]   # 1..11 dropdown for reordering
+    posscale = [(str(k), k) for k in range(1, 13)]   # 1..12 dropdown for reordering (incl. Nail)
     en_def = 0 if pfx in OFF_BY_DEFAULT else 1
     ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 11, dpos, posscale, "Slot", hidden=True))
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
@@ -242,6 +250,19 @@ for suf, nm, kind, mn, mx, df, sc in AMP_FR:
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
     ctrl.append(mkport(P + "_BYPASS", pfx + "_bypass", title + " Bypass", "t", 0, 1, 0, None, "Byp"))
+
+# ── Nail block (12th movable) — appended HERE, after the per-block bypass toggles and
+# BEFORE the preset-command ports, so it stays inside the preset param range yet leaves
+# every existing param index untouched. pos/enable/params + its own bypass are one
+# contiguous group [NAIL_POS..NAIL_BYPASS]; old blobs migrate them in (v12). Default OFF,
+# default slot 12 (end of chain) so it doesn't alter the stock sound until enabled.
+NAIL_POS_DEFAULT = 12
+ctrl.append(mkport("NAIL_POS",    "nail_pos",    "Nail Position", "e", 1, 12, NAIL_POS_DEFAULT,
+                   [(str(k), k) for k in range(1, 13)], "Slot", hidden=True))
+ctrl.append(mkport("NAIL_ENABLE", "nail_enable", "Nail Enable",   "t", 0, 1, 0, None, "On"))
+for suf, nm, kind, mn, mx, df, sc in NAIL:
+    ctrl.append(mkport("NAIL_" + suf.upper(), "nail_" + suf, "Nail " + nm, kind, mn, mx, df, sc, nm))
+ctrl.append(mkport("NAIL_BYPASS", "nail_bypass", "Nail Bypass", "t", 0, 1, 0, None, "Byp"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -405,7 +426,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 75 ;")
+    L.append("    lv2:microVersion 76 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -477,7 +498,7 @@ def emit_ttl():
     return "\n".join(L)
 
 # ── Emit the modgui icon HTML (10 logo-free tiles) ────────────────────────────
-TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE}
+TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL}
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
@@ -487,6 +508,7 @@ TILES = [
     ("cp",  "Comp",       "#4687eb", ["type","thresh","ratio","makeup"]),                     # comp
     ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
     ("dr",  "Drive",      "#eb5046", ["model","drive","tone","level"]),                       # drive
+    ("nail","Nail",       "#d0343a", ["mode","drive","tone","texture","level"]),              # nail (industrial)
     ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
     ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
     ("md",  "Mod FX",     "#a56eeb", ["type","rate","depth","mix"]),                          # modfx
@@ -589,6 +611,7 @@ ICON = {
     "cp":  '<svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0116 0"/><path d="M7.5 15.2 6 13M12 14.5V11.5M16.5 15.2 18 13"/><path d="M12 15l4.6-4.2"/><circle cx="12" cy="15" r="1.15"/></svg>',
     "fz":  '<svg viewBox="0 0 24 24"><path d="M3 12h3l2-7 3 14 2-10 2 6 2-3h4"/></svg>',
     "dr":  '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/></svg>',
+    "nail":'<svg viewBox="0 0 24 24"><path d="M6 5h12"/><path d="M9 5l1.4 9L12 20l1.6-6L15 5"/></svg>',
     "amp": '<svg viewBox="0 0 24 24"><path d="M7 16V9a5 5 0 0110 0v7z"/><path d="M12 6.5v6.5"/><path d="M9.6 12.6q2.4 2 4.8 0"/><path d="M9 16v2.6M12 16v3.4M15 16v2.6"/></svg>',
     "cab": '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="7" r="1.4"/></svg>',
     "md":  '<svg viewBox="0 0 24 24"><path d="M3 12c1.5-6 4.5-6 6 0s4.5 6 6 0 4.5-6 6 0"/></svg>',
@@ -601,7 +624,7 @@ ICON = {
 # script-hexforge.js maps the model index → the parody label). Scalar blocks bind a
 # representative live value via mod-role so MOD populates value+unit automatically.
 NODE_VAL_SYM = {"it": "it_gain", "gt": "gt_thresh", "cp": "cp_thresh",
-                "rv": "rv_decay", "wh": "wh_freq", "oc": "oc_down"}
+                "rv": "rv_decay", "wh": "wh_freq", "oc": "oc_down", "nail": "nail_drive"}
 
 # ── Chain node (small clickable card in the signal strip) ─────────────────────
 # AxeFX/Quad-Cortex-style: each block is a node. Click a node to show its controls
@@ -712,6 +735,7 @@ BLOCK_GROUPS = {
     "fz":  [("PEDAL", None, ["pedal", "mode"]),
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
+    "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["lowcut", "highcut", "mix"])],
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),

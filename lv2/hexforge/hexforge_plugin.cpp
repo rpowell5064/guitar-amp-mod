@@ -47,6 +47,7 @@
 #include "PlateReverbBlock.h"
 #include "WahBlock.h"
 #include "OctaveBlock.h"
+#include "NailDistortion.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 
@@ -267,21 +268,21 @@ struct OutputBoost {
 };
 
 // ── Movable-block identity ────────────────────────────────────────────────────
-enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_COUNT };
+enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_COUNT };
 static const int kPosPort[B_COUNT] = {
     HF_GT_POS, HF_CP_POS, HF_FZ_POS, HF_DR_POS, HF_AMP_POS,
-    HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS,
+    HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS, HF_NAIL_POS,
 };
 static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
-    HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE,
+    HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE, HF_NAIL_ENABLE,
 };
 // enable = chain membership (1 = in chain, 0 = removed/palette); bypass = active(0)/
 // bypassed(1). A block runs iff enable==1 && bypass==0. Bypassed blocks stay in the chain
 // (greyed in the UI) but pass dry, keeping their settings — for live A/B.
 static const int kBypassPort[B_COUNT] = {
     HF_GT_BYPASS, HF_CP_BYPASS, HF_FZ_BYPASS, HF_DR_BYPASS, HF_AMP_BYPASS,
-    HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS,
+    HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS, HF_NAIL_BYPASS,
 };
 
 // ── Worker messaging ──────────────────────────────────────────────────────────
@@ -324,13 +325,14 @@ struct HexForge {
     PlateReverbBlock  reverb;
     WahBlock          wah;
     OctaveBlock       octave;
+    std::unique_ptr<OversamplingWrapper> nail;        // industrial distortion (NailDistortion, oversampled)
     AutoOutput        autoOut;        // auto-leveling clip protection on the master output
     NamModel*         ampNam = nullptr;   // worker-loaded neural captures
     NamModel*         drNam  = nullptr;
     NamModel*         cabNam = nullptr;
 
     // model-switch caches
-    int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0;
+    int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0, lastNailMode = 2;
     int lastModfxType = 0, lastDelayType = 0;
 
     // ports — `ports[]` are the pointers the DSP reads. For param ports they are
@@ -547,6 +549,9 @@ static_assert(HF_OC_DRY == HF_WH_POS + 12 && HF_WH_POS > HF_DL_MODRATE,
 //   * Per-block bypass, 11 contiguous toggles [HF_GT_BYPASS..HF_OC_BYPASS], added v9.
 static_assert(HF_OC_BYPASS == HF_GT_BYPASS + 10 && HF_GT_BYPASS > HF_OC_DRY && HF_OC_BYPASS < HF_SW_A,
               "bypass ports must be contiguous, after the param blocks and before the commands");
+//   * Nail block, 8 contiguous ports [HF_NAIL_POS..HF_NAIL_BYPASS], added v12.
+static_assert(HF_NAIL_BYPASS == HF_NAIL_POS + 7 && HF_NAIL_POS == HF_OC_BYPASS + 1 && HF_NAIL_BYPASS < HF_SW_A,
+              "Nail ports must be contiguous, right after the bypass toggles and before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -561,18 +566,27 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v9 inserted 11 per-block bypass toggles [HF_GT_BYPASS..HF_OC_BYPASS] BEFORE the command
     // ports, so a v8 blob's command/status values shift up by 11; the new bypass slots default
     // to 0 (active). This is a positional insert (not a trailing append) — the gap is required.
+    // The bypass group is a FIXED 11 toggles (gt..oc); the Nail block (v12) has its OWN bypass in
+    // its own group, so this gap stays 11 even though B_COUNT is now 12 (don't use B_COUNT here).
     const bool byGap = (srcVer < 9);
-    const int byAt = HF_GT_BYPASS, byEnd = HF_GT_BYPASS + B_COUNT;        // bypass gap [byAt,byEnd), default 0
+    const int byAt = HF_GT_BYPASS, byEnd = HF_OC_BYPASS + 1;              // 11 bypass ports [byAt,byEnd), default 0
+    // v12 inserted the Nail block — 8 contiguous ports [HF_NAIL_POS..HF_NAIL_BYPASS], right after
+    // the bypass toggles and before the command ports; a pre-v12 blob's command/status values shift
+    // up by 8 and the new nail slots default to OFF at slot 12.
+    static const float naildef[8] = {12.0f, 0.0f, 2.0f, 0.6f, 0.5f, 0.4f, 0.5f, 0.0f}; // pos,en,mode,drive,tone,texture,level,byp
+    const bool nailGap = (srcVer < 12);
+    const int nailAt = HF_NAIL_POS, nailEnd = HF_NAIL_POS + 8;            // Nail gap [nailAt,nailEnd)
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
     int o = 0;
     for (int i = 0; i < HF_N_PORTS; ++i) {
-        if      (i >= itAt && i < itEnd)             vals[i] = vdef[i - HF_IT_HUMBK];
-        else if (dlGap && i >= dlAt && i < dlEnd)    vals[i] = ddef[i - dlAt];
-        else if (woGap && i >= woAt && i < woEnd)    vals[i] = wodef[i - woAt];
-        else if (byGap && i >= byAt && i < byEnd)    vals[i] = 0.0f;       // new bypass = active
-        else                                         vals[i] = old[o++];
+        if      (i >= itAt && i < itEnd)                 vals[i] = vdef[i - HF_IT_HUMBK];
+        else if (dlGap && i >= dlAt && i < dlEnd)        vals[i] = ddef[i - dlAt];
+        else if (woGap && i >= woAt && i < woEnd)        vals[i] = wodef[i - woAt];
+        else if (byGap && i >= byAt && i < byEnd)        vals[i] = 0.0f;       // new bypass = active
+        else if (nailGap && i >= nailAt && i < nailEnd)  vals[i] = naildef[i - nailAt];
+        else                                             vals[i] = old[o++];
     }
 }
 static void seedFactoryPresets(HexForge* p);   // fwd decl (defined after the factory arrays)
@@ -580,7 +594,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(11); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v11: + factory rev (refresh factory slots on load)
+    putU32(12); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v12: + Nail block (factoryRev still after N_PORTS)
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -600,9 +614,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 11) return false;
+    if (ver < 2 || ver > 12) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 9);   // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9)
+    const bool needMigrate  = (ver < 12);  // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -816,6 +830,11 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->fuzzMuff->setParameter("era", 2.0f);
     p->drive.prepare(rate, kMaxBlock, 1);
     p->drive.setType(kDriveMap[0]);
+    // Nail — industrial distortion (oversampled, like the fuzzes)
+    p->nail = std::make_unique<OversamplingWrapper>(std::make_unique<NailDistortion>());
+    if (!p->nail) { delete p; return nullptr; }
+    p->nail->prepare(rate, kMaxBlock, 1);
+    p->nail->setParameter("mode", 2.0f);
     p->amp = new(std::nothrow) AmpBlockExtended;
     if (!p->amp) { delete p; return nullptr; }
     p->amp->prepare(rate, kMaxBlock, 2);
@@ -1125,6 +1144,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->drive.setParameter("level",  *p->ports[HF_DR_LEVEL]);
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
+    // Nail — industrial distortion (mode + drive/tone/texture/level)
+    p->nail->setBypass(false);
+    const int nailMode = clampi(*p->ports[HF_NAIL_MODE], 0, NailDistortion::kNumModes - 1);
+    if (nailMode != p->lastNailMode) { p->lastNailMode = nailMode; p->nail->setParameter("mode", (float)nailMode); }
+    p->nail->setParameter("drive",   *p->ports[HF_NAIL_DRIVE]);
+    p->nail->setParameter("tone",    *p->ports[HF_NAIL_TONE]);
+    p->nail->setParameter("texture", *p->ports[HF_NAIL_TEXTURE]);
+    p->nail->setParameter("level",   *p->ports[HF_NAIL_LEVEL]);
     // Amp
     const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kBacklineIdx);
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
@@ -1251,7 +1278,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     int order[B_COUNT];
     for (int i=0;i<B_COUNT;++i) order[i] = i;
     int posv[B_COUNT];
-    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 11);
+    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 12);
     // stable selection sort by (pos, canonical index)
     for (int a=0;a<B_COUNT-1;++a) {
         int best=a;
@@ -1337,6 +1364,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 case B_REVERB: runStereo(p->reverb, L, R, len, stereo); break;
                 case B_WAH:    runMono(p->wah, L, R, len, p->mono, stereo); break;
                 case B_OCTAVE: runMono(p->octave, L, R, len, p->mono, stereo); break;
+                case B_NAIL:   runMono(*p->nail, L, R, len, p->mono, stereo); break;
             }
         }
         // If nothing ever spread to stereo, R already mirrors L (mono blocks wrote both;
@@ -1440,7 +1468,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(11);                 // version (11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(12);                 // version (12: + Nail block; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1510,9 +1538,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 11) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 12) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 9);      // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9)
+        const bool needMigrate  = (ver < 12);     // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
