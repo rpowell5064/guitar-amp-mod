@@ -147,6 +147,10 @@ enum HexForgePort {
     HF_NAIL_TEXTURE,
     HF_NAIL_LEVEL,
     HF_NAIL_BYPASS,
+    HF_DL_SYNC,
+    HF_DL_DIV,
+    HF_MD_SYNC,
+    HF_MD_DIV,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -168,7 +172,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 170, "port count drift");
+static_assert(HF_N_PORTS == 174, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -196,8 +200,8 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "gt_bypass", "cp_bypass", "fz_bypass", "dr_bypass", "amp_bypass", "cab_bypass",
     "md_bypass", "dl_bypass", "rv_bypass", "wh_bypass", "oc_bypass", "nail_pos",
     "nail_enable", "nail_mode", "nail_drive", "nail_tone", "nail_texture", "nail_level",
-    "nail_bypass", "sw_a", "sw_b", "sw_c", "sw_d", "ps_bank_up",
-    "ps_bank_dn", "ps_save", "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore",
-    "ps_goto", "ps_bank", "ps_slot", "out_auto", "in_meter", "out_meter",
-    "out_mono", "midi_in",
+    "nail_bypass", "dl_sync", "dl_div", "md_sync", "md_div", "sw_a",
+    "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save",
+    "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank",
+    "ps_slot", "out_auto", "in_meter", "out_meter", "out_mono", "midi_in",
 };

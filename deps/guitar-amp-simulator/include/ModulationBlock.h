@@ -17,6 +17,8 @@ public:
 
     void           setType(ModulationType type);
     ModulationType getType() const noexcept { return type_; }
+    // Tempo sync: lock the active effect's LFO to an exact Hz (0 = free-run from the rate knob).
+    void           setSyncHz(float hz) noexcept { if (effect_) effect_->setSyncHz(hz); }
 
 private:
     ModulationType                    type_     = ModulationType::CE2_Chorus;

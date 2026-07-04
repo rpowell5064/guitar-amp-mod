@@ -29,7 +29,7 @@ public:
     void process(float** in, float** out, int numSamples, int numChannels) noexcept override {
         if (buf_[0].empty()) { for (int c=0;c<numChannels;++c) if(in[c]!=out[c]) std::copy(in[c],in[c]+numSamples,out[c]); return; }
         const int ch = std::min(numChannels, kMaxCh);
-        const float rateHz = kRateMin + rate_ * (kRateMax - kRateMin);
+        const float rateHz = (rateHz_ > 0.0f) ? rateHz_ : (kRateMin + rate_ * (kRateMax - kRateMin));
         const float incr   = rateHz / fs_;
         const float baseS  = kBaseMs * fs_ * 0.001f;
         const float sweepS = (0.3f + 0.7f * depth_) * kSweepMs * fs_ * 0.001f;

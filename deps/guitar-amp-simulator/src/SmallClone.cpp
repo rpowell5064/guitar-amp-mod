@@ -47,7 +47,7 @@ void SmallClone::process(float** in, float** out,
         return;
     }
     const int chCount = std::min(numChannels, kMaxCh);
-    const float lfoHz   = kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz);
+    const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_ : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
     const float lfoIncr = lfoHz / static_cast<float>(sampleRate_);
     const float depthTargetSamp = depth_ * static_cast<float>(sampleRate_) * kDepthMaxMs * 0.001f;
     const float maxDelaySamp = static_cast<float>(bufMask_ - 1);

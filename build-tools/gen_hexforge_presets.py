@@ -718,7 +718,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 170, "port count drift: got %d" % N_PORTS   # 162 -> 170: added the Nail block (8 ports)
+    assert N_PORTS == 174, "port count drift: got %d" % N_PORTS   # 170 -> 174: added tempo-sync ports (dl/md sync+div)
     # ── Auto-match a built-in cab to each preset from its amp model ──────────────
     # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
     # the Factory Cab (@factory / V30). See CabModels.h for the voicings.

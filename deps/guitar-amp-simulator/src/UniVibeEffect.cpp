@@ -47,7 +47,7 @@ void UniVibeEffect::process(float** in, float** out,
     const int   chCount = std::min(numChannels, kMaxCh);
     const float sr      = static_cast<float>(sampleRate_);
 
-    const float lfoHz   = kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz);
+    const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_ : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
     const float lfoIncr = lfoHz / sr;
 
     // Output gain: outputLevel_ ∈ [0,1] → -6..+6 dB (0.5 = 0 dB)

@@ -22,7 +22,7 @@ public:
     }
     void process(float** in, float** out, int numSamples, int numChannels) noexcept override {
         const int ch = std::min(numChannels, kMaxCh);
-        const float rateHz = kRateMin + rate_ * (kRateMax - kRateMin);
+        const float rateHz = (rateHz_ > 0.0f) ? rateHz_ : (kRateMin + rate_ * (kRateMax - kRateMin));
         const float incr   = rateHz / fs_;
         // sweep range: fmin fixed, fmax grows with depth
         const float fLo = 200.0f;

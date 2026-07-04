@@ -73,7 +73,7 @@ void CE2Chorus::process(float** in, float** out,
     const int chCount = std::min(numChannels, kMaxCh);
 
     // Pre-compute per-block constants
-    const float lfoHz   = kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz);
+    const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_ : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
     const float lfoIncr = lfoHz / static_cast<float>(sampleRate_);
     const float depthTargetSamp = depth_
                                   * static_cast<float>(sampleRate_)

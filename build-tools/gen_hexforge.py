@@ -264,6 +264,16 @@ for suf, nm, kind, mn, mx, df, sc in NAIL:
     ctrl.append(mkport("NAIL_" + suf.upper(), "nail_" + suf, "Nail " + nm, kind, mn, mx, df, sc, nm))
 ctrl.append(mkport("NAIL_BYPASS", "nail_bypass", "Nail Bypass", "t", 0, 1, 0, None, "Byp"))
 
+# ── Tempo sync (tap-tempo / MIDI clock) for the time-based effects — appended AFTER Nail,
+# before the preset commands, so every existing preset index is preserved (migrated in v13).
+# Per-effect: Delay + Mod each get a sync toggle + a note-division selector. Default OFF =
+# the manual Time/Rate knobs. When ON, the plugin locks Delay time / Mod LFO to host BPM.
+DIV_SCALE = [("1/2",0),("1/4.",1),("1/4",2),("1/4T",3),("1/8.",4),("1/8",5),("1/8T",6),("1/16",7)]
+ctrl.append(mkport("DL_SYNC", "dl_sync", "Delay Clock Sync", "t", 0, 1, 0, None, "Sync"))
+ctrl.append(mkport("DL_DIV",  "dl_div",  "Delay Division",   "e", 0, 7, 5, DIV_SCALE, "Div"))
+ctrl.append(mkport("MD_SYNC", "md_sync", "Mod Clock Sync",   "t", 0, 1, 0, None, "Sync"))
+ctrl.append(mkport("MD_DIV",  "md_div",  "Mod Division",     "e", 0, 7, 2, DIV_SCALE, "Div"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -375,6 +385,7 @@ def emit_ttl():
     L.append("@prefix units: <http://lv2plug.in/ns/extensions/units#> .")
     L.append("@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .")
     L.append("@prefix patch: <http://lv2plug.in/ns/ext/patch#> .")
+    L.append("@prefix time:  <http://lv2plug.in/ns/ext/time#> .")
     L.append("@prefix state: <http://lv2plug.in/ns/ext/state#> .")
     L.append("@prefix work:  <http://lv2plug.in/ns/ext/worker#> .")
     L.append("@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .")
@@ -426,7 +437,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 79 ;")
+    L.append("    lv2:microVersion 81 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -454,6 +465,7 @@ def emit_ttl():
     L.append("        a lv2:InputPort, atom:AtomPort ;")
     L.append("        atom:bufferType atom:Sequence ;")
     L.append("        atom:supports patch:Message ;")
+    L.append("        atom:supports time:Position ;")
     L.append("        lv2:designation lv2:control ;")
     L.append("        rsz:minimumSize 8192 ;")
     L.append('        lv2:index 4 ; lv2:symbol "control" ; lv2:name "Control"')
@@ -731,8 +743,10 @@ BLOCK_GROUPS = {
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["lowcut", "highcut", "mix"])],
-    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width"])],
+    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width"]),
+            ("CLOCK SYNC", None, ["sync", "div"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
+            ("CLOCK SYNC", None, ["sync", "div"]),
             ("CHARACTER", "c-dl-tape", ["wow", "flutter", "heads"]),
             ("SERAPH DUAL", "c-dl-seraph", ["pattern", "ducking", "moddepth", "modrate"])],
     "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix"]),

@@ -23,6 +23,7 @@
 // local so loading Hex Forge beside the ten standalone plugins can't interpose.
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
+#include <lv2/time/time.h>
 #include "hexforge_ports.h"
 #include "hexforge_factory_presets.h"   // band/song factory presets (Banks 2..6), generated
 
@@ -285,6 +286,10 @@ static const int kBypassPort[B_COUNT] = {
     HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS, HF_NAIL_BYPASS,
 };
 
+// note-division factor relative to a quarter-note beat, indexed by the *_div enum (0..7):
+// 1/2, 1/4., 1/4, 1/4T, 1/8., 1/8, 1/8T, 1/16.  time(ms) = (60000/bpm)*factor; Hz = bpm/(60*factor).
+static const float kDivFactor[8] = { 2.0f, 1.5f, 1.0f, 0.66667f, 0.75f, 0.5f, 0.33333f, 0.25f };
+
 // ── Worker messaging ──────────────────────────────────────────────────────────
 enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE };
 struct WorkMsg {
@@ -302,6 +307,7 @@ struct URIs {
     LV2_URID ir_file, amp_nam, dr_nam, cab_nam;
     LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters;
     LV2_URID midi_MidiEvent;
+    LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
 };
 
 struct HexForge {
@@ -334,6 +340,7 @@ struct HexForge {
     // model-switch caches
     int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0, lastNailMode = 2;
     int lastModfxType = 0, lastDelayType = 0;
+    float hostBpm = 120.0f;   // host tempo from time:Position events (tap-tempo / MIDI clock sync)
 
     // ports — `ports[]` are the pointers the DSP reads. For param ports they are
     // redirected to point at eff[] (the preset/override layer); for everything
@@ -451,6 +458,9 @@ static void mapURIs(HexForge* p) {
     p->uris.preset_blob   = m->map(m->handle, HEXFORGE_URI "#preset_blob");
     p->uris.meters        = m->map(m->handle, HEXFORGE_URI "#meters");
     p->uris.midi_MidiEvent= m->map(m->handle, LV2_MIDI_MidiEvent_URI);
+    p->uris.time_Position = m->map(m->handle, LV2_TIME__Position);
+    p->uris.time_bpm      = m->map(m->handle, LV2_TIME__beatsPerMinute);
+    p->uris.atom_Float    = m->map(m->handle, LV2_ATOM__Float);
 }
 static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
     const URIs& u = p->uris;
@@ -552,6 +562,9 @@ static_assert(HF_OC_BYPASS == HF_GT_BYPASS + 10 && HF_GT_BYPASS > HF_OC_DRY && H
 //   * Nail block, 8 contiguous ports [HF_NAIL_POS..HF_NAIL_BYPASS], added v12.
 static_assert(HF_NAIL_BYPASS == HF_NAIL_POS + 7 && HF_NAIL_POS == HF_OC_BYPASS + 1 && HF_NAIL_BYPASS < HF_SW_A,
               "Nail ports must be contiguous, right after the bypass toggles and before the commands");
+//   * Tempo-sync ports, 4 contiguous [HF_DL_SYNC..HF_MD_DIV], added v13.
+static_assert(HF_MD_DIV == HF_DL_SYNC + 3 && HF_DL_SYNC == HF_NAIL_BYPASS + 1 && HF_MD_DIV < HF_SW_A,
+              "tempo-sync ports must be contiguous, after the Nail block and before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -576,6 +589,11 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float naildef[8] = {12.0f, 0.0f, 2.0f, 0.6f, 0.5f, 0.4f, 0.5f, 0.0f}; // pos,en,mode,drive,tone,texture,level,byp
     const bool nailGap = (srcVer < 12);
     const int nailAt = HF_NAIL_POS, nailEnd = HF_NAIL_POS + 8;            // Nail gap [nailAt,nailEnd)
+    // v13 inserted 4 tempo-sync ports [HF_DL_SYNC..HF_MD_DIV] before the commands; defaults =
+    // sync OFF, Delay div 1/8 (5), Mod div 1/4 (2).
+    static const float syncdef[4] = {0.0f, 5.0f, 0.0f, 2.0f};             // dl_sync,dl_div,md_sync,md_div
+    const bool syncGap = (srcVer < 13);
+    const int syncAt = HF_DL_SYNC, syncEnd = HF_DL_SYNC + 4;              // sync gap [syncAt,syncEnd)
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -586,6 +604,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (woGap && i >= woAt && i < woEnd)        vals[i] = wodef[i - woAt];
         else if (byGap && i >= byAt && i < byEnd)        vals[i] = 0.0f;       // new bypass = active
         else if (nailGap && i >= nailAt && i < nailEnd)  vals[i] = naildef[i - nailAt];
+        else if (syncGap && i >= syncAt && i < syncEnd)  vals[i] = syncdef[i - syncAt];
         else                                             vals[i] = old[o++];
     }
 }
@@ -594,7 +613,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(12); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v12: + Nail block (factoryRev still after N_PORTS)
+    putU32(13); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v13: + tempo-sync ports (factoryRev still after N_PORTS)
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -614,9 +633,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 12) return false;
+    if (ver < 2 || ver > 13) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 12);  // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12)
+    const bool needMigrate  = (ver < 13);  // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12) + tempo sync (v13)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1012,6 +1031,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 forgeStringSet(p, u.ps_name, p->presets[p->curBank][p->curSlot].name);
                 emitIndex(p);
                 emitApply(p);   // sync knobs to the active preset's effective values
+            } else if (obj->body.otype == u.time_Position) {
+                // Host tempo (tap-tempo / MIDI clock) → cache BPM for the synced Delay/Mod.
+                const LV2_Atom* bpmA = nullptr;
+                lv2_atom_object_get(obj, u.time_bpm, &bpmA, 0);
+                if (bpmA && bpmA->type == u.atom_Float) {
+                    const float b = reinterpret_cast<const LV2_Atom_Float*>(bpmA)->body;
+                    if (b >= 20.0f && b <= 400.0f) p->hostBpm = b;
+                }
             }
         }
     }
@@ -1227,6 +1254,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->modfx.setBypass(false);
     const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 6);
     if (modfxType != p->lastModfxType) { p->lastModfxType = modfxType; p->modfx.setType(ModulationFactory::fromIndex(modfxType)); }
+    // Mod clock sync: lock the LFO to host BPM x division (0 => free-run from the Rate knob).
+    if (*p->ports[HF_MD_SYNC] > 0.5f) {
+        const int mv = clampi(*p->ports[HF_MD_DIV], 0, 7);
+        const float periodSec = (60.0f / p->hostBpm) * kDivFactor[mv];
+        p->modfx.setSyncHz(periodSec > 0.0f ? (1.0f / periodSec) : 0.0f);
+    } else {
+        p->modfx.setSyncHz(0.0f);
+    }
     p->modfx.setParameter("rate",        *p->ports[HF_MD_RATE]);
     p->modfx.setParameter("depth",       *p->ports[HF_MD_DEPTH]);
     p->modfx.setParameter("mix",         *p->ports[HF_MD_MIX]);
@@ -1241,7 +1276,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->delay.setBypass(false);
     const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 3);
     if (delayType != p->lastDelayType) { p->lastDelayType = delayType; p->delay.setType(DelayFactory::fromIndex(delayType)); }
-    p->delay.setParameter("timeMs",       *p->ports[HF_DL_TIME]);
+    // Delay clock sync: delay time = host BPM x division (else the manual Time knob).
+    float dlMs = *p->ports[HF_DL_TIME];
+    if (*p->ports[HF_DL_SYNC] > 0.5f) {
+        const int dv = clampi(*p->ports[HF_DL_DIV], 0, 7);
+        dlMs = (60000.0f / p->hostBpm) * kDivFactor[dv];
+        if (dlMs < 1.0f) dlMs = 1.0f; else if (dlMs > 2000.0f) dlMs = 2000.0f;
+    }
+    p->delay.setParameter("timeMs",       dlMs);
     p->delay.setParameter("feedback",     *p->ports[HF_DL_FEEDBACK]);
     p->delay.setParameter("mix",          *p->ports[HF_DL_MIX]);
     p->delay.setParameter("stereoWidth",  monoOut ? 0.0f : *p->ports[HF_DL_WIDTH]);
@@ -1468,7 +1510,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(12);                 // version (12: + Nail block; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(13);                 // version (13: + tempo-sync; 12: + Nail block; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1538,9 +1580,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 12) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 13) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 12);     // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12)
+        const bool needMigrate  = (ver < 13);     // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12) + tempo sync (v13)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
