@@ -11,8 +11,8 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 880px;
-    width: 760px;
+    height: 800px;
+    width: 1660px;
     position: absolute;
     border-radius: 12px;
     border-top: 2px solid #ff963c;
@@ -99,6 +99,7 @@
     margin-top: 80px;
     padding: 0 24px;
     position: relative;
+    text-align: center;
 }
 
 /* KNOBS (flowing). NB: no numeric z-index on rows — a positioned element with a
@@ -110,7 +111,7 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knobs {
     margin-top: 8px;
-    width: 760px;
+    width: 100%;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knob {
     display: inline-block;
@@ -141,7 +142,7 @@
 
 /* MIXED ROW (switches + mini-selects) */
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-row-mixed {
-    width: 760px;
+    width: 100%;
     margin-top: 6px;
     text-align: center;
 }
@@ -199,7 +200,7 @@
     overflow: visible;
     text-align: left;
 }
-.mod-pedal-guitaramp-amp{{{cns}}} .mod-model-select { width: 100%; }
+.mod-pedal-guitaramp-amp{{{cns}}} .mod-model-select { display: inline-block; width: 360px; max-width: 100%; text-align: left; vertical-align: middle; }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-mini-select {
     display: inline-block;
     width: 130px;
