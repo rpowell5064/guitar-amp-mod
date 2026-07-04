@@ -19,7 +19,7 @@
     background-position: center top, center top, center top;
     background-size: 100% 100%, auto, 100% 100%;
     width: 1740px;
-    height: 1158px;
+    height: 1330px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -557,7 +557,7 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-amp-tubes {
     /* NO box: the tubes + their soft baked glow (tubes.png) just sit on the dark cabinet and
        fade in naturally — no border, no background rectangle, no gradient-in-a-box. */
-    position: relative; height: 210px; margin: 2px 0 -16px; z-index: 2; overflow: visible; pointer-events: none;
+    position: relative; height: 150px; margin: 2px 0 -12px; z-index: 2; overflow: visible; pointer-events: none;
     background-image: url(/resources/tubes.png{{{ns}}});
     background-size: auto 100%; background-repeat: no-repeat; background-position: center bottom;
     /* pulse the glow's BRIGHTNESS so it breathes where the tubes actually are */
