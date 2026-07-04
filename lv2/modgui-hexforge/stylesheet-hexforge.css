@@ -684,7 +684,24 @@
 }
 
 /* ── Strobe tuner ── a clean horizontal needle meter over the bottom of the detail panel ── */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-tog { display: inline-flex; align-items: center; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-sep { width: 1px; height: 26px; background: rgba(255,255,255,.12); margin: 0 4px; display: inline-block; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn {
+    display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.04);
+    color: #8b93a1; cursor: pointer; transition: color .12s, border-color .12s, background .12s, box-shadow .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn svg { width: 18px; height: 18px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn:hover { color: #cfd6e4; border-color: rgba(255,255,255,.28); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn.hf-on {
+    color: #19e0ff; border-color: rgba(25,224,255,.6); background: rgba(25,224,255,.10);
+    box-shadow: 0 0 12px rgba(25,224,255,.35), inset 0 0 8px rgba(25,224,255,.15);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerclose {
+    position: absolute; top: 9px; right: 12px; width: 26px; height: 26px; padding: 0; line-height: 1;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: rgba(255,255,255,.05);
+    color: #9aa2b0; font-size: 14px; cursor: pointer; transition: color .12s, border-color .12s, background .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerclose:hover { color: #fff; border-color: rgba(255,90,120,.6); background: rgba(255,90,120,.14); }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner {
     position: absolute; left: 24px; right: 24px; bottom: 16px; height: 120px; z-index: 50;
     display: flex; align-items: center; gap: 40px; padding: 0 44px; box-sizing: border-box;

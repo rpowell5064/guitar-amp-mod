@@ -27,6 +27,8 @@
       </div>
     </div>
     <div class="hf-bar-out">
+      <button type="button" class="hf-tunerbtn" rata-role="tunerbtn" title="Strobe tuner — click to open / close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg><span class="mod-hidden" mod-role="input-control-value" mod-port-symbol="tuner_on"></span></button>
+      <span class="hf-bar-sep"></span>
       <span class="hf-out-name">OUT</span>
       <div class="hf-meter hf-meter-h" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>
       <span class="hf-clip" rata-role="clip">CLIP</span>
@@ -34,7 +36,6 @@
       <div class="hf-sw" title="Auto"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="out_auto" mod-widget="switch"></div><span class="hf-sw-t">Auto</span></div>
       <div class="hf-sw" title="Mono"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="out_mono" mod-widget="switch"></div><span class="hf-sw-t">Mono</span></div>
       <div class="hf-knob" title="Master"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="out_level"></div><span class="hf-knob-t" rata-role="lbl-out_level">Master</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="out_level"></span></div>
-      <div class="hf-tuner-tog" title="Strobe tuner"><div class="hf-sw" title="Tuner"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="tuner_on" mod-widget="switch"></div><span class="hf-sw-t">Tuner</span></div></div>
       <div class="mod-powerswitch" mod-role="bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>
     </div>
   </div>
@@ -74,6 +75,7 @@
       <div class="hf-tuner-cents" rata-role="tunercents">no signal</div>
     </div>
     <div class="hf-tuner-mute" title="Mute output while tuning"><div class="hf-sw" title="Mute"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="tuner_mute" mod-widget="switch"></div><span class="hf-sw-t">Mute</span></div></div>
+    <button type="button" class="hf-tunerclose" rata-role="tunerclose" title="Close tuner">✕</button>
   </div>
   <div class="mod-pedal-input">
     {{#effect.ports.audio.input}}

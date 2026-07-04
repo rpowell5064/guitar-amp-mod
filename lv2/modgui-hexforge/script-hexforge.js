@@ -389,6 +389,11 @@ function (event, funcs) {
         wire('.hf-ps-mvdn',   function () { psPulse(funcs, 'ps_move_dn'); });
         wire('.hf-ps-backup', function () { psPulse(funcs, 'ps_backup'); });
         wire('.hf-ps-restore',function () { psPulse(funcs, 'ps_restore'); });
+        // Strobe tuner: the fork icon opens/closes it; the ✕ on the strip closes it.
+        wire('.hf-tunerbtn',   function () { if (funcs && funcs.set_port_value) funcs.set_port_value('tuner_on', icon.data('hf_tuner_on') ? 0 : 1); });
+        wire('.hf-tunerclose', function () { if (funcs && funcs.set_port_value) funcs.set_port_value('tuner_on', 0); });
+        if ('tuner_on' in map) { var _to = map.tuner_on > 0.5; icon.data('hf_tuner_on', _to);
+            icon.find('[rata-role=tuner]').toggleClass('mod-hidden', !_to); icon.find('[rata-role=tunerbtn]').toggleClass('hf-on', _to); }
         wire('.hf-ps-toggle', function () { icon.find('[rata-role=psmenu]').toggleClass('hf-ps-open'); });
         icon.find('.hf-ps-slot').each(function () { var el = this;
             el.addEventListener('click', function (e) { e.stopPropagation();
@@ -442,7 +447,10 @@ function (event, funcs) {
         } else if (s === 'clip') {
             icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
         } else if (s === 'tuner_on') {
-            icon.find('[rata-role=tuner]').toggleClass('mod-hidden', !(event.value > 0.5));
+            var ton = event.value > 0.5;
+            icon.data('hf_tuner_on', ton);
+            icon.find('[rata-role=tuner]').toggleClass('mod-hidden', !ton);
+            icon.find('[rata-role=tunerbtn]').toggleClass('hf-on', ton);
         } else if (s === 'tuner_note') {
             tunerNote(icon, event.value);
         } else if (s === 'tuner_cents') {
