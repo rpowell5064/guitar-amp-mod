@@ -277,6 +277,11 @@ ctrl.append(mkport("OUT_AUTO", "out_auto", "Output Auto-Limit", "t", 0, 1, 1, No
 # the param/preset layout is untouched (not preset-captured). 0..1 dB-scaled (-60..0 dB).
 ctrl.append(mkport("IN_METER",  "in_meter",  "Input Level",  "f", 0, 1, 0, None, "In",  out=True))
 ctrl.append(mkport("OUT_METER", "out_meter", "Output Level", "f", 0, 1, 0, None, "Out", out=True))
+# Output MONO SUM: when on, collapse L+R -> 0.5*(L+R) at the output so a MONO rig
+# (pi-Stomp -> one amp) never loses panned / stereo-widened content. DEFAULT ON (mono).
+# Added at the ABSOLUTE END of the ctrl list so old preset blobs stay index-aligned
+# (blob v10 migration defaults it ON for pre-v10 saves).
+ctrl.append(mkport("OUT_MONO", "out_mono", "Output Mono Sum", "t", 0, 1, 1, None, "Mono"))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -400,7 +405,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 71 ;")
+    L.append("    lv2:microVersion 73 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -860,6 +865,7 @@ def emit_icon():
         '      <span class="hf-clip" rata-role="clip">CLIP</span>\n'
         '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
+        '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
         '      <div class="mod-powerswitch" mod-role="bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '    </div>\n'

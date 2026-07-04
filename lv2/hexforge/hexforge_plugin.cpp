@@ -94,6 +94,10 @@ static const char* const kFactoryIR = "@factory";
 // A preset is a full snapshot of every user parameter plus the four file paths.
 // (kBanks kept a power of two — the bank-wrap masks `& (kBanks-1)` depend on it.)
 static constexpr int kBanks = 32, kSlots = 4;
+// BUMP whenever the built-in factory presets change — on load, a saved store with an
+// older rev has its FACTORY slots refreshed from the binary (user slots untouched), so
+// preset fixes actually reach existing users instead of being overridden by the .dat.
+static constexpr uint32_t kFactoryRev = 1;
 struct Preset {
     bool  used = false;
     char  name[32] = {0};
@@ -571,11 +575,12 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else                                         vals[i] = old[o++];
     }
 }
+static void seedFactoryPresets(HexForge* p);   // fwd decl (defined after the factory arrays)
 static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(9); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);   // v9: + per-block bypass
+    putU32(11); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v11: + factory rev (refresh factory slots on load)
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -595,10 +600,11 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 9) return false;
+    if (ver < 2 || ver > 11) return false;
     const bool migrateOutDb = (ver == 2);
     const bool needMigrate  = (ver < 9);   // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9)
     getU32(np);
+    uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
     for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
         uint32_t used=0; getU32(used);
@@ -608,6 +614,7 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         else off = size;
         if (needMigrate) migratePorts(vals, ver);   // insert voicing/boost + Seraph ports (defaults)
         if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);
+        if (ver < 10) vals[HF_OUT_MONO] = 1.0f;   // pre-v10 saves default to MONO
         char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
         getPath(ir); getPath(an); getPath(dn); getPath(cn);
         if (b<kBanks && s<kSlots) {
@@ -628,6 +635,7 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
     uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
     p->curBank = cb < kBanks ? cb : 0;
     p->curSlot = cs < kSlots ? cs : 0;
+    if (factoryRev < kFactoryRev) seedFactoryPresets(p);   // refresh updated factory slots (user slots kept)
     return true;
 }
 // Write the store to the backup file (atomic: tmp + rename). Called on every
@@ -746,11 +754,14 @@ static const float kFactoryVals[kSlots][HF_N_PORTS] = {
 // Lead
 { 0, 0, 0, 0, 0, 0, 0, -20.58, 0, 1, 0, 1, 1, 1, 1, -61.6, 0.1, 67.5, 238.85, 6, 2, 1, 0, -18, 0, 2.775, 6.175, 3, 0.55, 3, 0, 0, 2, 0.55, 0.5, 0.65, 0.5, 0.5, 0.4, 4, 1, 0, 0.0625, 0.6, 0.7175, 1, 0.3, 5, 1, 4, 0.6075, 0.45, 0.7475, 0.7675, 0.6025, 0.47, 0.3, 0, 0, 0.5, 0, 0, 1, 0.55, 0.18, 0.33, 0.62, 0.42, 0.5, 0, 1, 0.5, 0.5, 0.5, 0, 0, 6, 1, 80, 9470, 1, 7, 1, 0, 0.12, 0.6125, 0.5, 0.5, 8, 1, 0, 445.777, 0.31605, 0.17, 0.5, 0.003, 0.001, 10, 9, 1, 10, 1.5, 0.3, 0, 0.01, 0.1475, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
-static void psInitDefaults(HexForge* p) {
-    // Bank 1 (index 0): the stock Clean/Crunch/Rhythm/Lead. kFactoryVals were captured
-    // as v3-layout positional rows (before the IT voicing/boost + Seraph delay ports
-    // existed), so run them through the same migration the backup loader uses to land
-    // them on the current v7 layout — otherwise a fresh instance loads them shifted.
+// Write the built-in factory presets over their slots (leaves every non-factory
+// slot untouched — so user presets survive). Used both for a fresh instance AND
+// to REFRESH factory slots when a saved store predates the current kFactoryRev
+// (otherwise updated factory presets in the binary never reach an existing user —
+// the persisted .dat / pedalboard state would keep overriding them forever).
+static void seedFactoryPresets(HexForge* p) {
+    // Bank 1 (index 0): stock Clean/Crunch/Rhythm/Lead — captured as v3-layout rows
+    // (before the IT voicing/boost + Seraph ports), so migrate them to the current layout.
     for (int s = 0; s < kSlots; ++s) {
         Preset& pr = p->presets[0][s];
         pr.used = true;
@@ -759,8 +770,7 @@ static void psInitDefaults(HexForge* p) {
         migratePorts(pr.vals, 3);
         pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
     }
-    // Band/song presets (Banks 3..7; Bank 2 left free for the user) — generated in
-    // the current v7 layout, so they seed directly without migration.
+    // Band/song presets (generated in the current layout).
     for (int i = 0; i < kFactoryExtraCount; ++i) {
         const HfFactoryPreset& fp = kFactoryExtra[i];
         if (fp.bank < 0 || fp.bank >= kBanks || fp.slot < 0 || fp.slot >= kSlots) continue;
@@ -769,9 +779,11 @@ static void psInitDefaults(HexForge* p) {
         std::snprintf(pr.name, sizeof(pr.name), "%s", fp.name);
         std::memcpy(pr.vals, fp.vals, sizeof(pr.vals));
         pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
-        // Built-in cab sentinel (e.g. "@vox2x12") if the preset specifies one.
         if (fp.cabIr && fp.cabIr[0]) { std::strncpy(pr.irPath, fp.cabIr, kPathMax-1); pr.irPath[kPathMax-1]='\0'; }
     }
+}
+static void psInitDefaults(HexForge* p) {
+    seedFactoryPresets(p);
     p->curBank = 0; p->curSlot = 0;
     p->pendingRecall = true;   // a fresh instance starts on Bank 1 / A (Clean)
 }
@@ -1191,7 +1203,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->modfx.setParameter("rate",        *p->ports[HF_MD_RATE]);
     p->modfx.setParameter("depth",       *p->ports[HF_MD_DEPTH]);
     p->modfx.setParameter("mix",         *p->ports[HF_MD_MIX]);
-    p->modfx.setParameter("stereoWidth", *p->ports[HF_MD_WIDTH]);
+    // Mono mode: force EVERY width-based stereo effect to CENTERED (width 0) so a summed-
+    // mono rig keeps full-level content. Otherwise the delay's pan (Seraph) loses ~6 dB to
+    // pan law, the Digital delay's L/R time offset combs, and the chorus/Uni-Vibe LFO-phase
+    // spread partially cancels — all read as the effect "cutting out" in mono. Reverb has no
+    // width knob (decorrelated tails just narrow, never null) so the output sum covers it.
+    const bool monoOut = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
+    p->modfx.setParameter("stereoWidth", monoOut ? 0.0f : *p->ports[HF_MD_WIDTH]);
     // Delay
     p->delay.setBypass(false);
     const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 3);
@@ -1199,7 +1217,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->delay.setParameter("timeMs",       *p->ports[HF_DL_TIME]);
     p->delay.setParameter("feedback",     *p->ports[HF_DL_FEEDBACK]);
     p->delay.setParameter("mix",          *p->ports[HF_DL_MIX]);
-    p->delay.setParameter("stereoWidth",  *p->ports[HF_DL_WIDTH]);
+    p->delay.setParameter("stereoWidth",  monoOut ? 0.0f : *p->ports[HF_DL_WIDTH]);
     p->delay.setParameter("wowDepth",     *p->ports[HF_DL_WOW]);
     p->delay.setParameter("flutterDepth", *p->ports[HF_DL_FLUTTER]);
     p->delay.setParameter("headMask", static_cast<float>(kEchorecProgram[clampi(*p->ports[HF_DL_HEADS],0,11)]));
@@ -1326,6 +1344,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (!stereo) for (int i=0;i<len;++i) R[i] = L[i];
     }
 
+    // ── Mono sum (default ON): collapse L+R -> 0.5*(L+R) so a MONO rig (pi-Stomp
+    // into one amp) keeps ALL panned/stereo-widened content (Seraph engines,
+    // choruses, wide delay/reverb) instead of losing whatever's on the unused jack.
+    // Our width is pan/decorrelation (never anti-phase), so the sum can't null. ──
+    if (p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f)
+        for (uint32_t i = 0; i < n; ++i) { const float mo = 0.5f*(outL[i]+outR[i]); outL[i]=mo; outR[i]=mo; }
+
     // ── Master output level (the "Output" stage — last in the chain) ──
     // The knob is in dB (0 dB = unity, up to +12 dB boost); convert to a linear
     // gain and apply it smoothed. Auto-Limit only adds the clip-safe limiter on
@@ -1415,8 +1440,8 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(9);                  // version (9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
-    putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS);
+    putU32(11);                 // version (11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1485,10 +1510,11 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 9) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 11) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
         const bool needMigrate  = (ver < 9);      // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9)
         getU32(np);                                 // param-port count at save time
+        uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
             uint32_t used=0; getU32(used);
@@ -1498,6 +1524,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else off = size;
             if (needMigrate) migratePorts(vals, ver);                 // insert voicing/boost + Seraph ports
             if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);  // 0..1 -> dB
+            if (ver < 10) vals[HF_OUT_MONO] = 1.0f;   // pre-v10 saves default to MONO
             char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
             getPath(ir); getPath(an); getPath(dn); getPath(cn);
             if (b<kBanks && s<kSlots) {     // ignore extras if a future build grows the grid
@@ -1515,6 +1542,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
         uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
         p->curBank = cb < kBanks ? cb : 0;
         p->curSlot = cs < kSlots ? cs : 0;
+        if (factoryRev < kFactoryRev) seedFactoryPresets(p);   // refresh updated factory slots (user slots kept)
         p->pendingRecall = true;   // first run applies the active preset to the DSP
     }
     return LV2_STATE_SUCCESS;

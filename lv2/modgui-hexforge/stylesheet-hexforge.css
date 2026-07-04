@@ -18,8 +18,8 @@
     background-repeat: no-repeat, repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 100% 100%, auto, 100% 100%;
-    width: 1400px;
-    height: 1104px;
+    width: 1740px;
+    height: 1158px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -203,7 +203,7 @@
 
 /* ── CHAIN STRIP — clickable nodes in signal-flow order (IN → … → OUT) ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-chain {
-    position: absolute; top: 88px; left: 24px; right: 24px; height: 146px; z-index: 35;
+    position: absolute; top: 88px; left: 24px; right: 24px; height: 200px; z-index: 35;
     display: flex; align-items: center; gap: 12px; padding: 0 18px; box-sizing: border-box;
     background-color: rgba(8,9,13,.5);
     background-image: var(--hex), linear-gradient(180deg, rgba(120,90,255,.10), rgba(0,0,0,.18));
@@ -217,7 +217,7 @@
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-nodes {
     flex: 1 1 auto; min-width: 0; position: relative; display: flex; flex-wrap: nowrap; align-items: center;
-    gap: 22px; height: 116px; padding: 0 6px;
+    gap: 22px; height: 182px; padding: 0 6px;
     /* when there are too many nodes to fit, scroll horizontally (scrollbar hidden globally),
        so the last node is always reachable instead of being clipped off the end */
     overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
@@ -286,8 +286,8 @@
 /* Nodes flex to fill the strip — big when few are in the chain, auto-shrinking as you
    add more, so the whole chain is always visible with NO horizontal scrollbar. */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node {
-    flex: 1 1 0; min-width: 70px; max-width: 168px; position: relative; z-index: 1; cursor: pointer; user-select: none;
-    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; height: 104px;
+    flex: 1 1 0; min-width: 120px; max-width: 280px; position: relative; z-index: 1; cursor: pointer; user-select: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; height: 178px;
     background-color: #121620;
     background-image: linear-gradient(180deg, rgba(255,255,255,.08), rgba(0,0,0,.42));
     border: 1px solid rgba(255,255,255,.10); border-top: 3px solid var(--acc);
@@ -298,10 +298,10 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node:hover { border-color: var(--acc); transform: translateY(-2px); }
 /* Line-icon glyph, accent-coloured with a soft glow */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node-ico {
-    width: 32px; height: 32px; flex: 0 0 32px; display: flex; align-items: center; justify-content: center;
+    width: 64px; height: 64px; flex: 0 0 64px; display: flex; align-items: center; justify-content: center;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node-ico svg {
-    width: 30px; height: 30px; fill: none; stroke: var(--acc); stroke-width: 1.8;
+    width: 62px; height: 62px; fill: none; stroke: var(--acc); stroke-width: 1.8;
     stroke-linecap: round; stroke-linejoin: round;
     filter: drop-shadow(0 0 5px var(--acc));
 }
@@ -363,7 +363,7 @@
 
 /* ── DETAIL PANEL — the selected node's full controls (one at a time) ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-detail {
-    position: absolute; top: 248px; left: 24px; right: 24px; bottom: 16px; z-index: 30;
+    position: absolute; top: 302px; left: 24px; right: 24px; bottom: 16px; z-index: 30;
     background-color: rgba(10,12,18,.5);
     background-image: var(--hex), linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.20));
     background-repeat: repeat, no-repeat; background-position: center top; background-size: var(--hexsz), 100% 100%;

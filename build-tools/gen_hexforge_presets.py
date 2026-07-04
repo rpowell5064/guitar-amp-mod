@@ -461,13 +461,25 @@ add(
     rv={"enable":1,"decay":0.9,"damping":0.7,"mix":0.07},
     cab={"lowcut":82,"highcut":8500}),
   preset(9, 3, "Moondust Glam", out_level=-15.5,         # Bowie / Mick Ronson — Moonage Daydream
-    # RESEARCHED: Sola Sound Tone Bender MkI germanium -> COCKED Cry Baby (static upper-mid honk)
-    # -> Marshall Major (KT88) with volume FULL = power-amp sat. Les Paul Custom. Greenback cab.
-    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.72,"q":0.65,"mix":1.0},
-    fz={"enable":1,"pedal":"I Know It","sustain":0.78,"tone":0.6,"volume":0.6,"bias":0.55,"inputtrim":0.65,"getemp":0.45},
-    amp={"model":"Crunchy","gain":0.82,"bass":0.55,"mid":0.6,"treble":0.65,"presence":0.7,"master":0.9,"sag":0.7},
-    gt={"enable":1,"thresh":-50,"attack":2,"hold":140,"release":280,"hyst":8},
-    rv={"enable":1,"decay":1.5,"mix":0.1},
+    # RESEARCHED: Sola Sound Tone Bender MkI germanium -> COCKED Cry Baby -> Marshall Major (KT88)
+    # power-amp sat. FIXED (was cutting out + over-distorted): the "cranked Major" = CLEAN preamp +
+    # power-amp warmth, so amp gain 0.82->0.38 (fuzz IS the dirt, not a stacked hi-gain preamp).
+    # Tamed fuzz (sustain/volume down) + RAISED germanium bias 0.55->0.7 & lowered inputtrim
+    # 0.65->0.45 to stop the starve-gate sputter; gate relaxed -50->-58 so it can't clip the sustain.
+    # amp = HI-VOLT (Hiwatt) not the JCM800 — user: "I dont have a cleanish Marshall." The Hiwatt is a
+    # true high-headroom CLEAN platform (a closer match to Ronson's 200W Marshall MAJOR than a crunch
+    # JCM800), so amp+cab alone stays clean + the germanium fuzz is the only dirt. Being high-headroom it
+    # is quiet → master pushed HIGH (0.9, clean volume, no power-amp distortion) + low sag (no ducking).
+    # Keep the Greenback (Ronson's Marshall 4x12) cab, not the auto @hiwatt.
+    # USER DIAL-IN (2026-07-03, tuned by ear to a Gibson Les Paul Custom, captured from the device .dat):
+    # Hiwatt gain pushed to 0.81 (high-headroom → stays clean+loud where the JCM800 would crunch),
+    # LP-voiced EQ (bass back, mids/treble up), fuzz input-trim up, a touch more reverb.
+    wh={"enable":1,"pos":2,"type":"Fixed","freq":0.72,"q":0.58,"mix":0.85},
+    fz={"enable":1,"pedal":"I Know It","sustain":0.59,"tone":0.51,"volume":0.38,"bias":0.7,"inputtrim":0.61,"getemp":0.45},
+    amp={"model":"Hi-Volt","gain":0.81,"bass":0.41,"mid":0.72,"treble":0.67,"presence":0.59,"master":0.87,"sag":0.3},
+    gt={"enable":1,"thresh":-62,"attack":2,"hold":160,"release":320,"hyst":8},
+    rv={"enable":1,"decay":1.5,"mix":0.19,"damping":0.3,"predelay":10},
+    cab_ir="@greenback",
     cab={"lowcut":80,"highcut":8800}),
 )
 
@@ -659,7 +671,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 161, "port count drift: got %d" % N_PORTS
+    assert N_PORTS == 162, "port count drift: got %d" % N_PORTS   # 161 -> 162: added out_mono (Output Mono Sum)
     # ── Auto-match a built-in cab to each preset from its amp model ──────────────
     # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
     # the Factory Cab (@factory / V30). See CabModels.h for the voicings.
