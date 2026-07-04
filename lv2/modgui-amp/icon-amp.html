@@ -11,12 +11,7 @@
         <div class="hx-tag">9 amp models · power-amp stage</div>
     </div>
 
-    <!-- ── AMP FACE: per-model realistic faceplate panel (Forge-style skin) ── -->
-    <div class="amp-face" rata-role="ampface">
-    <div class="amp-face-tubes"></div>
-    <div class="amp-face-badge" rata-role="ampbadge">AMP</div>
-
-    <!-- ── AMP MODEL selector ──────────────────────────────────────────── -->
+    <!-- ── AMP MODEL selector (ABOVE the faceplate so its dropdown is never clipped) ── -->
     <div class="mod-amp-modelrow">
         <span class="mod-section-label">AMP MODEL</span>
         {{#controls.0}}
@@ -42,23 +37,46 @@
         {{/path}}{{/effect.parameters.0}}
     </div>
 
-    <!-- ── PREAMP / TONE knobs (always shown) ──────────────────────────── -->
-    <div class="mod-control-group mod-knobs clearfix">
-        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="gainlabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.1}}
-        {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.2}}
-        {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
-        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
-        {{#controls.5}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
-        {{#controls.6}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
-        {{#controls.7}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.7}}
+    <!-- ── AMP FACE: tolex cabinet top + glowing tubes + per-model faceplate control plate ── -->
+    <div class="hf-amp-face" rata-role="ampface">
+        <div class="hf-amp-tubes"></div>
+        <div class="hf-amp-plate">
+            <div class="hf-screw hf-screw-tl"></div>
+            <div class="hf-screw hf-screw-tr"></div>
+            <div class="hf-screw hf-screw-bl"></div>
+            <div class="hf-screw hf-screw-br"></div>
+            <div class="hf-amp-badge" rata-role="ampbadge">Clean Meanie</div>
 
-        <!-- EVH-only resonance -->
-        <span rata-role="resonancectl" class="amp-cond mod-hidden">
-        {{#controls.9}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.9}}
-        </span>
-
+            <div class="hf-agroups">
+                <!-- PREAMP: gain (1) + master (6) + sag (7) -->
+                <div class="hf-agroup">
+                    <span class="hf-agroup-title">Preamp</span>
+                    <div class="hf-agroup-body mod-knobs clearfix">
+                        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="gainlabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.1}}
+                        {{#controls.6}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
+                        {{#controls.7}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.7}}
+                    </div>
+                </div>
+                <!-- TONE STACK: bass (2) mid (3) treble (4) presence (5) -->
+                <div class="hf-agroup">
+                    <span class="hf-agroup-title">Tone Stack</span>
+                    <div class="hf-agroup-body mod-knobs clearfix">
+                        {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.2}}
+                        {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
+                        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
+                        {{#controls.5}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
+                    </div>
+                </div>
+                <!-- EVH-only resonance (2) -->
+                <span rata-role="resonancectl" class="amp-cond mod-hidden hf-agroup">
+                    <span class="hf-agroup-title">Resonance</span>
+                    <div class="hf-agroup-body mod-knobs clearfix">
+                        {{#controls.9}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.9}}
+                    </div>
+                </span>
+            </div>
+        </div>
     </div>
-    </div><!-- /.amp-face -->
 
     <!-- EVH / Rockerverb channel toggle -->
     <div class="mod-control-group mod-row-mixed clearfix">
@@ -115,7 +133,6 @@
         <div class="mod-control-group mod-row-mixed clearfix">
             {{#controls.22}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.22}}
             {{#controls.13}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.13}}
-            <!-- manual PA tube selector (hidden when PA Auto on) -->
             <span rata-role="pamanual" class="amp-cond mod-hidden">
             {{#controls.14}}
             <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
@@ -127,7 +144,6 @@
             </span>
         </div>
 
-        <!-- manual PA knobs (hidden when PA Auto on) -->
         <div rata-role="pamanual" class="mod-control-group mod-knobs clearfix amp-condblock mod-hidden">
             {{#controls.15}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
             {{#controls.16}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.16}}
@@ -136,7 +152,6 @@
             {{#controls.19}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
         </div>
 
-        <!-- always-active PA knobs (Resonance + Air Feel have no per-model default) -->
         <div class="mod-control-group mod-knobs clearfix">
             {{#controls.20}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.20}}
             {{#controls.21}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.21}}

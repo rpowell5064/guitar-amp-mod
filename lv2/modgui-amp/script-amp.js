@@ -19,8 +19,8 @@ function (event, funcs) {
         icon.find('[rata-role=namgroup]').toggleClass('mod-hidden', !nam);
         // For Sunn the shared Gain knob IS the Normal-channel volume; relabel it.
         icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : (nam ? 'Output' : 'Gain'));
-        // Per-model realistic faceplate skin + badge (Forge-style)
-        icon.find('[rata-role=ampface]').attr('class', 'amp-face amp-face-m' + ((m >= 0 && m <= 9) ? m : 1));
+        // Per-model realistic faceplate skin + engraved badge (Forge parity)
+        icon.find('[rata-role=ampface]').attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 9) ? m : 1));
         var NAMES = ['Clean Meanie','Crunchy','Gainzilla','Doom Daddy','Tangerang','Neural NAM','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus'];
         icon.find('[rata-role=ampbadge]').text(NAMES[m] || 'AMP');
     }
