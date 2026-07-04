@@ -426,7 +426,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 77 ;")
+    L.append("    lv2:microVersion 78 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -677,33 +677,24 @@ def amp_body():
         nam_picker(0, "AmpNam", "c-amp-nam"), render_ctrl(CTRL_BY_SYM["amp_model"]))
     def rc(sufs):
         return "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs if ("amp_" + s) in CTRL_BY_SYM)
-    def agroup(title, sufs, gcls=""):
-        wrap = "hf-agroup" + ((" " + gcls) if gcls else "")
-        return ('<div class="%s"><span class="hf-agroup-title">%s</span>'
-                '<div class="hf-agroup-body">%s</div></div>') % (wrap, title, rc(sufs))
-    # Front-panel faceplate: PREAMP + TONE STACK only (channel/resonance ride their own COND class).
+    def onerow(sufs):   # all controls in ONE centered row (.hf-onerow), no sub-group boxes
+        return '<div class="hf-onerow">%s</div>' % rc(sufs)
+    # Front-panel faceplate: preamp + tone in ONE centered row (channel/resonance ride their COND class).
     face = ('<div class="hf-amp-face hf-face-m1">'
             '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
             '<div class="hf-amp-plate">' + SCREWS4 +
             '<div class="hf-amp-badge" rata-role="amp-badge">Crunchy McCrunchFace</div>'
-            '<div class="hf-agroups">'
-            + agroup("PREAMP", ["gain", "master", "sag", "channel", "resonance"])
-            + agroup("TONE STACK", ["bass", "mid", "treble", "presence"])
-            + '</div></div></div>')
-    # Power Amp — its own tolex chassis: a switch rail (Bypass / Auto / Tube) over the knob
-    # groups. VALVE STAGE carries c-amp-paman so the WHOLE group (title included) disappears
-    # when PA Auto is on — no empty labelled box (this was the dreadful part). FEEL always shows.
+            + onerow(["gain", "master", "sag", "channel", "resonance", "bass", "mid", "treble", "presence"])
+            + '</div></div>')
+    # Power Amp — ONE centered row of controls (switches + knobs). The c-amp-paman items
+    # (Tube + the valve-stage knobs) hide when PA Auto is on, leaving a clean short row.
     pa = ('<div class="hf-pa-face c-amp-pa"><div class="hf-pa-title">Power Amp</div>'
-          '<div class="hf-pa-rail">' + rc(["pamp_bypass", "pamp_auto", "pamp_tube"]) + '</div>'
-          '<div class="hf-agroups">'
-          + agroup("VALVE STAGE", ["pamp_presence", "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb"], "c-amp-paman")
-          + agroup("FEEL", ["pamp_resonance", "pamp_airfeel"])
-          + '</div></div>')
-    # Brite Channel (Sunn) + Beardo BE — each its own chassis.
+          + onerow(["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence", "pamp_depth",
+                    "pamp_sag", "pamp_master", "pamp_nfb", "pamp_resonance", "pamp_airfeel"])
+          + '</div>')
+    # Brite Channel (Sunn) + Beardo BE — each its own chassis, one centered row.
     def chassis(gcls, gtitle, sufs):
-        return ('<div class="hf-pa-face %s"><div class="hf-pa-title">%s</div>'
-                '<div class="hf-agroups"><div class="hf-agroup"><div class="hf-agroup-body">%s</div>'
-                '</div></div></div>') % (gcls, gtitle, rc(sufs))
+        return ('<div class="hf-pa-face %s"><div class="hf-pa-title">%s</div>%s</div>') % (gcls, gtitle, onerow(sufs))
     brite = chassis("c-amp-sunn", "Brite Channel",
                     ["sunn_vol2", "sunn_bass2", "sunn_mid2", "sunn_treble2", "sunn_bright1", "sunn_bright2", "sunn_link"])
     beardo = chassis("c-amp-be", "Beardo BE", ["fr_channel", "fr_fat", "fr_c45", "fr_sat"])
