@@ -1,7 +1,7 @@
 function (event, funcs) {
     // Model-aware control visibility. LV2 model indices:
     //   0 Fender, 1 Marshall, 2 EVH, 3 Sunn Model T, 4 Orange Rockerverb, 5 NAM,
-    //   6 Beardo BE (Friedman)
+    //   6 Beardo BE (Friedman), 7 Hi-Volt (Hiwatt), 8 Chime Thirty (Vox AC30), 9 Backline Plus (Peavey, solid-state)
     function update_model(icon, value) {
         var m = parseInt(value, 10);
         var nam = (m === 5);
@@ -19,6 +19,10 @@ function (event, funcs) {
         icon.find('[rata-role=namgroup]').toggleClass('mod-hidden', !nam);
         // For Sunn the shared Gain knob IS the Normal-channel volume; relabel it.
         icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : (nam ? 'Output' : 'Gain'));
+        // Per-model realistic faceplate skin + badge (Forge-style)
+        icon.find('[rata-role=ampface]').attr('class', 'amp-face amp-face-m' + ((m >= 0 && m <= 9) ? m : 1));
+        var NAMES = ['Clean Meanie','Crunchy','Gainzilla','Doom Daddy','Tangerang','Neural NAM','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus'];
+        icon.find('[rata-role=ampbadge]').text(NAMES[m] || 'AMP');
     }
     function update_pa_auto(icon, value) {
         var auto = value > 0.5;

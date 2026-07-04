@@ -14,6 +14,7 @@
 #include "lv2_util.h"
 #include "CabinetBlock.h"
 #include "DefaultCabIR.h"
+#include "CabModels.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -203,10 +204,12 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == WORK_IR) {
         std::vector<float> L, R;
-        if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
+        if (msg->path[0] == '@')                                  // built-in synthetic cab (@vox2x12, @greenback, …)
+            p->dsp.setIR(CabModels::generate(msg->path, p->rate));
+        else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
             p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
         else
-            p->dsp.setIR(DefaultCabIR::generate(p->rate));   // empty/sentinel → built-in Factory Cab
+            p->dsp.setIR(DefaultCabIR::generate(p->rate));   // empty/@factory → built-in Factory Cab
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }

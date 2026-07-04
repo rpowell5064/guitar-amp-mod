@@ -24,12 +24,17 @@ static constexpr int kPathMax  = 1024;
 static constexpr int kMaxBlock = 512;
 
 // LV2 model indices: 0=Green Man(TS808), 1=New Dawn(LifePedal), 2=Dear Rodent Boy(RAT)
-static const OverdriveType kModelMap[3] = {
-    OverdriveType::TubeScreamer808,
-    OverdriveType::LifePedal,
-    OverdriveType::ProcoRAT,
+static const OverdriveType kModelMap[7] = {
+    OverdriveType::TubeScreamer808,     // 0 = Green Man
+    OverdriveType::LifePedal,           // 1 = New Dawn
+    OverdriveType::ProcoRAT,            // 2 = Dear Rodent Boy
+    OverdriveType::ProcoRAT,            // 3 = NAM placeholder (handled separately, never built here)
+    OverdriveType::DS1,                 // 4 = Grunge DS (Boss DS-1)
+    OverdriveType::Klon,                // 5 = Gilded Horse (Klon)
+    OverdriveType::SuperOverdriveSD1,   // 6 = Super Nova (Boss SD-1)
 };
-static constexpr int kNamIdx = 3;   // Neural (NAM) slot
+static constexpr int kNamIdx   = 3;   // Neural (NAM) slot
+static constexpr int kMaxModel = 6;   // highest selectable model index (Super Nova)
 
 enum DrivePorts {
     P_IN = 0, P_OUT, P_MODEL, P_DRIVE, P_TONE, P_LEVEL, P_MIX, P_OCTAVE, P_BYPASS,
@@ -169,7 +174,7 @@ static void drive_run(LV2_Handle h, uint32_t n) {
 
     const float* in  = p->ports[P_IN];
     float*       out = p->ports[P_OUT];
-    const int    model = clampi(*p->ports[P_MODEL], 0, kNamIdx);
+    const int    model = clampi(*p->ports[P_MODEL], 0, kMaxModel);
 
     if (*p->ports[P_BYPASS] > 0.5f) {
         if (out != in) std::memcpy(out, in, sizeof(float) * n);

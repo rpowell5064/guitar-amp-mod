@@ -29,7 +29,7 @@ static constexpr int kPathMax = 1024;
 // LV2 model index → AmpModel enum. Index 5 = NAM (handled separately). Beardo BE
 // (Friedman) is index 6, AFTER NAM, so existing saved boards (which store the model
 // index) keep their meaning — inserting it earlier would shift NAM and break them.
-static const AmpModel kModelMap[8] = {
+static const AmpModel kModelMap[10] = {
     AmpModel::FenderDeluxe,        // 0
     AmpModel::MarshallJCM800,      // 1
     AmpModel::EVH5150III,          // 2
@@ -38,16 +38,18 @@ static const AmpModel kModelMap[8] = {
     AmpModel::NeuralCustom,        // 5 = NAM (handled separately; placeholder, never built here)
     AmpModel::FriedmanBEDeluxe,    // 6 = Beardo BE
     AmpModel::HiwattDR103,         // 7 = Hiwatt (high-headroom British clean)
+    AmpModel::VoxAC30,             // 8 = Chime Thirty (Vox AC30 Top Boost, EL84)
+    AmpModel::PeaveyBackstage,     // 9 = Backline Plus (solid-state Peavey Backstage)
 };
-static const int kCanonical[8] = { 0, 1, 2, 4, 5, 3, 6, 0 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt → clean PA)
+static const int kCanonical[10] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [8] Vox, [9] Backline → clean PA)
 static constexpr int kSunnIdx     = 3;     // Sunn's LV2 model index
 static constexpr int kNamIdx      = 5;     // NAM slot
 static constexpr int kFriedmanIdx = 6;     // Beardo BE
-static constexpr int kMaxModel    = 7;     // highest selectable model index (Hiwatt)
+static constexpr int kMaxModel    = 9;     // highest selectable model index (Backline Plus)
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
-static const int kModelTube[8] = { 0, 1, 1, 0, 1, 0, 1, 1 };  // [6] Friedman EL34; [7] Hiwatt EL34
-static const float kModelMakeup[8] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f };  // [0] Fender/clean +1.6dB kept; [3] Sunn back to 3.0 (the makeup boost over-drove the output); [7] Hiwatt
+static const int kModelTube[10] = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0 };  // [6] Friedman EL34; [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state
+static const float kModelMakeup[10] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f, 1.6f, 2.5f };  // [0] Fender/clean +1.6dB kept; [3] Sunn back to 3.0 (the makeup boost over-drove the output); [7] Hiwatt; [8] Vox; [9] Backline (solid-state)
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
