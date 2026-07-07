@@ -16,7 +16,9 @@ enum class AmpModel {
     FriedmanBEDeluxe,  // Hot-rodded Marshall, 3-channel (Clean/BE/HBE), EL34
     HiwattDR103,       // High-headroom British clean (Gilmour platform), EL34
     VoxAC30,           // Bright Class-A EL84 chime (AC30 Top Boost)
-    PeaveyBackstage    // Solid-state practice combo (Backline Plus / Peavey Backstage Plus)
+    PeaveyBackstage,   // Solid-state practice combo (Backline Plus / Peavey Backstage Plus)
+    MarshallPlexi,     // 1959 Super Lead Plexi — bright, power-amp-driven EL34 crunch
+    MesaMarkV          // Mesa/Boogie Mark V — 9 modes across 3 channels, Simul-Class
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

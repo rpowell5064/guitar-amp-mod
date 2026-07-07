@@ -75,7 +75,7 @@ static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
 static constexpr int kDrDs1Idx  = 4;   // drive model slot = Grunge DS (DS-1)
 static constexpr int kDrKlonIdx = 5;   // drive model slot = Gilded Horse (Klon)
 static constexpr int kDrSd1Idx  = 6;   // drive model slot = Super Nova (Boss SD-1)
-static constexpr int kDrMax     = 6;   // highest dr_model index
+static constexpr int kDrMax     = 7;   // highest dr_model index (7 = Preamp 250 / DOD 250)
 
 // pi-Stomp footswitches emit CC 60..63 (one per switch). A received CC in this
 // range is one switch "press" → preset recall / bank combo. Change here if the
@@ -99,7 +99,7 @@ static constexpr int kBanks = 32, kSlots = 4;
 // BUMP whenever the built-in factory presets change — on load, a saved store with an
 // older rev has its FACTORY slots refreshed from the binary (user slots untouched), so
 // preset fixes actually reach existing users instead of being overridden by the .dat.
-static constexpr uint32_t kFactoryRev = 3;   // 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus
+static constexpr uint32_t kFactoryRev = 10;  // 10: real Plexi loudness for Nevermind Wall/Mauve Haze/Hazy Solo (they were mis-loading as Backline; re-measured) + Nevermind Wall reworked to Plexiglass. 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus. 4: + Angine de Poitrine bank (Bank 13, microtonal shimmer). 5: Bank 13 B/C -> Radiohead (Anyone Can Play Guitar / There There); kept Quarter-Tone Lead. 6: Cardinal Lead drive -> Preamp 250 (DOD 250). 7: Cardinal Lead re-staged (DOD drive 0.48->0.25, amp gain 0.78->0.62) — was too hot/mushy. 8: Cardinal Lead out_level re-measured on-device (-17.3->-19.2; DOD250 denser than the old RAT)
 struct Preset {
     bool  used = false;
     char  name[32] = {0};
@@ -117,7 +117,7 @@ static inline bool isParamPort(int i) {
 }
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
-static const AmpModel kAmpMap[10] = {
+static const AmpModel kAmpMap[12] = {
     AmpModel::FenderDeluxe, AmpModel::MarshallJCM800, AmpModel::EVH5150III,
     AmpModel::SunnModelT,   AmpModel::OrangeRockerverb50,
     AmpModel::NeuralCustom,        // 5 = NAM (placeholder; not built as an algo amp)
@@ -125,15 +125,19 @@ static const AmpModel kAmpMap[10] = {
     AmpModel::HiwattDR103,         // 7 = Hiwatt (high-headroom British clean)
     AmpModel::VoxAC30,             // 8 = Vox AC30 Top Boost (EL84 chime)
     AmpModel::PeaveyBackstage,     // 9 = Backline Plus (solid-state Peavey Backstage)
+    AmpModel::MarshallPlexi,       // 10 = Plexiglass (Marshall 1959 Super Lead, EL34)
+    AmpModel::MesaMarkV,           // 11 = Cali V (Mesa Mark V, 9 modes, Simul-Class)
 };
-static const int   kCanonical[10] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0 }; // PowerAmp default lookup ([7] Hiwatt, [8] Vox, [9] Backline → clean PA)
+static const int   kCanonical[12] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1 }; // PowerAmp default lookup ([10] Plexi, [11] Mesa → JCM800 EL34 PA)
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;
 static constexpr int kVoxIdx      = 8;
 static constexpr int kBacklineIdx = 9;
-static const int   kAmpTube[10]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0 }; // 6L6/EL34/EL34/6L6/—/EL34/EL34/EL84/SS(n-a)
-static const float kAmpMakeup[10] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 1.3f, 1.6f, 2.5f };  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe)
+static constexpr int kPlexiIdx    = 10;   // Plexiglass (Marshall 1959 Super Lead)
+static constexpr int kMesaIdx     = 11;   // Cali V (Mesa Mark V)
+static const int   kAmpTube[12]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1 }; // …/EL34/EL34/6L6-EL34 Simul
+static const float kAmpMakeup[12] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 1.3f, 1.6f, 2.5f, 1.0f, 1.0f }; // [11] Mesa (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
 // Soft ceiling on the amp INPUT: x -> A*tanh(x/A). Gives the amp headroom so a hot upstream
 // block (esp. the fuzz, which outputs ~0 dBFS = +14 dB over a guitar) can't slam the guitar-
 // level front-end into mush. Transparent at guitar level (~-0.2 dB @ -14 dBFS), soft-limits
@@ -142,10 +146,10 @@ static const float kAmpMakeup[10] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f,
 static constexpr float kAmpInputCeil = 0.75f;
 
 // Indexed by dr_model port: 0/1/2/4/5 = algorithmic, 3 = NAM (special-cased, entry unused).
-static const OverdriveType kDriveMap[7] = {
+static const OverdriveType kDriveMap[8] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
     OverdriveType::ProcoRAT /* [3]=NAM placeholder, never used */, OverdriveType::DS1,
-    OverdriveType::Klon, OverdriveType::SuperOverdriveSD1,
+    OverdriveType::Klon, OverdriveType::SuperOverdriveSD1, OverdriveType::DOD250,
 };
 
 // Binson Echorec rotary program -> playback-head bitmask (mirrors delay plugin).
@@ -638,6 +642,15 @@ static_assert(HF_NAIL_BYPASS == HF_NAIL_POS + 7 && HF_NAIL_POS == HF_OC_BYPASS +
 //   * Tempo-sync ports, 4 contiguous [HF_DL_SYNC..HF_MD_DIV], added v13.
 static_assert(HF_MD_DIV == HF_DL_SYNC + 3 && HF_DL_SYNC == HF_NAIL_BYPASS + 1 && HF_MD_DIV < HF_SW_A,
               "tempo-sync ports must be contiguous, after the Nail block and before the commands");
+//   * Octave microtonal shimmer, 2 contiguous [HF_OC_MICRO, HF_OC_INTERVAL], added v14.
+static_assert(HF_OC_INTERVAL == HF_OC_MICRO + 1 && HF_OC_MICRO == HF_MD_DIV + 1 && HF_OC_INTERVAL < HF_SW_A,
+              "octave shimmer ports must be contiguous, after tempo-sync and before the commands");
+//   * Cali V (Mesa Mark V) mode selector [HF_AMP_MV_MODE] added v15, then the 5-band graphic EQ
+//     [HF_AMP_MV_GEQ0..4] added v16 — all 6 contiguous, after the octave ports, before the commands.
+static_assert(HF_AMP_MV_MODE == HF_OC_INTERVAL + 1 && HF_AMP_MV_GEQ0 == HF_AMP_MV_MODE + 1
+              && HF_AMP_MV_GEQ4 == HF_AMP_MV_GEQ0 + 4 && HF_AMP_MV_EQPRESET == HF_AMP_MV_GEQ4 + 1
+              && HF_AMP_MV_EQPRESET == HF_SW_A - 1,
+              "amp_mv_mode + 5 graphic-EQ + eqpreset must be contiguous, before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -667,6 +680,21 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float syncdef[4] = {0.0f, 5.0f, 0.0f, 2.0f};             // dl_sync,dl_div,md_sync,md_div
     const bool syncGap = (srcVer < 13);
     const int syncAt = HF_DL_SYNC, syncEnd = HF_DL_SYNC + 4;              // sync gap [syncAt,syncEnd)
+    // v14 inserted the Octave microtonal shimmer [HF_OC_MICRO, HF_OC_INTERVAL] before the
+    // commands; defaults = shimmer OFF (0), interval 0 (quarter-tone up).
+    static const float ocdef[2] = {0.0f, 0.0f};                          // oc_micro, oc_interval
+    const bool ocGap = (srcVer < 14);
+    const int ocAt = HF_OC_MICRO, ocEnd = HF_OC_MICRO + 2;               // oc gap [ocAt,ocEnd)
+    // v15 inserted the Cali V (Mesa Mark V) mode selector [HF_AMP_MV_MODE] before the commands;
+    // default 6 (Mark IIC+, the hero lead mode).
+    const bool mvGap = (srcVer < 15);
+    const int mvAt = HF_AMP_MV_MODE, mvEnd = HF_AMP_MV_MODE + 1;         // mode gap [mvAt,mvEnd)
+    // v16 inserted the Cali V 5-band graphic EQ [HF_AMP_MV_GEQ0..4]; default 0.5 (flat) each.
+    const bool gvGap = (srcVer < 16);
+    const int gvAt = HF_AMP_MV_GEQ0, gvEnd = HF_AMP_MV_GEQ0 + 5;         // geq gap [gvAt,gvEnd)
+    // v17 inserted the Cali V graphic-EQ preset selector [HF_AMP_MV_EQPRESET]; default 0 (Custom).
+    const bool eqGap = (srcVer < 17);
+    const int eqAt = HF_AMP_MV_EQPRESET, eqEnd = HF_AMP_MV_EQPRESET + 1;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -678,6 +706,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (byGap && i >= byAt && i < byEnd)        vals[i] = 0.0f;       // new bypass = active
         else if (nailGap && i >= nailAt && i < nailEnd)  vals[i] = naildef[i - nailAt];
         else if (syncGap && i >= syncAt && i < syncEnd)  vals[i] = syncdef[i - syncAt];
+        else if (ocGap && i >= ocAt && i < ocEnd)        vals[i] = ocdef[i - ocAt];
+        else if (mvGap && i >= mvAt && i < mvEnd)        vals[i] = 6.0f;   // Mesa mode default = Mark IIC+
+        else if (gvGap && i >= gvAt && i < gvEnd)        vals[i] = 0.5f;   // Mesa graphic-EQ band = flat
+        else if (eqGap && i >= eqAt && i < eqEnd)        vals[i] = 0.0f;   // Mesa EQ preset = Custom
         else                                             vals[i] = old[o++];
     }
 }
@@ -686,7 +718,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(13); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v13: + tempo-sync ports (factoryRev still after N_PORTS)
+    putU32(17); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v17: + Cali V graphic-EQ preset selector (factoryRev still after N_PORTS)
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -706,9 +738,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 13) return false;
+    if (ver < 2 || ver > 17) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 13);  // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12) + tempo sync (v13)
+    const bool needMigrate  = (ver < 17);  // …Cali V mode (v15) + graphic EQ (v16) + EQ preset (v17)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -738,9 +770,8 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
             std::strncpy(pr.cabNamPath,cn,kPathMax-1); pr.cabNamPath[kPathMax-1]='\0';
         }
     }
-    uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
-    p->curBank = cb < kBanks ? cb : 0;
-    p->curSlot = cs < kSlots ? cs : 0;
+    uint32_t cb=0, cs=0; getU32(cb); getU32(cs);   // (saved cursor read for byte alignment, then discarded)
+    p->curBank = 0; p->curSlot = 0;   // ALWAYS land on the first preset (Bank 1 / A) on load
     if (factoryRev < kFactoryRev) seedFactoryPresets(p);   // refresh updated factory slots (user slots kept)
     return true;
 }
@@ -988,7 +1019,7 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
-    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kBacklineIdx)]);
+    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kMesaIdx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
@@ -1274,9 +1305,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->nail->setParameter("texture", *p->ports[HF_NAIL_TEXTURE]);
     p->nail->setParameter("level",   *p->ports[HF_NAIL_LEVEL]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kBacklineIdx);
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kMesaIdx);
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
-    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx);
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx);
     if (ampIsAlgo && ampModel != p->lastAmpModel) {   // rebuild only for algo models
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
@@ -1313,6 +1344,16 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("fat",     *p->ports[HF_AMP_FR_FAT]);
         amp->setParameter("c45",     *p->ports[HF_AMP_FR_C45]);
         amp->setParameter("sat",     *p->ports[HF_AMP_FR_SAT]);
+    }
+    // Cali V (Mesa Mark V): 9-mode selector (0..8) + 5-band graphic EQ (each 0..1, 0.5 = flat).
+    if (ampModel == kMesaIdx) {
+        amp->setParameter("mode", *p->ports[HF_AMP_MV_MODE]);
+        amp->setParameter("geq0", *p->ports[HF_AMP_MV_GEQ0]);
+        amp->setParameter("geq1", *p->ports[HF_AMP_MV_GEQ1]);
+        amp->setParameter("geq2", *p->ports[HF_AMP_MV_GEQ2]);
+        amp->setParameter("geq3", *p->ports[HF_AMP_MV_GEQ3]);
+        amp->setParameter("geq4", *p->ports[HF_AMP_MV_GEQ4]);
+        amp->setParameter("eqpreset", *p->ports[HF_AMP_MV_EQPRESET]);   // 0 Custom (sliders) or baked "V"
     }
     int desiredTube;
     if (*p->ports[HF_AMP_PAMP_AUTO] > 0.5f) {
@@ -1406,9 +1447,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->wah.setParameter("mix",   *p->ports[HF_WH_MIX]);
     // Octave
     p->octave.setBypass(false);
-    p->octave.setParameter("up",   *p->ports[HF_OC_UP]);
-    p->octave.setParameter("down", *p->ports[HF_OC_DOWN]);
-    p->octave.setParameter("dry",  *p->ports[HF_OC_DRY]);
+    p->octave.setParameter("up",       *p->ports[HF_OC_UP]);
+    p->octave.setParameter("down",     *p->ports[HF_OC_DOWN]);
+    p->octave.setParameter("dry",      *p->ports[HF_OC_DRY]);
+    p->octave.setParameter("micro",    *p->ports[HF_OC_MICRO]);
+    p->octave.setParameter("interval", *p->ports[HF_OC_INTERVAL]);
 
     // ── Resolve chain order (Input Trim locked first; rest sorted by pos) ──
     int order[B_COUNT];
@@ -1612,7 +1655,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(13);                 // version (13: + tempo-sync; 12: + Nail block; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph delay; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(17);                 // version (17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1682,9 +1725,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 13) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 17) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 13);     // voicing/boost (v4-6) + Seraph (v7) + Wah/Octave (v8) + bypass (v9) + Nail (v12) + tempo sync (v13)
+        const bool needMigrate  = (ver < 17);     // …graphic EQ (v16) + Cali V EQ preset (v17)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1711,9 +1754,8 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
                 std::strncpy(pr.cabNamPath,cn,kPathMax-1); pr.cabNamPath[kPathMax-1]='\0';
             }
         }
-        uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
-        p->curBank = cb < kBanks ? cb : 0;
-        p->curSlot = cs < kSlots ? cs : 0;
+        uint32_t cb=0, cs=0; getU32(cb); getU32(cs);   // (saved cursor read for byte alignment, then discarded)
+        p->curBank = 0; p->curSlot = 0;   // ALWAYS land on the first preset (Bank 1 / A) on load
         if (factoryRev < kFactoryRev) seedFactoryPresets(p);   // refresh updated factory slots (user slots kept)
         p->pendingRecall = true;   // first run applies the active preset to the DSP
     }

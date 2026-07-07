@@ -24,8 +24,8 @@
         "open-source"
       ],
       "nam": true,
-      "short": "Six original guitar-amp voicings + a modeled power-amp stage, plus a NAM loader for your own captures.",
-      "long": "A complete guitar amp in one plugin. Six original preamp voicings run from sparkling clean to saturated high-gain, each feeding a modeled power-amp section — sag, presence, depth and resonance — for real cab-pushing feel rather than a flat distortion. A shared, footswitch-friendly tone stack keeps switching between voicings fast on stage.\n\nOn 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures to sit alongside the algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted and the six models run on their own. Works standalone or as part of the Hex Chain suite / Hex Forge.\n\nFree and open source (GPL-3). Amp names are original parodies and are not affiliated with any manufacturer."
+      "short": "Eleven original guitar-amp voicings — sparkling clean to modern high-gain — each with a modeled power amp, plus a NAM loader.",
+      "long": "A whole wall of amps in one plugin. ELEVEN original preamp voicings cover the tonal map: shimmering American clean, chimey British top-boost, high-headroom British clean, plexi sparkle and hot-rodded 800-style crunch, boutique and 5150-style high-gain, doom/fuzz grind, an Orange-flavoured lead, a solid-state voice — and a 9-mode Mesa-style channel switcher (Clean / Crunch / Lead across three channels) with its own 5-band graphic EQ. Every voicing feeds a modeled power-amp section — sag, presence, depth and resonance — for real cab-pushing feel and touch dynamics rather than a flat distortion. A shared, footswitch-friendly tone stack keeps switching between voicings fast on stage.\n\nOn 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures alongside the eleven algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted. Works standalone or as part of the Hex Chain suite / Hex Forge.\n\nFree and open source (GPL-3). Amp names are original parodies and are not affiliated with any manufacturer."
     },
     "cab": {
       "title": "Hex Chain Cab",
@@ -68,8 +68,8 @@
         "open-source"
       ],
       "nam": true,
-      "short": "Three original overdrive/boost voicings.",
-      "long": "Three original drive and boost voicings — Green Man, New Dawn and Dear Rodent Boy — covering transparent clean boost, mid-pushed overdrive and tight, focused gain, each with level and mix. Stack them in front of the Hex Chain Amp or your own rig.\n\nOn 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted. Free and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer."
+      "short": "Seven original overdrive, boost & distortion voicings + a NAM loader.",
+      "long": "Seven original drive, boost and distortion voicings in one pedal — from a transparent clean boost and a mid-pushed overdrive to tight rodent-style gain, a fuzzy grunge distortion, a mythical-horse transparent overdrive, a spacey high-gain, and a vintage preamp-distortion, each with tone, level and dry/wet mix. Stack them in front of the Hex Chain Amp or your own rig.\n\nOn 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the seven algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted. Free and open source (GPL-3). Names are original parodies and are not affiliated with any manufacturer."
     },
     "fuzz": {
       "title": "Hex Chain Fuzz",
@@ -265,8 +265,8 @@
         "open-source"
       ],
       "nam": true,
-      "short": "Your entire guitar rig — amp, cab, drives and effects — in one reorderable plugin with presets and footswitch recall.",
-      "long": "Hex Forge is the flagship: the whole Hex Chain signal chain in a single plugin. Gate, compressor, drive, amp, cab, modulation, delay, reverb and an input-trim/utility block are all here — each independently bypassable and freely reorderable — so you build a complete board without patching nine separate plugins.\n\nA built-in 8x4 preset/bank engine with A/B/C/D footswitch recall (and hold-both bank chords) lets you switch whole rigs hands-free. The factory pedalboard ships pre-wired, so the pi-Stomp footswitches work the moment you load it — no MIDI setup.\n\nOn 64-bit/desktop targets the amp, drive and cab slots load your own .nam captures; on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3)."
+      "short": "Your entire guitar rig in one plugin — 11 amps, 7 drives, fuzz/mod/delay/reverb/wah/octave, 50+ artist presets, footswitch recall, and a full node-chain UI.",
+      "long": "Hex Forge is the flagship — the whole Hex Chain signal chain in a SINGLE plugin, rebuilt around a modern node-chain interface: every block is a card you tap to edit, drag to reorder, and click to bypass, with per-model faceplates, live tone readouts and a built-in strobe tuner.\n\nThe blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, modulation, delay, reverb, wah, octave and a 'Nail' hard-clip stage — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:\n\n- AMP: ELEVEN original voicings (clean to modern high-gain) including a 9-mode Mesa-style channel switcher with a 5-band graphic EQ, each on a modeled power amp.\n- DRIVE: seven overdrive/boost/distortion voicings.\n- FUZZ: multiple Big-Muff eras plus Tone Bender and Octavia styles.\n- Plus modulation (chorus/phaser/flanger/tremolo/rotary), a dual 'Halo'-style delay, reverb, wah and a pitched octave/shimmer.\n\nA 32-bank / 128-slot preset engine ships loaded with 50+ song- and artist-inspired rigs — Nirvana, Ghost, Pink Floyd, Hendrix, Radiohead, Mastodon and more — recalled hands-free via A/B/C/D footswitches and hold-both bank chords. The factory pedalboard is pre-wired, so the pi-Stomp footswitches work the moment you load it — no MIDI setup.\n\nOn 64-bit/desktop targets the amp, drive and cab slots load your own .nam captures; on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3)."
     },
     "wah": {
       "title": "Hex Chain Wah",

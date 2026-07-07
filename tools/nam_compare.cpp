@@ -185,6 +185,10 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     for (auto& c : name) c = char(std::tolower((unsigned char)c));
     if (name == "fender")     { out = {AmpModel::FenderDeluxe,       0, 0, false, "Fender Deluxe"}; return true; }
     if (name == "marshall")   { out = {AmpModel::MarshallJCM800,     1, 1, false, "Marshall JCM800"}; return true; }
+    if (name == "plexi" || name == "superlead" || name == "plexiglass" || name == "1959")
+                              { out = {AmpModel::MarshallPlexi,       1, 1, false, "Marshall Plexi 1959"}; return true; }
+    if (name == "markv" || name == "mesa" || name == "mkv" || name == "boogie")
+                              { out = {AmpModel::MesaMarkV,           1, 1, false, "Mesa Mark V"}; return true; }
     if (name == "evh")        { out = {AmpModel::EVH5150III,         2, 1, false, "EVH 5150 III"}; return true; }
     if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 0, true,  "Sunn Model T"}; return true; }
     if (name == "rockerverb" || name == "orange")
@@ -206,6 +210,10 @@ static bool resolveModel(std::string name, ModelSpec& out) {
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "DS-1 (Grunge DS)", true, OverdriveType::DS1}; return true; }
     if (name == "sd1" || name == "superod" || name == "supernova")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Boss SD-1 (Super Nova)", true, OverdriveType::SuperOverdriveSD1}; return true; }
+    if (name == "klon" || name == "gildedhorse" || name == "gilded" || name == "centaur")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Klon Centaur (Gilded Horse)", true, OverdriveType::Klon}; return true; }
+    if (name == "dod250" || name == "dod" || name == "preamp250" || name == "250")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "DOD 250 (Preamp 250)", true, OverdriveType::DOD250}; return true; }
     // ── Big Muff fuzz (EHXBigMuff, era via --era; sustain/tone/vol via --gain/--tone/--level) ──
     if (name == "muff" || name == "bigmuff" || name == "italianhero")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Muff Fuzz (Italian Hero)"}; out.fuzz = true; return true; }
@@ -219,6 +227,7 @@ struct Knobs {
     float channel = 0.0f, reson = 0.5f;
     float tone = 0.5f, level = 0.7f;   // drive-pedal: tone=filter, level=volume (gain=drive)
     float fat = 0.0f, c45 = 0.0f, sat = 0.0f;  // Friedman BE-Deluxe voicing toggles
+    float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+)
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -304,6 +313,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     amp.setParameter("fat", k.fat);   // Friedman toggles (ignored by other models)
     amp.setParameter("c45", k.c45);
     amp.setParameter("sat", k.sat);
+    amp.setParameter("mode", k.mode); // Mesa Mark V mode 0..8 (ignored by other models)
 
     PowerAmpProcessor pa;
     pa.prepare(sr, BLK, 1);
@@ -643,6 +653,7 @@ int main(int argc, char** argv) {
     knob("--sag", k.sag);     knob("--channel", k.channel); knob("--reson", k.reson);
     knob("--tone", k.tone);   knob("--level", k.level);   // drive-pedal filter/volume
     knob("--fat", k.fat);     knob("--c45", k.c45);       knob("--sat", k.sat);  // Friedman toggles
+    knob("--mode", k.mode);   // Mesa Mark V mode 0..8
 
     // Load the reference capture.
     NamModel nam;

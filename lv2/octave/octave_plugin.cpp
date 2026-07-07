@@ -10,7 +10,7 @@
 enum OctavePorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
     P_UP, P_DOWN, P_DRY,
-    P_BYPASS, P_N_PORTS
+    P_BYPASS, P_MICRO, P_INTERVAL, P_N_PORTS
 };
 
 struct OctavePlugin {
@@ -33,9 +33,11 @@ static void octave_connect_port(LV2_Handle h, uint32_t port, void* data) {
 static void octave_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<OctavePlugin*>(h);
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
-    p->dsp.setParameter("up",   *p->ports[P_UP]);
-    p->dsp.setParameter("down", *p->ports[P_DOWN]);
-    p->dsp.setParameter("dry",  *p->ports[P_DRY]);
+    p->dsp.setParameter("up",       *p->ports[P_UP]);
+    p->dsp.setParameter("down",     *p->ports[P_DOWN]);
+    p->dsp.setParameter("dry",      *p->ports[P_DRY]);
+    p->dsp.setParameter("micro",    *p->ports[P_MICRO]);
+    p->dsp.setParameter("interval", *p->ports[P_INTERVAL]);
     float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
     float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };
     p->dsp.process(ins, outs, static_cast<int>(n), 2);

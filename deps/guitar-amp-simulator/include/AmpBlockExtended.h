@@ -68,6 +68,8 @@ public:
             case AmpModel::HiwattDR103:         fid = FID::HiwattDR103;         break;
             case AmpModel::VoxAC30:             fid = FID::VoxAC30;             break;
             case AmpModel::PeaveyBackstage:    fid = FID::PeaveyBackstage;     break;
+            case AmpModel::MarshallPlexi:      fid = FID::MarshallPlexi1959;   break;
+            case AmpModel::MesaMarkV:          fid = FID::MesaMarkV;           break;
             default:                            isExtended = false;              break;
         }
 

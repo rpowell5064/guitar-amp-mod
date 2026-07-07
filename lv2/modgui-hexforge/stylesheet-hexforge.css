@@ -101,7 +101,7 @@
     -webkit-text-fill-color: transparent; color: transparent;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out-sub {
-    font-size: 10px; font-weight: 600; letter-spacing: .5px; color: #8b93a1;
+    font-size: 10px; font-weight: 600; letter-spacing: .5px; color: #c2cad8;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out-spacer { flex: 1; }
 /* CLIP indicator: dim until the output hits full scale, then red + glow */
@@ -200,6 +200,14 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-item.hf-ps-active {
     color: #06121a; background: linear-gradient(135deg,#19e0ff,#3df0ff); border-color: #aef2ff;
 }
+/* "+ Add Bank" — reveals the next empty bank to save into */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-addrow { display: flex; justify-content: center; margin: 8px 0 4px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-addbank {
+    font-size: 11px; font-weight: 700; letter-spacing: .5px; color: #19e0ff; cursor: pointer;
+    background: rgba(25,224,255,.08); border: 1px dashed rgba(25,224,255,.45); border-radius: 6px;
+    padding: 5px 16px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-addbank:hover { background: rgba(25,224,255,.18); border-style: solid; color: #fff; }
 
 /* ── CHAIN STRIP — clickable nodes in signal-flow order (IN → … → OUT) ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-chain {
@@ -339,6 +347,20 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node.hf-byp .hf-node-dot {
     background: #2b313b; box-shadow: none; border-color: rgba(255,255,255,.2);
 }
+/* Octave "microtonal shimmer" engaged → a field of quarter-tone beat dots drifts over
+   the node (script-hexforge.js adds .hf-oc-micro when oc_micro > 0). ::before paints
+   above the node base but behind the icon/name/dot; hidden when the block is bypassed. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node[data-block="oc"].hf-oc-micro::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(25,224,255,.50) 0, rgba(25,224,255,.50) 1.8px, rgba(25,224,255,0) 2.6px),
+        radial-gradient(circle at 50% 50%, rgba(255,43,214,.40) 0, rgba(255,43,214,.40) 1.5px, rgba(255,43,214,0) 2.3px);
+    background-size: 16px 16px, 16px 16px;
+    background-position: 0 0, 8px 8px;
+    animation: hf-oc-polka 5.5s linear infinite;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node[data-block="oc"].hf-oc-micro.hf-byp::before { display: none; }
+@keyframes hf-oc-polka { to { background-position: 16px 16px, 24px 24px; } }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node-bind { display: none; }
 
 /* "+ ADD" palette of removed effects */
@@ -387,7 +409,7 @@
     width: 5px; height: 24px; background: var(--acc); border-radius: 3px; box-shadow: 0 0 12px var(--acc);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dslot { display: inline-flex; align-items: center; gap: 8px; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dslot-lbl { font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #8b93a1; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dslot-lbl { font-size: 10px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dslot .hf-posn {
     width: 50px; font-size: 13px; font-weight: 800; color: #fff; text-align: center;
     background: rgba(0,0,0,.5); border: 1px solid var(--acc); border-radius: 4px; position: relative; overflow: visible; line-height: 1.9;
@@ -427,7 +449,7 @@
     color: #e2e6ec; text-shadow: 0 1px 2px rgba(0,0,0,.85); white-space: normal; overflow: visible; text-overflow: clip; text-align: center;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dbody .hf-knob-img { order: 1; margin: 0 auto; background-size: auto 42px; height: 42px; width: 42px; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dbody .hf-knob-v { order: 2; margin: 4px 0 0; font-size: 10px; letter-spacing: .3px; color: var(--acc); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dbody .hf-knob-v { order: 2; margin: 4px 0 0; font-size: 11px; font-weight: 800; letter-spacing: .3px; color: #f2f6fc; text-shadow: 0 0 5px var(--acc), 0 1px 2px rgba(0,0,0,.95); }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dbody .hf-sw-img { order: 1; margin: 8px auto 0; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dbody .hf-sel-wrap,
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dbody .hf-ir {
@@ -457,7 +479,7 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out .hf-meter { height: 14px; margin: 0 6px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-inmeter { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-inmeter-lbl {
-    font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #8b93a1; flex: 0 0 auto;
+    font-size: 10px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; color: #c2cad8; flex: 0 0 auto;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-inmeter .hf-meter { flex: 1 1 auto; max-width: 520px; height: 16px; }
 
@@ -470,12 +492,12 @@
     background-repeat: no-repeat; background-size: auto 40px; height: 40px; width: 40px; margin: 1px auto 0;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-knob-t {
-    display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #d7dbe2; margin-top: 4px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; color: #eef2f8; margin-top: 4px;
+    text-shadow: 0 1px 2px rgba(0,0,0,.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-knob-v {
-    display: block; font-size: 9px; font-weight: 600; color: var(--acc); margin-top: 2px; line-height: 1.25;
-    white-space: nowrap; overflow: visible; text-overflow: clip;
+    display: block; font-size: 9px; font-weight: 800; color: #f2f6fc; margin-top: 2px; line-height: 1.25;
+    text-shadow: 0 0 4px var(--acc), 0 1px 2px rgba(0,0,0,.9); white-space: nowrap; overflow: visible; text-overflow: clip;
 }
 
 /* SWITCHES (toggles) */
@@ -501,7 +523,7 @@
 /* ENUMERATED SELECTS (models / type / heads / slot) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-sel-wrap { display: block; margin: 3px 0; text-align: left; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-sel-label {
-    display: block; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #8b93a1; margin: 0 0 2px 1px;
+    display: block; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; margin: 0 0 2px 1px;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-sel {
     background: rgba(0,0,0,.5); border: 1px solid var(--acc); border-radius: 4px;
@@ -518,6 +540,27 @@
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding: 3px 9px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .mod-enumerated .mod-enumerated-list > div:hover { background: rgba(255,255,255,.2); cursor: pointer; }
+/* Visible scrollbars ON the long option dropdowns + preset list (overrides the global scrollbar-hide
+   above). Long lists (amp models, IRs, 32 presets) now scroll with a real, accent-coloured bar. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-enumerated-list,
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-list { scrollbar-width: thin; scrollbar-color: var(--acc) rgba(255,255,255,.10); overscroll-behavior: contain; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-enumerated-list::-webkit-scrollbar,
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-list::-webkit-scrollbar { width: 11px !important; height: 11px !important; display: block !important; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-track,
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-list::-webkit-scrollbar-track { background: rgba(255,255,255,.08); border-radius: 6px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-thumb,
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ps-list::-webkit-scrollbar-thumb { background: var(--acc); border-radius: 6px; border: 2px solid rgba(0,0,0,.55); min-height: 28px; }
+
+/* Boojum V (Mesa Mark V) two-tier Channel/Mode segmented selector — no dropdown, nothing clips */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 5px 0; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-lbl { width: 62px; text-align: right; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-seg { display: inline-flex; border: 1px solid var(--acc); border-radius: 5px; overflow: hidden; background: rgba(0,0,0,.5); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-btn { padding: 5px 15px; font-size: 11px; font-weight: 700; color: #cdd3dd; cursor: pointer; user-select: none; border-right: 1px solid rgba(255,255,255,.12); min-width: 52px; text-align: center; transition: background .12s, color .12s; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-seg .hf-mv-btn:last-child { border-right: none; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-btn:hover { background: rgba(255,255,255,.10); color: #fff; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-btn.hf-mv-on { background: var(--acc); color: #10131a; box-shadow: inset 0 0 8px rgba(0,0,0,.35); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-geqlbl { text-align: center; font-size: 9px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; margin: 8px 0 2px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mv-geqwrap.hf-mv-dim { opacity: .38; pointer-events: none; }   /* a preset drives the EQ; pick Custom to adjust the sliders */
 
 /* CAB IR picker */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ir { display: block; margin: 3px 0 4px; text-align: left; }
@@ -628,6 +671,8 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m7 { --panel:url(/resources/faceplate-m7.png{{{ns}}}); --cab:url(/resources/cabinet-m7.png{{{ns}}}); --tint:rgba(72,82,92,.30);    --badge:#20262c; } /* Hi-Volt — Hiwatt polished silver (dark badge) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m8 { --panel:url(/resources/faceplate-m8.png{{{ns}}}); --tint:rgba(150,112,60,.36);  --badge:#241606; } /* Chime Thirty — Vox copper/bronze (dark badge) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m9 { --panel:url(/resources/faceplate-m9.png{{{ns}}}); --tint:rgba(46,96,150,.34);   --badge:#dbe7f5; } /* Backline Plus — Peavey slate + blue (light badge) */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m10 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --cab:url(/resources/cabinet-m1.png{{{ns}}}); --tint:rgba(196,158,66,.36); --badge:#1a1405; } /* Plexiglass — brighter plexi gold (reuses the Marshall panel) */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m0.png{{{ns}}}); --cab:url(/resources/cabinet-m0.png{{{ns}}}); --tint:rgba(34,58,46,.40); --badge:#dfeae4; } /* Boojum V — Mesa black/chrome + green tint (reuses the silver panel) */
 
 /* Amp knob groups (Preamp / Tone Stack / Power Amp / channel-specific) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 12px; }
@@ -637,7 +682,7 @@
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-agroup-title {
     display: block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
-    color: var(--acc); margin-bottom: 6px; text-shadow: 0 0 8px rgba(0,0,0,.5);
+    color: #eef3fa; margin-bottom: 6px; text-shadow: 0 0 7px var(--acc), 0 1px 3px rgba(0,0,0,.9);   /* ADA: near-white + accent glow (was accent-on-tint = low contrast) */
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: wrap; gap: 8px 12px; }
 
@@ -688,7 +733,7 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn {
     display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0;
     border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.04);
-    color: #8b93a1; cursor: pointer; transition: color .12s, border-color .12s, background .12s, box-shadow .12s;
+    color: #c2cad8; cursor: pointer; transition: color .12s, border-color .12s, background .12s, box-shadow .12s;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn svg { width: 18px; height: 18px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerbtn:hover { color: #cfd6e4; border-color: rgba(255,255,255,.28); }
@@ -733,5 +778,5 @@
     transition: left .09s ease-out, background .12s, box-shadow .12s;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-intune .hf-tuner-needle { background: #2ee06a; box-shadow: 0 0 18px 4px rgba(46,224,106,.9); }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-cents { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #8b93a1; text-transform: uppercase; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-cents { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 1px; color: #c2cad8; text-transform: uppercase; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-intune .hf-tuner-cents { color: #2ee06a; }

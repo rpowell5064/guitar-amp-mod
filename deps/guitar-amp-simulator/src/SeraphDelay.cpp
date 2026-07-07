@@ -99,8 +99,8 @@ float SeraphDelay::processSample(float x, int ch) noexcept {
     s.bufB[s.writeIdx] = x + fb * fbB;
     s.writeIdx = (s.writeIdx + 1) % bufLen;
 
-    const float wet = stereo_ ? (panA_[ch] * rA + panB_[ch] * rB)
-                              : (0.5f * (rA + rB));
+    const float wet = stereo_ ? (panA_[ch] * rA + bLev_ * panB_[ch] * rB)
+                              : (0.5f * (rA + bLev_ * rB));
     return x + mixSmoother_.current() * wet * duckGain_;
 }
 
@@ -158,4 +158,7 @@ void SeraphDelay::rebuildPan() noexcept {
     const float h  = 1.57079633f;  // pi/2
     panA_[0] = std::cos(pA * h); panA_[1] = std::sin(pA * h);
     panB_[0] = std::cos(pB * h); panB_[1] = std::sin(pB * h);
+    // Engine B fades in with width: at width 0 (what Output Mono-Sum forces) it drops to a hint so
+    // the mono repeats stay clean/coherent; by full width it's back to a full dual ping-pong.
+    bLev_ = 0.28f + 0.72f * stereoWidth_;
 }

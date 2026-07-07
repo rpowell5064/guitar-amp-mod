@@ -22,9 +22,11 @@ public:
         HiwattDR103        = 6,
         VoxAC30            = 7,
         PeaveyBackstage    = 8,
+        MarshallPlexi1959  = 9,
+        MesaMarkV          = 10,
     };
 
-    static constexpr int kNumModels = 9;
+    static constexpr int kNumModels = 11;
 
     // Returns ownership of a newly constructed model. Never returns null;
     // unknown IDs fall back to SunnModelT.

@@ -116,14 +116,13 @@ add(
     md={"enable":1,"type":"Nevermind Chorus","rate":0.42,"depth":1.0,"mix":0.68,"width":0.6},
     rv={"enable":1,"predelay":8,"decay":0.9,"damping":0.6,"mix":0.14},
     cab={"lowcut":85,"highcut":9500}),
-  preset(1, 2, "Nevermind Wall", out_level=OUT,           # Smells Like Teen Spirit — distorted (DS-1)
-    # Boss DS-1 (Grunge DS) into an edge-of-crunch Marshall — the pre-chorus/chorus wall.
-    # DS-1 tone backed off (it's the fizziest dirt in the suite) + amp gain/treble down.
-    # RESEARCHED: DS-1 (dist ~4 oclock, tone ~10 oclock) INTO a clean Fender Bassman -> Marshall
-    # cab; Small Clone runs AFTER the DS-1 to thicken the wall. Gate kills the DS-1 hiss.
-    dr={"enable":1,"model":"Grunge DS","drive":0.88,"tone":0.35,"level":1.0,"mix":1.0},
-    md={"enable":1,"type":"Nevermind Chorus","rate":0.42,"depth":1.0,"mix":0.4,"width":0.5},
-    amp={"model":"Clean Meanie","gain":0.35,"bass":0.6,"mid":0.7,"treble":0.55,"presence":0.5,"master":0.8,"sag":0.4},
+  preset(1, 2, "Nevermind Wall", out_level=OUT,           # USER-PRESERVED 2026-07-07 (reworked on-device)
+    # User's on-device rework — Plexiglass amp + a backed-off Grunge DS (DS-1) into it. Baked verbatim.
+    # NOTE: when this was dialed, "Plexiglass" was mis-loading as Backline Plus (worker model-clamp bug,
+    # fixed 2026-07-07) — so post-fix it plays the REAL Marshall Plexi; loudness may want a re-measure.
+    dr={"enable":1,"model":"Grunge DS","drive":0.335,"tone":1.0,"level":0.64,"mix":0.6525},
+    md={"enable":1,"type":"Nevermind Chorus","rate":0.3275,"depth":0.8725,"mix":0.22,"width":0.5},
+    amp={"model":"Plexiglass","gain":0.7225,"bass":0.3425,"mid":0.70,"treble":0.6825,"presence":0.5,"master":0.8,"sag":0.305},
     gt={"enable":1,"thresh":-48,"attack":1.5,"hold":120,"release":250,"hyst":8},
     cab_ir="@greenback",
     cab={"lowcut":85,"highcut":8200}),
@@ -207,10 +206,12 @@ add(
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":120,"release":260,"hyst":8},
     cab={"lowcut":90,"highcut":8200}),
   preset(3, 3, "Cardinal Lead", out_level=OUT,           # Ghost — Skeleta lead (Friedman HBE + sat)
-    # RESEARCHED (Sound on Sound): Skeleta solos = vintage Boss OD-1 (flat, no mid-hump; RAT is closer
-    # than TS) into HBE + MXR phaser; very stiff/modern.
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.78,"bass":0.38,"mid":0.48,"treble":0.65,"presence":0.7,"master":0.65,"sag":0.32},
-    dr={"enable":1,"model":"Dear Rodent Boy","drive":0.4,"tone":0.45,"level":0.65,"mix":1.0},
+    # DOD Overdrive Preamp 250 (Preamp 250 — op-amp hard-clip) as a solo boost into the HBE (per Fredrik
+    # Åkesson, Skeleta solos). VALUES = the user's own on-device dial-in (2026-07-05, read back from the
+    # preset store): amp gain pulled WAY back (0.24) + mids forward (0.73) + DOD drive low (0.178) so it's
+    # a clean mid-boost, not a stacked-gain wall. DO NOT re-tune without the user — this is their setting.
+    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.24,"bass":0.25,"mid":0.73,"treble":0.6975,"presence":0.7,"master":0.65,"sag":0.32},
+    dr={"enable":1,"model":"Preamp 250","drive":0.1775,"tone":0.6225,"level":0.55,"mix":1.0},
     md={"enable":1,"type":"Lush-2","rate":0.20,"depth":0.30,"mix":0.18,"width":0.30},  # subtle CE-2 chorus — user pref over the researched MXR phaser (phaser read wrong on-rig)
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":120,"release":260,"hyst":8},
     dl={"enable":1,"type":"Tape","time":350,"feedback":0.3,"mix":0.25,"width":0.35,"wow":0.002,"flutter":0.001},
@@ -272,9 +273,11 @@ add(
 # ── Bank 6 — JIMI HENDRIX (+ Sleep, doom singleton) ──────────────────────────
 add(
   preset(5, 0, "Mauve Haze", out_level=OUT,              # Jimi Hendrix — Purple Haze
-    # Germanium Fuzz Face (I Know It / Tone Bender) into a lower-gain Marshall plexi.
+    # Germanium Fuzz Face (I Know It) into a Marshall Super Lead PLEXI (Plexiglass — the actual
+    # Hendrix amp; JCM800 didn't exist until '81). Amp master up for power-amp grind, treble
+    # eased (plexi runs bright), gain moderate — the Fuzz Face is the dirt.
     fz={"enable":1,"pedal":"I Know It","sustain":0.7,"volume":0.55,"bias":0.55,"inputtrim":0.45,"getemp":0.4},
-    amp={"model":"Crunchy","gain":0.4,"bass":0.5,"mid":0.62,"treble":0.6,"presence":0.5,"master":0.5},
+    amp={"model":"Plexiglass","gain":0.42,"bass":0.5,"mid":0.6,"treble":0.5,"presence":0.5,"master":0.6,"sag":0.35},
     gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":8},
     cab={"lowcut":80,"highcut":8800},
     rv={"enable":1,"decay":1.3,"mix":0.08}),
@@ -283,15 +286,16 @@ add(
     # octave-fuzz lead. (Mauve Haze, two slots up, is the germanium Fuzz Face riff tone.)
     wh={"enable":1,"pos":2,"type":"Fixed","freq":0.55,"q":0.55,"mix":0.42},  # cocked-wah honk (tamed)
     fz={"enable":1,"pedal":"Octavia","sustain":0.62,"tone":0.5,"volume":0.4},  # Octavia is near-0dBFS; keep it near guitar level
-    amp={"model":"Crunchy","gain":0.3,"bass":0.5,"mid":0.62,"treble":0.55,"presence":0.5,"master":0.5},  # plexi kept fairly clean; the fuzz is the dirt
+    amp={"model":"Plexiglass","gain":0.35,"bass":0.5,"mid":0.6,"treble":0.5,"presence":0.52,"master":0.6,"sag":0.35},  # real Plexi, kept fairly clean; the Octavia is the dirt
     gt={"enable":1,"thresh":-52,"attack":2,"hold":150,"release":300,"hyst":8},
     dl={"enable":1,"type":"Seraph","time":400,"feedback":0.3,"mix":0.15,"width":0.6,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.15,"modrate":0.3},
     rv={"enable":1,"decay":1.5,"mix":0.1},
     cab={"lowcut":80,"highcut":9000}),
   preset(5, 2, "Little Feather", out_level=OUT,          # Jimi Hendrix — Little Wing
-    # Strat neck, warm clean with light breakup, rotary-speaker swirl (Little Wing was tracked
-    # through a rotating cab).
-    amp={"model":"Clean Meanie","gain":0.38,"bass":0.5,"mid":0.55,"treble":0.5,"presence":0.48,"master":0.55},
+    # Strat neck, warm edge-of-breakup, rotary-speaker swirl (Little Wing was tracked through a
+    # rotating cab). Now on the Marshall PLEXI (Hendrix's amp) at low gain/master for a warm,
+    # midrange-forward clean rather than the previous Fender voicing.
+    amp={"model":"Plexiglass","gain":0.32,"bass":0.55,"mid":0.55,"treble":0.48,"presence":0.45,"master":0.52,"sag":0.4},
     cp={"enable":1,"type":1,"ratio":1,"thresh":-22,"attack":3,"release":5,"knee":3,"makeup":4},
     md={"enable":1,"type":"Rotary","rate":0.3,"depth":0.5,"mix":0.5,"width":0.7},
     rv={"enable":1,"predelay":15,"decay":2.2,"mix":0.18},
@@ -567,6 +571,49 @@ add(
     cab={"lowcut":90,"highcut":8800}),
 )
 
+# ── Bank 13 (index 12) — MICROTONAL + RADIOHEAD ──────────────────────────────
+# Slot A: the Octave block's pitch-tracked single-sideband microtonal shimmer (24-TET
+# quarter-tone beating lead — the "Angine de Poitrine" voicing; a 12-fret guitar can't be
+# re-fretted by an effect, so a detuned SSB voice beating a quarter-tone against the dry
+# note is the honest version). Slots B/C: Radiohead guitar tones matched to the REAL rigs.
+add(
+  preset(12, 0, "Quarter-Tone Lead", out_level=-16.0,
+    # The signature beating quarter-tone lead: mid-forward crunch (Turkish-rock voicing),
+    # shimmer detuned +50c so every note beats ~6 Hz, soaked in loop-friendly tape delay.
+    amp={"model":"Crunchy McCrunchFace","gain":0.5,"bass":0.5,"mid":0.72,"treble":0.6,"presence":0.5,"master":0.6,"sag":0.3},
+    oc={"enable":1,"pos":7,"micro":0.5,"interval":"1/4 Up","up":0.0,"down":0.0,"dry":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1.5,"hold":120,"release":250,"hyst":8},
+    dl={"enable":1,"type":"Tape","time":400,"feedback":0.35,"mix":0.2,"width":0.4,"wow":0.003,"flutter":0.001},
+    rv={"enable":1,"predelay":15,"decay":1.6,"damping":0.45,"mix":0.18},
+    cab_ir="@greenback",
+    cab={"lowcut":85,"highcut":8500}),
+  preset(12, 1, "Anyone Can Play Guitar", out_level=-15.5,   # Radiohead — Pablo Honey (1993)
+    # RESEARCHED (Guitar.com / Equipboard): the ENTIRE Pablo Honey rig was Telecaster Plus ->
+    # Marshall ShredMaster -> Fender Eighty-Five (solid-state). The ShredMaster is the dirt on
+    # every track; the amp stays clean + bright. Dear Rodent Boy (RAT) is the standard ShredMaster
+    # proxy (aggressive, mid-forward op-amp distortion). Bright jangly Fender clean, driven, anthemic.
+    amp={"model":"Clean Meanie","gain":0.3,"bass":0.45,"mid":0.55,"treble":0.72,"presence":0.6,"master":0.6,"sag":0.3},
+    dr={"enable":1,"model":"Dear Rodent Boy","drive":0.55,"tone":0.6,"level":0.7,"mix":1.0},
+    gt={"enable":1,"thresh":-50,"attack":1.5,"hold":110,"release":230,"hyst":8},
+    md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.32,"mix":0.22,"width":0.6},   # subtle jangle shimmer
+    dl={"enable":1,"type":"Digital","time":300,"feedback":0.2,"mix":0.12,"width":0.5},
+    rv={"enable":1,"predelay":15,"decay":1.6,"damping":0.5,"mix":0.2},
+    cab_ir="@american-ob",
+    cab={"lowcut":85,"highcut":9500}),
+  preset(12, 2, "There There", out_level=-14.5,   # Radiohead — Hail to the Thief (2003)
+    # RESEARCHED (King of Gear / zZounds): Vox AC30 Top Boost CRANKED (master high -> power-tube
+    # saturation) + the Demeter Tremulator tremolo + big spaced-out reverb + Roland Space Echo
+    # (the whole band moved to AC30s for cleans). This captures the tremolo verse tone; the amp's
+    # own cranked breakup is the drive (the climax adds ShredMaster grit on top). Echo Wreck = Space Echo.
+    amp={"model":"Chime Thirty","gain":0.5,"bass":0.45,"mid":0.55,"treble":0.6,"presence":0.55,"master":0.85,"sag":0.6},
+    md={"enable":1,"type":"Tremolo","rate":0.4,"depth":0.65,"mix":0.9,"width":0.4},   # Demeter Tremulator
+    dl={"enable":1,"type":"Echo Wreck","time":350,"feedback":0.3,"mix":0.18,"width":0.4,"heads":10,"wow":0.002,"flutter":0.001},
+    rv={"enable":1,"predelay":20,"decay":2.4,"damping":0.4,"mix":0.3},
+    gt={"enable":1,"thresh":-54,"attack":2,"hold":150,"release":300,"hyst":8},
+    cab_ir="@vox2x12",
+    cab={"lowcut":82,"highcut":9500}),
+)
+
 # ── Loudness calibration ─────────────────────────────────────────────────────
 # Measured on-device with build-tools/hexforge_meas.cpp (a worker-capable LV2 host;
 # DI from build-tools/gen_di.py): each preset recalled, a sustained DI power chord run
@@ -578,16 +625,17 @@ add(
 # Re-run hf_meas + update an entry only when a preset's voicing/gain changes.
 MEAS_RMS_AT_M20 = {
     "Sermon Crunch":-11.46, "Candlelit Clean":-11.07, "Imperial Rhythm":-15.64,
-    "Imperial Lead":-15.05, "Cardinal Rhythm":-15.57, "Cardinal Lead":-15.84,
+    "Imperial Lead":-15.05, "Cardinal Rhythm":-15.57, "Cardinal Lead":-13.92,   # re-measured 2026-07-05 after DOD250 re-stage (denser/louder than the old RAT version)
     "Vanishing Drive":-15.67, "Dreamlit Shimmer":-2.39, "Berlin Wall Pulse":-3.06,
     "Dark Side Air":-3.92, "Numb Sustain":-11.70, "Little Feather":-7.95,
     "Flatliner":-13.56, "Prayer Djent":-13.44, "Skye Crusher":-16.21, "Skye Soar":-15.91,
-    "Mauve Haze":-13.81, "Holy Smoke":-10.89, "Wizard's Doom":5.80, "Hazy Solo":-13.84,
+    "Mauve Haze":-14.49, "Holy Smoke":-10.89, "Wizard's Doom":5.80, "Hazy Solo":-14.67,   # Mauve/Hazy re-measured 2026-07-07 on the REAL Plexi (sync-worker meas; prior values were the default amp, not Plexi)
     "Skye (No Mod)":-15.59, "Sermon Rhythm":-13.34, "Sermon Solo":-13.48,
     "Innerspeaker Swirl":-9.80, "Glide Wall":-11.79, "Moondust Glam":-13.89,   # re-measured after full re-author
     # Re-measured 2026-07-02 after the fuzz/DS-1 restaging + Hiwatt makeup fix (4.9->1.3)
     # + softened DS-1/Octavia clip (kClipHard 3->2.2, soft op-amp rail, Octavia gain 40->28):
-    "Nevermind Wall":-14.43, "Bridge Vibe":-16.69, "Desert Robot":-13.02,   # Bridge re-measured after vibe moved pre-amp
+    "Nevermind Wall":-15.06,   # re-measured 2026-07-07 on the REAL Plexi (sync-worker meas; was mis-loading as Backline) -> out_level ~-18
+    "Bridge Vibe":-16.69, "Desert Robot":-13.02,   # Bridge re-measured after vibe moved pre-amp
     # NIN bank (2026-07-04) — the Nail block. World re-voiced off the Sunn (uncontrollable output)
     # onto Crunchy; Broke mode runs hot so it lands at a low out_level (peaks then sit under 0 dBFS).
     "March Stabs":-15.57, "World Went Away":-14.81, "Broken Crush":-4.92, "With Teeth":-14.27,
@@ -604,8 +652,9 @@ TARGET_DIRTY, TARGET_SUNN, CLEAN_OUT = -13.1, -10.5, -5.9
 # Hand-dialed master Output values the user set by ear on-device (2026-06-29); these are
 # the final word and win over the clean-pin / RMS calibration for the named presets.
 MANUAL_OUT = {
+    "Cardinal Lead": -19.2,   # user's own on-device out_level (preserve exact — they dialed the tone by ear at this level)
     "Candlelit Clean": -10.0, "Sermon Crunch": -19.7,
-    "Little Feather": -1.3, "Wizard's Doom": -17.3, "Dreamlit Shimmer": -1.5,
+    "Wizard's Doom": -17.3, "Dreamlit Shimmer": -1.5,   # Little Feather dropped from MANUAL_OUT (was -1.3, Fender-era) → now uses CLEAN_OUT on the Plexi
     # Fuzz leads read perceptually QUIETER than a distortion at the same RMS, so these two
     # are pushed ~3-3.5 dB above the -13.1 dirty target for presence — but kept below where
     # their peaks (Numb -2.7, Desert -4.0 dBFS at M20) would hit the limiter (no crushing).
@@ -655,6 +704,21 @@ def _migrate(old, src_ver):
     wo_at = SYM_IDX["wh_pos"]; wo_end = wo_at + 13
     by_gap = src_ver < 9                                  # v9: 11 per-block bypass toggles
     by_at = SYM_IDX["gt_bypass"]; by_end = by_at + 11     # default 0 = active
+    naildef = [12.0, 0.0, 2.0, 0.6, 0.5, 0.4, 0.5, 0.0]   # v12: Nail block (pos,en,mode,drive,tone,texture,level,byp)
+    nail_gap = src_ver < 12
+    nail_at = SYM_IDX["nail_pos"]; nail_end = nail_at + 8
+    syncdef = [0.0, 5.0, 0.0, 2.0]                         # v13: tempo sync (dl_sync,dl_div,md_sync,md_div)
+    sync_gap = src_ver < 13
+    sync_at = SYM_IDX["dl_sync"]; sync_end = sync_at + 4
+    ocdef = [0.0, 0.0]                                     # v14: Octave shimmer (oc_micro, oc_interval)
+    oc_gap = src_ver < 14
+    oc_at = SYM_IDX["oc_micro"]; oc_end = oc_at + 2
+    mv_gap = src_ver < 15                                  # v15: Cali V (Mesa) mode
+    mv_at = SYM_IDX["amp_mv_mode"]; mv_end = mv_at + 1
+    gv_gap = src_ver < 16                                  # v16: Cali V 5-band graphic EQ
+    gv_at = SYM_IDX["amp_mv_geq0"]; gv_end = gv_at + 5
+    eq_gap = src_ver < 17                                  # v17: Cali V graphic-EQ preset selector
+    eq_at = SYM_IDX["amp_mv_eqpreset"]; eq_end = eq_at + 1
     out = [0.0] * N_PORTS; o = 0
     for i in range(N_PORTS):
         if it_at <= i < it_end:
@@ -664,6 +728,18 @@ def _migrate(old, src_ver):
         elif wo_gap and wo_at <= i < wo_end:
             out[i] = wodef[i - wo_at]
         elif by_gap and by_at <= i < by_end:
+            out[i] = 0.0
+        elif nail_gap and nail_at <= i < nail_end:
+            out[i] = naildef[i - nail_at]
+        elif sync_gap and sync_at <= i < sync_end:
+            out[i] = syncdef[i - sync_at]
+        elif oc_gap and oc_at <= i < oc_end:
+            out[i] = ocdef[i - oc_at]
+        elif mv_gap and mv_at <= i < mv_end:
+            out[i] = 6.0
+        elif gv_gap and gv_at <= i < gv_end:
+            out[i] = 0.5
+        elif eq_gap and eq_at <= i < eq_end:
             out[i] = 0.0
         else:
             out[i] = old[o] if o < len(old) else 0.0; o += 1
@@ -718,7 +794,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 178, "port count drift: got %d" % N_PORTS   # 174 -> 178: added strobe-tuner ports (global, not preset-captured)
+    assert N_PORTS == 187, "port count drift: got %d" % N_PORTS   # 181 -> 186: Cali V graphic EQ; 186 -> 187: Cali V EQ preset (amp_mv_eqpreset)
     # ── Auto-match a built-in cab to each preset from its amp model ──────────────
     # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
     # the Factory Cab (@factory / V30). See CabModels.h for the voicings.

@@ -10,7 +10,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 352px;
+    height: 404px;
     width: 400px;
     position: absolute;
     border-radius: 12px;
@@ -65,3 +65,24 @@
 
 /* Live control value readout (visible without advanced view) */
 .mod-pedal-guitaramp-octave{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* ── Microtonal shimmer row (Microtonal knob + 24-TET interval selector) ────── */
+.mod-pedal-guitaramp-octave{{{cns}}} .hx-micro-row { position:relative; z-index:6; margin-top:14px; text-align:center; }
+.mod-pedal-guitaramp-octave{{{cns}}} .hx-micro-row .mod-section-label { margin:0 0 6px 0; text-align:center; color:#19e0ff; }
+.mod-pedal-guitaramp-octave{{{cns}}} .hx-micro-ctrls { display:inline-flex; align-items:center; justify-content:center; gap:10px; }
+.mod-pedal-guitaramp-octave{{{cns}}} .hx-interval { display:inline-flex; align-items:center; }
+.mod-pedal-guitaramp-octave{{{cns}}} .hx-interval .mod-mini-select { width:118px; }
+
+/* ── Polka-dot shimmer overlay (revealed when Microtonal > 0) ────────────────── */
+/* A field of soft quarter-tone "beat" dots over the whole panel; off by default,
+   fades in when the shimmer is engaged (script-octave.js toggles .hx-micro-on). */
+.mod-pedal-guitaramp-octave{{{cns}}} .hx-polka {
+    position:absolute; inset:0; border-radius:12px; pointer-events:none; z-index:3;
+    opacity:0; transition:opacity .35s ease;
+    background-image:
+        radial-gradient(circle at 50% 50%, rgba(25,224,255,.55) 0, rgba(25,224,255,.55) 2.4px, rgba(25,224,255,0) 3.2px),
+        radial-gradient(circle at 50% 50%, rgba(255,43,214,.42) 0, rgba(255,43,214,.42) 2.0px, rgba(255,43,214,0) 2.8px);
+    background-size: 34px 34px, 34px 34px;
+    background-position: 0 0, 17px 17px;
+}
+.mod-pedal-guitaramp-octave{{{cns}}}.hx-micro-on .hx-polka { opacity:.9; }

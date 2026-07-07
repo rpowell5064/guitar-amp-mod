@@ -8,6 +8,8 @@
 #include "HiwattDR103Model.h"
 #include "VoxAC30Model.h"
 #include "PeaveyBackstageModel.h"
+#include "MarshallPlexi1959.h"
+#include "MesaMarkV.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -20,6 +22,8 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::HiwattDR103:         return std::make_unique<HiwattDR103Model>();
         case ModelID::VoxAC30:             return std::make_unique<VoxAC30Model>();
         case ModelID::PeaveyBackstage:     return std::make_unique<PeaveyBackstageModel>();
+        case ModelID::MarshallPlexi1959:   return std::make_unique<MarshallPlexi1959>();
+        case ModelID::MesaMarkV:           return std::make_unique<MesaMarkV>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -44,6 +48,8 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::HiwattDR103:         return "Hiwatt DR103";
         case ModelID::VoxAC30:             return "Vox AC30 Top Boost";
         case ModelID::PeaveyBackstage:     return "Peavey Backstage Plus";
+        case ModelID::MarshallPlexi1959:   return "Marshall Plexi 1959";
+        case ModelID::MesaMarkV:           return "Mesa Mark V";
         default:                           return "Unknown";
     }
 }
@@ -59,6 +65,8 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::HiwattDR103:         return 1;  // EL34
         case ModelID::VoxAC30:             return 2;  // EL84
         case ModelID::PeaveyBackstage:     return 0;  // solid-state (no power tube)
+        case ModelID::MarshallPlexi1959:   return 1;  // EL34
+        case ModelID::MesaMarkV:           return 1;  // EL34/6L6 Simul-Class
         default:                           return 1;
     }
 }
@@ -74,6 +82,8 @@ const char* const* AmpModelFactory::getAllModelNames() noexcept {
         "Hiwatt DR103",
         "Vox AC30 Top Boost",
         "Peavey Backstage Plus",
+        "Marshall Plexi 1959",
+        "Mesa Mark V",
         nullptr
     };
     return kNames;
@@ -89,5 +99,7 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Hiwatt DR103")              return ModelID::HiwattDR103;
     if (name == "Vox AC30 Top Boost")        return ModelID::VoxAC30;
     if (name == "Peavey Backstage Plus")     return ModelID::PeaveyBackstage;
+    if (name == "Marshall Plexi 1959")       return ModelID::MarshallPlexi1959;
+    if (name == "Mesa Mark V")               return ModelID::MesaMarkV;
     return ModelID::SunnModelT;
 }

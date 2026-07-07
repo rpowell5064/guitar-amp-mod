@@ -75,6 +75,8 @@ private:
     // Pre-computed equal-power pan gains, indexed by channel (0=L, 1=R).
     float panA_[2] = {0.707f, 0.707f};
     float panB_[2] = {0.707f, 0.707f};
+    float bLev_    = 1.0f;   // engine-B wet level — faded down as width->0 so mono stays a CLEAN
+                             // primary delay (the two engines run at different times; summed they mud)
     bool  stereo_  = true;
 
     void rebuildFilters() noexcept;

@@ -9,3 +9,5 @@ add_executable(nam_compare "${CMAKE_CURRENT_SOURCE_DIR}/../tools/nam_compare.cpp
 target_link_libraries(nam_compare PRIVATE GuitarAmpSim)
 add_executable(fuzz_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/fuzz_probe.cpp")
 target_link_libraries(fuzz_probe PRIVATE GuitarAmpSim)
+add_executable(seraph_test "${CMAKE_CURRENT_SOURCE_DIR}/../tools/seraph_test.cpp")
+target_link_libraries(seraph_test PRIVATE GuitarAmpSim)

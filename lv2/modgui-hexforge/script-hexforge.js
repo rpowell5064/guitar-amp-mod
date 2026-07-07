@@ -12,8 +12,8 @@ function (event, funcs) {
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
     // the HTML instead; these are the ones we can't (enumerated → would show a number).
     var NV = {
-        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus'],
-        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova'],
+        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V'],
+        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
         fz:  ['Italian Hero','I Know It','Octavia'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
         dl:  ['Digital','Tape','Echo Wreck','Seraph']
@@ -166,6 +166,28 @@ function (event, funcs) {
                 if (pn) removeBlock(icon, fns, pn.getAttribute('data-block'));
             });
         });
+        // Cali V (Mesa) two-tier Channel/Mode buttons → write amp_mv_mode = channel*3 + submode.
+        icon.find('.hf-mv-btn').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (el.hasAttribute('data-eq')) {                 // graphic-EQ preset selector
+                    var eq = parseInt(el.getAttribute('data-eq'), 10);
+                    icon.data('hf_mveq', eq);
+                    if (fns && typeof fns.set_port_value === 'function') fns.set_port_value('amp_mv_eqpreset', eq);
+                    applyMesa(icon);
+                    return;
+                }
+                var v = icon.data('hf_mv'); if (v == null) v = 6;
+                var ch = Math.floor(v / 3), sub = v % 3;
+                if (el.hasAttribute('data-ch'))       ch  = parseInt(el.getAttribute('data-ch'), 10);
+                else if (el.hasAttribute('data-sub')) sub = parseInt(el.getAttribute('data-sub'), 10);
+                var nv = ch * 3 + sub;
+                icon.data('hf_mv', nv);
+                if (fns && typeof fns.set_port_value === 'function') fns.set_port_value('amp_mv_mode', nv);
+                applyMesa(icon);
+            });
+        });
     }
 
     // ── Amp faceplate: per-model skin class (hf-face-mN) + big parody badge ──
@@ -185,6 +207,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-sunn', m === 3);
         show(icon, 'amp', '.c-amp-chan', m === 2 || m === 4);
         show(icon, 'amp', '.c-amp-be',   m === 6);
+        show(icon, 'amp', '.c-amp-mesa', m === 11);
         show(icon, 'amp', '.c-amp-reso', m === 2);
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
@@ -192,6 +215,28 @@ function (event, funcs) {
         panelOf(icon, 'amp').find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 5 ? 'Output' : 'Gain'));
         setModelVal(icon, 'amp', m);
         applyAmpFace(icon, m);
+        applyMesa(icon);
+    }
+    // Cali V (Mesa Mark V) two-tier selector: one port amp_mv_mode (0..8) = channel*3 + submode.
+    // Mode labels follow the channel (Clean/Crunch/Lead). Renders the highlighted state of both rows.
+    var MV_MODES = [['Clean','Fat','Tweed'],['Edge','Crunch','Mk I'],['IIC+','Mk IV','Xtreme']];
+    function applyMesa(icon) {
+        var v = icon.data('hf_mv'); if (v == null) v = 6;
+        var ch = Math.floor(v / 3), sub = v % 3, p = panelOf(icon, 'amp');
+        p.find('.hf-mv-seg[data-mv=chan] .hf-mv-btn').each(function () {
+            this.className = 'hf-mv-btn' + (parseInt(this.getAttribute('data-ch'), 10) === ch ? ' hf-mv-on' : '');
+        });
+        var labels = MV_MODES[ch] || MV_MODES[2];
+        p.find('.hf-mv-seg[data-mv=mode] .hf-mv-btn').each(function () {
+            var i = parseInt(this.getAttribute('data-sub'), 10);
+            this.textContent = labels[i] || '';
+            this.className = 'hf-mv-btn' + (i === sub ? ' hf-mv-on' : '');
+        });
+        var eq = icon.data('hf_mveq'); if (eq == null) eq = 0;   // 0 = Custom (sliders drive the EQ)
+        p.find('.hf-mv-seg[data-mv=eq] .hf-mv-btn').each(function () {
+            this.className = 'hf-mv-btn' + (parseInt(this.getAttribute('data-eq'), 10) === eq ? ' hf-mv-on' : '');
+        });
+        p.find('.hf-mv-geqwrap').toggleClass('hf-mv-dim', eq !== 0);  // dim the sliders when a preset is active
     }
     function applyFuzz(icon) {
         var p = icon.data('hf_fz_p'); if (p == null) p = 0;
@@ -277,11 +322,11 @@ function (event, funcs) {
         var box = icon.find('[rata-role=pslist]'); if (!box.length) return;
         var names = icon.data('ps_names') || [];
         var ab = icon.data('ps_bank') || 0, as = icon.data('ps_slot') || 0;
-        // Show every bank that has a preset, PLUS one empty "new" bank at the bottom —
-        // saving into it reveals the next, so the user grows banks on demand (up to 32).
+        // Show every bank that has a preset, PLUS one empty "new" bank at the bottom, PLUS any
+        // extra empty banks the user revealed with "+ Add Bank" (hf_addbanks). Up to 32 total.
         var maxB = 0;
         for (var i = 0; i < names.length; i++) if (names[i]) maxB = Math.floor(i / 4);
-        var showBanks = Math.min(Math.max(maxB + 2, ab + 2), 32);
+        var showBanks = Math.min(Math.max(maxB + 2, ab + 2, icon.data('hf_addbanks') || 0), 32);
         var html = '';
         for (var b = 0; b < showBanks; b++) {
             html += '<div class="hf-ps-bankrow"><span class="hf-ps-banknum">B' + (b + 1) + '</span>';
@@ -294,6 +339,9 @@ function (event, funcs) {
             }
             html += '</div>';
         }
+        // "+ Add Bank": reveal one more empty bank to save presets into (up to 32).
+        if (showBanks < 32)
+            html += '<div class="hf-ps-addrow"><button type="button" class="hf-ps-addbank">＋ Add Bank</button></div>';
         box[0].innerHTML = html;
         box.find('.hf-ps-item').each(function () {
             var el = this;
@@ -302,6 +350,12 @@ function (event, funcs) {
                 psGoto(fns, parseInt(el.getAttribute('data-flat'), 10));
                 icon.find('[rata-role=psmenu]').removeClass('hf-ps-open');
             });
+        });
+        var addb = box.find('.hf-ps-addbank')[0];
+        if (addb) addb.addEventListener('click', function (e) {
+            e.stopPropagation();
+            icon.data('hf_addbanks', Math.min(showBanks + 1, 32));   // reveal the next empty bank
+            psRenderList(icon, fns);
         });
     }
     function psSetName(icon, nm) {
@@ -331,6 +385,8 @@ function (event, funcs) {
                 }
             } else if (sym === 'amp_model')        icon.data('hf_amp_m', parseInt(val, 10));
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
+            else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
+            else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
             else if (sym === 'md_type')            setModelVal(icon, 'md', parseInt(val, 10));
@@ -361,6 +417,8 @@ function (event, funcs) {
         if ('amp_pamp_auto' in map) icon.data('hf_amp_auto', map.amp_pamp_auto > 0.5);
         if ('fz_pedal' in map)      icon.data('hf_fz_p', parseInt(map.fz_pedal, 10));
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
+        if ('amp_mv_mode' in map)   icon.data('hf_mv', parseInt(map.amp_mv_mode, 10));
+        if ('amp_mv_eqpreset' in map) icon.data('hf_mveq', parseInt(map.amp_mv_eqpreset, 10));
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
         var drm = parseInt(map.dr_model || 0, 10);
         show(icon, 'dr', '.c-dr-oct', drm === 1);
@@ -376,6 +434,7 @@ function (event, funcs) {
             if ((b + '_bypass') in map) nodeOf(icon, b).toggleClass('hf-byp', map[b + '_bypass'] > 0.5);
             if ((b + '_enable') in map && !(map[b + '_enable'] > 0.5)) icon.find('.hf-palette').append(nodeOf(icon, b));
         });
+        if ('oc_micro' in map) nodeOf(icon, 'oc').toggleClass('hf-oc-micro', map.oc_micro > 0.0001);
         resort(icon); renderPalette(icon);
         selectNode(icon, 'amp');
 
@@ -440,6 +499,10 @@ function (event, funcs) {
             icon.data('hf_amp_m', parseInt(event.value, 10)); applyAmp(icon);
         } else if (s === 'amp_pamp_auto') {
             icon.data('hf_amp_auto', event.value > 0.5); applyAmp(icon);
+        } else if (s === 'amp_mv_mode') {
+            icon.data('hf_mv', parseInt(event.value, 10)); applyMesa(icon);
+        } else if (s === 'amp_mv_eqpreset') {
+            icon.data('hf_mveq', parseInt(event.value, 10)); applyMesa(icon);
         } else if (s === 'fz_pedal') {
             icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
         } else if (s === 'dr_model') {
@@ -451,6 +514,8 @@ function (event, funcs) {
             setModelVal(icon, 'md', parseInt(event.value, 10));
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
+        } else if (s === 'oc_micro') {
+            nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
         } else if (s === 'clip') {
             icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
         } else if (s === 'tuner_on') {

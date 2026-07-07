@@ -73,7 +73,7 @@ FZ = [
     ("getemp",    "Ge Temp",    "f", 0, 1, 0.4, None),
 ]
 DR = [
-    ("model",  "Model",  "e", 0, 6, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6)]),
+    ("model",  "Model",  "e", 0, 7, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]),
     ("drive",  "Drive",  "f", 0, 1, 0.5, None),
     ("tone",   "Tone",   "f", 0, 1, 0.5, None),
     ("level",  "Level",  "f", 0, 1, 0.5, None),
@@ -81,7 +81,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 9, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9)]),
+    ("model",         "Model",        "e", 0, 11, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -274,6 +274,29 @@ ctrl.append(mkport("DL_DIV",  "dl_div",  "Delay Division",   "e", 0, 7, 5, DIV_S
 ctrl.append(mkport("MD_SYNC", "md_sync", "Mod Clock Sync",   "t", 0, 1, 0, None, "Sync"))
 ctrl.append(mkport("MD_DIV",  "md_div",  "Mod Division",     "e", 0, 7, 2, DIV_SCALE, "Div"))
 
+# ── Octave microtonal shimmer — a pitch-tracked single-sideband frequency-shift voice on
+# the Octave block (micro = level, interval = 24-TET step). Appended AFTER tempo-sync and
+# BEFORE the preset commands so every existing preset index is preserved (migrated in v14).
+# Default OFF (micro 0) so old boards sound identical. Interval 0 = quarter-tone up (the
+# "Angine de Poitrine" beating shimmer). Two contiguous ports [OC_MICRO, OC_INTERVAL].
+ctrl.append(mkport("OC_MICRO",    "oc_micro",    "Octave Microtonal", "f", 0, 1, 0.0, None, "Micro"))
+ctrl.append(mkport("OC_INTERVAL", "oc_interval", "Octave Interval",   "e", 0, 5, 0,
+    [("1/4 Up",0),("1/4 Dn",1),("Neutral 2nd",2),("Neutral 3rd",3),("Neutral 6th",4),("Octave +1/4",5)], "Interval"))
+
+# ── Mesa Mark V (Cali V) MODE selector — the amp's 9 modes across 3 channels. Appended after
+# the Octave shimmer and BEFORE the preset commands so every existing preset index is preserved
+# (migrated in v15). Shown only when Amp model = Cali V (COND c-amp-mesa). Default 6 = Mark IIC+.
+ctrl.append(mkport("AMP_MV_MODE", "amp_mv_mode", "Amp Mesa Mode", "e", 0, 8, 6,
+    [("Clean",0),("Fat",1),("Tweed",2),("Edge",3),("Crunch",4),("Mk I",5),("IIC+",6),("Mk IV",7),("Xtreme",8)], "Mode"))
+
+# Cali V (Mesa Mark V) 5-band GRAPHIC EQ — 80/240/750/2200/6600 Hz, each ±12 dB (0.5 = flat). The
+# iconic Mark V "V". Conditional (c-amp-mesa), appended after the mode selector; migrated in v16.
+for _gs, _gl in [("mv_geq0","80"),("mv_geq1","240"),("mv_geq2","750"),("mv_geq3","2.2k"),("mv_geq4","6.6k")]:
+    ctrl.append(mkport("AMP_" + _gs.upper(), "amp_" + _gs, "Amp EQ " + _gl, "f", 0.0, 1.0, 0.5, None, _gl))
+# Cali V graphic-EQ PRESET selector — 0 Custom (the 5 sliders) or a baked Mesa "V" curve. Migrated v17.
+ctrl.append(mkport("AMP_MV_EQPRESET", "amp_mv_eqpreset", "Amp EQ Preset", "e", 0, 5, 0,
+    [("Custom",0),("Flat",1),("V-Scoop",2),("Deep V",3),("Mid Boost",4),("Bright",5)], "EQ Preset"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -446,7 +469,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 87 ;")
+    L.append("    lv2:microVersion 97 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -551,6 +574,10 @@ COND = {
     # Beardo BE / Friedman (model 6): 3-way channel + Fat/C45/Sat
     "amp_fr_channel":"c-amp-be", "amp_fr_fat":"c-amp-be",
     "amp_fr_c45":"c-amp-be", "amp_fr_sat":"c-amp-be",
+    # Cali V / Mesa Mark V (model 11): 9-mode selector + 5-band graphic EQ
+    "amp_mv_mode":"c-amp-mesa",
+    "amp_mv_geq0":"c-amp-mesa", "amp_mv_geq1":"c-amp-mesa", "amp_mv_geq2":"c-amp-mesa",
+    "amp_mv_geq3":"c-amp-mesa", "amp_mv_geq4":"c-amp-mesa", "amp_mv_eqpreset":"c-amp-mesa",
     # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
     "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
     "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
@@ -719,7 +746,31 @@ def amp_body():
     brite = chassis("c-amp-sunn", "Brite Channel",
                     ["sunn_vol2", "sunn_bass2", "sunn_mid2", "sunn_treble2", "sunn_bright1", "sunn_bright2", "sunn_link"])
     beardo = chassis("c-amp-be", "Beardo BE", ["fr_channel", "fr_fat", "fr_c45", "fr_sat"])
-    return selrow + face + pa + brite + beardo
+    # Cali V (Mesa Mark V): TWO-TIER segmented selector over the single amp_mv_mode port (0..8).
+    # A Channel row (Clean/Crunch/Lead) + a Mode row (3 channel-specific labels). Nothing to drop
+    # down, so nothing clips. The hidden mod-enumerated bind keeps preset/MIDI writes echoing to the
+    # JS change handler; the visible buttons write amp_mv_mode = channel*3 + submode (script-hexforge.js).
+    def mesa_body():
+        hidden = '<div class="hf-mv-bind" style="display:none">%s</div>' % render_ctrl(CTRL_BY_SYM["amp_mv_mode"])
+        chbtns = "".join('<div class="hf-mv-btn" data-ch="%d">%s</div>' % (i, n)
+                         for i, n in enumerate(["Clean", "Crunch", "Lead"]))
+        mdbtns = "".join('<div class="hf-mv-btn" data-sub="%d"></div>' % i for i in range(3))
+        eqbtns = "".join('<div class="hf-mv-btn" data-eq="%d">%s</div>' % (i, n)
+                         for i, n in enumerate(["Custom", "Flat", "V", "Deep V", "Mid", "Bright"]))
+        geq = ('<div class="hf-mv-geqlbl">Graphic EQ</div>'
+               + onerow(["mv_geq0", "mv_geq1", "mv_geq2", "mv_geq3", "mv_geq4"]))
+        return ('<div class="hf-pa-face c-amp-mesa"><div class="hf-pa-title">Cali V — Mode</div>'
+                + hidden
+                + '<div class="hf-mv-row"><span class="hf-mv-lbl">Channel</span>'
+                  '<div class="hf-mv-seg" data-mv="chan">' + chbtns + '</div></div>'
+                + '<div class="hf-mv-row"><span class="hf-mv-lbl">Mode</span>'
+                  '<div class="hf-mv-seg" data-mv="mode">' + mdbtns + '</div></div>'
+                + '<div class="hf-mv-row"><span class="hf-mv-lbl">EQ</span>'
+                  '<div class="hf-mv-seg" data-mv="eq">' + eqbtns + '</div></div>'
+                + '<div class="hf-mv-geqwrap">' + geq + '</div>'
+                + '</div>')
+    mesa = mesa_body()
+    return selrow + face + pa + brite + beardo + mesa
 
 # ── Shared "module plate" design for EVERY block ──────────────────────────────
 # The amp has its tube bay + control plate; every other block gets the SAME premium
@@ -761,7 +812,8 @@ BLOCK_GROUPS = {
     "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix"]),
             ("MODULATION", None, ["moddepth", "modrate"])],
     "wh":  [("WAH", None, ["type", "freq", "depth", "sens", "q", "mix"])],
-    "oc":  [("OCTAVE", None, ["up", "down", "dry"])],
+    "oc":  [("OCTAVE", None, ["up", "down", "dry"]),
+            ("MICROTONAL SHIMMER", None, ["micro", "interval"])],
 }
 
 def render_agroups(pfx, group_defs, all_sufs):

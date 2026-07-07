@@ -13,7 +13,8 @@ enum class OverdriveType {
     BigMuffPi       = 4,
     DS1             = 5,
     Klon            = 6,
-    SuperOverdriveSD1 = 7
+    SuperOverdriveSD1 = 7,
+    DOD250          = 8
 };
 
 class OverdriveFactory {
