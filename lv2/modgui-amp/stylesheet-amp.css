@@ -326,6 +326,9 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m7 { --panel:url(/resources/faceplate-m7.png{{{ns}}}); --tint:rgba(72,82,92,.30); --badge:#20262c; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m8 { --panel:url(/resources/faceplate-m8.png{{{ns}}}); --tint:rgba(150,112,60,.36); --badge:#241606; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m9 { --panel:url(/resources/faceplate-m9.png{{{ns}}}); --tint:rgba(46,96,150,.34); --badge:#dbe7f5; }
+/* m10 Plexiglass (Marshall Super Lead) reuses the gold Marshall plate; m11 Cali V (Mesa) reuses the black plate w/ a green tint */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m10 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --tint:rgba(150,120,30,.42); --badge:#1c1503; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(20,74,52,.46); --badge:#d8f2e6; }
 /* grouped knob fieldsets on the plate */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 12px 18px 14px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }

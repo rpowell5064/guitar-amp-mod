@@ -63,6 +63,7 @@ enum AmpPorts {
     P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2,  // Sunn Brite-channel
     P_FR_CHANNEL, P_FR_FAT, P_FR_C45, P_FR_SAT,               // Beardo BE (Friedman) — 3-way channel + voicing toggles
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file)
+    P_MV_MODE, P_MV_GEQ0, P_MV_GEQ1, P_MV_GEQ2, P_MV_GEQ3, P_MV_GEQ4, P_MV_EQPRESET,  // Cali V (Mesa Mark V): 9-mode + 5-band graphic EQ
     P_N_PORTS
 };
 
@@ -319,6 +320,18 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("fat",     *p->ctrl[P_FR_FAT]);
         amp->setParameter("c45",     *p->ctrl[P_FR_C45]);
         amp->setParameter("sat",     *p->ctrl[P_FR_SAT]);
+    }
+
+    // Cali V (Mesa Mark V) — 9-mode channel switcher + 5-band graphic EQ. Setters
+    // guard on change internally, so pushing every block is cheap.
+    if (modelIdx == kMesaIdx) {
+        amp->setParameter("mode",     *p->ctrl[P_MV_MODE]);
+        amp->setParameter("geq0",     *p->ctrl[P_MV_GEQ0]);
+        amp->setParameter("geq1",     *p->ctrl[P_MV_GEQ1]);
+        amp->setParameter("geq2",     *p->ctrl[P_MV_GEQ2]);
+        amp->setParameter("geq3",     *p->ctrl[P_MV_GEQ3]);
+        amp->setParameter("geq4",     *p->ctrl[P_MV_GEQ4]);
+        amp->setParameter("eqpreset", *p->ctrl[P_MV_EQPRESET]);
     }
 
     int desiredTube;
