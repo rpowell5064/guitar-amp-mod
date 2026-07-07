@@ -11,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 800px;
+    min-height: 800px;   /* grows for the taller models (Cali V adds a control panel) so the corner logo never lands between panels */
     width: 1660px;
     position: absolute;
     border-radius: 12px;
