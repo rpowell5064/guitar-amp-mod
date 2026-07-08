@@ -19,6 +19,15 @@
     box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), inset 0 -50px 70px rgba(0,0,0,.45);
 }
 
+/* MOD's full-pedal drag-handle overlay (cursor:move) was rendering ON TOP of the
+   controls, so knobs/switches wouldn't respond (only the z-index-lifted dropdowns did).
+   Force it to the bottom of the stack: it still catches drags in the empty tolex areas,
+   but every control (plate is z-index 3, dropdowns 50) now sits above it and is clickable. */
+.mod-pedal-guitaramp-amp{{{cns}}} .mod-drag-handle {
+    z-index: 0 !important;
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+}
+
 /* ── HEX CHAIN HEADER (brand wordmark + effect title + tagline) ─────────── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hx-header {
     position: absolute; top: 8px; left: 24px; right: 24px; z-index: 5;
