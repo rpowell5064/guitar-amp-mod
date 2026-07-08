@@ -30,7 +30,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 20 ;
+    lv2:microVersion 22 ;
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
