@@ -36,13 +36,20 @@ public:
 
 private:
     // Voiced to a pedal-direct DOD 250 NAM capture at Gain=noon (nam_compare --model dod250).
-    static constexpr double kGainMax = 40.0;   // op-amp gain span (1 → 41×)
+    static constexpr double kGainMin = 1.2;    // gain at drive 0 (EXPONENTIAL/audio taper)
+    static constexpr double kGainMax = 41.0;   // gain at drive 1 — g = kGainMin·(kGainMax/kGainMin)^drive
+                                               // (linear 1+drive·40 slammed the diodes even at low drive =
+                                               //  static ~40% THD; the real DOD cleans up at low gain/soft pick)
     static constexpr double kVf      = 0.42;   // shunt-diode clamp (V) — hard clip threshold
     static constexpr double kHard    = 2.6;    // clip hardness (higher = squarer/harder)
     static constexpr double kMakeup  = 0.85;   // output trim (matched to capture loudness)
-    static constexpr double kInHPfc  = 80.0;   // input coupling HP — the DOD has a fairly tight low end (mild sub-bass cut)
-    static constexpr double kFbLpFc  = 3200.0; // gain-stage bandwidth limit → mid-forward
+    static constexpr double kInHPfc  = 125.0;  // input coupling HP — the DOD 250 cuts bass HARD (captures show
+                                               // -3.6..-6.8 dB @50 Hz rel 500, tighter with more gain); was 80 = too boomy
+    static constexpr double kFbLpFc  = 6000.0; // gain-stage bandwidth limit → mid-forward (was 3200 = too dark up top)
     static constexpr double kToneFc  = 1500.0; // post-clip tilt centre
+    static constexpr double kLmCutFc = 150.0;  // low-mid trim: the hard clip regenerates ~+3 dB @125 Hz that
+    static constexpr double kLmCutDb = -2.5;   // the real DOD doesn't have (its bass clips less) — flatten it
+    static constexpr double kLmCutQ  = 0.9;
 
     double fs_ = 0.0;
 
@@ -50,7 +57,7 @@ private:
     LinearSmoother driveS_, levelS_;
     float driveCur_ = 0.5f, levelCur_ = 0.6f;
 
-    struct Ch { BiquadFilter inHP, fbLP, toneSh, outLP, dcBlk; };
+    struct Ch { BiquadFilter inHP, fbLP, toneSh, outLP, dcBlk, lmCut; };
     std::array<Ch, kMaxCh> ch_;
 
     void recalc() noexcept;

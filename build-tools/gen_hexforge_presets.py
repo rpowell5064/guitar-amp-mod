@@ -623,59 +623,62 @@ add(
 # ~ -13.1 dBFS RMS (the stock Crunch/Rhythm/Lead average).
 # KEYED BY PRESET NAME (not flat index) so rearranging banks never invalidates it.
 # Re-run hf_meas + update an entry only when a preset's voicing/gain changes.
+# Re-measured 2026-07-09 with build-tools/hexforge_meas AFTER the amp-makeup PARITY re-level
+# (Hiwatt/Friedman/CaliV/Plexi etc. boosted) — every value here is the preset's RMS @ out_level=-20.
 MEAS_RMS_AT_M20 = {
-    "Sermon Crunch":-11.46, "Candlelit Clean":-11.07, "Imperial Rhythm":-15.64,
-    "Imperial Lead":-15.05, "Cardinal Rhythm":-15.57, "Cardinal Lead":-13.92,   # re-measured 2026-07-05 after DOD250 re-stage (denser/louder than the old RAT version)
-    "Vanishing Drive":-15.67, "Dreamlit Shimmer":-2.39, "Berlin Wall Pulse":-3.06,
-    "Dark Side Air":-3.92, "Numb Sustain":-11.70, "Little Feather":-7.95,
-    "Flatliner":-13.56, "Prayer Djent":-13.44, "Skye Crusher":-16.21, "Skye Soar":-15.91,
-    "Mauve Haze":-14.49, "Holy Smoke":-10.89, "Wizard's Doom":5.80, "Hazy Solo":-14.67,   # Mauve/Hazy re-measured 2026-07-07 on the REAL Plexi (sync-worker meas; prior values were the default amp, not Plexi)
-    "Skye (No Mod)":-15.59, "Sermon Rhythm":-13.34, "Sermon Solo":-13.48,
-    "Innerspeaker Swirl":-9.80, "Glide Wall":-11.79, "Moondust Glam":-13.89,   # re-measured after full re-author
-    # Re-measured 2026-07-02 after the fuzz/DS-1 restaging + Hiwatt makeup fix (4.9->1.3)
-    # + softened DS-1/Octavia clip (kClipHard 3->2.2, soft op-amp rail, Octavia gain 40->28):
-    "Nevermind Wall":-15.06,   # re-measured 2026-07-07 on the REAL Plexi (sync-worker meas; was mis-loading as Backline) -> out_level ~-18
-    "Bridge Vibe":-16.69, "Desert Robot":-13.02,   # Bridge re-measured after vibe moved pre-amp
-    # NIN bank (2026-07-04) — the Nail block. World re-voiced off the Sunn (uncontrollable output)
-    # onto Crunchy; Broke mode runs hot so it lands at a low out_level (peaks then sit under 0 dBFS).
-    "March Stabs":-15.57, "World Went Away":-14.81, "Broken Crush":-4.92, "With Teeth":-14.27,
+    "Nevermind Verse":-24.00, "Nevermind Wall":-12.31, "Come As Water":-17.18,
+    "Candlelit Clean":-22.62, "Sermon Crunch":-15.35, "Sermon Rhythm":-14.23, "Sermon Solo":-14.08,
+    "Imperial Rhythm":-16.52, "Imperial Lead":-14.86, "Cardinal Rhythm":-16.42, "Cardinal Lead":-14.96,
+    "Dark Side Air":-25.35, "Berlin Wall Pulse":-21.57, "Numb Sustain":-9.22, "Gravity Lead":-30.29,
+    "Mauve Haze":-11.42, "Hazy Solo":-12.62, "Little Feather":-19.61, "Holy Smoke":-10.50,
+    "Skye Crusher":-14.50, "Skye (No Mod)":-13.91, "Skye Soar":-13.60, "Wizard's Doom":-8.21,
+    "Vanishing Drive":-16.28, "Dreamlit Shimmer":-28.01, "Flatliner":-11.81, "Prayer Djent":-11.97,
+    "Bridge Vibe":-14.68, "Bottle Jangle":-32.16, "Forest Wash":-29.32, "Disco Chuck":-31.55,
+    "Surf Splash":-25.72, "Apache Echo":-20.53, "Desert Robot":-8.08, "Moondust Glam":-6.75,
+    "Innerspeaker Swirl":-13.96, "Glide Wall":-15.53, "Streets Chime":-20.34, "Regal Sustain":-14.25,
+    "March Stabs":-14.70, "World Went Away":-10.13, "Broken Crush":-13.07, "With Teeth":-13.58,
+    "Quarter-Tone Lead":-12.13, "Anyone Can Play Guitar":-16.77, "There There":-19.64,
 }
-# Cleans: the user set the master Output for every generated clean preset to a FIXED
-# -5.90 dB by ear (their stock Bank-1 Clean is the reference, left alone). So the cleans
-# bypass the RMS calibration entirely.
+# Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
+# below the limiter ceiling (prevents pumping/crush on peaky presets).
+MEAS_PEAK_AT_M20 = {
+    "Nevermind Verse":-11.50, "Nevermind Wall":-1.38, "Come As Water":-3.90,
+    "Candlelit Clean":-13.19, "Sermon Crunch":-5.89, "Sermon Rhythm":-4.99, "Sermon Solo":-3.16,
+    "Imperial Rhythm":-7.09, "Imperial Lead":-4.66, "Cardinal Rhythm":-6.85, "Cardinal Lead":-4.96,
+    "Dark Side Air":-12.23, "Berlin Wall Pulse":-7.90, "Numb Sustain":-0.33, "Gravity Lead":-17.30,
+    "Mauve Haze":-2.33, "Hazy Solo":-3.14, "Little Feather":-8.92, "Holy Smoke":-2.82,
+    "Skye Crusher":-3.92, "Skye (No Mod)":-4.32, "Skye Soar":-3.75, "Wizard's Doom":-1.03,
+    "Vanishing Drive":-6.35, "Dreamlit Shimmer":-15.53, "Flatliner":-3.57, "Prayer Djent":-3.51,
+    "Bridge Vibe":-4.28, "Bottle Jangle":-19.60, "Forest Wash":-16.45, "Disco Chuck":-20.01,
+    "Surf Splash":-14.77, "Apache Echo":-8.65, "Desert Robot":0.44, "Moondust Glam":2.12,
+    "Innerspeaker Swirl":-3.35, "Glide Wall":-3.55, "Streets Chime":-8.69, "Regal Sustain":-4.66,
+    "March Stabs":-4.36, "World Went Away":-1.62, "Broken Crush":-2.75, "With Teeth":-4.53,
+    "Quarter-Tone Lead":-1.42, "Anyone Can Play Guitar":-5.37, "There There":-5.04,
+}
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water",
                "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime"}
-SUNN_NAMES  = {"Wizard's Doom"}   # Sunn Model T dark voicing perceives quiet -> lifted via the
-                                  # master Output target (NOT amp makeup, which over-drove the limiter).
-TARGET_DIRTY, TARGET_SUNN, CLEAN_OUT = -13.1, -10.5, -5.9
-# Hand-dialed master Output values the user set by ear on-device (2026-06-29); these are
-# the final word and win over the clean-pin / RMS calibration for the named presets.
-MANUAL_OUT = {
-    "Cardinal Lead": -19.2,   # user's own on-device out_level (preserve exact — they dialed the tone by ear at this level)
-    "Candlelit Clean": -10.0, "Sermon Crunch": -19.7,
-    "Wizard's Doom": -17.3, "Dreamlit Shimmer": -1.5,   # Little Feather dropped from MANUAL_OUT (was -1.3, Fender-era) → now uses CLEAN_OUT on the Plexi
-    # Fuzz leads read perceptually QUIETER than a distortion at the same RMS, so these two
-    # are pushed ~3-3.5 dB above the -13.1 dirty target for presence — but kept below where
-    # their peaks (Numb -2.7, Desert -4.0 dBFS at M20) would hit the limiter (no crushing).
-    "Numb Sustain": -14.0, "Desert Robot": -19.7, "Regal Sustain": -16.0,   # leads pushed loud (Desert now on Backline Plus w/ 2.5x makeup → lower out_level for the same ~-5.5 RMS)
-    "Gravity Lead": -23.0,   # clean-amp lead is peaky (crest ~9 dB); -23 → ~-6 RMS to sit with the other leads (~-5), master limiter tames the +3 dB peaks (was -27.5 = ~-10 RMS, ~5 dB below its siblings → felt low)
-    # ("Numb Sustain" was -27.2 as a workaround for the 4.9 Hiwatt makeup bug — now 1.3.)
-    # User still found them too quiet at -18.9 → pushed HARD to lead level (~-4.5/-5 RMS,
-    # +8-9 dB over the -13.1 dirty target). Peaks (Numb -2.4, Desert -3.6 @M20) now sit
-    # ~+3/+1.5 dB over the ceiling so the master limiter kisses transient attacks only —
-    # fine for sustained fuzz leads. If it pumps, lower crest via comp instead of out_level.
-}
+SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small perceptual lift
+# ── LOUDNESS PARITY (2026-07-09) ─────────────────────────────────────────────
+# User: "clean and high-gain presets should all be the SAME volume; the new factory
+# presets are louder than my Bank-1 originals." Their Bank 1 sits at ~-12.5 dBFS RMS
+# (dirty) / ~-13.0 (clean) — clean & dirty ~equal, which they set by ear as "equal feel".
+# So EVERY factory preset is leveled to that: dirty -12.5, clean -13.0, Sunn -11.5 (+1 dB
+# perceptual). The old CLEAN_OUT -5.9 pin (cleans ran ~2 dB hot) and the +8 dB "pushed-loud"
+# MANUAL_OUT leads are GONE — that loudness spread was the complaint. out_level is post-
+# everything volume, so re-leveling changes NO preset's tone. Each value is RMS-target-then-
+# PEAK-capped (PEAK_CEIL) so a high-crest clean/lead can't slam the master limiter.
+TARGET_DIRTY, TARGET_CLEAN, TARGET_SUNN, PEAK_CEIL = -12.5, -13.0, -11.5, 0.0
+MANUAL_OUT = {}   # no hand-locks — full parity re-level (bump kFactoryRev to push to users)
 for _p in PRESETS:
     _nm = _p["name"]
     if _nm in MANUAL_OUT:
         _p["vals"][SYM_IDX["out_level"]] = MANUAL_OUT[_nm]
-    elif _nm in CLEAN_NAMES:
-        _p["vals"][SYM_IDX["out_level"]] = CLEAN_OUT
     elif _nm in MEAS_RMS_AT_M20:
-        _target = TARGET_SUNN if _nm in SUNN_NAMES else TARGET_DIRTY
-        _out = -20.0 + (_target - MEAS_RMS_AT_M20[_nm])
-        _p["vals"][SYM_IDX["out_level"]] = round(max(-40.0, min(6.0, _out)), 1)
+        _tgt = TARGET_CLEAN if _nm in CLEAN_NAMES else TARGET_SUNN if _nm in SUNN_NAMES else TARGET_DIRTY
+        _out_rms  = -20.0 + (_tgt - MEAS_RMS_AT_M20[_nm])
+        _out_peak = PEAK_CEIL - 20.0 - MEAS_PEAK_AT_M20.get(_nm, -6.0)   # cap: peak stays under the ceiling
+        _p["vals"][SYM_IDX["out_level"]] = round(max(-40.0, min(6.0, min(_out_rms, _out_peak))), 1)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Verification: decode the ORIGINAL four inline presets to prove whether they sit

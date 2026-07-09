@@ -70,6 +70,7 @@ private:
         BiquadFilter coup12;    // Q1→Q2 interstage coupling
         BiquadFilter coup23;    // Q2→Q3 interstage coupling
         BiquadFilter outHP;     // output coupling cap
+        BiquadFilter outLP;     // Q3 collector load + output cap → dark, mid-forward voice
         double q1warm = 0.05;   // Newton warm-start (operating cond) per stage
         double q2warm = 0.85;
         double q3warm = 0.07;

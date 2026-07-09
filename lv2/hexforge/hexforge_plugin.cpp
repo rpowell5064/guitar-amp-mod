@@ -99,7 +99,7 @@ static constexpr int kBanks = 32, kSlots = 4;
 // BUMP whenever the built-in factory presets change — on load, a saved store with an
 // older rev has its FACTORY slots refreshed from the binary (user slots untouched), so
 // preset fixes actually reach existing users instead of being overridden by the .dat.
-static constexpr uint32_t kFactoryRev = 10;  // 10: real Plexi loudness for Nevermind Wall/Mauve Haze/Hazy Solo (they were mis-loading as Backline; re-measured) + Nevermind Wall reworked to Plexiglass. 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus. 4: + Angine de Poitrine bank (Bank 13, microtonal shimmer). 5: Bank 13 B/C -> Radiohead (Anyone Can Play Guitar / There There); kept Quarter-Tone Lead. 6: Cardinal Lead drive -> Preamp 250 (DOD 250). 7: Cardinal Lead re-staged (DOD drive 0.48->0.25, amp gain 0.78->0.62) — was too hot/mushy. 8: Cardinal Lead out_level re-measured on-device (-17.3->-19.2; DOD250 denser than the old RAT)
+static constexpr uint32_t kFactoryRev = 11;  // 11: FULL LOUDNESS PARITY re-level (2026-07-09) — amp makeup leveled (all amps equal-feel at noon) + every factory preset out_level re-measured & set to the Bank-1 target (-12.5 dirty / -13 clean); dropped the -5.9 clean pin + the +8 dB pushed-loud leads. 10: real Plexi loudness for Nevermind Wall/Mauve Haze/Hazy Solo (they were mis-loading as Backline; re-measured) + Nevermind Wall reworked to Plexiglass. 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus. 4: + Angine de Poitrine bank (Bank 13, microtonal shimmer). 5: Bank 13 B/C -> Radiohead (Anyone Can Play Guitar / There There); kept Quarter-Tone Lead. 6: Cardinal Lead drive -> Preamp 250 (DOD 250). 7: Cardinal Lead re-staged (DOD drive 0.48->0.25, amp gain 0.78->0.62) — was too hot/mushy. 8: Cardinal Lead out_level re-measured on-device (-17.3->-19.2; DOD250 denser than the old RAT)
 struct Preset {
     bool  used = false;
     char  name[32] = {0};
@@ -137,7 +137,11 @@ static constexpr int kBacklineIdx = 9;
 static constexpr int kPlexiIdx    = 10;   // Plexiglass (Marshall 1959 Super Lead)
 static constexpr int kMesaIdx     = 11;   // Cali V (Mesa Mark V)
 static const int   kAmpTube[12]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1 }; // …/EL34/EL34/6L6-EL34 Simul
-static const float kAmpMakeup[12] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 1.3f, 1.6f, 2.5f, 1.0f, 1.0f }; // [11] Mesa (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
+// Amp-level PARITY calibration (2026-07-09, build-tools/hexforge_amplevel measured @noon, cab on):
+// distorted amps → -16 dBFS RMS, clean amps (Fender/Hiwatt/Vox/Backline) → -13 dBFS (+3 dB perceptual
+// boost so cleans FEEL as loud as the denser distorted models). Re-leveled after the amp re-voicings
+// left Hiwatt -24 / CaliV -23 / Friedman -21.5 / Plexi -19 several dB quiet. makeup is linear post-amp gain.
+static const float kAmpMakeup[12] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f }; // [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
 // Soft ceiling on the amp INPUT: x -> A*tanh(x/A). Gives the amp headroom so a hot upstream
 // block (esp. the fuzz, which outputs ~0 dBFS = +14 dB over a guitar) can't slam the guitar-
 // level front-end into mush. Transparent at guitar level (~-0.2 dB @ -14 dBFS), soft-limits

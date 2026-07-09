@@ -52,7 +52,10 @@ static constexpr int kMaxModel    = 11;    // highest selectable model index (Bo
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
 static const int kModelTube[12] = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1 };  // [6] Friedman EL34; [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state; [10] Plexi EL34; [11] Mesa EL34/6L6
-static const float kModelMakeup[12] = { 3.3f, 1.0f, 1.4f, 3.0f, 1.15f, 1.0f, 1.0f, 4.9f, 1.6f, 2.5f, 1.0f, 1.0f };  // [10] Plexi; [11] Mesa (per-mode makeup is inside the model)
+// Synced to hexforge kAmpMakeup for cross-plugin PARITY (2026-07-09): identical amp+power-amp DSP,
+// so the same makeup levels the standalone Amp (into a cab) exactly like Hex Forge. Distorted amps
+// -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
+static const float kModelMakeup[12] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f };  // [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup inside the model)
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,

@@ -86,9 +86,10 @@ private:
         BiquadFilter       inter34HPF;
         TriodeComponent    stage4;       // PI driver (master-controlled)
 
+        BiquadFilter       presencePk;   // upper-mid PEAK @ ~2 kHz — the Friedman "bite"
         BiquadFilter       presenceF;    // high shelf @ ~4 kHz
         BiquadFilter       airLP;        // 1-pole LP @ ~13 kHz
-        BiquadFilter       bodyShelf;    // post-clip low-mid restore
+        BiquadFilter       bodyShelf;    // post-clip low-mid SCOOP (kills the 200 Hz hump)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

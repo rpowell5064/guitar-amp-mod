@@ -34,6 +34,8 @@
 #include "OverdriveBlock.h"      // drive-pedal models (ProCo RAT etc.)
 #include "OverdriveFactory.h"
 #include "EHXBigMuff.h"          // Big Muff fuzz (not in OverdriveFactory)
+#include "ToneBenderMkII.h"      // Tone Bender MkII germanium fuzz (not in OverdriveFactory)
+#include "Octavia.h"             // Octavia octave-up fuzz (not in OverdriveFactory)
 #include "OversamplingWrapper.h"
 #include "NamModel.h"
 
@@ -179,7 +181,7 @@ static void scaleToRms(std::vector<float>& x, double targetRms) {
 // ── Model spec: name → (AmpModel, plugin idx, tube idx), matching amp_plugin ─
 struct ModelSpec { AmpModel model; int idx; int tube; bool sunn; const char* label;
                    bool drive = false; OverdriveType odtype = OverdriveType::ProcoRAT;
-                   bool fuzz = false; int era = 2; };
+                   bool fuzz = false; int era = 2; bool tonebender = false; bool octavia = false; };
 
 static bool resolveModel(std::string name, ModelSpec& out) {
     for (auto& c : name) c = char(std::tolower((unsigned char)c));
@@ -199,6 +201,8 @@ static bool resolveModel(std::string name, ModelSpec& out) {
                               { out = {AmpModel::VoxAC30, 0, 2, false, "Vox AC30 Top Boost (Chime Thirty)"}; return true; }
     if (name == "peavey" || name == "backline" || name == "backstage" || name == "backlineplus")
                               { out = {AmpModel::PeaveyBackstage, 0, 0, false, "Peavey Backstage Plus (Backline Plus)"}; return true; }
+    if (name == "hiwatt" || name == "dr103" || name == "hiwattdr103")
+                              { out = {AmpModel::HiwattDR103, 0, 1, false, "Hiwatt DR103 (high-headroom clean)"}; return true; }
     // ── drive pedals (OverdriveBlock path; drive/tone/level via --gain/--tone/--level) ──
     if (name == "rat" || name == "rodent" || name == "dearrodentboy")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "ProCo RAT (Dear Rodent Boy)", true, OverdriveType::ProcoRAT}; return true; }
@@ -217,6 +221,13 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     // ── Big Muff fuzz (EHXBigMuff, era via --era; sustain/tone/vol via --gain/--tone/--level) ──
     if (name == "muff" || name == "bigmuff" || name == "italianhero")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Muff Fuzz (Italian Hero)"}; out.fuzz = true; return true; }
+    // ── Tone Bender MkII (ToneBenderMkII germanium; attack via --gain, level via
+    //    --level, bias/inputtrim/getemp via --bias/--itrim/--gtemp) ──
+    if (name == "tonebender" || name == "bender" || name == "mkii" || name == "toneben")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Tone Bender MkII"}; out.tonebender = true; return true; }
+    // ── Octavia octave-up fuzz (drive via --gain, tone via --tone, level via --level) ──
+    if (name == "octavia" || name == "octave" || name == "proctavia")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Octavia (octave-up fuzz)"}; out.octavia = true; return true; }
     return false;
 }
 
@@ -228,6 +239,7 @@ struct Knobs {
     float tone = 0.5f, level = 0.7f;   // drive-pedal: tone=filter, level=volume (gain=drive)
     float fat = 0.0f, c45 = 0.0f, sat = 0.0f;  // Friedman BE-Deluxe voicing toggles
     float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+)
+    float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -276,6 +288,50 @@ static void runFuzzModel(const ModelSpec& m, const Knobs& k, double sr,
     }
 }
 
+// ── Run the Tone Bender MkII (germanium fuzz in a 4x OversamplingWrapper) ──
+static void runTBModel(const ModelSpec& /*m*/, const Knobs& k, double sr,
+                       const std::vector<float>& in, std::vector<float>& out) {
+    constexpr int BLK = 512;
+    OversamplingWrapper w(std::make_unique<ToneBenderMkII>(), 4);
+    w.prepare(sr, BLK, 1);
+    w.setBypass(false);
+    w.setParameter("attack",    k.gain);    // Attack pot (fuzz/gain)
+    w.setParameter("level",     k.level);   // output volume
+    w.setParameter("bias",      k.bias);    // Q2 bias (dying-battery gate)
+    w.setParameter("inputtrim", k.itrim);
+    w.setParameter("getemp",    k.gtemp);
+    out.assign(in.size(), 0.0f);
+    std::vector<float> scratch(BLK);
+    for (size_t off = 0; off < in.size(); off += BLK) {
+        const int len = int(std::min<size_t>(BLK, in.size() - off));
+        std::memcpy(scratch.data(), in.data() + off, size_t(len) * sizeof(float));
+        float* p = scratch.data();
+        w.process(&p, &p, len, 1);
+        std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
+    }
+}
+
+// ── Run the Octavia octave-up fuzz (in a 4x OversamplingWrapper, like the plugin) ──
+static void runOctaviaModel(const ModelSpec& /*m*/, const Knobs& k, double sr,
+                            const std::vector<float>& in, std::vector<float>& out) {
+    constexpr int BLK = 512;
+    OversamplingWrapper w(std::make_unique<Octavia>(), 4);
+    w.prepare(sr, BLK, 1);
+    w.setBypass(false);
+    w.setParameter("drive", k.gain);
+    w.setParameter("tone",  k.tone);
+    w.setParameter("level", k.level);
+    out.assign(in.size(), 0.0f);
+    std::vector<float> scratch(BLK);
+    for (size_t off = 0; off < in.size(); off += BLK) {
+        const int len = int(std::min<size_t>(BLK, in.size() - off));
+        std::memcpy(scratch.data(), in.data() + off, size_t(len) * sizeof(float));
+        float* p = scratch.data();
+        w.process(&p, &p, len, 1);
+        std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
+    }
+}
+
 // When set (via --nopa), bypass the shared PowerAmpProcessor so the algorithmic
 // PREAMP can be A/B'd directly against a preamp-only capture (e.g. the BE-100
 // "[PRE] ... Noon" captures), removing power-amp colour + unknown-knob confounds.
@@ -284,6 +340,8 @@ static bool g_bypassPA = false;
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
                      const std::vector<float>& in, std::vector<float>& out) {
+    if (m.tonebender) { runTBModel(m, k, sr, in, out); return; }
+    if (m.octavia) { runOctaviaModel(m, k, sr, in, out); return; }
     if (m.fuzz)  { runFuzzModel(m, k, sr, in, out);  return; }
     if (m.drive) { runDriveModel(m, k, sr, in, out); return; }
     constexpr int BLK = 512;
@@ -654,6 +712,7 @@ int main(int argc, char** argv) {
     knob("--tone", k.tone);   knob("--level", k.level);   // drive-pedal filter/volume
     knob("--fat", k.fat);     knob("--c45", k.c45);       knob("--sat", k.sat);  // Friedman toggles
     knob("--mode", k.mode);   // Mesa Mark V mode 0..8
+    knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
 
     // Load the reference capture.
     NamModel nam;

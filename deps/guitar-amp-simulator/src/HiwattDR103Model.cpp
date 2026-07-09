@@ -12,9 +12,13 @@ void HiwattDR103Model::prepare(double oversampledSampleRate, int /*maxBlockSize*
 
     for (auto& c : ch_) {
         c.inputHPF.setCoeffs(Filters::highpass1pole(30.0, oversampledFs_));
+        // Brilliant-channel bright cap: high-shelf BEFORE the gain stages so the
+        // Hiwatt's clear top is amplified WITH the signal and survives drive (a
+        // post-stage boost just gets saturated/limited away when pushed).
+        c.inputBright.setCoeffs(Filters::highshelf(1800.0, 6.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kFenderV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(35.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(75.0, oversampledFs_));
         c.stage2.prepare(oversampledFs_, TriodeComponent::kFenderV2);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
@@ -28,8 +32,18 @@ void HiwattDR103Model::prepare(double oversampledSampleRate, int /*maxBlockSize*
         c.sagEnv = 0.0f;
 
         c.airLP.setCoeffs(Filters::lowpass1pole(20000.0, oversampledFs_));
-        c.brightShelf.setCoeffs(Filters::highshelf(3500.0, 5.0, oversampledFs_)); // brilliance
-        c.bodyShelf.setCoeffs(Filters::lowshelf(150.0, 1.5, oversampledFs_));     // fullness
+        // The DR103 DI rises from 500 Hz to a ~+3.5 dB plateau at 2-5 kHz (the
+        // Hiwatt "hi-fi/present" voice); the Fender stages + Marshall tonestack
+        // rolled the top off instead.  Broad brilliance shelf (corner dropped
+        // 3.5 k -> 900 Hz) lifts the whole upper band, and a peak fills 3 kHz.
+        // inputBright (pre-gain) supplies the drive-surviving top; this post peak
+        // sets the ~2-5 kHz "hi-fi plateau".  NOTE: the shared clean PowerAmp
+        // (Fender, canonical idx 0) rolls the top off ~10 dB, so the preamp is
+        // pre-emphasised HARD here to land on the DR103 DI after the PA.
+        c.brightShelf.setCoeffs(Filters::highshelf(2000.0, 0.0, oversampledFs_));
+        c.presencePk.setCoeffs(Filters::peaking(2400.0, 9.0, 0.5, oversampledFs_));
+        // Lows ran hot — a gentle low-shelf CUT tightens without going thin.
+        c.bodyShelf.setCoeffs(Filters::lowshelf(150.0, -1.5, oversampledFs_));
     }
     reset();
 }
@@ -39,12 +53,14 @@ void HiwattDR103Model::reset() noexcept {
     masterSmooth_.setCurrentAndTargetValue(master_);
     for (auto& c : ch_) {
         c.inputHPF.reset();
+        c.inputBright.reset();
         c.stage1.reset();
         c.inter12HPF.reset();
         c.stage2.reset();
         c.tonestack.reset();
         c.airLP.reset();
         c.brightShelf.reset();
+        c.presencePk.reset();
         c.bodyShelf.reset();
         c.sagEnv = 0.0f;
     }
@@ -61,6 +77,7 @@ float HiwattDR103Model::processSample(float x, int channel) noexcept {
     const float m = masterSmooth_.getCurrentValue();
 
     x = c.inputHPF.process(x);
+    x = c.inputBright.process(x);   // pre-gain brilliance (survives drive)
 
     // Stage 1: clean, high headroom — low drive multiplier so it barely breaks up even
     // wide open (the Hiwatt "stays clean and loud" character).
@@ -77,6 +94,7 @@ float HiwattDR103Model::processSample(float x, int channel) noexcept {
     // Extended top + brilliance + fullness
     x = c.airLP.process(x);
     x = c.brightShelf.process(x);
+    x = c.presencePk.process(x);
     x = c.bodyShelf.process(x);
 
     // Master volume

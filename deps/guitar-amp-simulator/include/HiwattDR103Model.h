@@ -44,13 +44,15 @@ private:
 
     struct ChannelState {
         BiquadFilter     inputHPF;     // 30 Hz — full but controlled lows
+        BiquadFilter     inputBright;  // Brilliant-channel bright cap PRE gain (survives drive)
         TriodeComponent  stage1;       // kFenderV1 (clean, high headroom)
         BiquadFilter     inter12HPF;   // 35 Hz
         TriodeComponent  stage2;       // kFenderV2
         ToneStackComponent tonestack;  // Marshall (British) voicing
         BiquadFilter     airLP;        // 20 kHz — extended top
-        BiquadFilter     brightShelf;  // brilliance shelf @ ~3.5 kHz
-        BiquadFilter     bodyShelf;    // gentle low-shelf for fullness
+        BiquadFilter     brightShelf;  // brilliance shelf — broad top-end lift
+        BiquadFilter     presencePk;   // presence PEAK @ ~3 kHz (Hiwatt hi-fi plateau)
+        BiquadFilter     bodyShelf;    // low-shelf — TIGHTEN the lows (cut)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

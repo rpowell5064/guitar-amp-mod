@@ -23,14 +23,15 @@ void FriedmanBEDeluxe::prepare(double oversampledSampleRate, int /*maxBlockSize*
         // Low boost HPF (35 Hz): the HBE boost stage adds gain WITHOUT thinning the
         // deep bass — nam_compare vs the HBE Noon capture showed 50 Hz was ~10 dB shy
         // because the 75 Hz boost HPF stacked on top of the cascade HPFs.
-        c.boostHPF.setCoeffs(Filters::highpass1pole(35.0, oversampledFs_));
+        c.boostHPF.setCoeffs(Filters::highpass1pole(60.0, oversampledFs_));
 
-        // BE/HBE cascade. Friedman has a fuller low end than a JCM800, so the
-        // pre-gain HPFs are lower (vs the JCM800 model's 110/90) to keep the lows.
+        // BE/HBE cascade. The BE-100 DI captures are TIGHT (50 Hz ~-9 dB rel 500),
+        // so the pre-gain HPFs are raised back toward the JCM800 values to tame the
+        // sub-bass/low-mid boom that the earlier (fuller-low) tuning left in.
         c.stage1.prepare(oversampledFs_, TriodeComponent::kMarshallV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(70.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(100.0, oversampledFs_));
         c.stage2.prepare(oversampledFs_, TriodeComponent::kMarshallV2);
-        c.inter23HPF.setCoeffs(Filters::highpass1pole(60.0, oversampledFs_));
+        c.inter23HPF.setCoeffs(Filters::highpass1pole(110.0, oversampledFs_));
         c.inter23LP.setCoeffs(Filters::lowpass1pole(13000.0, oversampledFs_));
         c.stage3.prepare(oversampledFs_, TriodeComponent::kMarshallV3);
 
@@ -40,7 +41,7 @@ void FriedmanBEDeluxe::prepare(double oversampledSampleRate, int /*maxBlockSize*
         c.tonestack.setTreble(treble_);
         c.tonestack.setPresence(presence_);
 
-        c.inter34HPF.setCoeffs(Filters::highpass1pole(60.0, oversampledFs_));
+        c.inter34HPF.setCoeffs(Filters::highpass1pole(100.0, oversampledFs_));
         c.stage4.prepare(oversampledFs_, TriodeComponent::kMarshallV4);
 
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
@@ -56,9 +57,16 @@ void FriedmanBEDeluxe::recalcFilters() noexcept {
         c.fatShelf.setCoeffs(Filters::lowshelf(150.0, 4.5, oversampledFs_));   // Fat
         c.c45Shelf.setCoeffs(Filters::highshelf(2200.0, 3.5, oversampledFs_)); // C45 bright
         c.cleanBright.setCoeffs(Filters::highshelf(2800.0, 5.0, oversampledFs_)); // clean tilt
+        // Friedman upper-mid bite: a broad peak at ~2 kHz.  The real BE-100 DI
+        // rises to +2..+3 dB across 1.2-3.1 kHz; the Marshall tonestack + cascade
+        // scoop that region, so a fixed peak fills it (the amp's cutting voice).
+        c.presencePk.setCoeffs(Filters::peaking(2200.0, 5.0, 0.7, oversampledFs_));
         c.presenceF.setCoeffs(Filters::highshelf(4000.0, presDb, oversampledFs_));
         c.airLP.setCoeffs(Filters::lowpass1pole(18000.0, oversampledFs_));
-        c.bodyShelf.setCoeffs(Filters::lowshelf(200.0, 3.0, oversampledFs_));
+        // Low-mid SCOOP: the cascade + fat/body path piled up a +7 dB hump at
+        // 125-315 Hz vs the (tight) BE-100 captures.  Cut it back with a peaking
+        // notch centred at ~230 Hz.
+        c.bodyShelf.setCoeffs(Filters::peaking(160.0, -6.0, 0.8, oversampledFs_));
     }
 }
 
@@ -73,7 +81,8 @@ void FriedmanBEDeluxe::reset() noexcept {
         c.stage1.reset();     c.inter12HPF.reset();
         c.stage2.reset();     c.inter23HPF.reset(); c.inter23LP.reset();
         c.stage3.reset();     c.tonestack.reset();  c.inter34HPF.reset();
-        c.stage4.reset();     c.presenceF.reset();  c.airLP.reset(); c.bodyShelf.reset();
+        c.stage4.reset();     c.presencePk.reset(); c.presenceF.reset();
+        c.airLP.reset();      c.bodyShelf.reset();
         c.sagEnv = 0.0f;
     }
 }
@@ -113,7 +122,7 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
         // slammed (nam_compare vs the Noon preamp captures showed 2-3x too much THD).
         const float satMul = sat_ ? 1.4f : 1.0f;
         if (channel_ == CH_HBE) {
-            x = c.boostStage.process(x * (1.2f + g * 2.0f) * satMul) * 0.85f * kCoupB;
+            x = c.boostStage.process(x * (1.2f + g * 1.2f) * satMul) * 0.85f * kCoupB;
             x = c.boostHPF.process(x);
         }
         x = c.stage1.process(x * (1.0f + g * 4.5f) * satMul) * 0.90f * kCouple12;
@@ -126,9 +135,10 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
         x = c.tonestack.process(x);
         x = c.inter34HPF.process(x);
         x = c.stage4.process(x * 3.0f) * (0.78f * m);
+        x = c.bodyShelf.process(x);   // scoop the 200 Hz low-mid hump
+        x = c.presencePk.process(x);  // Friedman upper-mid bite @ ~2 kHz
         x = c.presenceF.process(x);
         x = c.airLP.process(x);
-        x = c.bodyShelf.process(x);
     }
 
     // EL34 supply sag under drive.

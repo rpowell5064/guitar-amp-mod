@@ -21,7 +21,7 @@ void DOD250::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
 }
 
 void DOD250::reset() noexcept {
-    for (auto& c : ch_) { c.inHP.reset(); c.fbLP.reset(); c.toneSh.reset(); c.outLP.reset(); c.dcBlk.reset(); }
+    for (auto& c : ch_) { c.inHP.reset(); c.fbLP.reset(); c.toneSh.reset(); c.outLP.reset(); c.dcBlk.reset(); c.lmCut.reset(); }
     driveS_.setCurrentAndTargetValue(drive_);
     levelS_.setCurrentAndTargetValue(level_);
     driveCur_ = drive_; levelCur_ = level_;
@@ -42,23 +42,26 @@ void DOD250::recalc() noexcept {
     const double nyq = 0.45 * fs_; if (outFc > nyq) outFc = nyq;
     const auto outC = Filters::lowpass(outFc, 0.707, fs_);
     const auto dcC  = Filters::highpass(12.0, 0.707, fs_);
+    const auto lmC  = Filters::peaking(kLmCutFc, kLmCutDb, kLmCutQ, fs_);
     for (auto& c : ch_) {
         c.inHP .setCoeffs(inC);
         c.fbLP .setCoeffs(fbC);
         c.toneSh.setCoeffs(toC);
         c.outLP.setCoeffs(outC);
         c.dcBlk.setCoeffs(dcC);
+        c.lmCut.setCoeffs(lmC);
     }
 }
 
 float DOD250::processSample(float x, int chn) noexcept {
     auto& s = ch_[chn];
     const double v   = s.inHP.process(x);
-    const double g   = v * (1.0 + static_cast<double>(driveCur_) * kGainMax);
+    const double g   = v * (kGainMin * std::pow(kGainMax / kGainMin, static_cast<double>(driveCur_)));
     const double bw  = s.fbLP.process(static_cast<float>(g));        // gain-stage bandwidth limit
     const double clp = diodeClip(bw, kVf, kHard);                     // hard shunt clip
     const double dc  = s.dcBlk.process(static_cast<float>(clp));
-    const double tl  = s.toneSh.process(static_cast<float>(dc));      // gentle tone tilt
+    const double lm  = s.lmCut.process(static_cast<float>(dc));       // flatten clip-generated 125 Hz bump
+    const double tl  = s.toneSh.process(static_cast<float>(lm));      // gentle tone tilt
     const double out = s.outLP.process(static_cast<float>(tl));       // output rolloff
     return static_cast<float>(out * static_cast<double>(levelCur_) * kMakeup);
 }

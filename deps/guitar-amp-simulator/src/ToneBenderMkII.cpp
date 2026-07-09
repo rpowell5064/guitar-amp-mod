@@ -11,10 +11,14 @@ void ToneBenderMkII::prepare(double oversampledFs, int /*maxBlockSize*/) noexcep
     attackCur_ = attack_; volCur_ = level_;
 
     for (auto& c : ch_) {
-        c.inputHP.setCoeffs(Filters::highpass1pole(70.0, fs_));   // ~10 nF input coupling
-        c.coup12.setCoeffs (Filters::highpass1pole(50.0, fs_));   // Q1→Q2 coupling
-        c.coup23.setCoeffs (Filters::highpass1pole(45.0, fs_));   // Q2→Q3 coupling
+        c.inputHP.setCoeffs(Filters::highpass1pole(130.0, fs_));  // ~10 nF input coupling (tightened: the
+                                                                 // captures show the MkII cuts bass hard, -5..-6 dB @50)
+        c.coup12.setCoeffs (Filters::highpass1pole(90.0, fs_));   // Q1→Q2 coupling
+        c.coup23.setCoeffs (Filters::highpass1pole(75.0, fs_));   // Q2→Q3 coupling
         c.outHP.setCoeffs  (Filters::highpass1pole(30.0, fs_));   // output coupling
+        // Output rolloff: the MkII is a DARK, mid-forward fuzz (captures roll off hard,
+        // ~-20 dB @8k rel 500) — a 1-pole LP at 1.8 kHz maps onto the captured slope.
+        c.outLP.setCoeffs  (Filters::lowpass1pole(1800.0, fs_));
     }
     geTempApplied_ = -1.0f;
     recalcTemp();
@@ -23,7 +27,7 @@ void ToneBenderMkII::prepare(double oversampledFs, int /*maxBlockSize*/) noexcep
 
 void ToneBenderMkII::reset() noexcept {
     for (auto& c : ch_) {
-        c.inputHP.reset(); c.coup12.reset(); c.coup23.reset(); c.outHP.reset();
+        c.inputHP.reset(); c.coup12.reset(); c.coup23.reset(); c.outHP.reset(); c.outLP.reset();
         c.q1warm = 0.10; c.q2warm = 0.85; c.q3warm = 0.10; c.starveEnv = 0.0f;
     }
     attackSm_.setCurrentAndTargetValue(attack_);
@@ -97,8 +101,11 @@ float ToneBenderMkII::processSample(float xin, int ch) noexcept {
     // (3.5–5.5 V equiv → the dying-battery gate).
     c.starveEnv += (std::fabs(static_cast<float>(v1)) - c.starveEnv) * 0.0015f;
     const double biasShift = (bias_ - 0.5) * 0.18;
-    double qc2 = 0.24 + biasShift + 0.18 * c.starveEnv;   // below-centre bias: clean at low
-                                                          // signal, asymmetric clip when pushed
+    double qc2 = 0.45 + biasShift + 0.14 * c.starveEnv;   // below-centre bias: clean at low signal,
+                                                          // asymmetric clip when pushed.  Raised 0.24→0.42
+                                                          // (+ smaller starve term): the captures are ODD-
+                                                          // dominant (h3>h2); the old near-saturation bias
+                                                          // clipped too asymmetrically (h2>>h3)
     qc2 = std::clamp(qc2, 0.03, 0.7);
     const double gQ2 = 0.30 + atk * 1.05;           // Attack → Q2 gain
     double v2 = geStage(v1, qc2, gQ2, 0.04, vt_, leak_, c.q2warm);
@@ -110,10 +117,12 @@ float ToneBenderMkII::processSample(float xin, int ch) noexcept {
     const double reQ3 = 0.06 + 0.30 * (1.0 - atk);
     double v3 = geStage(v2, 0.90, gQ3, reQ3, vt_, leak_, c.q3warm);
     v3 = c.outHP.process(static_cast<float>(v3));
+    v3 = c.outLP.process(static_cast<float>(v3));   // dark, mid-forward voicing
 
     // Output level (volume pot). Makeup compensates the lower cascade gain; kept
     // below the safety clamp so dynamics aren't squashed by the limiter.
-    double out = v3 * (0.35 + volCur_ * 1.25);
+    double out = v3 * (0.13 + volCur_ * 0.45);   // was 0.35+vol·1.25 = ~11 dB too hot vs the capture;
+                                                  // trimmed near capture level (like the Muff), still line-hot
     return static_cast<float>(std::clamp(out, -1.4, 1.4));
 }
 
