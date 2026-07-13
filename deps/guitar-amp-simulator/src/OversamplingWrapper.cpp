@@ -76,15 +76,16 @@ float OversamplingWrapper::getParameter(const std::string& id) const {
 }
 
 void OversamplingWrapper::computeAACoeffs(double /*oversampledSampleRate*/) noexcept {
-    // Cutoff is always at the original Nyquist:
-    //   fc / fs_up = 1 / (2 * factor_)
-    //   K = tan(π * fc / fs_up) = tan(π / (2 * factor_))
-    // This ratio is independent of the actual sample rate.
-    const double K  = std::tan(M_PI / (2.0 * static_cast<double>(factor_)));
+    // Cutoff sits a touch BELOW the original Nyquist (kCutoffFrac × Nyquist), trimming only the inaudible
+    // top (~21.6-24 kHz, already rolled off by the amp/cab) for a little extra near-Nyquist margin. NOTE:
+    // measurement (tools/amp_alias.cpp) shows the audible-band alias floor is set by the filter ORDER, not
+    // this cutoff — 0.82 vs 0.90 were identical <15 kHz — because the audible aliases fold down from
+    // harmonics deep in the stopband. The 8th order (below) is what does the work. Ratio is rate-independent.
+    //   K = tan(π · kCutoffFrac / (2 · factor_))
+    constexpr double kCutoffFrac = 0.90;
+    const double K  = std::tan(M_PI * kCutoffFrac / (2.0 * static_cast<double>(factor_)));
     const double K2 = K * K;
 
-    // 4th-order Butterworth: two SOS sections.
-    // Q values for 4th-order: Q1 = 1/(2·sin(π/8)), Q2 = 1/(2·sin(3π/8)).
     auto makeSOS = [&](double Q) -> BiquadCoeffs {
         const double D = K2 + K / Q + 1.0;
         return {
@@ -96,13 +97,19 @@ void OversamplingWrapper::computeAACoeffs(double /*oversampledSampleRate*/) noex
         };
     };
 
-    const BiquadCoeffs sos0 = makeSOS(1.0 / (2.0 * std::sin(M_PI / 8.0)));
-    const BiquadCoeffs sos1 = makeSOS(1.0 / (2.0 * std::sin(3.0 * M_PI / 8.0)));
+    // 8th-order Butterworth = four SOS. Pole Q's: Q_k = 1/(2·cos((2k+1)·π/16)), k = 0..3
+    // → {0.5098, 0.6013, 0.9000, 2.5629} (ascending pole angle).
+    const BiquadCoeffs sos[4] = {
+        makeSOS(1.0 / (2.0 * std::cos(1.0 * M_PI / 16.0))),
+        makeSOS(1.0 / (2.0 * std::cos(3.0 * M_PI / 16.0))),
+        makeSOS(1.0 / (2.0 * std::cos(5.0 * M_PI / 16.0))),
+        makeSOS(1.0 / (2.0 * std::cos(7.0 * M_PI / 16.0))),
+    };
 
     for (int ch = 0; ch < kMaxCh; ++ch) {
-        upAA_[ch].s0.setCoeffs(sos0);
-        upAA_[ch].s1.setCoeffs(sos1);
-        downAA_[ch].s0.setCoeffs(sos0);
-        downAA_[ch].s1.setCoeffs(sos1);
+        upAA_[ch].s0.setCoeffs(sos[0]);  upAA_[ch].s1.setCoeffs(sos[1]);
+        upAA_[ch].s2.setCoeffs(sos[2]);  upAA_[ch].s3.setCoeffs(sos[3]);
+        downAA_[ch].s0.setCoeffs(sos[0]); downAA_[ch].s1.setCoeffs(sos[1]);
+        downAA_[ch].s2.setCoeffs(sos[2]); downAA_[ch].s3.setCoeffs(sos[3]);
     }
 }

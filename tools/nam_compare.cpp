@@ -36,6 +36,7 @@
 #include "EHXBigMuff.h"          // Big Muff fuzz (not in OverdriveFactory)
 #include "ToneBenderMkII.h"      // Tone Bender MkII germanium fuzz (not in OverdriveFactory)
 #include "Octavia.h"             // Octavia octave-up fuzz (not in OverdriveFactory)
+#include "ZVexFuzzFactory.h"      // ZVex Fuzz Factory (silicon 2-transistor + feedback)
 #include "OversamplingWrapper.h"
 #include "NamModel.h"
 
@@ -181,7 +182,8 @@ static void scaleToRms(std::vector<float>& x, double targetRms) {
 // ── Model spec: name → (AmpModel, plugin idx, tube idx), matching amp_plugin ─
 struct ModelSpec { AmpModel model; int idx; int tube; bool sunn; const char* label;
                    bool drive = false; OverdriveType odtype = OverdriveType::ProcoRAT;
-                   bool fuzz = false; int era = 2; bool tonebender = false; bool octavia = false; };
+                   bool fuzz = false; int era = 2; bool tonebender = false; bool octavia = false;
+                   bool fuzzfactory = false; };
 
 static bool resolveModel(std::string name, ModelSpec& out) {
     for (auto& c : name) c = char(std::tolower((unsigned char)c));
@@ -228,6 +230,9 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     // ── Octavia octave-up fuzz (drive via --gain, tone via --tone, level via --level) ──
     if (name == "octavia" || name == "octave" || name == "proctavia")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Octavia (octave-up fuzz)"}; out.octavia = true; return true; }
+    // ── ZVex Fuzz Factory (Drive=--gain, Comp=--bias, Gate=--itrim, Stab=--gtemp, Vol=--level) ──
+    if (name == "fuzzfactory" || name == "ff" || name == "vexter" || name == "zvex")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "ZVex Fuzz Factory"}; out.fuzzfactory = true; return true; }
     return false;
 }
 
@@ -332,6 +337,30 @@ static void runOctaviaModel(const ModelSpec& /*m*/, const Knobs& k, double sr,
     }
 }
 
+// ── Run the ZVex Fuzz Factory (4x OversamplingWrapper, like the plugin) ──
+//   Drive=--gain  Comp=--bias  Gate=--itrim  Stab=--gtemp  Volume=--level
+static void runFFModel(const ModelSpec& /*m*/, const Knobs& k, double sr,
+                       const std::vector<float>& in, std::vector<float>& out) {
+    constexpr int BLK = 512;
+    OversamplingWrapper w(std::make_unique<ZVexFuzzFactory>(), 4);
+    w.prepare(sr, BLK, 1);
+    w.setBypass(false);
+    w.setParameter("drive",  k.gain);
+    w.setParameter("comp",   k.bias);
+    w.setParameter("gate",   k.itrim);
+    w.setParameter("stab",   k.gtemp);
+    w.setParameter("volume", k.level);
+    out.assign(in.size(), 0.0f);
+    std::vector<float> scratch(BLK);
+    for (size_t off = 0; off < in.size(); off += BLK) {
+        const int len = int(std::min<size_t>(BLK, in.size() - off));
+        std::memcpy(scratch.data(), in.data() + off, size_t(len) * sizeof(float));
+        float* p = scratch.data();
+        w.process(&p, &p, len, 1);
+        std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
+    }
+}
+
 // When set (via --nopa), bypass the shared PowerAmpProcessor so the algorithmic
 // PREAMP can be A/B'd directly against a preamp-only capture (e.g. the BE-100
 // "[PRE] ... Noon" captures), removing power-amp colour + unknown-knob confounds.
@@ -341,6 +370,7 @@ static bool g_bypassPA = false;
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
                      const std::vector<float>& in, std::vector<float>& out) {
     if (m.tonebender) { runTBModel(m, k, sr, in, out); return; }
+    if (m.fuzzfactory) { runFFModel(m, k, sr, in, out); return; }
     if (m.octavia) { runOctaviaModel(m, k, sr, in, out); return; }
     if (m.fuzz)  { runFuzzModel(m, k, sr, in, out);  return; }
     if (m.drive) { runDriveModel(m, k, sr, in, out); return; }

@@ -11,7 +11,7 @@
         <div class="hx-tag">11 amp models · power-amp stage</div>
     </div>
 
-    <!-- ── AMP MODEL selector (ABOVE the faceplate so its dropdown is never clipped) ── -->
+    <!-- ── AMP MODEL selector (ABOVE the tabs so its dropdown is never clipped) ── -->
     <div class="mod-amp-modelrow">
         <span class="mod-section-label">AMP MODEL</span>
         {{#controls.0}}
@@ -26,177 +26,204 @@
         {{/controls.0}}
     </div>
 
-    <!-- ── NAM model file picker (Model = Neural (NAM) only) ────────────── -->
-    <div rata-role="namgroup" class="mod-pagroup mod-hidden">
-        <span class="mod-section-label">NAM MODEL FILE</span>
-        {{#effect.parameters.0}}{{#path}}
-        <div class="mod-enumerated mod-model-select" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">
-            <div mod-role="input-parameter-value" rata-role="Nam" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- choose a NAM file --</div>
-            <div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>
-        </div>
-        {{/path}}{{/effect.parameters.0}}
+    <!-- ── TAB BAR: fold the stacked panels into one-at-a-time tabs (keeps the pedal small) ── -->
+    <div class="hf-tabs" rata-role="tabs">
+        <div class="hf-tab hf-tab-active" rata-role="tab" data-tab="amp">Amp</div>
+        <div class="hf-tab" rata-role="tab" data-tab="voice">Voicing</div>
+        <div class="hf-tab" rata-role="tab" data-tab="power">Power Amp</div>
+        <div class="hf-tab" rata-role="tab" data-tab="nam">Neural</div>
     </div>
 
-    <!-- ── AMP FACE: tolex cabinet top + glowing tubes + per-model faceplate control plate ── -->
-    <div class="hf-amp-face" rata-role="ampface">
-        <div class="hf-amp-tubes"></div>
-        <div class="hf-amp-plate">
-            <div class="hf-screw hf-screw-tl"></div>
-            <div class="hf-screw hf-screw-tr"></div>
-            <div class="hf-screw hf-screw-bl"></div>
-            <div class="hf-screw hf-screw-br"></div>
-            <div class="hf-amp-badge" rata-role="ampbadge">Clean Meanie</div>
+    <div class="hf-tabpanels">
 
-            <div class="hf-agroups">
-                <!-- PREAMP: gain (1) + master (6) + sag (7) -->
-                <div class="hf-agroup">
-                    <span class="hf-agroup-title">Preamp</span>
-                    <div class="hf-agroup-body mod-knobs clearfix">
-                        {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="gainlabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.1}}
-                        {{#controls.6}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
-                        {{#controls.7}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.7}}
+        <!-- ══ AMP TAB: tolex cabinet top + glowing tubes + per-model faceplate control plate ══ -->
+        <div class="hf-tabpanel hf-tab-active" rata-role="panel" data-tab="amp">
+            <div class="hf-amp-face" rata-role="ampface">
+                <div class="hf-amp-tubes"></div>
+                <div class="hf-amp-plate">
+                    <div class="hf-screw hf-screw-tl"></div>
+                    <div class="hf-screw hf-screw-tr"></div>
+                    <div class="hf-screw hf-screw-bl"></div>
+                    <div class="hf-screw hf-screw-br"></div>
+                    <div class="hf-amp-badge" rata-role="ampbadge">Clean Meanie</div>
+
+                    <div class="hf-agroups">
+                        <!-- PREAMP: gain (1) + master (6) + sag (7) -->
+                        <div class="hf-agroup">
+                            <span class="hf-agroup-title">Preamp</span>
+                            <div class="hf-agroup-body mod-knobs clearfix">
+                                {{#controls.1}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title" rata-role="gainlabel">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.1}}
+                                {{#controls.6}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
+                                {{#controls.7}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.7}}
+                            </div>
+                        </div>
+                        <!-- TONE STACK: bass (2) mid (3) treble (4) presence (5) -->
+                        <div class="hf-agroup">
+                            <span class="hf-agroup-title">Tone Stack</span>
+                            <div class="hf-agroup-body mod-knobs clearfix">
+                                {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.2}}
+                                {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
+                                {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
+                                {{#controls.5}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
+                            </div>
+                        </div>
+                        <!-- EVH-only resonance (9) -->
+                        <span rata-role="resonancectl" class="amp-cond mod-hidden hf-agroup">
+                            <span class="hf-agroup-title">Resonance</span>
+                            <div class="hf-agroup-body mod-knobs clearfix">
+                                {{#controls.9}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.9}}
+                            </div>
+                        </span>
                     </div>
                 </div>
-                <!-- TONE STACK: bass (2) mid (3) treble (4) presence (5) -->
-                <div class="hf-agroup">
-                    <span class="hf-agroup-title">Tone Stack</span>
-                    <div class="hf-agroup-body mod-knobs clearfix">
-                        {{#controls.2}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.2}}
-                        {{#controls.3}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
-                        {{#controls.4}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
-                        {{#controls.5}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
+            </div>
+        </div>
+
+        <!-- ══ VOICING TAB: model-specific channel / EQ panels (exactly one shows per model) ══ -->
+        <div class="hf-tabpanel" rata-role="panel" data-tab="voice">
+
+            <!-- EVH / Rockerverb channel toggle -->
+            <div rata-role="channelctl" class="hf-pa-face mod-hidden">
+                <div class="hf-pa-title">Channel</div>
+                <div class="mod-control-group mod-row-mixed clearfix">
+                    {{#controls.8}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.8}}
+                </div>
+            </div>
+
+            <!-- ── BEARDO BE (Friedman): Clean/BE/HBE channel + Fat/C45/Sat ── -->
+            <div rata-role="friedmangroup" class="hf-pa-face mod-hidden">
+                <div class="hf-pa-title">Beardo BE</div>
+                <div class="mod-control-group mod-row-mixed clearfix">
+                    {{#controls.28}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">{{name}}</span>
+                    {{/controls.28}}
+                    {{#controls.29}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.29}}
+                    {{#controls.30}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.30}}
+                    {{#controls.31}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.31}}
+                </div>
+            </div>
+
+            <!-- ── CALI V (Mesa Mark V): 9-mode channel switcher + 5-band graphic EQ ── -->
+            <div rata-role="mesagroup" class="hf-pa-face mod-hidden">
+                <div class="hf-pa-title">Cali V</div>
+                <div class="mod-control-group mod-row-mixed clearfix">
+                    {{#controls.32}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">Mode</span>
+                    {{/controls.32}}
+                    {{#controls.38}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">EQ Preset</span>
+                    {{/controls.38}}
+                </div>
+                <div class="hf-agroups">
+                    <div class="hf-agroup">
+                        <span class="hf-agroup-title">Graphic EQ</span>
+                        <div class="hf-agroup-body hf-eqrow clearfix">
+                            {{#controls.33}}<div class="hf-eqslider" title="{{name}}"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-eqslider-t">80</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.33}}
+                            {{#controls.34}}<div class="hf-eqslider" title="{{name}}"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-eqslider-t">240</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.34}}
+                            {{#controls.35}}<div class="hf-eqslider" title="{{name}}"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-eqslider-t">750</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.35}}
+                            {{#controls.36}}<div class="hf-eqslider" title="{{name}}"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-eqslider-t">2.2k</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.36}}
+                            {{#controls.37}}<div class="hf-eqslider" title="{{name}}"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-eqslider-t">6.6k</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.37}}
+                        </div>
                     </div>
                 </div>
-                <!-- EVH-only resonance (2) -->
-                <span rata-role="resonancectl" class="amp-cond mod-hidden hf-agroup">
-                    <span class="hf-agroup-title">Resonance</span>
-                    <div class="hf-agroup-body mod-knobs clearfix">
-                        {{#controls.9}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.9}}
+            </div>
+
+            <!-- ── BRITE CHANNEL (Sunn Model T / Doom Daddy only) ── -->
+            <div rata-role="sunngroup" class="hf-pa-face mod-hidden">
+                <div class="hf-pa-title">Brite Channel</div>
+                <div class="mod-control-group mod-knobs clearfix">
+                    {{#controls.10}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.10}}
+                    {{#controls.23}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.23}}
+                    {{#controls.24}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.24}}
+                    {{#controls.25}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.25}}
+                </div>
+                <div class="mod-control-group mod-row-mixed clearfix">
+                    {{#controls.26}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.26}}
+                    {{#controls.27}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.27}}
+                    {{#controls.11}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
                     </div>
-                </span>
-            </div>
-        </div>
-    </div>
-
-    <!-- EVH / Rockerverb channel toggle -->
-    <div class="mod-control-group mod-row-mixed clearfix">
-        <span rata-role="channelctl" class="amp-cond mod-hidden">
-        {{#controls.8}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.8}}
-        </span>
-    </div>
-
-    <!-- ── BEARDO BE (Friedman): Clean/BE/HBE channel + Fat/C45/Sat (Model = Beardo BE only) ── -->
-    <div rata-role="friedmangroup" class="hf-pa-face mod-hidden">
-        <div class="hf-pa-title">Beardo BE</div>
-        <div class="mod-control-group mod-row-mixed clearfix">
-            {{#controls.28}}
-            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
-                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-            </div>
-            <span class="mod-inline-label">{{name}}</span>
-            {{/controls.28}}
-            {{#controls.29}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.29}}
-            {{#controls.30}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.30}}
-            {{#controls.31}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.31}}
-        </div>
-    </div>
-
-    <!-- ── CALI V (Mesa Mark V): 9-mode channel switcher + 5-band graphic EQ (Model = Cali V only) ── -->
-    <div rata-role="mesagroup" class="hf-pa-face mod-hidden">
-        <div class="hf-pa-title">Cali V</div>
-        <div class="mod-control-group mod-row-mixed clearfix">
-            {{#controls.32}}
-            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
-                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-            </div>
-            <span class="mod-inline-label">Mode</span>
-            {{/controls.32}}
-            {{#controls.38}}
-            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
-                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-            </div>
-            <span class="mod-inline-label">EQ Preset</span>
-            {{/controls.38}}
-        </div>
-        <div class="hf-agroups">
-            <div class="hf-agroup">
-                <span class="hf-agroup-title">Graphic EQ</span>
-                <div class="hf-agroup-body mod-knobs clearfix">
-                    {{#controls.33}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.33}}
-                    {{#controls.34}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.34}}
-                    {{#controls.35}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.35}}
-                    {{#controls.36}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.36}}
-                    {{#controls.37}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.37}}
+                    <span class="mod-inline-label">{{name}}</span>
+                    {{/controls.11}}
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── BRITE CHANNEL (Sunn Model T / Doom Daddy only) ── -->
-    <div rata-role="sunngroup" class="hf-pa-face mod-hidden">
-        <div class="hf-pa-title">Brite Channel</div>
-        <div class="mod-control-group mod-knobs clearfix">
-            {{#controls.10}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.10}}
-            {{#controls.23}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.23}}
-            {{#controls.24}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.24}}
-            {{#controls.25}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.25}}
-        </div>
-        <div class="mod-control-group mod-row-mixed clearfix">
-            {{#controls.26}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.26}}
-            {{#controls.27}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.27}}
-            {{#controls.11}}
-            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
-                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-            </div>
-            <span class="mod-inline-label">{{name}}</span>
-            {{/controls.11}}
-        </div>
-    </div>
-
-    <!-- ── POWER AMP section (hidden for Sunn — its PA is auto-bypassed) ── -->
-    <!-- ── POWER AMP: its own chassis panel (matches the faceplate) ── -->
-    <div rata-role="pagroup" class="hf-pa-face">
-        <div class="hf-pa-title">Power Amp</div>
-        <!-- top rail: PA Bypass + PA Auto switches + manual Power Tube selector -->
-        <div class="hf-pa-rail">
-            {{#controls.22}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.22}}
-            {{#controls.13}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.13}}
-            <span rata-role="pamanual" class="amp-cond mod-hidden pa-tube">
-            {{#controls.14}}
-            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
-                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-            </div>
-            <span class="mod-inline-label">{{#controls.14}}{{name}}{{/controls.14}}</span>
-            {{/controls.14}}
-            </span>
-        </div>
-
-        <div class="hf-agroups">
-            <!-- Valve Stage: manual PA knobs (hidden when PA Auto is on) -->
-            <div rata-role="pamanual" class="hf-agroup amp-condblock mod-hidden">
-                <span class="hf-agroup-title">Valve Stage</span>
-                <div class="hf-agroup-body mod-knobs clearfix">
-                    {{#controls.15}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
-                    {{#controls.16}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.16}}
-                    {{#controls.17}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.17}}
-                    {{#controls.18}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.18}}
-                    {{#controls.19}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
+        <!-- ══ POWER AMP TAB: its own chassis panel (hidden for Sunn / NAM via the tab) ══ -->
+        <div class="hf-tabpanel" rata-role="panel" data-tab="power">
+            <div rata-role="pagroup" class="hf-pa-face">
+                <div class="hf-pa-title">Power Amp</div>
+                <!-- top rail: PA Bypass + PA Auto switches + manual Power Tube selector -->
+                <div class="hf-pa-rail">
+                    {{#controls.22}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.22}}
+                    {{#controls.13}}<div class="mod-switch" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.13}}
+                    <span rata-role="pamanual" class="amp-cond mod-hidden pa-tube">
+                    {{#controls.14}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">{{#controls.14}}{{name}}{{/controls.14}}</span>
+                    {{/controls.14}}
+                    </span>
                 </div>
-            </div>
-            <!-- Feel: always-active resonance + air -->
-            <div class="hf-agroup">
-                <span class="hf-agroup-title">Feel</span>
-                <div class="hf-agroup-body mod-knobs clearfix">
-                    {{#controls.20}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.20}}
-                    {{#controls.21}}<div class="mod-switch pa-sw" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.21}}
+
+                <div class="hf-agroups">
+                    <!-- Valve Stage: manual PA knobs (hidden when PA Auto is on) -->
+                    <div rata-role="pamanual" class="hf-agroup amp-condblock mod-hidden">
+                        <span class="hf-agroup-title">Valve Stage</span>
+                        <div class="hf-agroup-body mod-knobs clearfix">
+                            {{#controls.15}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
+                            {{#controls.16}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.16}}
+                            {{#controls.17}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.17}}
+                            {{#controls.18}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.18}}
+                            {{#controls.19}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
+                        </div>
+                    </div>
+                    <!-- Feel: always-active resonance + air -->
+                    <div class="hf-agroup">
+                        <span class="hf-agroup-title">Feel</span>
+                        <div class="hf-agroup-body mod-knobs clearfix">
+                            {{#controls.20}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.20}}
+                            {{#controls.21}}<div class="mod-switch pa-sw" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.21}}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- ══ NEURAL TAB: NAM model file picker (only shown for the Neural model) ══ -->
+        <div class="hf-tabpanel" rata-role="panel" data-tab="nam">
+            <div rata-role="namgroup" class="hf-pa-face">
+                <div class="hf-pa-title">Neural (NAM)</div>
+                <span class="mod-section-label">NAM MODEL FILE</span>
+                {{#effect.parameters.0}}{{#path}}
+                <div class="mod-enumerated mod-model-select" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">
+                    <div mod-role="input-parameter-value" rata-role="Nam" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- choose a NAM file --</div>
+                    <div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>
+                </div>
+                {{/path}}{{/effect.parameters.0}}
+                <div class="hf-agroup-body mod-knobs clearfix" style="margin-top:12px;">
+                    {{#controls.39}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.39}}
+                    {{#controls.40}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.40}}
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <div class="hx-logo"></div>

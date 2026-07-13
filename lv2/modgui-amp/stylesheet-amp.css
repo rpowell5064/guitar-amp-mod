@@ -1,3 +1,4 @@
+.mod-pedal-guitaramp-amp{{{cns}}} { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
 /* STYLES FOR THE GUITARAMP AMP PEDAL */
 
 .mod-pedal-guitaramp-amp{{{cns}}} {
@@ -11,8 +12,8 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 940px;   /* FIXED height (MOD's drag/interaction layer needs a definite height — min-height/auto breaks control clicks). Tall enough for Cali V's extra panel. */
-    width: 1660px;
+    height: 600px;   /* FIXED height. Taller so the tallest tab panel's controls have comfortable bottom padding inside the plate (were jammed at the plate edge) + tolex footroom. */
+    width: 820px;
     position: absolute;
     border-radius: 12px;
     border-top: 2px solid #ff963c;
@@ -36,7 +37,7 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hx-brand {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size: 10px; font-weight: 800; letter-spacing: 3px; line-height: 1;
+    font-size: 11px; font-weight: 800; letter-spacing: 3px; line-height: 1;
     text-transform: uppercase;
     background: linear-gradient(90deg, #19e0ff 0%, #ff2bd6 100%);
     -webkit-background-clip: text; background-clip: text;
@@ -56,19 +57,19 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hx-tag {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size: 9px; font-weight: 600; letter-spacing: .6px; line-height: 1;
+    font-size: 11px; font-weight: 600; letter-spacing: .6px; line-height: 1;
     margin-top: 7px; color: #828893;
 }
 
 /* PORTS (audio jacks) */
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-pedal-input,
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-pedal-output {
-    top: 300px;
+    top: 290px;
 }
 
 /* POWER / BYPASS SWITCH */
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-powerswitch {
-    margin-left: 545px;
+    margin-left: 728px;
     margin-top: 12px;
     cursor: pointer;
     position: absolute;
@@ -91,7 +92,7 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-section-label {
     display: block;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     letter-spacing: 1px;
     color: #ff963c;
@@ -103,13 +104,40 @@
     background: rgba(255,150,60,.35);
 }
 
-/* AMP MODEL SELECTOR ROW */
+/* AMP MODEL SELECTOR ROW (left-aligned; the logo lives in the empty space to its right) */
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-amp-modelrow {
     margin-top: 80px;
     padding: 0 24px;
     position: relative;
-    text-align: center;
+    text-align: left;
 }
+/* label sits directly above the dropdown (both flush to the 24px padding edge) */
+.mod-pedal-guitaramp-amp{{{cns}}} .mod-amp-modelrow .mod-section-label { margin-left: 0; }
+
+/* ── TAB BAR (fold the stacked panels into one-at-a-time tabs) ── */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tabs {
+    display: flex; justify-content: center; gap: 6px;
+    margin: 14px 16px 0; position: relative; z-index: 6;
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tab {
+    flex: 0 0 auto; cursor: pointer; position: relative;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+    color: #9aa2ad; padding: 7px 20px; border-radius: 8px 8px 0 0;
+    background: rgba(6,7,10,.5); border: 1px solid rgba(255,255,255,.08); border-bottom: none;
+    -webkit-user-select: none; user-select: none;
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tab:hover { color: #cfe0ee; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tab.hf-tab-active {
+    color: #0b0d12; background: #ff963c; border-color: #ff963c;
+    box-shadow: 0 0 14px rgba(255,150,60,.4);
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tab.hf-tab-gone { display: none; }
+
+/* ── TAB PANELS: only the active one is displayed (positioned so it paints above the drag layer) ── */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tabpanels { position: relative; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tabpanel { display: none; position: relative; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-tabpanel.hf-tab-active { display: block; }
 
 /* KNOBS (flowing). NB: no numeric z-index on rows — a positioned element with a
    z-index creates a stacking context that traps select dropdowns behind later
@@ -124,8 +152,8 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knob {
     display: inline-block;
-    height: 86px;
-    width: 92px;
+    height: 96px;   /* tall enough to contain a 2-line title (e.g. RESONANCE/PRESENCE) + value inside the group box */
+    width: 82px;
     overflow: visible;
     position: relative;
     vertical-align: top;
@@ -133,20 +161,21 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knob .mod-knob-image {
     background-image: url(/resources/knobs/knob.png{{{ns}}});
     background-repeat: no-repeat;
-    background-size: auto 56px;
-    height: 56px;
-    width: 56px;
+    background-size: auto 50px;
+    height: 50px;
+    width: 50px;
     margin: 2px auto 0;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knob .mod-knob-title {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
     color: #fff;
     text-transform: uppercase;
     text-align: center;
     display: block;
     margin-top: 2px;
+    line-height: 1.1;
 }
 
 /* MIXED ROW (switches + mini-selects) */
@@ -177,7 +206,7 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-switch-image.off { background-position: 0px 0px; }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-switch-title {
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: bold;
     color: #aaa;
     display: block;
@@ -186,7 +215,7 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-inline-label {
     display: inline-block;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
-    font-size: 9px;
+    font-size: 11px;
     font-weight: bold;
     color: #aaa;
     vertical-align: middle;
@@ -214,7 +243,7 @@
     display: inline-block;
     width: 130px;
     vertical-align: middle;
-    font-size: 11px;
+    font-size: 12px;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-enumerated .mod-enumerated-selected {
     /* lift the closed clickable box above the full-pedal drag-handle overlay
@@ -262,21 +291,22 @@
 }
 
 
-/* HEX CHAIN logo badge (black background dropped via screen blend) */
+/* HEX CHAIN logo badge — parked top-right in the empty space beside the (left-aligned) model
+   row, so it never floats over the tab panels / controls. (Black bg dropped via screen blend.) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hx-logo {
-    position: absolute; right: 18px; bottom: 14px; width: 96px; height: 96px;
+    position: absolute; right: 22px; top: 94px; width: 62px; height: 62px;
     background-image: url(/resources/logo.jpg{{{ns}}});
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
 }
 
 /* Live control value readout (visible without advanced view) */
-.mod-pedal-guitaramp-amp{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mod-pedal-guitaramp-amp{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
 /* ── AMP FACE: tolex cabinet + glowing tubes + per-model faceplate plate (Forge parity) ── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-face {
     --acc:#19e0ff; --tint:rgba(0,0,0,0); --panel:none; --badge:#f3ead9;
-    position: relative; margin: 8px 12px 12px; padding: 12px;
+    position: relative; margin: 6px 16px 10px; padding: 10px;
     border-radius: 14px; border: 1px solid rgba(255,255,255,.08);
     background-image:
         linear-gradient(180deg, rgba(255,255,255,.05) 0, rgba(0,0,0,.28) 62%, rgba(0,0,0,.5) 100%),
@@ -288,7 +318,7 @@
 }
 /* recessed tube bay — 4 real glowing tubes (tubes.png) breathing on the cabinet top */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-tubes {
-    position: relative; height: 150px; margin: 2px 0 -14px; z-index: 2; overflow: visible; pointer-events: none;
+    position: relative; height: 96px; margin: 2px 0 -10px; z-index: 2; overflow: visible; pointer-events: none;
     background-image: url(/resources/tubes.png{{{ns}}});
     background-size: auto 100%; background-repeat: no-repeat; background-position: center bottom;
     animation: hf-tube-glow 3.2s ease-in-out infinite;
@@ -296,7 +326,7 @@
 @keyframes hf-tube-glow { 0%,100% { filter: brightness(0.94); } 50% { filter: brightness(1.14); } }
 /* per-model brushed control plate (var(--panel) = faceplate-mN.png) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate {
-    position: relative; z-index: 3; border-radius: 8px; padding: 16px 30px 22px;
+    position: relative; z-index: 3; border-radius: 8px; padding: 16px 20px 30px;
     background-color: #1b1815;
     background-image:
         linear-gradient(180deg, rgba(255,255,255,.09), rgba(0,0,0,.16)),
@@ -308,8 +338,8 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-badge {
     /* dark pill for legibility on any faceplate art (matches the Forge badge) */
-    display: block; width: fit-content; max-width: 94%; margin: 2px auto 12px;
-    font-size: 21px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;
+    display: block; width: fit-content; max-width: 94%; margin: 2px auto 8px;
+    font-size: 18px; font-weight: 800; letter-spacing: 4px; text-transform: uppercase;
     color: #f4f8fc;
     background: rgba(6,8,12,.76); border: 1px solid rgba(255,255,255,.16);
     border-radius: 9px; padding: 5px 20px;
@@ -339,17 +369,17 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m10 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --tint:rgba(150,120,30,.42); --badge:#1c1503; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(20,74,52,.46); --badge:#d8f2e6; }
 /* grouped knob fieldsets on the plate */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 24px; justify-content: center; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 12px 18px 14px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-title { display: block; font-size: 10px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--acc); margin-bottom: 8px; text-shadow: 0 0 8px rgba(0,0,0,.5); text-align: center; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: nowrap; gap: 6px 16px; justify-content: center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 10px 14px 16px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-title { display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--acc); margin-bottom: 6px; text-shadow: 0 0 8px rgba(0,0,0,.5); text-align: center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: nowrap; gap: 4px 8px; justify-content: center; }
 /* group bodies size to their knobs (override the 760px .mod-knobs row width) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body.mod-knobs { width: auto; float: none; }
 
 /* ── POWER AMP: its own tolex chassis panel (matches the faceplate/cabinet) ── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-face {
     --acc:#19e0ff;
-    position: relative; margin: 0 12px 18px; padding: 14px 18px 18px;
+    position: relative; margin: 6px 16px 10px; padding: 14px 18px 26px;
     border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
     background-color: #14161c;
     background-image:
@@ -370,3 +400,11 @@
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-rail .pa-tube { display: inline-flex; align-items: center; gap: 8px; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-rail .mod-switch { width: auto; padding: 0 10px; }
+
+/* -- Cali V graphic-EQ vertical faders (MOD film-strip sprite eqfader.png) -- */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-eqrow { display:flex; flex-wrap:nowrap; align-items:flex-start; justify-content:center; gap:8px 26px; margin-top:6px; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-eqslider { display:inline-block; width:30px; vertical-align:top; text-align:center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-eqslider-fader { width:26px; height:92px; margin:0 auto; background-image:url(/resources/eqfader.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 92px; background-position:0 0; cursor:ns-resize; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-eqslider-t { display:block; font-size:10px; font-weight:700; text-transform:uppercase; color:#eef2f8; margin-top:5px; text-shadow:0 1px 2px rgba(0,0,0,.95); white-space:nowrap; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-eqslider-v { display:block; font-size:10px; font-weight:800; color:#f2f6fc; margin-top:2px; text-shadow:0 1px 2px rgba(0,0,0,.95); white-space:nowrap; }
+.mod-pedal-guitaramp-amp{{{cns}}} [rata-role=mesagroup] .hf-agroups { margin-top: 22px; }

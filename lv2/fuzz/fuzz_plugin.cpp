@@ -3,6 +3,7 @@
 #include "EHXBigMuff.h"
 #include "ToneBenderMkII.h"
 #include "Octavia.h"
+#include "ZVexFuzzFactory.h"
 #include <memory>
 #include <cstring>
 #include <new>
@@ -24,7 +25,7 @@
 enum FuzzPorts {
     P_IN      = 0,
     P_OUT     = 1,
-    P_PEDAL   = 2,   // pedal selector (enum 0..1)
+    P_PEDAL   = 2,   // pedal selector (enum 0..3)
     P_MODE    = 3,   // Italian Hero variant (enum 0..5)
     P_SUSTAIN = 4,   // Italian Hero sustain / Tone Bender attack
     P_TONE    = 5,   // Italian Hero tone
@@ -40,6 +41,7 @@ struct FuzzPlugin {
     std::unique_ptr<OversamplingWrapper> ih;   // Italian Hero (Muff)
     std::unique_ptr<OversamplingWrapper> tb;   // Tone Bender MkII
     std::unique_ptr<OversamplingWrapper> oc;   // Octavia (octave-up fuzz)
+    std::unique_ptr<OversamplingWrapper> ff;   // Fizz Factory (ZVex-style chaos/gated octave)
     float* ports[P_N_PORTS] = {};
 };
 
@@ -52,10 +54,12 @@ static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
     p->ih = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
     p->tb = std::make_unique<OversamplingWrapper>(std::make_unique<ToneBenderMkII>());
     p->oc = std::make_unique<OversamplingWrapper>(std::make_unique<Octavia>());
-    if (!p->ih || !p->tb || !p->oc) { delete p; return nullptr; }
+    p->ff = std::make_unique<OversamplingWrapper>(std::make_unique<ZVexFuzzFactory>());
+    if (!p->ih || !p->tb || !p->oc || !p->ff) { delete p; return nullptr; }
     p->ih->prepare(rate, 512, 1);
     p->tb->prepare(rate, 512, 1);
     p->oc->prepare(rate, 512, 1);
+    p->ff->prepare(rate, 512, 1);
     p->ih->setParameter("era", 2.0f);   // default Italian Hero variant: Gotham
     return p;
 }
@@ -93,12 +97,20 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
         p->tb->setParameter("inputtrim", *p->ports[P_TRIM]);
         p->tb->setParameter("getemp",    *p->ports[P_TEMP]);
         p->tb->process(ins, outs, static_cast<int>(n), 1);
-    } else {
+    } else if (pedal == 2) {
         // ── Octavia (octave-up fuzz) ──
         p->oc->setParameter("drive", *p->ports[P_SUSTAIN]);
         p->oc->setParameter("tone",  *p->ports[P_TONE]);
         p->oc->setParameter("level", *p->ports[P_VOLUME]);
         p->oc->process(ins, outs, static_cast<int>(n), 1);
+    } else {
+        // ── Fizz Factory (ZVex-style) — Sustain→Drive, Bias→Comp, Trim→Gate, Temp→Stab, Volume→Level ──
+        p->ff->setParameter("sustain",   *p->ports[P_SUSTAIN]);
+        p->ff->setParameter("bias",      *p->ports[P_BIAS]);
+        p->ff->setParameter("inputtrim", *p->ports[P_TRIM]);
+        p->ff->setParameter("getemp",    *p->ports[P_TEMP]);
+        p->ff->setParameter("level",     *p->ports[P_VOLUME]);
+        p->ff->process(ins, outs, static_cast<int>(n), 1);
     }
 }
 

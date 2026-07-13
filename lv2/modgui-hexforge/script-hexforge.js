@@ -6,7 +6,7 @@ function (event, funcs) {
     // owns <pfx>_pos (slot 1..11), <pfx>_enable (chain membership) and <pfx>_bypass
     // (active/bypassed). The DSP sorts by pos and runs a block iff enable && !bypass.
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
-    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc'];
+    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc','nail'];
 
     // Node subtitle labels for model-bearing blocks — MUST mirror gen_hexforge.py's
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
@@ -14,7 +14,7 @@ function (event, funcs) {
     var NV = {
         amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V'],
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
-        fz:  ['Italian Hero','I Know It','Octavia'],
+        fz:  ['Italian Hero','I Know It','Octavia','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
         dl:  ['Digital','Tape','Echo Wreck','Seraph']
     };
@@ -171,10 +171,21 @@ function (event, funcs) {
             var el = this;
             el.addEventListener('click', function (e) {
                 e.stopPropagation();
-                if (el.hasAttribute('data-eq')) {                 // graphic-EQ preset selector
+                if (el.hasAttribute('data-eq')) {                 // graphic-EQ preset: LOAD its curve into the sliders
                     var eq = parseInt(el.getAttribute('data-eq'), 10);
-                    icon.data('hf_mveq', eq);
-                    if (fns && typeof fns.set_port_value === 'function') fns.set_port_value('amp_mv_eqpreset', eq);
+                    var HF_EQ_PRESETS = {                          // port = 0.5 + dB/24 (mirrors kEqPresets in MesaMarkV.cpp)
+                        1: [0.5, 0.5, 0.5, 0.5, 0.5],
+                        2: [0.66667, 0.58333, 0.25, 0.54167, 0.70833],
+                        3: [0.75, 0.54167, 0.08333, 0.41667, 0.75],
+                        4: [0.41667, 0.58333, 0.70833, 0.625, 0.45833],
+                        5: [0.45833, 0.41667, 0.41667, 0.625, 0.75]
+                    };
+                    if (fns && typeof fns.set_port_value === 'function') {
+                        var pv = HF_EQ_PRESETS[eq];
+                        if (pv) for (var gi = 0; gi < 5; gi++) fns.set_port_value('amp_mv_geq' + gi, pv[gi]);
+                        fns.set_port_value('amp_mv_eqpreset', 0);  // stay Custom → the loaded sliders drive the EQ
+                    }
+                    icon.data('hf_mveq', 0);
                     applyMesa(icon);
                     return;
                 }
@@ -199,6 +210,22 @@ function (event, funcs) {
         el.className += ' hf-face-m' + m;
         face.find('[rata-role=amp-badge]').text((NV.amp && NV.amp[m]) || '');
     }
+    // ── Amp detail TABS (Amp / Voicing / Power Amp): show one panel at a time ──
+    function setAmpTab(icon, name) {
+        var p = panelOf(icon, 'amp');
+        p.find('[rata-role=atab]').each(function () {
+            this.classList.toggle('hf-atab-on', this.getAttribute('data-tab') === name);
+        });
+        p.find('[rata-role=apanel]').each(function () {
+            this.classList.toggle('hf-atab-on', this.getAttribute('data-tab') === name);
+        });
+        icon.data('hf_amp_tab', name);
+    }
+    // Write the amp model port + refresh (mod-ui doesn't reliably echo set_port_value as a change event).
+    function setAmpModel(icon, m) {
+        if (funcs && typeof funcs.set_port_value === 'function') funcs.set_port_value('amp_model', m);
+        icon.data('hf_amp_m', m); applyAmp(icon);
+    }
     // ── Conditional control visibility, scoped to the block's DETAIL PANEL ──
     function show(icon, b, sel, on) { panelOf(icon, b).find(sel).toggleClass('mod-hidden', !on); }
     function applyAmp(icon) {
@@ -212,40 +239,54 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
-        panelOf(icon, 'amp').find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 5 ? 'Output' : 'Gain'));
+        // Tab buttons: Voicing only for models with a channel/EQ chassis (Sunn 3 / Beardo 6 /
+        // Cali V 11); Power Amp hidden for Sunn (auto-bypassed) and NAM (capture has its own).
+        var showVoice = (m === 3 || m === 6 || m === 11);
+        var showPower = (m !== 3 && m !== 5);
+        var p = panelOf(icon, 'amp');
+        p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
+        p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);
+        p.find('[rata-role=atab][data-tab=nam]').removeClass('hf-atab-gone');   // Neural tab is ALWAYS available (it's the mode switch)
+        // Keep the active tab in sync with the mode: entering/leaving NAM (model 5) flips the tab.
+        var cur = icon.data('hf_amp_tab') || 'amp';
+        if (m === 5 && cur !== 'nam') { setAmpTab(icon, 'nam'); cur = 'nam'; }
+        else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp'); cur = 'amp'; }
+        var ok = { amp: true, voice: showVoice, power: showPower, nam: true };
+        if (!ok[cur]) setAmpTab(icon, 'amp');
+        p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 5 ? 'Output' : 'Gain'));
         setModelVal(icon, 'amp', m);
         applyAmpFace(icon, m);
         applyMesa(icon);
     }
-    // Cali V (Mesa Mark V) two-tier selector: one port amp_mv_mode (0..8) = channel*3 + submode.
-    // Mode labels follow the channel (Clean/Crunch/Lead). Renders the highlighted state of both rows.
-    var MV_MODES = [['Clean','Fat','Tweed'],['Edge','Crunch','Mk I'],['IIC+','Mk IV','Xtreme']];
-    function applyMesa(icon) {
-        var v = icon.data('hf_mv'); if (v == null) v = 6;
-        var ch = Math.floor(v / 3), sub = v % 3, p = panelOf(icon, 'amp');
-        p.find('.hf-mv-seg[data-mv=chan] .hf-mv-btn').each(function () {
-            this.className = 'hf-mv-btn' + (parseInt(this.getAttribute('data-ch'), 10) === ch ? ' hf-mv-on' : '');
-        });
-        var labels = MV_MODES[ch] || MV_MODES[2];
-        p.find('.hf-mv-seg[data-mv=mode] .hf-mv-btn').each(function () {
-            var i = parseInt(this.getAttribute('data-sub'), 10);
-            this.textContent = labels[i] || '';
-            this.className = 'hf-mv-btn' + (i === sub ? ' hf-mv-on' : '');
-        });
-        var eq = icon.data('hf_mveq'); if (eq == null) eq = 0;   // 0 = Custom (sliders drive the EQ)
-        p.find('.hf-mv-seg[data-mv=eq] .hf-mv-btn').each(function () {
-            this.className = 'hf-mv-btn' + (parseInt(this.getAttribute('data-eq'), 10) === eq ? ' hf-mv-on' : '');
-        });
-        p.find('.hf-mv-geqwrap').toggleClass('hf-mv-dim', eq !== 0);  // dim the sliders when a preset is active
+    // Cali V (Mesa Mark V) is now DROPDOWNS (Mode + EQ Preset), handled natively by MOD; applyMesa is a
+    // no-op kept for its callers. Selecting an EQ preset LOADS its curve into the 5 faders + resets to
+    // Custom (0) so they jump to it and stay tweakable. port = 0.5 + dB/24 (mirrors kEqPresets in MesaMarkV.cpp).
+    function applyMesa(icon) {}
+    var HF_EQ_PRESETS = {
+        1: [0.5, 0.5, 0.5, 0.5, 0.5],
+        2: [0.66667, 0.58333, 0.25, 0.54167, 0.70833],
+        3: [0.75, 0.54167, 0.08333, 0.41667, 0.75],
+        4: [0.41667, 0.58333, 0.70833, 0.625, 0.45833],
+        5: [0.45833, 0.41667, 0.41667, 0.625, 0.75]
+    };
+    function loadEqPreset(icon, e) {
+        var pv = HF_EQ_PRESETS[parseInt(e, 10)];
+        if (!pv || !funcs || typeof funcs.set_port_value !== 'function') return;
+        for (var i = 0; i < 5; i++) funcs.set_port_value('amp_mv_geq' + i, pv[i]);
+        funcs.set_port_value('amp_mv_eqpreset', 0);
     }
     function applyFuzz(icon) {
         var p = icon.data('hf_fz_p'); if (p == null) p = 0;
-        var tb = (p === 1);
-        show(icon, 'fz', '.c-fz-ih', !tb);
-        show(icon, 'fz', '.c-fz-tb', tb);
+        var tb = (p === 1);            // I Know It (Tone Bender)
+        var ff = (p === 3);            // Fuzz Zachary (ZVex-style)
+        show(icon, 'fz', '.c-fz-ih', p === 0);      // Variant dropdown = ONLY Italian Hero (Muff eras); NOT Octavia/Tone Bender/Fuzz Zachary
+        show(icon, 'fz', '.c-fz-tb', tb || ff);     // Bias/Trim/Temp trio (shared by Tone Bender + Fuzz Zachary)
         var pn = panelOf(icon, 'fz');
-        pn.find('[rata-role=lbl-fz_sustain]').text(tb ? 'Attack' : 'Sustain');
+        pn.find('[rata-role=lbl-fz_sustain]').text(tb ? 'Attack' : (ff ? 'Drive' : 'Sustain'));
         pn.find('[rata-role=lbl-fz_volume]').text(tb ? 'Level' : 'Volume');
+        pn.find('[rata-role=lbl-fz_bias]').text(ff ? 'Comp' : 'Bias');
+        pn.find('[rata-role=lbl-fz_inputtrim]').text(ff ? 'Gate' : 'Trim');
+        pn.find('[rata-role=lbl-fz_getemp]').text(ff ? 'Stab' : 'Temp');
         setModelVal(icon, 'fz', p);
     }
     function applyDelay(icon) {
@@ -255,7 +296,30 @@ function (event, funcs) {
         show(icon, 'dl', '.c-dl-seraph', t === 3);
         setModelVal(icon, 'dl', t);
     }
-
+    // ── Drive: model-driven conditional visibility + MODE toggle highlight (Internal <-> Neural).
+    // Neural = model 3 (kDrNamIdx): shows the NAM picker + Gain/Level, hides the algo knobs + the
+    // model dropdown. The MODE toggle mirrors the standalone drive's Internal/Neural switch.
+    var DR_NAM = 3;
+    function applyDrive(icon, m) {
+        if (m == null) m = 0;
+        icon.data('hf_dr_m', m);
+        var nam = (m === DR_NAM);
+        show(icon, 'dr', '.c-dr-oct', m === 1);
+        show(icon, 'dr', '.c-dr-nam', nam);
+        show(icon, 'dr', '.c-dr-alg', !nam);
+        show(icon, 'dr', '.c-dr-int', !nam);
+        panelOf(icon, 'dr').find('[rata-role=drmodebtn]').each(function () {
+            this.classList.toggle('hf-mode-on', this.getAttribute('data-mode') === (nam ? 'nam' : 'int'));
+        });
+        setModelVal(icon, 'dr', m);
+    }
+    // Write the drive model port + refresh (mod-ui doesn't reliably echo set_port_value as a change).
+    function setDriveModel(icon, m) {
+        if (funcs && typeof funcs.set_port_value === 'function') funcs.set_port_value('dr_model', m);
+        applyDrive(icon, m);
+    }
+    // (Cab loads IMPULSE RESPONSES only — NAM models amps/pedals, not cabinets. The old IR/Neural
+    // SOURCE toggle was removed 2026-07-13.)
     function setFile(icon, rata, value, empty) {
         var box = icon.find('[rata-role=' + rata + ']');
         if (value == null || value === 'None' || value === '') { box.text(empty); return; }
@@ -389,20 +453,61 @@ function (event, funcs) {
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
-            else if (sym === 'md_type')            setModelVal(icon, 'md', parseInt(val, 10));
+            else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6); }
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             fns.set_port_value(sym, val);
         });
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
-        if (drm != null) { show(icon, 'dr', '.c-dr-oct', drm === 1); show(icon, 'dr', '.c-dr-nam', drm === 3); setModelVal(icon, 'dr', drm); }
+        if (drm != null) applyDrive(icon, drm);
         selectNode(icon, icon.data('hf_sel'));   // keep selection valid + refresh the panel
     }
 
     if (event.type == 'start') {
         var icon = event.icon;
         setupNodes(icon, funcs);
+        // Amp detail tabs: wire clicks (ignore tabs hidden for the current model).
+        // The Neural tab doubles as the internal⇄Neural MODE SWITCH: clicking it puts the amp on the
+        // NAM slot (model 5) and remembers the last internal model; clicking an internal tab restores it.
+        panelOf(icon, 'amp').find('[rata-role=atab]').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (el.classList.contains('hf-atab-gone')) return;
+                var t = el.getAttribute('data-tab');
+                var cur = icon.data('hf_amp_m'); if (cur == null) cur = 1;
+                if (t === 'nam') {
+                    if (cur !== 5) { icon.data('hf_amp_last_internal', cur); setAmpModel(icon, 5); }
+                    setAmpTab(icon, 'nam');
+                } else {
+                    if (cur === 5) {
+                        var li = icon.data('hf_amp_last_internal');
+                        if (li == null || li === 5) li = 1;
+                        setAmpModel(icon, li);
+                    }
+                    setAmpTab(icon, t);
+                }
+            });
+        });
+        setAmpTab(icon, 'amp');
+        // Drive MODE toggle (Internal / Neural): Neural puts the drive on the NAM slot (model 3) and
+        // remembers the last internal model; Internal restores it. Mirrors the standalone drive switch.
+        panelOf(icon, 'dr').find('[rata-role=drmodebtn]').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var mode = el.getAttribute('data-mode');
+                var cur = icon.data('hf_dr_m'); if (cur == null) cur = 0;
+                if (mode === 'nam') {
+                    if (cur !== DR_NAM) { icon.data('hf_dr_last_internal', cur); setDriveModel(icon, DR_NAM); }
+                } else if (cur === DR_NAM) {
+                    var li = icon.data('hf_dr_last_internal');
+                    if (li == null || li === DR_NAM) li = 0;
+                    setDriveModel(icon, li);
+                }
+            });
+        });
         // (Node connector is now a cheap CSS-scrolled baked strip — no JS animation loop.)
         // "+ ADD" palette toggle
         icon.find('.hf-add').each(function () {
@@ -421,10 +526,10 @@ function (event, funcs) {
         if ('amp_mv_eqpreset' in map) icon.data('hf_mveq', parseInt(map.amp_mv_eqpreset, 10));
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
         var drm = parseInt(map.dr_model || 0, 10);
-        show(icon, 'dr', '.c-dr-oct', drm === 1);
-        show(icon, 'dr', '.c-dr-nam', drm === 3);
-        setModelVal(icon, 'dr', drm);
-        setModelVal(icon, 'md', parseInt(map.md_type || 0, 10));
+        applyDrive(icon, drm);
+        var _mt0 = parseInt(map.md_type || 0, 10);
+        setModelVal(icon, 'md', _mt0);
+        show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6);
         setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
         if ('it_enable' in map) nodeOf(icon, 'it').toggleClass('hf-byp', !(map.it_enable > 0.5));
@@ -502,16 +607,15 @@ function (event, funcs) {
         } else if (s === 'amp_mv_mode') {
             icon.data('hf_mv', parseInt(event.value, 10)); applyMesa(icon);
         } else if (s === 'amp_mv_eqpreset') {
-            icon.data('hf_mveq', parseInt(event.value, 10)); applyMesa(icon);
+            if (event.value > 0) loadEqPreset(icon, event.value);   // dropdown preset → load faders + back to Custom
         } else if (s === 'fz_pedal') {
             icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
         } else if (s === 'dr_model') {
-            var dm = parseInt(event.value, 10);
-            show(icon, 'dr', '.c-dr-oct', dm === 1);
-            show(icon, 'dr', '.c-dr-nam', dm === 3);
-            setModelVal(icon, 'dr', dm);
+            applyDrive(icon, parseInt(event.value, 10));
         } else if (s === 'md_type') {
-            setModelVal(icon, 'md', parseInt(event.value, 10));
+            var mt = parseInt(event.value, 10);
+            setModelVal(icon, 'md', mt);
+            show(icon, 'md', '.c-md-delay', mt === 0 || mt === 3 || mt === 6);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'oc_micro') {
@@ -537,8 +641,6 @@ function (event, funcs) {
             setFile(icon, 'AmpNam', event.value, '-- choose a NAM file --');
         } else if (event.uri && event.uri.indexOf('#drnam') >= 0) {
             setFile(icon, 'DrNam', event.value, '-- choose a NAM file --');
-        } else if (event.uri && event.uri.indexOf('#cabnam') >= 0) {
-            setFile(icon, 'CabNam', event.value, '-- choose a NAM file --');
         } else if (event.uri && event.uri.indexOf('#ps_index') >= 0) {
             var parts = ('' + event.value).split('|');
             if (parts.length >= 2) {

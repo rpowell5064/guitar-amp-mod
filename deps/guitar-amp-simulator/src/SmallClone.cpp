@@ -9,7 +9,7 @@ void SmallClone::prepare(double sampleRate, int /*maxBlockSize*/, int /*numChann
     sampleRate_ = sampleRate;
     const float srF = static_cast<float>(sampleRate);
     const int maxSamp = static_cast<int>(
-        std::ceil((kBaseDelayMs + kDepthMaxMs + 2.0f) * srF * 0.001f));
+        std::ceil((kBaseDelayMs + kOffsetMaxMs + kDepthMaxMs + 2.0f) * srF * 0.001f));
     int sz = 1;
     while (sz <= maxSamp) sz <<= 1;
     bufMask_ = sz - 1;
@@ -37,6 +37,7 @@ void SmallClone::reset() noexcept {
     }
     lfoPhase_    = 0.0f;
     depthSmooth_ = 0.0f;
+    offsetSmooth_= 0.0f;
 }
 
 void SmallClone::process(float** in, float** out,
@@ -50,10 +51,12 @@ void SmallClone::process(float** in, float** out,
     const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_ : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
     const float lfoIncr = lfoHz / static_cast<float>(sampleRate_);
     const float depthTargetSamp = depth_ * static_cast<float>(sampleRate_) * kDepthMaxMs * 0.001f;
+    const float offsetTargetSamp = offsetMs_ * static_cast<float>(sampleRate_) * 0.001f;
     const float maxDelaySamp = static_cast<float>(bufMask_ - 1);
 
     for (int i = 0; i < numSamples; ++i) {
-        depthSmooth_ += depthCoeff_ * (depthTargetSamp - depthSmooth_);
+        depthSmooth_  += depthCoeff_ * (depthTargetSamp  - depthSmooth_);
+        offsetSmooth_ += depthCoeff_ * (offsetTargetSamp - offsetSmooth_);
         lfoPhase_ += lfoIncr;
         if (lfoPhase_ >= 1.0f) lfoPhase_ -= 1.0f;
 
@@ -62,7 +65,7 @@ void SmallClone::process(float** in, float** out,
             if (c == 1) { phi += 0.5f * stereoWidth_; if (phi >= 1.0f) phi -= 1.0f; }
             const float lfoVal    = triangle(phi);
             const float delaySamp = std::max(1.0f,
-                std::min(baseSamples_ + depthSmooth_ * lfoVal, maxDelaySamp));
+                std::min(baseSamples_ + offsetSmooth_ + depthSmooth_ * lfoVal, maxDelaySamp));
 
             const float dry = in[c][i];
 
@@ -94,6 +97,7 @@ void SmallClone::setParameter(const std::string& id, float v) {
     else if (id == "depth")       depth_       = std::max(0.0f, std::min(1.0f, v));
     else if (id == "mix")         mix_         = std::max(0.0f, std::min(1.0f, v));
     else if (id == "stereoWidth") stereoWidth_ = std::max(0.0f, std::min(1.0f, v));
+    else if (id == "centerDelay") offsetMs_    = std::max(0.0f, std::min(kOffsetMaxMs, v)); // ms
 }
 
 float SmallClone::getParameter(const std::string& id) const {
@@ -101,5 +105,6 @@ float SmallClone::getParameter(const std::string& id) const {
     if (id == "depth")       return depth_;
     if (id == "mix")         return mix_;
     if (id == "stereoWidth") return stereoWidth_;
+    if (id == "centerDelay") return offsetMs_;
     return 0.0f;
 }

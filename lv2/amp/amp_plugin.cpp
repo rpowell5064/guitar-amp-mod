@@ -16,11 +16,13 @@
 #include "lv2_util.h"
 #include "AmpBlockExtended.h"
 #include "PowerAmpProcessor.h"
+#include "NoiseGateBlock.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
 #include <cstring>
 #include <cstdint>
+#include <cmath>
 
 #define AMP_URI     "https://rpowell5064.github.io/guitaramp-suite/amp"
 #define AMP_NAM_URI AMP_URI "#nammodel"
@@ -66,6 +68,7 @@ enum AmpPorts {
     P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2,  // Sunn Brite-channel
     P_FR_CHANNEL, P_FR_FAT, P_FR_C45, P_FR_SAT,               // Beardo BE (Friedman) — 3-way channel + voicing toggles
     P_MV_MODE, P_MV_GEQ0, P_MV_GEQ1, P_MV_GEQ2, P_MV_GEQ3, P_MV_GEQ4, P_MV_EQPRESET,  // Cali V (Mesa Mark V): 9-mode + 5-band graphic EQ
+    P_NAM_GAIN, P_NAM_VOL,                                     // Neural (NAM): input drive + output level (dB), used only in NAM mode
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
 };
@@ -98,6 +101,8 @@ struct AmpPlugin {
 
     AmpBlockExtended* amp = nullptr;   // double-buffered algo amp
     PowerAmpProcessor pa;
+    NoiseGateBlock    inGate;          // input gate BEFORE the amp's ~70 dB of gain — kills amplified
+                                       // input-noise hiss on high-gain tones (engages only when driven)
     NamModel*         nam = nullptr;   // swapped in by the worker on file load
 
     float* ctrl[P_N_PORTS] = {};
@@ -108,6 +113,7 @@ struct AmpPlugin {
     int  lastTube  = -1;
     char namPath[kPathMax] = {0};
     float mono[kMaxBlock], monoOut[kMaxBlock];
+    float gbufL[kMaxBlock], gbufR[kMaxBlock];   // gated-input scratch (avoids writing host input buffers)
 
     LV2_Worker_Schedule* schedule = nullptr;
     LV2_URID_Map*        map      = nullptr;
@@ -161,6 +167,12 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->amp->setAmpModel(AmpModel::MarshallJCM800);
     p->lastModel = 1;
     p->pa.prepare(rate, kMaxBlock, 2);
+    p->inGate.prepare(rate, kMaxBlock, 2);
+    // Tuned for a fast, transparent noise-floor gate: quick open, long smooth tail so sustain rings out.
+    p->inGate.setParameter("attack",     2.0f);
+    p->inGate.setParameter("hold",     120.0f);
+    p->inGate.setParameter("release",  250.0f);
+    p->inGate.setParameter("hysteresis", 8.0f);
     return p;
 }
 
@@ -269,11 +281,13 @@ static void amp_run(LV2_Handle h, uint32_t n) {
 
     if (isNam) {
         // ── Neural (NAM) path ── mono capture; bypass the algo amp + power amp.
-        const float outGain = *p->ctrl[P_MASTER];   // master = simple output trim
+        // NAM Gain drives the model harder (input trim); NAM Level trims the output. Both dB.
+        const float inGain  = std::pow(10.0f, *p->ctrl[P_NAM_GAIN] / 20.0f);
+        const float outGain = std::pow(10.0f, *p->ctrl[P_NAM_VOL]  / 20.0f);
         if (p->nam && p->nam->isLoaded()) {
             for (uint32_t off = 0; off < n; off += kMaxBlock) {
                 const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
-                for (int i = 0; i < len; ++i) p->mono[i] = 0.5f * (inL[off + i] + inR[off + i]);
+                for (int i = 0; i < len; ++i) p->mono[i] = inGain * 0.5f * (inL[off + i] + inR[off + i]);
                 p->nam->processBuffer(p->mono, p->monoOut, len);
                 for (int i = 0; i < len; ++i) { const float y = p->monoOut[i] * outGain; outL[off + i] = y; outR[off + i] = y; }
             }
@@ -365,11 +379,21 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);
     p->pa.setBypass(paBypass);
 
+    // Input noise gate — sits BEFORE the amp's huge gain (the only place signal and its amplified noise
+    // floor are still separable). Engages only when the amp is driven hard (gain past halfway): high-gain
+    // tones get their between-notes hiss killed, while clean/low-gain playing is left completely alone.
+    // -90 dBFS threshold = effectively open (NoiseGateBlock passes everything above threshold).
+    const float driveKnob = (modelIdx == kSunnIdx) ? *p->ctrl[P_SUNN_V2] : *p->ctrl[P_GAIN];
+    p->inGate.setBypass(false);
+    p->inGate.setParameter("threshold", driveKnob > 0.5f ? -56.0f : -90.0f);
+
     for (uint32_t off = 0; off < n; off += kMaxBlock) {
         const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
         float* ins[2]  = { inL  + off, inR  + off };
+        float* gbuf[2] = { p->gbufL, p->gbufR };
+        p->inGate.process(ins, gbuf, len, 2);   // gate the INPUT into scratch, then amplify
         float* outs[2] = { outL + off, outR + off };
-        amp->process(ins, outs, len, 2);
+        amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);
     }
     const float mk = kModelMakeup[modelIdx];

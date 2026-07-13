@@ -4,6 +4,18 @@
 
 using TC = TriodeComponent;
 
+// ── Dynamic HF rolloff (DNR) tuning ──────────────────────────────────────────
+// Bright while the input is above kDnrOpen; slides to the dark lowpass as it decays past kDnrClose.
+namespace {
+constexpr float kDnrFcDark   = 6000.0f;    // dark-state lowpass corner (kills >6 kHz hiss when quiet)
+constexpr float kDnrOpenLin  = 0.00398f;   // -48 dBFS input: at/above this = full bright
+constexpr float kDnrCloseLin = 0.00126f;   // -58 dBFS input: at/below this = full dark (does most of the
+                                           // darkening in the audible decay, just above where gates close)
+constexpr float kDnrAttackMs = 0.5f;       // open fast so pick attacks stay bright
+constexpr float kDnrReleaseMs = 100.0f;    // darken smoothly through the decay (no pumping)
+constexpr float kDnrInvRange = 1.0f / (kDnrOpenLin - kDnrCloseLin);
+}
+
 const TriodeComponent::CircuitParams& MesaMarkV::cfgOf(StageType s) noexcept {
     switch (s) {
         case ST_FV1: return TC::kFenderV1;  case ST_FV2: return TC::kFenderV2;
@@ -40,13 +52,13 @@ const MesaMarkV::ModeCfg MesaMarkV::kModes[MesaMarkV::kNumModes] = {
     12.0f, 60.0f, 13000.0f, 600.0f, 2.0f, 3200.0f, 9.0f, 3300.0f,12.0f,0.45f, 1.9f,2.2f, 0.13f, 0.68f, 1.0f },
   // 6 Mark IIC+ (Ch3) — THE lead: tone stack PRE the 5-stage cascade; scooped lows, big 3–5k presence peak
   { 5, {ST_FV1,ST_MV2,ST_MV3,ST_EV2,ST_EV3}, {1.2f,1.7f,2.1f,2.3f,2.2f}, {2.0f,2.6f,2.9f,2.7f,2.2f}, TS::Fender, true,
-    85.0f, 200.0f, 15000.0f, 700.0f, 3.0f, 3600.0f, 11.0f, 3200.0f,8.0f,0.5f, 1.4f,2.0f, 0.14f, 0.80f, 1.0f },
+    85.0f, 200.0f, 15000.0f, 700.0f, 3.0f, 3600.0f, 11.0f, 3200.0f,8.0f,0.5f, 1.4f,2.0f, 0.098f, 0.80f, 1.0f },
   // 7 Mark IV (Ch3) — refined IIC+, slightly smoother
   { 5, {ST_FV1,ST_MV2,ST_MV3,ST_EV2,ST_EV3}, {1.15f,1.65f,2.05f,2.25f,2.15f}, {1.95f,2.5f,2.85f,2.65f,2.15f}, TS::Fender, true,
-    75.0f, 190.0f, 15000.0f, 700.0f, 2.5f, 3500.0f, 10.0f, 3300.0f,7.0f,0.5f, 1.3f,1.9f, 0.14f, 0.80f, 1.0f },
+    75.0f, 190.0f, 15000.0f, 700.0f, 2.5f, 3500.0f, 10.0f, 3300.0f,7.0f,0.5f, 1.3f,1.9f, 0.095f, 0.80f, 1.0f },
   // 8 Extreme (Ch3) — highest gain, modern
   { 5, {ST_FV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {1.3f,1.85f,2.25f,2.45f,2.25f}, {2.2f,2.75f,3.1f,2.9f,2.4f}, TS::Fender, true,
-    66.0f, 190.0f, 14000.0f, 720.0f, 3.0f, 3600.0f, 12.0f, 3300.0f,8.0f,0.5f, 1.5f,2.1f, 0.14f, 0.80f, 1.0f },
+    66.0f, 190.0f, 14000.0f, 720.0f, 3.0f, 3600.0f, 12.0f, 3300.0f,8.0f,0.5f, 1.5f,2.1f, 0.096f, 0.80f, 1.0f },
 };
 
 void MesaMarkV::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
@@ -56,6 +68,8 @@ void MesaMarkV::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noex
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
     for (auto& c : ch_) c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
+    dnrAtt_ = 1.0f - std::exp(-1.0f / (float)(oversampledFs_ * kDnrAttackMs  * 0.001));
+    dnrRel_ = 1.0f - std::exp(-1.0f / (float)(oversampledFs_ * kDnrReleaseMs * 0.001));
     rebuild();
     reset();
 }
@@ -88,8 +102,14 @@ void MesaMarkV::recalcFilters() noexcept {
         c.interLP.setCoeffs(Filters::lowpass1pole(m.interLPfc, oversampledFs_));
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_)); // Mesa presence bite
-        c.airLP.setCoeffs(Filters::lowpass1pole(20000.0, oversampledFs_));
+        c.airLP.setCoeffs(Filters::lowpass(13000.0, 0.707, oversampledFs_));  // OT/power-amp top roll-off.
+        // 2-pole (12 dB/oct) @13 kHz, applied POST-softLimit (see processSample). Was a 1-pole @20 kHz
+        // PRE-clip — the highest airLP of any amp AND before the limiter, so the power-amp clip regenerated
+        // 13-21 kHz fizz nothing removed → the "hiss". A guitar amp has no musical content >10 kHz (presence/
+        // bite = 3.2 kHz voicePk + 3.6 kHz shelf, far below), so a firm 13 kHz rolloff kills hiss without
+        // dulling. Peers roll off at 14-16 kHz with a gentler slope. See tools/amp_noise.cpp.
         c.dcBlk.setCoeffs(Filters::highpass(12.0, 0.707, oversampledFs_));
+        c.dnrLP.setCoeffs(Filters::lowpass(kDnrFcDark, 0.707, oversampledFs_));  // DNR dark-state LP (6 kHz)
     }
 }
 
@@ -121,6 +141,7 @@ void MesaMarkV::reset() noexcept {
         for (auto& gq : c.geq) gq.reset();
         for (auto& s : c.stage) s.reset();
         c.stagePI.reset(); c.tonestack.reset(); c.sagEnv = 0.0f;
+        c.dnrLP.reset(); c.dnrEnv = 0.0f; c.dnrD = 1.0f;
     }
 }
 
@@ -132,8 +153,23 @@ void MesaMarkV::advanceSmoothing() noexcept {
 float MesaMarkV::processSample(float x, int chn) noexcept {
     auto& c = ch_[chn];
     const auto& m = kModes[mode_];
-    const float g  = gainSmooth_.getCurrentValue();
+    // High-gain lead modes (IIC+/Mk IV/Extreme) trim the gain-knob span ~12% (~-3 dB of cascade gain at
+    // max). The lead channel had ~70 dB of gain that pinned a 60 dB input range to one output level — no
+    // pick dynamics AND the input noise floor pumped up to ~-20 dBFS (the "hiss"). Backing it off restores
+    // touch response and lowers the pumped floor; still very high gain. Only the knob-dependent span is
+    // trimmed, so the base voicing is preserved. (see tools/amp_noise.cpp level sweep)
+    constexpr float kHiGainTrim = 0.88f;
+    const float g  = gainSmooth_.getCurrentValue() * (mode_ >= 6 ? kHiGainTrim : 1.0f);
     const float mv = masterSmooth_.getCurrentValue();
+
+    // DNR: track the INPUT envelope (pre-gain — the only place playing dynamics survive; the output is
+    // compressed flat) → brightness amount dnrD (1 = digging in, 0 = decayed into the noise floor).
+    if (mode_ >= 6) {
+        const float lvl = std::fabs(x);
+        c.dnrEnv += (lvl > c.dnrEnv ? dnrAtt_ : dnrRel_) * (lvl - c.dnrEnv);
+        const float d = (c.dnrEnv - kDnrCloseLin) * kDnrInvRange;
+        c.dnrD = d < 0.0f ? 0.0f : (d > 1.0f ? 1.0f : d);
+    }
 
     x = c.inHP.process(x);
     x = c.brightSh.process(x);
@@ -156,7 +192,6 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
     x = c.stagePI.process(x * (m.piBase + mv * m.piSpan)) * (0.80f * mv);
     x = c.presenceF.process(x);
     x = c.voicePk.process(x);      // Mesa presence peak (3–5 kHz bite)
-    x = c.airLP.process(x);
     x = c.dcBlk.process(x);
 
     const float sagAttack = 1.0f - c.sagDecay;
@@ -165,7 +200,19 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
     x *= (1.0f - sag_ * c.sagEnv * 0.14f);  // sag depth halved (0.28->0.14): the real Mark V power amp
                                              // stays lively (~-9 dB compression); less squash = more touch
 
-    return softLimit(x) * m.makeup;   // makeup AFTER the limiter so it scales the bounded output
+    x = softLimit(x) * m.makeup;   // makeup AFTER the limiter so it scales the bounded output
+    // Band-limit AFTER the soft clip: in a real amp the output transformer + speaker roll off the
+    // harmonics the power-tube clipping generates. airLP used to sit BEFORE softLimit, so the limiter
+    // regenerated 14-20 kHz fizz that nothing removed — that was the "hiss". Now it's post-clip. (amp_noise.cpp)
+    x = c.airLP.process(x);
+
+    // Dynamic HF rolloff (DNR): as the note decays (dnrD -> 0) blend toward the 6 kHz dark LP, so the hiss
+    // tail is rolled off while attacks/sustain stay bright. dnrD == 1 -> fully dry (bright), no effect.
+    if (mode_ >= 6) {
+        const float lp = c.dnrLP.process(x);
+        x = lp + c.dnrD * (x - lp);
+    }
+    return x;
 }
 
 void MesaMarkV::setParameter(const std::string& id, float value) noexcept {

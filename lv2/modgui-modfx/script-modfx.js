@@ -1,0 +1,17 @@
+function (event, funcs) {
+    // Center Delay pushes the modulation centre out, so it only applies to the delay-line
+    // types: 0 Lush-2 (chorus), 3 Flanger, 6 Nevermind Chorus (Small Clone). The phase/amplitude
+    // types (Uni-Verse, Phaser, Tremolo, Rotary) have no delay line, so the knob hides for them.
+    function update_type(icon, value) {
+        var t = parseInt(value, 10);
+        var hasDelay = (t === 0 || t === 3 || t === 6);
+        icon.find('[rata-role=offsetctl]').toggleClass('mod-hidden', !hasDelay);
+    }
+    if (event.type == 'start') {
+        var icon = event.icon, map = {};
+        (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
+        if ('mod_type' in map) update_type(icon, map.mod_type);
+    } else if (event.type == 'change') {
+        if (event.symbol == 'mod_type') update_type(event.icon, event.value);
+    }
+}

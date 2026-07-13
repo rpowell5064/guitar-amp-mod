@@ -34,7 +34,8 @@ static constexpr int kMaxBlock = 512;
 enum CabPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
     P_LOWCUT, P_HIGHCUT, P_MIX, P_BYPASS,
-    P_CONTROL, P_NOTIFY,
+    P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
+    P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
 
@@ -281,14 +282,17 @@ static void cab_run(LV2_Handle h, uint32_t n) {
 
     if (p->nam && p->nam->isLoaded() && !bypass) {
         // ── NAM mode (overrides the IR) ── mono capture → both channels; Mix = dry/wet.
-        const float mix = *p->ports[P_MIX];
-        const float dry = 1.0f - mix;
+        // NAM Gain drives the capture (input trim), NAM Level trims the output (both dB).
+        const float mix     = *p->ports[P_MIX];
+        const float dry     = 1.0f - mix;
+        const float inGain  = std::pow(10.0f, *p->ports[P_NAM_GAIN] / 20.0f);
+        const float outGain = std::pow(10.0f, *p->ports[P_NAM_VOL]  / 20.0f);
         for (uint32_t off = 0; off < n; off += kMaxBlock) {
             const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
-            for (int i = 0; i < len; ++i) p->namIn[i] = 0.5f * (inL[off + i] + inR[off + i]);
+            for (int i = 0; i < len; ++i) p->namIn[i] = inGain * 0.5f * (inL[off + i] + inR[off + i]);
             p->nam->processBuffer(p->namIn, p->namOut, len);
             for (int i = 0; i < len; ++i) {
-                const float w = p->namOut[i] * mix;
+                const float w = p->namOut[i] * outGain * mix;
                 outL[off + i] = dry * inL[off + i] + w;
                 outR[off + i] = dry * inR[off + i] + w;
             }

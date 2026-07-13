@@ -1,7 +1,8 @@
-/* GuitarAmp guitaramp-gate pedal */
+.mod-pedal-guitaramp-gate{{{cns}}} { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+/* GuitarAmp guitaramp-gate pedal — styled to match its Hex Forge detail panel:
+   a brushed enclosure "plate" with corner screws + grouped, titled control fieldsets. */
 .mod-pedal-guitaramp-gate{{{cns}}} {
-    /* Hex Chain flat-futuristic panel: dark base + accent-tinted hex-grid
-       watermark + top accent glow. (Branding rendered in CSS, not baked PNG.) */
+    --acc:#8c9baf; --encl1:#3a4149; --encl2:#21252a;   /* slate accent + darkened enclosure metal */
     background-color: #0b0d12;
     background-image:
         url("data:image/svg+xml,%3Csvg%20width='28'%20height='49'%20viewBox='0%200%2028%2049'%20xmlns='http://www.w3.org/2000/svg'%3E%3Cg%20fill='%238c9baf'%20fill-opacity='0.06'%20fill-rule='evenodd'%3E%3Cpath%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/g%3E%3C/svg%3E"),
@@ -10,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 300px;
+    height: 340px;
     width: 360px;
     position: absolute;
     border-radius: 12px;
@@ -20,48 +21,114 @@
 
 /* HEX CHAIN HEADER (brand wordmark + effect title + tagline) */
 .mod-pedal-guitaramp-gate{{{cns}}} .hx-header { position:absolute; top:8px; left:24px; right:24px; z-index:5; pointer-events:none; border-bottom:1px solid rgba(140,155,175,.28); padding-bottom:8px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .hx-brand { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:800; letter-spacing:3px; line-height:1; text-transform:uppercase; background:linear-gradient(90deg,#19e0ff 0%,#ff2bd6 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hx-brand { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:800; letter-spacing:3px; line-height:1; text-transform:uppercase; background:linear-gradient(90deg,#19e0ff 0%,#ff2bd6 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
 .mod-pedal-guitaramp-gate{{{cns}}} .hx-mark { display:inline-block; width:9px; height:10px; margin-right:7px; vertical-align:-1px; background:linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
 .mod-pedal-guitaramp-gate{{{cns}}} .hx-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:26px; font-weight:800; letter-spacing:2px; line-height:1; margin-top:7px; text-transform:uppercase; color:#8c9baf; text-shadow:0 0 16px rgba(140,155,175,.45); }
-.mod-pedal-guitaramp-gate{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:9px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-pedal-input,
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-pedal-output { top:140px; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-pedal-output { top:150px; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-powerswitch { margin-left:285px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
 .mod-pedal-guitaramp-gate{{{cns}}} .mod-powerswitch-image.off { background-position:0 0; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-section-label { display:block; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold; letter-spacing:1px; color:rgb(140,155,175); margin:0 0 4px 24px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-section-divider { height:1px; margin:12px 24px 8px; background:rgba(140,155,175,.35); }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-titlerow { margin-top:58px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-amp-modelrow { margin-top:58px; padding:0 24px; position:relative; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-control-group { position:relative; text-align:center; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-knobs { margin-top:80px; width:360px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob { display:inline-block; height:92px; width:96px; overflow: visible; position:relative; vertical-align:top; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob .mod-knob-image { background-image:url(/resources/knobs/knob.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 56px; height:56px; width:56px; margin:4px auto 0; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob .mod-knob-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:bold; color:#fff; text-transform:uppercase; text-align:center; display:block; margin-top:4px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-row-mixed { width:360px; margin-top:4px; text-align:center; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-switch { display:inline-block; cursor:pointer; width:84px; height:44px; position:relative; text-align:center; vertical-align:middle; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-switch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 22px; height:22px; width:44px; margin:0 auto; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-switch-image.on { background-position:-44px 0; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-switch-image.off { background-position:0 0; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-switch-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:bold; color:#aaa; display:block; margin-top:3px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-inline-label { display:inline-block; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:bold; color:#aaa; vertical-align:middle; margin:0 12px 0 4px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated { background-color:rgba(0,0,0,.5); border:1px solid rgba(140,155,175,.5); border-radius:4px; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:13px; font-weight:bold; color:#fff; line-height:1.9; position:relative; overflow:visible; text-align:left; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-model-select { width:100%; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-mini-select { display:inline-block; width:120px; vertical-align:middle; font-size:11px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-selected { position:relative; z-index:50; border-radius:4px 4px 0 0; padding:0 9px; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-list { display:none; background-color:rgba(0,0,0,.92); color:#fff; width:100%; max-height:200px; overflow:auto; position:absolute; z-index:9000 !important; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding:3px 9px; }
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-list > div:hover { background-color:rgba(255,255,255,.2); cursor:pointer; }
 
+/* ── Control plate (brushed enclosure + corner screws) ── */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-plate {
+    position: relative; z-index: 5; box-sizing: border-box; min-height: 246px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
+    background-image:
+        linear-gradient(180deg, rgba(255,255,255,.15) 0, rgba(255,255,255,0) 20%, rgba(0,0,0,.24) 100%),
+        linear-gradient(158deg, var(--encl1), var(--encl2));
+    border: 1px solid rgba(0,0,0,.55);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), inset 0 -22px 46px rgba(0,0,0,.3), 0 4px 10px rgba(0,0,0,.55);
+}
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-screw {
+    position: absolute; width: 15px; height: 15px; z-index: 4;
+    background: url(/resources/screw.png{{{ns}}}) no-repeat center; background-size: contain;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.55));
+}
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-screw-tl { top: 8px; left: 8px; transform: rotate(24deg); }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-screw-tr { top: 8px; right: 8px; transform: rotate(-38deg); }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-screw-bl { bottom: 8px; left: 8px; transform: rotate(67deg); }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-screw-br { bottom: 8px; right: 8px; transform: rotate(-11deg); }
+
+/* ── Grouped, titled control fieldsets ── */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-agroups { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-agroup {
+    flex: 0 1 auto; padding: 10px 10px 12px; border-radius: 10px;
+    background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10);
+}
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-agroup-title {
+    display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
+    color: #eef3fa; margin-bottom: 8px; text-align: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,.95);
+}
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: nowrap; align-items: flex-start; justify-content: center; gap: 6px 8px; }
+
+/* KNOBS (5 across → narrower cells than the Input Trim template so they fit the plate) */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-knob { display: inline-block; width: 52px; height: 90px; overflow: visible; position: relative; vertical-align: top; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-knob-img { background-image: url(/resources/knobs/knob.png{{{ns}}}); background-repeat: no-repeat; background-size: auto 44px; height: 44px; width: 44px; margin: 2px auto 0; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-knob-t { display: block; font-size: 9px; font-weight: 700; letter-spacing: .2px; text-transform: uppercase; color: #eef2f8; margin-top: 6px; text-align: center; text-shadow: 0 1px 2px rgba(0,0,0,.9); white-space: nowrap; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-knob-v { display: block; font-size: 10px; font-weight: 800; color: #f2f6fc; margin-top: 3px; text-align: center; line-height: 1.2; text-shadow: 0 1px 2px rgba(0,0,0,.95); white-space: nowrap; }
+
+/* SWITCHES */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sw { display: inline-block; width: 64px; height: 90px; text-align: center; vertical-align: top; cursor: pointer; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sw-img { background-image: url(/resources/switches/powerswitch.png{{{ns}}}); background-repeat: no-repeat; background-size: auto 24px; background-position: 0 0; height: 24px; width: 48px; margin: 14px auto 0; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sw-img.on { background-position: -48px 0; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sw-img.off { background-position: 0 0; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sw-t { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase; color: #cdd3dc; margin-top: 10px; }
+
+/* MODEL SELECT (labeled dropdown, matches the Hex Forge detail-panel select) */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sel-wrap { display: inline-block; width: 176px; vertical-align: top; text-align: left; margin-top: 2px; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sel-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; margin: 0 0 5px 1px; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated { background-color: rgba(0,0,0,.5); border: 1px solid rgba(140,155,175,.55); border-radius: 4px; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 13px; font-weight: bold; color: #fff; line-height: 1.9; position: relative; overflow: visible; text-align: left; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-sel { width: 100%; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-selected { position: relative; z-index: 50; border-radius: 4px 4px 0 0; padding: 0 9px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-list { display: none; background-color: rgba(0,0,0,.92); color: #fff; width: 100%; max-height: 200px; overflow: auto; position: absolute; z-index: 9000 !important; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding: 3px 9px; }
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-enumerated .mod-enumerated-list > div:hover { background-color: rgba(255,255,255,.2); cursor: pointer; }
 
 /* HEX CHAIN logo badge (black background dropped via screen blend) */
 .mod-pedal-guitaramp-gate{{{cns}}} .hx-logo {
-    position: absolute; left: 14px; bottom: 12px; width: 74px; height: 74px;
+    position: absolute; top: 94px; right: 16px; width: 58px; height: 58px;
     background-image: url(/resources/logo.jpg{{{ns}}});
     background-size: contain; background-repeat: no-repeat; background-position: center;
-    mix-blend-mode: screen; pointer-events: none; z-index: 4;
+    mix-blend-mode: screen; pointer-events: none; z-index: 6;
 }
 
-/* Live control value readout (visible without advanced view) */
-.mod-pedal-guitaramp-gate{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:10px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+/* MOD's full-pedal drag-handle overlay must sit BELOW the plate or knobs won't respond */
+.mod-pedal-guitaramp-gate{{{cns}}} .mod-drag-handle { z-index: 0 !important; position: absolute; top: 0; left: 0; right: 0; bottom: 0; }
+
+/* -- Hex Forge signature helix (glass vial + squared machined chrome caps; subtle) -- */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-helix { position:absolute; top:23px; left:95px; right:95px; height:40px; z-index:1; pointer-events:none; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-helix::before { content:""; position:absolute; inset:-14px -30px -12px -30px; z-index:-1; pointer-events:none; background:radial-gradient(ellipse 82% 130% at 50% 46%, var(--acc), rgba(0,0,0,0) 66%); background:radial-gradient(ellipse 82% 130% at 50% 46%, color-mix(in srgb, var(--acc) 52%, #eef6ff), rgba(0,0,0,0) 66%); animation:hlx-glowpulse 8s ease-in-out infinite; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-helix-svg { position:absolute; inset:0; width:100%; height:100%; overflow:visible; }
+.mod-pedal-guitaramp-gate{{{cns}}} .vial-tint { fill:var(--acc); fill-opacity:.12; }
+.mod-pedal-guitaramp-gate{{{cns}}} .vial-glass { fill:none; stroke:#cfe6ff; stroke-width:1; opacity:.4; }
+.mod-pedal-guitaramp-gate{{{cns}}} .vial-spec { fill:none; stroke:#ffffff; stroke-width:1.4; stroke-linecap:round; opacity:.42; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-body { stroke:#171a1f; stroke-width:.7; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-knurl-d { stroke:#23272d; stroke-width:.6; opacity:.45; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-knurl-l { stroke:#ffffff; stroke-width:.5; opacity:.16; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-groove-d { stroke:#15181d; stroke-width:.8; opacity:.5; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-groove-l { stroke:#ffffff; stroke-width:.6; opacity:.22; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-endgroove { stroke:#15181d; stroke-width:1.1; opacity:.55; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-lip { stroke:#ffffff; stroke-width:1.2; stroke-linecap:round; opacity:.5; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-collar { stroke:#121418; stroke-width:1.3; opacity:.7; }
+.mod-pedal-guitaramp-gate{{{cns}}} .cap-collar-l { stroke:#eef4fb; stroke-width:.7; opacity:.3; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-glow { fill:none; stroke-linecap:round; animation:hlx-pulse 11s ease-in-out infinite; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-glow.hlx-a { stroke:var(--acc); stroke-width:6; opacity:.3; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-glow.hlx-b { stroke:#4ffcff; stroke-width:4.5; opacity:.18; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-core { fill:none; stroke-linecap:round; stroke-width:1.7; stroke-dasharray:5 26; animation:hlx-flow 140s linear infinite; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-core.hlx-a { stroke:var(--acc); }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-core.hlx-b { stroke:#7fe9ff; opacity:.85; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-rungs line { stroke:#ff2bd6; stroke-width:1.1; opacity:.22; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-elec { fill:none; stroke-linecap:round; stroke-linejoin:round; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-elec-glow { stroke:#bfefff; stroke-width:3; opacity:.2; stroke-dasharray:14 26; animation:hlx-zap 34s linear infinite, hlx-soft 10s ease-in-out infinite; }
+.mod-pedal-guitaramp-gate{{{cns}}} .hlx-elec-core { stroke:#eafcff; stroke-width:1.1; opacity:.42; stroke-dasharray:12 28; animation:hlx-zap 34s linear infinite, hlx-soft 10s ease-in-out infinite; }
+@keyframes hlx-flow { from { stroke-dashoffset:0; } to { stroke-dashoffset:-620; } }
+@keyframes hlx-pulse { 0%,100% { opacity:.15; } 50% { opacity:.32; } }
+@keyframes hlx-zap { from { stroke-dashoffset:0; } to { stroke-dashoffset:-160; } }
+@keyframes hlx-soft { 0%,100% { opacity:.26; } 50% { opacity:.55; } }
+@keyframes hlx-glowpulse { 0%,100% { opacity:.12; transform:scale(.96); } 50% { opacity:.34; transform:scale(1.05); } }
+
+/* -- plate hex-forge pattern (themed to the pedal accent, very faint) -- */
+.mod-pedal-guitaramp-gate{{{cns}}} .hf-plate { background-image:url("data:image/svg+xml,%3Csvg%20width='28'%20height='49'%20viewBox='0%200%2028%2049'%20xmlns='http://www.w3.org/2000/svg'%3E%3Cg%20fill='%238c9baf'%20fill-opacity='0.10'%20fill-rule='evenodd'%3E%3Cpath%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/g%3E%3C/svg%3E"),linear-gradient(180deg, rgba(255,255,255,.15) 0, rgba(255,255,255,0) 20%, rgba(0,0,0,.24) 100%),linear-gradient(158deg, var(--encl1), var(--encl2)); background-repeat:repeat,no-repeat,no-repeat; background-position:center,center,center; background-size:26px 45px,100% 100%,100% 100%; }

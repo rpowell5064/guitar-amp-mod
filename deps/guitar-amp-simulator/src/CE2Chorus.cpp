@@ -14,10 +14,10 @@ void CE2Chorus::prepare(double sampleRate, int /*maxBlockSize*/, int numChannels
     sampleRate_ = sampleRate;
     (void)numChannels; // we always process up to kMaxCh internally
 
-    // Delay buffer: max time = base + depth + 2 ms headroom
+    // Delay buffer: max time = base + user offset + depth + 2 ms headroom
     const float srF = static_cast<float>(sampleRate);
     const int maxSamp = static_cast<int>(
-        std::ceil((kBaseDelayMs + kDepthMaxMs + 2.0f) * srF * 0.001f));
+        std::ceil((kBaseDelayMs + kOffsetMaxMs + kDepthMaxMs + 2.0f) * srF * 0.001f));
 
     int sz = 1;
     while (sz <= maxSamp) sz <<= 1;   // next power-of-2 above maxSamp
@@ -56,6 +56,7 @@ void CE2Chorus::reset() noexcept {
     }
     lfoPhase_    = 0.0f;
     depthSmooth_ = 0.0f;
+    offsetSmooth_= 0.0f;
 }
 
 // ── process ───────────────────────────────────────────────────────────────────
@@ -78,11 +79,13 @@ void CE2Chorus::process(float** in, float** out,
     const float depthTargetSamp = depth_
                                   * static_cast<float>(sampleRate_)
                                   * kDepthMaxMs * 0.001f;
+    const float offsetTargetSamp = offsetMs_ * static_cast<float>(sampleRate_) * 0.001f;
     const float maxDelaySamp = static_cast<float>(bufMask_ - 1);
 
     for (int i = 0; i < numSamples; ++i) {
-        // ── Smooth depth ──────────────────────────────────────────────────────
-        depthSmooth_ += depthCoeff_ * (depthTargetSamp - depthSmooth_);
+        // ── Smooth depth + centre-delay offset (click-free) ───────────────────
+        depthSmooth_  += depthCoeff_ * (depthTargetSamp  - depthSmooth_);
+        offsetSmooth_ += depthCoeff_ * (offsetTargetSamp - offsetSmooth_);
 
         // ── Advance LFO ───────────────────────────────────────────────────────
         lfoPhase_ += lfoIncr;
@@ -97,7 +100,7 @@ void CE2Chorus::process(float** in, float** out,
             }
             const float lfoVal    = triangle(phi);           // [-1, +1]
             const float delaySamp = std::max(1.0f,
-                std::min(baseSamples_ + depthSmooth_ * lfoVal, maxDelaySamp));
+                std::min(baseSamples_ + offsetSmooth_ + depthSmooth_ * lfoVal, maxDelaySamp));
 
             float x       = in[c][i];
             const float dry = x;
@@ -153,6 +156,7 @@ void CE2Chorus::setParameter(const std::string& id, float v) {
     else if (id == "depth")       depth_       = std::max(0.0f, std::min(1.0f, v));
     else if (id == "mix")         mix_         = std::max(0.0f, std::min(1.0f, v));
     else if (id == "stereoWidth") stereoWidth_ = std::max(0.0f, std::min(1.0f, v));
+    else if (id == "centerDelay") offsetMs_    = std::max(0.0f, std::min(kOffsetMaxMs, v)); // ms
     else if (id == "preampOn")    preampOn_    = (v > 0.5f);
 }
 
@@ -161,6 +165,7 @@ float CE2Chorus::getParameter(const std::string& id) const {
     if (id == "depth")       return depth_;
     if (id == "mix")         return mix_;
     if (id == "stereoWidth") return stereoWidth_;
+    if (id == "centerDelay") return offsetMs_;
     if (id == "preampOn")    return preampOn_ ? 1.0f : 0.0f;
     return 0.0f;
 }

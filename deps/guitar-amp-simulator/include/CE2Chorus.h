@@ -33,6 +33,7 @@ public:
     static constexpr float kRateMaxHz    =  5.3f;   // maximum LFO rate
     static constexpr float kDepthMaxMs   =  1.2f;   // peak modulation depth
     static constexpr float kBaseDelayMs  =  7.8f;   // centre (unmodulated) delay
+    static constexpr float kOffsetMaxMs  = 100.0f;  // user "Center Delay" pushes the centre out (0 = stock CE-2)
     static constexpr float kPreampGain   =  2.042f; // +6.2 dB linear
     static constexpr float kPreampDrive  =  2.1f;   // tanh saturation drive
     static constexpr float kHPFc         = 90.0f;   // preamp input high-pass
@@ -48,6 +49,7 @@ private:
     float depth_       = 0.5f;  // [0,1]  → 0 .. kDepthMaxMs ms
     float mix_         = 0.5f;  // [0,1]  wet fraction
     float stereoWidth_ = 0.5f;  // [0,1]  0=mono, 1=180° LFO offset
+    float offsetMs_    = 0.0f;  // [0,kOffsetMaxMs] ms added to the centre delay
     bool  preampOn_    = true;
 
     // ── Derived constants (rebuilt in prepare) ────────────────────────────────
@@ -60,6 +62,7 @@ private:
     // ── LFO state ─────────────────────────────────────────────────────────────
     float lfoPhase_    = 0.0f;  // [0, 1)
     float depthSmooth_ = 0.0f;  // smoothed depth in samples (audio thread only)
+    float offsetSmooth_= 0.0f;  // smoothed centre-delay offset in samples (click-free knob sweeps)
 
     // ── Delay buffer ──────────────────────────────────────────────────────────
     static constexpr int kMaxCh = 2;

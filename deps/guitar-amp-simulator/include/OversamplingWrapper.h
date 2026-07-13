@@ -34,18 +34,19 @@ private:
     std::unique_ptr<AmpModelBase> model_;
     const int factor_;            // oversampling ratio (set in constructor)
 
-    // 4th-order Butterworth LP: two cascaded biquad stages per channel.
+    // 8th-order Butterworth LP: four cascaded biquad stages per channel. (Raised from 4th-order 2026-07-13:
+    // the 4th-order-at-Nyquist filter left a measurable alias floor on the high-gain amps — content in the
+    // 24-40 kHz band only got ~14-24 dB of rejection before decimation and folded back. See tools/amp_alias.cpp.)
     struct OsFilter {
-        BiquadFilter s0, s1;
-        float process(float x) noexcept { return s1.process(s0.process(x)); }
-        void  reset()          noexcept { s0.reset(); s1.reset(); }
+        BiquadFilter s0, s1, s2, s3;
+        float process(float x) noexcept { return s3.process(s2.process(s1.process(s0.process(x)))); }
+        void  reset()          noexcept { s0.reset(); s1.reset(); s2.reset(); s3.reset(); }
     };
     std::array<OsFilter, kMaxCh> upAA_, downAA_;
 
     // Pre-allocated oversampled scratch — sized in prepare(), no heap traffic on the audio thread.
     std::vector<float> upBuf_[kMaxCh];
 
-    // Compute and apply 4th-order Butterworth LP coefficients.
-    // Cutoff = original Nyquist = oversampledSampleRate / (2 * kFactor).
+    // Compute and apply 8th-order Butterworth LP coefficients (cutoff slightly below the original Nyquist).
     void computeAACoeffs(double oversampledSampleRate) noexcept;
 };

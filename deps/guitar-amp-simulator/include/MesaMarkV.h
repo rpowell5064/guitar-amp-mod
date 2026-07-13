@@ -77,6 +77,7 @@ private:
     int    eqPreset_ = 0;                        // 0 = Custom (use sliders); 1..5 = a baked "V" curve
 
     LinearSmoother gainSmooth_, masterSmooth_;
+    float dnrAtt_ = 0.0f, dnrRel_ = 0.0f;   // DNR envelope attack/release coeffs (computed in prepare)
 
     struct ChannelState {
         BiquadFilter    inHP, brightSh, interHP, interLP, voicePk, presenceF, airLP, dcBlk;
@@ -85,6 +86,12 @@ private:
         TriodeComponent stagePI;
         ToneStackComponent tonestack;
         float sagEnv = 0.0f, sagDecay = 0.0f;
+        // Dynamic HF rolloff (DNR): keyed on the INPUT envelope (the output is compressed flat, useless for
+        // detection), it slides a post-amp lowpass down as the note decays into the noise floor — killing the
+        // hiss tail while keeping attacks/sustain bright. Mimics a real note losing its top as it rings out.
+        BiquadFilter    dnrLP;    // fixed dark-state lowpass; blended in by (1-dnrD)
+        float dnrEnv = 0.0f;      // input peak envelope
+        float dnrD   = 1.0f;      // brightness amount: 1 = full bright (playing), 0 = dark (quiet tail)
     };
     std::array<ChannelState, kMaxCh> ch_;
 

@@ -17,6 +17,7 @@
 #include <cstring>
 #include <cstdint>
 #include <algorithm>
+#include <cmath>
 
 #define DRIVE_URI     "https://rpowell5064.github.io/guitaramp-suite/drive"
 #define DRIVE_NAM_URI DRIVE_URI "#nammodel"
@@ -39,7 +40,8 @@ static constexpr int kMaxModel = 7;   // highest selectable model index (Preamp 
 
 enum DrivePorts {
     P_IN = 0, P_OUT, P_MODEL, P_DRIVE, P_TONE, P_LEVEL, P_MIX, P_OCTAVE, P_BYPASS,
-    P_CONTROL, P_NOTIFY,
+    P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
+    P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
 
@@ -184,15 +186,17 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     }
 
     if (model == kNamIdx) {
-        // ── Neural (NAM) path ── mono; Level (×2 → unity at 0.5) + Mix dry/wet.
+        // ── Neural (NAM) path ── mono; NAM Gain drives the capture (input trim),
+        // NAM Level trims the output (both dB); Mix is dry/wet.
         if (p->nam && p->nam->isLoaded()) {
-            const float gain    = *p->ports[P_LEVEL] * 2.0f;
+            const float inGain  = std::pow(10.0f, *p->ports[P_NAM_GAIN] / 20.0f);
+            const float outGain = std::pow(10.0f, *p->ports[P_NAM_VOL]  / 20.0f);
             const float mix     = *p->ports[P_MIX];
-            const float wetGain = gain * mix;
+            const float wetGain = outGain * mix;
             const float dryGain = 1.0f - mix;
             for (uint32_t off = 0; off < n; off += kMaxBlock) {
                 const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
-                for (int i = 0; i < len; ++i) p->namIn[i] = in[off + i];
+                for (int i = 0; i < len; ++i) p->namIn[i] = inGain * in[off + i];
                 p->nam->processBuffer(p->namIn, p->namOut, len);
                 for (int i = 0; i < len; ++i) out[off + i] = dryGain * in[off + i] + wetGain * p->namOut[i];
             }

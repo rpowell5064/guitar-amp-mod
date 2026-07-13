@@ -63,7 +63,7 @@ CP = [
     ("makeup",  "Makeup",    "f", 0, 10, 0, None),
 ]
 FZ = [
-    ("pedal",     "Pedal",      "e", 0, 2, 0, [("Italian Hero",0),("I Know It",1),("Octavia",2)]),
+    ("pedal",     "Pedal",      "e", 0, 3, 0, [("Italian Hero",0),("I Know It",1),("Octavia",2),("Fuzz Zachary",3)]),
     ("mode",      "Variant",    "e", 0, 5, 2, [("Delta",0),("Ovis",1),("Gotham",2),("Cold War",3),("Red Bear",4),("Boutique",5)]),
     ("sustain",   "Sustain",    "f", 0, 1, 0.55, None),
     ("tone",      "Tone",       "f", 0, 1, 0.5, None),
@@ -178,7 +178,7 @@ MOVABLE = [
     ("dr",  "Drive",      DR,  4),
     ("amp", "Amp",        AMP, 5),
     ("cab", "Cabinet",    CAB, 6),
-    ("md",  "Modulation", MD,  7),
+    ("md",  "Modulation", MD,  7),   # md_offset (Center Delay) is appended out-of-table, before commands
     ("dl",  "Delay",      DL,  8),
     ("rv",  "Reverb",     RV,  9),
     ("wh",  "Wah",        WAH, 10),
@@ -296,6 +296,19 @@ for _gs, _gl in [("mv_geq0","80"),("mv_geq1","240"),("mv_geq2","750"),("mv_geq3"
 # Cali V graphic-EQ PRESET selector — 0 Custom (the 5 sliders) or a baked Mesa "V" curve. Migrated v17.
 ctrl.append(mkport("AMP_MV_EQPRESET", "amp_mv_eqpreset", "Amp EQ Preset", "e", 0, 5, 0,
     [("Custom",0),("Flat",1),("V-Scoop",2),("Deep V",3),("Mid Boost",4),("Bright",5)], "EQ Preset"))
+
+# Modulation "Center Delay" — pushes the modulation centre out 0..100 ms (delay-line types:
+# Chorus/Flanger/Small Clone). Appended here (before the preset commands) so every existing
+# preset index is preserved; a pre-v18 blob defaults it to 0 (= stock voicing). Migrated v18.
+ctrl.append(mkport("MD_OFFSET", "md_offset", "Mod Center Delay", "ms", 0, 100, 0, None, "Center Delay"))
+
+# ── NAM input/output trims (Amp / Drive / Cab neural slots) — a dedicated Gain (input drive
+# into the capture) + Level (output trim) per NAM slot, both dB (0 = unity). Appended here,
+# before the preset commands, so every existing preset index is preserved; pre-v19 blobs
+# default them to 0 dB. Six contiguous ports [HF_AMP_NAM_GAIN..HF_CAB_NAM_VOL]. Migrated v19.
+for _pfx, _lbl in (("amp", "Amp"), ("dr", "Drive"), ("cab", "Cab")):
+    ctrl.append(mkport(_pfx.upper() + "_NAM_GAIN", _pfx + "_nam_gain", _lbl + " NAM Gain",  "db", -20, 20, 0, None, "NAM Gain"))
+    ctrl.append(mkport(_pfx.upper() + "_NAM_VOL",  _pfx + "_nam_vol",  _lbl + " NAM Level", "db", -20, 20, 0, None, "NAM Level"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -469,7 +482,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 98 ;")
+    L.append("    lv2:microVersion 120 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -587,8 +600,22 @@ COND = {
     # (always shown — Tone Bender just ignores it); Bias/Trim/Temp only on I Know It(1).
     "fz_mode":"c-fz-ih",
     "fz_bias":"c-fz-tb", "fz_inputtrim":"c-fz-tb", "fz_getemp":"c-fz-tb",
-    # drive — Octave only on New Dawn (model 1)
+    # drive — Octave only on New Dawn (model 1); Drive/Tone/Level are algorithmic-only (a NAM
+    # capture has its own Gain/Level), so they hide in Neural mode (model 3); the NAM Gain/Level
+    # knobs (c-dr-nam) + picker show only in Neural mode. The model dropdown (c-dr-int) shows only
+    # in Internal mode (the MODE toggle switches int<->Neural, mirroring the standalone drive).
+    # Mix stays for both.
+    "dr_model":"c-dr-int",
     "dr_octave":"c-dr-oct",
+    "dr_drive":"c-dr-alg", "dr_tone":"c-dr-alg", "dr_level":"c-dr-alg",
+    "dr_nam_gain":"c-dr-nam", "dr_nam_vol":"c-dr-nam",
+    # cab — SOURCE toggle (Cabinet IR <-> Neural): the IR picker (c-cab-ir) and the NAM picker +
+    # Gain/Level (c-cab-nam) are mutually exclusive; Low/High cut + Mix stay for both. Mirrors the
+    # standalone cab. A loaded NAM overrides the IR in the DSP, so loading one flips the toggle.
+    "cab_nam_gain":"c-cab-nam", "cab_nam_vol":"c-cab-nam",
+    # amp NAM input/output trims live in the Neural TAB panel (tab-gated) — no COND class needed.
+    # modulation — Center Delay only affects the delay-line types (Chorus 0 / Flanger 3 / Small Clone 6)
+    "md_offset":"c-md-delay",
     # delay — Wow/Flutter for Tape(1)/Echo Wreck(2); Heads for Echo Wreck(2);
     # Pattern/Ducking/Mod for Seraph(3)
     "dl_wow":"c-dl-tape", "dl_flutter":"c-dl-tape", "dl_heads":"c-dl-heads",
@@ -639,6 +666,16 @@ def nam_picker(idx, rata, cls):
             '<div class="mod-enumerated-list">{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
             '</div>{{/path}}{{/effect.parameters.%d}}</div>') % (cls, idx, rata, idx)
 
+# Segmented MODE / SOURCE toggle (Internal<->Neural for drive, Cabinet IR<->Neural for cab).
+# script-hexforge.js wires the buttons (rata-role) to switch the block's NAM mode + highlights
+# the active one (.hf-mode-on). Mirrors the standalone drive/cab moderow.
+def mode_seg(rata, label, opts, on0=0):
+    btns = "".join('<div class="hf-modebtn%s" rata-role="%s" data-mode="%s">%s</div>'
+                   % ((" hf-mode-on" if i == on0 else ""), rata, m, t)
+                   for i, (m, t) in enumerate(opts))
+    return ('<div class="hf-moderow"><span class="hf-modelabel">%s</span>'
+            '<div class="hf-modeseg">%s</div></div>') % (label, btns)
+
 def render_pos(pfx):
     c = CTRL_BY_SYM[pfx + "_pos"]
     opts = "".join('<div mod-role="enumeration-option" mod-port-value="%d">%s</div>' % (v, lbl) for lbl, v in c["scale"])
@@ -654,9 +691,9 @@ def render_enable(pfx):
 # Simple stroke-only line icons; CSS colours the stroke with the block accent
 # (var(--acc)). fill:none + stroke are set in stylesheet-hexforge.css (.hf-node-ico svg).
 ICON = {
-    "it":  '<svg viewBox="0 0 24 24"><line x1="3" y1="8" x2="21" y2="8"/><circle cx="9" cy="8" r="2.6"/><line x1="3" y1="16" x2="21" y2="16"/><circle cx="15" cy="16" r="2.6"/></svg>',
+    "it":  '<svg viewBox="0 0 24 24"><line x1="8" y1="4" x2="8" y2="20"/><circle cx="8" cy="15" r="2.5"/><line x1="16" y1="4" x2="16" y2="20"/><circle cx="16" cy="9" r="2.5"/></svg>',
     "gt":  '<svg viewBox="0 0 24 24"><path d="M8 4H5v16h3"/><path d="M16 4h3v16h-3"/><path d="M9 12l3-2.5 3 2.5-3 2.5z"/></svg>',
-    "cp":  '<svg viewBox="0 0 24 24"><path d="M4 15a8 8 0 0116 0"/><path d="M7.5 15.2 6 13M12 14.5V11.5M16.5 15.2 18 13"/><path d="M12 15l4.6-4.2"/><circle cx="12" cy="15" r="1.15"/></svg>',
+    "cp":  '<svg viewBox="0 0 24 24"><line x1="4" y1="5" x2="20" y2="5"/><line x1="4" y1="19" x2="20" y2="19"/><path d="M8 9l4 3 4-3"/><path d="M8 15l4-3 4 3"/></svg>',
     "fz":  '<svg viewBox="0 0 24 24"><path d="M3 12h3l2-7 3 14 2-10 2 6 2-3h4"/></svg>',
     "dr":  '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/></svg>',
     "nail":'<svg viewBox="0 0 24 24"><path d="M6 5h12"/><path d="M9 5l1.4 9L12 20l1.6-6L15 5"/></svg>',
@@ -684,11 +721,12 @@ def node(pfx, title, accent):
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]
     drag    = "" if locked else ' draggable="true"'
     cls     = "hf-node hf-node-lock" if locked else "hf-node"
-    out = ['<div class="%s" data-block="%s"%s style="--acc:%s" title="%s"%s>' % (cls, pfx, posattr, accent, title, drag)]
+    out = ['<div class="%s" data-block="%s"%s style="--acc:%s" role="button" tabindex="0" aria-label="%s effect block — activate to edit its controls" title="%s"%s>'
+           % (cls, pfx, posattr, accent, title, title, drag)]
     # power/bypass dot — JS-driven (script-hexforge.js writes the port + greys the node);
     # IT has no bypass port so its dot toggles it_enable (locked, can't be removed).
-    out.append('<div class="hf-node-dot" title="Bypass (A/B)"></div>')
-    out.append('<div class="hf-node-ico">%s</div>' % ICON[pfx])
+    out.append('<div class="hf-node-dot" role="button" tabindex="0" aria-label="Toggle %s bypass" title="Bypass (A/B)"></div>' % title)
+    out.append('<div class="hf-node-ico" aria-hidden="true">%s</div>' % ICON[pfx])
     out.append('<span class="hf-node-name">%s</span>' % title)
     # subtitle: scalar blocks bind a live value; model blocks get a JS-set label span
     if pfx in NODE_VAL_SYM:
@@ -720,9 +758,13 @@ SCREWS4 = ('<div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-scre
            '<div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>')
 
 def amp_body():
-    # Top row: NAM picker (conditional) + the model selector.
-    selrow = '<div class="hf-dselects clearfix">%s%s</div>' % (
-        nam_picker(0, "AmpNam", "c-amp-nam"), render_ctrl(CTRL_BY_SYM["amp_model"]))
+    # Top row: just the amp MODEL selector. The NAM file picker + Gain/Level live in the NEURAL tab,
+    # whose tab doubles as the internal<->Neural mode switch (mirrors the standalone amp).
+    selrow = '<div class="hf-dselects clearfix">%s</div>' % render_ctrl(CTRL_BY_SYM["amp_model"])
+    nam_panel = ('<div class="hf-pa-face hf-nam-face"><div class="hf-pa-title">Neural (NAM)</div>'
+                 '<div class="hf-mv-group">' + nam_picker(0, "AmpNam", "")
+                 + '<div class="hf-onerow">' + render_ctrl(CTRL_BY_SYM["amp_nam_gain"])
+                 + render_ctrl(CTRL_BY_SYM["amp_nam_vol"]) + '</div></div></div>')
     def rc(sufs):
         return "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs if ("amp_" + s) in CTRL_BY_SYM)
     def onerow(sufs):   # all controls in ONE centered row (.hf-onerow), no sub-group boxes
@@ -751,26 +793,41 @@ def amp_body():
     # down, so nothing clips. The hidden mod-enumerated bind keeps preset/MIDI writes echoing to the
     # JS change handler; the visible buttons write amp_mv_mode = channel*3 + submode (script-hexforge.js).
     def mesa_body():
-        hidden = '<div class="hf-mv-bind" style="display:none">%s</div>' % render_ctrl(CTRL_BY_SYM["amp_mv_mode"])
-        chbtns = "".join('<div class="hf-mv-btn" data-ch="%d">%s</div>' % (i, n)
-                         for i, n in enumerate(["Clean", "Crunch", "Lead"]))
-        mdbtns = "".join('<div class="hf-mv-btn" data-sub="%d"></div>' % i for i in range(3))
-        eqbtns = "".join('<div class="hf-mv-btn" data-eq="%d">%s</div>' % (i, n)
-                         for i, n in enumerate(["Custom", "Flat", "V", "Deep V", "Mid", "Bright"]))
-        geq = ('<div class="hf-mv-geqlbl">Graphic EQ</div>'
-               + onerow(["mv_geq0", "mv_geq1", "mv_geq2", "mv_geq3", "mv_geq4"]))
-        return ('<div class="hf-pa-face c-amp-mesa"><div class="hf-pa-title">Cali V — Mode</div>'
-                + hidden
-                + '<div class="hf-mv-row"><span class="hf-mv-lbl">Channel</span>'
-                  '<div class="hf-mv-seg" data-mv="chan">' + chbtns + '</div></div>'
-                + '<div class="hf-mv-row"><span class="hf-mv-lbl">Mode</span>'
-                  '<div class="hf-mv-seg" data-mv="mode">' + mdbtns + '</div></div>'
-                + '<div class="hf-mv-row"><span class="hf-mv-lbl">EQ</span>'
-                  '<div class="hf-mv-seg" data-mv="eq">' + eqbtns + '</div></div>'
+        # Cali V: DROPDOWNS (Mode + EQ Preset) like the standalone amp, over the graphic-EQ faders.
+        def eqslider(suf, freq):
+            sym = "amp_" + suf; c = CTRL_BY_SYM[sym]
+            return ('<div class="hf-eqslider" title="%s"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="%s"></div>'
+                    '<span class="hf-eqslider-t">%s</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>') % (c["name"], sym, freq, sym)
+        geq = ('<div class="hf-mv-geqlbl">Graphic EQ</div><div class="hf-eqrow">'
+               + "".join(eqslider(s, f) for s, f in [("mv_geq0","80"),("mv_geq1","240"),("mv_geq2","750"),("mv_geq3","2.2k"),("mv_geq4","6.6k")])
+               + '</div>')
+        return ('<div class="hf-pa-face c-amp-mesa"><div class="hf-pa-title">Cali V</div>'
+                + '<div class="hf-mv-group">'
+                + '<div class="hf-mv-selrow">'
+                + render_ctrl(CTRL_BY_SYM["amp_mv_mode"])
+                + render_ctrl(CTRL_BY_SYM["amp_mv_eqpreset"])
+                + '</div>'
                 + '<div class="hf-mv-geqwrap">' + geq + '</div>'
+                + '</div>'
                 + '</div>')
     mesa = mesa_body()
-    return selrow + face + pa + brite + beardo + mesa
+    # Fold the stacked chassis into TABS (Amp / Voicing / Power Amp) — only one panel shows at
+    # a time, so the amp detail is no longer a giant vertical stack (mirrors the standalone Amp
+    # pedal). script-hexforge.js wires the tab clicks and hides tabs that don't apply to the
+    # current model (applyAmp): Voicing only for Sunn/Beardo/Cali V; Power Amp hidden for Sunn/NAM.
+    tabs = ('<div class="hf-atabs" rata-role="atabs" role="tablist" aria-label="Amp sections">'
+            '<div class="hf-atab hf-atab-on" rata-role="atab" data-tab="amp" role="tab" tabindex="0" aria-selected="true">Amp</div>'
+            '<div class="hf-atab" rata-role="atab" data-tab="voice" role="tab" tabindex="0" aria-selected="false">Voicing</div>'
+            '<div class="hf-atab" rata-role="atab" data-tab="power" role="tab" tabindex="0" aria-selected="false">Power Amp</div>'
+            '<div class="hf-atab" rata-role="atab" data-tab="nam" role="tab" tabindex="0" aria-selected="false">Neural</div>'
+            '</div>')
+    panels = ('<div class="hf-atabpanels">'
+              '<div class="hf-atabpanel hf-atab-on" rata-role="apanel" data-tab="amp" role="tabpanel" aria-label="Amp">' + face + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="power" role="tabpanel" aria-label="Power Amp">' + pa + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'
+              '</div>')
+    return selrow + tabs + panels
 
 # ── Shared "module plate" design for EVERY block ──────────────────────────────
 # The amp has its tube bay + control plate; every other block gets the SAME premium
@@ -803,7 +860,7 @@ BLOCK_GROUPS = {
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["lowcut", "highcut", "mix"])],
-    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width"]),
+    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset"]),
             ("CLOCK SYNC", None, ["sync", "div"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
             ("CLOCK SYNC", None, ["sync", "div"]),
@@ -840,17 +897,31 @@ def panel(pfx, title, accent, keys):
     locked = (pfx == "it")
     table = TABLES[pfx]
     head = ['<div class="hf-dhead">']
-    head.append('<span class="hf-dname">%s</span>' % title)
+    head.append('<span class="hf-dname" role="heading" aria-level="2">%s</span>' % title)
     if not locked:
         head.append('<span class="hf-dslot"><span class="hf-dslot-lbl">SLOT</span>%s</span>' % render_pos(pfx))
-        head.append('<button type="button" class="hf-dremove" title="Remove this effect from the chain">REMOVE ✕</button>')
+        head.append('<button type="button" class="hf-dremove" aria-label="Remove %s from the chain" title="Remove this effect from the chain">REMOVE ✕</button>' % title)
     head.append('</div>')
     if pfx == "amp":
         body = amp_body()            # amp keeps its tube bay + per-model faceplate
     else:
         all_sufs = [r[0] for r in table]
-        pickers = (nam_picker(2, "DrNam", "c-dr-nam") if pfx == "dr"
-                   else (IR_PICKER + nam_picker(1, "CabNam", "") if pfx == "cab" else ""))
+        # Drive/Cab NAM slots get a Gain (input) + Level (output) trim beside their picker, plus a
+        # segmented MODE/SOURCE toggle that switches between the algorithmic/IR path and the Neural
+        # (NAM) path (mirrors the standalone drive/cab). The trims carry the c-*-nam COND class.
+        nam_trims = (render_ctrl(CTRL_BY_SYM[pfx + "_nam_gain"]) + render_ctrl(CTRL_BY_SYM[pfx + "_nam_vol"])
+                     if (pfx + "_nam_gain") in CTRL_BY_SYM else "")
+        if pfx == "dr":
+            # MODE toggle (Internal / Neural); the NAM picker + trims live in Neural mode (c-dr-nam),
+            # the model dropdown in Internal mode (c-dr-int, applied via COND on dr_model).
+            pickers = (mode_seg("drmodebtn", "MODE", [("int", "Internal"), ("nam", "Neural")])
+                       + '<div class="hf-nampick c-dr-nam">' + nam_picker(2, "DrNam", "") + '</div>' + nam_trims)
+        elif pfx == "cab":
+            # Cabinets load IMPULSE RESPONSES only — NAM models amps/pedals, not cabs (user 2026-07-13:
+            # removing the NAM source was the fix). Just the IR picker, no SOURCE toggle, no NAM picker/trims.
+            pickers = IR_PICKER
+        else:
+            pickers = ""
         inner = SCREWS
         if locked:   # live input level meter on the Input Trim block (front of chain)
             inner += ('<div class="hf-inmeter"><span class="hf-inmeter-lbl">INPUT LEVEL</span>'
@@ -910,7 +981,7 @@ _HXC = [("cyan", "#4ffcff"), ("blue", "#3a6bff"), ("purple", "#b44cff"), ("orang
 def _layer(cls):
     return "".join('<path class="hf-hs hf-hs-%s hf-hx-%s" d="%s"/>' % (cls, n, _sine(i * 0.7))
                    for i, (n, _c) in enumerate(_HXC))
-HELIX_SVG = ('<div class="hf-helix"><svg class="hf-helix-svg" viewBox="0 0 1200 120" '
+HELIX_SVG = ('<div class="hf-helix" aria-hidden="true"><svg class="hf-helix-svg" viewBox="0 0 1200 120" '
              'preserveAspectRatio="none"><path class="hf-helix-base" d="M0 60 L1200 60"/>'
              '<g class="hf-helix-spin">' + _layer("glow") + _layer("core") + '</g></svg></div>')
 
@@ -918,20 +989,20 @@ def emit_icon():
     nodes  = "".join(node(t[0], t[1], t[2]) for t in TILES)
     panels = "\n      ".join(panel(*t) for t in TILES)
     chain = (
-        '  <div class="hf-chain">\n'
-        '    <span class="hf-end hf-in">IN</span>\n'
-        '    <div class="hf-nodes" rata-role="nodes">' + HELIX_SVG + nodes + '</div>\n'
-        '    <span class="hf-end hf-out2">OUT</span>\n'
+        '  <div class="hf-chain" role="group" aria-label="Signal chain">\n'
+        '    <span class="hf-end hf-in" aria-hidden="true">IN</span>\n'
+        '    <div class="hf-nodes" rata-role="nodes" role="group" aria-label="Effect chain in signal order — drag to reorder">' + HELIX_SVG + nodes + '</div>\n'
+        '    <span class="hf-end hf-out2" aria-hidden="true">OUT</span>\n'
         '    <div class="hf-addwrap">\n'
-        '      <button type="button" class="hf-add" title="Add an effect to the chain">＋ ADD</button>\n'
+        '      <button type="button" class="hf-add" aria-label="Add an effect to the chain" aria-haspopup="true" aria-expanded="false" title="Add an effect to the chain">＋ ADD</button>\n'
         '      <div class="hf-palette" rata-role="palette"></div>\n'
         '    </div>\n'
         '  </div>\n')
-    detail = '  <div class="hf-detail" rata-role="detail">\n      ' + panels + '\n  </div>\n'
+    detail = '  <div class="hf-detail" rata-role="detail" role="region" aria-label="Selected effect controls">\n      ' + panels + '\n  </div>\n'
     # Strobe tuner overlay — floats over the bottom of the detail panel when engaged (tuner_on).
     # The disc spins at a rate/direction set by cents (still + green = in tune); note reads the pitch.
-    tuner = ('  <div class="hf-tuner mod-hidden" rata-role="tuner">\n'
-        '    <div class="hf-tuner-note" rata-role="tunernote">–</div>\n'
+    tuner = ('  <div class="hf-tuner mod-hidden" rata-role="tuner" role="dialog" aria-label="Strobe tuner">\n'
+        '    <div class="hf-tuner-note" rata-role="tunernote" role="status" aria-live="polite" aria-label="Detected note">–</div>\n'
         '    <div class="hf-tuner-meterwrap">\n'
         '      <div class="hf-tuner-scale"><span class="hf-tuner-lab">♭ flat</span><span class="hf-tuner-lab">in tune</span><span class="hf-tuner-lab">sharp ♯</span></div>\n'
         '      <div class="hf-tuner-meter">\n'
@@ -939,55 +1010,55 @@ def emit_icon():
         '        <div class="hf-tuner-mid"></div>\n'
         '        <div class="hf-tuner-needle" rata-role="tunerdisc"></div>\n'
         '      </div>\n'
-        '      <div class="hf-tuner-cents" rata-role="tunercents">no signal</div>\n'
+        '      <div class="hf-tuner-cents" rata-role="tunercents" role="status" aria-live="polite" aria-label="Cents deviation">no signal</div>\n'
         '    </div>\n'
         '    <div class="hf-tuner-mute" title="Mute output while tuning">' + render_ctrl(CTRL_BY_SYM["tuner_mute"]) + '</div>\n'
-        '    <button type="button" class="hf-tunerclose" rata-role="tunerclose" title="Close tuner">✕</button>\n'
+        '    <button type="button" class="hf-tunerclose" rata-role="tunerclose" aria-label="Close tuner" title="Close tuner">✕</button>\n'
         '  </div>\n')
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
         '  <div mod-role="drag-handle" class="mod-drag-handle"></div>\n'
         # UNIFIED TOOLBAR — brand (left) · preset recall (centre) · master output + latency (right).
         # Consolidates the old header/output/presets strips into one bar. All wired controls kept.
-        '  <div class="hf-bar">\n'
-        '    <div class="hf-bar-brand"><span class="hx-mark"></span><span class="hf-title">HEX FORGE</span></div>\n'
-        '    <div class="hf-bar-presets">\n'
-        '      <button type="button" class="hf-ps-btn hf-ps-bankdn" title="Bank down (hold A+B on the pedal)">◀</button>\n'
-        '      <span class="hf-ps-bank" rata-role="psbank">BANK 1</span>\n'
-        '      <button type="button" class="hf-ps-btn hf-ps-bankup" title="Bank up (hold C+D on the pedal)">▶</button>\n'
-        '      <span class="hf-ps-slots">\n'
-        '        <button type="button" class="hf-ps-slot" data-slot="0">A</button>\n'
-        '        <button type="button" class="hf-ps-slot" data-slot="1">B</button>\n'
-        '        <button type="button" class="hf-ps-slot" data-slot="2">C</button>\n'
-        '        <button type="button" class="hf-ps-slot" data-slot="3">D</button>\n'
+        '  <div class="hf-bar" role="toolbar" aria-label="Hex Forge toolbar">\n'
+        '    <div class="hf-bar-brand"><span class="hx-mark" aria-hidden="true"></span><span class="hf-title">HEX FORGE</span></div>\n'
+        '    <div class="hf-bar-presets" role="group" aria-label="Preset recall">\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-bankdn" aria-label="Previous bank" title="Bank down (hold A+B on the pedal)">◀</button>\n'
+        '      <span class="hf-ps-bank" rata-role="psbank" role="status" aria-live="polite" aria-label="Current bank">BANK 1</span>\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-bankup" aria-label="Next bank" title="Bank up (hold C+D on the pedal)">▶</button>\n'
+        '      <span class="hf-ps-slots" role="group" aria-label="Preset slots">\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="0" aria-label="Recall preset A">A</button>\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="1" aria-label="Recall preset B">B</button>\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="2" aria-label="Recall preset C">C</button>\n'
+        '        <button type="button" class="hf-ps-slot" data-slot="3" aria-label="Recall preset D">D</button>\n'
         '      </span>\n'
-        '      <input type="text" class="hf-ps-name" rata-role="psname" maxlength="31" spellcheck="false" placeholder="(unnamed)" title="Preset name — type and press Enter to rename" />\n'
-        '      <button type="button" class="hf-ps-btn hf-ps-save" title="Save over the current preset">SAVE</button>\n'
-        '      <button type="button" class="hf-ps-btn hf-ps-toggle" title="Browse all presets &amp; manage">≡</button>\n'
+        '      <input type="text" class="hf-ps-name" rata-role="psname" maxlength="31" spellcheck="false" placeholder="(unnamed)" aria-label="Preset name" title="Preset name — type and press Enter to rename" />\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-save" aria-label="Save current preset" title="Save over the current preset">SAVE</button>\n'
+        '      <button type="button" class="hf-ps-btn hf-ps-toggle" aria-label="Browse and manage all presets" aria-haspopup="true" aria-expanded="false" title="Browse all presets &amp; manage">≡</button>\n'
         # ≡ dropdown: a manage header (reorder + backup/restore) above the full 8×4 preset grid.
         # Keeps those low-frequency actions out of the always-visible bar.
-        '      <div class="hf-ps-menu" rata-role="psmenu">\n'
+        '      <div class="hf-ps-menu" rata-role="psmenu" role="menu" aria-label="Preset management">\n'
         '        <div class="hf-ps-menuhead">\n'
-        '          <button type="button" class="hf-ps-btn hf-ps-mvup" title="Move this preset earlier in the list">▲ Earlier</button>\n'
-        '          <button type="button" class="hf-ps-btn hf-ps-mvdn" title="Move this preset later in the list">▼ Later</button>\n'
-        '          <span class="hf-ps-menusep"></span>\n'
-        '          <button type="button" class="hf-ps-btn hf-ps-backup" title="Back up all 32 presets to disk (survives delete/re-add &amp; updates)">⭳ Backup</button>\n'
-        '          <button type="button" class="hf-ps-btn hf-ps-restore" title="Restore all presets from the last backup on disk">⭱ Restore</button>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-mvup" aria-label="Move preset earlier" title="Move this preset earlier in the list">▲ Earlier</button>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-mvdn" aria-label="Move preset later" title="Move this preset later in the list">▼ Later</button>\n'
+        '          <span class="hf-ps-menusep" aria-hidden="true"></span>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-backup" aria-label="Back up all presets to disk" title="Back up all 32 presets to disk (survives delete/re-add &amp; updates)">⭳ Backup</button>\n'
+        '          <button type="button" class="hf-ps-btn hf-ps-restore" aria-label="Restore all presets from disk" title="Restore all presets from the last backup on disk">⭱ Restore</button>\n'
         '        </div>\n'
-        '        <div class="hf-ps-list" rata-role="pslist"></div>\n'
+        '        <div class="hf-ps-list" rata-role="pslist" role="listbox" aria-label="All presets"></div>\n'
         '      </div>\n'
         '    </div>\n'
-        '    <div class="hf-bar-out">\n'
-        '      <button type="button" class="hf-tunerbtn" rata-role="tunerbtn" title="Strobe tuner — click to open / close">'
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg></button>\n'
-        '      <span class="hf-bar-sep"></span>\n'
+        '    <div class="hf-bar-out" role="group" aria-label="Master output">\n'
+        '      <button type="button" class="hf-tunerbtn" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg></button>\n'
+        '      <span class="hf-bar-sep" aria-hidden="true"></span>\n'
         '      <span class="hf-out-name">OUT</span>\n'
-        '      <div class="hf-meter hf-meter-h" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
-        '      <span class="hf-clip" rata-role="clip">CLIP</span>\n'
+        '      <div class="hf-meter hf-meter-h" role="meter" aria-label="Output level meter" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
+        '      <span class="hf-clip" rata-role="clip" role="status" aria-live="assertive" aria-label="Output clipping indicator">CLIP</span>\n'
         '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
-        '      <div class="mod-powerswitch" mod-role="bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
+        '      <div class="mod-powerswitch" mod-role="bypass" role="switch" aria-label="Global bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '    </div>\n'
         '  </div>\n'
         + chain + detail + tuner +

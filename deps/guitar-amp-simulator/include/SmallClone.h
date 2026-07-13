@@ -29,6 +29,7 @@ public:
     static constexpr float kRateMaxHz   =  6.0f;
     static constexpr float kDepthMaxMs  =  2.7f;    // deep swirl, but was seasick at 3.6 — pulled back
     static constexpr float kBaseDelayMs =  8.5f;
+    static constexpr float kOffsetMaxMs = 100.0f;   // user "Center Delay" pushes the centre out (0 = stock)
     static constexpr float kBBDInLPFc   = 3000.0f;
     static constexpr float kBBDOutLPFc  = 2900.0f;  // a touch warmer than the CE-2
     static constexpr float kSmoothTimeMs = 12.0f;
@@ -40,6 +41,7 @@ private:
     float depth_       = 0.7f;   // default deep-ish
     float mix_         = 0.55f;  // fairly wet
     float stereoWidth_ = 0.4f;
+    float offsetMs_    = 0.0f;    // [0,kOffsetMaxMs] ms added to the centre delay
 
     float baseSamples_ = 0.0f;
     float lpInAlpha_   = 0.0f;
@@ -48,6 +50,7 @@ private:
 
     float lfoPhase_    = 0.0f;
     float depthSmooth_ = 0.0f;
+    float offsetSmooth_= 0.0f;   // smoothed centre-delay offset in samples
 
     static constexpr int kMaxCh = 2;
     std::vector<float> delayBuf_[kMaxCh];

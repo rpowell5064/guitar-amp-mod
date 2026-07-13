@@ -35,6 +35,7 @@
 #include "EHXBigMuff.h"
 #include "Octavia.h"
 #include "ToneBenderMkII.h"
+#include "ZVexFuzzFactory.h"
 #include "OverdriveBlock.h"
 #include "AmpBlockExtended.h"
 #include "PowerAmpProcessor.h"
@@ -99,7 +100,7 @@ static constexpr int kBanks = 32, kSlots = 4;
 // BUMP whenever the built-in factory presets change — on load, a saved store with an
 // older rev has its FACTORY slots refreshed from the binary (user slots untouched), so
 // preset fixes actually reach existing users instead of being overridden by the .dat.
-static constexpr uint32_t kFactoryRev = 11;  // 11: FULL LOUDNESS PARITY re-level (2026-07-09) — amp makeup leveled (all amps equal-feel at noon) + every factory preset out_level re-measured & set to the Bank-1 target (-12.5 dirty / -13 clean); dropped the -5.9 clean pin + the +8 dB pushed-loud leads. 10: real Plexi loudness for Nevermind Wall/Mauve Haze/Hazy Solo (they were mis-loading as Backline; re-measured) + Nevermind Wall reworked to Plexiglass. 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus. 4: + Angine de Poitrine bank (Bank 13, microtonal shimmer). 5: Bank 13 B/C -> Radiohead (Anyone Can Play Guitar / There There); kept Quarter-Tone Lead. 6: Cardinal Lead drive -> Preamp 250 (DOD 250). 7: Cardinal Lead re-staged (DOD drive 0.48->0.25, amp gain 0.78->0.62) — was too hot/mushy. 8: Cardinal Lead out_level re-measured on-device (-17.3->-19.2; DOD250 denser than the old RAT)
+static constexpr uint32_t kFactoryRev = 29;  // 29: renamed preset "With Teeth" -> "Con Molars" (bank 11/D) + fuzz pedal "Fizz Factory" -> "Fuzz Zachary" (label only, value 3 unchanged) (2026-07-13). 28: Cali V HISS RETUNE (Marionette Master/Spectrum Rhythm/Spectrum Lead) — Bass down (tight; real MarkV wants Bass 1-3 on high gain), pre-gain Treble down + brightness moved to the POST-gain GEQ 6.6 kHz (Treble is early in the circuit = adds saturation/hiss), gain nudged up to offset the model's ~3 dB high-gain trim; out_level nudged +1 for the bass loss (verify by ear) (2026-07-13). 27: PACKED presets — added Knights of Cydonia ("Cavalier Charge") + compacted so no populated bank before the last has blank slots (banks 0-13 full; MUSE = last bank, index 14, A/B only; index 15 emptied). Regal Sustain->1/A, Regal Solo->11/D, Grunge Drop->14/D, Muse->bank 14 (2026-07-13). 26: Plug-In Junior Stab 0.5->0.2 (below the osc onset — was squealing too much) (2026-07-13). 25: Plug-In Junior retune — Stab 0.72->0.5 (below the self-osc onset; PIB riff shouldn't squeal), Drive 0.92, Comp 0.5, Gate 0.42 (2026-07-13). 24: Fizz Factory — hotter drive + gentler gate (fix "cut out") + note-gated SELF-OSCILLATION above Stab 0.55 (the unruly FF scream, dies on silence); calibrated to the real Stab sweep (THD/level rise); Plug-In Junior Drive 0.85/Gate 0.35/Stab 0.72 (2026-07-12). 23: Fizz Factory Stab = SUPPLY-RAIL model (ZVEX "operating voltage" — germanium FF); UP=tight/full, DOWN=starved squishy sag/sputter (correct real-pedal direction); Plug-In Junior Stab 0->0.9 (tight) (2026-07-12). 22: Fizz Factory Stab reworked (note-gated feedback + low 480 Hz growl + late onset — no more standalone whine); Plug-In Junior Stab 0.15->0 (2026-07-12). 21: NEW Bank 16 (index 15) MUSE — "Plug-In Junior" (Plug In Baby, Fizz Factory riff), slot A; B/C/D reserved; seed-clear spares 15/0 (2026-07-12). 20: trimmed the batch to Regal Sustain/Solo + Grunge Drop (removed the other 11 + Rotary Dream/Surfing Lead); added the INPUT-TRIM clean boost (it_boost ~6 dB) to both Regal presets; clears the vacated banks 15-17 + tail slots; 52 presets (2026-07-12). 19: +14 new presets (Brown Sound/Back in Black/Appetite/Texas Flood/Iron Man Doom/Surfing Lead/Microtonal Mirage/Cinematic Swell/Nashville Twang/Warm Archtop/Funk Machine/Djent Modern/Grunge Drop/Rotary Dream); moved both Queen presets together into new Bank 15 (Royalty), backfilled Bank 10/D=Rotary Dream + Bank 13/D=Surfing Lead so no blank slots; 65 presets total (2026-07-12). 18: removed "There There" + Gojira "Quicksilver Lead"; added Brian May LEAD "Regal Solo" (treble-boosted AC30) + made "Regal Sustain" hotter; repacked the tail so NO blank slots (Gojira -> Bank 12 C/D, Mesa Mark+Regal Solo -> Bank 13); clears the vacated old Bank 15 slots (2026-07-12). 17: Quicksilver Lead octave-up moved POST-cab (pos 2->7) + boosted (up 0.45->0.65) — in front of the high-gain EVH it was masked by the amp's own 2nd harmonic ("octave didn't work") (2026-07-12). 16: parody-renamed the new presets (Winterborn/Quicksilver Lead/Castaway Groove/Marionette Master/Spectrum Rhythm+Lead); Quicksilver = former Silvera turned into an octave-up LEAD (was too close to the rhythm); Marionette Master DE-BASSED (2026-07-11). 15: Gojira Silvera/Stranded amp JCM800->EVH 5150 III (Gainzilla, red ch) per user — their actual high-gain amp (2026-07-11). 14: NEW banks — Bank 14 GOJIRA (Born in Winter clean-tap / Silvera / Stranded, JCM800+TS) + Bank 15 MESA MARK (Master of Puppets = Cali V IIC+ smiley-scoop; Colors Rhythm/Lead = Cali V Mark IV) (2026-07-11). Muse (Plug In Baby / Knights of Cydonia) deferred — needs a ZVex Fuzz Factory model. 13: REVOICED Ghost/Periphery/Mastodon for the current gear (input-clip removed + TS808/Friedman re-voiced) — normalized the TS clean-boost level (hot 0.9-1.0 down / attenuating 0.6 up, all ~0.72-0.78) + eased treble/presence/high-cut for the now-untamed brighter front-end (2026-07-11). NOTE: out_level still on the pre-revoice measurements — re-measure once tone is locked. 12: Imperial Lead tamed (was too fuzzy: dropped Sat + gain 0.72->0.56 + Klon 0.35->0.16); Hazy Solo un-starved (opened the gate in front of the Octavia + more sustain/amp gain) (2026-07-11). 11: FULL LOUDNESS PARITY re-level (2026-07-09) — amp makeup leveled (all amps equal-feel at noon) + every factory preset out_level re-measured & set to the Bank-1 target (-12.5 dirty / -13 clean); dropped the -5.9 clean pin + the +8 dB pushed-loud leads. 10: real Plexi loudness for Nevermind Wall/Mauve Haze/Hazy Solo (they were mis-loading as Backline; re-measured) + Nevermind Wall reworked to Plexiglass. 2: Gravity Lead out_level -27.5 -> -23.0. 3: Ghost Imperial/Cardinal Lead phaser -> subtle Lush-2 chorus. 4: + Angine de Poitrine bank (Bank 13, microtonal shimmer). 5: Bank 13 B/C -> Radiohead (Anyone Can Play Guitar / There There); kept Quarter-Tone Lead. 6: Cardinal Lead drive -> Preamp 250 (DOD 250). 7: Cardinal Lead re-staged (DOD drive 0.48->0.25, amp gain 0.78->0.62) — was too hot/mushy. 8: Cardinal Lead out_level re-measured on-device (-17.3->-19.2; DOD250 denser than the old RAT)
 struct Preset {
     bool  used = false;
     char  name[32] = {0};
@@ -142,12 +143,11 @@ static const int   kAmpTube[12]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1 }; // �
 // boost so cleans FEEL as loud as the denser distorted models). Re-leveled after the amp re-voicings
 // left Hiwatt -24 / CaliV -23 / Friedman -21.5 / Plexi -19 several dB quiet. makeup is linear post-amp gain.
 static const float kAmpMakeup[12] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f }; // [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
-// Soft ceiling on the amp INPUT: x -> A*tanh(x/A). Gives the amp headroom so a hot upstream
-// block (esp. the fuzz, which outputs ~0 dBFS = +14 dB over a guitar) can't slam the guitar-
-// level front-end into mush. Transparent at guitar level (~-0.2 dB @ -14 dBFS), soft-limits
-// hot peaks (-1.2 dB @ -6 dBFS, -3.7 dB @ 0 dBFS). Applied in the chain, NOT in the amp models,
-// so every model's NAM-tuned voicing is untouched. Lower A = more headroom (more taming).
-static constexpr float kAmpInputCeil = 0.75f;
+// (REMOVED 2026-07-11) The `kAmpInputCeil = A*tanh(x/A)` "input ceiling" on the amp block was added
+// 2026-07-03 and CHANGED THE AMP CHARACTER: being a nonlinearity at any A, it pre-distorted the amp
+// input, and the high-gain front-ends amplified that into a fuzzy/dark (high A) or woolly (low A)
+// voice. The amps are voiced for a RAW input (like the standalone Amp plugin), so it's gone. Hot
+// upstream blocks are handled by preset gain-staging, not by distorting every amp's front end.
 
 // Indexed by dr_model port: 0/1/2/4/5 = algorithmic, 3 = NAM (special-cased, entry unused).
 static const OverdriveType kDriveMap[8] = {
@@ -400,6 +400,7 @@ struct HexForge {
     std::unique_ptr<OversamplingWrapper> fuzzMuff;   // Italian Hero
     std::unique_ptr<OversamplingWrapper> fuzzBender; // Tone Bender MkII
     std::unique_ptr<OversamplingWrapper> fuzzOctavia;// Octavia (octave-up)
+    std::unique_ptr<OversamplingWrapper> fuzzFactory;// Fizz Factory (ZVex-style chaos/gated octave)
     OverdriveBlock    drive;
     AmpBlockExtended* amp = nullptr;                  // swapped on model change
     PowerAmpProcessor pa;
@@ -652,9 +653,17 @@ static_assert(HF_OC_INTERVAL == HF_OC_MICRO + 1 && HF_OC_MICRO == HF_MD_DIV + 1 
 //   * Cali V (Mesa Mark V) mode selector [HF_AMP_MV_MODE] added v15, then the 5-band graphic EQ
 //     [HF_AMP_MV_GEQ0..4] added v16 — all 6 contiguous, after the octave ports, before the commands.
 static_assert(HF_AMP_MV_MODE == HF_OC_INTERVAL + 1 && HF_AMP_MV_GEQ0 == HF_AMP_MV_MODE + 1
-              && HF_AMP_MV_GEQ4 == HF_AMP_MV_GEQ0 + 4 && HF_AMP_MV_EQPRESET == HF_AMP_MV_GEQ4 + 1
-              && HF_AMP_MV_EQPRESET == HF_SW_A - 1,
-              "amp_mv_mode + 5 graphic-EQ + eqpreset must be contiguous, before the commands");
+              && HF_AMP_MV_GEQ4 == HF_AMP_MV_GEQ0 + 4 && HF_AMP_MV_EQPRESET == HF_AMP_MV_GEQ4 + 1,
+              "amp_mv_mode + 5 graphic-EQ + eqpreset must be contiguous, before md_offset");
+//   * Modulation Center Delay [HF_MD_OFFSET] added v18 — right after the Cali V EQ preset.
+static_assert(HF_MD_OFFSET == HF_AMP_MV_EQPRESET + 1 && HF_AMP_NAM_GAIN == HF_MD_OFFSET + 1,
+              "md_offset must sit right after the Cali V EQ preset, before the NAM trims");
+//   * NAM input/output trims — 6 contiguous ports [HF_AMP_NAM_GAIN..HF_CAB_NAM_VOL] added v19,
+//     the last preset params, immediately before the commands.
+static_assert(HF_AMP_NAM_VOL == HF_AMP_NAM_GAIN + 1 && HF_DR_NAM_GAIN == HF_AMP_NAM_GAIN + 2
+              && HF_DR_NAM_VOL == HF_AMP_NAM_GAIN + 3 && HF_CAB_NAM_GAIN == HF_AMP_NAM_GAIN + 4
+              && HF_CAB_NAM_VOL == HF_AMP_NAM_GAIN + 5 && HF_CAB_NAM_VOL == HF_SW_A - 1,
+              "NAM gain/level trims must be 6 contiguous ports right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -699,6 +708,14 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v17 inserted the Cali V graphic-EQ preset selector [HF_AMP_MV_EQPRESET]; default 0 (Custom).
     const bool eqGap = (srcVer < 17);
     const int eqAt = HF_AMP_MV_EQPRESET, eqEnd = HF_AMP_MV_EQPRESET + 1;
+    // v18 appended the Modulation Center Delay [HF_MD_OFFSET] before the commands; default 0 ms
+    // (= stock chorus/flanger/small-clone voicing).
+    const bool mdoGap = (srcVer < 18);
+    const int mdoAt = HF_MD_OFFSET, mdoEnd = HF_MD_OFFSET + 1;
+    // v19 appended 6 NAM input/output trims [HF_AMP_NAM_GAIN..HF_CAB_NAM_VOL] before the commands;
+    // default 0 dB (unity) for each.
+    const bool namGap = (srcVer < 19);
+    const int namAt = HF_AMP_NAM_GAIN, namEnd = HF_AMP_NAM_GAIN + 6;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -714,6 +731,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (mvGap && i >= mvAt && i < mvEnd)        vals[i] = 6.0f;   // Mesa mode default = Mark IIC+
         else if (gvGap && i >= gvAt && i < gvEnd)        vals[i] = 0.5f;   // Mesa graphic-EQ band = flat
         else if (eqGap && i >= eqAt && i < eqEnd)        vals[i] = 0.0f;   // Mesa EQ preset = Custom
+        else if (mdoGap && i >= mdoAt && i < mdoEnd)     vals[i] = 0.0f;   // Mod Center Delay = 0 ms
+        else if (namGap && i >= namAt && i < namEnd)     vals[i] = 0.0f;   // NAM gain/level trims = 0 dB
         else                                             vals[i] = old[o++];
     }
 }
@@ -722,7 +741,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(17); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v17: + Cali V graphic-EQ preset selector (factoryRev still after N_PORTS)
+    putU32(19); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v19: + NAM gain/level trims
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -742,9 +761,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 17) return false;
+    if (ver < 2 || ver > 19) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 17);  // …Cali V mode (v15) + graphic EQ (v16) + EQ preset (v17)
+    const bool needMigrate  = (ver < 19);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -922,6 +941,15 @@ static void seedFactoryPresets(HexForge* p) {
         pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
         if (fp.cabIr && fp.cabIr[0]) { std::strncpy(pr.irPath, fp.cabIr, kPathMax-1); pr.irPath[kPathMax-1]='\0'; }
     }
+    // 2026-07-13 (rev 27): packed the collection so no populated bank before the last has blank slots (user
+    // request). Banks 0-13 are now FULL; the MUSE bank (index 14) is the LAST populated bank and holds only
+    // A/B (Plug In Baby + Knights of Cydonia); index 15 was emptied (its Muse presets moved to 14). Clear the
+    // now-vacated factory slots so stale presets from older revs don't linger (a user is extremely unlikely
+    // to have saved over former-factory slots).
+    { auto clr=[&](int b,int s){ Preset& o=p->presets[b][s]; o.used=false; o.name[0]='\0'; };
+      clr(14,2); clr(14,3);                                   // MUSE bank (last) = A/B only
+      for (int s=0; s<kSlots; ++s) clr(15,s);                 // index 15 emptied (Muse moved to 14)
+      for (int b=16; b<=17; ++b) for (int s=0; s<kSlots; ++s) clr(b,s); }
 }
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);
@@ -950,10 +978,12 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->fuzzMuff   = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
     p->fuzzBender = std::make_unique<OversamplingWrapper>(std::make_unique<ToneBenderMkII>());
     p->fuzzOctavia= std::make_unique<OversamplingWrapper>(std::make_unique<Octavia>());
-    if (!p->fuzzMuff || !p->fuzzBender || !p->fuzzOctavia) { delete p; return nullptr; }
+    p->fuzzFactory= std::make_unique<OversamplingWrapper>(std::make_unique<ZVexFuzzFactory>());
+    if (!p->fuzzMuff || !p->fuzzBender || !p->fuzzOctavia || !p->fuzzFactory) { delete p; return nullptr; }
     p->fuzzMuff->prepare(rate, kMaxBlock, 1);
     p->fuzzBender->prepare(rate, kMaxBlock, 1);
     p->fuzzOctavia->prepare(rate, kMaxBlock, 1);
+    p->fuzzFactory->prepare(rate, kMaxBlock, 1);
     p->fuzzMuff->setParameter("era", 2.0f);
     p->drive.prepare(rate, kMaxBlock, 1);
     p->drive.setType(kDriveMap[0]);
@@ -1277,8 +1307,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->comp.setParameter("knee",      *p->ports[HF_CP_KNEE]);
     p->comp.setParameter("makeup",    *p->ports[HF_CP_MAKEUP]);
     // Fuzz (which pedal chosen at process time)
-    const int fuzzPedal = clampi(*p->ports[HF_FZ_PEDAL], 0, 2);
-    p->fuzzMuff->setBypass(false); p->fuzzBender->setBypass(false); p->fuzzOctavia->setBypass(false);
+    const int fuzzPedal = clampi(*p->ports[HF_FZ_PEDAL], 0, 3);
+    p->fuzzMuff->setBypass(false); p->fuzzBender->setBypass(false); p->fuzzOctavia->setBypass(false); p->fuzzFactory->setBypass(false);
     p->fuzzMuff->setParameter("era",   *p->ports[HF_FZ_MODE]);
     p->fuzzMuff->setParameter("drive", *p->ports[HF_FZ_SUSTAIN]);
     p->fuzzMuff->setParameter("tone",  *p->ports[HF_FZ_TONE]);
@@ -1291,6 +1321,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->fuzzOctavia->setParameter("drive", *p->ports[HF_FZ_SUSTAIN]);
     p->fuzzOctavia->setParameter("tone",  *p->ports[HF_FZ_TONE]);
     p->fuzzOctavia->setParameter("level", *p->ports[HF_FZ_VOLUME]);
+    // Fizz Factory: Sustain→Drive, Bias→Comp, Trim→Gate, Temp→Stab, Volume→Level
+    p->fuzzFactory->setParameter("sustain",   *p->ports[HF_FZ_SUSTAIN]);
+    p->fuzzFactory->setParameter("bias",      *p->ports[HF_FZ_BIAS]);
+    p->fuzzFactory->setParameter("inputtrim", *p->ports[HF_FZ_INPUTTRIM]);
+    p->fuzzFactory->setParameter("getemp",    *p->ports[HF_FZ_GETEMP]);
+    p->fuzzFactory->setParameter("level",     *p->ports[HF_FZ_VOLUME]);
     // Drive
     p->drive.setBypass(false);
     const int driveModel = clampi(*p->ports[HF_DR_MODEL], 0, kDrMax);
@@ -1404,6 +1440,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->modfx.setParameter("rate",        *p->ports[HF_MD_RATE]);
     p->modfx.setParameter("depth",       *p->ports[HF_MD_DEPTH]);
     p->modfx.setParameter("mix",         *p->ports[HF_MD_MIX]);
+    p->modfx.setParameter("centerDelay", *p->ports[HF_MD_OFFSET]);   // ms (delay-line types only)
     // Mono mode: force EVERY width-based stereo effect to CENTERED (width 0) so a summed-
     // mono rig keeps full-level content. Otherwise the delay's pan (Seraph) loses ~6 dB to
     // pan law, the Digital delay's L/R time offset combs, and the chorus/Uni-Vibe LFO-phase
@@ -1499,29 +1536,33 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             switch (id) {
                 case B_GATE:  runMono(p->gate, L, R, len, p->mono, stereo); break;
                 case B_COMP:  runMono(p->comp, L, R, len, p->mono, stereo); break;
-                case B_FUZZ:  runMono(fuzzPedal==0 ? *p->fuzzMuff : (fuzzPedal==1 ? *p->fuzzBender : *p->fuzzOctavia), L, R, len, p->mono, stereo); break;
+                case B_FUZZ:  runMono(fuzzPedal==0 ? *p->fuzzMuff : (fuzzPedal==1 ? *p->fuzzBender : (fuzzPedal==2 ? *p->fuzzOctavia : *p->fuzzFactory)), L, R, len, p->mono, stereo); break;
                 case B_DRIVE:
                     if (driveModel == kDrNamIdx && p->drNam && p->drNam->isLoaded()) {
-                        // Neural drive: mono; Level (x2) + Mix dry/wet.
-                        if (!stereo) for (int i=0;i<len;++i) p->mono[i]=L[i];
-                        else         for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);
+                        // Neural drive: mono; NAM Gain (input drive) + NAM Level (output), both dB; Mix dry/wet.
+                        const float ig=std::pow(10.0f,*p->ports[HF_DR_NAM_GAIN]/20.0f);
+                        const float og=std::pow(10.0f,*p->ports[HF_DR_NAM_VOL] /20.0f);
+                        for (int i=0;i<len;++i) p->mono[i]=ig*(stereo?0.5f*(L[i]+R[i]):L[i]);
                         p->drNam->processBuffer(p->mono, p->monoOut, len);
-                        const float mix=*p->ports[HF_DR_MIX], wet=*p->ports[HF_DR_LEVEL]*2.0f*mix, dry=1.0f-mix;
-                        for (int i=0;i<len;++i){ float o=dry*p->mono[i]+wet*p->monoOut[i]; L[i]=o; R[i]=o; }
+                        const float mix=*p->ports[HF_DR_MIX], wet=og*mix, dry=1.0f-mix;
+                        for (int i=0;i<len;++i){ float d=stereo?0.5f*(L[i]+R[i]):L[i]; float o=dry*d+wet*p->monoOut[i]; L[i]=o; R[i]=o; }
                     } else runMono(p->drive, L, R, len, p->mono, stereo);
                     break;
                 case B_AMP: {
                     if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
-                    // Input headroom (see kAmpInputCeil): soft ceiling so a hot upstream block
-                    // can't slam the amp front-end. Applies to both NAM + algorithmic amps.
-                    { const float A = kAmpInputCeil, iA = 1.0f/A;
-                      for (int i=0;i<len;++i){ L[i]=A*std::tanh(L[i]*iA); R[i]=A*std::tanh(R[i]*iA); } }
+                    // NOTE: the amp gets the RAW input (as it did before 2026-07-03 and as the
+                    // standalone Amp plugin still does). The old `kAmpInputCeil` tanh "input ceiling"
+                    // was a nonlinearity at ANY setting — even when barely attenuating, it added
+                    // harmonics that the high-gain front-ends then amplified into a fuzzy/dark/woolly
+                    // voice. Removed. A hot upstream fuzz is handled by preset gain-staging (clean
+                    // amps + tamed fuzz volume), not by pre-distorting every amp's input.
                     if (ampModel == kAmpNamIdx && p->ampNam && p->ampNam->isLoaded()) {
-                        // Neural amp: mono capture -> both; Master = output trim; no power amp.
-                        for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);
+                        // Neural amp: mono capture -> both; NAM Gain (input drive) + NAM Level (output), dB; no power amp.
+                        const float ig=std::pow(10.0f,*p->ports[HF_AMP_NAM_GAIN]/20.0f);
+                        const float og=std::pow(10.0f,*p->ports[HF_AMP_NAM_VOL] /20.0f);
+                        for (int i=0;i<len;++i) p->mono[i]=ig*0.5f*(L[i]+R[i]);
                         p->ampNam->processBuffer(p->mono, p->monoOut, len);
-                        const float trim=*p->ports[HF_AMP_MASTER];
-                        for (int i=0;i<len;++i){ float y=p->monoOut[i]*trim; L[i]=y; R[i]=y; }
+                        for (int i=0;i<len;++i){ float y=p->monoOut[i]*og; L[i]=y; R[i]=y; }
                     } else {
                         float* io[2] = { L, R };
                         amp->process(io, io, len, 2);
@@ -1533,12 +1574,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 }
                 case B_CAB:
                     if (p->cabNam && p->cabNam->isLoaded()) {
-                        // Neural cab/rig overrides the IR convolver; Mix = dry/wet.
+                        // Neural cab/rig overrides the IR convolver; NAM Gain (input) + NAM Level (output), dB; Mix = dry/wet.
                         if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
-                        for (int i=0;i<len;++i) p->mono[i]=0.5f*(L[i]+R[i]);
+                        const float ig=std::pow(10.0f,*p->ports[HF_CAB_NAM_GAIN]/20.0f);
+                        const float og=std::pow(10.0f,*p->ports[HF_CAB_NAM_VOL] /20.0f);
+                        for (int i=0;i<len;++i) p->mono[i]=ig*0.5f*(L[i]+R[i]);
                         p->cabNam->processBuffer(p->mono, p->monoOut, len);
                         const float mix=*p->ports[HF_CAB_MIX], dry=1.0f-mix;
-                        for (int i=0;i<len;++i){ float w=p->monoOut[i]*mix; L[i]=dry*L[i]+w; R[i]=dry*R[i]+w; }
+                        for (int i=0;i<len;++i){ float w=p->monoOut[i]*og*mix; L[i]=dry*L[i]+w; R[i]=dry*R[i]+w; }
                         stereo = true;
                     } else runStereo(p->cab, L, R, len, stereo);
                     break;
@@ -1659,7 +1702,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(17);                 // version (17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(19);                 // version (19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1729,9 +1772,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 17) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 19) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 17);     // …graphic EQ (v16) + Cali V EQ preset (v17)
+        const bool needMigrate  = (ver < 19);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
