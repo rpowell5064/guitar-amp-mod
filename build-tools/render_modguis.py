@@ -106,8 +106,12 @@ def render(pedal, ttl, w, h):
     html = fill_mustache(html, parse_controls(os.path.join(LV2, ttl)))
     html = html.replace('class="mod-powerswitch-image"', 'class="mod-powerswitch-image on"')
     html = html.replace('class="hf-sw-img"', 'class="hf-sw-img on"')
+    # Base font on html/body: the pedal roots don't set font-family (they inherit MOD's page font at
+    # runtime), so a standalone render would fall back to the browser default (serif) for every control
+    # label below the header. Supply the same stack MOD uses so the screenshot matches the live UI.
     page = ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
-            'html,body{margin:0;padding:0;background:#0b0d12;}' + css + '</style></head><body>'
+            'html,body{margin:0;padding:0;background:#0b0d12;'
+            'font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}' + css + '</style></head><body>'
             + html + '</body></html>')
     hp = os.path.join(OUT, f"{pedal}.html"); open(hp, "w", encoding="utf-8").write(page)
     full = os.path.join(base, f"screenshot-{pedal}.png")
