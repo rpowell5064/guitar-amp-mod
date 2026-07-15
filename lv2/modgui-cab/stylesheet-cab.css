@@ -11,8 +11,8 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 424px;
-    width: 540px;
+    height: 586px;
+    width: 600px;
     position: absolute;
     border-radius: 12px;
     border-top: 2px solid #56aaff;
@@ -27,7 +27,7 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-pedal-input,
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-pedal-output { top:150px; }
-.mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch { margin-left:465px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
+.mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch { margin-left:525px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch-image.off { background-position:0 0; }
@@ -91,7 +91,7 @@
 
 /* HEX CHAIN logo badge (black background dropped via screen blend) */
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-logo {
-    position: absolute; top: 94px; right: 16px; width: 58px; height: 58px;
+    position: absolute; top: 94px; right: 42px; width: 58px; height: 58px;
     background-image: url(/resources/logo.jpg{{{ns}}});
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 6;
@@ -176,6 +176,6 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-ro-r { text-anchor: end; }
 
 /* ── Cab panel: two columns — CABINET over ROOM left, mic pad right ─────────── */
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-cols { display: flex; gap: 14px; align-items: flex-start; justify-content: center; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-cols { display: flex; gap: 18px; align-items: flex-start; justify-content: center; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-left { display: flex; flex-direction: column; gap: 8px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-right .hf-micpad { margin-top: 0; }

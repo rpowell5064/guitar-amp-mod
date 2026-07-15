@@ -92,7 +92,7 @@
 
 /* HEX CHAIN logo badge (black background dropped via screen blend) */
 .mod-pedal-guitaramp-fuzz{{{cns}}} .hx-logo {
-    position: absolute; top: 94px; right: 16px; width: 58px; height: 58px;
+    position: absolute; top: 94px; right: 42px; width: 58px; height: 58px;
     background-image: url(/resources/logo.jpg{{{ns}}});
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 6;

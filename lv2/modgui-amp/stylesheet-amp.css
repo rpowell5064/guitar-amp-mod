@@ -294,7 +294,7 @@
 /* HEX CHAIN logo badge — parked top-right in the empty space beside the (left-aligned) model
    row, so it never floats over the tab panels / controls. (Black bg dropped via screen blend.) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hx-logo {
-    position: absolute; right: 22px; top: 94px; width: 62px; height: 62px;
+    position: absolute; right: 42px; top: 94px; width: 62px; height: 62px;
     background-image: url(/resources/logo.jpg{{{ns}}});
     background-size: contain; background-repeat: no-repeat; background-position: center;
     mix-blend-mode: screen; pointer-events: none; z-index: 4;
