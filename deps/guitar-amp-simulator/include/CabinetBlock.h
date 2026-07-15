@@ -36,6 +36,22 @@ private:
     float lowCutHz_  =  80.0f;
     float highCutHz_ = 16000.0f;
     float mix_       =   1.0f;
+    // Mic placement (2026-07-14). Post-convolution filter morphs, one-sided from the
+    // voiced baseline so 0/0 is BIT-IDENTICAL to before (old presets/saves untouched):
+    //   micPos  0 = as-voiced (cap-edge close mic) → 1 = cone EDGE: progressive HF loss,
+    //             the 4 kHz bite recedes, a touch more low-mid body.
+    //   micDist 0 = as-voiced (close) → 1 = ~30 cm back: proximity bass falls away,
+    //             slight HF air loss. Tone-only — loudness parity is preserved elsewhere.
+    float micPos_  = 0.0f;
+    float micDist_ = 0.0f;
+    bool  micActive_ = false;
+    // Room ambience (2026-07-14): a compact Schroeder small-room (4 combs + 1 allpass, damped)
+    // AFTER the convolution + mic filters — the "amp in a room" layer. Toggleable (off =
+    // bit-identical), Mix = wet blend, Amount = room size/decay (~0.12 s tight booth → ~0.45 s
+    // live room). Preset-savable like every other cab param.
+    bool  roomOn_   = false;
+    float roomMix_  = 0.15f;
+    float roomAmt_  = 0.35f;
 
     static constexpr int kMaxCh    = 2;
     static constexpr int kNumSlots = 2;  // double-buffer: front / back
@@ -58,8 +74,29 @@ private:
     struct EQState {
         BiquadFilter lowCut;
         BiquadFilter highCut;
+        BiquadFilter micLP;      // mic position: off-axis/cone-edge HF loss
+        BiquadFilter micBite;    // mic position: 4 kHz bite recedes toward the edge
+        BiquadFilter micBody;    // mic position: slight low-mid gain off-center
+        BiquadFilter distProx;   // mic distance: proximity bass falls away
+        BiquadFilter distAir;    // mic distance: HF air loss with distance
     };
     std::array<EQState, kMaxCh> eqState_;
+
+    // Per-channel small-room state (short prime-spaced combs + one allpass).
+    struct RoomState {
+        static constexpr int kCombs = 4;
+        std::vector<float> comb[kCombs];
+        std::vector<float> ap;
+        int   cw[kCombs] = {0,0,0,0};
+        int   aw = 0;
+        int   clen[kCombs] = {1,1,1,1};   // active delay lengths (follow roomAmt_)
+        int   alen = 1;
+        float damp[kCombs] = {0,0,0,0};   // per-comb damping LP state
+    };
+    std::array<RoomState, kMaxCh> room_;
+    float roomFb_ = 0.6f;
+    void  rebuildRoom();
+    float roomTick(RoomState& rs, float x) noexcept;
 
     void rebuildEQ();
     void loadIRIntoSlot(int slot);

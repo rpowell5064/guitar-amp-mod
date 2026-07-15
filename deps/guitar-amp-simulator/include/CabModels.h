@@ -49,10 +49,149 @@ inline float l2norm(const std::vector<float>& v) {
     return static_cast<float>(std::sqrt(s));
 }
 
-inline std::vector<float> generate(const std::string& id, double sr) {
-    // @factory / empty / unknown → the existing V30+SM57 Factory Cab.
-    if (id.empty() || id == "@factory" || id[0] != '@')
-        return DefaultCabIR::generate(sr);
+// ── Measured-IR "anatomy" enrichment (2026-07-14) ──────────────────────────────
+// A real cab IR differs from a smooth EQ cascade in four audible ways, all of which
+// can be synthesized deterministically (seeded — each cab gets a stable fingerprint,
+// no sampled data, still license-free):
+//   1. CONE-BREAKUP RIPPLE: dozens of narrow ±dB peaks/notches across the mids — the
+//      irregular "grain" your ear reads as a speaker instead of a filter curve.
+//   2. MULTI-CONE / BAFFLE-EDGE REFLECTIONS: sub-millisecond taps (4 cones at unequal
+//      distances to one mic + edge diffraction) — the close-miked 4x12 comb "chunk".
+//   3. CLOSED-BACK BOX RETURN: a darker few-ms reflection off the back panel (or, for
+//      open-back cabs, a NEGATIVE dipole-cancellation tap).
+//   4. BOX AIR MODE: a high-Q low resonance that RINGS in time (the thump breathes).
+// The enrichment preserves loudness (L2 renormalized) and, because the ripple
+// alternates sign, the MACRO response — presets keep their tone; the texture changes.
+struct Enrich {
+    uint32_t seed;                       // per-cab fingerprint
+    int      nRipple;                    // breakup ripple filter count
+    float    ripLo, ripHi, ripDb;        // ripple band + max magnitude (alternating sign)
+    int      nComb;                      // sub-ms reflection taps
+    float    combMs[3], combG[3];
+    float    backMs, backG, backLpHz;    // box return (negative G = open-back cancel)
+    float    modeHz, modeDb, modeQ;      // air-mode resonance
+};
+
+inline uint32_t lcgNext(uint32_t& s) { s = s * 1664525u + 1013904223u; return s; }
+inline float    frand01(uint32_t& s) { return (lcgNext(s) >> 8) / 16777216.0f; }
+
+inline double dftMag(const std::vector<float>& ir, double f, double sr) {
+    const double w = 2.0 * 3.14159265358979323846 * f / sr;
+    double re = 0.0, im = 0.0;
+    for (size_t n = 0; n < ir.size(); ++n) { re += ir[n] * std::cos(w * n); im -= ir[n] * std::sin(w * n); }
+    return std::sqrt(re * re + im * im);
+}
+
+inline void enrich(std::vector<float>& ir, double sr, const Enrich& e) {
+    const float preL2 = l2norm(ir);
+    if (preL2 < 1e-12f) return;
+    const std::vector<float> baseIr = ir;   // for the macro-preserving correction below
+    // 1) seeded breakup ripple — log-spaced narrow peaks, alternating boost/cut
+    uint32_t s = e.seed;
+    std::vector<BiquadFilter> rip;
+    rip.reserve(static_cast<size_t>(e.nRipple));
+    for (int i = 0; i < e.nRipple; ++i) {
+        const float t  = (i + 0.15f + 0.7f * frand01(s)) / static_cast<float>(e.nRipple);
+        const float f  = e.ripLo * std::pow(e.ripHi / e.ripLo, t);
+        const float db = ((i & 1) ? -1.0f : 1.0f) * e.ripDb * (0.35f + 0.65f * frand01(s));
+        const float q  = 6.0f + 8.0f * frand01(s);
+        BiquadFilter b; b.setCoeffs(Filters::peaking(f, db, q, sr)); rip.push_back(b);
+    }
+    for (auto& x : ir) for (auto& b : rip) x = b.process(x);
+    // 2) box air mode (rings in the time domain)
+    if (e.modeDb > 0.01f) {
+        BiquadFilter m; m.setCoeffs(Filters::peaking(e.modeHz, e.modeDb, e.modeQ, sr));
+        for (auto& x : ir) x = m.process(x);
+    }
+    // 3) reflections: direct + short taps + (darker) box return
+    std::vector<float> out(ir);
+    for (int t = 0; t < e.nComb; ++t) {
+        const int d = static_cast<int>(e.combMs[t] * 0.001 * sr + 0.5);
+        for (size_t i = static_cast<size_t>(d); i < ir.size(); ++i)
+            out[i] += e.combG[t] * ir[i - d];
+    }
+    if (e.backG != 0.0f) {
+        const int d = static_cast<int>(e.backMs * 0.001 * sr + 0.5);
+        BiquadFilter lp; lp.setCoeffs(Filters::lowpass(e.backLpHz, 0.707, sr));
+        for (size_t i = static_cast<size_t>(d); i < ir.size(); ++i)
+            out[i] += e.backG * lp.process(ir[i - d]);
+    }
+    ir.swap(out);
+    // loudness renorm FIRST (a uniform gain), so the macro correction below sees — and
+    // corrects — the final level relationship against the base voicing.
+    {
+        const float post = l2norm(ir);
+        if (post > 1e-9f) { const float g = preL2 / post; for (auto& v : ir) v *= g; }
+    }
+    // 4) MACRO-PRESERVING correction: the taps' broad comb nulls and the ripple's random walk
+    // shift the smoothed response by several dB (measured: up to -5 dB at 2 kHz), which would
+    // re-voice every preset. Measure the 1/3-oct-smoothed drift vs the pre-enrich IR at log band
+    // centers and invert it with BROAD (Q~1.1) filters, ITERATED to convergence — the narrow
+    // fingerprint and the temporal reflection structure survive; the tuned macro curve returns.
+    {
+        static const double kBands[] = {95.0, 150.0, 240.0, 400.0, 650.0, 1050.0,
+                                        1500.0, 2100.0, 2900.0, 4300.0, 7000.0};
+        for (int pass = 0; pass < 6; ++pass) {
+            std::vector<BiquadFilter> fix;
+            for (double fc : kBands) {
+                double se = 0.0, sb = 0.0;
+                for (double m : {0.79, 0.89, 1.0, 1.12, 1.26}) {
+                    se += dftMag(ir,     fc * m, sr);
+                    sb += dftMag(baseIr, fc * m, sr);
+                }
+                if (sb < 1e-12) continue;
+                const double d = 20.0 * std::log10(se / sb + 1e-15);
+                if (std::fabs(d) > 0.2) {
+                    BiquadFilter b; b.setCoeffs(Filters::peaking(fc, -0.6 * d, 1.1, sr)); fix.push_back(b);   // damped: undamped dense corrections DIVERGE
+                }
+            }
+            if (fix.empty()) break;
+            for (auto& x : ir) for (auto& b : fix) x = b.process(x);
+        }
+    }
+}
+
+// Per-cab fingerprints. Depths are deliberately conservative — the goal is "measured
+// IR" texture under the SAME macro voicing, not a different-sounding cab.
+inline const Enrich* enrichFor(const std::string& id) {
+    // closed 4x12s: 3 cone/edge taps + a back-panel return; open-backs: fewer taps,
+    // a negative dipole tap; ripple depth follows how "grainy" the real speaker is.
+    static const Enrich kFactory = { 0xC0FFEE01u, 18, 850.0f, 6200.0f, 4.5f,
+        3, {0.22f, 0.47f, 0.83f}, {0.30f, -0.22f, 0.16f}, 2.9f, 0.14f, 1800.0f, 118.0f, 1.9f, 7.0f };
+    static const Enrich kVox     = { 0x5EEDA702u, 18, 650.0f, 7000.0f, 4.0f,
+        2, {0.26f, 0.61f, 0.0f}, {0.24f, -0.18f, 0.0f}, 1.6f, -0.16f, 1200.0f, 132.0f, 2.2f, 5.0f };
+    static const Enrich kAmerOB  = { 0x0BEAC403u, 16, 600.0f, 7400.0f, 3.8f,
+        1, {0.31f, 0.0f, 0.0f}, {0.20f, 0.0f, 0.0f}, 1.9f, -0.18f, 1000.0f, 105.0f, 2.0f, 5.0f };
+    static const Enrich kGreenbk = { 0x6B33D804u, 19, 800.0f, 5000.0f, 5.0f,
+        3, {0.24f, 0.52f, 0.90f}, {0.31f, -0.23f, 0.17f}, 3.1f, 0.16f, 1500.0f, 110.0f, 2.0f, 6.0f };
+    static const Enrich kHiwatt  = { 0xFA4EFA05u, 16, 850.0f, 7600.0f, 3.5f,
+        3, {0.20f, 0.44f, 0.78f}, {0.26f, -0.19f, 0.14f}, 2.7f, 0.12f, 2000.0f, 100.0f, 2.2f, 6.0f };
+    static const Enrich kDoom    = { 0xD0053B06u, 16, 700.0f, 3500.0f, 4.8f,
+        3, {0.28f, 0.58f, 1.02f}, {0.32f, -0.24f, 0.18f}, 3.6f, 0.20f,  900.0f,  88.0f, 2.2f, 6.0f };
+    if (id.empty() || id == "@factory") return &kFactory;
+    if (id == "@vox2x12")     return &kVox;
+    if (id == "@american-ob") return &kAmerOB;
+    if (id == "@greenback")   return &kGreenbk;
+    if (id == "@hiwatt")      return &kHiwatt;
+    if (id == "@doom")        return &kDoom;
+    return nullptr;
+}
+
+inline std::vector<float> generate(const std::string& id, double sr, bool enriched = true) {
+    // @factory / empty / unknown → the V30+SM57 Factory Cab, now with the measured-IR
+    // enrichment (same macro voicing + loudness; adds the real-speaker micro-structure).
+    if (id.empty() || id == "@factory" || id[0] != '@') {
+        std::vector<float> ir = DefaultCabIR::generate(sr);
+        if (enriched) {
+            if (const Enrich* e = enrichFor("@factory")) enrich(ir, sr, *e);
+            // loudness anchor: match the plain Factory Cab exactly (the correction stage
+            // inside enrich() can add net energy)
+            const std::vector<float> ref = DefaultCabIR::generate(sr);
+            const float g = l2norm(ir) > 1e-9f ? l2norm(ref) / l2norm(ir) : 1.0f;
+            for (float& v : ir) v *= g;
+        }
+        return ir;
+    }
 
     std::vector<BiquadFilter> s;
     auto add = [&](auto coeffs) { BiquadFilter f; f.setCoeffs(coeffs); s.push_back(f); };
@@ -127,6 +266,9 @@ inline std::vector<float> generate(const std::string& id, double sr) {
     }
 
     std::vector<float> ir = renderCascade(sr, lenSec, s);
+
+    // Measured-IR micro-structure (loudness- and macro-preserving; see Enrich above).
+    if (enriched) if (const Enrich* e = enrichFor(id)) enrich(ir, sr, *e);
 
     // ── Loudness-match to the Factory Cab (equal L2 energy = equal volume) ──────
     const std::vector<float> ref = DefaultCabIR::generate(sr);
