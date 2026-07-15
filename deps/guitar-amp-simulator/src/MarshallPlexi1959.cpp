@@ -7,13 +7,17 @@ void MarshallPlexi1959::prepare(double oversampledSampleRate, int /*maxBlockSize
 
     gainSmooth_.reset(oversampledFs_,   0.020);
     masterSmooth_.reset(oversampledFs_, 0.020);
+    vol2Smooth_.reset(oversampledFs_,   0.020);
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
+    vol2Smooth_.setCurrentAndTargetValue(vol2_);
 
     for (auto& c : ch_) {
         c.inputHPF.setCoeffs(Filters::highpass1pole(20.0, oversampledFs_));
         c.brightSh.setCoeffs(Filters::highshelf(720.0, 5.0, oversampledFs_));   // bright-cap emphasis
         c.stage1.prepare(oversampledFs_, TriodeComponent::kMarshallV1);
+        c.stage1b.prepare(oversampledFs_, TriodeComponent::kMarshallV1);        // Normal-channel V1 half
+        c.normLP.setCoeffs(Filters::lowpass1pole(5200.0, oversampledFs_));      // Normal ch: no bright cap, darker coupling
         c.inter12HPF.setCoeffs(Filters::highpass1pole(52.0, oversampledFs_));
         c.stage2.prepare(oversampledFs_, TriodeComponent::kMarshallV2);
 
@@ -45,8 +49,10 @@ void MarshallPlexi1959::recalcFilters() noexcept {
 void MarshallPlexi1959::reset() noexcept {
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
+    vol2Smooth_.setCurrentAndTargetValue(vol2_);
     for (auto& c : ch_) {
-        c.inputHPF.reset(); c.brightSh.reset(); c.stage1.reset(); c.inter12HPF.reset();
+        c.inputHPF.reset(); c.brightSh.reset(); c.stage1.reset(); c.stage1b.reset();
+        c.normLP.reset(); c.inter12HPF.reset();
         c.stage2.reset(); c.tonestack.reset(); c.interPIHPF.reset(); c.stagePI.reset();
         c.presenceF.reset(); c.airLP.reset(); c.bodyShelf.reset();
         c.sagEnv = 0.0f;
@@ -56,6 +62,7 @@ void MarshallPlexi1959::reset() noexcept {
 void MarshallPlexi1959::advanceSmoothing() noexcept {
     gainSmooth_.getNextValue();
     masterSmooth_.getNextValue();
+    vol2Smooth_.getNextValue();
 }
 
 float MarshallPlexi1959::processSample(float x, int channel) noexcept {
@@ -63,12 +70,26 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     const float g = gainSmooth_.getCurrentValue();
     const float m = masterSmooth_.getCurrentValue();
 
+    const float v2 = vol2Smooth_.getCurrentValue();
+
     x = c.inputHPF.process(x);
+    const float xin = x;                                         // jumpered: both V1 halves see the guitar
+
+    // Channel I (High Treble) — the original capture-anchored path, gain = Vol I.
     x = c.brightSh.process(x);                                   // bright-cap emphasis
 
     // Stage 1 — LOW gain (plexi breaks up at the power amp, not V1/V2 — keeps preamp even
     // harmonics down; the push-pull power stage supplies the odd/high-order crunch)
     x = c.stage1.process(x * (1.25f + g * 4.0f)) * 0.92f * kCouple12;
+
+    // Channel II (Normal) — the 1959's second volume, jumpered in (2026-07-14). A parallel V1
+    // half with NO bright cap and darker coupling, blended by Vol II and summed at the V2 grid
+    // (mixing resistors). v2 = 0 -> bit-identical to the pre-Vol-II voicing.
+    if (v2 > 0.001f) {
+        float n = c.normLP.process(xin);
+        n = c.stage1b.process(n * (1.25f + v2 * 4.0f)) * 0.92f * kCouple12;
+        x += n * (v2 * kNormalMix);
+    }
     x = c.inter12HPF.process(x);
 
     // Stage 2 — shared-cathode; low-moderate gain
@@ -98,6 +119,7 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
 
 void MarshallPlexi1959::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
+    else if (id == "vol2")     { vol2_   = value; vol2Smooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
@@ -108,6 +130,7 @@ void MarshallPlexi1959::setParameter(const std::string& id, float value) noexcep
 
 float MarshallPlexi1959::getParameter(const std::string& id) const noexcept {
     if (id == "gain")     return gain_;
+    if (id == "vol2")     return vol2_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;
     if (id == "mid")      return mid_;

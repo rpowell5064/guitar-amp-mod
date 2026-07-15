@@ -34,7 +34,9 @@ public:
 private:
     double oversampledFs_ = 0.0;
 
-    float gain_     = 0.6f;
+    float gain_     = 0.6f;   // Vol I — the High Treble (bright) channel (capture-anchored path)
+    float vol2_     = 0.0f;   // Vol II — the Normal channel, ADDED in parallel (jumpered 1959).
+                              // 0 = exactly the pre-2026-07-14 voicing (no migration needed).
     float bass_     = 0.5f;
     float mid_      = 0.5f;
     float treble_   = 0.6f;
@@ -42,12 +44,14 @@ private:
     float master_   = 0.7f;   // "master" here drives the PI → power-amp crunch
     float sag_      = 0.28f;  // solid-state rectifier but EL34 power-stage sag under crank
 
-    LinearSmoother gainSmooth_, masterSmooth_;
+    LinearSmoother gainSmooth_, masterSmooth_, vol2Smooth_;
 
     struct ChannelState {
         BiquadFilter       inputHPF;    // sub-bass cut
         BiquadFilter       brightSh;    // bright-cap treble emphasis (High-Treble input)
-        TriodeComponent    stage1;      // V1
+        TriodeComponent    stage1;      // V1a — High Treble channel half
+        TriodeComponent    stage1b;     // V1b — Normal channel half (jumpered; blended by Vol II)
+        BiquadFilter       normLP;      // Normal-channel darker coupling (~5 kHz rolloff)
         BiquadFilter       inter12HPF;  // couple into V2 (keep bass out of the clip)
         TriodeComponent    stage2;      // V2 (shared cathode)
         ToneStackComponent tonestack;   // Marshall type
@@ -65,6 +69,7 @@ private:
     // Voicing constants — tuned to the capture (nam_compare --model plexi).
     static constexpr float kPreToneGain = 0.80f;
     static constexpr float kCouple12    = 0.62f;
+    static constexpr float kNormalMix   = 0.9f;   // Vol II contribution at full (jumpered blend weight)
 
     static float softLimit(float x) noexcept;
     void recalcFilters() noexcept;
