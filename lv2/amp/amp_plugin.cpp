@@ -17,6 +17,7 @@
 #include "AmpBlockExtended.h"
 #include "PowerAmpProcessor.h"
 #include "NoiseGateBlock.h"
+#include "HumNotchComb.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -69,6 +70,7 @@ enum AmpPorts {
     P_FR_CHANNEL, P_FR_FAT, P_FR_C45, P_FR_SAT,               // Beardo BE (Friedman) — 3-way channel + voicing toggles
     P_MV_MODE, P_MV_GEQ0, P_MV_GEQ1, P_MV_GEQ2, P_MV_GEQ3, P_MV_GEQ4, P_MV_EQPRESET,  // Cali V (Mesa Mark V): 9-mode + 5-band graphic EQ
     P_NAM_GAIN, P_NAM_VOL,                                     // Neural (NAM): input drive + output level (dB), used only in NAM mode
+    P_PL_VOL2,                                                 // Plexiglass (1959): Vol II — jumpered Normal-channel volume (0 = pre-Vol-II voicing)
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
 };
@@ -103,6 +105,9 @@ struct AmpPlugin {
     PowerAmpProcessor pa;
     NoiseGateBlock    inGate;          // input gate BEFORE the amp's ~70 dB of gain — kills amplified
                                        // input-noise hiss on high-gain tones (engages only when driven)
+    HumNotchComb      inComb[2];       // 60 Hz hum comb, also pre-gain (the user's measured idle floor is
+                                       // 89% mains-hum harmonics; ~15 dB off it puts the floor under the
+                                       // gate's close threshold). Engaged with the gate; always fed (warm state).
     NamModel*         nam = nullptr;   // swapped in by the worker on file load
 
     float* ctrl[P_N_PORTS] = {};
@@ -168,6 +173,8 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->lastModel = 1;
     p->pa.prepare(rate, kMaxBlock, 2);
     p->inGate.prepare(rate, kMaxBlock, 2);
+    p->inComb[0].prepare(rate);
+    p->inComb[1].prepare(rate);
     // Tuned for a fast, transparent noise-floor gate: quick open, long smooth tail so sustain rings out.
     p->inGate.setParameter("attack",     2.0f);
     p->inGate.setParameter("hold",     120.0f);
@@ -339,6 +346,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("sat",     *p->ctrl[P_FR_SAT]);
     }
 
+    // Plexiglass (Marshall 1959): Vol II — the jumpered Normal channel (0 = the old single-volume voicing).
+    if (modelIdx == 10) amp->setParameter("vol2", *p->ctrl[P_PL_VOL2]);
     // Cali V (Mesa Mark V) — 9-mode channel switcher + 5-band graphic EQ. Setters
     // guard on change internally, so pushing every block is cheap.
     if (modelIdx == kMesaIdx) {
@@ -379,19 +388,37 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);
     p->pa.setBypass(paBypass);
 
-    // Input noise gate — sits BEFORE the amp's huge gain (the only place signal and its amplified noise
-    // floor are still separable). Engages only when the amp is driven hard (gain past halfway): high-gain
-    // tones get their between-notes hiss killed, while clean/low-gain playing is left completely alone.
-    // -90 dBFS threshold = effectively open (NoiseGateBlock passes everything above threshold).
+    // Input hum comb + noise gate — BEFORE the amp's huge gain (the only place signal and its amplified
+    // noise floor are still separable). "Driven" = gain past halfway on any model, OR a Cali V high-gain
+    // lead mode (6-8) at ANY gain — those modes carry ~70 dB whatever the knob says, and the old gain>0.5
+    // test left the gate wide open on them. Measured against the user's rig (2026-07-14): idle floor peaks
+    // -45 dBFS hands-off (89% mains hum) / -58 hands-on. The comb takes ~15 dB of hum off, putting the
+    // hands-off floor near -57; the gate at -50 (close -54) then shuts in BOTH states, while strums
+    // (-20..-6 dBFS) open it instantly and ring-out tails hold it open down to -54. -90 = effectively open.
     const float driveKnob = (modelIdx == kSunnIdx) ? *p->ctrl[P_SUNN_V2] : *p->ctrl[P_GAIN];
+    const bool  mesaLead  = (modelIdx == kMesaIdx) && (*p->ctrl[P_MV_MODE] >= 5.5f);
+    // Measured against the rig's idle floor (2026-07-14): EVH's RED channel pins it to -18 dBFS out
+    // even at gain 0.35 (-5 at 0.7 — the suite's worst), and the JCM800 is already at -25 by gain
+    // 0.35 — both leak badly below the generic gain>0.5 test, so they get their own conditions.
+    const bool  evhRed    = (modelIdx == 2) && (*p->ctrl[P_CHANNEL] >= 0.5f);
+    const bool  jcmDriven = (modelIdx == 1) && (driveKnob > 0.3f);
+    const bool  driven    = (driveKnob > 0.5f) || mesaLead || evhRed || jcmDriven;
     p->inGate.setBypass(false);
-    p->inGate.setParameter("threshold", driveKnob > 0.5f ? -56.0f : -90.0f);
+    p->inGate.setParameter("threshold", driven ? -50.0f : -90.0f);
 
     for (uint32_t off = 0; off < n; off += kMaxBlock) {
         const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
         float* ins[2]  = { inL  + off, inR  + off };
         float* gbuf[2] = { p->gbufL, p->gbufR };
-        p->inGate.process(ins, gbuf, len, 2);   // gate the INPUT into scratch, then amplify
+        // Hum comb into the scratch (always fed so its state stays warm -> no click on engage);
+        // the raw input passes through when not driven.
+        for (int c = 0; c < 2; ++c) {
+            const float* s = ins[c];
+            float*       d = gbuf[c];
+            HumNotchComb& comb = p->inComb[c];
+            for (int i = 0; i < len; ++i) { const float hc = comb.process(s[i]); d[i] = driven ? hc : s[i]; }
+        }
+        p->inGate.process(gbuf, gbuf, len, 2);  // gate the (de-hummed) input in place, then amplify
         float* outs[2] = { outL + off, outR + off };
         amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);

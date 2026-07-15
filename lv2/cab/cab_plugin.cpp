@@ -12,6 +12,7 @@
 // in NAM mode Mix is the dry/wet blend (the cut filters are baked into the capture).
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
+#include "IrResample.h"
 #include "CabinetBlock.h"
 #include "DefaultCabIR.h"
 #include "CabModels.h"
@@ -35,6 +36,8 @@ enum CabPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
     P_LOWCUT, P_HIGHCUT, P_MIX, P_BYPASS,
     P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
+    P_MICPOS, P_MICDIST,       // mic placement (2026-07-14): cap→cone-edge, close→back; 0/0 = as-voiced
+    P_ROOMON, P_ROOMMIX, P_ROOMAMT,  // room ambience (2026-07-14): toggle + wet mix + size/decay; off = bit-identical
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
@@ -119,31 +122,14 @@ static bool readWav(const char* path, std::vector<float>& L, std::vector<float>&
     return true;
 }
 
-static std::vector<float> resampleLinear(const std::vector<float>& in,
-                                         double srcRate, double dstRate) {
-    if (in.empty() || srcRate <= 0.0 || dstRate <= 0.0 ||
-        std::abs(srcRate - dstRate) < 1.0)
-        return in;
-    const double ratio = dstRate / srcRate;
-    const size_t outLen = static_cast<size_t>(in.size() * ratio + 0.5);
-    std::vector<float> out(outLen);
-    for (size_t i = 0; i < outLen; ++i) {
-        const double sp = i / ratio;
-        const size_t i0 = static_cast<size_t>(sp);
-        const float  fr = static_cast<float>(sp - i0);
-        const float  a  = in[i0];
-        const float  b  = (i0 + 1 < in.size()) ? in[i0 + 1] : in[i0];
-        out[i] = a + fr * (b - a);
-    }
-    return out;
-}
-
+// IR resampling upgraded linear -> windowed-sinc 2026-07-14 (lv2/common/IrResample.h):
+// linear interp baked ~-1 dB @ 10 kHz droop + imaging aliases into every 44.1 kHz IR.
 static bool loadIRFile(const char* path, double dstRate,
                        std::vector<float>& L, std::vector<float>& R) {
     uint32_t srcRate = 0;
     if (!readWav(path, L, R, srcRate) || L.empty()) return false;
-    L = resampleLinear(L, srcRate, dstRate);
-    if (!R.empty()) R = resampleLinear(R, srcRate, dstRate);
+    L = irresample::resampleSinc(L, srcRate, dstRate);
+    if (!R.empty()) R = irresample::resampleSinc(R, srcRate, dstRate);
     return true;
 }
 
@@ -184,7 +170,7 @@ static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
 
     p->rate = rate;
     p->dsp.prepare(rate, kMaxBlock, 2);
-    const std::vector<float> ir = DefaultCabIR::generate(rate);
+    const std::vector<float> ir = CabModels::generate("@factory", rate);   // enriched Factory Cab (2026-07-14)
     p->dsp.setIR(ir);
     return p;
 }
@@ -210,7 +196,7 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
             p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
         else
-            p->dsp.setIR(DefaultCabIR::generate(p->rate));   // empty/@factory → built-in Factory Cab
+            p->dsp.setIR(CabModels::generate("@factory", p->rate));   // empty/@factory → enriched Factory Cab
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
@@ -306,6 +292,11 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->dsp.setParameter("lowCutHz",  *p->ports[P_LOWCUT]);
         p->dsp.setParameter("highCutHz", *p->ports[P_HIGHCUT]);
         p->dsp.setParameter("mix",       *p->ports[P_MIX]);
+        p->dsp.setParameter("micpos",    *p->ports[P_MICPOS]);   // mic placement (0/0 = as-voiced)
+        p->dsp.setParameter("micdist",   *p->ports[P_MICDIST]);
+        p->dsp.setParameter("roomon",    *p->ports[P_ROOMON]);   // room ambience (off = bit-identical)
+        p->dsp.setParameter("roommix",   *p->ports[P_ROOMMIX]);
+        p->dsp.setParameter("roomamt",   *p->ports[P_ROOMAMT]);
         float* ins[2]  = { inL,  inR  };
         float* outs[2] = { outL, outR };
         p->dsp.process(ins, outs, static_cast<int>(n), 2);

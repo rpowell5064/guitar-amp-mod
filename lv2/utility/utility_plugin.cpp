@@ -1,6 +1,7 @@
 #include "lv2_util.h"
 #include "BiquadFilter.h"
 #include "PickupVoicer.h"
+#include "HumNotchComb.h"
 #include <lv2/core/lv2.h>
 #include <cmath>
 #include <new>
@@ -21,35 +22,9 @@ enum UtilPorts {
     P_N_PORTS
 };
 
-static BiquadCoeffs makeNotch(double fc, double Q, double fs) noexcept {
-    const double omega = 2.0 * M_PI * fc / fs;
-    const double alpha = std::sin(omega) / (2.0 * Q);
-    const double cosW  = std::cos(omega);
-    const double a0    = 1.0 + alpha;
-    BiquadCoeffs c;
-    c.b0 =  1.0 / a0;
-    c.b1 = (-2.0 * cosW) / a0;
-    c.b2 =  1.0 / a0;
-    c.a1 = (-2.0 * cosW) / a0;
-    c.a2 = (1.0 - alpha) / a0;
-    return c;
-}
-
-// Twin notch at 50 Hz and 60 Hz — attenuates both EU and US power-line hum.
-struct HumFilter {
-    BiquadFilter n50, n60;
-
-    void prepare(double sr) noexcept {
-        n50.setCoeffs(makeNotch(50.0, 35.0, sr));
-        n60.setCoeffs(makeNotch(60.0, 35.0, sr));
-    }
-
-    float process(float x) noexcept {
-        return n60.process(n50.process(x));
-    }
-
-    void reset() noexcept { n50.reset(); n60.reset(); }
-};
+// Hum filter: the shared 6-notch 60 Hz comb (lv2/common/HumNotchComb.h) — upgraded
+// 2026-07-14 from the old 50/60 twin-notch to match the Hex Forge Input Trim (the
+// user's measured idle floor is 89% 60 Hz harmonics; the comb takes ~15 dB off it).
 
 // Pickup-agnostic clean boost (mirrors the Hex Forge Input Trim OutputBoost): an output
 // level boost plus a low-mid "beef" bump (peaking @ 250 Hz, reaching +3 dB at full boost)
@@ -70,7 +45,7 @@ struct OutputBoost {
 };
 
 struct UtilityPlugin {
-    HumFilter    hum;
+    HumNotchComb hum;
     PickupVoicer voice;        // single-coil -> humbucker voicing
     OutputBoost  boost;        // clean boost + low-mid beef
     float*       ports[P_N_PORTS];

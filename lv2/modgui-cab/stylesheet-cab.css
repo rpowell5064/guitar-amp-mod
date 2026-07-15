@@ -147,3 +147,35 @@
 
 /* Self-contained base font — do NOT rely on MOD's page font (fixes serif fallback in offline renders + hardens the live UI). */
 .mod-pedal-guitaramp-cab{{{cns}}} { font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; }
+
+/* == MIC PAD: draggable side-view mic placement ================================ */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad { margin-top: 8px; text-align: center; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad .hf-agroup-t { display:block; font-size: 9px; letter-spacing: .18em; opacity: .55; margin-bottom: 5px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-svg { width: 216px; height: 130px; display: inline-block; cursor: grab; touch-action: none; background: radial-gradient(120% 90% at 30% 35%, rgba(16,19,26,.9), rgba(5,6,9,.96)); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -10px 24px rgba(0,0,0,.35); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-svg.hf-mp-live { cursor: grabbing; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-wall   { fill: rgba(255,255,255,.10); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-baffle { fill: rgba(255,255,255,.16); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-cone   { fill: none; stroke: rgba(255,255,255,.6); stroke-width: 1.7; stroke-linecap: round; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-cap    { fill: rgba(255,255,255,.42); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-bead   { fill: rgba(255,255,255,.30); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-grille { stroke: rgba(255,255,255,.16); stroke-width: 1; stroke-dasharray: 1.5 3.5; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-guide  { stroke: rgba(255,255,255,.07); stroke-width: 1; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-tick   { stroke: rgba(255,255,255,.22); stroke-width: 1; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-lbl    { font-family: "SF Pro Text", "Segoe UI", sans-serif; font-size: 5.6px; letter-spacing: .14em; fill: rgba(255,255,255,.34); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-lbl-r  { text-anchor: end; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-mic    { transition: transform .09s ease-out; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-live .hf-mp-mic { transition: none; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-shadow { fill: rgba(0,0,0,.4); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-michead { fill: #56aaff; stroke: rgba(0,0,0,.55); stroke-width: 1; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-micbody { fill: rgba(235,238,244,.34); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-micband { fill: rgba(0,0,0,.35); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-aim    { stroke: #56aaff; stroke-width: 1.2; opacity: .6; stroke-dasharray: 2 2; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-hidden { display: none; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-ro   { font-family: "SF Pro Text", "Segoe UI", sans-serif; font-size: 6.4px; letter-spacing: .12em; fill: rgba(255,255,255,.92); font-weight: 600; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-ro-l { fill: rgba(255,255,255,.36); font-weight: 400; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-ro-r { text-anchor: end; }
+
+/* ── Cab panel: two columns — CABINET over ROOM left, mic pad right ─────────── */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-cols { display: flex; gap: 14px; align-items: flex-start; justify-content: center; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-left { display: flex; flex-direction: column; gap: 8px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-right .hf-micpad { margin-top: 0; }

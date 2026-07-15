@@ -167,6 +167,12 @@ enum HexForgePort {
     HF_DR_NAM_VOL,
     HF_CAB_NAM_GAIN,
     HF_CAB_NAM_VOL,
+    HF_AMP_PL_VOL2,
+    HF_CAB_MICPOS,
+    HF_CAB_MICDIST,
+    HF_CAB_ROOMON,
+    HF_CAB_ROOMMIX,
+    HF_CAB_ROOMAMT,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -192,7 +198,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 194, "port count drift");
+static_assert(HF_N_PORTS == 200, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -223,7 +229,8 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "nail_bypass", "dl_sync", "dl_div", "md_sync", "md_div", "oc_micro",
     "oc_interval", "amp_mv_mode", "amp_mv_geq0", "amp_mv_geq1", "amp_mv_geq2", "amp_mv_geq3",
     "amp_mv_geq4", "amp_mv_eqpreset", "md_offset", "amp_nam_gain", "amp_nam_vol", "dr_nam_gain",
-    "dr_nam_vol", "cab_nam_gain", "cab_nam_vol", "sw_a", "sw_b", "sw_c",
+    "dr_nam_vol", "cab_nam_gain", "cab_nam_vol", "amp_pl_vol2", "cab_micpos", "cab_micdist",
+    "cab_roomon", "cab_roommix", "cab_roomamt", "sw_a", "sw_b", "sw_c",
     "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up", "ps_move_dn",
     "ps_backup", "ps_restore", "ps_goto", "ps_bank", "ps_slot", "out_auto",
     "in_meter", "out_meter", "out_mono", "tuner_on", "tuner_mute", "tuner_note",

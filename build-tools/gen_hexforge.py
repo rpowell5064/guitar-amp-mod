@@ -29,7 +29,12 @@ def fmt(v, integral):
 # scalepoints only for kind 'e'.
 IT = [
     ("gain",  "Gain",       "db", -20, 20, 0, None),
-    ("phase", "Phase",      "t",  0, 1, 1, None),
+    # default FIXED 1->0 (2026-07-14): 1 = INVERT (x * -1 in the DSP), and the old default meant every
+    # instance + all factory presets ran polarity-flipped — mismatching the standalone Input Trim
+    # (phase_invert default 0) AND every offline NAM calibration (which feeds models at normal polarity).
+    # Absolute polarity is near-inaudible alone, but our asymmetric nonlinearities (FF positive-tip
+    # conduction, germanium/tube bias) care which way the attack leads. Toggle kept for DI-blend rigs.
+    ("phase", "Phase",      "t",  0, 1, 0, None),
     ("hum",   "Hum Filter", "t",  0, 1, 1, None),
     # Single-coil -> humbucker voicing (off by default). When engaged, re-voices a
     # Tele single coil toward one of three target bridge humbuckers (verified in
@@ -310,6 +315,31 @@ for _pfx, _lbl in (("amp", "Amp"), ("dr", "Drive"), ("cab", "Cab")):
     ctrl.append(mkport(_pfx.upper() + "_NAM_GAIN", _pfx + "_nam_gain", _lbl + " NAM Gain",  "db", -20, 20, 0, None, "NAM Gain"))
     ctrl.append(mkport(_pfx.upper() + "_NAM_VOL",  _pfx + "_nam_vol",  _lbl + " NAM Level", "db", -20, 20, 0, None, "NAM Level"))
 
+# ── Plexiglass Vol II (Normal channel, jumpered 1959) — the Super Lead's second volume
+# (2026-07-14). The base Plexi path stays the capture-anchored "CH I High Jumped" voicing
+# (= gain knob = Vol I); this ADDS a parallel Normal-channel V1 half blended in by Vol II
+# for the classic jumpered fatness. Appended before the preset commands so every existing
+# index is preserved; default 0 = old blobs/boards sound BIT-IDENTICAL (no migration).
+# Shown only when Amp model = Plexiglass (COND c-amp-plexi).
+ctrl.append(mkport("AMP_PL_VOL2", "amp_pl_vol2", "Amp Vol II", "f", 0, 1, 0.0, None, "Vol II"))
+
+# ── Cab MIC PLACEMENT (2026-07-14) — post-convolution mic-position/distance morphs on the
+# Cabinet block (CabinetBlock micpos/micdist). One-sided from the voiced baseline: 0/0 is
+# bit-identical to before, so old blobs zero-fill safely (append-only, no migration).
+#   Mic Pos  0 = cap edge (as voiced) → 1 = cone edge (darker, bite recedes, more body)
+#   Mic Dist 0 = close (as voiced) → 1 = ~30 cm back (proximity bass falls away, less air)
+ctrl.append(mkport("CAB_MICPOS",  "cab_micpos",  "Cab Mic Position", "f", 0, 1, 0.0, None, "Mic Pos"))
+ctrl.append(mkport("CAB_MICDIST", "cab_micdist", "Cab Mic Distance", "f", 0, 1, 0.0, None, "Mic Dist"))
+
+# ── Cab ROOM ambience (2026-07-14) — a small Schroeder room AFTER the cab convolution
+# ("amp in a room"). Toggle + Mix (wet blend) + Amount (size/decay, booth→live room).
+# Default ON at a SUBTLE small-to-medium setting (user 2026-07-14) — every factory preset
+# inherits it via the seeded defaults; OLD user blobs zero-fill roomon=0, so their saved
+# sounds are untouched. Preset-savable.
+ctrl.append(mkport("CAB_ROOMON",  "cab_roomon",  "Cab Room",        "t", 0, 1, 1,    None, "Room"))
+ctrl.append(mkport("CAB_ROOMMIX", "cab_roommix", "Cab Room Mix",    "f", 0, 1, 0.12, None, "Room Mix"))
+ctrl.append(mkport("CAB_ROOMAMT", "cab_roomamt", "Cab Room Amount", "f", 0, 1, 0.35, None, "Room Size"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -482,7 +512,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 120 ;")
+    L.append("    lv2:microVersion 129 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -587,6 +617,8 @@ COND = {
     # Beardo BE / Friedman (model 6): 3-way channel + Fat/C45/Sat
     "amp_fr_channel":"c-amp-be", "amp_fr_fat":"c-amp-be",
     "amp_fr_c45":"c-amp-be", "amp_fr_sat":"c-amp-be",
+    # Plexiglass (model 10): the 1959's second (Normal-channel) volume — jumpered blend
+    "amp_pl_vol2":"c-amp-plexi",
     # Cali V / Mesa Mark V (model 11): 9-mode selector + 5-band graphic EQ
     "amp_mv_mode":"c-amp-mesa",
     "amp_mv_geq0":"c-amp-mesa", "amp_mv_geq1":"c-amp-mesa", "amp_mv_geq2":"c-amp-mesa",
@@ -644,6 +676,54 @@ def render_ctrl(c):
 # The Factory Cab is a static, always-present option (sentinel "@factory" → the
 # built-in DefaultCabIR). It heads the list so it's selectable even after a user
 # loads their own IR. The placeholder shows it too, since empty path = default.
+# ── Cab MIC PAD (2026-07-14): a draggable side-view of the cab — drag the mic ACROSS the
+# cone (vertical = Mic Pos, cap→edge) and AWAY from the grille (horizontal = Mic Dist).
+# The two real ports render as HIDDEN standard controls inside (mod-ui bindings/echo keep
+# working; script-hexforge.js drives set_port_value from the drag + mirrors changes back).
+MICPAD = (
+    '<div class="hf-agroup hf-micpad" rata-role="micpad"><span class="hf-agroup-title">MIC PLACEMENT</span>'
+    '<div class="hf-agroup-body">'
+    '<svg viewBox="0 0 140 84" class="hf-mp-svg" rata-role="micsvg">'
+    '<title>Drag the mic — double-click resets</title>'
+    # fixed-anchor readouts inside the pad (no layout reflow as the text changes)
+    '<text x="30" y="11" class="hf-mp-ro"><tspan class="hf-mp-ro-l">POS&#160;&#160;</tspan>'
+    '<tspan rata-role="micposv">CAP EDGE</tspan></text>'
+    '<text x="134" y="11" class="hf-mp-ro hf-mp-ro-r"><tspan class="hf-mp-ro-l">DIST&#160;&#160;</tspan>'
+    '<tspan rata-role="micdistv">CLOSE</tspan></text>'
+    # cab body + baffle edge
+    '<rect x="1" y="2" width="16" height="80" rx="3" class="hf-mp-wall"/>'
+    '<rect x="14.6" y="5" width="2.6" height="74" rx="1.2" class="hf-mp-baffle"/>'
+    # speaker: curved cone profile + dust cap + surround beads
+    '<path d="M17.2 13 Q7.5 26 6 42 Q7.5 58 17.2 71" class="hf-mp-cone"/>'
+    '<circle cx="8.6" cy="42" r="5" class="hf-mp-cap"/>'
+    '<circle cx="17.2" cy="13" r="1.7" class="hf-mp-bead"/>'
+    '<circle cx="17.2" cy="71" r="1.7" class="hf-mp-bead"/>'
+    # grille cloth line
+    '<line x1="21.5" y1="4" x2="21.5" y2="80" class="hf-mp-grille"/>'
+    # travel guides + position ticks (center = dust cap, extremes = cone edge)
+    '<line x1="26" y1="42" x2="122" y2="42" class="hf-mp-guide"/>'
+    '<line x1="26" y1="14" x2="26" y2="70" class="hf-mp-guide"/>'
+    '<line x1="24" y1="42" x2="28" y2="42" class="hf-mp-tick"/>'
+    '<line x1="24" y1="14" x2="28" y2="14" class="hf-mp-tick"/>'
+    '<line x1="24" y1="70" x2="28" y2="70" class="hf-mp-tick"/>'
+    '<text x="31" y="44.5" class="hf-mp-lbl">CAP</text>'
+    # distance ruler ticks along the bottom (~0/10/20/30 cm)
+    '<line x1="26" y1="77" x2="26" y2="80" class="hf-mp-tick"/>'
+    '<line x1="58" y1="77" x2="58" y2="80" class="hf-mp-tick"/>'
+    '<line x1="90" y1="77" x2="90" y2="80" class="hf-mp-tick"/>'
+    '<line x1="122" y1="77" x2="122" y2="80" class="hf-mp-tick"/>'
+    '<text x="122" y="75" class="hf-mp-lbl hf-mp-lbl-r">30 CM</text>'
+    # the mic: soft shadow, aim line, head, tapered body + accent band
+    '<g rata-role="micdot" class="hf-mp-mic" transform="translate(28,42)">'
+    '<ellipse cx="5" cy="8.6" rx="10" ry="2" class="hf-mp-shadow"/>'
+    '<line x1="-1.5" y1="0" x2="-7.5" y2="0" class="hf-mp-aim"/>'
+    '<circle r="5" class="hf-mp-michead"/>'
+    '<path d="M3.8 -3.2 L16.5 -2.1 Q18.8 0 16.5 2.1 L3.8 3.2 Z" class="hf-mp-micbody"/>'
+    '<rect x="8.2" y="-1.2" width="4.6" height="2.4" rx="1" class="hf-mp-micband"/>'
+    '</g></svg>'
+    '<div class="hf-mp-hidden">%s%s</div>'
+    '</div></div>')
+
 IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
     '{{#effect.parameters.3}}{{#path}}'
     '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
@@ -774,7 +854,7 @@ def amp_body():
             '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
             '<div class="hf-amp-plate">' + SCREWS4 +
             '<div class="hf-amp-badge" rata-role="amp-badge">Crunchy McCrunchFace</div>'
-            + onerow(["gain", "master", "sag", "channel", "resonance", "bass", "mid", "treble", "presence"])
+            + onerow(["gain", "pl_vol2", "master", "sag", "channel", "resonance", "bass", "mid", "treble", "presence"])
             + '</div></div>')
     # Power Amp — ONE centered row of controls (switches + knobs). The c-amp-paman items
     # (Tube + the valve-stage knobs) hide when PA Auto is on, leaving a clean short row.
@@ -859,7 +939,8 @@ BLOCK_GROUPS = {
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
-    "cab": [("CABINET", None, ["lowcut", "highcut", "mix"])],
+    "cab": [("CABINET", None, ["lowcut", "highcut", "mix"]),
+            ("ROOM", None, ["roomon", "roommix", "roomamt"])],   # mic placement renders as the MICPAD widget (below), not knobs
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset"]),
             ("CLOCK SYNC", None, ["sync", "div"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
@@ -928,7 +1009,14 @@ def panel(pfx, title, accent, keys):
                       '<div class="hf-meter hf-meter-h"><div class="hf-meter-fill" rata-role="imeter"></div></div></div>')
         if pickers:
             inner += '<div class="hf-dselects clearfix">%s</div>' % pickers
-        inner += render_agroups(pfx, BLOCK_GROUPS.get(pfx, [(title.upper(), None, all_sufs)]), all_sufs)
+        if pfx == "cab":
+            # Two-column cab layout (user 2026-07-14): CABINET stacked over ROOM on the LEFT,
+            # the mic drag pad on the RIGHT — no more pad sprawling across the bottom.
+            groups = render_agroups(pfx, BLOCK_GROUPS[pfx], all_sufs)
+            pad = MICPAD % (render_ctrl(CTRL_BY_SYM["cab_micpos"]), render_ctrl(CTRL_BY_SYM["cab_micdist"]))
+            inner += '<div class="hf-cab-cols"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
+        else:
+            inner += render_agroups(pfx, BLOCK_GROUPS.get(pfx, [(title.upper(), None, all_sufs)]), all_sufs)
         body = '<div class="hf-plate">%s</div>' % inner
     style = "--acc:%s" % accent
     if pfx != "amp":                 # painted pedal-enclosure colours derived from the accent

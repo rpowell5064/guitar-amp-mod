@@ -228,6 +228,22 @@ function (event, funcs) {
     }
     // ── Conditional control visibility, scoped to the block's DETAIL PANEL ──
     function show(icon, b, sel, on) { panelOf(icon, b).find(sel).toggleClass('mod-hidden', !on); }
+    // ── Cab mic pad: reflect cab_micpos/cab_micdist onto the draggable mic marker ──
+    // Geometry (viewBox 140x84): X 28..122 = distance, Y centre 42 ± 28 = position across the
+    // cone. Position is acoustically SYMMETRIC, so the marker keeps whichever SIDE of the cap
+    // the user dragged to (hf_micside) instead of snapping above centre — no "jump" at the cap.
+    function micPadUpdate(icon) {
+        var pad = icon.find('[rata-role=micpad]'); if (!pad.length) return;
+        var pos  = parseFloat(icon.data('hf_micpos'))  || 0;
+        var dist = parseFloat(icon.data('hf_micdist')) || 0;
+        var side = icon.data('hf_micside') === -1 ? -1 : 1;
+        var x = 28 + dist * 94, y = 42 - side * pos * 28;
+        pad.find('[rata-role=micdot]').attr('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
+        var pn = pos < 0.12 ? 'CAP EDGE' : pos < 0.5 ? 'CONE' : pos < 0.85 ? 'CONE EDGE' : 'SURROUND';
+        var dn = dist < 0.06 ? 'CLOSE' : Math.round(2 + dist * 28) + ' CM';
+        pad.find('[rata-role=micposv]').text(pn);
+        pad.find('[rata-role=micdistv]').text(dn);
+    }
     function applyAmp(icon) {
         var m = icon.data('hf_amp_m'); if (m == null) m = 1;
         var a = icon.data('hf_amp_auto'); if (a == null) a = true;
@@ -236,6 +252,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-be',   m === 6);
         show(icon, 'amp', '.c-amp-mesa', m === 11);
         show(icon, 'amp', '.c-amp-reso', m === 2);
+        show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
@@ -253,7 +270,7 @@ function (event, funcs) {
         else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp'); cur = 'amp'; }
         var ok = { amp: true, voice: showVoice, power: showPower, nam: true };
         if (!ok[cur]) setAmpTab(icon, 'amp');
-        p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 5 ? 'Output' : 'Gain'));
+        p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 5 ? 'Output' : 'Gain')));
         setModelVal(icon, 'amp', m);
         applyAmpFace(icon, m);
         applyMesa(icon);
@@ -448,6 +465,8 @@ function (event, funcs) {
                     else if (!want && inChain(icon, b)) { icon.find('.hf-palette').append(nodeOf(icon, b)); membership = true; }
                 }
             } else if (sym === 'amp_model')        icon.data('hf_amp_m', parseInt(val, 10));
+            else if (sym === 'cab_micpos')         icon.data('hf_micpos', val);    // mod-ui doesn't echo set_port_value → sync the pad by hand
+            else if (sym === 'cab_micdist')        icon.data('hf_micdist', val);
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
             else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
@@ -459,6 +478,7 @@ function (event, funcs) {
         });
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
+        micPadUpdate(icon);
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
         if (drm != null) applyDrive(icon, drm);
         selectNode(icon, icon.data('hf_sel'));   // keep selection valid + refresh the panel
@@ -583,6 +603,45 @@ function (event, funcs) {
         if ('ps_bank' in map) icon.data('ps_bank', parseInt(map.ps_bank, 10));
         if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));
         psBankLabel(icon); psRenderList(icon, funcs);
+        // ── Cab mic pad: drag the mic across the cone (Pos) / away from the grille (Dist) ──
+        (function () {
+            var svg = icon.find('[rata-role=micsvg]')[0]; if (!svg) return;
+            if ('cab_micpos'  in map) icon.data('hf_micpos',  parseFloat(map.cab_micpos));
+            if ('cab_micdist' in map) icon.data('hf_micdist', parseFloat(map.cab_micdist));
+            function write(pos, dist) {
+                icon.data('hf_micpos', pos); icon.data('hf_micdist', dist);
+                if (funcs && typeof funcs.set_port_value === 'function') {
+                    funcs.set_port_value('cab_micpos',  pos);
+                    funcs.set_port_value('cab_micdist', dist);
+                }
+                micPadUpdate(icon);
+            }
+            function apply(e) {
+                var r = svg.getBoundingClientRect();
+                var vx = (e.clientX - r.left) / r.width  * 140;
+                var vy = (e.clientY - r.top)  / r.height * 84;
+                var off  = 42 - vy;                                        // signed: + above cap, - below
+                var dist = Math.max(0, Math.min(1, (vx - 28) / 94));
+                var pos  = Math.max(0, Math.min(1, Math.abs(off) / 28));
+                icon.data('hf_micside', off < 0 ? -1 : 1);                 // marker follows the pointer's side
+                if (pos < 0.05) pos = 0;                                   // gentle snap onto the cap axis
+                write(pos, dist);
+            }
+            var drag = false;
+            svg.addEventListener('pointerdown', function (e) {
+                drag = true; svg.classList.add('hf-mp-live');
+                if (svg.setPointerCapture) try { svg.setPointerCapture(e.pointerId); } catch (x) {}
+                apply(e); e.preventDefault(); e.stopPropagation();
+            });
+            svg.addEventListener('pointermove',   function (e) { if (drag) { apply(e); e.preventDefault(); } });
+            svg.addEventListener('pointerup',     function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
+            svg.addEventListener('pointercancel', function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
+            svg.addEventListener('dblclick', function (e) {                // double-click = back to the voiced spot
+                icon.data('hf_micside', 1); write(0, 0);
+                e.preventDefault(); e.stopPropagation();
+            });
+            micPadUpdate(icon);
+        })();
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
         if (s && /_pos$/.test(s)) {
@@ -618,6 +677,10 @@ function (event, funcs) {
             show(icon, 'md', '.c-md-delay', mt === 0 || mt === 3 || mt === 6);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
+        } else if (s === 'cab_micpos') {
+            icon.data('hf_micpos', parseFloat(event.value)); micPadUpdate(icon);
+        } else if (s === 'cab_micdist') {
+            icon.data('hf_micdist', parseFloat(event.value)); micPadUpdate(icon);
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
         } else if (s === 'clip') {
