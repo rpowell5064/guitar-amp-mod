@@ -78,8 +78,8 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
     for (int h = 0; h < kNumHeads; ++h) {
         const float nomDelay = timeSmoother_.current() * kHeadFractions[h] * fs / 1000.0f;
         float delaySamps     = nomDelay / currentSpeedMod_;
-        delaySamps = std::clamp(delaySamps, 1.0f, static_cast<float>(bufLen - 2));
-        rawHead[h] = readFrac(s.drumBuf, delaySamps, s.writeIdx);
+        delaySamps = std::clamp(delaySamps, 1.0f, static_cast<float>(bufLen - 3));
+        rawHead[h] = readFracHermite(s.drumBuf, delaySamps, s.writeIdx);   // wow/flutter-modulated tap (2026-07-14)
     }
 
     // Per-head HF roll-off (oxide degradation increases with arc distance from write head).
@@ -110,8 +110,8 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
     // closest to the write head, so head-oxide HF loss is negligible.
     if (headMask_ & 0x10) {
         float dn = timeSmoother_.current() * 0.125f * fs / 1000.0f / currentSpeedMod_;
-        dn = std::clamp(dn, 1.0f, static_cast<float>(bufLen - 2));
-        wet += readFrac(s.drumBuf, dn, s.writeIdx);
+        dn = std::clamp(dn, 1.0f, static_cast<float>(bufLen - 3));
+        wet += readFracHermite(s.drumBuf, dn, s.writeIdx);
         ++headCount;
     }
     if (headCount > 0) wet *= (1.0f / static_cast<float>(headCount));

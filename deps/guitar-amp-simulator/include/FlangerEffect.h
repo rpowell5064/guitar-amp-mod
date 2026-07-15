@@ -48,12 +48,20 @@ public:
                 const float dry = in[c][i];
                 const float in2 = dry + fbAmt * fb_[c];
                 buf_[c][w_[c] & mask_] = in2;
+                // 4-point Hermite read (2026-07-14): a LINEARLY-interpolated moving tap adds
+                // fraction-dependent HF loss + zipper right in the sweep — the audible "grain".
+                // Hermite keeps the comb's top end clean for ~2 extra MACs. delayS >= 2 by baseS.
                 const float rPos = static_cast<float>(w_[c]) - delayS;
                 const int   ri = static_cast<int>(std::floor(rPos));
                 const float fr = rPos - static_cast<float>(ri);
-                const float s0 = buf_[c][ ri      & mask_];
-                const float s1 = buf_[c][(ri + 1) & mask_];
-                const float wet = s0 + fr * (s1 - s0);
+                const float xm1 = buf_[c][(ri - 1) & mask_];
+                const float x0  = buf_[c][ ri      & mask_];
+                const float x1  = buf_[c][(ri + 1) & mask_];
+                const float x2  = buf_[c][(ri + 2) & mask_];
+                const float hc1 = 0.5f * (x1 - xm1);
+                const float hc2 = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
+                const float hc3 = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
+                const float wet = ((hc3 * fr + hc2) * fr + hc1) * fr + x0;
                 ++w_[c];
                 fb_[c] = wet;
                 out[c][i] = dry + mix_ * wet;

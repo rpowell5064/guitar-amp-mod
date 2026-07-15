@@ -54,6 +54,23 @@ private:
             const int i1   = (writeIdx - d0 - 1 + len * 2) % len;
             return buf[i0] + fr * (buf[i1] - buf[i0]);
         }
+
+        // 4-point Hermite read (2026-07-14): the tank combs are LFO-modulated, and a linear
+        // moving tap dulls/grains the tail; Hermite keeps damping the only HF loss. Needs
+        // delay in [1, len-3] — the tank mod excursion is a few samples inside the +8 slack.
+        float readFracHermite(float delay) const noexcept {
+            const int len  = static_cast<int>(buf.size());
+            const int d0   = static_cast<int>(delay);
+            const float fr = delay - static_cast<float>(d0);
+            const float xm1 = buf[(writeIdx - d0 + 1 + len * 2) % len];
+            const float x0  = buf[(writeIdx - d0     + len * 2) % len];
+            const float x1  = buf[(writeIdx - d0 - 1 + len * 2) % len];
+            const float x2  = buf[(writeIdx - d0 - 2 + len * 2) % len];
+            const float c1 = 0.5f * (x1 - xm1);
+            const float c2 = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
+            const float c3 = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
+            return ((c3 * fr + c2) * fr + c1) * fr + x0;
+        }
     };
 
     // Schroeder allpass: H(z) = (z^{-N} - g) / (1 - g*z^{-N})
@@ -81,7 +98,7 @@ private:
         void resize(int len) { dl.resize(len); }
 
         float process(float x, float modDelaySamples) noexcept {
-            const float out = dl.readFrac(modDelaySamples);
+            const float out = dl.readFracHermite(modDelaySamples);
             // 1-pole LP for high-frequency damping
             lastLP = out * (1.0f - damping) + lastLP * damping;
             dl.write(x + feedback * lastLP);

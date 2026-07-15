@@ -76,10 +76,11 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     // like tape speed — relative deviation constant regardless of time setting).
     delaySamples += delaySamples * (wowDepth_     * std::sin(s.wowPhase) +
                                     flutterDepth_ * std::sin(s.flutterPhase));
-    delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 2));
+    delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
 
-    // Read delayed sample.
-    const float delayed = readFrac(s.buf, delaySamples, s.writeIdx);
+    // Read delayed sample (Hermite, 2026-07-14 — the wow/flutter-modulated tap loses HF
+    // fraction-dependently with linear interpolation; keep the tape LP the only rolloff).
+    const float delayed = readFracHermite(s.buf, delaySamples, s.writeIdx);
 
     // Tape HF roll-off: 1-pole LP in feedback path (coefficient pre-built in rebuildFilters).
     // tapeAge=0 → fc=12 kHz (new tape), tapeAge=1 → fc=2 kHz (old tape).

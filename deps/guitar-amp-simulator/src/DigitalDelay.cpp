@@ -53,10 +53,11 @@ float DigitalDelay::processSample(float x, int ch) noexcept {
         delayMs *= (1.0f + stereoWidth_ * 0.03f);
 
     float delaySamples = delayMs * fs / 1000.0f;
-    delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 2));
+    delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
 
-    // Read delayed sample.
-    const float delayed = readFrac(s.buf, delaySamples, s.writeIdx);
+    // Read delayed sample (Hermite, 2026-07-14: removes the fixed fractional-tap HF droop;
+    // "digital" should be the pristine one).
+    const float delayed = readFracHermite(s.buf, delaySamples, s.writeIdx);
 
     // Feedback path: LP and HP tone filters.
     float fb = s.fbLP.process(delayed);

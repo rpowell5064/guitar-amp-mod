@@ -125,14 +125,21 @@ void CE2Chorus::process(float** in, float** out,
             const int wi = writeIdx_[c] & bufMask_;
             delayBuf_[c][wi] = chState_[c].lpIn;
 
-            // ── Fractional-delay read (linear interpolation) ──────────────────
-            // We write at writeIdx_[c], then read delaySamp samples behind it.
+            // ── Fractional-delay read (4-point Hermite, 2026-07-14) ───────────
+            // We write at writeIdx_[c], then read delaySamp samples behind it. A linear
+            // moving tap added fraction-dependent HF loss/grain to the sweep; Hermite
+            // keeps only the INTENDED BBD voicing (the in/out LPFs). delaySamp >= 2 always.
             const float rPos = static_cast<float>(writeIdx_[c]) - delaySamp;
             const int   ri   = static_cast<int>(std::floor(rPos));
             const float frac = rPos - static_cast<float>(ri);
-            const float s0   = delayBuf_[c][ ri      & bufMask_];
-            const float s1   = delayBuf_[c][(ri + 1) & bufMask_];
-            const float bbdOut = s0 + frac * (s1 - s0);
+            const float xm1  = delayBuf_[c][(ri - 1) & bufMask_];
+            const float x0   = delayBuf_[c][ ri      & bufMask_];
+            const float x1   = delayBuf_[c][(ri + 1) & bufMask_];
+            const float x2   = delayBuf_[c][(ri + 2) & bufMask_];
+            const float hc1  = 0.5f * (x1 - xm1);
+            const float hc2  = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
+            const float hc3  = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
+            const float bbdOut = ((hc3 * frac + hc2) * frac + hc1) * frac + x0;
 
             ++writeIdx_[c];
 
