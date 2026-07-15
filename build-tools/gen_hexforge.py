@@ -68,7 +68,7 @@ CP = [
     ("makeup",  "Makeup",    "f", 0, 10, 0, None),
 ]
 FZ = [
-    ("pedal",     "Pedal",      "e", 0, 3, 0, [("Italian Hero",0),("I Know It",1),("Octavia",2),("Fuzz Zachary",3)]),
+    ("pedal",     "Pedal",      "e", 0, 3, 0, [("Italian Hero",0),("I Know It",1),("Octavius",2),("Fuzz Zachary",3)]),
     ("mode",      "Variant",    "e", 0, 5, 2, [("Delta",0),("Ovis",1),("Gotham",2),("Cold War",3),("Red Bear",4),("Boutique",5)]),
     ("sustain",   "Sustain",    "f", 0, 1, 0.55, None),
     ("tone",      "Tone",       "f", 0, 1, 0.5, None),
@@ -512,7 +512,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 129 ;")
+    L.append("    lv2:microVersion 130 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -728,11 +728,11 @@ IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</sp
     '{{#effect.parameters.3}}{{#path}}'
     '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
     '<div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">Factory Cab (built-in)</div>'
-    '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory Cab (V30 4x12)</div>'
+    '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory 4x12 (Thirty-Something)</div>'
     '<div mod-role="enumeration-option" mod-parameter-value="@vox2x12">Chime 2x12 (Vox)</div>'
     '<div mod-role="enumeration-option" mod-parameter-value="@american-ob">American Open-Back 2x12</div>'
-    '<div mod-role="enumeration-option" mod-parameter-value="@greenback">Greenback 4x12</div>'
-    '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12 (Fane)</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@greenback">Cashback 4x12</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12</div>'
     '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
     '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
     '</div>{{/path}}{{/effect.parameters.3}}</div>')

@@ -17,7 +17,7 @@ function (event, funcs) {
         icon.find('[rata-role=trimlabel]').text(ff ? 'Gate' : 'Input Trim');
         icon.find('[rata-role=templabel]').text(ff ? 'Stab' : 'Ge Temp');
         icon.find('[rata-role=tagline]').text(tb ? 'I Know It · germanium'
-                                            : (oct ? 'Octavia · octave-up fuzz'
+                                            : (oct ? 'Octavius · octave-up fuzz'
                                             : (ff ? 'Fuzz Zachary · gated chaos'
                                                    : 'Italian Hero · 6 variants')));
     }

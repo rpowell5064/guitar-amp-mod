@@ -14,7 +14,7 @@ function (event, funcs) {
     var NV = {
         amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V'],
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
-        fz:  ['Italian Hero','I Know It','Octavia','Fuzz Zachary'],
+        fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
         dl:  ['Digital','Tape','Echo Wreck','Seraph']
     };
@@ -348,9 +348,9 @@ function (event, funcs) {
         if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
         box.text(label);
     }
-    var CAB_NAMES = { '@factory':'Factory Cab (V30 4x12)', '@vox2x12':'Chime 2x12 (Vox)',
-                      '@american-ob':'American Open-Back 2x12', '@greenback':'Greenback 4x12',
-                      '@hiwatt':'Hi-Volt 4x12 (Fane)', '@doom':'Doom 4x12' };
+    var CAB_NAMES = { '@factory':'Factory 4x12 (Thirty-Something)', '@vox2x12':'Chime 2x12 (alnico)',
+                      '@american-ob':'American Open-Back 2x12', '@greenback':'Cashback 4x12',
+                      '@hiwatt':'Hi-Volt 4x12', '@doom':'Doom 4x12' };
     function setIr(icon, value) {
         if (value == null || value === 'None' || value === '') value = '@factory';
         if (CAB_NAMES[value]) {                      // built-in synthetic cab
