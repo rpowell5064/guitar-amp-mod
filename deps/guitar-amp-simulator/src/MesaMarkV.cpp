@@ -8,9 +8,10 @@ using TC = TriodeComponent;
 // Bright while the input is above kDnrOpen; slides to the dark lowpass as it decays past kDnrClose.
 namespace {
 constexpr float kDnrFcDark   = 6000.0f;    // dark-state lowpass corner (kills >6 kHz hiss when quiet)
-constexpr float kDnrOpenLin  = 0.00398f;   // -48 dBFS input: at/above this = full bright
-constexpr float kDnrCloseLin = 0.00126f;   // -58 dBFS input: at/below this = full dark (does most of the
-                                           // darkening in the audible decay, just above where gates close)
+constexpr float kDnrOpenLin  = 0.00631f;   // -44 dBFS input: at/above this = full bright (raised from -48
+                                           // 2026-07-14: user hears hiss riding the decay — darken sooner)
+constexpr float kDnrCloseLin = 0.002f;     // -54 dBFS input: at/below this = full dark — aligned with the
+                                           // input gate's close threshold so the decay window is covered
 constexpr float kDnrAttackMs = 0.5f;       // open fast so pick attacks stay bright
 constexpr float kDnrReleaseMs = 100.0f;    // darken smoothly through the decay (no pumping)
 constexpr float kDnrInvRange = 1.0f / (kDnrOpenLin - kDnrCloseLin);

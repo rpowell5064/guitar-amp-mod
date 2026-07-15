@@ -2,6 +2,7 @@
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
+#include "DnrRolloff.h"
 #include <array>
 #include <string>
 
@@ -90,6 +91,7 @@ private:
         BiquadFilter       presenceF;    // high shelf @ ~4 kHz
         BiquadFilter       airLP;        // 1-pole LP @ ~13 kHz
         BiquadFilter       bodyShelf;    // post-clip low-mid SCOOP (kills the 200 Hz hump)
+        DnrRolloff         dnr;          // decay darkener (engaged on BE/HBE when driven)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

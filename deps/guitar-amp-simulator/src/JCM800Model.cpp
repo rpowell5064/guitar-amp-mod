@@ -39,6 +39,7 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
         // Presence shelf and air LP are set in recalcFilters()
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
         c.sagEnv = 0.0f;
+        c.dnr.prepare(oversampledFs_);
     }
     recalcFilters();
     reset();
@@ -71,6 +72,7 @@ void JCM800Model::reset() noexcept {
         c.airLP.reset();
         c.bodyShelf.reset();
         c.sagEnv = 0.0f;
+        c.dnr.reset();
     }
 }
 
@@ -83,6 +85,11 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
     const float g = gainSmooth_.getCurrentValue();
     const float m = masterSmooth_.getCurrentValue();
+
+    // DNR keys on the RAW input. Measured 2026-07-14: gain 0.7 pins a -52 dBFS rig-noise floor to
+    // -13 dBFS out (and -25 even at gain 0.35), so decays get the dark-LP blend once the amp is
+    // meaningfully driven (knob past ~0.4; below that it's edge-of-crunch and left untouched).
+    c.dnr.track(x);
 
     // Input DC block
     x = c.inputHPF.process(x);
@@ -121,7 +128,7 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     const float sag = 1.0f - sag_ * c.sagEnv * 0.25f;
     x *= sag;
 
-    return softLimit(x);
+    return c.dnr.process(softLimit(x), gain_ > 0.4f);
 }
 
 void JCM800Model::setParameter(const std::string& id, float value) noexcept {

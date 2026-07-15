@@ -2,6 +2,7 @@
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
+#include "DnrRolloff.h"
 #include <array>
 #include <string>
 
@@ -74,6 +75,7 @@ private:
         BiquadFilter     presenceF;     // high shelf @ 5 kHz
         BiquadFilter     resonanceF;   // peak @ 80 Hz (EVH deep resonance)
         BiquadFilter     airLP;        // 12 kHz LP
+        DnrRolloff       dnr;          // decay darkener (engaged on the Red channel)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

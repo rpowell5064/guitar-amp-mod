@@ -35,6 +35,7 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
 
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.22));
         c.sagEnv = 0.0f;
+        c.dnr.prepare(oversampledFs_);
     }
     recalcFilters();
     reset();
@@ -72,6 +73,7 @@ void EVH5150Model::reset() noexcept {
         c.resonanceF.reset();
         c.airLP.reset();
         c.sagEnv = 0.0f;
+        c.dnr.reset();
     }
 }
 
@@ -84,6 +86,11 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
     const float g = gainSmooth_.getCurrentValue();
     const float m = masterSmooth_.getCurrentValue();
+
+    // DNR keys on the RAW input (pre-gain — the only place playing dynamics survive). Measured
+    // 2026-07-14: the red channel pins a -52 dBFS rig-noise floor to -5 dBFS out (+47 dB) — the
+    // worst of the whole suite — so decays get the dark-LP blend on red at any gain.
+    c.dnr.track(x);
 
     // Input: DC block + tight high-pass (5150 'chugging' character)
     x = c.dcBlock.process(x);
@@ -127,7 +134,7 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     const float sag = 1.0f - sag_ * c.sagEnv * 0.18f;
     x *= sag;
 
-    return softLimit(x);
+    return c.dnr.process(softLimit(x), redChannel_);
 }
 
 void EVH5150Model::setParameter(const std::string& id, float value) noexcept {

@@ -25,6 +25,7 @@ void Rockerverb50::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept 
         c.stage2.prepare(oversampledFs, TriodeComponent::kRVB_S2);
         c.stage3.prepare(oversampledFs, TriodeComponent::kRVB_S3);
         c.stage4.prepare(oversampledFs, TriodeComponent::kRVB_S4);
+        c.dnr.prepare(oversampledFs);
     }
 
     recalcFilters();
@@ -55,6 +56,7 @@ void Rockerverb50::reset() noexcept {
         c.cleanHFRolloff.reset();
         c.cleanLift.reset();
         c.cleanScoop.reset();
+        c.dnr.reset();
         c.sagEnv = 0.0f;
     }
     gainSmooth_.setCurrentAndTargetValue(gain_);
@@ -74,6 +76,10 @@ void Rockerverb50::advanceSmoothing() noexcept {
 
 float Rockerverb50::processSample(float x, int ch) noexcept {
     auto& s = ch_[ch];
+
+    // DNR keys on the RAW input. Measured 2026-07-14: the dirty channel at gain 0.7 pins a
+    // -52 dBFS rig-noise floor to -17 dBFS out, so driven-dirty decays get the dark-LP blend.
+    s.dnr.track(x);
 
     // Input conditioning: HPF @ 100 Hz removes sub-bass rumble and DC.
     x = s.inputHPF.process(x);
@@ -180,7 +186,7 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
     s.sagEnv = s.sagDecay * s.sagEnv + (1.0f - s.sagDecay) * std::abs(x);
 
     // Master volume + output safety limiter (keeps peak below ~−0.5 dBFS).
-    return softLimit(x * masterCurrent_);
+    return s.dnr.process(softLimit(x * masterCurrent_), !cleanChannel_ && gain_ > 0.4f);
 }
 
 // ── Parameter handling ────────────────────────────────────────────────────────

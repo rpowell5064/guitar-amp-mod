@@ -2,6 +2,7 @@
 #include "AmpModelBase.h"
 #include "BiquadFilter.h"
 #include "TriodeComponent.h"
+#include "DnrRolloff.h"
 #include <array>
 #include <string>
 
@@ -99,6 +100,8 @@ private:
         // vs the DI capture. Safe to EQ here (low gain, no fizz). Clean-only.
         BiquadFilter cleanLift;
         BiquadFilter cleanScoop;    // ~1.4 kHz dip — the Orange clean's mid scoop (DI)
+
+        DnrRolloff dnr;             // decay darkener (engaged on the dirty channel when driven)
 
         // Supply sag envelope (300 ms, models EL34 cathode-cap compression)
         float sagEnv   = 0.0f;

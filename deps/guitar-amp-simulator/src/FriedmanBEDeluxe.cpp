@@ -46,6 +46,7 @@ void FriedmanBEDeluxe::prepare(double oversampledSampleRate, int /*maxBlockSize*
 
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
         c.sagEnv = 0.0f;
+        c.dnr.prepare(oversampledFs_);
     }
     recalcFilters();
     reset();
@@ -83,6 +84,7 @@ void FriedmanBEDeluxe::reset() noexcept {
         c.stage3.reset();     c.tonestack.reset();  c.inter34HPF.reset();
         c.stage4.reset();     c.presencePk.reset(); c.presenceF.reset();
         c.airLP.reset();      c.bodyShelf.reset();
+        c.dnr.reset();
         c.sagEnv = 0.0f;
     }
 }
@@ -96,6 +98,10 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
     const float g = gainSmooth_.getCurrentValue();
     const float m = masterSmooth_.getCurrentValue();
+
+    // DNR keys on the RAW input. Measured 2026-07-14: BE/HBE at gain 0.7 pin a -52 dBFS rig-noise
+    // floor to -35/-31 dBFS out — milder than EVH/JCM800 but worth darkening driven decays.
+    c.dnr.track(x);
 
     x = c.inputHPF.process(x);
     if (fat_) x = c.fatShelf.process(x);   // Fat: pre-gain low-end girth
@@ -147,7 +153,7 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
     const float sag = 1.0f - sag_ * c.sagEnv * 0.25f;
     x *= sag;
 
-    return softLimit(x);
+    return c.dnr.process(softLimit(x), channel_ != CH_CLEAN && gain_ > 0.4f);
 }
 
 void FriedmanBEDeluxe::setParameter(const std::string& id, float value) noexcept {

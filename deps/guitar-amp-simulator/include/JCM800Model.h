@@ -2,6 +2,7 @@
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
+#include "DnrRolloff.h"
 #include <array>
 #include <string>
 
@@ -69,6 +70,7 @@ private:
         // 36% vs a real 800's 7%). This shelf adds the low-mid body back AFTER all the
         // distortion, so the tone keeps Marshall chunk but the bass stays tight/clean.
         BiquadFilter     bodyShelf;    // low-shelf @ ~180 Hz
+        DnrRolloff       dnr;          // decay darkener (engaged when gain > 0.4)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;
