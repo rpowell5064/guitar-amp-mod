@@ -23,13 +23,6 @@
     rdfs:range atom:Path ;
     mod:fileTypes "cabsim,ir,wav,audio" .
 
-# Optional NAM neural capture. When loaded it OVERRIDES the IR convolver.
-<https://rpowell5064.github.io/guitaramp-suite/cab#namfile>
-    a lv2:Parameter ;
-    rdfs:label "Cabinet NAM" ;
-    rdfs:range atom:Path ;
-    mod:fileTypes "nammodel,nam" .
-
 <https://rpowell5064.github.io/guitaramp-suite/cab>
     a lv2:Plugin, lv2:FilterPlugin ;
     rdfs:label "Hex Chain — Cabinet" ;
@@ -40,15 +33,14 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 39 ;
+    lv2:microVersion 41 ;
 
     # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
 
-    patch:writable <https://rpowell5064.github.io/guitaramp-suite/cab#irfile> ,
-                   <https://rpowell5064.github.io/guitaramp-suite/cab#namfile> ;
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/cab#irfile> ;
 
     lv2:port [
         a lv2:AudioPort, lv2:InputPort ;
@@ -82,7 +74,8 @@
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
-        # ── Neural (NAM) input/output trims (used only when a NAM capture is loaded) ──
+        # ── Legacy NAM trims — DORMANT since the cab went IR-only (2026-07-13); the
+        # ports stay because indices are ABI (hosts save/restore by index) ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "nam_gain" ; lv2:name "NAM Gain" ;
         units:unit units:db ;

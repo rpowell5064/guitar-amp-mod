@@ -512,7 +512,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 130 ;")
+    L.append("    lv2:microVersion 131 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -683,7 +683,9 @@ def render_ctrl(c):
 MICPAD = (
     '<div class="hf-agroup hf-micpad" rata-role="micpad"><span class="hf-agroup-title">MIC PLACEMENT</span>'
     '<div class="hf-agroup-body">'
-    '<svg viewBox="0 0 140 84" class="hf-mp-svg" rata-role="micsvg">'
+    # viewBox 140x126 = the original 140x84 side-view stretched x1.5 vertically (centre 63,
+    # mic travel +-42) so the pad's height balances the stacked CABINET+ROOM column.
+    '<svg viewBox="0 0 140 126" class="hf-mp-svg" rata-role="micsvg">'
     '<title>Drag the mic — double-click resets</title>'
     # fixed-anchor readouts inside the pad (no layout reflow as the text changes)
     '<text x="30" y="11" class="hf-mp-ro"><tspan class="hf-mp-ro-l">POS&#160;&#160;</tspan>'
@@ -691,30 +693,30 @@ MICPAD = (
     '<text x="134" y="11" class="hf-mp-ro hf-mp-ro-r"><tspan class="hf-mp-ro-l">DIST&#160;&#160;</tspan>'
     '<tspan rata-role="micdistv">CLOSE</tspan></text>'
     # cab body + baffle edge
-    '<rect x="1" y="2" width="16" height="80" rx="3" class="hf-mp-wall"/>'
-    '<rect x="14.6" y="5" width="2.6" height="74" rx="1.2" class="hf-mp-baffle"/>'
+    '<rect x="1" y="2" width="16" height="122" rx="3" class="hf-mp-wall"/>'
+    '<rect x="14.6" y="7.5" width="2.6" height="111" rx="1.2" class="hf-mp-baffle"/>'
     # speaker: curved cone profile + dust cap + surround beads
-    '<path d="M17.2 13 Q7.5 26 6 42 Q7.5 58 17.2 71" class="hf-mp-cone"/>'
-    '<circle cx="8.6" cy="42" r="5" class="hf-mp-cap"/>'
-    '<circle cx="17.2" cy="13" r="1.7" class="hf-mp-bead"/>'
-    '<circle cx="17.2" cy="71" r="1.7" class="hf-mp-bead"/>'
+    '<path d="M17.2 19.5 Q7.5 39 6 63 Q7.5 87 17.2 106.5" class="hf-mp-cone"/>'
+    '<circle cx="8.6" cy="63" r="6" class="hf-mp-cap"/>'
+    '<circle cx="17.2" cy="19.5" r="1.7" class="hf-mp-bead"/>'
+    '<circle cx="17.2" cy="106.5" r="1.7" class="hf-mp-bead"/>'
     # grille cloth line
-    '<line x1="21.5" y1="4" x2="21.5" y2="80" class="hf-mp-grille"/>'
+    '<line x1="21.5" y1="6" x2="21.5" y2="120" class="hf-mp-grille"/>'
     # travel guides + position ticks (center = dust cap, extremes = cone edge)
-    '<line x1="26" y1="42" x2="122" y2="42" class="hf-mp-guide"/>'
-    '<line x1="26" y1="14" x2="26" y2="70" class="hf-mp-guide"/>'
-    '<line x1="24" y1="42" x2="28" y2="42" class="hf-mp-tick"/>'
-    '<line x1="24" y1="14" x2="28" y2="14" class="hf-mp-tick"/>'
-    '<line x1="24" y1="70" x2="28" y2="70" class="hf-mp-tick"/>'
-    '<text x="31" y="44.5" class="hf-mp-lbl">CAP</text>'
+    '<line x1="26" y1="63" x2="122" y2="63" class="hf-mp-guide"/>'
+    '<line x1="26" y1="21" x2="26" y2="105" class="hf-mp-guide"/>'
+    '<line x1="24" y1="63" x2="28" y2="63" class="hf-mp-tick"/>'
+    '<line x1="24" y1="21" x2="28" y2="21" class="hf-mp-tick"/>'
+    '<line x1="24" y1="105" x2="28" y2="105" class="hf-mp-tick"/>'
+    '<text x="31" y="65.5" class="hf-mp-lbl">CAP</text>'
     # distance ruler ticks along the bottom (~0/10/20/30 cm)
-    '<line x1="26" y1="77" x2="26" y2="80" class="hf-mp-tick"/>'
-    '<line x1="58" y1="77" x2="58" y2="80" class="hf-mp-tick"/>'
-    '<line x1="90" y1="77" x2="90" y2="80" class="hf-mp-tick"/>'
-    '<line x1="122" y1="77" x2="122" y2="80" class="hf-mp-tick"/>'
-    '<text x="122" y="75" class="hf-mp-lbl hf-mp-lbl-r">30 CM</text>'
+    '<line x1="26" y1="115.5" x2="26" y2="120" class="hf-mp-tick"/>'
+    '<line x1="58" y1="115.5" x2="58" y2="120" class="hf-mp-tick"/>'
+    '<line x1="90" y1="115.5" x2="90" y2="120" class="hf-mp-tick"/>'
+    '<line x1="122" y1="115.5" x2="122" y2="120" class="hf-mp-tick"/>'
+    '<text x="122" y="112.5" class="hf-mp-lbl hf-mp-lbl-r">30 CM</text>'
     # the mic: soft shadow, aim line, head, tapered body + accent band
-    '<g rata-role="micdot" class="hf-mp-mic" transform="translate(28,42)">'
+    '<g rata-role="micdot" class="hf-mp-mic" transform="translate(28,63)">'
     '<ellipse cx="5" cy="8.6" rx="10" ry="2" class="hf-mp-shadow"/>'
     '<line x1="-1.5" y1="0" x2="-7.5" y2="0" class="hf-mp-aim"/>'
     '<circle r="5" class="hf-mp-michead"/>'

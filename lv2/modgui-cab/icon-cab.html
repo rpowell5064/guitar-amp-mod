@@ -70,30 +70,34 @@
             </div>
             </div>
             <div class="hf-cab-right">
-                <div class="hf-micpad" rata-role="micpad"><span class="hf-agroup-t">MIC PLACEMENT</span>
-                    <svg viewBox="0 0 140 84" class="hf-mp-svg" rata-role="micsvg">
+                <!-- Same darker fieldset box as Cabinet/Room (hf-agroup); the column stretches so
+                     the box's bottom edge aligns exactly with the Room group's. viewBox 140x150 =
+                     the 140x84 side-view stretched x1.786 vertically (centre 75, mic travel +-50). -->
+                <div class="hf-agroup hf-micpad" rata-role="micpad"><span class="hf-agroup-title">Mic Placement</span>
+                    <div class="hf-agroup-body">
+                    <svg viewBox="0 0 140 150" class="hf-mp-svg" rata-role="micsvg">
                         <title>Drag the mic — double-click resets</title>
                         <text x="30" y="11" class="hf-mp-ro"><tspan class="hf-mp-ro-l">POS&#160;&#160;</tspan><tspan rata-role="micposv">CAP EDGE</tspan></text>
                         <text x="134" y="11" class="hf-mp-ro hf-mp-ro-r"><tspan class="hf-mp-ro-l">DIST&#160;&#160;</tspan><tspan rata-role="micdistv">CLOSE</tspan></text>
-                        <rect x="1" y="2" width="16" height="80" rx="3" class="hf-mp-wall"/>
-                        <rect x="14.6" y="5" width="2.6" height="74" rx="1.2" class="hf-mp-baffle"/>
-                        <path d="M17.2 13 Q7.5 26 6 42 Q7.5 58 17.2 71" class="hf-mp-cone"/>
-                        <circle cx="8.6" cy="42" r="5" class="hf-mp-cap"/>
-                        <circle cx="17.2" cy="13" r="1.7" class="hf-mp-bead"/>
-                        <circle cx="17.2" cy="71" r="1.7" class="hf-mp-bead"/>
-                        <line x1="21.5" y1="4" x2="21.5" y2="80" class="hf-mp-grille"/>
-                        <line x1="26" y1="42" x2="122" y2="42" class="hf-mp-guide"/>
-                        <line x1="26" y1="14" x2="26" y2="70" class="hf-mp-guide"/>
-                        <line x1="24" y1="42" x2="28" y2="42" class="hf-mp-tick"/>
-                        <line x1="24" y1="14" x2="28" y2="14" class="hf-mp-tick"/>
-                        <line x1="24" y1="70" x2="28" y2="70" class="hf-mp-tick"/>
-                        <text x="31" y="44.5" class="hf-mp-lbl">CAP</text>
-                        <line x1="26" y1="77" x2="26" y2="80" class="hf-mp-tick"/>
-                        <line x1="58" y1="77" x2="58" y2="80" class="hf-mp-tick"/>
-                        <line x1="90" y1="77" x2="90" y2="80" class="hf-mp-tick"/>
-                        <line x1="122" y1="77" x2="122" y2="80" class="hf-mp-tick"/>
-                        <text x="122" y="75" class="hf-mp-lbl hf-mp-lbl-r">30 CM</text>
-                        <g rata-role="micdot" class="hf-mp-mic" transform="translate(28,42)">
+                        <rect x="1" y="2" width="16" height="146" rx="3" class="hf-mp-wall"/>
+                        <rect x="14.6" y="9" width="2.6" height="132" rx="1.2" class="hf-mp-baffle"/>
+                        <path d="M17.2 23.2 Q7.5 46.4 6 75 Q7.5 103.6 17.2 126.8" class="hf-mp-cone"/>
+                        <circle cx="8.6" cy="75" r="6.5" class="hf-mp-cap"/>
+                        <circle cx="17.2" cy="23.2" r="1.7" class="hf-mp-bead"/>
+                        <circle cx="17.2" cy="126.8" r="1.7" class="hf-mp-bead"/>
+                        <line x1="21.5" y1="7" x2="21.5" y2="143" class="hf-mp-grille"/>
+                        <line x1="26" y1="75" x2="122" y2="75" class="hf-mp-guide"/>
+                        <line x1="26" y1="25" x2="26" y2="125" class="hf-mp-guide"/>
+                        <line x1="24" y1="75" x2="28" y2="75" class="hf-mp-tick"/>
+                        <line x1="24" y1="25" x2="28" y2="25" class="hf-mp-tick"/>
+                        <line x1="24" y1="125" x2="28" y2="125" class="hf-mp-tick"/>
+                        <text x="31" y="77.5" class="hf-mp-lbl">CAP</text>
+                        <line x1="26" y1="140" x2="26" y2="146" class="hf-mp-tick"/>
+                        <line x1="58" y1="140" x2="58" y2="146" class="hf-mp-tick"/>
+                        <line x1="90" y1="140" x2="90" y2="146" class="hf-mp-tick"/>
+                        <line x1="122" y1="140" x2="122" y2="146" class="hf-mp-tick"/>
+                        <text x="122" y="137" class="hf-mp-lbl hf-mp-lbl-r">30 CM</text>
+                        <g rata-role="micdot" class="hf-mp-mic" transform="translate(28,75)">
                             <ellipse cx="5" cy="8.6" rx="10" ry="2" class="hf-mp-shadow"/>
                             <line x1="-1.5" y1="0" x2="-7.5" y2="0" class="hf-mp-aim"/>
                             <circle r="5" class="hf-mp-michead"/>
@@ -104,6 +108,7 @@
                     <div class="hf-mp-hidden">
                     {{#controls.6}}<div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.6}}
                     {{#controls.7}}<div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.7}}
+                    </div>
                     </div>
                 </div>
             </div>

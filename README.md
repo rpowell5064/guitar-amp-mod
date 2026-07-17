@@ -4,8 +4,9 @@ A complete guitar rig as LV2 plugins for the MOD / pi-Stomp platform: five
 algorithmic amp models + power-amp stage, a multi-era fuzz, drive/boost pedals,
 compressor, noise gate, modulation, delay, reverb, cabinet (IR), an input-trim
 utility — and **Hex Forge**, a single prewired, reorderable super-block that hosts
-the whole chain in one plugin. Amp, Drive, and Cabinet can also load your own
-**NAM (Neural Amp Modeler)** captures (both the legacy and new `.nam` formats).
+the whole chain in one plugin. Amp and Drive can also load your own
+**NAM (Neural Amp Modeler)** captures (both the legacy and new `.nam` formats);
+the Cabinet is pure IR/convolution (built-in cabs + your own `.wav` IRs).
 
 All DSP is original work; amp/pedal model names are trademark-clean parody names.
 

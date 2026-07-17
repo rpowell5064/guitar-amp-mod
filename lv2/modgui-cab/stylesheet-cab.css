@@ -149,9 +149,11 @@
 .mod-pedal-guitaramp-cab{{{cns}}} { font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; }
 
 /* == MIC PAD: draggable side-view mic placement ================================ */
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad { margin-top: 8px; text-align: center; }
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad .hf-agroup-t { display:block; font-size: 9px; letter-spacing: .18em; opacity: .55; margin-bottom: 5px; }
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-svg { width: 216px; height: 130px; display: inline-block; cursor: grab; touch-action: none; background: radial-gradient(120% 90% at 30% 35%, rgba(16,19,26,.9), rgba(5,6,9,.96)); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -10px 24px rgba(0,0,0,.35); }
+/* Same hf-agroup box as Cabinet/Room; column flex so the pad fills the stretched
+   column and the svg centres in whatever slack is left (bottom edges stay aligned). */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad { display: flex; flex-direction: column; box-sizing: border-box; text-align: center; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad .hf-agroup-body { flex: 1 1 auto; align-items: center; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-svg { width: 216px; height: 231px; display: inline-block; cursor: grab; touch-action: none; background: radial-gradient(120% 90% at 30% 35%, rgba(16,19,26,.9), rgba(5,6,9,.96)); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -10px 24px rgba(0,0,0,.35); }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-svg.hf-mp-live { cursor: grabbing; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-wall   { fill: rgba(255,255,255,.10); }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-baffle { fill: rgba(255,255,255,.16); }
@@ -176,6 +178,7 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-ro-r { text-anchor: end; }
 
 /* ── Cab panel: two columns — CABINET over ROOM left, mic pad right ─────────── */
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-cols { display: flex; gap: 18px; align-items: flex-start; justify-content: center; }
+/* stretch: the mic-pad box grows to exactly the CABINET+ROOM column height */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-cols { display: flex; gap: 18px; align-items: stretch; justify-content: center; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-left { display: flex; flex-direction: column; gap: 8px; }
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-right .hf-micpad { margin-top: 0; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-right { display: flex; align-items: stretch; }

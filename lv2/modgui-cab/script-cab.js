@@ -22,7 +22,7 @@ function (event, funcs) {
         var pos  = parseFloat(icon.data('cab_micpos'))  || 0;
         var dist = parseFloat(icon.data('cab_micdist')) || 0;
         var side = icon.data('cab_micside') === -1 ? -1 : 1;
-        var x = 28 + dist * 94, y = 42 - side * pos * 28;
+        var x = 28 + dist * 94, y = 75 - side * pos * 50;   // viewBox 140x150: centre 75, travel ±50
         pad.find('[rata-role=micdot]').attr('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
         var pn = pos < 0.12 ? 'CAP EDGE' : pos < 0.5 ? 'CONE' : pos < 0.85 ? 'CONE EDGE' : 'SURROUND';
         var dn = dist < 0.06 ? 'CLOSE' : Math.round(2 + dist * 28) + ' CM';
@@ -49,10 +49,10 @@ function (event, funcs) {
             var apply = function (e) {
                 var r = svg.getBoundingClientRect();
                 var vx = (e.clientX - r.left) / r.width  * 140;
-                var vy = (e.clientY - r.top)  / r.height * 84;
-                var off  = 42 - vy;
+                var vy = (e.clientY - r.top)  / r.height * 150;
+                var off  = 75 - vy;
                 var dist = Math.max(0, Math.min(1, (vx - 28) / 94));
-                var pos  = Math.max(0, Math.min(1, Math.abs(off) / 28));
+                var pos  = Math.max(0, Math.min(1, Math.abs(off) / 50));
                 icon.data('cab_micside', off < 0 ? -1 : 1);
                 if (pos < 0.05) pos = 0;
                 write(pos, dist);

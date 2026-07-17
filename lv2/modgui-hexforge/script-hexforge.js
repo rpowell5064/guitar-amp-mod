@@ -237,7 +237,7 @@ function (event, funcs) {
         var pos  = parseFloat(icon.data('hf_micpos'))  || 0;
         var dist = parseFloat(icon.data('hf_micdist')) || 0;
         var side = icon.data('hf_micside') === -1 ? -1 : 1;
-        var x = 28 + dist * 94, y = 42 - side * pos * 28;
+        var x = 28 + dist * 94, y = 63 - side * pos * 42;   // viewBox 140x126: centre 63, travel ±42
         pad.find('[rata-role=micdot]').attr('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
         var pn = pos < 0.12 ? 'CAP EDGE' : pos < 0.5 ? 'CONE' : pos < 0.85 ? 'CONE EDGE' : 'SURROUND';
         var dn = dist < 0.06 ? 'CLOSE' : Math.round(2 + dist * 28) + ' CM';
@@ -619,10 +619,10 @@ function (event, funcs) {
             function apply(e) {
                 var r = svg.getBoundingClientRect();
                 var vx = (e.clientX - r.left) / r.width  * 140;
-                var vy = (e.clientY - r.top)  / r.height * 84;
-                var off  = 42 - vy;                                        // signed: + above cap, - below
+                var vy = (e.clientY - r.top)  / r.height * 126;
+                var off  = 63 - vy;                                        // signed: + above cap, - below
                 var dist = Math.max(0, Math.min(1, (vx - 28) / 94));
-                var pos  = Math.max(0, Math.min(1, Math.abs(off) / 28));
+                var pos  = Math.max(0, Math.min(1, Math.abs(off) / 42));
                 icon.data('hf_micside', off < 0 ? -1 : 1);                 // marker follows the pointer's side
                 if (pos < 0.05) pos = 0;                                   // gentle snap onto the cap axis
                 write(pos, dist);
