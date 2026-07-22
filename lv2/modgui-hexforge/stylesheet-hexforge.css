@@ -722,6 +722,7 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m9 { --panel:url(/resources/faceplate-m9.png{{{ns}}}); --tint:rgba(46,96,150,.34);   --badge:#dbe7f5; } /* Backline Plus — Peavey slate + blue (light badge) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m10 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --cab:url(/resources/cabinet-m1.png{{{ns}}}); --tint:rgba(196,158,66,.36); --badge:#1a1405; } /* Plexiglass — brighter plexi gold (reuses the Marshall panel) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m0.png{{{ns}}}); --cab:url(/resources/cabinet-m0.png{{{ns}}}); --tint:rgba(34,58,46,.40); --badge:#dfeae4; } /* Boojum V — Mesa black/chrome + green tint (reuses the silver panel) */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-face-m12 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --cab:url(/resources/cabinet-m2.png{{{ns}}}); --tint:rgba(168,176,188,.30); --badge:#e9edf3; } /* Diamond Plate — Recto chrome diamond-plate silver over the black panel (light badge) */
 
 /* Amp knob groups (Preamp / Tone Stack / Power Amp / channel-specific) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 12px; }

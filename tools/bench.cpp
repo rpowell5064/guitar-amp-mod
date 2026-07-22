@@ -104,6 +104,10 @@ int main() {
     { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::OrangeRockerverb50);
       PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_EL34);
       run("Amp: Rockerverb + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
+    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::MesaDualRectifier);
+      a.setParameter("mode", 7.0f);   // CH3 Modern = worst case (5 stages + DNR + post-clip voicing)
+      PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_6L6GC);
+      run("Amp: Recto + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
     // Sunn Model T: its PA is internal, so measure the amp block alone — in each
     // channel-link mode. Parallel/Series run BOTH preamp channels (≈2x triodes).
     // Silence column flags denormal/decay cost (relevant to "notes cut out").

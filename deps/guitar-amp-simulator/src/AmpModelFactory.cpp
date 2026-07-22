@@ -10,6 +10,7 @@
 #include "PeaveyBackstageModel.h"
 #include "MarshallPlexi1959.h"
 #include "MesaMarkV.h"
+#include "MesaDualRectifier.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -24,6 +25,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::PeaveyBackstage:     return std::make_unique<PeaveyBackstageModel>();
         case ModelID::MarshallPlexi1959:   return std::make_unique<MarshallPlexi1959>();
         case ModelID::MesaMarkV:           return std::make_unique<MesaMarkV>();
+        case ModelID::MesaDualRectifier:   return std::make_unique<MesaDualRectifier>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -50,6 +52,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::PeaveyBackstage:     return "Peavey Backstage Plus";
         case ModelID::MarshallPlexi1959:   return "Marshall Plexi 1959";
         case ModelID::MesaMarkV:           return "Mesa Mark V";
+        case ModelID::MesaDualRectifier:   return "Diamond Plate";
         default:                           return "Unknown";
     }
 }
@@ -67,6 +70,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::PeaveyBackstage:     return 0;  // solid-state (no power tube)
         case ModelID::MarshallPlexi1959:   return 1;  // EL34
         case ModelID::MesaMarkV:           return 1;  // EL34/6L6 Simul-Class
+        case ModelID::MesaDualRectifier:   return 0;  // 6L6GC
         default:                           return 1;
     }
 }
@@ -84,6 +88,7 @@ const char* const* AmpModelFactory::getAllModelNames() noexcept {
         "Peavey Backstage Plus",
         "Marshall Plexi 1959",
         "Mesa Mark V",
+        "Diamond Plate",
         nullptr
     };
     return kNames;
@@ -101,5 +106,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Peavey Backstage Plus")     return ModelID::PeaveyBackstage;
     if (name == "Marshall Plexi 1959")       return ModelID::MarshallPlexi1959;
     if (name == "Mesa Mark V")               return ModelID::MesaMarkV;
+    if (name == "Diamond Plate")             return ModelID::MesaDualRectifier;
     return ModelID::SunnModelT;
 }

@@ -368,6 +368,8 @@
 /* m10 Plexiglass (Marshall Super Lead) reuses the gold Marshall plate; m11 Cali V (Mesa) reuses the black plate w/ a green tint */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m10 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --tint:rgba(150,120,30,.42); --badge:#1c1503; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(20,74,52,.46); --badge:#d8f2e6; }
+/* m12 Diamond Plate (Mesa Dual Rectifier) reuses the black plate w/ a chrome diamond-plate silver tint */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m12 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(168,176,188,.30); --badge:#e9edf3; }
 /* grouped knob fieldsets on the plate */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 10px 14px 16px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }

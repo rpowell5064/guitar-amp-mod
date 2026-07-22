@@ -141,6 +141,34 @@
                 </div>
             </div>
 
+            <!-- ── DIAMOND PLATE (Mesa Dual Rectifier): 8-mode switcher + Variac/Rectifier ── -->
+            <div rata-role="rectogroup" class="hf-pa-face mod-hidden">
+                <div class="hf-pa-title">Diamond Plate</div>
+                <div class="mod-control-group mod-row-mixed clearfix">
+                    {{#controls.42}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">Mode</span>
+                    {{/controls.42}}
+                    {{#controls.43}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">Variac</span>
+                    {{/controls.43}}
+                    {{#controls.44}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">Rectifier</span>
+                    {{/controls.44}}
+                </div>
+            </div>
+
             <!-- ── BRITE CHANNEL (Sunn Model T / Doom Daddy only) ── -->
             <div rata-role="sunngroup" class="hf-pa-face mod-hidden">
                 <div class="hf-pa-title">Brite Channel</div>

@@ -63,6 +63,7 @@ static const ModelSpec kSpecs[] = {
     {"backline",  AmpModel::PeaveyBackstage,    4.15f},
     {"plexi",     AmpModel::MarshallPlexi,      1.49f},
     {"mesa",      AmpModel::MesaMarkV,          2.16f},
+    {"recto",     AmpModel::MesaDualRectifier,  1.0f},
 };
 
 struct Chain {
@@ -83,7 +84,8 @@ struct Chain {
         amp.prepare(sr, 512, 1);
         amp.setAmpModel(spec.m);
         amp.setParameter("channel", channel);
-        if (spec.m == AmpModel::MesaMarkV) amp.setParameter("mode", (float)mvMode);
+        if (spec.m == AmpModel::MesaMarkV || spec.m == AmpModel::MesaDualRectifier)
+            amp.setParameter("mode", (float)mvMode);
         amp.setParameter("gain",   gain);
         amp.setParameter("bass",   0.40f);
         amp.setParameter("mid",    0.50f);

@@ -32,7 +32,7 @@ static constexpr int kPathMax = 1024;
 // LV2 model index → AmpModel enum. Index 5 = NAM (handled separately). Beardo BE
 // (Friedman) is index 6, AFTER NAM, so existing saved boards (which store the model
 // index) keep their meaning — inserting it earlier would shift NAM and break them.
-static const AmpModel kModelMap[12] = {
+static const AmpModel kModelMap[13] = {
     AmpModel::FenderDeluxe,        // 0
     AmpModel::MarshallJCM800,      // 1
     AmpModel::EVH5150III,          // 2
@@ -45,20 +45,22 @@ static const AmpModel kModelMap[12] = {
     AmpModel::PeaveyBackstage,     // 9 = Backline Plus (solid-state Peavey Backstage)
     AmpModel::MarshallPlexi,       // 10 = Plexiglass (Marshall 1959 Super Lead, EL34)
     AmpModel::MesaMarkV,           // 11 = Boojum V (Mesa Mark V, 9 modes, Simul-Class)
+    AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
 };
-static const int kCanonical[12] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [8] Vox, [9] Backline → clean PA; [10] Plexi, [11] Mesa → JCM800 EL34 PA)
+static const int kCanonical[13] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1, 7 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [8] Vox, [9] Backline → clean PA; [10] Plexi, [11] Mesa → JCM800 EL34 PA; [12] Recto → its own 6L6 case)
 static constexpr int kSunnIdx     = 3;     // Sunn's LV2 model index
 static constexpr int kNamIdx      = 5;     // NAM slot
 static constexpr int kFriedmanIdx = 6;     // Beardo BE
 static constexpr int kMesaIdx     = 11;    // Boojum V (Mesa Mark V)
-static constexpr int kMaxModel    = 11;    // highest selectable model index (Boojum V)
+static constexpr int kRectoIdx    = 12;    // Diamond Plate (Mesa Dual Rectifier)
+static constexpr int kMaxModel    = 12;    // highest selectable model index (Diamond Plate)
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
-static const int kModelTube[12] = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1 };  // [6] Friedman EL34; [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state; [10] Plexi EL34; [11] Mesa EL34/6L6
+static const int kModelTube[13] = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1, 0 };  // [6] Friedman EL34; [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state; [10] Plexi EL34; [11] Mesa EL34/6L6; [12] Recto 6L6
 // Synced to hexforge kAmpMakeup for cross-plugin PARITY (2026-07-09): identical amp+power-amp DSP,
 // so the same makeup levels the standalone Amp (into a cab) exactly like Hex Forge. Distorted amps
 // -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
-static const float kModelMakeup[12] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f };  // [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup inside the model)
+static const float kModelMakeup[13] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 1.0f };  // [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -71,6 +73,7 @@ enum AmpPorts {
     P_MV_MODE, P_MV_GEQ0, P_MV_GEQ1, P_MV_GEQ2, P_MV_GEQ3, P_MV_GEQ4, P_MV_EQPRESET,  // Cali V (Mesa Mark V): 9-mode + 5-band graphic EQ
     P_NAM_GAIN, P_NAM_VOL,                                     // Neural (NAM): input drive + output level (dB), used only in NAM mode
     P_PL_VOL2,                                                 // Plexiglass (1959): Vol II — jumpered Normal-channel volume (0 = pre-Vol-II voicing)
+    P_RC_MODE, P_RC_VARIAC, P_RC_RECT,                         // Diamond Plate (Dual Rectifier): 8-mode + Variac (Bold/Spongy) + rectifier (Silicon/Tube)
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
 };
@@ -359,6 +362,15 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("geq4",     *p->ctrl[P_MV_GEQ4]);
         amp->setParameter("eqpreset", *p->ctrl[P_MV_EQPRESET]);
     }
+    // Diamond Plate (Dual Rectifier) — 8-mode selector + power-section feel switches.
+    if (modelIdx == kRectoIdx) {
+        amp->setParameter("mode",   *p->ctrl[P_RC_MODE]);
+        amp->setParameter("variac", *p->ctrl[P_RC_VARIAC]);
+        amp->setParameter("rect",   *p->ctrl[P_RC_RECT]);
+    }
+    // Recto Modern modes (4, 7) disconnect the power-amp NFB loop on the real amp.
+    const bool rectoModern = (modelIdx == kRectoIdx) && (*p->ctrl[P_RC_MODE] > 3.5f) &&
+                             (*p->ctrl[P_RC_MODE] < 4.5f || *p->ctrl[P_RC_MODE] > 6.5f);
 
     int desiredTube;
     if (*p->ctrl[P_PA_AUTO] > 0.5f) {
@@ -366,7 +378,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("master",   d.master);
         p->pa.setParameter("presence", d.presence);
         p->pa.setParameter("depth",    d.depth);
-        p->pa.setParameter("nfb",      d.nfb);
+        p->pa.setParameter("nfb",      rectoModern ? 0.05f : d.nfb);
         p->pa.setParameter("sag",      d.sag);
         p->pa.setParameter("resonance", *p->ctrl[P_PA_RESON]);
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
@@ -402,7 +414,10 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     // 0.35 — both leak badly below the generic gain>0.5 test, so they get their own conditions.
     const bool  evhRed    = (modelIdx == 2) && (*p->ctrl[P_CHANNEL] >= 0.5f);
     const bool  jcmDriven = (modelIdx == 1) && (driveKnob > 0.3f);
-    const bool  driven    = (driveKnob > 0.5f) || mesaLead || evhRed || jcmDriven;
+    // Recto: CH2/CH3 Vintage+Modern (modes 3,4,6,7) carry high gain at any knob setting.
+    const bool  rectoHot  = (modelIdx == kRectoIdx) && (*p->ctrl[P_RC_MODE] >= 2.5f) &&
+                            !(*p->ctrl[P_RC_MODE] >= 4.5f && *p->ctrl[P_RC_MODE] < 5.5f);
+    const bool  driven    = (driveKnob > 0.5f) || mesaLead || evhRed || jcmDriven || rectoHot;
     p->inGate.setBypass(false);
     p->inGate.setParameter("threshold", driven ? -50.0f : -90.0f);
 

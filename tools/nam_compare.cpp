@@ -193,6 +193,8 @@ static bool resolveModel(std::string name, ModelSpec& out) {
                               { out = {AmpModel::MarshallPlexi,       1, 1, false, "Marshall Plexi 1959"}; return true; }
     if (name == "markv" || name == "mesa" || name == "mkv" || name == "boogie")
                               { out = {AmpModel::MesaMarkV,           1, 1, false, "Mesa Mark V"}; return true; }
+    if (name == "recto" || name == "dualrec" || name == "rectifier" || name == "diamondplate")
+                              { out = {AmpModel::MesaDualRectifier,   7, 0, false, "Mesa Dual Rectifier (Diamond Plate)"}; return true; }
     if (name == "evh")        { out = {AmpModel::EVH5150III,         2, 1, false, "EVH 5150 III"}; return true; }
     if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 0, true,  "Sunn Model T"}; return true; }
     if (name == "rockerverb" || name == "orange")
@@ -243,7 +245,8 @@ struct Knobs {
     float channel = 0.0f, reson = 0.5f;
     float tone = 0.5f, level = 0.7f;   // drive-pedal: tone=filter, level=volume (gain=drive)
     float fat = 0.0f, c45 = 0.0f, sat = 0.0f;  // Friedman BE-Deluxe voicing toggles
-    float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+)
+    float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+); Recto mode 0..7
+    float variac = 0.0f, rect = 0.0f;           // Recto: 0 Bold/Silicon, 1 Spongy/Tube
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
 };
 
@@ -401,15 +404,20 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     amp.setParameter("fat", k.fat);   // Friedman toggles (ignored by other models)
     amp.setParameter("c45", k.c45);
     amp.setParameter("sat", k.sat);
-    amp.setParameter("mode", k.mode); // Mesa Mark V mode 0..8 (ignored by other models)
+    amp.setParameter("mode", k.mode); // Mesa Mark V mode 0..8 / Recto mode 0..7 (ignored by other models)
+    amp.setParameter("variac", k.variac);  // Recto power-section switches (ignored by other models)
+    amp.setParameter("rect", k.rect);
 
     PowerAmpProcessor pa;
     pa.prepare(sr, BLK, 1);
     const auto d = PowerAmpProcessor::getDefaultsForModel(m.idx);
+    // Recto Modern modes disconnect the NFB loop — mirror the plugin's host-side override.
+    const int modeI = int(k.mode + 0.5f);
+    const bool rectoModern = m.model == AmpModel::MesaDualRectifier && (modeI == 4 || modeI == 7);
     pa.setParameter("master", d.master);
     pa.setParameter("presence", d.presence);
     pa.setParameter("depth", d.depth);
-    pa.setParameter("nfb", d.nfb);
+    pa.setParameter("nfb", rectoModern ? 0.05f : d.nfb);
     pa.setParameter("sag", d.sag);
     pa.setParameter("bloomvca", d.bloomVca);
     pa.setParameter("resonance", 0.5f);
@@ -741,7 +749,8 @@ int main(int argc, char** argv) {
     knob("--sag", k.sag);     knob("--channel", k.channel); knob("--reson", k.reson);
     knob("--tone", k.tone);   knob("--level", k.level);   // drive-pedal filter/volume
     knob("--fat", k.fat);     knob("--c45", k.c45);       knob("--sat", k.sat);  // Friedman toggles
-    knob("--mode", k.mode);   // Mesa Mark V mode 0..8
+    knob("--mode", k.mode);   // Mesa Mark V mode 0..8 / Recto mode 0..7
+    knob("--variac", k.variac); knob("--rect", k.rect);  // Recto power-section switches
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
 
     // Load the reference capture.

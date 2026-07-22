@@ -20,7 +20,7 @@ function (event, funcs) {
     // Voicing/Power Amp are internal-model-specific, so they hide in Neural mode.
     function refresh_tabs(icon, m) {
         var nam = (m === 5);
-        var hasVoice = !nam && (m === 2 || m === 3 || m === 4 || m === 6 || m === 11);
+        var hasVoice = !nam && (m === 2 || m === 3 || m === 4 || m === 6 || m === 11 || m === 12);
         var hasPower = !(m === 3 || nam);   // Sunn PA auto-bypassed; NAM capture has its own
         function tab(name, on) {
             var el = icon.find('[rata-role=tab][data-tab=' + name + ']')[0];
@@ -52,9 +52,11 @@ function (event, funcs) {
         icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (nam ? 'Output' : 'Gain')));
         // Cali V (11): 9-mode channel switcher + 5-band graphic EQ
         icon.find('[rata-role=mesagroup]').toggleClass('mod-hidden', m !== 11);
+        // Diamond Plate (12): 8-mode channel switcher + Variac/Rectifier feel switches
+        icon.find('[rata-role=rectogroup]').toggleClass('mod-hidden', m !== 12);
         // Per-model realistic faceplate skin + engraved badge (Forge parity)
-        icon.find('[rata-role=ampface]').attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 11) ? m : 1));
-        var NAMES = ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V'];
+        icon.find('[rata-role=ampface]').attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 12) ? m : 1));
+        var NAMES = ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate'];
         icon.find('[rata-role=ampbadge]').text(NAMES[m] || 'AMP');
         // Which tabs make sense for this model, then keep the active tab in sync with the mode:
         // switching the model (via dropdown or preset recall) to/from Neural flips the tab too.

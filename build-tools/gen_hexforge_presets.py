@@ -326,7 +326,7 @@ add(
     # was too clean behind it. Opened the gate (thresh -52->-64, longer tail), +Octavia sustain 0.62->0.76,
     # +amp gain 0.35->0.46 so the plexi adds body/sustain under the octave-fuzz.
     wh={"enable":1,"pos":2,"type":"Fixed","freq":0.55,"q":0.55,"mix":0.42},  # cocked-wah honk (tamed)
-    fz={"enable":1,"pedal":"Octavia","sustain":0.76,"tone":0.5,"volume":0.5},  # Octavia is near-0dBFS; keep it near guitar level
+    fz={"enable":1,"pedal":"Octavius","sustain":0.76,"tone":0.5,"volume":0.5},  # Octavius is near-0dBFS; keep it near guitar level ("Octavia" renamed in the de-trademark pass)
     # 2026-07-14 "starved Octavia" fix (user): the real rig was the Octavia into a DIMED, JUMPERED Super
     # Lead — the fat horn sustain is the cranked power amp + Normal channel, not the pedal. Vol I 0.62 +
     # Vol II 0.55 + master 0.75 + sag up = the roaring platform the octave rings over.
@@ -1026,7 +1026,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 200, "port count drift: got %d" % N_PORTS   # 186: Cali V graphic EQ; 187: Cali V EQ preset; 188: md_offset (v18); 194: +6 NAM gain/level trims (v19); 195: +amp_pl_vol2 Plexi Vol II; 197: +cab_micpos/cab_micdist mic placement; 200: +cab_roomon/roommix/roomamt room ambience (2026-07-14)
+    assert N_PORTS == 203, "port count drift: got %d" % N_PORTS   # 203: + amp_rc_mode/variac/rect (Diamond Plate); 186: Cali V graphic EQ; 187: Cali V EQ preset; 188: md_offset (v18); 194: +6 NAM gain/level trims (v19); 195: +amp_pl_vol2 Plexi Vol II; 197: +cab_micpos/cab_micdist mic placement; 200: +cab_roomon/roommix/roomamt room ambience (2026-07-14)
     # ── Auto-match a built-in cab to each preset from its amp model ──────────────
     # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
     # the Factory Cab (@factory / V30). See CabModels.h for the voicings.

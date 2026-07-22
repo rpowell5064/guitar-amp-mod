@@ -70,6 +70,7 @@ public:
             case AmpModel::PeaveyBackstage:    fid = FID::PeaveyBackstage;     break;
             case AmpModel::MarshallPlexi:      fid = FID::MarshallPlexi1959;   break;
             case AmpModel::MesaMarkV:          fid = FID::MesaMarkV;           break;
+            case AmpModel::MesaDualRectifier:  fid = FID::MesaDualRectifier;   break;
             default:                            isExtended = false;              break;
         }
 

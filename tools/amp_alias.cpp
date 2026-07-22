@@ -11,6 +11,7 @@
 //       build/deps/guitar-amp-simulator/libGuitarAmpSim.a -o /tmp/amp_alias
 //   /tmp/amp_alias
 #include "MesaMarkV.h"
+#include "MesaDualRectifier.h"
 #include "OversamplingWrapper.h"
 #include <complex>
 #include <vector>
@@ -50,8 +51,9 @@ void fft(std::vector<std::complex<double>>& a) {
     }
 }
 
-// Configure a MesaMarkV for a high-gain test.
-void setup(MesaMarkV& amp, int mode, float gain) {
+// Configure a model for a high-gain test (MesaMarkV or MesaDualRectifier — same param ids).
+template <typename Model>
+void setup(Model& amp, int mode, float gain) {
     amp.setParameter("mode", (float)mode);
     amp.setParameter("gain", gain);
     amp.setParameter("master", 0.7f);
@@ -60,19 +62,20 @@ void setup(MesaMarkV& amp, int mode, float gain) {
     amp.setParameter("sag", 0.2f);
 }
 
-// factor==1 => bare MesaMarkV at 48k (NO oversampling). factor 2/4 => OversamplingWrapper.
+// factor==1 => bare model at 48k (NO oversampling). factor 2/4 => OversamplingWrapper.
+template <typename Model>
 std::vector<float> render(int factor, int mode, float gain, double f0) {
     const int total = kN + 8192;                 // extra head to settle smoothers, discarded
     std::vector<float> out(total);
     if (factor == 1) {
-        MesaMarkV amp; amp.prepare(kFs, 512); setup(amp, mode, gain); amp.reset();
+        Model amp; amp.prepare(kFs, 512); setup(amp, mode, gain); amp.reset();
         for (int i = 0; i < total; ++i) {
             float x = kInAmp * (float)std::sin(2.0 * kPi * f0 * i / kFs);
             amp.advanceSmoothing();
             out[i] = amp.processSample(x, 0);
         }
     } else {
-        OversamplingWrapper w(std::make_unique<MesaMarkV>(), factor);
+        OversamplingWrapper w(std::make_unique<Model>(), factor);
         w.prepare(kFs, 512, 1);
         // params forward through the wrapper to the model
         w.setParameter("mode", (float)mode); w.setParameter("gain", gain);
@@ -154,11 +157,29 @@ int main() {
            "1x floor/peak", "2x floor/peak", "4x floor/peak (SHIP)");
     for (int mode : modes) {
         for (double f0 : f0s) {
-            Result r1 = analyze(render(1, mode, gain, f0), f0);
-            Result r2 = analyze(render(2, mode, gain, f0), f0);
-            Result r4 = analyze(render(4, mode, gain, f0), f0);
+            Result r1 = analyze(render<MesaMarkV>(1, mode, gain, f0), f0);
+            Result r2 = analyze(render<MesaMarkV>(2, mode, gain, f0), f0);
+            Result r4 = analyze(render<MesaMarkV>(4, mode, gain, f0), f0);
             printf("%-8s %-6.0f | %7.1f / %7.1f      | %7.1f / %7.1f      | %7.1f / %7.1f\n",
                    modeName(mode), f0,
+                   r1.aliasFloorDb, r1.peakAliasDb,
+                   r2.aliasFloorDb, r2.peakAliasDb,
+                   r4.aliasFloorDb, r4.peakAliasDb);
+        }
+    }
+    // Diamond Plate (Mesa Dual Rectifier): same sweep over its hottest modes.
+    const int rmodes[] = { 4, 6, 7 };
+    auto rname = [](int m){ switch (m) { case 4: return "C2 Mod"; case 6: return "C3 Vin"; default: return "C3 Mod"; } };
+    printf("\nMesa Dual Rectifier (Diamond Plate) aliasing — same measure\n\n");
+    printf("%-8s %-6s | %-22s | %-22s | %-22s\n", "mode", "f0",
+           "1x floor/peak", "2x floor/peak", "4x floor/peak (SHIP)");
+    for (int mode : rmodes) {
+        for (double f0 : f0s) {
+            Result r1 = analyze(render<MesaDualRectifier>(1, mode, gain, f0), f0);
+            Result r2 = analyze(render<MesaDualRectifier>(2, mode, gain, f0), f0);
+            Result r4 = analyze(render<MesaDualRectifier>(4, mode, gain, f0), f0);
+            printf("%-8s %-6.0f | %7.1f / %7.1f      | %7.1f / %7.1f      | %7.1f / %7.1f\n",
+                   rname(mode), f0,
                    r1.aliasFloorDb, r1.peakAliasDb,
                    r2.aliasFloorDb, r2.peakAliasDb,
                    r4.aliasFloorDb, r4.peakAliasDb);

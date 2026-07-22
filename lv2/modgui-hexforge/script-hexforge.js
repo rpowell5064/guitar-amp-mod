@@ -12,7 +12,7 @@ function (event, funcs) {
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
     // the HTML instead; these are the ones we can't (enumerated → would show a number).
     var NV = {
-        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V'],
+        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate'],
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
@@ -251,14 +251,15 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-chan', m === 2 || m === 4);
         show(icon, 'amp', '.c-amp-be',   m === 6);
         show(icon, 'amp', '.c-amp-mesa', m === 11);
+        show(icon, 'amp', '.c-amp-recto', m === 12);
         show(icon, 'amp', '.c-amp-reso', m === 2);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
         // Tab buttons: Voicing only for models with a channel/EQ chassis (Sunn 3 / Beardo 6 /
-        // Cali V 11); Power Amp hidden for Sunn (auto-bypassed) and NAM (capture has its own).
-        var showVoice = (m === 3 || m === 6 || m === 11);
+        // Cali V 11 / Diamond Plate 12); Power Amp hidden for Sunn (auto-bypassed) and NAM (capture has its own).
+        var showVoice = (m === 3 || m === 6 || m === 11 || m === 12);
         var showPower = (m !== 3 && m !== 5);
         var p = panelOf(icon, 'amp');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);

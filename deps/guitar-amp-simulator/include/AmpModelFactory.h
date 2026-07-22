@@ -24,9 +24,10 @@ public:
         PeaveyBackstage    = 8,
         MarshallPlexi1959  = 9,
         MesaMarkV          = 10,
+        MesaDualRectifier  = 11,
     };
 
-    static constexpr int kNumModels = 11;
+    static constexpr int kNumModels = 12;
 
     // Returns ownership of a newly constructed model. Never returns null;
     // unknown IDs fall back to SunnModelT.

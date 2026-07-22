@@ -86,7 +86,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 11, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11)]),
+    ("model",         "Model",        "e", 0, 12, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -340,6 +340,18 @@ ctrl.append(mkport("CAB_ROOMON",  "cab_roomon",  "Cab Room",        "t", 0, 1, 1
 ctrl.append(mkport("CAB_ROOMMIX", "cab_roommix", "Cab Room Mix",    "f", 0, 1, 0.12, None, "Room Mix"))
 ctrl.append(mkport("CAB_ROOMAMT", "cab_roomamt", "Cab Room Amount", "f", 0, 1, 0.35, None, "Room Size"))
 
+# ── Diamond Plate (Mesa Dual Rectifier, amp model 12) — 8-mode selector across the Solo
+# Head's 3 channels + the power-section feel switches: Variac (Bold/Spongy) and rectifier
+# type (Silicon/Tube). Appended before the preset commands so every existing index is
+# preserved; pre-v20 blobs migrate to the defaults {7 CH3 Modern, Bold, Silicon}.
+# Shown only when Amp model = Diamond Plate (COND c-amp-recto). Migrated v20.
+ctrl.append(mkport("AMP_RC_MODE", "amp_rc_mode", "Amp Recto Mode", "e", 0, 7, 7,
+    [("CH1 Clean",0),("CH1 Pushed",1),("CH2 Raw",2),("CH2 Vintage",3),("CH2 Modern",4),("CH3 Raw",5),("CH3 Vintage",6),("CH3 Modern",7)], "Mode"))
+ctrl.append(mkport("AMP_RC_VARIAC", "amp_rc_variac", "Amp Recto Variac", "e", 0, 1, 0,
+    [("Bold",0),("Spongy",1)], "Variac"))
+ctrl.append(mkport("AMP_RC_RECT", "amp_rc_rect", "Amp Recto Rectifier", "e", 0, 1, 0,
+    [("Silicon",0),("Tube",1)], "Rectifier"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -512,7 +524,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 131 ;")
+    L.append("    lv2:microVersion 132 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -623,6 +635,8 @@ COND = {
     "amp_mv_mode":"c-amp-mesa",
     "amp_mv_geq0":"c-amp-mesa", "amp_mv_geq1":"c-amp-mesa", "amp_mv_geq2":"c-amp-mesa",
     "amp_mv_geq3":"c-amp-mesa", "amp_mv_geq4":"c-amp-mesa", "amp_mv_eqpreset":"c-amp-mesa",
+    # Diamond Plate / Mesa Dual Rectifier (model 12): 8-mode selector + Variac/Rectifier
+    "amp_rc_mode":"c-amp-recto", "amp_rc_variac":"c-amp-recto", "amp_rc_rect":"c-amp-recto",
     # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
     "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
     "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
@@ -893,6 +907,14 @@ def amp_body():
                 + '</div>'
                 + '</div>')
     mesa = mesa_body()
+    # Diamond Plate (Mesa Dual Rectifier): Mode + Variac + Rectifier dropdowns, one row —
+    # the Cali V dropdown treatment exactly (no extra chrome).
+    recto = ('<div class="hf-pa-face c-amp-recto"><div class="hf-pa-title">Diamond Plate</div>'
+             + '<div class="hf-mv-group"><div class="hf-mv-selrow">'
+             + render_ctrl(CTRL_BY_SYM["amp_rc_mode"])
+             + render_ctrl(CTRL_BY_SYM["amp_rc_variac"])
+             + render_ctrl(CTRL_BY_SYM["amp_rc_rect"])
+             + '</div></div></div>')
     # Fold the stacked chassis into TABS (Amp / Voicing / Power Amp) — only one panel shows at
     # a time, so the amp detail is no longer a giant vertical stack (mirrors the standalone Amp
     # pedal). script-hexforge.js wires the tab clicks and hides tabs that don't apply to the
@@ -905,7 +927,7 @@ def amp_body():
             '</div>')
     panels = ('<div class="hf-atabpanels">'
               '<div class="hf-atabpanel hf-atab-on" rata-role="apanel" data-tab="amp" role="tabpanel" aria-label="Amp">' + face + '</div>'
-              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="power" role="tabpanel" aria-label="Power Amp">' + pa + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'
               '</div>')

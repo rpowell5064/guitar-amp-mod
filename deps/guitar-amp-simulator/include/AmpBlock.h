@@ -18,7 +18,8 @@ enum class AmpModel {
     VoxAC30,           // Bright Class-A EL84 chime (AC30 Top Boost)
     PeaveyBackstage,   // Solid-state practice combo (Backline Plus / Peavey Backstage Plus)
     MarshallPlexi,     // 1959 Super Lead Plexi — bright, power-amp-driven EL34 crunch
-    MesaMarkV          // Mesa/Boogie Mark V — 9 modes across 3 channels, Simul-Class
+    MesaMarkV,         // Mesa/Boogie Mark V — 9 modes across 3 channels, Simul-Class
+    MesaDualRectifier  // Mesa Dual Rectifier — 8 modes across 3 channels, 6L6, variac/rect switches
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

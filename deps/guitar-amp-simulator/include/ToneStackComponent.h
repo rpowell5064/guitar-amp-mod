@@ -20,7 +20,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 class ToneStackComponent {
 public:
-    enum class Type { Fender, Marshall, Vox, Orange };
+    enum class Type { Fender, Marshall, Vox, Orange, Recto };
 
     // Configure the tonestack for a topology + sample rate.
     // Call whenever the topology, sample rate, or any control changes.
@@ -50,6 +50,7 @@ private:
     static const TypeSpec kMarshall;
     static const TypeSpec kVox;
     static const TypeSpec kOrange;
+    static const TypeSpec kRecto;
 
     static const TypeSpec& specFor(Type t) noexcept;
 

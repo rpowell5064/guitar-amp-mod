@@ -57,11 +57,26 @@ const ToneStackComponent::TypeSpec ToneStackComponent::kOrange = {
     2.0f
 };
 
+// Mesa Dual Rectifier style (250k/250k/25k pots, 500 pF / 0.022 µF / 0.022 µF, 47k slope):
+//   Bass shelf @ 90 Hz ±14 dB
+//   Mid notch @ 550 Hz — the user's Solo Head captures put the scoop bottom at ~500-800 Hz
+//   (every 1/3-oct band in all 7 captures rises away from the 500 Hz normalization point)
+//   Treble shelf @ 4.5 kHz ±14 dB
+//   Heavy passive interaction (dimed bass+treble carve the low-mid scoop that IS the Recto sound)
+const ToneStackComponent::TypeSpec ToneStackComponent::kRecto = {
+    90.0,   14.0,
+    550.0,  12.0, 0.7,
+    4500.0, 14.0,
+    4000.0, 10.0,
+    5.0f
+};
+
 const ToneStackComponent::TypeSpec& ToneStackComponent::specFor(Type t) noexcept {
     switch (t) {
         case Type::Marshall: return kMarshall;
         case Type::Vox:      return kVox;
         case Type::Orange:   return kOrange;
+        case Type::Recto:    return kRecto;
         default:             return kFender;
     }
 }
