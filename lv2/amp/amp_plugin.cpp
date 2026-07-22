@@ -62,7 +62,7 @@ static const int kModelTube[14] = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0 }; 
 // Synced to hexforge kAmpMakeup for cross-plugin PARITY (2026-07-09): identical amp+power-amp DSP,
 // so the same makeup levels the standalone Amp (into a cab) exactly like Hex Forge. Distorted amps
 // -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
-static const float kModelMakeup[14] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 1.0f, 1.0f };  // [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
+static const float kModelMakeup[14] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f };  // [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
