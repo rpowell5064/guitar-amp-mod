@@ -132,8 +132,11 @@ void MesaDualRectifier::recalcFilters() noexcept {
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_)); // Recto bite
         c.spongySh.setCoeffs(Filters::highshelf(3500.0, variac_ ? -1.5 : 0.0, oversampledFs_)); // browner variac top
-        c.bodySh.setCoeffs(Filters::lowshelf(m.bodyFc, m.bodyDb, oversampledFs_));       // post-clip thump
-        c.subSh.setCoeffs(Filters::lowshelf(55.0, m.subDb, oversampledFs_));             // OT/load sub-resonance
+        // The post-clip low restoration must FOLLOW the bass knob (it bypasses the tone
+        // stack, which killed the Modern modes' bass authority): noon = voiced level.
+        const double bassSc = 0.55 + 0.9 * double(bass_);
+        c.bodySh.setCoeffs(Filters::lowshelf(m.bodyFc, m.bodyDb * bassSc, oversampledFs_));   // post-clip thump
+        c.subSh.setCoeffs(Filters::lowshelf(55.0, m.subDb * bassSc, oversampledFs_));         // OT/load sub-resonance
         c.postPk.setCoeffs(Filters::peaking(m.postHiFc, m.postHiDb, m.postHiQ, oversampledFs_)); // post-clip bite
         // The captures show a distinct ~200 Hz bump on every dirty mode (OT/load resonance,
         // strongest with the NFB loop out) and extended air above 5 kHz on the Modern modes.
@@ -234,8 +237,9 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     // Parallel low path (Modern): the tight modes strip lows before the cascade, so the
     // low end rides around it — gently rounded, bounded (±1), free of the attack-step
     // thump that re-boosting the stripped band with big shelves would produce.
-    if (m.lowKeep > 0.0f)   // scaled by makeup so the low/main balance tracks per-mode leveling
-        x += softLimit(c.lowKeepLP.process(lowTap) * m.lowKeep) * (8.0f * m.makeup);
+    if (m.lowKeep > 0.0f)   // scaled by makeup so the low/main balance tracks per-mode leveling,
+                            // and by the bass knob (the parallel lows bypass the tone stack)
+        x += softLimit(c.lowKeepLP.process(lowTap) * m.lowKeep) * (8.0f * m.makeup * (0.55f + 0.9f * bass_));
     x = c.postPk.process(x);
     if (m.tsType == ToneStackComponent::Type::Recto)
         x = c.lowMidPk.process(x);              // ~200 Hz load-resonance bump (all dirty modes)
@@ -273,7 +277,8 @@ void MesaDualRectifier::setParameter(const std::string& id, float value) noexcep
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
-    else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
+    else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value);
+                                 recalcFilters(); }   // post-clip low restoration follows bass
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; recalcFilters(); }

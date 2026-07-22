@@ -102,13 +102,16 @@ void PRSMT15::recalcFilters() noexcept {
         c.interLP.setCoeffs(Filters::lowpass1pole(lpFc, oversampledFs_));
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_));
+        // Post-clip low restoration follows the BASS knob (it bypasses the tone stack,
+        // which killed the Lead mode's bass authority): noon = voiced level.
+        const double bassSc = 0.3 + 1.4 * double(bass_);
         if (mode_ == 1) {
             // Crunch low-mids follow the gain pot (blue keeps a 125-315 Hz fullness red
             // loses); restored POST-clip as a peak so nothing thumps or re-clips.
             // (og clamped above - the fit only covers the capture anchors.)
-            c.bodySh.setCoeffs(Filters::peaking(m.bodyFc, 70.0 * og * og * og, 0.9, oversampledFs_));
+            c.bodySh.setCoeffs(Filters::peaking(m.bodyFc, 70.0 * og * og * og * bassSc, 0.9, oversampledFs_));
         } else {
-            c.bodySh.setCoeffs(Filters::lowshelf(m.bodyFc, m.bodyDb, oversampledFs_));
+            c.bodySh.setCoeffs(Filters::lowshelf(m.bodyFc, m.bodyDb * bassSc, oversampledFs_));
         }
         c.subSh.setCoeffs(Filters::lowshelf(55.0, m.subDb, oversampledFs_));
         c.postPk.setCoeffs(Filters::peaking(m.postHiFc, m.postHiDb, m.postHiQ, oversampledFs_));
@@ -213,7 +216,8 @@ void PRSMT15::setParameter(const std::string& id, float value) noexcept {
                                  if (mode_ == 1) recalcFilters(); }   // Crunch: bright cap + lows ride the gain pot
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
-    else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
+    else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value);
+                                 recalcFilters(); }   // post-clip low restoration follows bass
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; recalcFilters(); }

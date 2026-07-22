@@ -13,6 +13,8 @@ add_executable(seraph_test "${CMAKE_CURRENT_SOURCE_DIR}/../tools/seraph_test.cpp
 target_link_libraries(seraph_test PRIVATE GuitarAmpSim)
 add_executable(amp_alias "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_alias.cpp")
 target_link_libraries(amp_alias PRIVATE GuitarAmpSim)
+add_executable(amp_knobcheck "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_knobcheck.cpp")
+target_link_libraries(amp_knobcheck PRIVATE GuitarAmpSim)
 add_executable(amp_noise "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_noise.cpp")
 target_link_libraries(amp_noise PRIVATE GuitarAmpSim)
 # Preset-blob migration round-trip (header-only vs the generated port enum).
