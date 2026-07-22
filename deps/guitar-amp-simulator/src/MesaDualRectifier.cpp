@@ -53,37 +53,37 @@ const MesaDualRectifier::ModeCfg MesaDualRectifier::kModes[MesaDualRectifier::kN
   // 0 CH1 Clean — Fender-ish pair, big and glassy (Fender stack: the clean channel
   // loads the stack differently; the Recto scoop is a dirty-mode trait). The capture's
   // lows are pristine (110 Hz THD ~1-3%) — high input corners keep bass out of the stages.
-  { 2, {ST_FV1,ST_FV2}, {0.95f,1.05f,0,0,0}, {1.0f,1.0f,0,0,0}, TSt::Fender,
+  { 2, {ST_FV1,ST_FV2}, {1.45f,1.55f,0,0,0}, {0,0,0,0,0}, TSt::Fender,
     100.0f, 190.0f, 0.0f, 12000.0f, 700.0f, 0.0f, 3800.0f, 8.0f, 3300.0f, 1.5f, 0.5f,
-    0.50f, 0.80f, 0.22f, 0.75f, 1.3f, 100.0f, 0.0f, 12.0f, 6500.0f, 10.0f, 0.6f, 0.0f, false },
+    0.50f, 0.80f, 0.20f, 0.75f, 1.3f, 100.0f, 0.0f, 12.0f, 6500.0f, 10.0f, 0.6f, 0.0f, false },
   // 1 CH1 Pushed — clean pair into an extra Marshall stage, edge-of-breakup (no capture; by inference)
-  { 3, {ST_FV1,ST_FV2,ST_MV2}, {1.7f,2.2f,2.4f,0,0}, {2.4f,2.6f,2.6f,0,0}, TSt::Fender,
+  { 3, {ST_FV1,ST_FV2,ST_MV2}, {1.7f,2.1f,2.2f,0,0}, {0,0,0,0,0}, TSt::Fender,
     70.0f, 110.0f, 0.0f, 11000.0f, 680.0f, 2.0f, 3800.0f, 8.0f, 3300.0f, 4.0f, 0.5f,
     1.2f, 1.5f, 0.20f, 0.72f, 1.2f, 90.0f, 10.0f, 2.0f, 4000.0f, 4.0f, 0.8f, 0.0f, false },
   // 2 CH2 Raw — lowest-gain dirty voice, loose and open (low corners: lows reach the clip)
-  { 3, {ST_MV1,ST_MV2,ST_MV3}, {3.5f,4.4f,5.0f,0,0}, {3.1f,3.6f,3.6f,0,0}, TSt::Recto,
+  { 3, {ST_MV1,ST_MV2,ST_MV3}, {2.5f,3.1f,3.4f,0,0}, {0,0,0,0,0}, TSt::Recto,
     45.0f, 60.0f, 0.0f, 10500.0f, 750.0f, 1.5f, 3600.0f, 8.0f, 2900.0f, 3.5f, 0.6f,
-    1.5f, 1.9f, 0.126f, 0.70f, 1.4f, 175.0f, 8.5f, 6.5f, 3000.0f, 4.0f, 0.6f, 0.0f, false },
+    1.5f, 1.9f, 0.116f, 0.70f, 1.4f, 175.0f, 8.5f, 6.5f, 3000.0f, 4.0f, 0.6f, 0.0f, false },
   // 3 CH2 Vintage — brown, NFB in, loose lows (no tightHP: 110 Hz reaches the clip stages)
-  { 4, {ST_MV1,ST_MV3,ST_EV2,ST_EV3}, {4.2f,5.3f,6.0f,5.5f,0}, {3.6f,4.2f,4.2f,3.6f,0}, TSt::Recto,
+  { 4, {ST_MV1,ST_MV3,ST_EV2,ST_EV3}, {1.4f,1.7f,1.9f,1.7f,0}, {0,0,0,0,0}, TSt::Recto,
     40.0f, 70.0f, 0.0f, 9500.0f, 720.0f, 2.0f, 3400.0f, 9.0f, 2700.0f, 5.0f, 0.6f,
-    1.6f, 2.0f, 0.102f, 0.70f, 1.5f, 175.0f, 9.0f, 7.5f, 3000.0f, 9.0f, 0.5f, 0.0f, false },
+    1.6f, 2.0f, 0.120f, 0.70f, 1.5f, 175.0f, 5.0f, 7.5f, 3000.0f, 4.5f, 0.5f, 0.0f, false },
   // 4 CH2 Modern — NFB out: pre-clip lows stripped HARD (the tight chug), restored post-clip
-  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {1.8f,3.2f,3.4f,5.6f,5.2f}, {2.0f,3.9f,4.2f,3.9f,3.4f}, TSt::Recto,
+  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {0.7f,1.2f,1.3f,1.8f,1.7f}, {0,0,0,0,0}, TSt::Recto,
     115.0f, 240.0f, 260.0f, 11500.0f, 800.0f, 3.5f, 4200.0f, 10.0f, 3100.0f, 6.0f, 0.7f,
-    1.7f, 2.1f, 0.048f, 0.72f, 1.6f, 130.0f, 8.0f, 6.0f, 3000.0f, 10.5f, 0.35f, 2.6f, true },
+    1.7f, 2.1f, 0.075f, 0.72f, 1.6f, 130.0f, 6.5f, 6.0f, 3000.0f, 5.0f, 0.35f, 2.6f, true },
   // 5 CH3 Raw — hotter Raw than CH2
-  { 4, {ST_MV1,ST_MV2,ST_MV3,ST_EV2}, {3.5f,4.3f,4.9f,4.6f,0}, {3.4f,3.9f,3.9f,3.4f,0}, TSt::Recto,
+  { 4, {ST_MV1,ST_MV2,ST_MV3,ST_EV2}, {2.3f,2.7f,3.0f,2.7f,0}, {0,0,0,0,0}, TSt::Recto,
     50.0f, 70.0f, 0.0f, 10500.0f, 750.0f, 2.0f, 3600.0f, 8.0f, 2900.0f, 4.0f, 0.6f,
-    1.6f, 2.0f, 0.097f, 0.70f, 1.4f, 175.0f, 10.5f, 7.5f, 3000.0f, 4.5f, 0.6f, 0.0f, false },
+    1.6f, 2.0f, 0.095f, 0.70f, 1.4f, 175.0f, 10.5f, 7.5f, 3000.0f, 4.5f, 0.6f, 0.0f, false },
   // 6 CH3 Vintage — the big brown lead
-  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {4.3f,5.5f,6.2f,6.2f,5.8f}, {3.8f,4.3f,4.3f,4.1f,3.5f}, TSt::Recto,
+  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {1.1f,1.3f,1.4f,1.4f,1.3f}, {0,0,0,0,0}, TSt::Recto,
     45.0f, 80.0f, 0.0f, 9800.0f, 740.0f, 2.5f, 3400.0f, 9.0f, 2700.0f, 5.5f, 0.6f,
-    1.7f, 2.1f, 0.077f, 0.68f, 1.5f, 175.0f, 9.0f, 7.5f, 3000.0f, 8.0f, 0.5f, 0.0f, false },
+    1.7f, 2.1f, 0.099f, 0.68f, 1.5f, 175.0f, 9.0f, 7.5f, 3000.0f, 3.0f, 0.5f, 0.0f, false },
   // 7 CH3 Modern — THE Recto: maximum gain, NFB out, tightest lows
-  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {2.0f,3.4f,3.6f,6.0f,5.6f}, {2.2f,4.5f,4.5f,4.2f,3.6f}, TSt::Recto,
+  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {0.7f,1.2f,1.3f,1.8f,1.7f}, {0,0,0,0,0}, TSt::Recto,
     120.0f, 260.0f, 280.0f, 12000.0f, 820.0f, 4.0f, 4300.0f, 11.0f, 3200.0f, 6.5f, 0.7f,
-    1.8f, 2.2f, 0.085f, 0.68f, 1.6f, 130.0f, 8.0f, 6.0f, 3000.0f, 11.0f, 0.35f, 2.6f, true },
+    1.8f, 2.2f, 0.094f, 0.68f, 1.6f, 130.0f, 4.5f, 3.5f, 3000.0f, 6.5f, 0.35f, 2.6f, true },
 };
 
 void MesaDualRectifier::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
@@ -137,13 +137,13 @@ void MesaDualRectifier::recalcFilters() noexcept {
         c.postPk.setCoeffs(Filters::peaking(m.postHiFc, m.postHiDb, m.postHiQ, oversampledFs_)); // post-clip bite
         // The captures show a distinct ~200 Hz bump on every dirty mode (OT/load resonance,
         // strongest with the NFB loop out) and extended air above 5 kHz on the Modern modes.
-        const double lmDb = m.modern ? 9.0 : (m.tsType == ToneStackComponent::Type::Recto ? 3.5 : 0.0);
+        const double lmDb = m.modern ? 5.5 : (m.tsType == ToneStackComponent::Type::Recto ? 3.5 : 0.0);
         c.lowMidPk.setCoeffs(Filters::peaking(m.modern ? 195.0 : 215.0, lmDb, m.modern ? 1.4 : 1.8,
                                               oversampledFs_));
         c.lowKeepLP.setCoeffs(Filters::lowpass(55.0, 0.707, oversampledFs_)); // parallel low path
                                                                              // (sub-thump only; 80-200 Hz
                                                                              // belongs to the main path)
-        c.modernAir.setCoeffs(Filters::highshelf(5500.0, m.modern ? 8.5 : 0.0, oversampledFs_));
+        c.modernAir.setCoeffs(Filters::highshelf(5500.0, m.modern ? 5.5 : 0.0, oversampledFs_));
         // OT/speaker top roll-off, POST-clip. Modern modes run without NFB — the top is
         // undamped, so the rolloff sits higher (the captures' Modern top extends past Vintage's);
         // Vintage/Raw sit between Modern and the cleans.
@@ -177,10 +177,12 @@ void MesaDualRectifier::advanceSmoothing() noexcept {
 float MesaDualRectifier::processSample(float x, int chn) noexcept {
     auto& c = ch_[chn];
     const auto& m = kModes[mode_];
-    // Hot modes trim the knob-dependent span (Mark V kHiGainTrim precedent) so the
-    // cascade can't pin the rig's input noise floor to a constant output level.
-    constexpr float kHiGainTrim = 0.88f;
-    const float g  = gainSmooth_.getCurrentValue() * (isHot(mode_) ? kHiGainTrim : 1.0f);
+    // The gain knob is a REAL pot: one audio-taper voltage divider ahead of the cascade
+    // (silence at 0, unity at the tuned noon anchor, +12 dB dimed). Per-stage drives are
+    // FIXED at the capture-anchored values — the knob sweeps how hard the cascade is fed,
+    // which is the only way a 5-stage cascade can actually clean up.
+    const float knob = gainSmooth_.getCurrentValue();
+    const float pot  = 4.0f * knob * knob;
     const float mv = masterSmooth_.getCurrentValue();
 
     // DNR: track the INPUT envelope (pre-gain — the only place playing dynamics survive).
@@ -195,8 +197,9 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     x = c.inHP.process(x);
     x = c.brightSh.process(x);
 
+    x *= pot;
     for (int i = 0; i < m.nStages; ++i) {
-        x = c.stage[i].process(x * (m.gBase[i] + g * m.gSpan[i])) * 0.82f;
+        x = c.stage[i].process(x * m.gBase[i]) * 0.82f;
         if (i == 0) x = c.interHP.process(x);                       // tighten bass early
         if (i == 1) x = c.interLP.process(x);                       // limit fizz mid-cascade
         if (i == 2 && m.tightHPfc > 0.0f) x = c.tightHP.process(x); // the chug lever: strip lows

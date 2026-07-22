@@ -34,18 +34,18 @@ const TriodeComponent::CircuitParams& PRSMT15::cfgOf(StageType s) noexcept {
 using TSt = ToneStackComponent::Type;
 const PRSMT15::ModeCfg PRSMT15::kModes[PRSMT15::kNumModes] = {
   // 0 Clean — pretty, chimey PRS clean; breaks up when pushed (capture: Clean_Break_Up)
-  { 2, {ST_FV1,ST_FV2}, {0.85f,0.95f,0,0,0}, {1.3f,1.3f,0,0,0}, TSt::Fender,
+  { 2, {ST_FV1,ST_FV2}, {1.5f,1.6f,0,0,0}, {0,0,0,0,0}, TSt::Fender,
     70.0f, 120.0f, 0.0f, 12000.0f, 900.0f, 0.0f, 4000.0f, 8.0f, 2600.0f, 2.0f, 0.6f,
     0.6f, 0.9f, 0.38f, 0.75f, 1.0f, 90.0f, 5.0f, 4.0f, 7000.0f, 13.0f, 0.35f, 0.0f },
   // 1 Crunch — pushed clean into a Marshall pair (captures: crunch_blue lower / crunch_red hotter)
-  { 4, {ST_MV1,ST_MV2,ST_MV3,ST_EV2}, {1.3f,1.7f,2.0f,1.8f,0}, {3.4f,3.8f,3.8f,3.4f,0}, TSt::Marshall,
+  { 4, {ST_MV1,ST_MV2,ST_MV3,ST_EV2}, {2.0f,2.4f,2.6f,2.3f,0}, {0,0,0,0,0}, TSt::Marshall,
     70.0f, 150.0f, 150.0f, 10500.0f, 2400.0f, 0.0f, 3800.0f, 9.0f, 2000.0f, 3.5f, 0.65f,
     1.4f, 1.8f, 0.19f, 0.72f, 2.0f, 170.0f, 0.0f, 0.0f, 2500.0f, 4.0f, 0.7f, 0.2f },
   // 2 Lead — the MT15 identity: very tight, strong NFB, articulate high gain,
   // near-symmetric sharper-knee clipping, bite ~1.9 kHz (lower than a Recto's 3 k)
-  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {1.4f,4.3f,4.7f,4.7f,4.3f}, {1.6f,3.1f,3.1f,2.9f,2.5f}, TSt::Marshall,
-    130.0f, 230.0f, 260.0f, 11000.0f, 1000.0f, 3.0f, 4200.0f, 10.0f, 1900.0f, 2.5f, 0.7f,
-    1.7f, 2.1f, 0.15f, 0.70f, 1.8f, 150.0f, 6.0f, 0.0f, 2100.0f, 5.5f, 0.55f, 0.0f },
+  { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {0.6f,1.5f,1.6f,1.6f,1.4f}, {0,0,0,0,0}, TSt::Marshall,
+    130.0f, 230.0f, 260.0f, 11000.0f, 1000.0f, 3.0f, 4200.0f, 10.0f, 1900.0f, 0.5f, 0.7f,
+    1.7f, 2.1f, 0.21f, 0.70f, 1.8f, 150.0f, 10.0f, 0.0f, 2100.0f, 2.5f, 0.55f, 0.0f },
 };
 
 void PRSMT15::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
@@ -84,7 +84,10 @@ void PRSMT15::recalcFilters() noexcept {
         c.inHP.setCoeffs(Filters::highpass1pole(m.inHPfc, oversampledFs_));
         // Crunch's bright cap rides the gain pot: dominant at low gain, gone when dimed
         // (measured: the blue/red captures differ by 9-18 dB of top-end tilt, .4 vs .7).
-        const double capDb = (mode_ == 1) ? 55.0 * (1.0 - gain_) * (1.0 - gain_) : 0.0;
+        // Fitted between the blue(.4)/red(.7) captures; clamp outside that region so
+        // low gain doesn't extrapolate to an absurd +55 dB shelf.
+        const double og = std::min(1.0 - (double)gain_, 0.62);
+        const double capDb = (mode_ == 1) ? 55.0 * og * og : 0.0;
         c.brightSh.setCoeffs(Filters::highshelf(m.brightFc, m.brightDb + capDb, oversampledFs_));
         // The panel bright SWITCH — pre-gain HF shelf on Clean/Crunch, no-op on Lead
         // (the Lead channel is already bright-capped; its emphasis is baked in brightSh).
@@ -95,15 +98,15 @@ void PRSMT15::recalcFilters() noexcept {
             c.tightHP.setCoeffs(Filters::highpass1pole(m.tightHPfc, oversampledFs_));
         // Crunch's top rounds off as gain rises (the red capture is 17 dB darker at
         // 8 kHz than blue): the interstage LP follows the gain pot on that mode.
-        const double lpFc = (mode_ == 1) ? (11500.0 - 10500.0 * gain_) : m.interLPfc;
+        const double lpFc = (mode_ == 1) ? std::max(11500.0 - 10500.0 * gain_, 3000.0) : m.interLPfc;
         c.interLP.setCoeffs(Filters::lowpass1pole(lpFc, oversampledFs_));
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_));
         if (mode_ == 1) {
             // Crunch low-mids follow the gain pot (blue keeps a 125-315 Hz fullness red
             // loses); restored POST-clip as a peak so nothing thumps or re-clips.
-            const double og = 1.0 - gain_;
-            c.bodySh.setCoeffs(Filters::peaking(m.bodyFc, 43.0 * og * og * og, 0.9, oversampledFs_));
+            // (og clamped above - the fit only covers the capture anchors.)
+            c.bodySh.setCoeffs(Filters::peaking(m.bodyFc, 70.0 * og * og * og, 0.9, oversampledFs_));
         } else {
             c.bodySh.setCoeffs(Filters::lowshelf(m.bodyFc, m.bodyDb, oversampledFs_));
         }
@@ -112,7 +115,7 @@ void PRSMT15::recalcFilters() noexcept {
         c.lowKeepLP.setCoeffs(Filters::lowpass(55.0, 0.707, oversampledFs_));
         // Strong NFB + tight damping = firm top rolloff (no undamped-Modern airiness here);
         // the clean channel stays glassier.
-        c.airLP.setCoeffs(Filters::lowpass(mode_ == 0 ? 15000.0 : 13500.0, 0.707, oversampledFs_));
+        c.airLP.setCoeffs(Filters::lowpass(mode_ == 0 ? 15000.0 : 12000.0, 0.707, oversampledFs_));
         c.dcBlk.setCoeffs(Filters::highpass(12.0, 0.707, oversampledFs_));
         c.dnrLP.setCoeffs(Filters::lowpass(kDnrFcDark, 0.707, oversampledFs_));
     }
@@ -140,8 +143,9 @@ void PRSMT15::advanceSmoothing() noexcept {
 float PRSMT15::processSample(float x, int chn) noexcept {
     auto& c = ch_[chn];
     const auto& m = kModes[mode_];
-    constexpr float kHiGainTrim = 0.88f;   // Mark V precedent: don't pin the rig's noise floor
-    const float g  = gainSmooth_.getCurrentValue() * (mode_ == 2 ? kHiGainTrim : 1.0f);
+    // Real gain pot: one audio-taper divider ahead of the cascade (see MesaDualRectifier).
+    const float knob = gainSmooth_.getCurrentValue();
+    const float pot  = 4.0f * knob * knob;
     const float mv = masterSmooth_.getCurrentValue();
 
     if (mode_ == 2) {   // DNR tracks the INPUT envelope (pre-gain), Lead only
@@ -156,8 +160,9 @@ float PRSMT15::processSample(float x, int chn) noexcept {
     x = c.brightSh.process(x);
     x = c.brightSw.process(x);   // panel bright switch (identity when off / on Lead)
 
+    x *= pot;
     for (int i = 0; i < m.nStages; ++i) {
-        x = c.stage[i].process(x * (m.gBase[i] + g * m.gSpan[i])) * 0.82f;
+        x = c.stage[i].process(x * m.gBase[i]) * 0.82f;
         if (i == 0) x = c.interHP.process(x);                       // tighten bass early
         if (i == 1) x = c.interLP.process(x);                       // limit fizz mid-cascade
         if (i == 2 && m.tightHPfc > 0.0f) x = c.tightHP.process(x); // strip lows before the last clips
