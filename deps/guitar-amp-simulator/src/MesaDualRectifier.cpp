@@ -182,7 +182,12 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     // FIXED at the capture-anchored values — the knob sweeps how hard the cascade is fed,
     // which is the only way a 5-stage cascade can actually clean up.
     const float knob = gainSmooth_.getCurrentValue();
-    const float pot  = 4.0f * knob * knob;
+    // Audio-taper pot with unity at knob 0.375 (not 0.5): the capture-matched
+    // full-gain roar arrives by ~9-10 o'clock and noon runs ~+4.5 dB hotter,
+    // matching how a real Recto's gain dial feels (user feedback 2026-07-22).
+    const float pot  = std::min(7.111f * knob * knob, 2.2f);  // cap +6.8 dB over anchor:
+                                                               // beyond it the MV stages
+                                                               // block (bias choke)
     const float mv = masterSmooth_.getCurrentValue();
 
     // DNR: track the INPUT envelope (pre-gain — the only place playing dynamics survive).
