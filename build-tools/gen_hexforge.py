@@ -86,7 +86,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 12, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12)]),
+    ("model",         "Model",        "e", 0, 13, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12),("Tremont 15",13)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -352,6 +352,14 @@ ctrl.append(mkport("AMP_RC_VARIAC", "amp_rc_variac", "Amp Recto Variac", "e", 0,
 ctrl.append(mkport("AMP_RC_RECT", "amp_rc_rect", "Amp Recto Rectifier", "e", 0, 1, 0,
     [("Silicon",0),("Tube",1)], "Rectifier"))
 
+# ── Tremont 15 (PRS MT15, amp model 13) — Clean/Crunch/Lead channel + the clean/crunch
+# bright switch. Appended before the preset commands; pre-v21 blobs migrate to the
+# defaults {2 Lead, bright off}. Shown only when Amp model = Tremont 15 (COND c-amp-mt15).
+ctrl.append(mkport("AMP_MT_MODE", "amp_mt_mode", "Amp MT Channel", "e", 0, 2, 2,
+    [("Clean",0),("Crunch",1),("Lead",2)], "Channel"))
+ctrl.append(mkport("AMP_MT_BRIGHT", "amp_mt_bright", "Amp MT Bright", "e", 0, 1, 0,
+    [("Off",0),("On",1)], "Bright"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -524,7 +532,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 132 ;")
+    L.append("    lv2:microVersion 133 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -637,6 +645,8 @@ COND = {
     "amp_mv_geq3":"c-amp-mesa", "amp_mv_geq4":"c-amp-mesa", "amp_mv_eqpreset":"c-amp-mesa",
     # Diamond Plate / Mesa Dual Rectifier (model 12): 8-mode selector + Variac/Rectifier
     "amp_rc_mode":"c-amp-recto", "amp_rc_variac":"c-amp-recto", "amp_rc_rect":"c-amp-recto",
+    # Tremont 15 / PRS MT15 (model 13): channel + bright switch
+    "amp_mt_mode":"c-amp-mt15", "amp_mt_bright":"c-amp-mt15",
     # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
     "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
     "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
@@ -915,6 +925,12 @@ def amp_body():
              + render_ctrl(CTRL_BY_SYM["amp_rc_variac"])
              + render_ctrl(CTRL_BY_SYM["amp_rc_rect"])
              + '</div></div></div>')
+    # Tremont 15 (PRS MT15): Channel + Bright dropdowns, one row.
+    mt15 = ('<div class="hf-pa-face c-amp-mt15"><div class="hf-pa-title">Tremont 15</div>'
+            + '<div class="hf-mv-group"><div class="hf-mv-selrow">'
+            + render_ctrl(CTRL_BY_SYM["amp_mt_mode"])
+            + render_ctrl(CTRL_BY_SYM["amp_mt_bright"])
+            + '</div></div></div>')
     # Fold the stacked chassis into TABS (Amp / Voicing / Power Amp) — only one panel shows at
     # a time, so the amp detail is no longer a giant vertical stack (mirrors the standalone Amp
     # pedal). script-hexforge.js wires the tab clicks and hides tabs that don't apply to the
@@ -927,7 +943,7 @@ def amp_body():
             '</div>')
     panels = ('<div class="hf-atabpanels">'
               '<div class="hf-atabpanel hf-atab-on" rata-role="apanel" data-tab="amp" role="tabpanel" aria-label="Amp">' + face + '</div>'
-              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + mt15 + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="power" role="tabpanel" aria-label="Power Amp">' + pa + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'
               '</div>')

@@ -19,7 +19,8 @@ enum class AmpModel {
     PeaveyBackstage,   // Solid-state practice combo (Backline Plus / Peavey Backstage Plus)
     MarshallPlexi,     // 1959 Super Lead Plexi — bright, power-amp-driven EL34 crunch
     MesaMarkV,         // Mesa/Boogie Mark V — 9 modes across 3 channels, Simul-Class
-    MesaDualRectifier  // Mesa Dual Rectifier — 8 modes across 3 channels, 6L6, variac/rect switches
+    MesaDualRectifier, // Mesa Dual Rectifier — 8 modes across 3 channels, 6L6, variac/rect switches
+    PRSMT15            // PRS MT15 — Clean/Crunch/Lead + bright switch, tight strong-NFB high gain
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

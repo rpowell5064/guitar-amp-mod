@@ -370,6 +370,8 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(20,74,52,.46); --badge:#d8f2e6; }
 /* m12 Diamond Plate (Mesa Dual Rectifier) reuses the black plate w/ a chrome diamond-plate silver tint */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m12 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(168,176,188,.30); --badge:#e9edf3; }
+/* m13 Tremont 15 (PRS MT15) reuses the black plate w/ a deep PRS blue tint */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m13 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(40,66,110,.40); --badge:#dce6f5; }
 /* grouped knob fieldsets on the plate */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 10px 14px 16px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }

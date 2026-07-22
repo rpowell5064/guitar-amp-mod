@@ -195,6 +195,8 @@ static bool resolveModel(std::string name, ModelSpec& out) {
                               { out = {AmpModel::MesaMarkV,           1, 1, false, "Mesa Mark V"}; return true; }
     if (name == "recto" || name == "dualrec" || name == "rectifier" || name == "diamondplate")
                               { out = {AmpModel::MesaDualRectifier,   7, 0, false, "Mesa Dual Rectifier (Diamond Plate)"}; return true; }
+    if (name == "mt15" || name == "tremont" || name == "tremont15" || name == "prs")
+                              { out = {AmpModel::PRSMT15,             8, 0, false, "PRS MT15 (Tremont 15)"}; return true; }
     if (name == "evh")        { out = {AmpModel::EVH5150III,         2, 1, false, "EVH 5150 III"}; return true; }
     if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 0, true,  "Sunn Model T"}; return true; }
     if (name == "rockerverb" || name == "orange")
@@ -247,6 +249,7 @@ struct Knobs {
     float fat = 0.0f, c45 = 0.0f, sat = 0.0f;  // Friedman BE-Deluxe voicing toggles
     float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+); Recto mode 0..7
     float variac = 0.0f, rect = 0.0f;           // Recto: 0 Bold/Silicon, 1 Spongy/Tube
+    float bright = 0.0f;                        // MT15: clean/crunch bright switch
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
 };
 
@@ -407,6 +410,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     amp.setParameter("mode", k.mode); // Mesa Mark V mode 0..8 / Recto mode 0..7 (ignored by other models)
     amp.setParameter("variac", k.variac);  // Recto power-section switches (ignored by other models)
     amp.setParameter("rect", k.rect);
+    amp.setParameter("bright", k.bright);  // MT15 bright switch (ignored by other models)
 
     PowerAmpProcessor pa;
     pa.prepare(sr, BLK, 1);
@@ -751,6 +755,7 @@ int main(int argc, char** argv) {
     knob("--fat", k.fat);     knob("--c45", k.c45);       knob("--sat", k.sat);  // Friedman toggles
     knob("--mode", k.mode);   // Mesa Mark V mode 0..8 / Recto mode 0..7
     knob("--variac", k.variac); knob("--rect", k.rect);  // Recto power-section switches
+    knob("--bright", k.bright);  // MT15 bright switch
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
 
     // Load the reference capture.

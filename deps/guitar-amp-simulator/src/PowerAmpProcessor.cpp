@@ -318,6 +318,7 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f }; // Orange Rockerverb 100 MKII
         case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f }; // Friedman BE-Deluxe (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
         case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f }; // Mesa Dual Rectifier (Diamond Plate) — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
+        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }

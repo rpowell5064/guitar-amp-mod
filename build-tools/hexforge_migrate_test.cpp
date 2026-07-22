@@ -1,11 +1,13 @@
 // Round-trip test for the Hex Forge preset-blob port migration. Verifies
 // migratePorts() preserves every pre-existing port and defaults the inserted
 // ones, for the seams that matter today:
-//   * v19 -> v20: the Diamond Plate (Dual Rectifier) ports [HF_AMP_RC_MODE..
-//     HF_AMP_RC_RECT] must default to {7 CH3 Modern, 0 Bold, 0 Silicon} —
-//     plain zero-fill would recall CH1 Clean into old boards.
-//   * v13 -> v20: the full multi-gap walk (shimmer + Cali V + md_offset +
-//     NAM trims + Recto) still lands every old value in its new slot.
+//   * v20 -> v21: the Tremont 15 ports [HF_AMP_MT_MODE, HF_AMP_MT_BRIGHT]
+//     must default to {2 Lead, 0 bright-off}.
+//   * v19 -> v21: the Diamond Plate ports [HF_AMP_RC_MODE..HF_AMP_RC_RECT]
+//     must default to {7 CH3 Modern, 0 Bold, 0 Silicon} — plain zero-fill
+//     would recall CH1 Clean into old boards — plus the MT15 pair.
+//   * v13 -> v21: the full multi-gap walk (shimmer + Cali V + md_offset +
+//     NAM trims + Recto + MT15) still lands every old value in its new slot.
 // Only needs the generated port enum — no LV2/NAM deps.
 //
 // Build (from repo root, or via the build-tools CMake target):
@@ -19,10 +21,13 @@
 static_assert(HF_OC_INTERVAL == HF_OC_MICRO + 1 && HF_OC_MICRO == HF_MD_DIV + 1 && HF_OC_INTERVAL < HF_SW_A,
               "octave shimmer ports must be contiguous, after tempo-sync and before the commands");
 static_assert(HF_AMP_RC_MODE == HF_CAB_ROOMAMT + 1 && HF_AMP_RC_VARIAC == HF_AMP_RC_MODE + 1
-              && HF_AMP_RC_RECT == HF_AMP_RC_MODE + 2 && HF_AMP_RC_RECT == HF_SW_A - 1,
-              "Recto ports must be contiguous, after the cab room and right before the commands");
+              && HF_AMP_RC_RECT == HF_AMP_RC_MODE + 2,
+              "Recto ports must be contiguous after the cab room");
+static_assert(HF_AMP_MT_MODE == HF_AMP_RC_RECT + 1 && HF_AMP_MT_BRIGHT == HF_AMP_MT_MODE + 1
+              && HF_AMP_MT_BRIGHT == HF_SW_A - 1,
+              "MT15 ports must be contiguous, after the Recto block and right before the commands");
 
-// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v20) ──────────────
+// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v21) ──────────────
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -58,6 +63,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float rcdef[3] = {7.0f, 0.0f, 0.0f};
     const bool rcGap = (srcVer < 20);
     const int rcAt = HF_AMP_RC_MODE, rcEnd = HF_AMP_RC_MODE + 3;
+    static const float mtdef[2] = {2.0f, 0.0f};
+    const bool mtGap = (srcVer < 21);
+    const int mtAt = HF_AMP_MT_MODE, mtEnd = HF_AMP_MT_MODE + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
@@ -76,6 +84,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (mdoGap && i >= mdoAt && i < mdoEnd)     vals[i] = 0.0f;
         else if (namGap && i >= namAt && i < namEnd)     vals[i] = 0.0f;
         else if (rcGap && i >= rcAt && i < rcEnd)        vals[i] = rcdef[i - rcAt];
+        else if (mtGap && i >= mtAt && i < mtEnd)        vals[i] = mtdef[i - mtAt];
         else                                             vals[i] = old[o++];
     }
 }
@@ -83,11 +92,36 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
 int main() {
     int fails = 0;
 
-    // ── v19 -> v20: only the 3 Recto ports are inserted (at the very end of the
-    // preset params). A v19 blob had HF_N_PORTS - 3 params; the deserializer
+    // ── v20 -> v21: only the 2 MT15 ports are inserted (at the very end of the
+    // preset params). A v20 blob had HF_N_PORTS - 2 params.
+    {
+        const int npOld = HF_N_PORTS - 2;
+        float vals[HF_N_PORTS];
+        for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
+        for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
+
+        migratePorts(vals, 20);
+
+        for (int i = 0; i < HF_AMP_MT_MODE; ++i)
+            if (vals[i] != static_cast<float>(i + 1)) {
+                std::printf("FAIL: v20 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
+            }
+        if (vals[HF_AMP_MT_MODE]   != 2.0f) { std::printf("FAIL: mt_mode not 2 (%g)\n",   vals[HF_AMP_MT_MODE]);   ++fails; }
+        if (vals[HF_AMP_MT_BRIGHT] != 0.0f) { std::printf("FAIL: mt_bright not 0 (%g)\n", vals[HF_AMP_MT_BRIGHT]); ++fails; }
+        for (int i = HF_AMP_MT_BRIGHT + 1; i < HF_N_PORTS; ++i) {
+            float want = (i - 2 < npOld) ? static_cast<float>((i - 2) + 1) : 0.0f;
+            if (vals[i] != want) {
+                std::printf("FAIL: v20 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
+            }
+        }
+        std::printf("v20->v21: pre-insert preserved, mt defaults {2,0}, tail shifted +2\n");
+    }
+
+    // ── v19 -> v21: the 3 Recto + 2 MT15 ports are inserted (at the very end of the
+    // preset params). A v19 blob had HF_N_PORTS - 5 params; the deserializer
     // memcpy's them into a zeroed array (tail = 0).
     {
-        const int npOld = HF_N_PORTS - 3;
+        const int npOld = HF_N_PORTS - 5;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);   // sentinels
@@ -101,21 +135,23 @@ int main() {
         if (vals[HF_AMP_RC_MODE]   != 7.0f) { std::printf("FAIL: rc_mode not 7 (%g)\n",  vals[HF_AMP_RC_MODE]);   ++fails; }
         if (vals[HF_AMP_RC_VARIAC] != 0.0f) { std::printf("FAIL: rc_variac not 0 (%g)\n", vals[HF_AMP_RC_VARIAC]); ++fails; }
         if (vals[HF_AMP_RC_RECT]   != 0.0f) { std::printf("FAIL: rc_rect not 0 (%g)\n",   vals[HF_AMP_RC_RECT]);   ++fails; }
-        // Command/status slots after the insert: shifted up by 3.
-        for (int i = HF_AMP_RC_RECT + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 3 < npOld) ? static_cast<float>((i - 3) + 1) : 0.0f;
+        if (vals[HF_AMP_MT_MODE]   != 2.0f) { std::printf("FAIL: v19 mt_mode not 2 (%g)\n",   vals[HF_AMP_MT_MODE]);   ++fails; }
+        if (vals[HF_AMP_MT_BRIGHT] != 0.0f) { std::printf("FAIL: v19 mt_bright not 0 (%g)\n", vals[HF_AMP_MT_BRIGHT]); ++fails; }
+        // Command/status slots after the inserts: shifted up by 5.
+        for (int i = HF_AMP_MT_BRIGHT + 1; i < HF_N_PORTS; ++i) {
+            float want = (i - 5 < npOld) ? static_cast<float>((i - 5) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v19->v20: pre-insert preserved, rc defaults {7,0,0}, tail shifted +3\n");
+        std::printf("v19->v21: pre-insert preserved, rc {7,0,0} + mt {2,0}, tail shifted +5\n");
     }
 
     // ── v13 -> v20: the full multi-gap walk. Count the inserted slots for a v13
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3;
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2;
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -132,6 +168,8 @@ int main() {
                 { std::printf("FAIL: v13 geq%d not 0.5\n", b); ++fails; break; }
         if (vals[HF_AMP_RC_MODE] != 7.0f || vals[HF_AMP_RC_VARIAC] != 0.0f || vals[HF_AMP_RC_RECT] != 0.0f)
             { std::printf("FAIL: v13 rc ports not defaulted {7,0,0}\n"); ++fails; }
+        if (vals[HF_AMP_MT_MODE] != 2.0f || vals[HF_AMP_MT_BRIGHT] != 0.0f)
+            { std::printf("FAIL: v13 mt ports not defaulted {2,0}\n"); ++fails; }
         // Every non-gap slot must hold consecutive sentinels in order (the walk is
         // order-preserving); just verify the LAST old value survived to the end.
         int o = 0; float lastSeen = -1.0f;
@@ -140,7 +178,8 @@ int main() {
                           || (i >= HF_AMP_MV_MODE && i <= HF_AMP_MV_EQPRESET)
                           || (i == HF_MD_OFFSET)
                           || (i >= HF_AMP_NAM_GAIN && i <= HF_AMP_NAM_GAIN + 5)
-                          || (i >= HF_AMP_RC_MODE && i <= HF_AMP_RC_RECT);
+                          || (i >= HF_AMP_RC_MODE && i <= HF_AMP_RC_RECT)
+                          || (i >= HF_AMP_MT_MODE && i <= HF_AMP_MT_BRIGHT);
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
             if (vals[i] != want) {
@@ -151,11 +190,11 @@ int main() {
         }
         if (lastSeen != static_cast<float>(npOld))
             { std::printf("FAIL: v13 last old value %g != %d\n", lastSeen, npOld); ++fails; }
-        std::printf("v13->v20: all gaps defaulted, old values order-preserved\n");
+        std::printf("v13->v21: all gaps defaulted, old values order-preserved\n");
     }
 
-    std::printf("\nHF_N_PORTS=%d  HF_AMP_RC_MODE=%d  HF_SW_A=%d\n",
-                (int)HF_N_PORTS, (int)HF_AMP_RC_MODE, (int)HF_SW_A);
+    std::printf("\nHF_N_PORTS=%d  HF_AMP_RC_MODE=%d  HF_AMP_MT_MODE=%d  HF_SW_A=%d\n",
+                (int)HF_N_PORTS, (int)HF_AMP_RC_MODE, (int)HF_AMP_MT_MODE, (int)HF_SW_A);
     std::printf("%s (%d failure%s)\n", fails ? "FAILED" : "PASSED", fails, fails == 1 ? "" : "s");
     return fails ? 1 : 0;
 }

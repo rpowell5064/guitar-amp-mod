@@ -108,6 +108,10 @@ int main() {
       a.setParameter("mode", 7.0f);   // CH3 Modern = worst case (5 stages + DNR + post-clip voicing)
       PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_6L6GC);
       run("Amp: Recto + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
+    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::PRSMT15);
+      a.setParameter("mode", 2.0f);   // Lead = worst case (5 stages + DNR)
+      PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_6L6GC);
+      run("Amp: Tremont + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
     // Sunn Model T: its PA is internal, so measure the amp block alone — in each
     // channel-link mode. Parallel/Series run BOTH preamp channels (≈2x triodes).
     // Silence column flags denormal/decay cost (relevant to "notes cut out").

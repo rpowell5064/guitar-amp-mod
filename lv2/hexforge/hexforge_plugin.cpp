@@ -120,7 +120,7 @@ static inline bool isParamPort(int i) {
 }
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
-static const AmpModel kAmpMap[13] = {
+static const AmpModel kAmpMap[14] = {
     AmpModel::FenderDeluxe, AmpModel::MarshallJCM800, AmpModel::EVH5150III,
     AmpModel::SunnModelT,   AmpModel::OrangeRockerverb50,
     AmpModel::NeuralCustom,        // 5 = NAM (placeholder; not built as an algo amp)
@@ -131,8 +131,9 @@ static const AmpModel kAmpMap[13] = {
     AmpModel::MarshallPlexi,       // 10 = Plexiglass (Marshall 1959 Super Lead, EL34)
     AmpModel::MesaMarkV,           // 11 = Cali V (Mesa Mark V, 9 modes, Simul-Class)
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
+    AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
 };
-static const int   kCanonical[13] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1, 7 }; // PowerAmp default lookup ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa → JCM800 EL34 PA)
+static const int   kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1, 7, 8 }; // PowerAmp default lookup ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa → JCM800 EL34 PA)
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;
@@ -141,12 +142,13 @@ static constexpr int kBacklineIdx = 9;
 static constexpr int kPlexiIdx    = 10;   // Plexiglass (Marshall 1959 Super Lead)
 static constexpr int kMesaIdx     = 11;   // Cali V (Mesa Mark V)
 static constexpr int kRectoIdx    = 12;   // Diamond Plate (Mesa Dual Rectifier)
-static const int   kAmpTube[13]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1, 0 }; // …/EL34/EL34/6L6-EL34 Simul
+static constexpr int kMt15Idx     = 13;   // Tremont 15 (PRS MT15)
+static const int   kAmpTube[14]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0 }; // …/EL34/EL34/6L6-EL34 Simul
 // Amp-level PARITY calibration (2026-07-09, build-tools/hexforge_amplevel measured @noon, cab on):
 // distorted amps → -16 dBFS RMS, clean amps (Fender/Hiwatt/Vox/Backline) → -13 dBFS (+3 dB perceptual
 // boost so cleans FEEL as loud as the denser distorted models). Re-leveled after the amp re-voicings
 // left Hiwatt -24 / CaliV -23 / Friedman -21.5 / Plexi -19 several dB quiet. makeup is linear post-amp gain.
-static const float kAmpMakeup[13] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 1.0f }; // [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
+static const float kAmpMakeup[14] = { 3.78f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 1.0f, 1.0f }; // [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
 // (REMOVED 2026-07-11) The `kAmpInputCeil = A*tanh(x/A)` "input ceiling" on the amp block was added
 // 2026-07-03 and CHANGED THE AMP CHARACTER: being a nonlinearity at any A, it pre-distorted the amp
 // input, and the high-gain front-ends amplified that into a fuzzy/dark (high A) or woolly (low A)
@@ -637,8 +639,13 @@ static_assert(HF_AMP_NAM_VOL == HF_AMP_NAM_GAIN + 1 && HF_DR_NAM_GAIN == HF_AMP_
 //   * Diamond Plate (Mesa Dual Rectifier) mode + Variac + rectifier — 3 contiguous ports
 //     [HF_AMP_RC_MODE..HF_AMP_RC_RECT], added v20, as the last preset params before the commands.
 static_assert(HF_AMP_RC_MODE == HF_CAB_ROOMAMT + 1 && HF_AMP_RC_VARIAC == HF_AMP_RC_MODE + 1
-              && HF_AMP_RC_RECT == HF_AMP_RC_MODE + 2 && HF_AMP_RC_RECT == HF_SW_A - 1,
-              "Recto ports must be contiguous, after the cab room and right before the commands");
+              && HF_AMP_RC_RECT == HF_AMP_RC_MODE + 2,
+              "Recto ports must be contiguous after the cab room");
+//   * Tremont 15 (PRS MT15) channel + bright — 2 contiguous ports [HF_AMP_MT_MODE,
+//     HF_AMP_MT_BRIGHT], added v21, as the last preset params before the commands.
+static_assert(HF_AMP_MT_MODE == HF_AMP_RC_RECT + 1 && HF_AMP_MT_BRIGHT == HF_AMP_MT_MODE + 1
+              && HF_AMP_MT_BRIGHT == HF_SW_A - 1,
+              "MT15 ports must be contiguous, after the Recto block and right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -696,6 +703,11 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float rcdef[3] = {7.0f, 0.0f, 0.0f};
     const bool rcGap = (srcVer < 20);
     const int rcAt = HF_AMP_RC_MODE, rcEnd = HF_AMP_RC_MODE + 3;
+    // v21 appended the Tremont 15 (PRS MT15) ports [HF_AMP_MT_MODE, HF_AMP_MT_BRIGHT];
+    // defaults = Lead (2), bright off — plain zero-fill would recall the Clean channel.
+    static const float mtdef[2] = {2.0f, 0.0f};
+    const bool mtGap = (srcVer < 21);
+    const int mtAt = HF_AMP_MT_MODE, mtEnd = HF_AMP_MT_MODE + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -714,6 +726,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (mdoGap && i >= mdoAt && i < mdoEnd)     vals[i] = 0.0f;   // Mod Center Delay = 0 ms
         else if (namGap && i >= namAt && i < namEnd)     vals[i] = 0.0f;   // NAM gain/level trims = 0 dB
         else if (rcGap && i >= rcAt && i < rcEnd)        vals[i] = rcdef[i - rcAt];  // Recto: CH3 Modern/Bold/Silicon
+        else if (mtGap && i >= mtAt && i < mtEnd)        vals[i] = mtdef[i - mtAt];  // MT15: Lead/bright off
         else                                             vals[i] = old[o++];
     }
 }
@@ -722,7 +735,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(20); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v20: + Diamond Plate (Recto) mode/variac/rect
+    putU32(21); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v21: + Tremont 15 channel/bright; v20: + Diamond Plate (Recto) mode/variac/rect
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -742,7 +755,7 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 20) return false;
+    if (ver < 2 || ver > 21) return false;
     const bool migrateOutDb = (ver == 2);
     const bool needMigrate  = (ver < 19);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
@@ -1040,7 +1053,7 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
-    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kRectoIdx)]);
+    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kMt15Idx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
@@ -1332,9 +1345,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->nail->setParameter("texture", *p->ports[HF_NAIL_TEXTURE]);
     p->nail->setParameter("level",   *p->ports[HF_NAIL_LEVEL]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kRectoIdx);
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kMt15Idx);
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
-    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx);
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx);
     if (ampIsAlgo && ampModel != p->lastAmpModel) {   // rebuild only for algo models
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
@@ -1389,6 +1402,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("mode",   *p->ports[HF_AMP_RC_MODE]);
         amp->setParameter("variac", *p->ports[HF_AMP_RC_VARIAC]);
         amp->setParameter("rect",   *p->ports[HF_AMP_RC_RECT]);
+    }
+    // Tremont 15 (PRS MT15): Clean/Crunch/Lead + the clean/crunch bright switch.
+    if (ampModel == kMt15Idx) {
+        amp->setParameter("mode",   *p->ports[HF_AMP_MT_MODE]);
+        amp->setParameter("bright", *p->ports[HF_AMP_MT_BRIGHT]);
     }
     // Recto Modern modes (4, 7) disconnect the power-amp NFB loop on the real amp.
     const float rcMode = *p->ports[HF_AMP_RC_MODE];
@@ -1706,7 +1724,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(20);                 // version (20: + Diamond Plate Recto mode/variac/rect; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(21);                 // version (21: + Tremont 15 channel/bright; 20: + Diamond Plate Recto mode/variac/rect; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1776,7 +1794,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 20) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 21) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
         const bool needMigrate  = (ver < 19);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
