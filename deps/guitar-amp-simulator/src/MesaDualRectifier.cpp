@@ -188,7 +188,7 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     // Audio-taper pot with unity at knob 0.375 (not 0.5): the capture-matched
     // full-gain roar arrives by ~9-10 o'clock and noon runs ~+4.5 dB hotter,
     // matching how a real Recto's gain dial feels (user feedback 2026-07-22).
-    const float pot  = std::min(7.111f * knob * knob, 2.2f);  // cap +6.8 dB over anchor:
+    const float pot  = std::min(18.96f * knob * knob * knob, 2.2f);  // cubic taper, unity at 0.375, cap +6.8 dB:
                                                                // beyond it the MV stages
                                                                // block (bias choke)
     const float mv = masterSmooth_.getCurrentValue();

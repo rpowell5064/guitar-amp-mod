@@ -93,18 +93,24 @@ float JCM800Model::processSample(float x, int channel) noexcept {
 
     // Input DC block
     x = c.inputHPF.process(x);
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
+    // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
+    // the clean range the real amp has (drives alone cannot clean a railed cascade).
+    const float gEff = g < 0.35f ? 0.35f : g;
+    const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
+    x *= gk * gk * gk;
 
     // Stage 1 (cold, tight)
-    x = c.stage1.process(x * (1.5f + g * 8.5f)) * 0.90f * kCouple12;
+    x = c.stage1.process(x * (1.5f + gEff * 8.5f)) * 0.90f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2 (no bypass cap, even harmonics)
-    x = c.stage2.process(x * (2.5f + g * 9.5f)) * 0.80f * kCouple23;
+    x = c.stage2.process(x * (2.5f + gEff * 9.5f)) * 0.80f * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);
 
     // Stage 3 (full bypass, aggressive)
-    x = c.stage3.process(x * (3.0f + g * 8.0f)) * 0.82f;
+    x = c.stage3.process(x * (3.0f + gEff * 8.0f)) * 0.82f;
     x *= kPreToneGain;
 
     // Tonestack

@@ -72,7 +72,11 @@ private:
         BiquadFilter     inter34LP;     // 5000 Hz LP
         TriodeComponent  stage4;        // kEVH_S4
         ToneStackComponent tonestack;   // Marshall type
-        BiquadFilter     presenceF;     // high shelf @ 5 kHz
+        BiquadFilter     presenceF;     // high shelf @ 5 kHz (applied POST-limiter)
+        BiquadFilter     devBass, devMid, devTreble;  // post-limiter deviation EQ: the
+                                        // pre-clip tonestack gets crushed by the hot
+                                        // final limiter, so knob deviations from noon
+                                        // are re-applied where they can be heard
         BiquadFilter     resonanceF;   // peak @ 80 Hz (EVH deep resonance)
         BiquadFilter     airLP;        // 12 kHz LP
         DnrRolloff       dnr;          // decay darkener (engaged on the Red channel)

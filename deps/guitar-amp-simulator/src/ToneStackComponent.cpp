@@ -36,7 +36,7 @@ const ToneStackComponent::TypeSpec ToneStackComponent::kMarshall = {
 //   Treble (top-cut) shelf @ 7 kHz ±12 dB
 //   Light passive interaction (cathode-follower tone circuit is more independent)
 const ToneStackComponent::TypeSpec ToneStackComponent::kVox = {
-    50.0,   10.0,
+    80.0,   12.0,
     1000.0, 10.0, 1.0,
     7000.0, 12.0,
     5000.0, 10.0,

@@ -75,7 +75,12 @@ float PeaveyBackstageModel::processSample(float x, int channel) noexcept {
     // The capture is ~40% THD and roughly level-INDEPENDENT (it clips even quiet
     // signals), so the Sat control drives the clipper deep. Rich odd h3/h5/h7 bite.
     x = c.ssClipPre.process(x);
-    x = std::tanh(x * (2.5f + g * 55.0f)) * 0.62f;
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 BIT-IDENTICAL; below,
+    // audio-taper attenuation adds the missing clean range.
+    const float gEff = g < 0.35f ? 0.35f : g;
+    const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
+    x *= gk * gk * gk;
+    x = std::tanh(x * (2.5f + gEff * 55.0f)) * 0.62f;
 
     x *= kPreToneGain;
 

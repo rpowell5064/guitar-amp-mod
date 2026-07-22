@@ -148,7 +148,7 @@ float PRSMT15::processSample(float x, int chn) noexcept {
     const auto& m = kModes[mode_];
     // Real gain pot: one audio-taper divider ahead of the cascade (see MesaDualRectifier).
     const float knob = gainSmooth_.getCurrentValue();
-    const float pot  = 4.0f * knob * knob;
+    const float pot  = 8.0f * knob * knob * knob;   // cubic taper, unity at knob 0.5
     const float mv = masterSmooth_.getCurrentValue();
 
     if (mode_ == 2) {   // DNR tracks the INPUT envelope (pre-gain), Lead only

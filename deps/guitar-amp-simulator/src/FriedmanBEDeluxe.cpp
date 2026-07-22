@@ -106,6 +106,12 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
     x = c.inputHPF.process(x);
     if (fat_) x = c.fatShelf.process(x);   // Fat: pre-gain low-end girth
     if (c45_) x = c.c45Shelf.process(x);   // C45: bright cap
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
+    // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
+    // the clean range the real amp has (drives alone cannot clean a railed cascade).
+    const float gEff = g < 0.35f ? 0.35f : g;
+    const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
+    x *= gk * gk * gk;
 
     if (channel_ == CH_CLEAN) {
         // Clean is not pristine — the real BE-Deluxe clean has some tube hair at noon,
@@ -115,7 +121,7 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
         // The BE-Deluxe clean captures are a HOT, edge-of-breakup clean (35-55% THD
         // even at low drive). Driven up toward that, but kept usable as a clean —
         // matching the captures' full saturation would make it a 4th dirty channel.
-        x = c.cleanS1.process(x * (1.8f + g * 5.5f)) * 0.90f * kCouple12;
+        x = c.cleanS1.process(x * (1.8f + gEff * 5.5f)) * 0.90f * kCouple12;
         x = c.cleanS2.process(x * 2.4f) * 0.85f;
         x *= kPreToneGain;
         x = c.tonestack.process(x);
@@ -128,15 +134,15 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
         // slammed (nam_compare vs the Noon preamp captures showed 2-3x too much THD).
         const float satMul = sat_ ? 1.4f : 1.0f;
         if (channel_ == CH_HBE) {
-            x = c.boostStage.process(x * (1.2f + g * 1.2f) * satMul) * 0.85f * kCoupB;
+            x = c.boostStage.process(x * (1.2f + gEff * 1.2f) * satMul) * 0.85f * kCoupB;
             x = c.boostHPF.process(x);
         }
-        x = c.stage1.process(x * (1.0f + g * 4.5f) * satMul) * 0.90f * kCouple12;
+        x = c.stage1.process(x * (1.0f + gEff * 4.5f) * satMul) * 0.90f * kCouple12;
         x = c.inter12HPF.process(x);
-        x = c.stage2.process(x * (1.6f + g * 5.0f) * satMul) * 0.80f * kCouple23;
+        x = c.stage2.process(x * (1.6f + gEff * 5.0f) * satMul) * 0.80f * kCouple23;
         x = c.inter23HPF.process(x);
         x = c.inter23LP.process(x);
-        x = c.stage3.process(x * (1.8f + g * 4.5f)) * 0.82f;
+        x = c.stage3.process(x * (1.8f + gEff * 4.5f)) * 0.82f;
         x *= kPreToneGain;
         x = c.tonestack.process(x);
         x = c.inter34HPF.process(x);

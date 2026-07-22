@@ -83,6 +83,11 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
 
     // Input conditioning: HPF @ 100 Hz removes sub-bass rumble and DC.
     x = s.inputHPF.process(x);
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 BIT-IDENTICAL to shipped
+    // voicing; below, an audio-taper attenuator adds the missing clean range.
+    const float gEff = gainCurrent_ < 0.35f ? 0.35f : gainCurrent_;
+    const float gk   = gainCurrent_ < 0.35f ? gainCurrent_ * (1.0f / 0.35f) : 1.0f;
+    x *= gk * gk * gk;
 
     if (!cleanChannel_) {
         // ── Dirty channel: 4 cascaded triode-like stages ─────────────────────
@@ -91,7 +96,7 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         // Higher gain = more saturation = higher THD + more perceived compression.
         // Audio-taper the gain knob so it sweeps clean->saturated like a real pot
         // (linear pinned every setting at full saturation — dead knob, no dynamics).
-        const float gt = gainCurrent_ * gainCurrent_;
+        const float gt = gEff * gEff;
         const float g1 = kS1Base + gt * kS1Range;
         const float g2 = kS2Base + gt * kS2Range;
         const float g3 = kS3Base + gt * kS3Range;
@@ -168,7 +173,7 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         // the 100 Hz input HPF and passed ~13 dB too much sub-bass vs the capture.
         x = s.inter12HPF.process(x);
         x = s.inter34HPF.process(x);
-        const float g = kCleanMin + gainCurrent_ * (kCleanMax - kCleanMin);
+        const float g = kCleanMin + gEff * (kCleanMax - kCleanMin);
         for (int stage = 0; stage < kCleanN; ++stage) {
             const float bias = -sag_ * s.sagEnv * 0.04f;
             x = std::tanh((x + bias) * g * 0.65f) / (g * 0.65f);

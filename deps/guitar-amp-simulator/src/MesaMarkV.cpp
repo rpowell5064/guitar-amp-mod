@@ -160,7 +160,12 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
     // touch response and lowers the pumped floor; still very high gain. Only the knob-dependent span is
     // trimmed, so the base voicing is preserved. (see tools/amp_noise.cpp level sweep)
     constexpr float kHiGainTrim = 0.88f;
-    const float g  = gainSmooth_.getCurrentValue() * (mode_ >= 6 ? kHiGainTrim : 1.0f);
+    const float knob = gainSmooth_.getCurrentValue();
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 BIT-IDENTICAL to the shipped
+    // voicing; below, an audio-taper attenuator adds the missing clean range (also
+    // fixes the Crunch mode's noise-dominated low-knob pathology).
+    const float gk = knob < 0.35f ? knob * (1.0f / 0.35f) : 1.0f;
+    const float g  = (knob < 0.35f ? 0.35f : knob) * (mode_ >= 6 ? kHiGainTrim : 1.0f);
     const float mv = masterSmooth_.getCurrentValue();
 
     // DNR: track the INPUT envelope (pre-gain — the only place playing dynamics survive; the output is
@@ -174,6 +179,7 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
 
     x = c.inHP.process(x);
     x = c.brightSh.process(x);
+    x *= gk * gk * gk;
 
     if (m.tsPre) x = c.tonestack.process(x);      // Mark lead: tone stack before the cascade
 

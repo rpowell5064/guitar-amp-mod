@@ -73,6 +73,12 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     const float v2 = vol2Smooth_.getCurrentValue();
 
     x = c.inputHPF.process(x);
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
+    // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
+    // the clean range the real amp has (drives alone cannot clean a railed cascade).
+    const float gEff = g < 0.35f ? 0.35f : g;
+    const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
+    x *= gk * gk * gk;
     const float xin = x;                                         // jumpered: both V1 halves see the guitar
 
     // Channel I (High Treble) — the original capture-anchored path, gain = Vol I.
@@ -80,7 +86,7 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
 
     // Stage 1 — LOW gain (plexi breaks up at the power amp, not V1/V2 — keeps preamp even
     // harmonics down; the push-pull power stage supplies the odd/high-order crunch)
-    x = c.stage1.process(x * (1.25f + g * 4.0f)) * 0.92f * kCouple12;
+    x = c.stage1.process(x * (1.25f + gEff * 4.0f)) * 0.92f * kCouple12;
 
     // Channel II (Normal) — the 1959's second volume, jumpered in (2026-07-14). A parallel V1
     // half with NO bright cap and darker coupling, blended by Vol II and summed at the V2 grid
@@ -93,7 +99,7 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     x = c.inter12HPF.process(x);
 
     // Stage 2 — shared-cathode; low-moderate gain
-    x = c.stage2.process(x * (1.5f + g * 4.5f)) * 0.85f;
+    x = c.stage2.process(x * (1.5f + gEff * 4.5f)) * 0.85f;
     x *= kPreToneGain;
 
     // Marshall tone stack

@@ -44,10 +44,16 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
 void EVH5150Model::recalcFilters() noexcept {
     // Presence: ±12 dB shelf @ 5 kHz
     const double presDb = (static_cast<double>(presence_) - 0.5) * 2.0 * 12.0;
+    const double devB = (static_cast<double>(bass_)   - 0.5) * 2.0 * 10.0;
+    const double devM = (static_cast<double>(mid_)    - 0.5) * 2.0 * 8.0;
+    const double devT = (static_cast<double>(treble_) - 0.5) * 2.0 * 20.0;
     // Resonance: 0 → flat, 1 → +8 dB peak @ 80 Hz (Q=2.5) — EVH deep resonance
     const double resDb  = static_cast<double>(resonance_) * 8.0;
     for (auto& c : ch_) {
-        c.presenceF.setCoeffs (Filters::highshelf(5000.0, presDb, oversampledFs_));
+        c.presenceF.setCoeffs (Filters::highshelf(3800.0, presDb, oversampledFs_));
+        c.devBass.setCoeffs  (Filters::lowshelf (100.0, devB, oversampledFs_));
+        c.devMid.setCoeffs   (Filters::peaking  (600.0, devM, 0.7, oversampledFs_));
+        c.devTreble.setCoeffs(Filters::highshelf(3600.0, devT, oversampledFs_));
         c.resonanceF.setCoeffs(Filters::peaking  (80.0, resDb, 2.5, oversampledFs_));
         c.airLP.setCoeffs     (Filters::lowpass1pole(16000.0, oversampledFs_));
     }
@@ -95,24 +101,30 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // Input: DC block + tight high-pass (5150 'chugging' character)
     x = c.dcBlock.process(x);
     x = c.inputTightHP.process(x);
+    // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
+    // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
+    // the clean range the real amp has (drives alone cannot clean a railed cascade).
+    const float gEff = g < 0.35f ? 0.35f : g;
+    const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
+    x *= gk * gk * gk;
 
     // Stage 1: hot bias, significant asymmetry
-    x = c.stage1.process(x * (2.5f + g * 11.0f)) * 0.88f * kCouple12;
+    x = c.stage1.process(x * (2.5f + gEff * 11.0f)) * 0.88f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2: very hot, heavy clipping
-    x = c.stage2.process(x * (3.8f + g * 11.0f)) * 0.78f * kCouple23;
+    x = c.stage2.process(x * (3.8f + gEff * 11.0f)) * 0.78f * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);
 
     // Stage 3: hard clip (lower Ra), compressed
-    x = c.stage3.process(x * (5.0f + g * 9.0f)) * 0.70f * kCouple34;
+    x = c.stage3.process(x * (5.0f + gEff * 9.0f)) * 0.70f * kCouple34;
     x = c.inter34HPF.process(x);
     x = c.inter34LP.process(x);
 
     // Stage 4: Red channel only (lead). Blue skips stage 4 for lower gain.
     if (redChannel_)
-        x = c.stage4.process(x * (3.0f + g * 6.0f)) * (0.72f * m);
+        x = c.stage4.process(x * (3.0f + gEff * 6.0f)) * (0.72f * m);
     else
         x *= 0.72f * m;  // Blue: master volume only, no additional triode stage
 
@@ -124,8 +136,7 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // Deep resonance peak (low-frequency NFB boost character)
     x = c.resonanceF.process(x);
 
-    // Presence and air rolloff
-    x = c.presenceF.process(x);
+    // Air rolloff (presence moved POST-limiter where it can be heard)
     x = c.airLP.process(x);
 
     // 6L6 supply sag: tight, fast (solid-state rectifier feel)
@@ -134,16 +145,23 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     const float sag = 1.0f - sag_ * c.sagEnv * 0.18f;
     x *= sag;
 
-    return c.dnr.process(softLimit(x), redChannel_);
+    // Post-limiter: tone-knob deviations from noon + presence (noon = all identity,
+    // so the shipped noon voicing and every preset at noon are bit-identical).
+    float y = softLimit(x);
+    y = c.devBass.process(y);
+    y = c.devMid.process(y);
+    y = c.devTreble.process(y);
+    y = c.presenceF.process(y);
+    return c.dnr.process(y, redChannel_);
 }
 
 void EVH5150Model::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")      { gain_   = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")    { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")       { sag_    = value; }
-    else if (id == "bass")      { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
-    else if (id == "mid")       { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
-    else if (id == "treble")    { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
+    else if (id == "bass")      { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); recalcFilters(); }
+    else if (id == "mid")       { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); recalcFilters(); }
+    else if (id == "treble")    { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); recalcFilters(); }
     else if (id == "presence")  { presence_ = value; recalcFilters(); }
     else if (id == "resonance") { resonance_ = value; recalcFilters(); }
     // channel: 0.0 = Blue (rhythm), 1.0 = Red (lead)
