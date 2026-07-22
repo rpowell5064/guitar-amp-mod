@@ -757,7 +757,7 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
     if (ver < 2 || ver > 21) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 19);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
+    const bool needMigrate  = (ver < 21);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1796,7 +1796,7 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
         if (ver < 2 || ver > 21) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 19);     // …Mod Center Delay (v18) + NAM trims (v19)
+        const bool needMigrate  = (ver < 21);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
