@@ -272,9 +272,10 @@ static const int kBypassPort[B_COUNT] = {
 };
 
 // ── 6-band graphic EQ block (2026-07-23) ─────────────────────────────────────
-// MXR-style octave centers; a PRESET base curve is applied UNDER the sliders
-// (sliders at 0 = the preset alone; they tweak on top, total clamped ±15 dB).
-// Curves must mirror gen_hexforge.py's eq_preset scalePoints.
+// MXR-style octave centers. The PRESET port is a RETAINED SELECTION only: the
+// modgui loads the chosen curve into the slider ports on click (so the values
+// live on the controls and persist in presets/pedalboards) — the DSP reads the
+// sliders alone, so the retained selection never double-applies.
 struct GraphicEQ {
     static constexpr int kBands = 6;
     BiquadFilter f[2][kBands];
@@ -287,26 +288,17 @@ struct GraphicEQ {
     void reset() { for (int c = 0; c < 2; ++c) for (int b = 0; b < kBands; ++b) f[c][b].reset(); }
     void update(int preset, const float* db, float lvlDb) noexcept {
         static const double kFc[kBands] = {100.0, 200.0, 400.0, 800.0, 1600.0, 3200.0};
-        // Curves per the Neural DSP electric-guitar EQ guide (warmth 80-100 Hz,
-        // mud ~250, boxiness 250-500, clarity 800, presence/sharpness 1.6-3.2k):
-        static const float kPre[7][kBands] = {
-            { 0, 0,  0,  0,  0,  0},   // Manual
-            { 3, 0, -1,  2,  1,  2},   // Clean Sparkle: warm lows + clarity + top shimmer
-            {-2,-4, -3,  1,  1,  0},   // De-Mud: carve rumble/boxiness, nudge clarity
-            { 3, 1, -3,  0,  2,  4},   // Classic Rock: 100 up, 400 out, 3.2k bite
-            { 4,-2, -5, -2,  2,  4},   // Metal Rhythm: big tight lows, deep box cut, edge
-            {-1, 0,  1,  3,  4,  5},   // Lead Cut: upper-mid push that jumps out of a mix
-            {-4,-2,  2,  7,  2, -4},   // Cocked Wah: parked-wah honk
-        };
-        if (preset < 0) preset = 0; if (preset > 6) preset = 6;
-        bool dirty = (preset != curPre) || (lvlDb != curLvl);
+        // Preset curves live in script-hexforge.js (EQ_PRE, from the Neural DSP
+        // electric-guitar EQ guide) — the UI loads them into the slider ports.
+        (void)preset;   // retained UI selection; not part of the audio path
+        bool dirty = (lvlDb != curLvl);
         for (int b = 0; b < kBands && !dirty; ++b) dirty = (db[b] != curDb[b]);
         if (!dirty) return;
-        curPre = preset; curLvl = lvlDb;
+        curLvl = lvlDb;
         for (int b = 0; b < kBands; ++b) {
             curDb[b] = db[b];
-            float d = kPre[preset][b] + db[b];
-            if (d > 15.0f) d = 15.0f; else if (d < -15.0f) d = -15.0f;
+            float d = db[b];
+            if (d > 12.0f) d = 12.0f; else if (d < -12.0f) d = -12.0f;
             const BiquadCoeffs bc = Filters::peaking(kFc[b], d, 1.1, rate);
             f[0][b].setCoeffs(bc); f[1][b].setCoeffs(bc);
         }

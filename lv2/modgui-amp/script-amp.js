@@ -106,8 +106,36 @@ function (event, funcs) {
         funcs.set_port_value('mv_eqpreset', 0);   // back to Custom → the loaded sliders drive the EQ
     }
 
+    // Dropdown labels (2026-07-23): mod-ui doesn't reliably render the selected
+    // scale-point label into custom-select widgets — sync them ourselves from a
+    // per-symbol cache (built at start), on option clicks and change events.
+    function syncSel(icon, sym, val) {
+        var m = icon.data('hx_selmap'); var els = m && m[sym]; if (!els) return;
+        els.forEach(function (el) {
+            var sel = el.querySelector('.mod-enumerated-selected'); if (!sel) return;
+            var lab = null;
+            Array.prototype.forEach.call(el.querySelectorAll('[mod-role=enumeration-option]'), function (o) {
+                if (parseFloat(o.getAttribute('mod-port-value')) == parseFloat(val)) lab = (o.textContent || '').replace(/^\s+|\s+$/g, '');
+            });
+            if (lab != null) sel.textContent = lab;
+        });
+    }
+    function buildSelMap(icon, ports) {
+        var m = {};
+        icon.find('[mod-widget=custom-select][mod-port-symbol]').each(function () {
+            var sym = this.getAttribute('mod-port-symbol');
+            (m[sym] = m[sym] || []).push(this);
+            var el = this;
+            Array.prototype.forEach.call(el.querySelectorAll('[mod-role=enumeration-option]'), function (o) {
+                o.addEventListener('click', function () { syncSel(icon, sym, o.getAttribute('mod-port-value')); });
+            });
+        });
+        icon.data('hx_selmap', m);
+        (ports || []).forEach(function (p) { if (m[p.symbol]) syncSel(icon, p.symbol, p.value); });
+    }
     if (event.type == 'start') {
         var icon = event.icon;
+        buildSelMap(icon, event.ports);
         // Show the loaded NAM file immediately (2026-07-23): mod-ui applies the patch
         // write on option click but doesn't reliably echo a change event back.
         (event.parameters || []).forEach(function (pr) {
@@ -148,6 +176,7 @@ function (event, funcs) {
         if ('model' in map) update_model(icon, map.model);
         if ('pamp_auto' in map) update_pa_auto(icon, map.pamp_auto);
     } else if (event.type == 'change') {
+        if (event.symbol) syncSel(event.icon, event.symbol, event.value);
         if (event.symbol == 'model')
             update_model(event.icon, event.value);
         else if (event.symbol == 'pamp_auto')

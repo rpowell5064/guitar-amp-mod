@@ -179,7 +179,9 @@ NAIL = [
 # they tweak on top). Preset names/curves mirror kEqPresets in hexforge_plugin.cpp.
 # Preset lineup follows the Neural DSP electric-guitar EQ guide (user 2026-07-23):
 # per-goal moves (warmth 80-100, mud cut ~250, boxiness cut 250-500, clarity 800,
-# presence/sharpness 1.6-3.2k) rather than the Cali V's V-curve family.
+# presence/sharpness 1.6-3.2k) rather than the Cali V's V-curve family. The preset
+# port is a RETAINED SELECTION: on click the modgui loads the curve into the slider
+# ports (values visible + preset/pedalboard-persistent); the DSP reads sliders only.
 EQBLK = [
     ("preset", "Preset", "e", 0, 6, 0, [("Manual",0),("Clean Sparkle",1),("De-Mud",2),
                                         ("Classic Rock",3),("Metal Rhythm",4),("Lead Cut",5),("Cocked Wah",6)]),

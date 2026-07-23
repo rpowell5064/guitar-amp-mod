@@ -34,12 +34,11 @@ function (event, funcs) {
         var line = icon.find('[rata-role=eqline]'); if (!line.length) return;
         var v = icon.data('hf_eq_v') || [0, 0, 0, 0, 0, 0];
         var lvl = parseFloat(icon.data('hf_eq_lvl')) || 0;
-        var base = EQ_PRE[parseInt(icon.data('hf_eq_p'), 10) || 0] || [0, 0, 0, 0, 0, 0];
         var d = '';
         for (var i = 0; i <= 80; ++i) {
             var f = 40 * Math.pow(250, i / 80), db = lvl;
             for (var b = 0; b < 6; ++b) {
-                var g = base[b] + v[b]; if (g > 15) g = 15; if (g < -15) g = -15;
+                var g = v[b]; if (g > 12) g = 12; if (g < -12) g = -12;
                 var o = Math.log(f / EQ_FC[b]) / Math.LN2;
                 db += g * Math.exp(-(o * o) / 0.605);          // ~Q 1.1 bell on the log axis
             }
@@ -49,22 +48,55 @@ function (event, funcs) {
         line.attr('d', d);
         icon.find('[rata-role=eqfill]').attr('d', d + 'L400 100L0 100Z');
     }
+    // Selecting a preset (USER CLICK only — never on preset/pedalboard restore,
+    // which would clobber saved fader tweaks) loads its curve into the faders.
+    // The eq_preset port KEEPS the selection, so it persists in saved presets and
+    // pedalboards and the dropdown shows it after reload; the DSP reads only the
+    // faders, so the retained selection never double-applies.
     function loadEqBlockPreset(icon, v) {
         var pv = EQ_PRE[parseInt(v, 10)];
         if (!pv || !funcs || typeof funcs.set_port_value !== 'function') return;
         for (var i = 0; i < 6; ++i) funcs.set_port_value(EQ_SYMS[i], pv[i]);
-        funcs.set_port_value('eq_preset', 0);   // back to Manual — the loaded faders drive the EQ
-        icon.data('hf_eq_v', pv.slice()); icon.data('hf_eq_p', 0);
+        icon.data('hf_eq_v', pv.slice());
         setNodeVal(icon, 'eq', NV.eq[parseInt(v, 10)]);
         eqScope(icon);
     }
     function eqTrack(icon, sym, val) {   // returns true if sym belongs to the EQ scope state
-        if (sym === 'eq_preset') { icon.data('hf_eq_p', parseInt(val, 10) || 0); return true; }
+        if (sym === 'eq_preset') { setModelVal(icon, 'eq', parseInt(val, 10) || 0); return true; }
         var k = EQ_SYMS.indexOf(sym);
         if (k < 0) return false;
         if (sym === 'eq_level') icon.data('hf_eq_lvl', parseFloat(val));
         else { var a = (icon.data('hf_eq_v') || [0, 0, 0, 0, 0, 0]).slice(); a[k] = parseFloat(val); icon.data('hf_eq_v', a); }
         return true;
+    }
+
+    // ── Dropdown labels (2026-07-23): mod-ui doesn't reliably render the selected
+    // scale-point label into custom-select widgets, so EVERY select shows its value
+    // through this: a per-symbol element cache built at start, synced on click,
+    // change events and preset recall. O(1) per change — meters never hit it.
+    function syncSel(icon, sym, val) {
+        var m = icon.data('hf_selmap'); var els = m && m[sym]; if (!els) return;
+        els.forEach(function (el) {
+            var sel = el.querySelector('.mod-enumerated-selected'); if (!sel) return;
+            var lab = null;
+            Array.prototype.forEach.call(el.querySelectorAll('[mod-role=enumeration-option]'), function (o) {
+                if (parseFloat(o.getAttribute('mod-port-value')) == parseFloat(val)) lab = (o.textContent || '').replace(/^\s+|\s+$/g, '');
+            });
+            if (lab != null) sel.textContent = lab;
+        });
+    }
+    function buildSelMap(icon, portMap) {
+        var m = {};
+        icon.find('[mod-widget=custom-select][mod-port-symbol]').each(function () {
+            var sym = this.getAttribute('mod-port-symbol');
+            (m[sym] = m[sym] || []).push(this);
+            var el = this;
+            Array.prototype.forEach.call(el.querySelectorAll('[mod-role=enumeration-option]'), function (o) {
+                o.addEventListener('click', function () { syncSel(icon, sym, o.getAttribute('mod-port-value')); });
+            });
+        });
+        icon.data('hf_selmap', m);
+        for (var sym in m) if (portMap && (sym in portMap)) syncSel(icon, sym, portMap[sym]);
     }
 
     function nodeOf(icon, b)  { return icon.find('.hf-node[data-block="' + b + '"]'); }
@@ -522,6 +554,7 @@ function (event, funcs) {
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
             else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6); }
             else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
+            syncSel(icon, sym, val);
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             fns.set_port_value(sym, val);
         });
@@ -621,9 +654,13 @@ function (event, funcs) {
         setModelVal(icon, 'md', _mt0);
         icon.data('hf_eq_v', EQ_SYMS.slice(0, 6).map(function (k) { return parseFloat(map[k]) || 0; }));
         icon.data('hf_eq_lvl', parseFloat(map.eq_level) || 0);
-        icon.data('hf_eq_p', parseInt(map.eq_preset || 0, 10));
         setModelVal(icon, 'eq', parseInt(map.eq_preset || 0, 10));
         eqScope(icon);
+        buildSelMap(icon, map);   // every dropdown shows its selected value from load on
+        icon.find('[mod-widget=custom-select][mod-port-symbol="eq_preset"] [mod-role=enumeration-option]').each(function () {
+            var el = this;
+            el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value')); });
+        });
         show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6);
         setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
@@ -719,6 +756,7 @@ function (event, funcs) {
         })();
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
+        if (s) syncSel(icon, s, event.value);   // dropdown labels track every change
         if (s && /_pos$/.test(s)) {
             var b = s.replace(/_pos$/, ''), want = parseInt(event.value, 10), cur = posOf(icon, b);
             if (want === cur) { resort(icon); return; }
@@ -746,9 +784,6 @@ function (event, funcs) {
             icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
         } else if (s === 'dr_model') {
             applyDrive(icon, parseInt(event.value, 10));
-        } else if (s === 'eq_preset') {
-            if (event.value > 0) loadEqBlockPreset(icon, event.value);
-            else { icon.data('hf_eq_p', 0); eqScope(icon); }
         } else if (eqTrack(icon, s, event.value)) {
             eqScope(icon);
         } else if (s === 'md_type') {
