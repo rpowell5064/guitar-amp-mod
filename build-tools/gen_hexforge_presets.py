@@ -795,7 +795,7 @@ add(
 # a compressed clean at the EDGE of break-up with a deep SEASICK chorus. Packed into the
 # Muse bank's free C slot per the no-blanks rule ("fill the banks with what I have").
 add(
-  preset(14, 2, "Retro Poland", out_level=-9.0,   # -9.6 measured -0.6 dB under the Dense tank; -9.0 restores the user-dialed loudness
+  preset(14, 2, "Retro Poland", out_level=-9.9,   # user dialed -9.6; Dense tank measured -0.6 (-> -9.0), Dense cab room +0.9 (-> -9.9) keeps the user-dialed loudness
     # USER-PRESERVED (2026-07-23): the user's on-device dial-in, read back from the
     # saved store and baked verbatim — do not retune. Their changes vs the shipped
     # cut: drive = Preamp 250 (DOD) at a whisker of drive with mix at half (grit
@@ -966,6 +966,19 @@ for _p in PRESETS:
 for _p in PRESETS:
     _p["vals"][SYM_IDX["rv_density"]] = 1.0
 
+# Dense cab room on EVERY preset too (user 2026-07-23, after the same A/B). As with
+# the tank: level-matched at the design point, per-preset residuals absorbed via
+# ROOMDENSE_MEAS_DELTA below; port default stays Classic for old boards.
+for _p in PRESETS:
+    _p["vals"][SYM_IDX["cab_roomdense"]] = 1.0
+
+# Spring reverb where the rig calls for it (user 2026-07-23): the two genuinely
+# surf / early-60s instrumental presets. Everything else references plate/studio
+# reverb rigs and stays on the plate tank.
+for _p in PRESETS:
+    if _p["name"] in ("Surf Splash", "Apache Echo"):
+        _p["vals"][SYM_IDX["rv_type"]] = 1.0
+
 # Loudness deltas measured on-device AFTER the polish (coupling adds level on the
 # pushed presets) — applied to the MEAS table so the parity pipeline re-levels.
 POLISH_MEAS_DELTA = {   # measured on-device 2026-07-23 (pdfast before/after, real rev-53 build)
@@ -990,6 +1003,30 @@ DENSE_MEAS_DELTA = {
     "Streets Chime": 1.0, "World Went Away": 1.4, "Quarter-Tone Lead": 0.3, "Winterborn": 2.3,
 }
 for _nm, _d in DENSE_MEAS_DELTA.items():
+    if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
+    if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d
+
+# Loudness deltas measured on-device 2026-07-23 AFTER (a) Dense cab room on every
+# preset (extra comb energy lifts most rigs +0.3..+1.0 dB at the stock 0.12 room
+# mix) and (b) the Plate->Spring swap on the two surf presets (the spring tank
+# runs quieter at the same mix: Surf Splash -2.4, Apache Echo -1.2). Same pipeline
+# treatment: fold into BOTH MEAS tables so out_level re-levels to parity.
+ROOMDENSE_MEAS_DELTA = {
+    "Regal Sustain": +0.7, "Nevermind Verse": +0.7, "Nevermind Wall": +0.8, "Come As Water": +0.7,
+    "Candlelit Clean": +0.5, "Sermon Crunch": +0.4, "Sermon Rhythm": +0.4, "Sermon Solo": +0.4,
+    "Imperial Rhythm": +0.5, "Imperial Lead": +0.5, "Cardinal Rhythm": +0.7, "Cardinal Lead": +0.4,
+    "Dark Side Air": +0.5, "Numb Sustain": +0.8, "Gravity Lead": +0.9, "Mauve Haze": +0.6,
+    "Little Feather": +0.7, "Skye Crusher": +0.7, "Skye (No Mod)": +0.7, "Skye Soar": +0.6,
+    "Vanishing Drive": +0.4, "Dreamlit Shimmer": +0.8, "Flatliner": +0.7, "Prayer Djent": +0.7,
+    "Bridge Vibe": +0.7, "Bottle Jangle": +0.5, "Forest Wash": +0.6, "Disco Chuck": +0.8,
+    "Surf Splash": -2.4, "Apache Echo": -1.2, "Desert Robot": +0.6, "Moondust Glam": +0.6,
+    "Innerspeaker Swirl": +0.7, "Glide Wall": +0.7, "Streets Chime": +0.9, "Regal Solo": +0.6,
+    "March Stabs": +0.6, "World Went Away": +0.8, "Broken Crush": +0.9, "Con Molars": +0.9,
+    "Quarter-Tone Lead": -0.4, "Anyone Can Play Guitar": +0.7, "Winterborn": +0.6, "Castaway Groove": +0.5,
+    "Marionette Master": +0.6, "Spectrum Rhythm": +0.6, "Spectrum Lead": +0.5, "Grunge Drop": +0.6,
+    "Plug-In Junior": +0.5, "Cavalier Charge": +0.3,
+}
+for _nm, _d in ROOMDENSE_MEAS_DELTA.items():
     if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
     if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d
 
