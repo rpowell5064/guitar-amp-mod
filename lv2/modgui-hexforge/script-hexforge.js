@@ -554,8 +554,8 @@ function (event, funcs) {
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
             else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6); }
             else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
-            syncSel(icon, sym, val);
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
+            syncSel(icon, sym, val);               // dropdown labels track recalled values
             fns.set_port_value(sym, val);
         });
         if (sawPos || membership) resort(icon);
