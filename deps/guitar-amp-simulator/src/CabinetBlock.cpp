@@ -12,7 +12,13 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
         e.lowCut.reset(); e.highCut.reset();
         e.micLP.reset(); e.micBite.reset(); e.micBody.reset();
         e.distProx.reset(); e.distAir.reset();
+        e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
+        e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
+        e.compEnv = 0.0f; e.compRef = 0.0f;
     }
+    compAtt_  = 1.0f - std::exp(-1.0f / (0.030f * (float)sr));  // 30 ms attack
+    compRel_  = 1.0f - std::exp(-1.0f / (0.180f * (float)sr));  // 180 ms release
+    compSlow_ = 1.0f - std::exp(-1.0f / (1.500f * (float)sr));  // sliding reference (~1.5 s)
     // Room buffers sized for the largest room (Amount = 1) once; lengths follow the knob.
     for (int c = 0; c < kMaxCh; ++c) {
         auto& rs = room_[c];
@@ -105,7 +111,49 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
 
         // Post-EQ on wet, then wet/dry mix. Mic placement filters run only when moved
         // off the baseline (micActive_), so the default path stays bit-identical.
-        if (micActive_) {
+        if (studio_) {
+            // ── Studio voice: the "recorded" chain (see header). Room forced off. ──
+            auto& e = eqState_[c];
+            for (int i = 0; i < numSamples; ++i) {
+                float base = e.lowCut.process(out[c][i]);
+                base = e.highCut.process(base);
+                // primary mic = the user's placement path (controls stay live)
+                float w1 = base;
+                if (micActive_) {
+                    w1 = e.micLP.process(w1);
+                    w1 = e.micBite.process(w1);
+                    w1 = e.micBody.process(w1);
+                    w1 = e.distProx.process(w1);
+                    w1 = e.distAir.process(w1);
+                }
+                // second virtual mic: fixed darker ribbon-at-edge character
+                float w2 = e.mic2LP.process(base);
+                w2 = e.mic2Bite.process(w2);
+                w2 = e.mic2Body.process(w2);
+                float w = 0.65f * w1 + 0.35f * w2;   // phase-coherent blend (same conv source)
+                w = e.stHP.process(w);
+                w = e.stLP.process(w);
+                w = e.conA.process(w);
+                w = e.conB.process(w);
+                // Gentle bus "glue" — LEVEL-INVARIANT by design: an absolute threshold
+                // can't be right across gain stagings (Hex Forge's cab point runs far
+                // hotter than a standalone board). Instead compress the fast envelope
+                // 2:1 toward the signal's own slow average, capped at 3 dB GR — swells
+                // and pick transients are evened out, overall loudness is untouched.
+                const float a = std::fabs(w);
+                e.compEnv  += (a > e.compEnv ? compAtt_ : compRel_) * (a - e.compEnv);
+                e.compRef  += compSlow_ * (a - e.compRef);
+                float g = 1.0f;
+                if (e.compEnv > e.compRef && e.compRef > 1e-6f) {
+                    g = std::sqrt(e.compRef / e.compEnv);   // 2:1 above the sliding reference
+                    if (g < 0.708f) g = 0.708f;             // max 3 dB gain reduction
+                }
+                // Static +2 dB makeup for the chain's average tonal loss (bracket +
+                // darker mic-2 blend) so A/B'ing Room<->Studio compares tone, not volume.
+                w *= g * 1.26f;
+                out[c][i] = dryBuf_[i] * (1.0f - mix_) + w * mix_;
+            }
+        } else if (micActive_) {
             auto& e = eqState_[c];
             for (int i = 0; i < numSamples; ++i) {
                 float w = out[c][i];
@@ -152,6 +200,7 @@ void CabinetBlock::setParameter(const std::string& id, float v) {
     else if (id == "roommix")   { roomMix_ = std::clamp(v, 0.0f, 1.0f); }
     else if (id == "roomamt")   { const float a = std::clamp(v, 0.0f, 1.0f);
                                   if (a != roomAmt_) { roomAmt_ = a; rebuildRoom(); } }
+    else if (id == "voice")     { studio_ = v > 0.5f; }
 }
 
 float CabinetBlock::getParameter(const std::string& id) const {
@@ -163,6 +212,7 @@ float CabinetBlock::getParameter(const std::string& id) const {
     if (id == "roomon")    return roomOn_ ? 1.0f : 0.0f;
     if (id == "roommix")   return roomMix_;
     if (id == "roomamt")   return roomAmt_;
+    if (id == "voice")     return studio_ ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -201,6 +251,16 @@ void CabinetBlock::rebuildEQ() {
     // distance: close -> ~30 cm. Proximity bass falls away (-4.5 dB shelf @130), slight air loss.
     const BiquadCoeffs dpx = Filters::lowshelf (130.0, -4.5 * d, sampleRate);
     const BiquadCoeffs dar = Filters::highshelf(6500.0, -2.5 * d, sampleRate);
+    // Studio voice fixed chain: ribbon-ish second mic + bracket + console curve.
+    const BiquadCoeffs m2l = Filters::lowpass (4800.0, 0.707, sampleRate);
+    const BiquadCoeffs m2b = Filters::peaking (4200.0, -3.0, 1.2, sampleRate);
+    const BiquadCoeffs m2y = Filters::lowshelf(260.0,   1.2, sampleRate);
+    const BiquadCoeffs shp = Filters::highpass(78.0,   0.707, sampleRate);
+    const BiquadCoeffs slp = Filters::lowpass (10500.0, 0.707, sampleRate);
+    const BiquadCoeffs cnA = Filters::peaking (400.0,  -1.5, 0.8, sampleRate);
+    // +2.2 (not the textbook +1.2): the darker mic-2 blend costs ~1 dB here — the
+    // console node must WIN so the studio voice nets a slight presence lift vs Room.
+    const BiquadCoeffs cnB = Filters::peaking (3200.0,  2.2, 0.9, sampleRate);
     for (auto& e : eqState_) {
         e.lowCut.setCoeffs(lc);
         e.highCut.setCoeffs(hc);
@@ -209,5 +269,8 @@ void CabinetBlock::rebuildEQ() {
         e.micBody.setCoeffs(pbd);
         e.distProx.setCoeffs(dpx);
         e.distAir.setCoeffs(dar);
+        e.mic2LP.setCoeffs(m2l); e.mic2Bite.setCoeffs(m2b); e.mic2Body.setCoeffs(m2y);
+        e.stHP.setCoeffs(shp);   e.stLP.setCoeffs(slp);
+        e.conA.setCoeffs(cnA);   e.conB.setCoeffs(cnB);
     }
 }

@@ -360,6 +360,15 @@ ctrl.append(mkport("AMP_MT_MODE", "amp_mt_mode", "Amp MT Channel", "e", 0, 2, 2,
 ctrl.append(mkport("AMP_MT_BRIGHT", "amp_mt_bright", "Amp MT Bright", "e", 0, 1, 0,
     [("Off",0),("On",1)], "Bright"))
 
+# ── Cab Voice + output Doubler (2026-07-22) — the "recorded sound" option. Voice:
+# Room (0, bit-identical legacy path) / Studio (1: second virtual mic blend, bracketing
+# HPF/LPF, console curve, bus compression; room ambience forced off inside the block).
+# Doubler: micro-delayed detuned copy on the right — the fake double-track. Appended
+# before the preset commands; pre-v22 blobs migrate to {Room, Off}. Migrated v22.
+ctrl.append(mkport("CAB_VOICE", "cab_voice", "Cab Voice", "e", 0, 1, 0,
+    [("Room",0),("Studio",1)], "Voice"))
+ctrl.append(mkport("OUT_DOUBLER", "out_doubler", "Output Doubler", "t", 0, 1, 0, None, "Doubler"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -532,7 +541,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 133 ;")
+    L.append("    lv2:microVersion 134 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -979,7 +988,7 @@ BLOCK_GROUPS = {
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
-    "cab": [("CABINET", None, ["lowcut", "highcut", "mix"]),
+    "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt"])],   # mic placement renders as the MICPAD widget (below), not knobs
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset"]),
             ("CLOCK SYNC", None, ["sync", "div"])],
@@ -1185,6 +1194,7 @@ def emit_icon():
         '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
+        '      ' + render_ctrl(CTRL_BY_SYM["out_doubler"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
         '      <div class="mod-powerswitch" mod-role="bypass" role="switch" aria-label="Global bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '    </div>\n'

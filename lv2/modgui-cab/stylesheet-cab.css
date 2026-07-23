@@ -88,6 +88,10 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-enumerated .mod-enumerated-list { display: none; background-color: rgba(0,0,0,.92); color: #fff; width: 100%; max-height: 200px; overflow: auto; position: absolute; z-index: 9000 !important; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding: 3px 9px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-enumerated .mod-enumerated-list > div:hover { background-color: rgba(255,255,255,.2); cursor: pointer; }
+/* Cab voice (Room / Studio) — one compact labeled select under the Cabinet knobs */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-voice-row { display: flex; align-items: center; gap: 8px; margin: 7px 2px 1px 2px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-voice-label { font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-voice-sel { flex: 1; min-width: 0; }
 
 /* HEX CHAIN logo badge (black background dropped via screen blend) */
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-logo {

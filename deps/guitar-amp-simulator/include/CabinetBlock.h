@@ -52,6 +52,14 @@ private:
     bool  roomOn_   = false;
     float roomMix_  = 0.15f;
     float roomAmt_  = 0.35f;
+    // Cab Voice (2026-07-22): 0 = Room (bit-identical legacy path), 1 = Studio — the
+    // "recorded" sound: a second fixed virtual mic (darker ribbon-at-edge character)
+    // blended 35% against the primary mic path, bracketing HPF/LPF (78 Hz / 10.5 kHz),
+    // a fixed console curve (-1.5 dB @ 400, +2.2 dB @ 3.2k) and gentle level-invariant
+    // bus glue (2:1 toward the signal's own sliding average, <= 3 dB GR). Room ambience
+    // is forced OFF in Studio voice (a close-mic'd record is dry; ambience belongs to
+    // the mix, not the cab).
+    bool  studio_   = false;
 
     static constexpr int kMaxCh    = 2;
     static constexpr int kNumSlots = 2;  // double-buffer: front / back
@@ -79,6 +87,12 @@ private:
         BiquadFilter micBody;    // mic position: slight low-mid gain off-center
         BiquadFilter distProx;   // mic distance: proximity bass falls away
         BiquadFilter distAir;    // mic distance: HF air loss with distance
+        // Studio voice (fixed coefficients; see studio_ comment above)
+        BiquadFilter mic2LP, mic2Bite, mic2Body;   // second virtual mic (ribbon/edge)
+        BiquadFilter stHP, stLP;                   // bracketing filters
+        BiquadFilter conA, conB;                   // console curve
+        float compEnv = 0.0f;                      // bus glue: fast envelope
+        float compRef = 0.0f;                      // bus glue: slow sliding reference
     };
     std::array<EQState, kMaxCh> eqState_;
 
@@ -97,6 +111,8 @@ private:
     float roomFb_ = 0.6f;
     void  rebuildRoom();
     float roomTick(RoomState& rs, float x) noexcept;
+
+    float compAtt_ = 0.0f, compRel_ = 0.0f, compSlow_ = 0.0f;   // bus glue coeffs (set in prepare)
 
     void rebuildEQ();
     void loadIRIntoSlot(int slot);

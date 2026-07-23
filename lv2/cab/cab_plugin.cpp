@@ -38,6 +38,7 @@ enum CabPorts {
     P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
     P_MICPOS, P_MICDIST,       // mic placement (2026-07-14): cap→cone-edge, close→back; 0/0 = as-voiced
     P_ROOMON, P_ROOMMIX, P_ROOMAMT,  // room ambience (2026-07-14): toggle + wet mix + size/decay; off = bit-identical
+    P_VOICE,                   // cab voice (2026-07-22): 0 Room (untouched legacy path) / 1 Studio (recorded chain)
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
@@ -297,6 +298,7 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->dsp.setParameter("roomon",    *p->ports[P_ROOMON]);   // room ambience (off = bit-identical)
         p->dsp.setParameter("roommix",   *p->ports[P_ROOMMIX]);
         p->dsp.setParameter("roomamt",   *p->ports[P_ROOMAMT]);
+        p->dsp.setParameter("voice",     *p->ports[P_VOICE]);
         float* ins[2]  = { inL,  inR  };
         float* outs[2] = { outL, outR };
         p->dsp.process(ins, outs, static_cast<int>(n), 2);

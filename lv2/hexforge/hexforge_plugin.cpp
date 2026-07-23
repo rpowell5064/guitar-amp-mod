@@ -433,6 +433,10 @@ struct HexForge {
     // scratch
     float mono[kMaxBlock], monoOut[kMaxBlock];
     int   clipHold = 0;   // samples remaining to keep the CLIP indicator lit
+    // Output doubler (fake double-track): micro-delay line + deterministic drift phase.
+    std::vector<float> dblBuf;
+    int    dblW = 0;
+    double dblPhase = 0.0;
 
     // host features
     LV2_URID_Map*        map      = nullptr;
@@ -643,9 +647,12 @@ static_assert(HF_AMP_RC_MODE == HF_CAB_ROOMAMT + 1 && HF_AMP_RC_VARIAC == HF_AMP
               "Recto ports must be contiguous after the cab room");
 //   * Tremont 15 (PRS MT15) channel + bright — 2 contiguous ports [HF_AMP_MT_MODE,
 //     HF_AMP_MT_BRIGHT], added v21, as the last preset params before the commands.
-static_assert(HF_AMP_MT_MODE == HF_AMP_RC_RECT + 1 && HF_AMP_MT_BRIGHT == HF_AMP_MT_MODE + 1
-              && HF_AMP_MT_BRIGHT == HF_SW_A - 1,
-              "MT15 ports must be contiguous, after the Recto block and right before the commands");
+static_assert(HF_AMP_MT_MODE == HF_AMP_RC_RECT + 1 && HF_AMP_MT_BRIGHT == HF_AMP_MT_MODE + 1,
+              "MT15 ports must be contiguous after the Recto block");
+//   * Cab Voice + Output Doubler — 2 contiguous ports, added v22, last before the commands.
+static_assert(HF_CAB_VOICE == HF_AMP_MT_BRIGHT + 1 && HF_OUT_DOUBLER == HF_CAB_VOICE + 1
+              && HF_OUT_DOUBLER == HF_SW_A - 1,
+              "cab voice + doubler must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -708,6 +715,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float mtdef[2] = {2.0f, 0.0f};
     const bool mtGap = (srcVer < 21);
     const int mtAt = HF_AMP_MT_MODE, mtEnd = HF_AMP_MT_MODE + 2;
+    // v22 appended cab voice + output doubler; defaults Room (0) / off (0).
+    const bool cvGap = (srcVer < 22);
+    const int cvAt = HF_CAB_VOICE, cvEnd = HF_CAB_VOICE + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -727,6 +737,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (namGap && i >= namAt && i < namEnd)     vals[i] = 0.0f;   // NAM gain/level trims = 0 dB
         else if (rcGap && i >= rcAt && i < rcEnd)        vals[i] = rcdef[i - rcAt];  // Recto: CH3 Modern/Bold/Silicon
         else if (mtGap && i >= mtAt && i < mtEnd)        vals[i] = mtdef[i - mtAt];  // MT15: Lead/bright off
+        else if (cvGap && i >= cvAt && i < cvEnd)        vals[i] = 0.0f;             // cab voice Room / doubler off
         else                                             vals[i] = old[o++];
     }
 }
@@ -735,7 +746,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(21); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v21: + Tremont 15 channel/bright; v20: + Diamond Plate (Recto) mode/variac/rect
+    putU32(22); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v22: + cab voice + output doubler; v21: + Tremont 15; v20: + Diamond Plate
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -755,9 +766,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 21) return false;
+    if (ver < 2 || ver > 22) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 21);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
+    const bool needMigrate  = (ver < 22);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1008,6 +1019,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->wah.prepare(rate, kMaxBlock, 2);
     p->octave.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
+    p->dblBuf.assign(size_t(rate * 0.030) + 4, 0.0f);   // doubler: 17 ms + drift headroom
     psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)
     hfLoadBackup(p);     // recover the user's full preset store across delete/re-add + updates
     return p;
@@ -1447,6 +1459,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("roomon",    *p->ports[HF_CAB_ROOMON]);   // room ambience (2026-07-14; off = bit-identical)
     p->cab.setParameter("roommix",   *p->ports[HF_CAB_ROOMMIX]);
     p->cab.setParameter("roomamt",   *p->ports[HF_CAB_ROOMAMT]);
+    p->cab.setParameter("voice",     *p->ports[HF_CAB_VOICE]);   // Room / Studio (recorded chain)
     // Modfx
     p->modfx.setBypass(false);
     const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 6);
@@ -1620,6 +1633,28 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (!stereo) for (int i=0;i<len;++i) R[i] = L[i];
     }
 
+    // ── Doubler (2026-07-22): the "recorded" fake double-track — a 17 ms, slowly
+    // detuned (±0.45 ms @ 0.31 Hz, deterministic phase) copy replaces most of the
+    // RIGHT channel; the dry take stays left. Mono-summed rigs still get honest
+    // doubled thickness (that's what a mono mix of two takes is).
+    if (p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()) {
+        const int len = (int)p->dblBuf.size();
+        for (uint32_t i = 0; i < n; ++i) {
+            p->dblBuf[(size_t)p->dblW] = 0.5f * (outL[i] + outR[i]);
+            p->dblPhase += 6.283185307179586 * 0.31 / p->rate;
+            if (p->dblPhase > 6.283185307179586) p->dblPhase -= 6.283185307179586;
+            const double dSamp = (0.017 + 0.00045 * std::sin(p->dblPhase)) * p->rate;
+            double rp = (double)p->dblW - dSamp;
+            while (rp < 0.0) rp += (double)len;
+            const int    i0 = (int)rp;
+            const float  fr = (float)(rp - (double)i0);
+            const int    i1 = (i0 + 1 == len) ? 0 : i0 + 1;
+            const float  w  = p->dblBuf[(size_t)i0] * (1.0f - fr) + p->dblBuf[(size_t)i1] * fr;
+            outR[i] = 0.30f * outR[i] + 0.85f * w;
+            if (++p->dblW >= len) p->dblW = 0;
+        }
+    }
+
     // ── Mono sum (default ON): collapse L+R -> 0.5*(L+R) so a MONO rig (pi-Stomp
     // into one amp) keeps ALL panned/stereo-widened content (Seraph engines,
     // choruses, wide delay/reverb) instead of losing whatever's on the unused jack.
@@ -1724,7 +1759,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(21);                 // version (21: + Tremont 15 channel/bright; 20: + Diamond Plate Recto mode/variac/rect; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(22);                 // version (22: + cab voice/doubler; 21: + Tremont 15 channel/bright; 20: + Diamond Plate Recto mode/variac/rect; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1794,9 +1829,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 21) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 22) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 21);     // …Mod Center Delay (v18) + NAM trims (v19)
+        const bool needMigrate  = (ver < 22);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
