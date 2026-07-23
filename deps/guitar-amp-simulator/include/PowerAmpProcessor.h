@@ -55,6 +55,12 @@ private:
     float    nfbAmount = 0.4f;  // [0,1] — global negative feedback
     float    resonance = 0.5f;  // [0,1] — speaker resonance peak level
     bool     airFeelOn = false; // enables early reflections + LF bloom
+    // Speaker-impedance COUPLING (2026-07-23, additive, default 0 = bit-identical):
+    // how much of the speaker's impedance curve (cone-resonance thump + voice-coil
+    // HF rise) reaches the output. The blend rides a drive envelope, so it BLOOMS
+    // as the power stage works harder — real damping collapse, the Fractal-class
+    // speaker interaction feel. Uses the previously dormant spkrPeak filters.
+    float    coupling  = 0.0f;  // [0,1]
 
     // ── Per-tube model constants ───────────────────────────────────────────────
     struct TubeParams {
@@ -122,6 +128,9 @@ private:
     // ── Speaker impedance curve ───────────────────────────────────────────────
     std::array<BiquadFilter, kMaxCh> spkrPeak; // peaking at cone resonance
     std::array<BiquadFilter, kMaxCh> spkrLP;   // voice-coil inductance rolloff
+    std::array<BiquadFilter, kMaxCh> cplShelf; // coupling: voice-coil HF impedance rise
+    float cplEnv[kMaxCh] = {};                 // coupling drive envelope
+    float cplAtt = 0.0f, cplRel = 0.0f;
 
     // ── Post-stage EQ ─────────────────────────────────────────────────────────
     std::array<BiquadFilter, kMaxCh> presEQ;  // high-shelf presence

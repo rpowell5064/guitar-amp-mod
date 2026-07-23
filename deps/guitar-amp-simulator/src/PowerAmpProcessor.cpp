@@ -185,6 +185,7 @@ void PowerAmpProcessor::recalcFilters() {
     for (int c = 0; c < kMaxCh; ++c) {
         spkrPeak[c].setCoeffs(spkrPeakC);
         spkrLP[c].setCoeffs(spkrLPC);
+        cplShelf[c].setCoeffs(Filters::highshelf(2400.0, 4.5, sr));   // voice-coil rise
     }
 
     // Presence EQ: high-shelf around 2–6 kHz, amount ±8 dB centred at 0.5.
@@ -216,6 +217,8 @@ void PowerAmpProcessor::recalcFilters() {
     // transient overshoot before the VCA clamps (= bloom); 13 ms release sets the
     // recovery τ (matches the JCM800 capture's ~13 ms).
     bloomVcaAttCoef = static_cast<float>(std::exp(-1.0 / (0.0025 * sr)));
+    cplAtt = 1.0f - static_cast<float>(std::exp(-1.0 / (0.015 * sr)));   // coupling env: 15 ms up
+    cplRel = 1.0f - static_cast<float>(std::exp(-1.0 / (0.250 * sr)));   // 250 ms down
     bloomVcaRelCoef = static_cast<float>(std::exp(-1.0 / (0.0130 * sr)));
 
     // Early reflection tap lengths in samples (1.7ms / 4.1ms / 8.3ms).
@@ -239,6 +242,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         nfbHP[c].reset();
         xfmrHP[c].reset(); xfmrLP[c].reset();
         spkrPeak[c].reset(); spkrLP[c].reset();
+        cplShelf[c].reset(); cplEnv[c] = 0.0f;
         presEQ[c].reset(); depthEQ[c].reset();
         bloomLP[c].reset();
         nfbPrev[c]      = 0.0f;
@@ -280,6 +284,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "master")   { masterVol = c01; }
     else if (id == "nfb")      { nfbAmount = c01; needFilters = true; }
     else if (id == "resonance"){ resonance = c01; needFilters = true; }
+    else if (id == "coupling") { coupling  = c01; }
     else if (id == "airFeel")  { airFeelOn = v > 0.5f; }
 
     if (needFilters)
@@ -295,6 +300,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "master")   return masterVol;
     if (id == "nfb")      return nfbAmount;
     if (id == "resonance")return resonance;
+    if (id == "coupling") return coupling;
     if (id == "airFeel")  return airFeelOn ? 1.0f : 0.0f;
     return 0.0f;
 }
@@ -429,6 +435,25 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             s = std::tanh(s + 0.15f * xfmrSatState[ch]); // soft asymmetric limit
             s /= std::tanh(1.15f); // normalise so unity gain at small signal
             out[ch][i] = s;
+        }
+
+        // Step 6: speaker-impedance coupling ("coupling" 0..1, default 0 = OFF,
+        // bit-identical). Shaped path = the cone-resonance peak (spkrPeak — gain
+        // rides the Resonance knob, frequency per tube type) + a fixed voice-coil
+        // HF-rise shelf. The blend amount follows a drive envelope: at idle ~35%
+        // of the dialed coupling, rising to 100% as the stage is pushed — the
+        // damping collapse that makes a cranked amp thump and shimmer.
+        if (coupling > 0.0f) {
+            for (int i = 0; i < numSamples; ++i) {
+                const float x = out[ch][i];
+                float z = spkrPeak[ch].process(x);
+                z = cplShelf[ch].process(z);
+                const float a = std::fabs(x);
+                cplEnv[ch] += (a > cplEnv[ch] ? cplAtt : cplRel) * (a - cplEnv[ch]);
+                float dr = cplEnv[ch] * 1.6f; if (dr > 1.0f) dr = 1.0f;
+                const float amt = coupling * (0.35f + 0.65f * dr);
+                out[ch][i] = x + amt * (z - x);
+            }
         }
 
         // Step 7: presence and depth EQ.

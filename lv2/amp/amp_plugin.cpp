@@ -77,6 +77,7 @@ enum AmpPorts {
     P_PL_VOL2,                                                 // Plexiglass (1959): Vol II — jumpered Normal-channel volume (0 = pre-Vol-II voicing)
     P_RC_MODE, P_RC_VARIAC, P_RC_RECT,                         // Diamond Plate (Dual Rectifier): 8-mode + Variac (Bold/Spongy) + rectifier (Silicon/Tube)
     P_MT_MODE, P_MT_BRIGHT,                                    // Tremont 15 (PRS MT15): Clean/Crunch/Lead + bright switch
+    P_PAMP_COUPL,                                              // speaker-impedance coupling (2026-07-23, additive, default 0)
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
 };
@@ -389,6 +390,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("nfb",      rectoModern ? 0.05f : d.nfb);
         p->pa.setParameter("sag",      d.sag);
         p->pa.setParameter("resonance", *p->ctrl[P_PA_RESON]);
+    p->pa.setParameter("coupling", *p->ctrl[P_PAMP_COUPL]);   // speaker-impedance coupling (v24 fidelity)
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
         desiredTube = kModelTube[modelIdx];
     } else {

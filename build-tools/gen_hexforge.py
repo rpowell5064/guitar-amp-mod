@@ -402,6 +402,12 @@ for suf, nm, kind, mn, mx, df, sc in EQBLK:
     ctrl.append(mkport("EQ_" + suf.upper(), "eq_" + suf, "EQ " + nm, kind, mn, mx, df, sc, nm))
 ctrl.append(mkport("EQ_BYPASS", "eq_bypass", "EQ Bypass", "t", 0, 1, 0, None, "Byp"))
 
+# ── Fidelity pass (2026-07-23): pickup-loading sim (Input Trim) + speaker-impedance
+# coupling (Power Amp). Both ADDITIVE with default 0 = bit-identical; pre-v24 blobs
+# migrate to {0, 0}. Migrated v24.
+ctrl.append(mkport("IT_LOAD", "it_load", "IT Pickup Load", "f", 0, 1, 0, None, "Pickup Load"))
+ctrl.append(mkport("AMP_PAMP_COUPL", "amp_pamp_coupl", "Amp Speaker Coupling", "f", 0, 1, 0, None, "Coupling"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -574,7 +580,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 136 ;")
+    L.append("    lv2:microVersion 137 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -692,7 +698,7 @@ COND = {
     "amp_mt_mode":"c-amp-mt15", "amp_mt_bright":"c-amp-mt15",
     # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
     "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
-    "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa",
+    "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa", "amp_pamp_coupl":"c-amp-pa",
     "amp_pamp_tube":"c-amp-paman", "amp_pamp_presence":"c-amp-paman", "amp_pamp_depth":"c-amp-paman",
     "amp_pamp_sag":"c-amp-paman", "amp_pamp_master":"c-amp-paman", "amp_pamp_nfb":"c-amp-paman",
     # fuzz — Variant only on Italian Hero(0); Tone shared by Italian Hero + Octavia(2)
@@ -930,7 +936,7 @@ def amp_body():
     # (Tube + the valve-stage knobs) hide when PA Auto is on, leaving a clean short row.
     pa = ('<div class="hf-pa-face c-amp-pa"><div class="hf-pa-title">Power Amp</div>'
           + onerow(["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence", "pamp_depth",
-                    "pamp_sag", "pamp_master", "pamp_nfb", "pamp_resonance", "pamp_airfeel"])
+                    "pamp_sag", "pamp_master", "pamp_nfb", "pamp_resonance", "pamp_coupl", "pamp_airfeel"])
           + '</div>')
     # Brite Channel (Sunn) + Beardo BE — each its own chassis, one centered row.
     def chassis(gcls, gtitle, sufs):
@@ -1014,7 +1020,7 @@ def darken(h, f):
 # Per-block control grouping (title, conditional-class-or-None, [param suffixes]). Any
 # param not listed falls into a trailing "MORE" group so nothing is ever dropped.
 BLOCK_GROUPS = {
-    "it":  [("INPUT", None, ["gain", "phase", "hum"]),
+    "it":  [("INPUT", None, ["gain", "phase", "hum", "load"]),
             ("HUMBUCKER VOICING", None, ["humbk", "hbmodel", "hbamt"]),
             ("CLEAN BOOST", None, ["boost", "boostamt"])],
     "gt":  [("NOISE GATE", None, ["thresh", "attack", "hold", "release", "hyst"])],

@@ -1,6 +1,7 @@
 #include "lv2_util.h"
 #include "BiquadFilter.h"
 #include "PickupVoicer.h"
+#include "PickupLoadSim.h"
 #include "HumNotchComb.h"
 #include <lv2/core/lv2.h>
 #include <cmath>
@@ -19,6 +20,7 @@ enum UtilPorts {
     P_HUMBK     = 7,   // humbucker voicing enable (default on -> legacy amount>0 behaviour preserved)
     P_BOOST     = 8,   // clean-boost enable
     P_BOOST_AMT = 9,   // clean-boost amount in dB (0..12)
+    P_PICKUP_LOAD = 10, // pickup/cable/input-impedance sim (2026-07-23, default 0 = off)
     P_N_PORTS
 };
 
@@ -47,6 +49,7 @@ struct OutputBoost {
 struct UtilityPlugin {
     HumNotchComb hum;
     PickupVoicer voice;        // single-coil -> humbucker voicing
+    PickupLoadSim load;        // pickup loading / input impedance (v24 fidelity)
     OutputBoost  boost;        // clean boost + low-mid beef
     float*       ports[P_N_PORTS];
     float        sr = 44100.0f;
@@ -58,6 +61,7 @@ static LV2_Handle util_instantiate(const LV2_Descriptor*, double rate,
     if (!p) return nullptr;
     p->sr = static_cast<float>(rate);
     p->hum.prepare(rate);
+    p->load.prepare(rate);
     return p;
 }
 
@@ -81,10 +85,12 @@ static void util_run(LV2_Handle h, uint32_t n) {
     // Recompute voicing/boost only when their params change (cheap, guarded inside).
     if (hbOn)    p->voice.prepare(p->sr, hbModel, hbAmount);
     if (boostOn) p->boost.prepare(p->sr, *p->ports[P_BOOST_AMT]);
+    p->load.set(p->ports[P_PICKUP_LOAD] ? *p->ports[P_PICKUP_LOAD] : 0.0f);
 
     // Chain (matches the Hex Forge Input Trim order): hum -> humbucker voice -> boost -> gain/phase.
     for (uint32_t i = 0; i < n; ++i) {
         float x = src[i];
+        x = p->load.process(x);   // pickup loading: physically first (guitar/cable interface)
         if (humOn)   x = p->hum.process(x);
         if (hbOn)    x = p->voice.process(x);
         if (boostOn) x = p->boost.process(x);

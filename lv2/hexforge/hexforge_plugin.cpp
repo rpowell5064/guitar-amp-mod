@@ -30,6 +30,7 @@
 #include "BiquadFilter.h"
 #include "PickupVoicer.h"
 #include "HumNotchComb.h"
+#include "PickupLoadSim.h"
 #include "IrResample.h"
 #include "NoiseGateBlock.h"
 #include "CompressorBlock.h"
@@ -423,6 +424,7 @@ struct HexForge {
     // DSP blocks
     HumNotchComb      trimHum;
     PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
+    PickupLoadSim     trimLoad;         // pickup/cable/input-impedance sim (v24, default off)
     OutputBoost       trimBoost;        // pickup-agnostic output boost + beef (Input Trim)
     NoiseGateBlock    gate;
     CompressorBlock   comp;
@@ -739,9 +741,12 @@ static_assert(HF_CAB_VOICE == HF_AMP_MT_BRIGHT + 1 && HF_OUT_DOUBLER == HF_CAB_V
 //   * EQ block — 11 contiguous ports [EQ_POS..EQ_BYPASS], added v23, last before the commands.
 static_assert(HF_EQ_POS == HF_OUT_DOUBLER + 1 && HF_EQ_ENABLE == HF_EQ_POS + 1
               && HF_EQ_PRESET == HF_EQ_POS + 2 && HF_EQ_100 == HF_EQ_POS + 3
-              && HF_EQ_LEVEL == HF_EQ_POS + 9 && HF_EQ_BYPASS == HF_EQ_POS + 10
-              && HF_EQ_BYPASS == HF_SW_A - 1,
-              "EQ block ports must be contiguous, right before the commands");
+              && HF_EQ_LEVEL == HF_EQ_POS + 9 && HF_EQ_BYPASS == HF_EQ_POS + 10,
+              "EQ block ports must be contiguous");
+//   * Fidelity pair — pickup load + speaker coupling, added v24, last before the commands.
+static_assert(HF_IT_LOAD == HF_EQ_BYPASS + 1 && HF_AMP_PAMP_COUPL == HF_IT_LOAD + 1
+              && HF_AMP_PAMP_COUPL == HF_SW_A - 1,
+              "fidelity ports must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -812,6 +817,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float eqbdef[11] = {6.0f, 0,0,0,0,0,0,0,0,0,0};
     const bool eqbGap = (srcVer < 23);
     const int eqbAt = HF_EQ_POS, eqbEnd = HF_EQ_POS + 11;
+    // v24 appended pickup load + speaker coupling; both default 0 (off).
+    const bool fidGap = (srcVer < 24);
+    const int fidAt = HF_IT_LOAD, fidEnd = HF_IT_LOAD + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -833,6 +841,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (mtGap && i >= mtAt && i < mtEnd)        vals[i] = mtdef[i - mtAt];  // MT15: Lead/bright off
         else if (cvGap && i >= cvAt && i < cvEnd)        vals[i] = 0.0f;             // cab voice Room / doubler off
         else if (eqbGap && i >= eqbAt && i < eqbEnd)     vals[i] = eqbdef[i - eqbAt];  // EQ: palette, flat
+        else if (fidGap && i >= fidAt && i < fidEnd)     vals[i] = 0.0f;             // pickup load / coupling off
         else                                             vals[i] = old[o++];
     }
 }
@@ -841,7 +850,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(23); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v23: + EQ block; v22: + cab voice/doubler; v21: + Tremont 15
+    putU32(24); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v24: + pickup load / speaker coupling; v23: + EQ block; v22: + cab voice/doubler
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -861,9 +870,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 23) return false;
+    if (ver < 2 || ver > 24) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 23);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
+    const bool needMigrate  = (ver < 24);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1081,6 +1090,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
 
     p->rate = rate;
     p->trimHum.prepare(rate);
+    p->trimLoad.prepare(rate);
     p->trimVoice.reset();   // coeffs are set lazily in run() from the live HB Amount port
     p->trimBoost.reset();
     p->gate.prepare(rate, kMaxBlock, 1);
@@ -1449,6 +1459,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // ── Configure every block from its ports (once per run) ──
     // Input trim
     const bool  itEnabled = (*p->ports[HF_IT_ENABLE] > 0.5f);
+    p->trimLoad.set(*p->ports[HF_IT_LOAD]);
     const float itGain    = std::pow(10.0f, *p->ports[HF_IT_GAIN]/20.0f)
                             * ((*p->ports[HF_IT_PHASE] > 0.5f) ? -1.0f : 1.0f);
     const bool  itHum     = *p->ports[HF_IT_HUM] > 0.5f;
@@ -1615,6 +1626,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("roommix",   *p->ports[HF_CAB_ROOMMIX]);
     p->cab.setParameter("roomamt",   *p->ports[HF_CAB_ROOMAMT]);
     p->cab.setParameter("voice",     *p->ports[HF_CAB_VOICE]);   // Room / Studio (recorded chain)
+    p->pa.setParameter("coupling",   *p->ports[HF_AMP_PAMP_COUPL]);   // speaker-impedance coupling (v24)
     {   // EQ block: preset base curve + slider offsets + level (rebuilds only on change)
         const float eqDb[GraphicEQ::kBands] = {
             *p->ports[HF_EQ_100], *p->ports[HF_EQ_200], *p->ports[HF_EQ_400],
@@ -1739,7 +1751,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         // Input Trim (locked head of chain)
         if (itEnabled) {
             for (int i=0;i<len;++i) {
-                float x = L[i];
+                float x = p->trimLoad.process(L[i]);   // pickup loading: physically first
                 if (itHum) x = p->trimHum.process(x);
                 if (itHB)    x = p->trimVoice.process(x);   // single-coil -> humbucker voicing
                 if (itBoost) x = p->trimBoost.process(x);   // output boost + beef
@@ -2010,7 +2022,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(23);                 // version (23: + EQ block; 22: + cab voice/doubler; 21: + Tremont 15 channel/bright; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(24);                 // version (24: + pickup load / speaker coupling; 23: + EQ block; 22: + cab voice/doubler; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -2080,9 +2092,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 23) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 24) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 23);     // …Mod Center Delay (v18) + NAM trims (v19)
+        const bool needMigrate  = (ver < 24);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
