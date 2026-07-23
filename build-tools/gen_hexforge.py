@@ -174,6 +174,20 @@ NAIL = [
     ("texture", "Texture", "f", 0, 1, 0.4, None),
     ("level",   "Level",   "f", 0, 1, 0.5, None),
 ]
+# EQ — 6-band graphic (MXR-style octave centers 100..3.2k, ±12 dB) + a PRESET base
+# curve applied UNDER the sliders in the DSP (sliders stay at 0 = the preset alone;
+# they tweak on top). Preset names/curves mirror kEqPresets in hexforge_plugin.cpp.
+EQBLK = [
+    ("preset", "Preset", "e", 0, 6, 0, [("Manual",0),("V-Scoop",1),("Deep Scoop",2),
+                                        ("Lead Boost",3),("Tight & Bright",4),("Warm",5),("Cocked Wah",6)]),
+    ("100",  "100 Hz",  "db", -12, 12, 0, None),
+    ("200",  "200 Hz",  "db", -12, 12, 0, None),
+    ("400",  "400 Hz",  "db", -12, 12, 0, None),
+    ("800",  "800 Hz",  "db", -12, 12, 0, None),
+    ("1k6",  "1.6 kHz", "db", -12, 12, 0, None),
+    ("3k2",  "3.2 kHz", "db", -12, 12, 0, None),
+    ("level","Level",   "db", -12, 12, 0, None),
+]
 
 # Movable blocks in canonical default order. (prefix, Title, params, default-pos)
 MOVABLE = [
@@ -223,9 +237,9 @@ for suf, nm, kind, mn, mx, df, sc in IT:
 OFF_BY_DEFAULT = {"cp", "fz", "dr", "md", "wh", "oc"}   # off: Comp, Fuzz, Drive, Mod, Wah, Octave
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
-    posscale = [(str(k), k) for k in range(1, 13)]   # 1..12 dropdown for reordering (incl. Nail)
+    posscale = [(str(k), k) for k in range(1, 14)]   # 1..13 dropdown for reordering (incl. Nail + EQ)
     en_def = 0 if pfx in OFF_BY_DEFAULT else 1
-    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 11, dpos, posscale, "Slot", hidden=True))
+    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 13, dpos, posscale, "Slot", hidden=True))
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
@@ -262,8 +276,8 @@ for pfx, title, params, dpos in MOVABLE:
 # contiguous group [NAIL_POS..NAIL_BYPASS]; old blobs migrate them in (v12). Default OFF,
 # default slot 12 (end of chain) so it doesn't alter the stock sound until enabled.
 NAIL_POS_DEFAULT = 12
-ctrl.append(mkport("NAIL_POS",    "nail_pos",    "Nail Position", "e", 1, 12, NAIL_POS_DEFAULT,
-                   [(str(k), k) for k in range(1, 13)], "Slot", hidden=True))
+ctrl.append(mkport("NAIL_POS",    "nail_pos",    "Nail Position", "e", 1, 13, NAIL_POS_DEFAULT,
+                   [(str(k), k) for k in range(1, 14)], "Slot", hidden=True))
 ctrl.append(mkport("NAIL_ENABLE", "nail_enable", "Nail Enable",   "t", 0, 1, 0, None, "On"))
 for suf, nm, kind, mn, mx, df, sc in NAIL:
     ctrl.append(mkport("NAIL_" + suf.upper(), "nail_" + suf, "Nail " + nm, kind, mn, mx, df, sc, nm))
@@ -368,6 +382,20 @@ ctrl.append(mkport("AMP_MT_BRIGHT", "amp_mt_bright", "Amp MT Bright", "e", 0, 1,
 ctrl.append(mkport("CAB_VOICE", "cab_voice", "Cab Voice", "e", 0, 1, 0,
     [("Room",0),("Studio",1)], "Voice"))
 ctrl.append(mkport("OUT_DOUBLER", "out_doubler", "Output Doubler", "t", 0, 1, 0, None, "Doubler"))
+
+# ── EQ block (13th movable, 2026-07-23) — 6-band graphic EQ + preset base curves.
+# Same append pattern as Nail: pos/enable/params/bypass one contiguous group
+# [EQ_POS..EQ_BYPASS] at the END of the preset param range, so every existing index
+# is untouched; pre-v23 blobs migrate to {pos 6 (right after the cab — ties with the
+# cab's slot resolve cab-first by enum order), palette (enable 0), Manual, all 0 dB,
+# active}. Migrated v23.
+EQ_POS_DEFAULT = 6
+ctrl.append(mkport("EQ_POS",    "eq_pos",    "EQ Position", "e", 1, 13, EQ_POS_DEFAULT,
+                   [(str(k), k) for k in range(1, 14)], "Slot", hidden=True))
+ctrl.append(mkport("EQ_ENABLE", "eq_enable", "EQ Enable",   "t", 0, 1, 0, None, "On"))
+for suf, nm, kind, mn, mx, df, sc in EQBLK:
+    ctrl.append(mkport("EQ_" + suf.upper(), "eq_" + suf, "EQ " + nm, kind, mn, mx, df, sc, nm))
+ctrl.append(mkport("EQ_BYPASS", "eq_bypass", "EQ Bypass", "t", 0, 1, 0, None, "Byp"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -541,7 +569,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 134 ;")
+    L.append("    lv2:microVersion 135 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -614,7 +642,7 @@ def emit_ttl():
     return "\n".join(L)
 
 # ── Emit the modgui icon HTML (10 logo-free tiles) ────────────────────────────
-TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL}
+TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL,"eq":EQBLK}
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
@@ -627,6 +655,7 @@ TILES = [
     ("nail","Nail",       "#d0343a", ["mode","drive","tone","texture","level"]),              # nail (industrial)
     ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
     ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
+    ("eq",  "EQ",         "#e8c04a", ["preset","100","200","400","800","1k6","3k2","level"]), # 6-band graphic EQ
     ("md",  "Mod FX",     "#a56eeb", ["type","rate","depth","mix"]),                          # modfx
     ("dl",  "Delay",      "#3cc8be", ["type","time","feedback","mix"]),                       # delay
     ("rv",  "Reverb",     "#5f73e1", ["decay","damping","mix"]),                              # reverb
@@ -819,6 +848,7 @@ ICON = {
     "rv":  '<svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="1.8"/><path d="M7 13a5 5 0 0110 0"/><path d="M3.5 13a8.5 8.5 0 0117 0"/></svg>',
     "wh":  '<svg viewBox="0 0 24 24"><path d="M3 18c4 0 4.5-12 9-12s5 12 9 12"/></svg>',
     "oc":  '<svg viewBox="0 0 24 24"><path d="M7 15V6M4 9l3-3 3 3"/><path d="M17 9v9M14 15l3 3 3-3"/></svg>',
+    "eq":  '<svg viewBox="0 0 24 24"><path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="14" r="2.2"/><circle cx="12" cy="8" r="2.2"/><circle cx="19" cy="11" r="2.2"/></svg>',
 }
 # Node subtitle source. Model-bearing blocks are JS-driven (rata-role=nv-<pfx>,
 # script-hexforge.js maps the model index → the parody label). Scalar blocks bind a
@@ -999,6 +1029,7 @@ BLOCK_GROUPS = {
     "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix"]),
             ("MODULATION", None, ["moddepth", "modrate"])],
     "wh":  [("WAH", None, ["type", "freq", "depth", "sens", "q", "mix"])],
+    "eq":  [("GRAPHIC EQ", None, ["preset", "100", "200", "400", "800", "1k6", "3k2", "level"])],
     "oc":  [("OCTAVE", None, ["up", "down", "dry"]),
             ("MICROTONAL SHIMMER", None, ["micro", "interval"])],
 }
@@ -1185,9 +1216,6 @@ def emit_icon():
         '      </div>\n'
         '    </div>\n'
         '    <div class="hf-bar-out" role="group" aria-label="Master output">\n'
-        '      <button type="button" class="hf-tunerbtn" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg></button>\n'
-        '      <span class="hf-bar-sep" aria-hidden="true"></span>\n'
         '      <span class="hf-out-name">OUT</span>\n'
         '      <div class="hf-meter hf-meter-h" role="meter" aria-label="Output level meter" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
         '      <span class="hf-clip" rata-role="clip" role="status" aria-live="assertive" aria-label="Output clipping indicator">CLIP</span>\n'
@@ -1200,6 +1228,11 @@ def emit_icon():
         '    </div>\n'
         '  </div>\n'
         + chain + detail + tuner +
+        # Tuner button lives bottom-right (user 2026-07-23): the toolbar ran out of
+        # room once the doubler switch joined the output group.
+        '  <button type="button" class="hf-tunerbtn hf-tuner-corner" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg>'
+        '<span class="hf-tuner-corner-lab">TUNER</span></button>\n'
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'
         '    <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>\n'

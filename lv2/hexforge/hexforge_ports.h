@@ -180,6 +180,17 @@ enum HexForgePort {
     HF_AMP_MT_BRIGHT,
     HF_CAB_VOICE,
     HF_OUT_DOUBLER,
+    HF_EQ_POS,
+    HF_EQ_ENABLE,
+    HF_EQ_PRESET,
+    HF_EQ_100,
+    HF_EQ_200,
+    HF_EQ_400,
+    HF_EQ_800,
+    HF_EQ_1K6,
+    HF_EQ_3K2,
+    HF_EQ_LEVEL,
+    HF_EQ_BYPASS,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -205,7 +216,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 207, "port count drift");
+static_assert(HF_N_PORTS == 218, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -238,9 +249,11 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "amp_mv_geq4", "amp_mv_eqpreset", "md_offset", "amp_nam_gain", "amp_nam_vol", "dr_nam_gain",
     "dr_nam_vol", "cab_nam_gain", "cab_nam_vol", "amp_pl_vol2", "cab_micpos", "cab_micdist",
     "cab_roomon", "cab_roommix", "cab_roomamt", "amp_rc_mode", "amp_rc_variac", "amp_rc_rect",
-    "amp_mt_mode", "amp_mt_bright", "cab_voice", "out_doubler", "sw_a", "sw_b",
-    "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up",
-    "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank", "ps_slot",
-    "out_auto", "in_meter", "out_meter", "out_mono", "tuner_on", "tuner_mute",
-    "tuner_note", "tuner_cents", "midi_in",
+    "amp_mt_mode", "amp_mt_bright", "cab_voice", "out_doubler", "eq_pos", "eq_enable",
+    "eq_preset", "eq_100", "eq_200", "eq_400", "eq_800", "eq_1k6",
+    "eq_3k2", "eq_level", "eq_bypass", "sw_a", "sw_b", "sw_c",
+    "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up", "ps_move_dn",
+    "ps_backup", "ps_restore", "ps_goto", "ps_bank", "ps_slot", "out_auto",
+    "in_meter", "out_meter", "out_mono", "tuner_on", "tuner_mute", "tuner_note",
+    "tuner_cents", "midi_in",
 };

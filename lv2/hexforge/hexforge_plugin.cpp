@@ -251,14 +251,16 @@ struct OutputBoost {
 };
 
 // ── Movable-block identity ────────────────────────────────────────────────────
-enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_COUNT };
+enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_EQ, B_COUNT };
 static const int kPosPort[B_COUNT] = {
     HF_GT_POS, HF_CP_POS, HF_FZ_POS, HF_DR_POS, HF_AMP_POS,
     HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS, HF_NAIL_POS,
+    HF_EQ_POS,
 };
 static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
     HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE, HF_NAIL_ENABLE,
+    HF_EQ_ENABLE,
 };
 // enable = chain membership (1 = in chain, 0 = removed/palette); bypass = active(0)/
 // bypassed(1). A block runs iff enable==1 && bypass==0. Bypassed blocks stay in the chain
@@ -266,6 +268,55 @@ static const int kEnablePort[B_COUNT] = {
 static const int kBypassPort[B_COUNT] = {
     HF_GT_BYPASS, HF_CP_BYPASS, HF_FZ_BYPASS, HF_DR_BYPASS, HF_AMP_BYPASS,
     HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS, HF_NAIL_BYPASS,
+    HF_EQ_BYPASS,
+};
+
+// ── 6-band graphic EQ block (2026-07-23) ─────────────────────────────────────
+// MXR-style octave centers; a PRESET base curve is applied UNDER the sliders
+// (sliders at 0 = the preset alone; they tweak on top, total clamped ±15 dB).
+// Curves must mirror gen_hexforge.py's eq_preset scalePoints.
+struct GraphicEQ {
+    static constexpr int kBands = 6;
+    BiquadFilter f[2][kBands];
+    double rate = 48000.0;
+    float  gain = 1.0f;
+    float  curDb[kBands] = {1e9f,0,0,0,0,0};   // force first rebuild
+    float  curLvl = 1e9f;
+    int    curPre = -1;
+    void prepare(double r) { rate = r; reset(); }
+    void reset() { for (int c = 0; c < 2; ++c) for (int b = 0; b < kBands; ++b) f[c][b].reset(); }
+    void update(int preset, const float* db, float lvlDb) noexcept {
+        static const double kFc[kBands] = {100.0, 200.0, 400.0, 800.0, 1600.0, 3200.0};
+        static const float kPre[7][kBands] = {
+            { 0, 0,  0,  0,  0,  0},   // Manual
+            { 3, 1, -3, -5, -1,  3},   // V-Scoop
+            { 5, 2, -6, -8, -2,  4},   // Deep Scoop
+            { 0, 1,  3,  5,  4,  1},   // Lead Boost
+            {-5,-2,  0,  1,  2,  3},   // Tight & Bright
+            { 2, 3,  1, -1, -2, -3},   // Warm
+            {-4,-2,  2,  7,  2, -4},   // Cocked Wah
+        };
+        if (preset < 0) preset = 0; if (preset > 6) preset = 6;
+        bool dirty = (preset != curPre) || (lvlDb != curLvl);
+        for (int b = 0; b < kBands && !dirty; ++b) dirty = (db[b] != curDb[b]);
+        if (!dirty) return;
+        curPre = preset; curLvl = lvlDb;
+        for (int b = 0; b < kBands; ++b) {
+            curDb[b] = db[b];
+            float d = kPre[preset][b] + db[b];
+            if (d > 15.0f) d = 15.0f; else if (d < -15.0f) d = -15.0f;
+            const BiquadCoeffs bc = Filters::peaking(kFc[b], d, 1.1, rate);
+            f[0][b].setCoeffs(bc); f[1][b].setCoeffs(bc);
+        }
+        gain = std::pow(10.0f, lvlDb * (1.0f / 20.0f));
+    }
+    void processCh(float* x, int n, int ch) noexcept {
+        for (int i = 0; i < n; ++i) {
+            float v = x[i];
+            for (int b = 0; b < kBands; ++b) v = f[ch][b].process(v);
+            x[i] = v * gain;
+        }
+    }
 };
 
 // note-division factor relative to a quarter-note beat, indexed by the *_div enum (0..7):
@@ -386,6 +437,7 @@ struct HexForge {
     OctaveBlock       octave;
     std::unique_ptr<OversamplingWrapper> nail;        // industrial distortion (NailDistortion, oversampled)
     AutoOutput        autoOut;        // auto-leveling clip protection on the master output
+    GraphicEQ         eq;              // 6-band graphic EQ block (movable, v23)
     NamModel*         ampNam = nullptr;   // worker-loaded neural captures
     NamModel*         drNam  = nullptr;
     NamModel*         cabNam = nullptr;
@@ -657,9 +709,14 @@ static_assert(HF_AMP_RC_MODE == HF_CAB_ROOMAMT + 1 && HF_AMP_RC_VARIAC == HF_AMP
 static_assert(HF_AMP_MT_MODE == HF_AMP_RC_RECT + 1 && HF_AMP_MT_BRIGHT == HF_AMP_MT_MODE + 1,
               "MT15 ports must be contiguous after the Recto block");
 //   * Cab Voice + Output Doubler — 2 contiguous ports, added v22, last before the commands.
-static_assert(HF_CAB_VOICE == HF_AMP_MT_BRIGHT + 1 && HF_OUT_DOUBLER == HF_CAB_VOICE + 1
-              && HF_OUT_DOUBLER == HF_SW_A - 1,
-              "cab voice + doubler must be contiguous, right before the commands");
+static_assert(HF_CAB_VOICE == HF_AMP_MT_BRIGHT + 1 && HF_OUT_DOUBLER == HF_CAB_VOICE + 1,
+              "cab voice + doubler must be contiguous");
+//   * EQ block — 11 contiguous ports [EQ_POS..EQ_BYPASS], added v23, last before the commands.
+static_assert(HF_EQ_POS == HF_OUT_DOUBLER + 1 && HF_EQ_ENABLE == HF_EQ_POS + 1
+              && HF_EQ_PRESET == HF_EQ_POS + 2 && HF_EQ_100 == HF_EQ_POS + 3
+              && HF_EQ_LEVEL == HF_EQ_POS + 9 && HF_EQ_BYPASS == HF_EQ_POS + 10
+              && HF_EQ_BYPASS == HF_SW_A - 1,
+              "EQ block ports must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -725,6 +782,11 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v22 appended cab voice + output doubler; defaults Room (0) / off (0).
     const bool cvGap = (srcVer < 22);
     const int cvAt = HF_CAB_VOICE, cvEnd = HF_CAB_VOICE + 2;
+    // v23 appended the EQ block group [EQ_POS..EQ_BYPASS]: pos 6 (after the cab),
+    // palette (enable 0), Manual preset, all bands/level 0 dB, active (bypass 0).
+    static const float eqbdef[11] = {6.0f, 0,0,0,0,0,0,0,0,0,0};
+    const bool eqbGap = (srcVer < 23);
+    const int eqbAt = HF_EQ_POS, eqbEnd = HF_EQ_POS + 11;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -745,6 +807,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (rcGap && i >= rcAt && i < rcEnd)        vals[i] = rcdef[i - rcAt];  // Recto: CH3 Modern/Bold/Silicon
         else if (mtGap && i >= mtAt && i < mtEnd)        vals[i] = mtdef[i - mtAt];  // MT15: Lead/bright off
         else if (cvGap && i >= cvAt && i < cvEnd)        vals[i] = 0.0f;             // cab voice Room / doubler off
+        else if (eqbGap && i >= eqbAt && i < eqbEnd)     vals[i] = eqbdef[i - eqbAt];  // EQ: palette, flat
         else                                             vals[i] = old[o++];
     }
 }
@@ -753,7 +816,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(22); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v22: + cab voice + output doubler; v21: + Tremont 15; v20: + Diamond Plate
+    putU32(23); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v23: + EQ block; v22: + cab voice/doubler; v21: + Tremont 15
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -773,9 +836,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 22) return false;
+    if (ver < 2 || ver > 23) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 22);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
+    const bool needMigrate  = (ver < 23);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1026,6 +1089,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->wah.prepare(rate, kMaxBlock, 2);
     p->octave.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
+    p->eq.prepare(rate);
     p->dblBuf.assign(size_t(rate * 0.045) + 4, 0.0f);   // doubler: 28 ms base ± 7 ms wander + margin
     p->dblApA.assign(size_t(rate * 0.0053) + 2, 0.0f);  // mono-blend phase diffusers
     p->dblApB.assign(size_t(rate * 0.0089) + 2, 0.0f);
@@ -1469,6 +1533,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("roommix",   *p->ports[HF_CAB_ROOMMIX]);
     p->cab.setParameter("roomamt",   *p->ports[HF_CAB_ROOMAMT]);
     p->cab.setParameter("voice",     *p->ports[HF_CAB_VOICE]);   // Room / Studio (recorded chain)
+    {   // EQ block: preset base curve + slider offsets + level (rebuilds only on change)
+        const float eqDb[GraphicEQ::kBands] = {
+            *p->ports[HF_EQ_100], *p->ports[HF_EQ_200], *p->ports[HF_EQ_400],
+            *p->ports[HF_EQ_800], *p->ports[HF_EQ_1K6], *p->ports[HF_EQ_3K2],
+        };
+        p->eq.update((int)*p->ports[HF_EQ_PRESET], eqDb, *p->ports[HF_EQ_LEVEL]);
+    }
     // Modfx
     p->modfx.setBypass(false);
     const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 6);
@@ -1635,6 +1706,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 case B_WAH:    runMono(p->wah, L, R, len, p->mono, stereo); break;
                 case B_OCTAVE: runMono(p->octave, L, R, len, p->mono, stereo); break;
                 case B_NAIL:   runMono(*p->nail, L, R, len, p->mono, stereo); break;
+                case B_EQ:     p->eq.processCh(L, len, 0);
+                               if (stereo) p->eq.processCh(R, len, 1); break;
             }
         }
         // If nothing ever spread to stereo, R already mirrors L (mono blocks wrote both;
@@ -1795,7 +1868,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(22);                 // version (22: + cab voice/doubler; 21: + Tremont 15 channel/bright; 20: + Diamond Plate Recto mode/variac/rect; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(23);                 // version (23: + EQ block; 22: + cab voice/doubler; 21: + Tremont 15 channel/bright; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -1865,9 +1938,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 22) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 23) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 22);     // …Mod Center Delay (v18) + NAM trims (v19)
+        const bool needMigrate  = (ver < 23);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;

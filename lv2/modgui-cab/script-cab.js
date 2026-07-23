@@ -32,6 +32,19 @@ function (event, funcs) {
 
     if (event.type == 'start') {
         var icon = event.icon;
+        // Show the loaded IR immediately (2026-07-23): mod-ui applies the patch write
+        // when an option is clicked but does NOT reliably echo it back as a change
+        // event, so the label sat on the old value. Update it ourselves on click,
+        // and seed from the current parameter value at load.
+        (event.parameters || []).forEach(function (pr) {
+            if (pr.uri && pr.uri.indexOf('#irfile') >= 0) set_irfile(icon, pr.value);
+        });
+        icon.find('[mod-role=input-parameter] [mod-role=enumeration-option]').each(function () {
+            var el = this;
+            el.addEventListener('click', function () {
+                set_irfile(icon, el.getAttribute('mod-parameter-value'));
+            });
+        });
         (event.ports || []).forEach(function (p) {
             if (p.symbol === 'mic_pos')  icon.data('cab_micpos',  parseFloat(p.value));
             if (p.symbol === 'mic_dist') icon.data('cab_micdist', parseFloat(p.value));

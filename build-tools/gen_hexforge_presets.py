@@ -1026,7 +1026,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 207, "port count drift: got %d" % N_PORTS   # 207: + cab_voice/out_doubler (v22); 205: + amp_mt_mode/bright (Tremont 15)
+    assert N_PORTS == 218, "port count drift: got %d" % N_PORTS   # 218: + EQ block (v23); 207: + cab_voice/out_doubler (v22)
     # ── Auto-match a built-in cab to each preset from its amp model ──────────────
     # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
     # the Factory Cab (@factory / V30). See CabModels.h for the voicings.

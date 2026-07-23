@@ -800,6 +800,15 @@
     color: #19e0ff; border-color: rgba(25,224,255,.6); background: rgba(25,224,255,.10);
     box-shadow: 0 0 12px rgba(25,224,255,.35), inset 0 0 8px rgba(25,224,255,.15);
 }
+/* Bottom-right corner placement (2026-07-23): the toolbar ran out of room. Inset
+   clear of the corner screw and the output jack; label keeps it discoverable. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner {
+    position: absolute; right: 44px; bottom: 12px; width: auto; height: 30px;
+    padding: 0 10px; gap: 6px; z-index: 40;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner-lab {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+}
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tunerclose {
     position: absolute; top: 9px; right: 12px; width: 26px; height: 26px; padding: 0; line-height: 1;
     border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: rgba(255,255,255,.05);

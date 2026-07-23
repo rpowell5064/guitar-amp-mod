@@ -1,8 +1,8 @@
 // Round-trip test for the Hex Forge preset-blob port migration. Verifies
 // migratePorts() preserves every pre-existing port and defaults the inserted
 // ones, for the seams that matter today:
-//   * v21 -> v22: the cab-voice/doubler ports [HF_CAB_VOICE, HF_OUT_DOUBLER]
-//     must default to {0 Room, 0 doubler-off}.
+//   * v22 -> v23: the EQ block group [HF_EQ_POS..HF_EQ_BYPASS] must default to
+//     {pos 6, palette, Manual, flat, active}.
 //   * v19 -> v22: the Diamond Plate ports [HF_AMP_RC_MODE..HF_AMP_RC_RECT]
 //     must default to {7 CH3 Modern, 0 Bold, 0 Silicon} — plain zero-fill
 //     would recall CH1 Clean into old boards — plus the MT15 pair + v22 pair.
@@ -25,11 +25,13 @@ static_assert(HF_AMP_RC_MODE == HF_CAB_ROOMAMT + 1 && HF_AMP_RC_VARIAC == HF_AMP
               "Recto ports must be contiguous after the cab room");
 static_assert(HF_AMP_MT_MODE == HF_AMP_RC_RECT + 1 && HF_AMP_MT_BRIGHT == HF_AMP_MT_MODE + 1,
               "MT15 ports must be contiguous after the Recto block");
-static_assert(HF_CAB_VOICE == HF_AMP_MT_BRIGHT + 1 && HF_OUT_DOUBLER == HF_CAB_VOICE + 1
-              && HF_OUT_DOUBLER == HF_SW_A - 1,
-              "cab voice + doubler must be contiguous, right before the commands");
+static_assert(HF_CAB_VOICE == HF_AMP_MT_BRIGHT + 1 && HF_OUT_DOUBLER == HF_CAB_VOICE + 1,
+              "cab voice + doubler must be contiguous");
+static_assert(HF_EQ_POS == HF_OUT_DOUBLER + 1 && HF_EQ_BYPASS == HF_EQ_POS + 10
+              && HF_EQ_BYPASS == HF_SW_A - 1,
+              "EQ block ports must be contiguous, right before the commands");
 
-// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v22) ──────────────
+// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v23) ──────────────
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -71,6 +73,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v22 appended cab voice + output doubler; defaults Room (0) / off (0).
     const bool cvGap = (srcVer < 22);
     const int cvAt = HF_CAB_VOICE, cvEnd = HF_CAB_VOICE + 2;
+    static const float eqbdef[11] = {6.0f, 0,0,0,0,0,0,0,0,0,0};
+    const bool eqbGap = (srcVer < 23);
+    const int eqbAt = HF_EQ_POS, eqbEnd = HF_EQ_POS + 11;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
@@ -91,6 +96,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (rcGap && i >= rcAt && i < rcEnd)        vals[i] = rcdef[i - rcAt];
         else if (mtGap && i >= mtAt && i < mtEnd)        vals[i] = mtdef[i - mtAt];
         else if (cvGap && i >= cvAt && i < cvEnd)        vals[i] = 0.0f;
+        else if (eqbGap && i >= eqbAt && i < eqbEnd)     vals[i] = eqbdef[i - eqbAt];
         else                                             vals[i] = old[o++];
     }
 }
@@ -98,36 +104,37 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
 int main() {
     int fails = 0;
 
-    // ── v21 -> v22: only the 2 voice/doubler ports are inserted (at the very end
-    // of the preset params). A v21 blob had HF_N_PORTS - 2 params.
+    // ── v22 -> v23: the 11 EQ-block ports are inserted (at the very end of the
+    // preset params). A v22 blob had HF_N_PORTS - 11 params.
     {
-        const int npOld = HF_N_PORTS - 2;
+        const int npOld = HF_N_PORTS - 11;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
 
-        migratePorts(vals, 21);
+        migratePorts(vals, 22);
 
-        for (int i = 0; i < HF_CAB_VOICE; ++i)
+        for (int i = 0; i < HF_EQ_POS; ++i)
             if (vals[i] != static_cast<float>(i + 1)) {
-                std::printf("FAIL: v21 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
+                std::printf("FAIL: v22 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
             }
-        if (vals[HF_CAB_VOICE]   != 0.0f) { std::printf("FAIL: cab_voice not 0 (%g)\n",   vals[HF_CAB_VOICE]);   ++fails; }
-        if (vals[HF_OUT_DOUBLER] != 0.0f) { std::printf("FAIL: out_doubler not 0 (%g)\n", vals[HF_OUT_DOUBLER]); ++fails; }
-        for (int i = HF_OUT_DOUBLER + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 2 < npOld) ? static_cast<float>((i - 2) + 1) : 0.0f;
+        if (vals[HF_EQ_POS] != 6.0f) { std::printf("FAIL: eq_pos not 6 (%g)\n", vals[HF_EQ_POS]); ++fails; }
+        for (int i = HF_EQ_ENABLE; i <= HF_EQ_BYPASS; ++i)
+            if (vals[i] != 0.0f) { std::printf("FAIL: eq port %d not 0 (%g)\n", i, vals[i]); ++fails; break; }
+        for (int i = HF_EQ_BYPASS + 1; i < HF_N_PORTS; ++i) {
+            float want = (i - 11 < npOld) ? static_cast<float>((i - 11) + 1) : 0.0f;
             if (vals[i] != want) {
-                std::printf("FAIL: v21 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
+                std::printf("FAIL: v22 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v21->v22: pre-insert preserved, voice/doubler default {0,0}, tail shifted +2\n");
+        std::printf("v22->v23: pre-insert preserved, EQ defaults {6,palette,flat}, tail shifted +11\n");
     }
 
-    // ── v19 -> v22: the 3 Recto + 2 MT15 + 2 voice/doubler ports are inserted (at
-    // the very end of the preset params). A v19 blob had HF_N_PORTS - 7 params;
-    // the deserializer memcpy's them into a zeroed array (tail = 0).
+    // ── v19 -> v23: the 3 Recto + 2 MT15 + 2 voice/doubler + 11 EQ ports are
+    // inserted (at the very end of the preset params). A v19 blob had
+    // HF_N_PORTS - 18 params; the deserializer memcpy's them into a zeroed array.
     {
-        const int npOld = HF_N_PORTS - 7;
+        const int npOld = HF_N_PORTS - 18;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);   // sentinels
@@ -145,21 +152,22 @@ int main() {
         if (vals[HF_AMP_MT_BRIGHT] != 0.0f) { std::printf("FAIL: v19 mt_bright not 0 (%g)\n", vals[HF_AMP_MT_BRIGHT]); ++fails; }
         if (vals[HF_CAB_VOICE]   != 0.0f) { std::printf("FAIL: v19 cab_voice not 0 (%g)\n",   vals[HF_CAB_VOICE]);   ++fails; }
         if (vals[HF_OUT_DOUBLER] != 0.0f) { std::printf("FAIL: v19 out_doubler not 0 (%g)\n", vals[HF_OUT_DOUBLER]); ++fails; }
-        // Command/status slots after the inserts: shifted up by 7.
-        for (int i = HF_OUT_DOUBLER + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 7 < npOld) ? static_cast<float>((i - 7) + 1) : 0.0f;
+        if (vals[HF_EQ_POS]      != 6.0f) { std::printf("FAIL: v19 eq_pos not 6 (%g)\n",      vals[HF_EQ_POS]);      ++fails; }
+        // Command/status slots after the inserts: shifted up by 18.
+        for (int i = HF_EQ_BYPASS + 1; i < HF_N_PORTS; ++i) {
+            float want = (i - 18 < npOld) ? static_cast<float>((i - 18) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v19->v22: pre-insert preserved, rc {7,0,0} + mt {2,0} + cv {0,0}, tail shifted +7\n");
+        std::printf("v19->v23: pre-insert preserved, rc + mt + cv + EQ defaults, tail shifted +18\n");
     }
 
     // ── v13 -> v20: the full multi-gap walk. Count the inserted slots for a v13
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2;
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11;
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -180,6 +188,8 @@ int main() {
             { std::printf("FAIL: v13 mt ports not defaulted {2,0}\n"); ++fails; }
         if (vals[HF_CAB_VOICE] != 0.0f || vals[HF_OUT_DOUBLER] != 0.0f)
             { std::printf("FAIL: v13 voice/doubler ports not defaulted {0,0}\n"); ++fails; }
+        if (vals[HF_EQ_POS] != 6.0f || vals[HF_EQ_BYPASS] != 0.0f)
+            { std::printf("FAIL: v13 EQ ports not defaulted\n"); ++fails; }
         // Every non-gap slot must hold consecutive sentinels in order (the walk is
         // order-preserving); just verify the LAST old value survived to the end.
         int o = 0; float lastSeen = -1.0f;
@@ -190,7 +200,8 @@ int main() {
                           || (i >= HF_AMP_NAM_GAIN && i <= HF_AMP_NAM_GAIN + 5)
                           || (i >= HF_AMP_RC_MODE && i <= HF_AMP_RC_RECT)
                           || (i >= HF_AMP_MT_MODE && i <= HF_AMP_MT_BRIGHT)
-                          || (i >= HF_CAB_VOICE && i <= HF_OUT_DOUBLER);
+                          || (i >= HF_CAB_VOICE && i <= HF_OUT_DOUBLER)
+                          || (i >= HF_EQ_POS && i <= HF_EQ_BYPASS);
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
             if (vals[i] != want) {
@@ -201,7 +212,7 @@ int main() {
         }
         if (lastSeen != static_cast<float>(npOld))
             { std::printf("FAIL: v13 last old value %g != %d\n", lastSeen, npOld); ++fails; }
-        std::printf("v13->v22: all gaps defaulted, old values order-preserved\n");
+        std::printf("v13->v23: all gaps defaulted, old values order-preserved\n");
     }
 
     std::printf("\nHF_N_PORTS=%d  HF_AMP_RC_MODE=%d  HF_CAB_VOICE=%d  HF_SW_A=%d\n",

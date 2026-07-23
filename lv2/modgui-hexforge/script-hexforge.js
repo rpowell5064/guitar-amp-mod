@@ -6,7 +6,7 @@ function (event, funcs) {
     // owns <pfx>_pos (slot 1..11), <pfx>_enable (chain membership) and <pfx>_bypass
     // (active/bypassed). The DSP sorts by pos and runs a block iff enable && !bypass.
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
-    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc','nail'];
+    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc','nail','eq'];
 
     // Node subtitle labels for model-bearing blocks — MUST mirror gen_hexforge.py's
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
@@ -16,7 +16,8 @@ function (event, funcs) {
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
-        dl:  ['Digital','Tape','Echo Wreck','Seraph']
+        dl:  ['Digital','Tape','Echo Wreck','Seraph'],
+        eq:  ['Manual','V-Scoop','Deep Scoop','Lead Boost','Tight & Bright','Warm','Cocked Wah']
     };
     function setNodeVal(icon, pfx, txt) { icon.find('[rata-role=nv-' + pfx + ']').text(txt == null ? '' : txt); }
     function setModelVal(icon, pfx, idx) { var a = NV[pfx]; setNodeVal(icon, pfx, (a && a[idx]) || ''); }
@@ -475,6 +476,7 @@ function (event, funcs) {
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
             else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6); }
+            else if (sym === 'eq_preset')          setModelVal(icon, 'eq', parseInt(val, 10));
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             fns.set_port_value(sym, val);
         });
@@ -489,6 +491,26 @@ function (event, funcs) {
     if (event.type == 'start') {
         var icon = event.icon;
         setupNodes(icon, funcs);
+        // Show picked files immediately (2026-07-23): mod-ui applies the patch write
+        // on option click but doesn't reliably echo a change event back, so the IR /
+        // NAM labels sat stale. Dispatch by the picker's parameter URI; also seed
+        // the labels from the current parameter values at load.
+        function fileLabel(uri, value) {
+            if (uri.indexOf('#irfile') >= 0)      setIr(icon, value);
+            else if (uri.indexOf('#ampnam') >= 0) setFile(icon, 'AmpNam', value, '-- choose a NAM file --');
+            else if (uri.indexOf('#drnam') >= 0)  setFile(icon, 'DrNam', value, '-- choose a NAM file --');
+        }
+        (event.parameters || []).forEach(function (pr) {
+            if (pr.uri) fileLabel(pr.uri, pr.value);
+        });
+        icon.find('[mod-role=input-parameter]').each(function () {
+            var picker = this, uri = picker.getAttribute('mod-parameter-uri') || '';
+            Array.prototype.forEach.call(picker.querySelectorAll('[mod-role=enumeration-option]'), function (el) {
+                el.addEventListener('click', function () {
+                    fileLabel(uri, el.getAttribute('mod-parameter-value'));
+                });
+            });
+        });
         // Amp detail tabs: wire clicks (ignore tabs hidden for the current model).
         // The Neural tab doubles as the internal⇄Neural MODE SWITCH: clicking it puts the amp on the
         // NAM slot (model 5) and remembers the last internal model; clicking an internal tab restores it.
@@ -551,6 +573,7 @@ function (event, funcs) {
         applyDrive(icon, drm);
         var _mt0 = parseInt(map.md_type || 0, 10);
         setModelVal(icon, 'md', _mt0);
+        setModelVal(icon, 'eq', parseInt(map.eq_preset || 0, 10));
         show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6);
         setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
@@ -673,6 +696,8 @@ function (event, funcs) {
             icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
         } else if (s === 'dr_model') {
             applyDrive(icon, parseInt(event.value, 10));
+        } else if (s === 'eq_preset') {
+            setModelVal(icon, 'eq', parseInt(event.value, 10));
         } else if (s === 'md_type') {
             var mt = parseInt(event.value, 10);
             setModelVal(icon, 'md', mt);

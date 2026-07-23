@@ -108,6 +108,17 @@ function (event, funcs) {
 
     if (event.type == 'start') {
         var icon = event.icon;
+        // Show the loaded NAM file immediately (2026-07-23): mod-ui applies the patch
+        // write on option click but doesn't reliably echo a change event back.
+        (event.parameters || []).forEach(function (pr) {
+            if (pr.uri && pr.uri.indexOf('#nammodel') >= 0) set_nam(icon, pr.value);
+        });
+        icon.find('[mod-role=input-parameter] [mod-role=enumeration-option]').each(function () {
+            var el = this;
+            el.addEventListener('click', function () {
+                set_nam(icon, el.getAttribute('mod-parameter-value'));
+            });
+        });
         // Tab buttons. The Neural tab is the mode switch: clicking it puts the amp into Neural
         // (model 5) and remembers the internal model; clicking any internal tab restores it.
         icon.find('[rata-role=tab]').each(function () {
