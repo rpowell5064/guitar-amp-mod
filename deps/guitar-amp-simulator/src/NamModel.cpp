@@ -1,5 +1,6 @@
 #include "NamModel.h"
 #include <get_dsp.h>
+#include <activations.h>
 #include <algorithm>
 #include <filesystem>
 
@@ -10,6 +11,10 @@ NamModel& NamModel::operator=(NamModel&&) noexcept = default;
 
 bool NamModel::loadFromFile(const std::string& path) noexcept {
     try {
+        // Fast-tanh activations (2026-07-23): the official NAM plugin ships with
+        // this on — a rational tanh approximation, transparent at audio accuracy,
+        // measurably faster WaveNet/LSTM inference on the Pi. Global, idempotent.
+        nam::activations::Activation::enable_fast_tanh();
         auto newDsp = nam::get_dsp(std::filesystem::path(path));
         if (!newDsp) return false;
         dsp = std::move(newDsp);
