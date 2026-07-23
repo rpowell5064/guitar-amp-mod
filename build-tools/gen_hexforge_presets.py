@@ -795,18 +795,22 @@ add(
 # a compressed clean at the EDGE of break-up with a deep SEASICK chorus. Packed into the
 # Muse bank's free C slot per the no-blanks rule ("fill the banks with what I have").
 add(
-  preset(14, 2, "Maromaro Retro", out_level=-6.4,   # measured 2026-07-23: blueprint dial-in (soft amp + -4 dB trim) runs quiet -> -6.4 lands -13.8 dBFS DI = clean parity
+  preset(14, 2, "Maromaro Retro", out_level=-9.6,   # measured 2026-07-23 (with the Klon push): -9.6 lands -13.8 dBFS DI = clean parity
     # User's tone blueprint (2026-07-23): mini-humbucker input trimmed -4 dB (keeps the
     # breakup controlled), Once76 squish for the slightly-compressed attack
     it={"gain":-4},
     cp={"enable":1,"type":1,"ratio":1,"thresh":-32,"attack":4,"release":4,"knee":4,"makeup":4},
-    # Blueprint amp: Fender clean at gain ~4/10, master 5-6, B4/M5/T6.5/P4, sag up for
-    # the pick-attack BLOOM — a hint of breakup when you dig in, never crunch
+    # Gilded Horse (Klon) as the push (user 2026-07-23): drive LOW, level UP — the
+    # classic clean-boost Klon shoving the Fender front-end into consistent edge-of-
+    # break-up, with the mid-hump gluing the jangle
+    dr={"enable":1,"model":"Gilded Horse","drive":0.25,"tone":0.55,"level":0.7,"mix":1.0},
+    # Blueprint amp: Fender clean, sag up for the pick-attack BLOOM — the Klon in
+    # front supplies the hair now, so gain stays at the blueprint 4/10
     amp={"model":"Clean Meanie","gain":0.42,"bass":0.4,"mid":0.5,"treble":0.65,"presence":0.4,"master":0.55,"sag":0.4},
-    # Blueprint chorus: ~0.25 Hz (Seasick rate floor lowered to 0.15 Hz for exactly
-    # this), depth ~40%, mix ~40%, 10 ms pre-delay (Center Delay), medium spread —
-    # plus the mode's built-in +-1.25-cent tape drift. Slow, wide, slightly unstable.
-    md={"enable":1,"type":"Seasick Vibe","rate":0.04,"depth":0.40,"mix":0.42,"width":0.5,"offset":10},
+    # Chorus opened up (user 2026-07-23: "I want to HEAR the seasickness"): ~0.5 Hz,
+    # depth 70%, mix 60% crossfade (dry receding), 10 ms pre-delay + the tape drift —
+    # an obvious slow HEAVE on every chord, not background shimmer
+    md={"enable":1,"type":"Seasick Vibe","rate":0.15,"depth":0.70,"mix":0.60,"width":0.5,"offset":10},
     rv={"enable":1,"predelay":10,"decay":1.1,"damping":0.55,"mix":0.16},
     gt={"enable":1,"thresh":-52,"release":300},
     cab_ir="@american-ob",   # open-back 2x12 jangle — the retro-clean platform, not a 4x12
