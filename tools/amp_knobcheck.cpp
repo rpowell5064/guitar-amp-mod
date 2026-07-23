@@ -41,7 +41,8 @@ static double db(double v) { return 20.0 * std::log10(std::max(v, 1e-12)); }
 
 // Run a sine through amp+PA with the given knobs; return output buffer.
 static std::vector<float> run(const AmpCfg& a, double freq, double inDb,
-                              float gain, float bass, float mid, float treble, float pres) {
+                              float gain, float bass, float mid, float treble, float pres,
+                              float master = 0.65f) {
     AmpBlockExtended amp; amp.prepare(kFs, kBlk, 1);
     amp.setAmpModel(a.model); amp.setBypass(false);
     if (a.chParam) amp.setParameter(a.chParam, a.chVal);
@@ -50,7 +51,7 @@ static std::vector<float> run(const AmpCfg& a, double freq, double inDb,
     else { amp.setParameter("gain", gain); amp.setParameter("bass", bass);
            amp.setParameter("mid", mid);   amp.setParameter("treble", treble); }
     amp.setParameter("presence", pres);
-    amp.setParameter("master", 0.65f); amp.setParameter("sag", 0.2f);
+    amp.setParameter("master", master); amp.setParameter("sag", 0.2f);
     PowerAmpProcessor pa; pa.prepare(kFs, kBlk, 1);
     const auto d = PowerAmpProcessor::getDefaultsForModel(a.paIdx);
     pa.setParameter("master", d.master); pa.setParameter("presence", d.presence);
@@ -76,8 +77,8 @@ static std::vector<float> run(const AmpCfg& a, double freq, double inDb,
     return out;
 }
 
-static double thdAt(const AmpCfg& a, float gain, double* outDb = nullptr) {
-    auto out = run(a, 999.0, -12.0, gain, 0.5f, 0.5f, 0.5f, 0.5f);
+static double thdAt(const AmpCfg& a, float gain, double* outDb = nullptr, float master = 0.65f) {
+    auto out = run(a, 999.0, -12.0, gain, 0.5f, 0.5f, 0.5f, 0.5f, master);
     const size_t skip = size_t(kFs * 0.2);
     const double f = goertzel(out, skip, 999.0);
     double h = 0.0, ss = 0.0;
@@ -89,7 +90,9 @@ static double thdAt(const AmpCfg& a, float gain, double* outDb = nullptr) {
 
 // Pink noise through the amp; band level RELATIVE to a 1 kHz reference band, so
 // compression/limiting cancels and only the spectral authority of the knob remains.
-static std::vector<float> runPink(const AmpCfg& a, float gain, float b, float m, float t, float p, unsigned seed) {
+// paPres/paDepth >= 0 override the POWER-AMP presence/depth (for PA-knob authority).
+static std::vector<float> runPink(const AmpCfg& a, float gain, float b, float m, float t, float p, unsigned seed,
+                                  float paPres = -1.0f, float paDepth = -1.0f) {
     AmpBlockExtended amp; amp.prepare(kFs, kBlk, 1);
     amp.setAmpModel(a.model); amp.setBypass(false);
     if (a.chParam) amp.setParameter(a.chParam, a.chVal);
@@ -101,8 +104,8 @@ static std::vector<float> runPink(const AmpCfg& a, float gain, float b, float m,
     amp.setParameter("master", 0.65f); amp.setParameter("sag", 0.2f);
     PowerAmpProcessor pa; pa.prepare(kFs, kBlk, 1);
     const auto d = PowerAmpProcessor::getDefaultsForModel(a.paIdx);
-    pa.setParameter("master", d.master); pa.setParameter("presence", d.presence);
-    pa.setParameter("depth", d.depth);   pa.setParameter("nfb", d.nfb);
+    pa.setParameter("master", d.master); pa.setParameter("presence", paPres >= 0.0f ? paPres : d.presence);
+    pa.setParameter("depth",  paDepth >= 0.0f ? paDepth : d.depth);   pa.setParameter("nfb", d.nfb);
     pa.setParameter("sag", d.sag);       pa.setParameter("bloomvca", d.bloomVca);
     pa.setTubeType(static_cast<TubeType>(a.tube));
     pa.setBypass(a.sunn);
@@ -182,6 +185,51 @@ int main() {
         printf("%-14s | %6.1f %6.1f %6.1f %6.1f (o%3.0f/%3.0fdB)%s| %5.1f %5.1f %5.1f %5.1f %s\n",
                a.label, t05, t3, t5, t10, l05, l10, flat ? "<-FLAT " : "       ",
                sb, sm, st, sp, dead ? "<-DEAD KNOB" : "");
+    }
+
+    // ── Fine gain sweep: 10 steps — flag THD dips (bias-choke/blocking pathologies
+    // like the Cali V Crunch spike) and output-level jumps between adjacent steps.
+    printf("\n%-14s | fine GAIN thd%% at .1 .2 .3 .4 .5 .6 .7 .8 .9 1.0\n", "amp");
+    for (const auto& a : amps) {
+        double thd[10], lv[10]; char flags[64] = "";
+        for (int i = 0; i < 10; ++i) thd[i] = thdAt(a, 0.1f * float(i + 1), &lv[i]);
+        for (int i = 1; i < 10; ++i) {
+            if (thd[i] < thd[i-1] * 0.72 && thd[i-1] > 12.0 && lv[i] > -50.0)
+                std::snprintf(flags + strlen(flags), sizeof(flags) - strlen(flags), " DIP@.%d", i + 1);
+            if (std::fabs(lv[i] - lv[i-1]) > 4.0)
+                std::snprintf(flags + strlen(flags), sizeof(flags) - strlen(flags), " JUMP@.%d", i + 1);
+        }
+        printf("%-14s |", a.label);
+        for (int i = 0; i < 10; ++i) printf(" %5.1f", thd[i]);
+        printf("%s\n", flags);
+    }
+
+    // ── Amp master taper: output dB at master .1/.35/.65/1.0 (gain 0.3) — must rise
+    // monotonically with real authority (>6 dB total swing); flag inversions/plateaus.
+    printf("\n%-14s | MASTER out dB @ .1 / .35 / .65 / 1.0\n", "amp");
+    for (const auto& a : amps) {
+        double lv[4]; const float ms[4] = {0.1f, 0.35f, 0.65f, 1.0f};
+        for (int i = 0; i < 4; ++i) thdAt(a, 0.3f, &lv[i], ms[i]);
+        const bool inv  = lv[1] < lv[0] - 0.3 || lv[2] < lv[1] - 0.3 || lv[3] < lv[2] - 0.3;
+        const bool weak = (lv[3] - lv[0]) < 6.0;
+        printf("%-14s | %6.1f %6.1f %6.1f %6.1f %s%s\n", a.label, lv[0], lv[1], lv[2], lv[3],
+               inv ? "<-NON-MONOTONIC " : "", weak ? "<-WEAK MASTER" : "");
+    }
+
+    // ── Power-amp presence/depth authority (PA knobs 0 -> 1, pink-tilt vs 1 kHz;
+    // amps that bypass the PA (Sunn) are skipped).
+    printf("\n%-14s | PA presence swing @4.5k | PA depth swing @100\n", "amp");
+    for (const auto& a : amps) {
+        if (a.sunn) { printf("%-14s |   (PA bypassed)\n", a.label); continue; }
+        auto rel = [&](float pp, float pd, double fc) {
+            auto out = runPink(a, 0.5f, 0.5f, 0.5f, 0.5f, 0.5f, 777, pp, pd);
+            return bandDb(out, fc) - bandDb(out, 1000.0);
+        };
+        const double sp = rel(1.0f, -1.0f, 4500.0) - rel(0.0f, -1.0f, 4500.0);
+        const double sd = rel(-1.0f, 1.0f, 100.0)  - rel(-1.0f, 0.0f, 100.0);
+        printf("%-14s | %6.1f dB %s | %6.1f dB %s\n", a.label,
+               sp, std::fabs(sp) < 1.5 ? "<-DEAD" : "      ",
+               sd, std::fabs(sd) < 1.5 ? "<-DEAD" : "      ");
     }
     return 0;
 }

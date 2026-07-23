@@ -139,10 +139,19 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
         }
         x = c.stage1.process(x * (1.0f + gEff * 4.5f) * satMul) * 0.90f * kCouple12;
         x = c.inter12HPF.process(x);
-        x = c.stage2.process(x * (1.6f + gEff * 5.0f) * satMul) * 0.80f * kCouple23;
+        // Stage 2 (kMarshallV2) drive is CAPPED below its duty-collapse window
+        // (2026-07-23 audit: 94-135% THD = fundamental cancellation at drive ~3.6-4.7);
+        // the dial's remaining travel reroutes into stage 3 (Recto backDrive pattern).
+        const float d2raw = (1.6f + gEff * 5.0f) * satMul;
+        const float d2cap = channel_ == CH_HBE ? 2.4f : 3.2f;   // HBE's boost stage feeds
+                                                                // stage 2 hotter — same
+                                                                // window, lower drive cap
+        const float d2    = d2raw > d2cap ? d2cap : d2raw;
+        const float d3mul = 1.0f + 0.30f * (d2raw - d2);
+        x = c.stage2.process(x * d2) * 0.80f * kCouple23;
         x = c.inter23HPF.process(x);
         x = c.inter23LP.process(x);
-        x = c.stage3.process(x * (1.8f + gEff * 4.5f)) * 0.82f;
+        x = c.stage3.process(x * (1.8f + gEff * 4.5f) * d3mul) * 0.82f;
         x *= kPreToneGain;
         x = c.tonestack.process(x);
         x = c.inter34HPF.process(x);

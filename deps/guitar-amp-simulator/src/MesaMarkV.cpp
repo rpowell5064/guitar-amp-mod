@@ -101,6 +101,7 @@ void MesaMarkV::recalcFilters() noexcept {
         c.brightSh.setCoeffs(Filters::highshelf(m.brightFc, m.brightDb, oversampledFs_));
         c.interHP.setCoeffs(Filters::highpass1pole(m.interHPfc, oversampledFs_));
         c.interLP.setCoeffs(Filters::lowpass1pole(m.interLPfc, oversampledFs_));
+        for (auto& f : c.coupDC) f.setCoeffs(Filters::highpass1pole(22.0, oversampledFs_));  // coupling caps
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_)); // Mesa presence bite
         c.airLP.setCoeffs(Filters::lowpass(13000.0, 0.707, oversampledFs_));  // OT/power-amp top roll-off.
@@ -138,6 +139,7 @@ void MesaMarkV::reset() noexcept {
     masterSmooth_.setCurrentAndTargetValue(master_);
     for (auto& c : ch_) {
         c.inHP.reset(); c.brightSh.reset(); c.interHP.reset(); c.interLP.reset();
+        for (auto& f : c.coupDC) f.reset();
         c.voicePk.reset(); c.presenceF.reset(); c.airLP.reset(); c.dcBlk.reset();
         for (auto& gq : c.geq) gq.reset();
         for (auto& s : c.stage) s.reset();
@@ -186,6 +188,7 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
     for (int i = 0; i < m.nStages; ++i) {
         x = c.stage[i].process(x * (m.gBase[i] + g * m.gSpan[i])) * 0.82f;
         if (i == 0) x = c.interHP.process(x);     // tighten bass early
+        else        x = c.coupDC[i].process(x);   // coupling cap: block the bias-walk DC
         if (i == 1) x = c.interLP.process(x);     // limit fizz mid-cascade
     }
 

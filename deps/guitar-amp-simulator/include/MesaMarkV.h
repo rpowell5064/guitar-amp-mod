@@ -81,6 +81,12 @@ private:
 
     struct ChannelState {
         BiquadFilter    inHP, brightSh, interHP, interLP, voicePk, presenceF, airLP, dcBlk;
+        // Interstage coupling caps (2026-07-23): 1-pole DC blocks after EVERY stage
+        // past the first — the MV2-class stages put out large signal-dependent DC
+        // (+1V-class bias walk) which, uncapped, shifted the NEXT clipper's operating
+        // point until the FUNDAMENTAL cancelled (Edge 210%/Crunch 157% THD spikes,
+        // fundamental -8 dB, mid-dial). Real amps always have these caps.
+        BiquadFilter    coupDC[kMaxStage];
         BiquadFilter    geq[5];   // 5-band graphic EQ (post-preamp): 80/240/750/2200/6600 Hz
         TriodeComponent stage[kMaxStage];
         TriodeComponent stagePI;

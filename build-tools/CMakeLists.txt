@@ -22,5 +22,3 @@ target_link_libraries(cab_voice_check PRIVATE GuitarAmpSim)
 # Preset-blob migration round-trip (header-only vs the generated port enum).
 add_executable(hexforge_migrate_test "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_migrate_test.cpp")
 target_include_directories(hexforge_migrate_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge")
-add_executable(recto_top "$ENV{CLAUDE_SCRATCH}/recto_top.cpp")
-target_link_libraries(recto_top PRIVATE GuitarAmpSim)

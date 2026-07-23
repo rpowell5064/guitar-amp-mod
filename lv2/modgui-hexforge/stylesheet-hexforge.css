@@ -25,7 +25,9 @@
        fragile fixed-pixel height (static renders under-show MOD's runtime knob widgets, so a magic number lies). */
     height: auto;
     box-sizing: border-box;
-    display: flex; flex-direction: column; gap: 12px; padding: 14px 24px 16px;
+    /* bottom padding reserves a dedicated strip for the corner TUNER button —
+       no panel content can ever reach it (user 2026-07-23: it was overlapping). */
+    display: flex; flex-direction: column; gap: 12px; padding: 14px 24px 52px;
     position: absolute;
     border-radius: 16px;
     border-top: 2px solid transparent;
@@ -803,7 +805,7 @@
 /* Bottom-right corner placement (2026-07-23): the toolbar ran out of room. Inset
    clear of the corner screw and the output jack; label keeps it discoverable. */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner {
-    position: absolute; right: 44px; bottom: 3px; width: auto; height: 30px;
+    position: absolute; right: 44px; bottom: 11px; width: auto; height: 30px;
     padding: 0 10px; gap: 6px; z-index: 40;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner-lab {
