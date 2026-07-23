@@ -101,6 +101,18 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     // Load front slot once — consistent L/R for the whole block, never blocks.
     const int slot    = frontSlot_.load(std::memory_order_acquire);
     const int chCount = std::min(nCh, kMaxCh);
+    if (monoActive_ && chCount > 1) {
+        // Returning to true stereo after the mono fast path: ch1's conv/EQ state
+        // is stale — clear it (one-time; transitions coincide with user edits).
+        monoActive_ = false;
+        for (int sl = 0; sl < kNumSlots; ++sl) convolvers_[sl][1].reset();
+        auto& e = eqState_[1];
+        e.lowCut.reset(); e.highCut.reset(); e.micLP.reset(); e.micBite.reset();
+        e.micBody.reset(); e.distProx.reset(); e.distAir.reset();
+        e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
+        e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
+        e.compEnv = 0.0f; e.compRef = 0.0f;
+    }
 
     for (int c = 0; c < chCount; ++c) {
         // Capture dry signal before convolution (handles in-place in==out).
@@ -188,6 +200,83 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     for (int c = chCount; c < nCh; ++c)
         if (in[c] != out[c])
             for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];
+}
+
+// Mono-input fast path: ONE convolution + ONE EQ chain, fanned out to L/R with
+// per-channel room (the only decorrelating element). Bit-identical to running two
+// identical channels through process() at roughly half the cost.
+void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexcept {
+    if (bypassed) { std::copy(L, L + numSamples, R); return; }
+    const int slot = frontSlot_.load(std::memory_order_acquire);
+    monoActive_ = true;
+
+    std::copy(L, L + numSamples, dryBuf_.begin());
+    convolvers_[slot][0].process(L, L, numSamples);
+    auto& e = eqState_[0];
+
+    if (studio_) {
+        for (int i = 0; i < numSamples; ++i) {
+            float base = e.lowCut.process(L[i]);
+            base = e.highCut.process(base);
+            float w1 = base;
+            if (micActive_) {
+                w1 = e.micLP.process(w1);
+                w1 = e.micBite.process(w1);
+                w1 = e.micBody.process(w1);
+                w1 = e.distProx.process(w1);
+                w1 = e.distAir.process(w1);
+            }
+            float w2 = e.mic2LP.process(base);
+            w2 = e.mic2Bite.process(w2);
+            w2 = e.mic2Body.process(w2);
+            float w = 0.65f * w1 + 0.35f * w2;
+            w = e.stHP.process(w);
+            w = e.stLP.process(w);
+            w = e.conA.process(w);
+            w = e.conB.process(w);
+            const float a = std::fabs(w);
+            e.compEnv  += (a > e.compEnv ? compAtt_ : compRel_) * (a - e.compEnv);
+            e.compRef  += compSlow_ * (a - e.compRef);
+            float g = 1.0f;
+            if (e.compEnv > e.compRef && e.compRef > 1e-6f) {
+                g = std::sqrt(e.compRef / e.compEnv);
+                if (g < 0.708f) g = 0.708f;
+            }
+            w *= g * 1.26f;
+            const float y = dryBuf_[i] * (1.0f - mix_) + w * mix_;
+            L[i] = y; R[i] = y;                     // studio forces room off: mono out
+        }
+    } else if (micActive_) {
+        for (int i = 0; i < numSamples; ++i) {
+            float w = e.lowCut.process(L[i]);
+            w = e.highCut.process(w);
+            w = e.micLP.process(w);
+            w = e.micBite.process(w);
+            w = e.micBody.process(w);
+            w = e.distProx.process(w);
+            w = e.distAir.process(w);
+            const float dry = dryBuf_[i] * (1.0f - mix_);
+            if (roomOn_) {
+                L[i] = dry + (w + roomMix_ * roomTick(room_[0], w)) * mix_;
+                R[i] = dry + (w + roomMix_ * roomTick(room_[1], w)) * mix_;
+            } else { const float y = dry + w * mix_; L[i] = y; R[i] = y; }
+        }
+    } else if (roomOn_) {
+        for (int i = 0; i < numSamples; ++i) {
+            float w = e.lowCut.process(L[i]);
+            w = e.highCut.process(w);
+            const float dry = dryBuf_[i] * (1.0f - mix_);
+            L[i] = dry + (w + roomMix_ * roomTick(room_[0], w)) * mix_;
+            R[i] = dry + (w + roomMix_ * roomTick(room_[1], w)) * mix_;
+        }
+    } else {
+        for (int i = 0; i < numSamples; ++i) {
+            float w = e.lowCut.process(L[i]);
+            w = e.highCut.process(w);
+            const float y = dryBuf_[i] * (1.0f - mix_) + w * mix_;
+            L[i] = y; R[i] = y;
+        }
+    }
 }
 
 void CabinetBlock::setParameter(const std::string& id, float v) {

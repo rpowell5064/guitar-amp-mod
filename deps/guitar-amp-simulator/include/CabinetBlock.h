@@ -6,10 +6,11 @@
 #include <atomic>
 #include <vector>
 
-// Cabinet IR block — FFT overlap-add convolution with lock-free IR loading.
+// Cabinet IR block — partitioned FFT convolution with lock-free IR loading.
 //
-// Convolution cost: O((blockSize + irLen) * log(blockSize + irLen)) per block,
-// replacing the previous O(blockSize * irLen) direct convolution.
+// Convolution: zero-latency uniform partitioned OLS (see OlaConvolver.h,
+// rewritten 2026-07-23) — ~O(irLen/64) complex MACs per sample instead of a
+// full-length FFT per block; long user IRs are no longer catastrophic.
 //
 // Thread safety:
 //   setIR()  — message thread.  Writes the new IR to the back slot, then
@@ -26,6 +27,13 @@ class CabinetBlock : public AudioBlock {
 public:
     void  prepare(double sampleRate, int maxBlockSize, int numChannels) override;
     void  process(float** in, float** out, int numSamples, int numChannels) override;
+    // Mono-input fast path (2026-07-23): when the caller KNOWS both channels are
+    // identical (Hex Forge tracks this), convolve + EQ ONCE and fan out to L/R —
+    // the room (the only decorrelating element) still runs per channel, so the
+    // result is BIT-IDENTICAL to processing two identical channels at half the
+    // convolution/EQ cost. Channel 1's conv/EQ state is reset on the next true
+    // stereo call (transitions only happen on user reorder = already clicky).
+    void  processMonoToStereo(float* L, float* R, int numSamples) noexcept;
     void  setParameter(const std::string& id, float value) override;
     float getParameter(const std::string& id) const override;
 
@@ -60,6 +68,7 @@ private:
     // is forced OFF in Studio voice (a close-mic'd record is dry; ambience belongs to
     // the mix, not the cab).
     bool  studio_   = false;
+    bool  monoActive_ = false;   // processMonoToStereo ran (ch1 conv/EQ state stale)
 
     static constexpr int kMaxCh    = 2;
     static constexpr int kNumSlots = 2;  // double-buffer: front / back

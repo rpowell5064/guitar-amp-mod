@@ -540,6 +540,7 @@ static bool readWav(const char* path, std::vector<float>& L, std::vector<float>&
 static bool loadIRFile(const char* path, double dst, std::vector<float>& L, std::vector<float>& R) {
     uint32_t sr=0; if (!readWav(path,L,R,sr) || L.empty()) return false;
     L = irresample::resampleSinc(L, sr, dst); if (!R.empty()) R = irresample::resampleSinc(R, sr, dst);
+    irresample::conditionIr(L, dst); if (!R.empty()) irresample::conditionIr(R, dst);   // trim tail + 1 s cap
     return true;
 }
 
@@ -1672,26 +1673,45 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         for (int i=0;i<len;++i) p->mono[i]=ig*0.5f*(L[i]+R[i]);
                         p->ampNam->processBuffer(p->mono, p->monoOut, len);
                         for (int i=0;i<len;++i){ float y=p->monoOut[i]*og; L[i]=y; R[i]=y; }
+                    } else if (!stereo) {
+                        // Mono chain (2026-07-23 perf): everything upstream is identical L/R,
+                        // so run the 4x-oversampled cascade + PA ONCE and mirror — the amp is
+                        // the heaviest internal DSP and this halves it. Bit-identical output.
+                        float* io1[1] = { L };
+                        amp->process(io1, io1, len, 1);
+                        p->pa.process(io1, io1, len, 1);
+                        if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
+                        for (int i=0;i<len;++i) R[i]=L[i];
                     } else {
                         float* io[2] = { L, R };
                         amp->process(io, io, len, 2);
                         p->pa.process(io, io, len, 2);
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
                     }
-                    stereo = true;
+                    // NOTE: the amp's output is mono-identical when its input was — do NOT
+                    // force the stereo flag; downstream blocks keep their mono fast paths.
                     break;
                 }
                 case B_CAB:
                     if (p->cabNam && p->cabNam->isLoaded()) {
                         // Neural cab/rig overrides the IR convolver; NAM Gain (input) + NAM Level (output), dB; Mix = dry/wet.
-                        if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
+                        const bool wasMono = !stereo;
+                        if (wasMono) for (int i=0;i<len;++i) R[i]=L[i];
                         const float ig=std::pow(10.0f,*p->ports[HF_CAB_NAM_GAIN]/20.0f);
                         const float og=std::pow(10.0f,*p->ports[HF_CAB_NAM_VOL] /20.0f);
                         for (int i=0;i<len;++i) p->mono[i]=ig*0.5f*(L[i]+R[i]);
                         p->cabNam->processBuffer(p->mono, p->monoOut, len);
                         const float mix=*p->ports[HF_CAB_MIX], dry=1.0f-mix;
                         for (int i=0;i<len;++i){ float w=p->monoOut[i]*og*mix; L[i]=dry*L[i]+w; R[i]=dry*R[i]+w; }
-                        stereo = true;
+                        if (!wasMono) stereo = true;   // mono in -> mono-identical out
+                    } else if (!stereo) {
+                        // Mono chain (2026-07-23 perf): ONE convolution + EQ, fanned out with
+                        // per-channel room — bit-identical to two identical channels.
+                        p->cab.processMonoToStereo(L, R, len);
+                        // Only the room decorrelates; the output is truly stereo iff it ran.
+                        if (p->cab.getParameter("roomon") > 0.5f
+                            && p->cab.getParameter("roommix") > 0.001f
+                            && p->cab.getParameter("voice") < 0.5f) stereo = true;
                     } else runStereo(p->cab, L, R, len, stereo);
                     break;
                 case B_MODFX:  runStereo(p->modfx,  L, R, len, stereo); break;

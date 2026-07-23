@@ -131,6 +131,8 @@ static bool loadIRFile(const char* path, double dstRate,
     if (!readWav(path, L, R, srcRate) || L.empty()) return false;
     L = irresample::resampleSinc(L, srcRate, dstRate);
     if (!R.empty()) R = irresample::resampleSinc(R, srcRate, dstRate);
+    irresample::conditionIr(L, dstRate);               // trim silent tail + 1 s cap
+    if (!R.empty()) irresample::conditionIr(R, dstRate);
     return true;
 }
 
