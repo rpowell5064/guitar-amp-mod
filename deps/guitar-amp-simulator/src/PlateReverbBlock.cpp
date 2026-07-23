@@ -40,6 +40,19 @@ void PlateReverbBlock::prepare(double sr, int maxBlock, int nCh) {
 
     recalcFeedback();
     recalcDamping();
+    spring.prepare(sr, maxBlock);
+    springBuf.assign(static_cast<size_t>(maxBlock), 0.0f);
+    syncSpring();
+}
+
+// Map the block's plate-domain params onto the spring tank's controls.
+void PlateReverbBlock::syncSpring() {
+    spring.setMix(mix);
+    // decayTime seconds -> the spring's 0..1 decay knob (~0.2 s dead .. 3 s drippy)
+    float d = (decayTime - 0.2f) / 2.8f;
+    if (d < 0.0f) d = 0.0f; if (d > 1.0f) d = 1.0f;
+    spring.setDecay(d);
+    spring.setDamping(damping);
 }
 
 void PlateReverbBlock::recalcFeedback() {
@@ -58,10 +71,17 @@ void PlateReverbBlock::recalcDamping() {
 
 void PlateReverbBlock::setParameter(const std::string& id, float v) {
     if      (id == "preDelayMs") preDelayMs = std::max(0.0f, v);
-    else if (id == "decayTime")  { decayTime = std::max(0.01f, v); recalcFeedback(); return; }
-    else if (id == "damping")    { damping   = std::clamp(v, 0.0f, 0.99f); recalcDamping(); return; }
+    else if (id == "decayTime")  { decayTime = std::max(0.01f, v); recalcFeedback(); syncSpring(); return; }
+    else if (id == "damping")    { damping   = std::clamp(v, 0.0f, 0.99f); recalcDamping(); syncSpring(); return; }
     else if (id == "modDepth")   modDepth  = std::clamp(v, 0.0f, 1.0f);
     else if (id == "modRate")    modRate   = std::max(0.01f, v);
+    else if (id == "type") {
+        const bool want = v > 0.5f;
+        if (want && !springOn) spring.reset();   // engage from silence, no stale boing
+        springOn = want;
+        syncSpring();
+        return;
+    }
     else if (id == "density") {
         const bool want = v > 0.5f;
         if (want && !dense) {   // engaging: clear the extra tank elements (they idle in classic mode)
@@ -77,11 +97,12 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
         dense = want;
         return;
     }
-    else if (id == "mix")        mix       = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "mix")        { mix      = std::clamp(v, 0.0f, 1.0f); spring.setMix(mix); }
 }
 
 float PlateReverbBlock::getParameter(const std::string& id) const {
     if (id == "density") return dense ? 1.0f : 0.0f;
+    if (id == "type")    return springOn ? 1.0f : 0.0f;
     if (id == "preDelayMs") return preDelayMs;
     if (id == "decayTime")  return decayTime;
     if (id == "damping")    return damping;
@@ -92,6 +113,17 @@ float PlateReverbBlock::getParameter(const std::string& id) const {
 }
 
 void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh) {
+    if (springOn && !bypassed) {
+        // SPRING type: mono Accutronics tank; its processBlock applies the dry/wet
+        // mix internally, so feed it the mono program and mirror to both outputs.
+        const int n = numSamples;
+        if (nCh >= 2) for (int i = 0; i < n; ++i) springBuf[size_t(i)] = 0.5f * (in[0][i] + in[1][i]);
+        else          for (int i = 0; i < n; ++i) springBuf[size_t(i)] = in[0][i];
+        spring.processBlock(springBuf.data(), n);
+        for (int c2 = 0; c2 < nCh; ++c2)
+            for (int i = 0; i < n; ++i) out[c2][i] = springBuf[size_t(i)];
+        return;
+    }
     if (bypassed) { copyBlock(in, out, numSamples, nCh); return; }
 
     const float fs         = static_cast<float>(sampleRate);

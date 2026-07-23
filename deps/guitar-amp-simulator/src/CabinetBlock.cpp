@@ -22,7 +22,7 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
     // Room buffers sized for the largest room (Amount = 1) once; lengths follow the knob.
     for (int c = 0; c < kMaxCh; ++c) {
         auto& rs = room_[c];
-        static const double kCombMs[RoomState::kCombs] = {25.3, 31.7, 38.1, 44.9};
+        static const double kCombMs[RoomState::kCombs] = {25.3, 31.7, 38.1, 44.9, 19.7, 52.3};
         const double chScale = (c == 1) ? 1.07 : 1.0;   // stereo decorrelation
         for (int k = 0; k < RoomState::kCombs; ++k) {
             const int maxLen = (int)(kCombMs[k] * 1.4 * chScale * 0.001 * sr) + 4;
@@ -30,7 +30,8 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
             rs.cw[k] = 0; rs.damp[k] = 0.0f;
         }
         rs.ap.assign((size_t)(0.0061 * 1.07 * sr) + 4, 0.0f);
-        rs.aw = 0;
+        rs.ap2.assign((size_t)(0.0089 * 1.07 * sr) + 4, 0.0f);
+        rs.aw = 0; rs.aw2 = 0;
     }
     rebuildRoom();
 
@@ -77,8 +78,10 @@ void CabinetBlock::loadIRIntoSlot(int slot) {
 
 // One sample of small-room: 4 damped parallel combs (prime-spaced, size-scaled) -> allpass.
 float CabinetBlock::roomTick(RoomState& rs, float x) noexcept {
+    const int   nCombs = roomDense_ ? RoomState::kCombs : RoomState::kClassicCombs;
+    const float norm   = roomDense_ ? 0.2041f : 0.25f;   // 0.25*sqrt(4/6): energy-matched
     float sum = 0.0f;
-    for (int k = 0; k < RoomState::kCombs; ++k) {
+    for (int k = 0; k < nCombs; ++k) {
         float& cell = rs.comb[k][(size_t)rs.cw[k]];
         const float y = cell;
         rs.damp[k] += 0.35f * (y - rs.damp[k]);          // HF dies faster than lows (walls absorb)
@@ -86,13 +89,19 @@ float CabinetBlock::roomTick(RoomState& rs, float x) noexcept {
         if (++rs.cw[k] >= rs.clen[k]) rs.cw[k] = 0;
         sum += y;
     }
-    sum *= 0.25f;
+    sum *= norm;
     float& acell = rs.ap[(size_t)rs.aw];
     const float v   = sum + 0.5f * acell;                 // Schroeder allpass (diffusion)
     const float apy = acell - 0.5f * v;
     acell = v;
     if (++rs.aw >= rs.alen) rs.aw = 0;
-    return apy;
+    if (!roomDense_) return apy;
+    float& bcell = rs.ap2[(size_t)rs.aw2];                // Dense: second diffuser
+    const float v2   = apy + 0.5f * bcell;
+    const float apy2 = bcell - 0.5f * v2;
+    bcell = v2;
+    if (++rs.aw2 >= rs.alen2) rs.aw2 = 0;
+    return apy2;
 }
 
 void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
@@ -216,9 +225,10 @@ void CabinetBlock::reset() noexcept {
     for (auto& rs : room_) {
         for (auto& cb : rs.comb) std::fill(cb.begin(), cb.end(), 0.0f);
         std::fill(rs.ap.begin(), rs.ap.end(), 0.0f);
+        std::fill(rs.ap2.begin(), rs.ap2.end(), 0.0f);
         for (auto& d : rs.damp) d = 0.0f;
         for (auto& w : rs.cw) w = 0;
-        rs.aw = 0;
+        rs.aw = 0; rs.aw2 = 0;
     }
     monoActive_ = false;
 }
@@ -311,6 +321,19 @@ void CabinetBlock::setParameter(const std::string& id, float v) {
     else if (id == "roomamt")   { const float a = std::clamp(v, 0.0f, 1.0f);
                                   if (a != roomAmt_) { roomAmt_ = a; rebuildRoom(); } }
     else if (id == "voice")     { studio_ = v > 0.5f; }
+    else if (id == "roomdense") {
+        const bool want = v > 0.5f;
+        if (want && !roomDense_)   // engaging: clear the extra room elements
+            for (auto& rs : room_) {
+                for (int k = RoomState::kClassicCombs; k < RoomState::kCombs; ++k) {
+                    std::fill(rs.comb[k].begin(), rs.comb[k].end(), 0.0f);
+                    rs.cw[k] = 0; rs.damp[k] = 0.0f;
+                }
+                std::fill(rs.ap2.begin(), rs.ap2.end(), 0.0f);
+                rs.aw2 = 0;
+            }
+        roomDense_ = want;
+    }
 }
 
 float CabinetBlock::getParameter(const std::string& id) const {
@@ -323,6 +346,7 @@ float CabinetBlock::getParameter(const std::string& id) const {
     if (id == "roommix")   return roomMix_;
     if (id == "roomamt")   return roomAmt_;
     if (id == "voice")     return studio_ ? 1.0f : 0.0f;
+    if (id == "roomdense") return roomDense_ ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -331,7 +355,7 @@ void CabinetBlock::rebuildRoom() {
     // 0.6..1.4x of the base primes, feedback rises with size.
     const double scale = 0.6 + 0.8 * (double)roomAmt_;
     roomFb_ = 0.42f + 0.33f * roomAmt_;
-    static const double kCombMs[RoomState::kCombs] = {25.3, 31.7, 38.1, 44.9};
+    static const double kCombMs[RoomState::kCombs] = {25.3, 31.7, 38.1, 44.9, 19.7, 52.3};
     for (int c = 0; c < kMaxCh; ++c) {
         auto& rs = room_[c];
         const double chScale = (c == 1) ? 1.07 : 1.0;
@@ -343,6 +367,10 @@ void CabinetBlock::rebuildRoom() {
         if (!rs.ap.empty()) {
             int len = (int)(0.0061 * chScale * sampleRate);
             rs.alen = std::clamp(len, 1, (int)rs.ap.size() - 1);
+        }
+        if (!rs.ap2.empty()) {
+            int len = (int)(0.0089 * chScale * sampleRate);
+            rs.alen2 = std::clamp(len, 1, (int)rs.ap2.size() - 1);
         }
     }
 }

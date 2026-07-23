@@ -63,6 +63,10 @@ private:
     bool  roomOn_   = false;
     float roomMix_  = 0.15f;
     float roomAmt_  = 0.35f;
+    // Room Density (2026-07-23, opt-in like the reverb's): 0 = the classic 4-comb/
+    // 1-allpass room every preset was voiced on (bit-identical), 1 = 6 combs +
+    // 2 allpasses — smoother "amp in the room" wash, level-matched.
+    bool  roomDense_ = false;
     // Cab Voice (2026-07-22): 0 = Room (bit-identical legacy path), 1 = Studio — the
     // "recorded" sound: a second fixed virtual mic (darker ribbon-at-edge character)
     // blended 35% against the primary mic path, bracketing HPF/LPF (78 Hz / 10.5 kHz),
@@ -109,15 +113,16 @@ private:
     std::array<EQState, kMaxCh> eqState_;
 
     // Per-channel small-room state (short prime-spaced combs + one allpass).
-    struct RoomState {
-        static constexpr int kCombs = 4;
+    struct RoomState {   // sized for Dense (6 combs + 2 APs); Classic uses the first 4 / 1
+        static constexpr int kCombs = 6;
+        static constexpr int kClassicCombs = 4;
         std::vector<float> comb[kCombs];
-        std::vector<float> ap;
-        int   cw[kCombs] = {0,0,0,0};
-        int   aw = 0;
-        int   clen[kCombs] = {1,1,1,1};   // active delay lengths (follow roomAmt_)
-        int   alen = 1;
-        float damp[kCombs] = {0,0,0,0};   // per-comb damping LP state
+        std::vector<float> ap, ap2;
+        int   cw[kCombs] = {};
+        int   aw = 0, aw2 = 0;
+        int   clen[kCombs] = {1,1,1,1,1,1};   // active delay lengths (follow roomAmt_)
+        int   alen = 1, alen2 = 1;
+        float damp[kCombs] = {};              // per-comb damping LP state
     };
     std::array<RoomState, kMaxCh> room_;
     float roomFb_ = 0.6f;

@@ -1,5 +1,6 @@
 #pragma once
 #include "AudioBlock.h"
+#include "DR_SpringReverb.h"
 #include <vector>
 #include <array>
 
@@ -34,6 +35,14 @@ private:
     float modRate    =  0.8f; // Hz
     float mix        =  0.3f;
     bool  dense      = false; // Density switch (see kNumComb comment)
+    // Type switch (2026-07-23): 0 = plate tank (everything above), 1 = SPRING —
+    // the Accutronics 4EB3 three-spring model already in the codebase (built for
+    // the Deluxe Reverb amp), exposed as a block type. Mono tank (authentic),
+    // decay/damping/mix map onto the spring's own controls; predelay/mod are
+    // plate-only. Default plate = bit-identical.
+    bool  springOn   = false;
+    DR_SpringReverb spring;
+    std::vector<float> springBuf;
 
     // ---- Internal delay-line wrappers ----
     struct DelayLine {
@@ -140,4 +149,5 @@ private:
 
     void recalcFeedback();
     void recalcDamping();
+    void syncSpring();
 };
