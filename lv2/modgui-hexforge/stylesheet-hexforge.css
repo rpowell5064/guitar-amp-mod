@@ -803,7 +803,7 @@
 /* Bottom-right corner placement (2026-07-23): the toolbar ran out of room. Inset
    clear of the corner screw and the output jack; label keeps it discoverable. */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner {
-    position: absolute; right: 44px; bottom: 12px; width: auto; height: 30px;
+    position: absolute; right: 44px; bottom: 3px; width: auto; height: 30px;
     padding: 0 10px; gap: 6px; z-index: 40;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner-lab {
@@ -857,6 +857,12 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqslider { display:inline-block; width:30px; vertical-align:top; text-align:center; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqslider-fader { width:26px; height:92px; margin:0 auto; background-image:url(/resources/eqfader.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 92px; background-position:0 0; cursor:ns-resize; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqslider-t { display:block; font-size:10px; font-weight:700; text-transform:uppercase; color:#eef2f8; margin-top:5px; text-shadow:0 1px 2px rgba(0,0,0,.95); white-space:nowrap; }
+/* EQ block panel: preset select stacked over the fader row; the LEVEL fader is
+   set off from the six bands by a hairline. The single group centers in the plate. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-detail-panel[data-block="eq"] .hf-agroups { display:flex; justify-content:center; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqbody { display:flex; flex-direction:column; align-items:flex-start; gap:10px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqrow-blk { padding: 2px 6px 0 2px; gap: 14px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqrow-blk .hf-eqslider:last-child { margin-left: 12px; border-left: 1px solid rgba(255,255,255,.10); padding-left: 16px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-eqslider-v { display:block; font-size:10px; font-weight:800; color:#f2f6fc; margin-top:2px; text-shadow:0 1px 2px rgba(0,0,0,.95); white-space:nowrap; }
 
 /* -- plate hex-forge pattern (themed per block accent) + Cali V dropdown row -- */

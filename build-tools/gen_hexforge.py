@@ -177,9 +177,12 @@ NAIL = [
 # EQ — 6-band graphic (MXR-style octave centers 100..3.2k, ±12 dB) + a PRESET base
 # curve applied UNDER the sliders in the DSP (sliders stay at 0 = the preset alone;
 # they tweak on top). Preset names/curves mirror kEqPresets in hexforge_plugin.cpp.
+# Preset lineup follows the Neural DSP electric-guitar EQ guide (user 2026-07-23):
+# per-goal moves (warmth 80-100, mud cut ~250, boxiness cut 250-500, clarity 800,
+# presence/sharpness 1.6-3.2k) rather than the Cali V's V-curve family.
 EQBLK = [
-    ("preset", "Preset", "e", 0, 6, 0, [("Manual",0),("V-Scoop",1),("Deep Scoop",2),
-                                        ("Lead Boost",3),("Tight & Bright",4),("Warm",5),("Cocked Wah",6)]),
+    ("preset", "Preset", "e", 0, 6, 0, [("Manual",0),("Clean Sparkle",1),("De-Mud",2),
+                                        ("Classic Rock",3),("Metal Rhythm",4),("Lead Cut",5),("Cocked Wah",6)]),
     ("100",  "100 Hz",  "db", -12, 12, 0, None),
     ("200",  "200 Hz",  "db", -12, 12, 0, None),
     ("400",  "400 Hz",  "db", -12, 12, 0, None),
@@ -1053,6 +1056,24 @@ def render_agroups(pfx, group_defs, all_sufs):
                    '<div class="hf-agroup-body">%s</div></div>' % leftover)
     return '<div class="hf-agroups">' + "".join(out) + '</div>'
 
+# ── EQ block body: preset dropdown over a row of VERTICAL FADERS (the Cali V
+# graphic-EQ slider widget, reused) — a graphic EQ reads as faders, not knobs.
+def eq_body():
+    def fad(suf, freq):
+        sym = "eq_" + suf
+        c = CTRL_BY_SYM[sym]
+        return ('<div class="hf-eqslider" title="%s"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="%s"></div>'
+                '<span class="hf-eqslider-t">%s</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>'
+                % (c["name"], sym, freq, sym))
+    row = ('<div class="hf-eqrow hf-eqrow-blk">'
+           + "".join(fad(sf, fr) for sf, fr in [("100","100"),("200","200"),("400","400"),
+                                                ("800","800"),("1k6","1.6k"),("3k2","3.2k"),("level","LVL")])
+           + '</div>')
+    inner = (SCREWS
+             + '<div class="hf-agroups"><div class="hf-agroup"><span class="hf-agroup-title">GRAPHIC EQ</span>'
+             + '<div class="hf-agroup-body hf-eqbody">' + render_ctrl(CTRL_BY_SYM["eq_preset"]) + row + '</div></div></div>')
+    return '<div class="hf-plate">%s</div>' % inner
+
 # ── Detail panel (the selected block's full controls, shown at the bottom) ─────
 def panel(pfx, title, accent, keys):
     locked = (pfx == "it")
@@ -1065,6 +1086,8 @@ def panel(pfx, title, accent, keys):
     head.append('</div>')
     if pfx == "amp":
         body = amp_body()            # amp keeps its tube bay + per-model faceplate
+    elif pfx == "eq":
+        body = eq_body()             # graphic EQ: vertical faders, not knobs (user 2026-07-23)
     else:
         all_sufs = [r[0] for r in table]
         # Drive/Cab NAM slots get a Gain (input) + Level (output) trim beside their picker, plus a

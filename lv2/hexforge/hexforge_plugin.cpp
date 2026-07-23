@@ -287,14 +287,16 @@ struct GraphicEQ {
     void reset() { for (int c = 0; c < 2; ++c) for (int b = 0; b < kBands; ++b) f[c][b].reset(); }
     void update(int preset, const float* db, float lvlDb) noexcept {
         static const double kFc[kBands] = {100.0, 200.0, 400.0, 800.0, 1600.0, 3200.0};
+        // Curves per the Neural DSP electric-guitar EQ guide (warmth 80-100 Hz,
+        // mud ~250, boxiness 250-500, clarity 800, presence/sharpness 1.6-3.2k):
         static const float kPre[7][kBands] = {
             { 0, 0,  0,  0,  0,  0},   // Manual
-            { 3, 1, -3, -5, -1,  3},   // V-Scoop
-            { 5, 2, -6, -8, -2,  4},   // Deep Scoop
-            { 0, 1,  3,  5,  4,  1},   // Lead Boost
-            {-5,-2,  0,  1,  2,  3},   // Tight & Bright
-            { 2, 3,  1, -1, -2, -3},   // Warm
-            {-4,-2,  2,  7,  2, -4},   // Cocked Wah
+            { 3, 0, -1,  2,  1,  2},   // Clean Sparkle: warm lows + clarity + top shimmer
+            {-2,-4, -3,  1,  1,  0},   // De-Mud: carve rumble/boxiness, nudge clarity
+            { 3, 1, -3,  0,  2,  4},   // Classic Rock: 100 up, 400 out, 3.2k bite
+            { 4,-2, -5, -2,  2,  4},   // Metal Rhythm: big tight lows, deep box cut, edge
+            {-1, 0,  1,  3,  4,  5},   // Lead Cut: upper-mid push that jumps out of a mix
+            {-4,-2,  2,  7,  2, -4},   // Cocked Wah: parked-wah honk
         };
         if (preset < 0) preset = 0; if (preset > 6) preset = 6;
         bool dirty = (preset != curPre) || (lvlDb != curLvl);

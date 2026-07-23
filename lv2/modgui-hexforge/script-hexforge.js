@@ -17,7 +17,7 @@ function (event, funcs) {
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
         dl:  ['Digital','Tape','Echo Wreck','Seraph'],
-        eq:  ['Manual','V-Scoop','Deep Scoop','Lead Boost','Tight & Bright','Warm','Cocked Wah']
+        eq:  ['Manual','Clean Sparkle','De-Mud','Classic Rock','Metal Rhythm','Lead Cut','Cocked Wah']
     };
     function setNodeVal(icon, pfx, txt) { icon.find('[rata-role=nv-' + pfx + ']').text(txt == null ? '' : txt); }
     function setModelVal(icon, pfx, idx) { var a = NV[pfx]; setNodeVal(icon, pfx, (a && a[idx]) || ''); }
