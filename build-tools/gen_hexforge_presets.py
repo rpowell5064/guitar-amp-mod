@@ -924,6 +924,48 @@ SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small per
 # everything volume, so re-leveling changes NO preset's tone. Each value is RMS-target-then-
 # PEAK-capped (PEAK_CEIL) so a high-crest clean/lead can't slam the master limiter.
 TARGET_DIRTY, TARGET_CLEAN, TARGET_SUNN, PEAK_CEIL = -12.5, -13.0, -11.5, 0.0
+# ── Fidelity polish (2026-07-23): per-preset Speaker Coupling + Pickup Load ──
+# Keyed by NAME (rearrange-proof). Reasoning per rig:
+#   coupling — how hard the real power section works into its speakers:
+#     dimed vintage/non-master (May AC30s, Hendrix Plexi, doom stacks, MBV) .45-.55
+#     pushed vintage/rock .25-.40 | cleans with a working PA .15-.30
+#     tight modern metal (EVH djent, Mesa Mark) .10 or 0 — high damping IS that sound
+#     0 for: direct rigs (JMP-1/NIN), solid-state (Backline), Sunn (PA bypassed).
+#   load — pickup/cable/input impedance: straight-in vintage .15-.25 (Hendrix coily
+#     cable .35), sparkle on cleans .10-.20, buffered/modern boards 0.
+# USER-PRESERVED presets (Cardinal Rhythm, Retro Poland) are NOT touched.
+POLISH = {  # name: (coupling, pickup_load)
+    "Nevermind Verse": (0.20, 0.10), "Nevermind Wall": (0.35, 0.10), "Come As Water": (0.25, 0.12),
+    "Candlelit Clean": (0.30, 0.12), "Sermon Crunch": (0.40, 0.12), "Sermon Rhythm": (0.40, 0.12),
+    "Sermon Solo": (0.40, 0.12), "Imperial Rhythm": (0.20, 0.05), "Imperial Lead": (0.20, 0.05),
+    "Cardinal Lead": (0.20, 0.05), "Dark Side Air": (0.25, 0.15), "Berlin Wall Pulse": (0.25, 0.10),
+    "Numb Sustain": (0.40, 0.15), "Gravity Lead": (0.30, 0.10), "Mauve Haze": (0.50, 0.35),
+    "Hazy Solo": (0.55, 0.35), "Little Feather": (0.35, 0.25), "Holy Smoke": (0.50, 0.15),
+    "Skye Crusher": (0.25, 0.05), "Skye (No Mod)": (0.25, 0.05), "Skye Soar": (0.25, 0.05),
+    "Wizard's Doom": (0.0, 0.20), "Vanishing Drive": (0.25, 0.05), "Dreamlit Shimmer": (0.25, 0.15),
+    "Flatliner": (0.0, 0.0), "Prayer Djent": (0.0, 0.0), "Bridge Vibe": (0.40, 0.10),
+    "Bottle Jangle": (0.30, 0.20), "Forest Wash": (0.15, 0.10), "Disco Chuck": (0.10, 0.15),
+    "Surf Splash": (0.30, 0.20), "Apache Echo": (0.30, 0.20), "Desert Robot": (0.0, 0.05),
+    "Moondust Glam": (0.45, 0.25), "Innerspeaker Swirl": (0.45, 0.15), "Glide Wall": (0.50, 0.15),
+    "Streets Chime": (0.35, 0.10), "March Stabs": (0.0, 0.0), "World Went Away": (0.10, 0.0),
+    "Broken Crush": (0.0, 0.0), "Con Molars": (0.30, 0.0), "Quarter-Tone Lead": (0.20, 0.05),
+    "Anyone Can Play Guitar": (0.25, 0.10), "Winterborn": (0.15, 0.05), "Castaway Groove": (0.0, 0.0),
+    "Marionette Master": (0.10, 0.0), "Spectrum Rhythm": (0.10, 0.0), "Spectrum Lead": (0.10, 0.0),
+    "Regal Sustain": (0.55, 0.25), "Regal Solo": (0.55, 0.25), "Grunge Drop": (0.25, 0.05),
+    "Plug-In Junior": (0.35, 0.05), "Cavalier Charge": (0.35, 0.05),
+}
+for _p in PRESETS:
+    if _p["name"] in POLISH:
+        _c, _l = POLISH[_p["name"]]
+        _p["vals"][SYM_IDX["amp_pamp_coupl"]] = _c
+        _p["vals"][SYM_IDX["it_load"]] = _l
+
+# Loudness deltas measured on-device AFTER the polish (coupling adds level on the
+# pushed presets) — applied to the MEAS table so the parity pipeline re-levels.
+POLISH_MEAS_DELTA = {}   # name: dB (filled from the on-device before/after diff)
+for _nm, _d in POLISH_MEAS_DELTA.items():
+    if _nm in MEAS_RMS_AT_M20: MEAS_RMS_AT_M20[_nm] += _d
+
 MANUAL_OUT = {}   # no hand-locks — full parity re-level (bump kFactoryRev to push to users)
 for _p in PRESETS:
     _nm = _p["name"]
