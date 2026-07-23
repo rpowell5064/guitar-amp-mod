@@ -795,7 +795,7 @@ add(
 # a compressed clean at the EDGE of break-up with a deep SEASICK chorus. Packed into the
 # Muse bank's free C slot per the no-blanks rule ("fill the banks with what I have").
 add(
-  preset(14, 2, "Maromaro Retro", out_level=-9.6,   # measured 2026-07-23 (with the Klon push): -9.6 lands -13.8 dBFS DI = clean parity
+  preset(14, 2, "Retro Poland", out_level=-9.6,   # measured 2026-07-23 (with the Klon push): -9.6 lands -13.8 dBFS DI = clean parity
     # User's tone blueprint (2026-07-23): mini-humbucker input trimmed -4 dB (keeps the
     # breakup controlled), Once76 squish for the slightly-compressed attack
     it={"gain":-4},
@@ -810,7 +810,7 @@ add(
     # Chorus opened up (user 2026-07-23: "I want to HEAR the seasickness"): ~0.5 Hz,
     # depth 70%, mix 60% crossfade (dry receding), 10 ms pre-delay + the tape drift —
     # an obvious slow HEAVE on every chord, not background shimmer
-    md={"enable":1,"type":"Seasick Vibe","rate":0.15,"depth":0.70,"mix":0.60,"width":0.5,"offset":10},
+    md={"enable":1,"type":"Seasick Vibe","rate":0.15,"depth":0.75,"mix":0.68,"width":0.5,"offset":10},
     rv={"enable":1,"predelay":10,"decay":1.1,"damping":0.55,"mix":0.16},
     gt={"enable":1,"thresh":-52,"release":300},
     cab_ir="@american-ob",   # open-back 2x12 jangle — the retro-clean platform, not a 4x12
