@@ -1,5 +1,6 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix units: <http://lv2plug.in/ns/extensions/units#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
@@ -16,7 +17,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 28 ;
+    lv2:microVersion 29 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -61,6 +62,13 @@
         lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "density" ; lv2:name "Density" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1 ]
     ] ;
 
     modgui:gui [
@@ -86,5 +94,7 @@
             lv2:index 5 ; lv2:symbol "mix"          ; lv2:name "Mix"
         ] , [
             lv2:index 6 ; lv2:symbol "bypass"       ; lv2:name "Bypass"
+        ] , [
+            lv2:index 7 ; lv2:symbol "density"      ; lv2:name "Density"
         ]
     ] .

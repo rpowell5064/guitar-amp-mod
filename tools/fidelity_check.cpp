@@ -8,6 +8,7 @@
 //      near 3 kHz + top rolloff; heavy load = darker, lower resonance.
 #include "PowerAmpProcessor.h"
 #include "PickupLoadSim.h"
+#include "PlateReverbBlock.h"
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -120,6 +121,41 @@ int main() {
         if (pk15 < 0.5)  { std::printf("FAIL: light load has no resonant peak\n"); ++fails; }
         if (hf15 > -0.5) { std::printf("FAIL: light load has no top rolloff\n"); ++fails; }
         if (hf1  > -6.0) { std::printf("FAIL: heavy load not dark enough\n"); ++fails; }
+    }
+
+    // 4. Reverb Density switch: 0 = bit-identical classic tank; 1 = dense tank,
+    //    wet level matched within ~1 dB at default decay/damping.
+    {
+        auto tailRms=[&](bool dense){
+            PlateReverbBlock rv; rv.prepare(kFs, kBlk, 2);
+            rv.setParameter("mix", 1.0f);
+            rv.setParameter("density", dense ? 1.0f : 0.0f);
+            const size_t total = size_t(kFs * 2.0);
+            std::vector<float> L(total, 0.0f), R(total, 0.0f);
+            L[0] = R[0] = 1.0f;   // impulse
+            for (size_t pos = 0; pos < total; pos += kBlk) {
+                const int n = int(std::min<size_t>(kBlk, total - pos));
+                float* io2[2] = { L.data() + pos, R.data() + pos };
+                rv.process(io2, io2, n, 2);
+            }
+            double ss = 0; const size_t a = size_t(kFs * 0.05);
+            for (size_t i = a; i < total; ++i) ss += double(L[i]) * L[i] + double(R[i]) * R[i];
+            return 10.0 * std::log10(ss + 1e-18);
+        };
+        PlateReverbBlock r0, r1; r0.prepare(kFs, kBlk, 2); r1.prepare(kFs, kBlk, 2);
+        r1.setParameter("density", 1.0f); r1.setParameter("density", 0.0f);   // toggled away+back
+        std::vector<float> xa(2048), xb(2048);
+        for (int i = 0; i < 2048; ++i) xa[i] = xb[i] = (i % 97) * 0.007f - 0.3f;
+        std::vector<float> ya(xa), yb(xb), y2a(xa), y2b(xb);
+        { float* io2[2] = { ya.data(), y2a.data() }; r0.process(io2, io2, 2048, 2); }
+        { float* io2[2] = { yb.data(), y2b.data() }; r1.process(io2, io2, 2048, 2); }
+        bool same = true;
+        for (int i = 0; i < 2048; ++i) if (ya[i] != yb[i] || y2a[i] != y2b[i]) { same = false; break; }
+        if (!same) { std::printf("FAIL: density=0 not bit-identical\n"); ++fails; }
+        const double lvl0 = tailRms(false), lvl1 = tailRms(true);
+        std::printf("reverb density: classic tail %.1f dB, dense %.1f dB (delta %+.1f)%s\n",
+                    lvl0, lvl1, lvl1 - lvl0, same ? ", classic bit-identical" : "");
+        if (std::fabs(lvl1 - lvl0) > 1.2) { std::printf("FAIL: density level mismatch\n"); ++fails; }
     }
 
     std::printf("%s (%d failure%s)\n", fails?"FAILED":"PASSED", fails, fails==1?"":"s");

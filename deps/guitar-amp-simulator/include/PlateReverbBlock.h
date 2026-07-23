@@ -33,6 +33,7 @@ private:
     float modDepth   =  0.5f; // LFO depth on comb delays (normalised)
     float modRate    =  0.8f; // Hz
     float mix        =  0.3f;
+    bool  dense      = false; // Density switch (see kNumComb comment)
 
     // ---- Internal delay-line wrappers ----
     struct DelayLine {
@@ -117,8 +118,15 @@ private:
     // Pre-delay line (stereo input summed to mono before reverb network)
     DelayLine preDelay;
 
-    static constexpr int kNumAP   = 4;
-    static constexpr int kNumComb = 4;
+    // Density switch (2026-07-23, OPT-IN): 0 = the classic 4-comb/4-AP tank every
+    // preset was voiced on (bit-identical); 1 = a dense 8-comb/6-AP plate — lusher,
+    // less metallic tail. Densifying was measured as a blanket change and REJECTED
+    // (it re-leveled ~50 presets by up to 3 dB), so it ships as a per-preset switch.
+    // Arrays are sized for the dense tank; classic mode uses the first 4/4.
+    static constexpr int kNumAP   = 6;
+    static constexpr int kNumComb = 8;
+    static constexpr int kClassicAP   = 4;
+    static constexpr int kClassicComb = 4;
 
     AllpassDelay ap[kNumAP];
     CombDelay    combs[kNumComb];

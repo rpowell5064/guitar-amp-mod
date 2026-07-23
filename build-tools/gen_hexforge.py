@@ -408,6 +408,13 @@ ctrl.append(mkport("EQ_BYPASS", "eq_bypass", "EQ Bypass", "t", 0, 1, 0, None, "B
 ctrl.append(mkport("IT_LOAD", "it_load", "IT Pickup Load", "f", 0, 1, 0, None, "Pickup Load"))
 ctrl.append(mkport("AMP_PAMP_COUPL", "amp_pamp_coupl", "Amp Speaker Coupling", "f", 0, 1, 0, None, "Coupling"))
 
+# ── Reverb Density (2026-07-23): 0 = the classic 4-comb tank every preset was
+# voiced on (bit-identical), 1 = dense 8-comb/6-diffuser plate (lusher tail,
+# level-matched). Densifying globally was measured + rejected; per-preset opt-in.
+# Migrated v25.
+ctrl.append(mkport("RV_DENSITY", "rv_density", "Reverb Density", "e", 0, 1, 0,
+    [("Classic",0),("Dense",1)], "Density"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -580,7 +587,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 137 ;")
+    L.append("    lv2:microVersion 138 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1037,7 +1044,7 @@ BLOCK_GROUPS = {
             ("CLOCK SYNC", None, ["sync", "div"]),
             ("CHARACTER", "c-dl-tape", ["wow", "flutter", "heads"]),
             ("SERAPH DUAL", "c-dl-seraph", ["pattern", "ducking", "moddepth", "modrate"])],
-    "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix"]),
+    "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix", "density"]),
             ("MODULATION", None, ["moddepth", "modrate"])],
     "wh":  [("WAH", None, ["type", "freq", "depth", "sens", "q", "mix"])],
     "eq":  [("GRAPHIC EQ", None, ["preset", "100", "200", "400", "800", "1k6", "3k2", "level"])],

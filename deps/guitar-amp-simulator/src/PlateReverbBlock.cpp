@@ -9,10 +9,10 @@
 // Reference delay lengths at 25 kHz (classic Schroeder plate values).
 // These are scaled to the actual sample rate in prepare().
 static constexpr int kRefFS        = 25000;
-static constexpr int kAPRef[4]     = { 347, 113, 37, 59 };
-static constexpr int kCombRef[4]   = { 1687, 1601, 2053, 2251 };
+static constexpr int kAPRef[6]     = { 347, 113, 37, 59, 149, 211 };
+static constexpr int kCombRef[8]   = { 1687, 1601, 2053, 2251, 1409, 1867, 2399, 2609 };
 // LFO phase offsets so modulation on each comb is not synchronous
-static constexpr float kLFOOffset[4] = { 0.0f, 0.25f, 0.5f, 0.75f };
+static constexpr float kLFOOffset[8] = { 0.0f, 0.25f, 0.5f, 0.75f, 0.125f, 0.375f, 0.625f, 0.875f };
 
 void PlateReverbBlock::prepare(double sr, int maxBlock, int nCh) {
     sampleRate   = sr;
@@ -62,10 +62,26 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
     else if (id == "damping")    { damping   = std::clamp(v, 0.0f, 0.99f); recalcDamping(); return; }
     else if (id == "modDepth")   modDepth  = std::clamp(v, 0.0f, 1.0f);
     else if (id == "modRate")    modRate   = std::max(0.01f, v);
+    else if (id == "density") {
+        const bool want = v > 0.5f;
+        if (want && !dense) {   // engaging: clear the extra tank elements (they idle in classic mode)
+            for (int k = kClassicComb; k < kNumComb; ++k) {
+                std::fill(combs[k].dl.buf.begin(), combs[k].dl.buf.end(), 0.0f);
+                combs[k].dl.writeIdx = 0; combs[k].lastLP = 0.0f;
+            }
+            for (int a = kClassicAP; a < kNumAP; ++a) {
+                std::fill(ap[a].dl.buf.begin(), ap[a].dl.buf.end(), 0.0f);
+                ap[a].dl.writeIdx = 0;
+            }
+        }
+        dense = want;
+        return;
+    }
     else if (id == "mix")        mix       = std::clamp(v, 0.0f, 1.0f);
 }
 
 float PlateReverbBlock::getParameter(const std::string& id) const {
+    if (id == "density") return dense ? 1.0f : 0.0f;
     if (id == "preDelayMs") return preDelayMs;
     if (id == "decayTime")  return decayTime;
     if (id == "damping")    return damping;
@@ -94,12 +110,17 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
         float s = preDelay.read(std::max(1, preDelLen));
 
         // 4 series allpass diffusers
-        for (int a = 0; a < kNumAP; ++a)
+        const int nAP   = dense ? kNumAP   : kClassicAP;
+        const int nComb  = dense ? kNumComb : kClassicComb;
+        // Dense mode sums 4 combs/side vs 2 — 0.5/sqrt(#) keeps the wet level matched
+        // (incoherent comb phases: energy adds, not amplitude).
+        const float norm = dense ? 0.3536f : 0.5f;
+        for (int a = 0; a < nAP; ++a)
             s = ap[a].process(s);
 
         // 4 parallel comb filters with modulated delay times
         float outL = 0.0f, outR = 0.0f;
-        for (int k = 0; k < kNumComb; ++k) {
+        for (int k = 0; k < nComb; ++k) {
             lfoPhase[k] += lfoInc;
             if (lfoPhase[k] > 2.0f * static_cast<float>(M_PI))
                 lfoPhase[k] -= 2.0f * static_cast<float>(M_PI);
@@ -110,7 +131,7 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
 
             if (k % 2 == 0) outL += c; else outR += c;
         }
-        outL *= 0.5f; outR *= 0.5f; // normalise (2 combs summed per side)
+        outL *= norm; outR *= norm; // normalise per active comb count
 
         // Write outputs: stereo reverb return mixed with dry
         // Dry stays at unity; wet is added on top (mix = wet amount). Keeps the
