@@ -50,7 +50,9 @@ void SmallClone::process(float** in, float** out,
     const int chCount = std::min(numChannels, kMaxCh);
     const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_ : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
     const float lfoIncr = lfoHz / static_cast<float>(sampleRate_);
-    const float depthTargetSamp = depth_ * static_cast<float>(sampleRate_) * kDepthMaxMs * 0.001f;
+    const float depthTargetSamp = depth_ * static_cast<float>(sampleRate_)
+                                * (seasick_ ? kSeasickDepthMs : kDepthMaxMs) * 0.001f;
+    const float dryGain = seasick_ ? (1.0f - mix_) : 1.0f;   // crossfade in Seasick mode
     const float offsetTargetSamp = offsetMs_ * static_cast<float>(sampleRate_) * 0.001f;
     const float maxDelaySamp = static_cast<float>(bufMask_ - 1);
 
@@ -85,7 +87,7 @@ void SmallClone::process(float** in, float** out,
 
             chState_[c].lpOut += lpOutAlpha_ * (bbdOut - chState_[c].lpOut);
 
-            out[c][i] = dry + chState_[c].lpOut * mix_;   // dry unity + wet (no level drop)
+            out[c][i] = dry * dryGain + chState_[c].lpOut * mix_;   // unity-dry chorus / seasick crossfade
         }
         for (int c = chCount; c < numChannels; ++c)
             if (in[c] != out[c]) out[c][i] = in[c][i];
@@ -98,6 +100,7 @@ void SmallClone::setParameter(const std::string& id, float v) {
     else if (id == "mix")         mix_         = std::max(0.0f, std::min(1.0f, v));
     else if (id == "stereoWidth") stereoWidth_ = std::max(0.0f, std::min(1.0f, v));
     else if (id == "centerDelay") offsetMs_    = std::max(0.0f, std::min(kOffsetMaxMs, v)); // ms
+    else if (id == "seasick")     seasick_     = v > 0.5f;
 }
 
 float SmallClone::getParameter(const std::string& id) const {

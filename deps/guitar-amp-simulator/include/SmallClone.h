@@ -28,6 +28,7 @@ public:
     static constexpr float kRateMinHz   =  0.3f;    // slower floor than the CE-2
     static constexpr float kRateMaxHz   =  6.0f;
     static constexpr float kDepthMaxMs  =  2.7f;    // deep swirl, but was seasick at 3.6 — pulled back
+    static constexpr float kSeasickDepthMs = 4.5f;  // Seasick Vibe mode: the full heave, ON PURPOSE
     static constexpr float kBaseDelayMs =  8.5f;
     static constexpr float kOffsetMaxMs = 100.0f;   // user "Center Delay" pushes the centre out (0 = stock)
     static constexpr float kBBDInLPFc   = 3000.0f;
@@ -42,6 +43,11 @@ private:
     float mix_         = 0.55f;  // fairly wet
     float stereoWidth_ = 0.4f;
     float offsetMs_    = 0.0f;    // [0,kOffsetMaxMs] ms added to the centre delay
+    // Seasick Vibe (2026-07-23): same BBD engine, two changes — the depth range opens
+    // to kSeasickDepthMs, and MIX becomes a dry/wet CROSSFADE instead of dry-unity
+    // (wet = pitch-wobbled dry at equal level, so the crossfade stays loudness-neutral;
+    // mix 1.0 = true vibrato — the pitch HEAVES instead of chorusing against the dry).
+    bool  seasick_     = false;
 
     float baseSamples_ = 0.0f;
     float lpInAlpha_   = 0.0f;

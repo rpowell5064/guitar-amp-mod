@@ -10,6 +10,7 @@ enum class ModulationType {
     Tremolo    = 4,
     Rotary     = 5,
     SmallClone = 6,
+    SeasickVibe = 7,   // SmallClone engine, seasick mode: deep sweep + dry/wet crossfade
 };
 
 class ModulationFactory {

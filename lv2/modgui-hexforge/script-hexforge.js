@@ -15,7 +15,7 @@ function (event, funcs) {
         amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15'],
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
-        md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus'],
+        md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus','Seasick Vibe'],
         dl:  ['Digital','Tape','Echo Wreck','Seraph'],
         eq:  ['Manual','Clean Sparkle','De-Mud','Classic Rock','Metal Rhythm','Lead Cut','Cocked Wah']
     };
@@ -552,7 +552,7 @@ function (event, funcs) {
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
-            else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6); }
+            else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6 || _mt === 7); }
             else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             syncSel(icon, sym, val);               // dropdown labels track recalled values
@@ -661,7 +661,7 @@ function (event, funcs) {
             var el = this;
             el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value')); });
         });
-        show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6);
+        show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6 || _mt0 === 7);
         setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
         if ('it_enable' in map) nodeOf(icon, 'it').toggleClass('hf-byp', !(map.it_enable > 0.5));
@@ -789,7 +789,7 @@ function (event, funcs) {
         } else if (s === 'md_type') {
             var mt = parseInt(event.value, 10);
             setModelVal(icon, 'md', mt);
-            show(icon, 'md', '.c-md-delay', mt === 0 || mt === 3 || mt === 6);
+            show(icon, 'md', '.c-md-delay', mt === 0 || mt === 3 || mt === 6 || mt === 7);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'cab_micpos') {

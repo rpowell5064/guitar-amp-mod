@@ -16,6 +16,11 @@ std::unique_ptr<ModulationEffect> ModulationFactory::create(ModulationType type)
         case ModulationType::Tremolo:    return std::make_unique<TremoloEffect>();
         case ModulationType::Rotary:     return std::make_unique<RotaryEffect>();
         case ModulationType::SmallClone: return std::make_unique<SmallClone>();
+        case ModulationType::SeasickVibe: {
+            auto m = std::make_unique<SmallClone>();
+            m->setParameter("seasick", 1.0f);
+            return m;
+        }
     }
     return std::make_unique<CE2Chorus>();
 }
@@ -28,6 +33,7 @@ ModulationType ModulationFactory::fromIndex(int idx) noexcept {
         case 4:  return ModulationType::Tremolo;
         case 5:  return ModulationType::Rotary;
         case 6:  return ModulationType::SmallClone;
+        case 7:  return ModulationType::SeasickVibe;
         default: return ModulationType::CE2_Chorus;
     }
 }

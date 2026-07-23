@@ -120,7 +120,7 @@ CAB = [
     ("mix",     "Mix",      "f", 0, 1, 1.0, None),
 ]
 MD = [
-    ("type",  "Type",  "e", 0, 6, 0, [("Lush-2",0),("Uni-Verse",1),("Phaser",2),("Flanger",3),("Tremolo",4),("Rotary",5),("Nevermind Chorus",6)]),
+    ("type",  "Type",  "e", 0, 7, 0, [("Lush-2",0),("Uni-Verse",1),("Phaser",2),("Flanger",3),("Tremolo",4),("Rotary",5),("Nevermind Chorus",6),("Seasick Vibe",7)]),
     ("rate",  "Rate",  "f", 0, 1, 0.5, None),
     ("depth", "Depth", "f", 0, 1, 0.5, None),
     ("mix",   "Mix",   "f", 0, 1, 0.5, None),
@@ -574,7 +574,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 135 ;")
+    L.append("    lv2:microVersion 136 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
