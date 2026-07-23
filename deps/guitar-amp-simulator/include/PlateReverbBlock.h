@@ -16,6 +16,14 @@ public:
     void process(float** in, float** out, int numSamples, int numChannels) override;
     void setParameter(const std::string& id, float value) override;
     float getParameter(const std::string& id) const override;
+    // Clear every tail buffer (2026-07-23: seamless preset/effect switching —
+    // a bypassed reverb otherwise holds its tank and replays it on re-engage).
+    void reset() noexcept {
+        auto clear = [](DelayLine& d) { std::fill(d.buf.begin(), d.buf.end(), 0.0f); d.writeIdx = 0; };
+        clear(preDelay);
+        for (auto& a : ap) clear(a.dl);
+        for (auto& c : combs) { clear(c.dl); c.lastLP = 0.0f; }
+    }
 
 private:
     // Parameters

@@ -20,6 +20,12 @@ public:
 
     void      setType(DelayType type);
     DelayType getType() const noexcept { return currentType_; }
+    // Clear echo tails (2026-07-23: seamless switching — a bypassed delay holds
+    // its buffer and replays stale repeats when re-engaged).
+    void reset() noexcept {
+        if (model_)    model_->reset();
+        if (oldModel_) oldModel_->reset();
+    }
 
 private:
     static constexpr int   kMaxCh   = 2;

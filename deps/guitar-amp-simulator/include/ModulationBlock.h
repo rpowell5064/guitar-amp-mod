@@ -17,6 +17,7 @@ public:
 
     void           setType(ModulationType type);
     ModulationType getType() const noexcept { return type_; }
+    void           reset() noexcept { if (effect_) effect_->reset(); }   // clear mod delay lines
     // Tempo sync: lock the active effect's LFO to an exact Hz (0 = free-run from the rate knob).
     void           setSyncHz(float hz) noexcept { if (effect_) effect_->setSyncHz(hz); }
 

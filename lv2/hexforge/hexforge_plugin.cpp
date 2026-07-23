@@ -313,6 +313,16 @@ struct GraphicEQ {
     }
 };
 
+// Enum-valued ports whose changes are audible steps (model/type/mode switches) —
+// any change triggers the seamless-switch mute ramp.
+static const int kSwWatch[] = {
+    HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE,
+    HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
+    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE,
+};
+static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
+static_assert(kSwWatchN <= 16, "grow swWatchPrev[]");
+
 // note-division factor relative to a quarter-note beat, indexed by the *_div enum (0..7):
 // 1/2, 1/4., 1/4, 1/4T, 1/8., 1/8, 1/8T, 1/16.  time(ms) = (60000/bpm)*factor; Hz = bpm/(60*factor).
 static const float kDivFactor[8] = { 2.0f, 1.5f, 1.0f, 0.66667f, 0.75f, 0.5f, 0.33333f, 0.25f };
@@ -479,6 +489,26 @@ struct HexForge {
     // scratch
     float mono[kMaxBlock], monoOut[kMaxBlock];
     int   clipHold = 0;   // samples remaining to keep the CLIP indicator lit
+    // ── Seamless switching (2026-07-23) ──────────────────────────────────────
+    // A short output mute-ramp (~2.5 ms out / 10 ms in) wraps every discontinuous
+    // event: preset recall, block engage/bypass, model/type/mode changes, and
+    // worker-loaded amp/NAM swaps. The event itself is DEFERRED to the ramp's
+    // zero point, where stale tails are also cleared — so nothing pops and no
+    // leftover delay/reverb/room audio ever replays into the new sound.
+    int   swFadeState = 0;              // 0 idle, 1 fading out, 2 fading in
+    float swFadeGain  = 1.0f;
+    bool  swPendRecall = false;
+    int   swPendBank = 0, swPendSlot = 0;
+    bool  swHold = false;               // chain topology frozen during fade-out
+    bool  swAcceptNext = false;         // adopt the new state silently next block
+    bool  swEnabledHeld[B_COUNT] = {};
+    bool  swEnabledPrev[B_COUNT] = {};
+    bool  swPrevInit = false;
+    float swWatchPrev[16] = {};
+    AmpBlockExtended* pendAmp = nullptr;   // worker-built amp awaiting the zero point
+    int   pendAmpModel = -1;
+    NamModel* pendNam[3] = {};             // worker-built NAM models awaiting swap
+
     // Output doubler (fake double-track): loose-timing tap, three slow wander phases.
     std::vector<float> dblBuf;
     int    dblW = 0;
@@ -940,7 +970,12 @@ static void psSave(HexForge* p) {
     hfWriteStatus(p);
     hfWriteBackup(p);   // keep the off-instance backup current
 }
-static void psBankDelta(HexForge* p, int d) { psRecall(p, p->curBank + d, p->curSlot); }
+// RT trigger: the actual recall runs at the mute-ramp's zero point (seamless).
+static void psRecallRequest(HexForge* p, int bank, int slot) {
+    p->swPendBank = bank; p->swPendSlot = slot; p->swPendRecall = true;
+    if (p->swFadeState == 0) p->swFadeState = 1;
+}
+static void psBankDelta(HexForge* p, int d) { psRecallRequest(p, p->curBank + d, p->curSlot); }
 // A footswitch tap. Single tap recalls that slot immediately (no delay).
 // Double-tapping A or D within ~0.4 s navigates banks — A = down, D = up — and
 // lands on that same slot letter in the new bank.
@@ -949,9 +984,9 @@ static void psSwitchPress(HexForge* p, int sw) {
     const int64_t win = static_cast<int64_t>(p->rate * 0.4);
     const bool dbl = (now - p->lastTapSample[sw]) < win;
     p->lastTapSample[sw] = now;
-    if      (sw == 0 && dbl) psRecall(p, p->curBank - 1, 0);   // double-tap A → bank down, slot A
-    else if (sw == 3 && dbl) psRecall(p, p->curBank + 1, 3);   // double-tap D → bank up, slot D
-    else                     psRecall(p, p->curBank, sw);      // single tap → recall this slot
+    if      (sw == 0 && dbl) psRecallRequest(p, p->curBank - 1, 0);   // double-tap A → bank down, slot A
+    else if (sw == 3 && dbl) psRecallRequest(p, p->curBank + 1, 3);   // double-tap D → bank up, slot D
+    else                     psRecallRequest(p, p->curBank, sw);      // single tap → recall this slot
 }
 // Move the active preset earlier/later across the flat 32-slot order (= "sort").
 // The cursor follows the moved preset; no audio change (same preset content).
@@ -1142,20 +1177,26 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
     auto* p = static_cast<HexForge*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == W_NAM_LOAD) {
-        NamModel** slot = (msg->namSlot == 0) ? &p->ampNam
-                        : (msg->namSlot == 1) ? &p->drNam : &p->cabNam;
-        NamModel* old = *slot;
-        *slot = msg->nam;
-        WorkMsg freeMsg; freeMsg.type = W_NAM_FREE; freeMsg.nam = old;
-        p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
+        // Defer the swap to the mute-ramp's zero point (a mid-waveform model swap
+        // is a guaranteed pop). If a previous pending model was never applied,
+        // free it instead of leaking.
+        const int sl = msg->namSlot;
+        if (p->pendNam[sl]) {
+            WorkMsg fm; fm.type = W_NAM_FREE; fm.nam = p->pendNam[sl];
+            p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+        }
+        p->pendNam[sl] = msg->nam;
+        if (p->swFadeState == 0) p->swFadeState = 1;
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type != W_AMP_LOAD) return LV2_WORKER_SUCCESS;
-    AmpBlockExtended* old = p->amp;
-    p->amp = msg->amp;
-    p->lastAmpModel = msg->modelIdx;
-    WorkMsg freeMsg; freeMsg.type = W_AMP_FREE; freeMsg.amp = old;
-    p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
+    if (p->pendAmp) {
+        WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp;
+        p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+    }
+    p->pendAmp = msg->amp;
+    p->pendAmpModel = msg->modelIdx;
+    if (p->swFadeState == 0) p->swFadeState = 1;
     return LV2_WORKER_SUCCESS;
 }
 
@@ -1174,6 +1215,52 @@ static inline void runStereo(AudioBlock& b, float* L, float* R, int len, bool& s
     float* io[2] = { L, R };
     b.process(io, io, len, 2);
     stereo = true;
+}
+
+// ── Seamless switching: tail resets + the zero-point apply ───────────────────
+static void hfResetBlockTails(HexForge* p, int b) {
+    switch (b) {   // long-memory blocks only; the mute ramp covers the ms-scale rest
+        case B_DELAY:  p->delay.reset();  break;
+        case B_REVERB: p->reverb.reset(); break;
+        case B_MODFX:  p->modfx.reset();  break;
+        case B_CAB:    p->cab.reset();    break;
+        default: break;
+    }
+}
+static void hfResetTails(HexForge* p) {
+    p->delay.reset(); p->reverb.reset(); p->modfx.reset(); p->cab.reset(); p->eq.reset();
+    std::fill(p->dblBuf.begin(), p->dblBuf.end(), 0.0f);
+    std::fill(p->dblApA.begin(), p->dblApA.end(), 0.0f);
+    std::fill(p->dblApB.begin(), p->dblApB.end(), 0.0f);
+}
+// Runs while the output is at ZERO: apply every deferred discontinuity at once.
+static void hfApplySwitch(HexForge* p) {
+    // blocks (re-)engaging: clear their stale tails so nothing old replays
+    for (int i = 0; i < B_COUNT; ++i) {
+        const bool now = (*p->ports[kEnablePort[i]] > 0.5f) && (*p->ports[kBypassPort[i]] <= 0.5f);
+        if (p->swHold && now && !p->swEnabledHeld[i]) hfResetBlockTails(p, i);
+    }
+    p->swHold = false;
+    if (p->swPendRecall) {
+        p->swPendRecall = false;
+        psRecall(p, p->swPendBank, p->swPendSlot);
+        hfResetTails(p);
+    }
+    if (p->pendAmp) {
+        AmpBlockExtended* old = p->amp;
+        p->amp = p->pendAmp; p->pendAmp = nullptr;
+        p->lastAmpModel = p->pendAmpModel;
+        WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
+        p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+    }
+    for (int sl = 0; sl < 3; ++sl) if (p->pendNam[sl]) {
+        NamModel** slot = (sl == 0) ? &p->ampNam : (sl == 1) ? &p->drNam : &p->cabNam;
+        NamModel* old = *slot;
+        *slot = p->pendNam[sl]; p->pendNam[sl] = nullptr;
+        WorkMsg fm; fm.type = W_NAM_FREE; fm.nam = old;
+        p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+    }
+    p->swAcceptNext = true;   // adopt the new topology silently next block
 }
 
 static void hf_run(LV2_Handle h, uint32_t n) {
@@ -1302,12 +1389,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (rose(HF_PS_MOVE_DN, p->cmdPrev[4])) psMoveDelta(p, +1);
     if (rose(HF_PS_BACKUP,  p->cmdPrev[5])) hfWriteBackup(p);              // snapshot all 32 to disk
     if (rose(HF_PS_RESTORE, p->cmdPrev[6]) && hfLoadBackup(p))            // pull the backup into this instance
-        psRecall(p, p->curBank, p->curSlot);                             // re-applies sound + refreshes the UI list
+        psRecallRequest(p, p->curBank, p->curSlot);                      // re-applies sound + refreshes the UI list (seamless)
     // Direct jump from the UI list: recall when ps_goto changes to a valid index.
     {
         const float gf = p->hostPorts[HF_PS_GOTO] ? *p->hostPorts[HF_PS_GOTO] : -1.0f;
         const int g = static_cast<int>(std::lround(gf));
-        if (g >= 0 && g < kBanks * kSlots && g != p->lastGoto) { p->lastGoto = g; psRecall(p, g / kSlots, g % kSlots); }
+        if (g >= 0 && g < kBanks * kSlots && g != p->lastGoto) { p->lastGoto = g; psRecallRequest(p, g / kSlots, g % kSlots); }
         else if (g < 0) p->lastGoto = -1;
     }
     // ── Footswitch MIDI (pi-Stomp CC 60..63): each CC message = one switch press ──
@@ -1619,6 +1706,27 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     bool enabled[B_COUNT];   // "run this block": in the chain AND not bypassed
     for (int i=0;i<B_COUNT;++i)
         enabled[i] = (*p->ports[kEnablePort[i]] > 0.5f) && (*p->ports[kBypassPort[i]] <= 0.5f);
+    // ── Seamless switching: detect discontinuous events, freeze topology while
+    // the mute ramp falls, adopt the new state at the zero point (hfApplySwitch).
+    if (!p->swPrevInit || p->swAcceptNext) {
+        p->swPrevInit = true; p->swAcceptNext = false;
+        for (int i = 0; i < B_COUNT; ++i) p->swEnabledPrev[i] = enabled[i];
+        for (int w = 0; w < kSwWatchN; ++w) p->swWatchPrev[w] = *p->ports[kSwWatch[w]];
+    } else {
+        bool topo = false;
+        for (int i = 0; i < B_COUNT; ++i) if (enabled[i] != p->swEnabledPrev[i]) topo = true;
+        bool step = false;
+        for (int w = 0; w < kSwWatchN; ++w)
+            if (*p->ports[kSwWatch[w]] != p->swWatchPrev[w]) { step = true; p->swWatchPrev[w] = *p->ports[kSwWatch[w]]; }
+        if (topo && !p->swHold) {
+            p->swHold = true;
+            for (int i = 0; i < B_COUNT; ++i) p->swEnabledHeld[i] = p->swEnabledPrev[i];
+            if (p->swFadeState == 0) p->swFadeState = 1;
+        }
+        if (step && p->swFadeState == 0) p->swFadeState = 1;
+    }
+    if (p->swHold) for (int i = 0; i < B_COUNT; ++i) enabled[i] = p->swEnabledHeld[i];
+    else           for (int i = 0; i < B_COUNT; ++i) p->swEnabledPrev[i] = enabled[i];
 
     // ── Process in <= kMaxBlock chunks; each chunk runs the whole chain ──
     for (uint32_t off=0; off<n; off+=kMaxBlock) {
@@ -1792,6 +1900,26 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     const float outGain = dbToGain(*p->ports[HF_OUT_LEVEL]);
     const bool  outLimit = *p->ports[HF_OUT_AUTO] > 0.5f;
     p->autoOut.process(outL, outR, n, outGain, outLimit);
+
+    // ── Seamless-switch mute ramp: ~2.5 ms down, apply everything at zero, ~10 ms up ──
+    if (p->swFadeState != 0) {
+        const float stepOut = 1.0f / (0.0025f * (float)p->rate);
+        const float stepIn  = 1.0f / (0.0100f * (float)p->rate);
+        for (uint32_t i = 0; i < n; ++i) {
+            if (p->swFadeState == 1) {
+                p->swFadeGain -= stepOut;
+                if (p->swFadeGain < 0.0f) p->swFadeGain = 0.0f;
+            } else {
+                p->swFadeGain += stepIn;
+                if (p->swFadeGain >= 1.0f) { p->swFadeGain = 1.0f; p->swFadeState = 0; }
+            }
+            outL[i] *= p->swFadeGain; outR[i] *= p->swFadeGain;
+        }
+        if (p->swFadeState == 1 && p->swFadeGain <= 0.0f) {
+            hfApplySwitch(p);
+            p->swFadeState = 2;
+        }
+    }
 
     // Silence the output while tuning (mute engaged) — the tuner still reads the dry input.
     if (tunerMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }

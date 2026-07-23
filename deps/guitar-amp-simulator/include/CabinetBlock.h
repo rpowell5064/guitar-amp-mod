@@ -39,6 +39,9 @@ public:
 
     void setIR(const std::vector<float>& irLeft,
                const std::vector<float>* irRight = nullptr);
+    // Clear all running state: convolver tails, room combs, EQ + glue (2026-07-23,
+    // seamless switching). IR spectra/coefficients are untouched.
+    void reset() noexcept;
 
 private:
     float lowCutHz_  =  80.0f;

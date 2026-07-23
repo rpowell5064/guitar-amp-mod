@@ -202,6 +202,27 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
             for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];
 }
 
+void CabinetBlock::reset() noexcept {
+    for (int s = 0; s < kNumSlots; ++s)
+        for (int c = 0; c < kMaxCh; ++c) convolvers_[s][c].reset();
+    for (auto& e : eqState_) {
+        e.lowCut.reset(); e.highCut.reset();
+        e.micLP.reset(); e.micBite.reset(); e.micBody.reset();
+        e.distProx.reset(); e.distAir.reset();
+        e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
+        e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
+        e.compEnv = 0.0f; e.compRef = 0.0f;
+    }
+    for (auto& rs : room_) {
+        for (auto& cb : rs.comb) std::fill(cb.begin(), cb.end(), 0.0f);
+        std::fill(rs.ap.begin(), rs.ap.end(), 0.0f);
+        for (auto& d : rs.damp) d = 0.0f;
+        for (auto& w : rs.cw) w = 0;
+        rs.aw = 0;
+    }
+    monoActive_ = false;
+}
+
 // Mono-input fast path: ONE convolution + ONE EQ chain, fanned out to L/R with
 // per-channel room (the only decorrelating element). Bit-identical to running two
 // identical channels through process() at roughly half the cost.
