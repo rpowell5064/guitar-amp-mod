@@ -962,9 +962,16 @@ for _p in PRESETS:
 
 # Loudness deltas measured on-device AFTER the polish (coupling adds level on the
 # pushed presets) — applied to the MEAS table so the parity pipeline re-levels.
-POLISH_MEAS_DELTA = {}   # name: dB (filled from the on-device before/after diff)
+POLISH_MEAS_DELTA = {   # measured on-device 2026-07-23 (pdfast before/after, real rev-53 build)
+    "Regal Sustain": 0.5, "Nevermind Wall": 0.5, "Come As Water": 0.4, "Candlelit Clean": 0.3,
+    "Numb Sustain": 0.6, "Hazy Solo": 0.4, "Bridge Vibe": 0.3, "Bottle Jangle": 0.3,
+    "Surf Splash": 0.3, "Apache Echo": 0.5, "Innerspeaker Swirl": 0.7, "Glide Wall": 1.0,
+    "Streets Chime": 0.5, "Regal Solo": 0.7, "Anyone Can Play Guitar": 0.3,
+}
 for _nm, _d in POLISH_MEAS_DELTA.items():
-    if _nm in MEAS_RMS_AT_M20: MEAS_RMS_AT_M20[_nm] += _d
+    if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
+    if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d   # coupling lifts peaks alike;
+                                                              # peak-capped presets re-level too
 
 MANUAL_OUT = {}   # no hand-locks — full parity re-level (bump kFactoryRev to push to users)
 for _p in PRESETS:
