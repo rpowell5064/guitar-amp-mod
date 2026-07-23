@@ -29,6 +29,9 @@ public:
     static constexpr float kRateMaxHz   =  6.0f;
     static constexpr float kDepthMaxMs  =  2.7f;    // deep swirl, but was seasick at 3.6 — pulled back
     static constexpr float kSeasickDepthMs = 4.5f;  // Seasick Vibe mode: the full heave, ON PURPOSE
+    static constexpr float kSeasickRateMinHz = 0.15f; // the true slow heave lives at 0.18-0.35 Hz —
+    static constexpr float kSeasickRateMaxHz = 2.5f;  // below the stock Small Clone's 0.3 Hz floor
+    static constexpr float kSeasickDriftMs   = 0.5f;  // "wobbly tape": +-1.25 cent slow pitch drift
     static constexpr float kBaseDelayMs =  8.5f;
     static constexpr float kOffsetMaxMs = 100.0f;   // user "Center Delay" pushes the centre out (0 = stock)
     static constexpr float kBBDInLPFc   = 3000.0f;
@@ -57,6 +60,9 @@ private:
     float lfoPhase_    = 0.0f;
     float depthSmooth_ = 0.0f;
     float offsetSmooth_= 0.0f;   // smoothed centre-delay offset in samples
+    // Seasick tape drift: two incommensurate slow sines (deterministic, no RNG) wander
+    // the centre delay +-kSeasickDriftMs — the slight pitch instability of worn tape.
+    float driftPh1_ = 0.0f, driftPh2_ = 2.0f;
 
     static constexpr int kMaxCh = 2;
     std::vector<float> delayBuf_[kMaxCh];

@@ -8,8 +8,8 @@ static constexpr float kPi = static_cast<float>(M_PI);
 void SmallClone::prepare(double sampleRate, int /*maxBlockSize*/, int /*numChannels*/) {
     sampleRate_ = sampleRate;
     const float srF = static_cast<float>(sampleRate);
-    const int maxSamp = static_cast<int>(
-        std::ceil((kBaseDelayMs + kOffsetMaxMs + kDepthMaxMs + 2.0f) * srF * 0.001f));
+    const int maxSamp = static_cast<int>(   // sized for the Seasick superset (deeper sweep + drift)
+        std::ceil((kBaseDelayMs + kOffsetMaxMs + kSeasickDepthMs + kSeasickDriftMs + 2.0f) * srF * 0.001f));
     int sz = 1;
     while (sz <= maxSamp) sz <<= 1;
     bufMask_ = sz - 1;
@@ -38,6 +38,7 @@ void SmallClone::reset() noexcept {
     lfoPhase_    = 0.0f;
     depthSmooth_ = 0.0f;
     offsetSmooth_= 0.0f;
+    driftPh1_ = 0.0f; driftPh2_ = 2.0f;
 }
 
 void SmallClone::process(float** in, float** out,
@@ -48,7 +49,13 @@ void SmallClone::process(float** in, float** out,
         return;
     }
     const int chCount = std::min(numChannels, kMaxCh);
-    const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_ : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
+    const float lfoHz   = (rateHz_ > 0.0f) ? rateHz_
+                        : seasick_ ? (kSeasickRateMinHz + rate_ * (kSeasickRateMaxHz - kSeasickRateMinHz))
+                                   : (kRateMinHz + rate_ * (kRateMaxHz - kRateMinHz));
+    const float sr1 = static_cast<float>(sampleRate_);
+    const float driftAmp  = seasick_ ? kSeasickDriftMs * sr1 * 0.001f : 0.0f;
+    const float driftInc1 = 2.0f * kPi * 0.31f / sr1;    // incommensurate slow pair
+    const float driftInc2 = 2.0f * kPi * 0.11f / sr1;
     const float lfoIncr = lfoHz / static_cast<float>(sampleRate_);
     const float depthTargetSamp = depth_ * static_cast<float>(sampleRate_)
                                 * (seasick_ ? kSeasickDepthMs : kDepthMaxMs) * 0.001f;
@@ -61,13 +68,19 @@ void SmallClone::process(float** in, float** out,
         offsetSmooth_ += depthCoeff_ * (offsetTargetSamp - offsetSmooth_);
         lfoPhase_ += lfoIncr;
         if (lfoPhase_ >= 1.0f) lfoPhase_ -= 1.0f;
+        float drift = 0.0f;
+        if (driftAmp > 0.0f) {
+            driftPh1_ += driftInc1; if (driftPh1_ >= 2.0f * kPi) driftPh1_ -= 2.0f * kPi;
+            driftPh2_ += driftInc2; if (driftPh2_ >= 2.0f * kPi) driftPh2_ -= 2.0f * kPi;
+            drift = driftAmp * (0.6f * std::sin(driftPh1_) + 0.4f * std::sin(driftPh2_));
+        }
 
         for (int c = 0; c < chCount; ++c) {
             float phi = lfoPhase_;
             if (c == 1) { phi += 0.5f * stereoWidth_; if (phi >= 1.0f) phi -= 1.0f; }
             const float lfoVal    = triangle(phi);
             const float delaySamp = std::max(1.0f,
-                std::min(baseSamples_ + offsetSmooth_ + depthSmooth_ * lfoVal, maxDelaySamp));
+                std::min(baseSamples_ + offsetSmooth_ + drift + depthSmooth_ * lfoVal, maxDelaySamp));
 
             const float dry = in[c][i];
 
