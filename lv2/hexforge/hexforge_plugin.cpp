@@ -433,10 +433,17 @@ struct HexForge {
     // scratch
     float mono[kMaxBlock], monoOut[kMaxBlock];
     int   clipHold = 0;   // samples remaining to keep the CLIP indicator lit
-    // Output doubler (fake double-track): micro-detune tap pair + deterministic saw phase.
+    // Output doubler (fake double-track): loose-timing tap, three slow wander phases.
     std::vector<float> dblBuf;
     int    dblW = 0;
-    double dblPhase = 0.0;   // grain saw phase, 0..1
+    double dblPhase = 0.0;   // wander sine 1 (0.11 Hz)
+    double dblPh2 = 2.0;     // wander sine 2 (0.23 Hz) — offset starts: no aligned zero
+    double dblPh3 = 4.0;     // wander sine 3 (0.047 Hz)
+    // Mono-blend phase diffusers (Schroeder allpasses): scramble the take's phase vs
+    // the dry so the mono sum thickens instead of comb-cancelling (measured -1.2 dB
+    // coherent loss without them). Stereo keeps the raw take — no diffusion.
+    std::vector<float> dblApA, dblApB;
+    int dblApAw = 0, dblApBw = 0;
 
     // host features
     LV2_URID_Map*        map      = nullptr;
@@ -1019,7 +1026,9 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->wah.prepare(rate, kMaxBlock, 2);
     p->octave.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
-    p->dblBuf.assign(size_t(rate * 0.045) + 4, 0.0f);   // doubler: 14 ms base + 24 ms sweep + margin
+    p->dblBuf.assign(size_t(rate * 0.045) + 4, 0.0f);   // doubler: 28 ms base ± 7 ms wander + margin
+    p->dblApA.assign(size_t(rate * 0.0053) + 2, 0.0f);  // mono-blend phase diffusers
+    p->dblApB.assign(size_t(rate * 0.0089) + 2, 0.0f);
     psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)
     hfLoadBackup(p);     // recover the user's full preset store across delete/re-add + updates
     return p;
@@ -1633,39 +1642,47 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (!stereo) for (int i=0;i<len;++i) R[i] = L[i];
     }
 
-    // ── Doubler (reworked 2026-07-23): true micro-DETUNE double-track, not a static
-    // delay. Two crossfaded taps sweep a 24 ms window over a 14 ms base at a constant
-    // rate = a -6 cent copy whose phase against the dry take drifts CONTINUOUSLY —
-    // in a mono sum the comb notches sweep (tape-ADT shimmer) instead of freezing
-    // into the hollow 17 ms comb the first cut had (user feedback: "sounds bad in
-    // mono"). Deterministic saw phase; no RNG, no LFO retrigger.
+    // ── Doubler (v3, 2026-07-23): LOOSE-TIMING double-track. v2's constant -6 cent
+    // detune was still a chorus by construction — a steady pitch offset beats against
+    // the dry at a fixed rate (that's the micropitch effect, user heard it). A real
+    // second take holds NO pitch offset: its timing wanders slowly around a ~28 ms
+    // lag, so pitch deviation drifts through ZERO (peaks ±4-9 cents, mean 0) and the
+    // wander is NON-periodic (three incommensurate slow sines ≈ human sloppiness,
+    // dominant periods 4-21 s — far below any chorus LFO). Deterministic, no RNG.
     if (p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()) {
         const int len = (int)p->dblBuf.size();
         const bool monoRig = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
-        const double W    = 0.024 * p->rate;              // sweep window (samples)
-        const double base = 0.014 * p->rate;              // minimum ADT delay
-        const double fSaw = 0.1446 / p->rate;             // (1 - 2^(-6/1200)) / 0.024 s
+        constexpr double kTwoPi = 6.283185307179586;
+        const double w1 = kTwoPi * 0.11  / p->rate;       // timing-wander rates (Hz)
+        const double w2 = kTwoPi * 0.23  / p->rate;
+        const double w3 = kTwoPi * 0.047 / p->rate;
         for (uint32_t i = 0; i < n; ++i) {
             p->dblBuf[(size_t)p->dblW] = 0.5f * (outL[i] + outR[i]);
-            p->dblPhase += fSaw;
-            if (p->dblPhase >= 1.0) p->dblPhase -= 1.0;
-            float w = 0.0f;
-            for (int t = 0; t < 2; ++t) {                 // sin^2-crossfaded grain pair
-                double ph = p->dblPhase + (t ? 0.5 : 0.0);
-                if (ph >= 1.0) ph -= 1.0;
-                const float g = (float)std::sin(3.14159265358979 * ph);
-                double rp = (double)p->dblW - (base + W * ph);
-                while (rp < 0.0) rp += (double)len;
-                const int   i0 = (int)rp;
-                const float fr = (float)(rp - (double)i0);
-                const int   i1 = (i0 + 1 == len) ? 0 : i0 + 1;
-                w += g * g * (p->dblBuf[(size_t)i0] * (1.0f - fr) + p->dblBuf[(size_t)i1] * fr);
-            }
+            p->dblPhase += w1; if (p->dblPhase >= kTwoPi) p->dblPhase -= kTwoPi;
+            p->dblPh2   += w2; if (p->dblPh2   >= kTwoPi) p->dblPh2   -= kTwoPi;
+            p->dblPh3   += w3; if (p->dblPh3   >= kTwoPi) p->dblPh3   -= kTwoPi;
+            const double wob = 0.0035 * std::sin(p->dblPhase)
+                             + 0.0014 * std::sin(p->dblPh2)
+                             + 0.0025 * std::sin(p->dblPh3);      // ±6.9 ms, non-periodic
+            double rp = (double)p->dblW - (0.028 + wob) * p->rate; // 21-35 ms behind the dry
+            while (rp < 0.0) rp += (double)len;
+            const int   i0 = (int)rp;
+            const float fr = (float)(rp - (double)i0);
+            const int   i1 = (i0 + 1 == len) ? 0 : i0 + 1;
+            const float w  = p->dblBuf[(size_t)i0] * (1.0f - fr) + p->dblBuf[(size_t)i1] * fr;
             if (monoRig) {
                 // Mono rig: keep the dry take intact on BOTH sides and tuck the second
-                // take ~7.5 dB under — ADT thickness without hard 50/50 combing.
-                outL[i] += 0.42f * w;
-                outR[i] += 0.42f * w;
+                // take ~7.5 dB under. Two allpasses scramble its phase first, so the
+                // sum reads as thickness, not a harmonic comb against the dry.
+                float v = w;
+                { float& cell = p->dblApA[(size_t)p->dblApAw];
+                  const float y = cell - 0.55f * v; cell = v + 0.55f * y;
+                  if (++p->dblApAw >= (int)p->dblApA.size()) p->dblApAw = 0; v = y; }
+                { float& cell = p->dblApB[(size_t)p->dblApBw];
+                  const float y = cell - 0.55f * v; cell = v + 0.55f * y;
+                  if (++p->dblApBw >= (int)p->dblApB.size()) p->dblApBw = 0; v = y; }
+                outL[i] += 0.42f * v;
+                outR[i] += 0.42f * v;
             } else {
                 // Stereo rig: the right channel becomes the second take (hard double).
                 outR[i] = 0.30f * outR[i] + 0.85f * w;
