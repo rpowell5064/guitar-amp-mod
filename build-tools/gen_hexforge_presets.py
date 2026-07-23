@@ -795,7 +795,7 @@ add(
 # a compressed clean at the EDGE of break-up with a deep SEASICK chorus. Packed into the
 # Muse bank's free C slot per the no-blanks rule ("fill the banks with what I have").
 add(
-  preset(14, 2, "Retro Poland", out_level=-9.6,
+  preset(14, 2, "Retro Poland", out_level=-9.0,   # -9.6 measured -0.6 dB under the Dense tank; -9.0 restores the user-dialed loudness
     # USER-PRESERVED (2026-07-23): the user's on-device dial-in, read back from the
     # saved store and baked verbatim — do not retune. Their changes vs the shipped
     # cut: drive = Preamp 250 (DOD) at a whisker of drive with mix at half (grit
@@ -960,6 +960,12 @@ for _p in PRESETS:
         _p["vals"][SYM_IDX["amp_pamp_coupl"]] = _c
         _p["vals"][SYM_IDX["it_load"]] = _l
 
+# Dense reverb tank on EVERY preset (user 2026-07-23 after A/B: "it sounds great —
+# turn Dense on for all of the presets"). Level-matched by design; the Classic
+# port default stays 0 so old user boards/blobs are untouched until they recall.
+for _p in PRESETS:
+    _p["vals"][SYM_IDX["rv_density"]] = 1.0
+
 # Loudness deltas measured on-device AFTER the polish (coupling adds level on the
 # pushed presets) — applied to the MEAS table so the parity pipeline re-levels.
 POLISH_MEAS_DELTA = {   # measured on-device 2026-07-23 (pdfast before/after, real rev-53 build)
@@ -972,6 +978,20 @@ for _nm, _d in POLISH_MEAS_DELTA.items():
     if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
     if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d   # coupling lifts peaks alike;
                                                               # peak-capped presets re-level too
+
+# Dense-tank loudness deltas (measured on-device 2026-07-23 after turning Dense on
+# everywhere): each preset's decay/damping interacts with the 8-comb tank, so the
+# design-point level match holds only at defaults. Same pipeline treatment.
+DENSE_MEAS_DELTA = {
+    "Nevermind Verse": 0.4, "Candlelit Clean": -0.3, "Sermon Solo": 1.1, "Cardinal Lead": -0.5,
+    "Dark Side Air": 1.1, "Berlin Wall Pulse": 0.4, "Numb Sustain": 0.9, "Gravity Lead": 0.3,
+    "Skye (No Mod)": -0.3, "Vanishing Drive": 0.6, "Dreamlit Shimmer": -2.8, "Bottle Jangle": 0.5,
+    "Forest Wash": 1.3, "Surf Splash": -4.0, "Apache Echo": 0.4, "Glide Wall": -0.3,
+    "Streets Chime": 1.0, "World Went Away": 1.4, "Quarter-Tone Lead": 0.3, "Winterborn": 2.3,
+}
+for _nm, _d in DENSE_MEAS_DELTA.items():
+    if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
+    if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d
 
 MANUAL_OUT = {}   # no hand-locks — full parity re-level (bump kFactoryRev to push to users)
 for _p in PRESETS:
