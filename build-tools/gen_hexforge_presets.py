@@ -795,26 +795,24 @@ add(
 # a compressed clean at the EDGE of break-up with a deep SEASICK chorus. Packed into the
 # Muse bank's free C slot per the no-blanks rule ("fill the banks with what I have").
 add(
-  preset(14, 2, "Retro Poland", out_level=-9.6,   # measured 2026-07-23 (with the Klon push): -9.6 lands -13.8 dBFS DI = clean parity
-    # User's tone blueprint (2026-07-23): mini-humbucker input trimmed -4 dB (keeps the
-    # breakup controlled), Once76 squish for the slightly-compressed attack
+  preset(14, 2, "Retro Poland", out_level=-9.6,
+    # USER-PRESERVED (2026-07-23): the user's on-device dial-in, read back from the
+    # saved store and baked verbatim — do not retune. Their changes vs the shipped
+    # cut: drive = Preamp 250 (DOD) at a whisker of drive with mix at half (grit
+    # seasoning, not a push), the chain reordered to gate->comp->drive->amp->cab->
+    # chorus->delay->reverb (fuzz parked at the back), and a 106 ms tape slap
+    # dialed in but left BYPASSED for live A/B.
     it={"gain":-4},
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-32,"attack":4,"release":4,"knee":4,"makeup":4},
-    # Gilded Horse (Klon) as the push (user 2026-07-23): drive LOW, level UP — the
-    # classic clean-boost Klon shoving the Fender front-end into consistent edge-of-
-    # break-up, with the mid-hump gluing the jangle
-    dr={"enable":1,"model":"Gilded Horse","drive":0.25,"tone":0.55,"level":0.7,"mix":1.0},
-    # Blueprint amp: Fender clean, sag up for the pick-attack BLOOM — the Klon in
-    # front supplies the hair now, so gain stays at the blueprint 4/10
-    amp={"model":"Clean Meanie","gain":0.42,"bass":0.4,"mid":0.5,"treble":0.65,"presence":0.4,"master":0.55,"sag":0.4},
-    # Chorus opened up (user 2026-07-23: "I want to HEAR the seasickness"): ~0.5 Hz,
-    # depth 70%, mix 60% crossfade (dry receding), 10 ms pre-delay + the tape drift —
-    # an obvious slow HEAVE on every chord, not background shimmer
-    md={"enable":1,"type":"Seasick Vibe","rate":0.15,"depth":0.75,"mix":0.68,"width":0.5,"offset":10},
-    rv={"enable":1,"predelay":10,"decay":1.1,"damping":0.55,"mix":0.16},
-    gt={"enable":1,"thresh":-52,"release":300},
-    cab_ir="@american-ob",   # open-back 2x12 jangle — the retro-clean platform, not a 4x12
-    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":8000}),   # 8 kHz cap = the 90s post-chorus LPF
+    gt={"thresh":-52,"release":300},
+    cp={"enable":1,"pos":2,"type":1,"ratio":1,"thresh":-32,"attack":4,"release":4,"knee":4,"makeup":4},
+    dr={"enable":1,"pos":3,"model":"Preamp 250","drive":0.135,"tone":0.55,"level":0.7},   # mix stays at the default 1.0 (full series)
+    amp={"pos":4,"model":"Clean Meanie","gain":0.42,"bass":0.4,"mid":0.5,"treble":0.65,"presence":0.4,"master":0.55,"sag":0.4},
+    cab_ir="@american-ob",
+    cab={"pos":5,"micpos":0.2,"micdist":0.15,"lowcut":85,"highcut":8000},
+    md={"enable":1,"pos":6,"type":"Seasick Vibe","rate":0.15,"depth":0.75,"mix":0.68,"width":0.5,"offset":10},
+    dl={"enable":1,"pos":7,"type":"Tape","time":105.95,"feedback":0.4655,"mix":0.3,"bypass":1},   # in the chain, BYPASSED (their live A/B)
+    rv={"enable":1,"pos":8,"decay":1.1,"damping":0.55,"mix":0.16},
+    fz={"pos":9}, eq={"pos":10}, wh={"pos":11}, oc={"pos":12}, nail={"pos":13})
 )
 
 # ── Bank 15 (index 14) — MUSE · the LAST bank (allowed partial): Plug In Baby + Knights of Cydonia ──
