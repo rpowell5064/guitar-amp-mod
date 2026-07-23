@@ -17,7 +17,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 29 ;
+    lv2:microVersion 30 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -67,7 +67,14 @@
         lv2:index 11 ; lv2:symbol "density" ; lv2:name "Density" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
-        lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 12 ; lv2:symbol "type" ; lv2:name "Type" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Plate"  ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Spring" ; rdf:value 1 ]
+    ] ;
         lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1 ]
     ] ;
 
@@ -96,5 +103,7 @@
             lv2:index 6 ; lv2:symbol "bypass"       ; lv2:name "Bypass"
         ] , [
             lv2:index 7 ; lv2:symbol "density"      ; lv2:name "Density"
+        ] , [
+            lv2:index 8 ; lv2:symbol "type"         ; lv2:name "Type"
         ]
     ] .

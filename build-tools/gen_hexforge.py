@@ -415,6 +415,15 @@ ctrl.append(mkport("AMP_PAMP_COUPL", "amp_pamp_coupl", "Amp Speaker Coupling", "
 ctrl.append(mkport("RV_DENSITY", "rv_density", "Reverb Density", "e", 0, 1, 0,
     [("Classic",0),("Dense",1)], "Density"))
 
+# ── Reverb Type + Cab Room Density (2026-07-23): Spring = the Accutronics 4EB3
+# three-spring tank (from the Deluxe Reverb model) as a selectable reverb type;
+# Room Density = the reverb-Density treatment for the cab's room ambience.
+# Both default 0 = bit-identical. Migrated v26.
+ctrl.append(mkport("RV_TYPE", "rv_type", "Reverb Type", "e", 0, 1, 0,
+    [("Plate",0),("Spring",1)], "Type"))
+ctrl.append(mkport("CAB_ROOMDENSE", "cab_roomdense", "Cab Room Density", "e", 0, 1, 0,
+    [("Classic",0),("Dense",1)], "Room Density"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -587,7 +596,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 138 ;")
+    L.append("    lv2:microVersion 139 ;")
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1037,14 +1046,14 @@ BLOCK_GROUPS = {
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix"]),
-            ("ROOM", None, ["roomon", "roommix", "roomamt"])],   # mic placement renders as the MICPAD widget (below), not knobs
+            ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset"]),
             ("CLOCK SYNC", None, ["sync", "div"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
             ("CLOCK SYNC", None, ["sync", "div"]),
             ("CHARACTER", "c-dl-tape", ["wow", "flutter", "heads"]),
             ("SERAPH DUAL", "c-dl-seraph", ["pattern", "ducking", "moddepth", "modrate"])],
-    "rv":  [("REVERB", None, ["predelay", "decay", "damping", "mix", "density"]),
+    "rv":  [("REVERB", None, ["type", "predelay", "decay", "damping", "mix", "density"]),
             ("MODULATION", None, ["moddepth", "modrate"])],
     "wh":  [("WAH", None, ["type", "freq", "depth", "sens", "q", "mix"])],
     "eq":  [("GRAPHIC EQ", None, ["preset", "100", "200", "400", "800", "1k6", "3k2", "level"])],

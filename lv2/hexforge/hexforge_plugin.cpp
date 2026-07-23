@@ -318,11 +318,12 @@ struct GraphicEQ {
 // any change triggers the seamless-switch mute ramp.
 static const int kSwWatch[] = {
     HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE, HF_RV_DENSITY,
+    HF_RV_TYPE, HF_CAB_ROOMDENSE,
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
     HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
-static_assert(kSwWatchN <= 16, "grow swWatchPrev[]");
+static_assert(kSwWatchN <= 24, "grow swWatchPrev[]");
 
 // note-division factor relative to a quarter-note beat, indexed by the *_div enum (0..7):
 // 1/2, 1/4., 1/4, 1/4T, 1/8., 1/8, 1/8T, 1/16.  time(ms) = (60000/bpm)*factor; Hz = bpm/(60*factor).
@@ -506,7 +507,7 @@ struct HexForge {
     bool  swEnabledHeld[B_COUNT] = {};
     bool  swEnabledPrev[B_COUNT] = {};
     bool  swPrevInit = false;
-    float swWatchPrev[16] = {};
+    float swWatchPrev[24] = {};
     AmpBlockExtended* pendAmp = nullptr;   // worker-built amp awaiting the zero point
     int   pendAmpModel = -1;
     NamModel* pendNam[3] = {};             // worker-built NAM models awaiting swap
@@ -746,9 +747,11 @@ static_assert(HF_EQ_POS == HF_OUT_DOUBLER + 1 && HF_EQ_ENABLE == HF_EQ_POS + 1
 //   * Fidelity pair — pickup load + speaker coupling, added v24, last before the commands.
 static_assert(HF_IT_LOAD == HF_EQ_BYPASS + 1 && HF_AMP_PAMP_COUPL == HF_IT_LOAD + 1,
               "fidelity ports must be contiguous");
-//   * Reverb Density — added v25, last before the commands.
-static_assert(HF_RV_DENSITY == HF_AMP_PAMP_COUPL + 1 && HF_RV_DENSITY == HF_SW_A - 1,
-              "reverb density must sit right before the commands");
+static_assert(HF_RV_DENSITY == HF_AMP_PAMP_COUPL + 1, "reverb density after the fidelity pair");
+//   * Reverb Type + Cab Room Density — added v26, last before the commands.
+static_assert(HF_RV_TYPE == HF_RV_DENSITY + 1 && HF_CAB_ROOMDENSE == HF_RV_TYPE + 1
+              && HF_CAB_ROOMDENSE == HF_SW_A - 1,
+              "v26 ports must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -825,6 +828,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v25 appended reverb density; default 0 (Classic tank).
     const bool rdGap = (srcVer < 25);
     const int rdAt = HF_RV_DENSITY;
+    // v26 appended reverb type + cab room density; both default 0.
+    const bool rtGap = (srcVer < 26);
+    const int rtAt = HF_RV_TYPE, rtEnd = HF_RV_TYPE + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -848,6 +854,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (eqbGap && i >= eqbAt && i < eqbEnd)     vals[i] = eqbdef[i - eqbAt];  // EQ: palette, flat
         else if (fidGap && i >= fidAt && i < fidEnd)     vals[i] = 0.0f;             // pickup load / coupling off
         else if (rdGap && i == rdAt)                     vals[i] = 0.0f;             // reverb density Classic
+        else if (rtGap && i >= rtAt && i < rtEnd)        vals[i] = 0.0f;             // plate / classic room
         else                                             vals[i] = old[o++];
     }
 }
@@ -856,7 +863,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(25); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v25: + reverb density; v24: + pickup load / speaker coupling; v23: + EQ block
+    putU32(26); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v26: + reverb type / room density; v25: + reverb density; v24: + pickup load / coupling
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -876,9 +883,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 25) return false;
+    if (ver < 2 || ver > 26) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 25);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
+    const bool needMigrate  = (ver < 26);  // …EQ preset (v17) + Center Delay (v18) + NAM trims (v19)
     getU32(np);
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
@@ -1641,6 +1648,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("voice",     *p->ports[HF_CAB_VOICE]);   // Room / Studio (recorded chain)
     p->pa.setParameter("coupling",   *p->ports[HF_AMP_PAMP_COUPL]);   // speaker-impedance coupling (v24)
     p->reverb.setParameter("density", *p->ports[HF_RV_DENSITY]);      // classic / dense tank (v25)
+    p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring (v26)
+    p->cab.setParameter("roomdense",  *p->ports[HF_CAB_ROOMDENSE]);    // classic / dense room (v26)
     {   // EQ block: preset base curve + slider offsets + level (rebuilds only on change)
         const float eqDb[GraphicEQ::kBands] = {
             *p->ports[HF_EQ_100], *p->ports[HF_EQ_200], *p->ports[HF_EQ_400],
@@ -2036,7 +2045,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(25);                 // version (25: + reverb density; 24: + pickup load / speaker coupling; 23: + EQ block; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(26);                 // version (26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -2106,9 +2115,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 25) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 26) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 25);     // …Mod Center Delay (v18) + NAM trims (v19)
+        const bool needMigrate  = (ver < 26);     // …Mod Center Delay (v18) + NAM trims (v19)
         getU32(np);                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;

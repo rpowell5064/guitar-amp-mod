@@ -34,7 +34,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 42 ;
+    lv2:microVersion 43 ;
 
     # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -117,19 +117,26 @@
         lv2:scalePoint [ rdfs:label "Room"   ; rdf:value 0.0 ] ;
         lv2:scalePoint [ rdfs:label "Studio" ; rdf:value 1.0 ]
     ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "room_density" ; lv2:name "Room Density" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0 ;
+        lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1.0 ]
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 16 ; lv2:symbol "control" ; lv2:name "Control"
+        lv2:index 17 ; lv2:symbol "control" ; lv2:name "Control"
     ] , [
         a lv2:OutputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 17 ; lv2:symbol "notify" ; lv2:name "Notify"
+        lv2:index 18 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
@@ -171,5 +178,7 @@
             lv2:index 5 ; lv2:symbol "nam_vol"  ; lv2:name "NAM Level"
         ] , [
             lv2:index 11 ; lv2:symbol "voice" ; lv2:name "Voice"
+        ] , [
+            lv2:index 12 ; lv2:symbol "room_density" ; lv2:name "Room Density"
         ]
     ] .

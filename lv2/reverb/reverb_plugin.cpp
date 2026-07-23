@@ -17,6 +17,7 @@ enum ReverbPorts {
     P_MIX     = 9,
     P_BYPASS  = 10,
     P_DENSITY = 11,   // Classic / Dense tank (2026-07-23, default Classic = bit-identical)
+    P_TYPE    = 12,   // Plate / Spring (Accutronics 4EB3 tank)
     P_N_PORTS
 };
 
@@ -47,6 +48,7 @@ static void reverb_run(LV2_Handle h, uint32_t n) {
     p->dsp.setParameter("modRate",    *p->ports[P_MODRATE]);
     p->dsp.setParameter("mix",        *p->ports[P_MIX]);
     p->dsp.setParameter("density",    p->ports[P_DENSITY] ? *p->ports[P_DENSITY] : 0.0f);
+    p->dsp.setParameter("type",       p->ports[P_TYPE]    ? *p->ports[P_TYPE]    : 0.0f);
     float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
     float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };
     p->dsp.process(ins, outs, static_cast<int>(n), 2);

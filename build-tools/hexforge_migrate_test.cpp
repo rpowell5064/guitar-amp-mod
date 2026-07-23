@@ -30,10 +30,12 @@ static_assert(HF_EQ_POS == HF_OUT_DOUBLER + 1 && HF_EQ_BYPASS == HF_EQ_POS + 10,
               "EQ block ports must be contiguous");
 static_assert(HF_IT_LOAD == HF_EQ_BYPASS + 1 && HF_AMP_PAMP_COUPL == HF_IT_LOAD + 1,
               "fidelity ports must be contiguous");
-static_assert(HF_RV_DENSITY == HF_AMP_PAMP_COUPL + 1 && HF_RV_DENSITY == HF_SW_A - 1,
-              "reverb density must sit right before the commands");
+static_assert(HF_RV_DENSITY == HF_AMP_PAMP_COUPL + 1, "reverb density after fidelity pair");
+static_assert(HF_RV_TYPE == HF_RV_DENSITY + 1 && HF_CAB_ROOMDENSE == HF_RV_TYPE + 1
+              && HF_CAB_ROOMDENSE == HF_SW_A - 1,
+              "v26 ports must be contiguous, right before the commands");
 
-// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v25) ──────────────
+// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v26) ──────────────
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -82,6 +84,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     const int fidAt = HF_IT_LOAD, fidEnd = HF_IT_LOAD + 2;
     const bool rdGap = (srcVer < 25);
     const int rdAt = HF_RV_DENSITY;
+    const bool rtGap = (srcVer < 26);
+    const int rtAt = HF_RV_TYPE, rtEnd = HF_RV_TYPE + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
@@ -105,6 +109,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (eqbGap && i >= eqbAt && i < eqbEnd)     vals[i] = eqbdef[i - eqbAt];
         else if (fidGap && i >= fidAt && i < fidEnd)     vals[i] = 0.0f;
         else if (rdGap && i == rdAt)                     vals[i] = 0.0f;
+        else if (rtGap && i >= rtAt && i < rtEnd)        vals[i] = 0.0f;
         else                                             vals[i] = old[o++];
     }
 }
@@ -112,35 +117,32 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
 int main() {
     int fails = 0;
 
-    // ── v24 -> v25: the reverb-density port is inserted (at the very end of the
-    // preset params). A v24 blob had HF_N_PORTS - 1 params.
+    // ── v25 -> v26: reverb type + cab room density inserted at the very end.
     {
-        const int npOld = HF_N_PORTS - 1;
+        const int npOld = HF_N_PORTS - 2;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
-
-        migratePorts(vals, 24);
-
-        for (int i = 0; i < HF_RV_DENSITY; ++i)
+        migratePorts(vals, 25);
+        for (int i = 0; i < HF_RV_TYPE; ++i)
             if (vals[i] != static_cast<float>(i + 1)) {
-                std::printf("FAIL: v24 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
+                std::printf("FAIL: v25 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
             }
-        if (vals[HF_RV_DENSITY] != 0.0f) { std::printf("FAIL: rv_density not 0\n"); ++fails; }
-        for (int i = HF_RV_DENSITY + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 1 < npOld) ? static_cast<float>((i - 1) + 1) : 0.0f;
+        if (vals[HF_RV_TYPE] != 0.0f || vals[HF_CAB_ROOMDENSE] != 0.0f)
+            { std::printf("FAIL: v26 defaults wrong\n"); ++fails; }
+        for (int i = HF_CAB_ROOMDENSE + 1; i < HF_N_PORTS; ++i) {
+            float want = (i - 2 < npOld) ? static_cast<float>((i - 2) + 1) : 0.0f;
             if (vals[i] != want) {
-                std::printf("FAIL: v24 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
+                std::printf("FAIL: v25 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v24->v25: pre-insert preserved, density Classic, tail shifted +1\n");
+        std::printf("v25->v26: pre-insert preserved, plate/classic defaults, tail shifted +2\n");
     }
 
-    // ── v19 -> v25: rc3 + mt2 + cv2 + EQ11 + fidelity2 + density1 = 21 ports
-    // inserted (at the very end of the preset params). A v19 blob had
-    // HF_N_PORTS - 21 params; the deserializer memcpy's them into a zeroed array.
+    // ── v19 -> v26: rc3 + mt2 + cv2 + EQ11 + fidelity2 + density1 + type/room2 = 23
+    // ports inserted. A v19 blob had HF_N_PORTS - 23 params.
     {
-        const int npOld = HF_N_PORTS - 21;
+        const int npOld = HF_N_PORTS - 23;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);   // sentinels
@@ -159,21 +161,21 @@ int main() {
         if (vals[HF_CAB_VOICE]   != 0.0f) { std::printf("FAIL: v19 cab_voice not 0 (%g)\n",   vals[HF_CAB_VOICE]);   ++fails; }
         if (vals[HF_OUT_DOUBLER] != 0.0f) { std::printf("FAIL: v19 out_doubler not 0 (%g)\n", vals[HF_OUT_DOUBLER]); ++fails; }
         if (vals[HF_EQ_POS]      != 6.0f) { std::printf("FAIL: v19 eq_pos not 6 (%g)\n",      vals[HF_EQ_POS]);      ++fails; }
-        // Command/status slots after the inserts: shifted up by 21.
-        for (int i = HF_RV_DENSITY + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 21 < npOld) ? static_cast<float>((i - 21) + 1) : 0.0f;
+        // Command/status slots after the inserts: shifted up by 23.
+        for (int i = HF_CAB_ROOMDENSE + 1; i < HF_N_PORTS; ++i) {
+            float want = (i - 23 < npOld) ? static_cast<float>((i - 23) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v19->v25: pre-insert preserved, all gap defaults, tail shifted +21\n");
+        std::printf("v19->v26: pre-insert preserved, all gap defaults, tail shifted +23\n");
     }
 
     // ── v13 -> v20: the full multi-gap walk. Count the inserted slots for a v13
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1;
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2;
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -200,6 +202,8 @@ int main() {
             { std::printf("FAIL: v13 fidelity ports not defaulted\n"); ++fails; }
         if (vals[HF_RV_DENSITY] != 0.0f)
             { std::printf("FAIL: v13 rv_density not defaulted\n"); ++fails; }
+        if (vals[HF_RV_TYPE] != 0.0f || vals[HF_CAB_ROOMDENSE] != 0.0f)
+            { std::printf("FAIL: v13 v26 ports not defaulted\n"); ++fails; }
         // Every non-gap slot must hold consecutive sentinels in order (the walk is
         // order-preserving); just verify the LAST old value survived to the end.
         int o = 0; float lastSeen = -1.0f;
@@ -213,7 +217,8 @@ int main() {
                           || (i >= HF_CAB_VOICE && i <= HF_OUT_DOUBLER)
                           || (i >= HF_EQ_POS && i <= HF_EQ_BYPASS)
                           || (i >= HF_IT_LOAD && i <= HF_AMP_PAMP_COUPL)
-                          || (i == HF_RV_DENSITY);
+                          || (i == HF_RV_DENSITY)
+                          || (i >= HF_RV_TYPE && i <= HF_CAB_ROOMDENSE);
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
             if (vals[i] != want) {
@@ -224,7 +229,7 @@ int main() {
         }
         if (lastSeen != static_cast<float>(npOld))
             { std::printf("FAIL: v13 last old value %g != %d\n", lastSeen, npOld); ++fails; }
-        std::printf("v13->v25: all gaps defaulted, old values order-preserved\n");
+        std::printf("v13->v26: all gaps defaulted, old values order-preserved\n");
     }
 
     std::printf("\nHF_N_PORTS=%d  HF_AMP_RC_MODE=%d  HF_CAB_VOICE=%d  HF_SW_A=%d\n",

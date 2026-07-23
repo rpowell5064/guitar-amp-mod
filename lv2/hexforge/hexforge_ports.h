@@ -194,6 +194,8 @@ enum HexForgePort {
     HF_IT_LOAD,
     HF_AMP_PAMP_COUPL,
     HF_RV_DENSITY,
+    HF_RV_TYPE,
+    HF_CAB_ROOMDENSE,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -219,7 +221,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 221, "port count drift");
+static_assert(HF_N_PORTS == 223, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -255,8 +257,9 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "amp_mt_mode", "amp_mt_bright", "cab_voice", "out_doubler", "eq_pos", "eq_enable",
     "eq_preset", "eq_100", "eq_200", "eq_400", "eq_800", "eq_1k6",
     "eq_3k2", "eq_level", "eq_bypass", "it_load", "amp_pamp_coupl", "rv_density",
-    "sw_a", "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn",
-    "ps_save", "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto",
-    "ps_bank", "ps_slot", "out_auto", "in_meter", "out_meter", "out_mono",
-    "tuner_on", "tuner_mute", "tuner_note", "tuner_cents", "midi_in",
+    "rv_type", "cab_roomdense", "sw_a", "sw_b", "sw_c", "sw_d",
+    "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up", "ps_move_dn", "ps_backup",
+    "ps_restore", "ps_goto", "ps_bank", "ps_slot", "out_auto", "in_meter",
+    "out_meter", "out_mono", "tuner_on", "tuner_mute", "tuner_note", "tuner_cents",
+    "midi_in",
 };
