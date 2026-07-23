@@ -71,7 +71,7 @@ const MesaDualRectifier::ModeCfg MesaDualRectifier::kModes[MesaDualRectifier::kN
   // 4 CH2 Modern — NFB out: pre-clip lows stripped HARD (the tight chug), restored post-clip
   { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {0.7f,1.2f,1.3f,1.8f,1.7f}, {0,0,0,0,0}, TSt::Recto,
     115.0f, 240.0f, 260.0f, 11500.0f, 800.0f, 3.5f, 4200.0f, 10.0f, 3100.0f, 6.0f, 0.7f,
-    1.7f, 2.1f, 0.075f, 0.72f, 1.6f, 130.0f, 6.5f, 6.0f, 3000.0f, 5.0f, 0.35f, 2.6f, true },
+    1.7f, 2.1f, 0.075f, 0.72f, 1.6f, 190.0f, 6.0f, 6.0f, 3000.0f, 5.8f, 0.35f, 3.2f, true },
   // 5 CH3 Raw — hotter Raw than CH2
   { 4, {ST_MV1,ST_MV2,ST_MV3,ST_EV2}, {2.3f,2.7f,3.0f,2.7f,0}, {0,0,0,0,0}, TSt::Recto,
     50.0f, 70.0f, 0.0f, 10500.0f, 750.0f, 2.0f, 3600.0f, 8.0f, 2900.0f, 4.0f, 0.6f,
@@ -83,7 +83,7 @@ const MesaDualRectifier::ModeCfg MesaDualRectifier::kModes[MesaDualRectifier::kN
   // 7 CH3 Modern — THE Recto: maximum gain, NFB out, tightest lows
   { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {0.7f,1.2f,1.3f,1.8f,1.7f}, {0,0,0,0,0}, TSt::Recto,
     120.0f, 260.0f, 280.0f, 12000.0f, 820.0f, 4.0f, 4300.0f, 11.0f, 3200.0f, 6.5f, 0.7f,
-    1.8f, 2.2f, 0.094f, 0.68f, 1.6f, 130.0f, 4.5f, 3.5f, 3000.0f, 6.5f, 0.35f, 2.6f, true },
+    1.8f, 2.2f, 0.094f, 0.68f, 1.6f, 130.0f, 2.0f, 5.5f, 3000.0f, 7.5f, 0.35f, 2.4f, true },
 };
 
 void MesaDualRectifier::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
@@ -140,13 +140,17 @@ void MesaDualRectifier::recalcFilters() noexcept {
         c.postPk.setCoeffs(Filters::peaking(m.postHiFc, m.postHiDb, m.postHiQ, oversampledFs_)); // post-clip bite
         // The captures show a distinct ~200 Hz bump on every dirty mode (OT/load resonance,
         // strongest with the NFB loop out) and extended air above 5 kHz on the Modern modes.
-        const double lmDb = m.modern ? 5.5 : (m.tsType == ToneStackComponent::Type::Recto ? 3.5 : 0.0);
-        c.lowMidPk.setCoeffs(Filters::peaking(m.modern ? 195.0 : 215.0, lmDb, m.modern ? 1.4 : 1.8,
+        const double lmDb = m.modern ? 9.0 : (m.tsType == ToneStackComponent::Type::Recto ? 3.5 : 0.0);
+        c.lowMidPk.setCoeffs(Filters::peaking(m.modern ? 205.0 : 215.0, lmDb, m.modern ? 1.3 : 1.8,
                                               oversampledFs_));
+        // Modern captures put a clear seam between the 55 Hz sub-weight and the 200 Hz
+        // punch: without this notch the restored lows smear into an 80 Hz woof (+4.7 dB
+        // vs the ch3_modern capture, 2026-07-23) that reads as mush, not gain.
+        c.lowNotch.setCoeffs(Filters::peaking(82.0, m.modern ? -3.0 : 0.0, 2.0, oversampledFs_));
         c.lowKeepLP.setCoeffs(Filters::lowpass(55.0, 0.707, oversampledFs_)); // parallel low path
                                                                              // (sub-thump only; 80-200 Hz
                                                                              // belongs to the main path)
-        c.modernAir.setCoeffs(Filters::highshelf(5500.0, m.modern ? 5.5 : 0.0, oversampledFs_));
+        c.modernAir.setCoeffs(Filters::highshelf(5500.0, m.modern ? 6.3 : 0.0, oversampledFs_));
         // OT/speaker top roll-off, POST-clip. Modern modes run without NFB — the top is
         // undamped, so the rolloff sits higher (the captures' Modern top extends past Vintage's);
         // Vintage/Raw sit between Modern and the cleans.
@@ -164,7 +168,7 @@ void MesaDualRectifier::reset() noexcept {
     for (auto& c : ch_) {
         c.inHP.reset(); c.brightSh.reset(); c.interHP.reset(); c.tightHP.reset();
         c.interLP.reset(); c.voicePk.reset(); c.presenceF.reset(); c.spongySh.reset();
-        c.bodySh.reset(); c.subSh.reset(); c.postPk.reset(); c.lowMidPk.reset(); c.modernAir.reset();
+        c.bodySh.reset(); c.subSh.reset(); c.postPk.reset(); c.lowMidPk.reset(); c.modernAir.reset(); c.lowNotch.reset();
         c.lowKeepLP.reset(); c.airLP.reset(); c.dcBlk.reset();
         for (auto& s : c.stage) s.reset();
         c.stagePI.reset(); c.tonestack.reset(); c.sagEnv = 0.0f;
@@ -191,6 +195,12 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     const float pot  = std::min(18.96f * knob * knob * knob, 2.2f);  // cubic taper, unity at 0.375, cap +6.8 dB:
                                                                // beyond it the MV stages
                                                                // block (bias choke)
+    // The pot cap lands at knob ~0.49 — but a real Recto keeps getting gainier all the
+    // way up. Route the rest of the dial's travel into the BACK of the cascade (stages
+    // 3+, EV-class: high mu, no bias choke) — up to +4 dB per back stage at dimed.
+    // 1.5-power knee: zero slope at the takeover point, so nothing steps at 0.49.
+    const float over = knob > 0.49f ? (knob - 0.49f) * (1.0f / 0.51f) : 0.0f;
+    const float backDrive = 1.0f + 0.6f * over * std::sqrt(over);
     const float mv = masterSmooth_.getCurrentValue();
 
     // DNR: track the INPUT envelope (pre-gain — the only place playing dynamics survive).
@@ -207,7 +217,7 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
 
     x *= pot;
     for (int i = 0; i < m.nStages; ++i) {
-        x = c.stage[i].process(x * m.gBase[i]) * 0.82f;
+        x = c.stage[i].process(x * m.gBase[i] * (i >= 2 ? backDrive : 1.0f)) * 0.82f;
         if (i == 0) x = c.interHP.process(x);                       // tighten bass early
         if (i == 1) x = c.interLP.process(x);                       // limit fizz mid-cascade
         if (i == 2 && m.tightHPfc > 0.0f) x = c.tightHP.process(x); // the chug lever: strip lows
@@ -244,6 +254,7 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     if (m.tsType == ToneStackComponent::Type::Recto)
         x = c.lowMidPk.process(x);              // ~200 Hz load-resonance bump (all dirty modes)
     if (m.modern) {
+        x = c.lowNotch.process(x);
         x = c.modernAir.process(x);             // undamped top: extra air shelf
         x = c.presenceF.process(x);             // Modern: no NFB — presence is a passive post-PI tilt
     }

@@ -433,10 +433,10 @@ struct HexForge {
     // scratch
     float mono[kMaxBlock], monoOut[kMaxBlock];
     int   clipHold = 0;   // samples remaining to keep the CLIP indicator lit
-    // Output doubler (fake double-track): micro-delay line + deterministic drift phase.
+    // Output doubler (fake double-track): micro-detune tap pair + deterministic saw phase.
     std::vector<float> dblBuf;
     int    dblW = 0;
-    double dblPhase = 0.0;
+    double dblPhase = 0.0;   // grain saw phase, 0..1
 
     // host features
     LV2_URID_Map*        map      = nullptr;
@@ -1019,7 +1019,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->wah.prepare(rate, kMaxBlock, 2);
     p->octave.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
-    p->dblBuf.assign(size_t(rate * 0.030) + 4, 0.0f);   // doubler: 17 ms + drift headroom
+    p->dblBuf.assign(size_t(rate * 0.045) + 4, 0.0f);   // doubler: 14 ms base + 24 ms sweep + margin
     psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)
     hfLoadBackup(p);     // recover the user's full preset store across delete/re-add + updates
     return p;
@@ -1633,24 +1633,43 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (!stereo) for (int i=0;i<len;++i) R[i] = L[i];
     }
 
-    // ── Doubler (2026-07-22): the "recorded" fake double-track — a 17 ms, slowly
-    // detuned (±0.45 ms @ 0.31 Hz, deterministic phase) copy replaces most of the
-    // RIGHT channel; the dry take stays left. Mono-summed rigs still get honest
-    // doubled thickness (that's what a mono mix of two takes is).
+    // ── Doubler (reworked 2026-07-23): true micro-DETUNE double-track, not a static
+    // delay. Two crossfaded taps sweep a 24 ms window over a 14 ms base at a constant
+    // rate = a -6 cent copy whose phase against the dry take drifts CONTINUOUSLY —
+    // in a mono sum the comb notches sweep (tape-ADT shimmer) instead of freezing
+    // into the hollow 17 ms comb the first cut had (user feedback: "sounds bad in
+    // mono"). Deterministic saw phase; no RNG, no LFO retrigger.
     if (p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()) {
         const int len = (int)p->dblBuf.size();
+        const bool monoRig = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
+        const double W    = 0.024 * p->rate;              // sweep window (samples)
+        const double base = 0.014 * p->rate;              // minimum ADT delay
+        const double fSaw = 0.1446 / p->rate;             // (1 - 2^(-6/1200)) / 0.024 s
         for (uint32_t i = 0; i < n; ++i) {
             p->dblBuf[(size_t)p->dblW] = 0.5f * (outL[i] + outR[i]);
-            p->dblPhase += 6.283185307179586 * 0.31 / p->rate;
-            if (p->dblPhase > 6.283185307179586) p->dblPhase -= 6.283185307179586;
-            const double dSamp = (0.017 + 0.00045 * std::sin(p->dblPhase)) * p->rate;
-            double rp = (double)p->dblW - dSamp;
-            while (rp < 0.0) rp += (double)len;
-            const int    i0 = (int)rp;
-            const float  fr = (float)(rp - (double)i0);
-            const int    i1 = (i0 + 1 == len) ? 0 : i0 + 1;
-            const float  w  = p->dblBuf[(size_t)i0] * (1.0f - fr) + p->dblBuf[(size_t)i1] * fr;
-            outR[i] = 0.30f * outR[i] + 0.85f * w;
+            p->dblPhase += fSaw;
+            if (p->dblPhase >= 1.0) p->dblPhase -= 1.0;
+            float w = 0.0f;
+            for (int t = 0; t < 2; ++t) {                 // sin^2-crossfaded grain pair
+                double ph = p->dblPhase + (t ? 0.5 : 0.0);
+                if (ph >= 1.0) ph -= 1.0;
+                const float g = (float)std::sin(3.14159265358979 * ph);
+                double rp = (double)p->dblW - (base + W * ph);
+                while (rp < 0.0) rp += (double)len;
+                const int   i0 = (int)rp;
+                const float fr = (float)(rp - (double)i0);
+                const int   i1 = (i0 + 1 == len) ? 0 : i0 + 1;
+                w += g * g * (p->dblBuf[(size_t)i0] * (1.0f - fr) + p->dblBuf[(size_t)i1] * fr);
+            }
+            if (monoRig) {
+                // Mono rig: keep the dry take intact on BOTH sides and tuck the second
+                // take ~7.5 dB under — ADT thickness without hard 50/50 combing.
+                outL[i] += 0.42f * w;
+                outR[i] += 0.42f * w;
+            } else {
+                // Stereo rig: the right channel becomes the second take (hard double).
+                outR[i] = 0.30f * outR[i] + 0.85f * w;
+            }
             if (++p->dblW >= len) p->dblW = 0;
         }
     }

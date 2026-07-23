@@ -102,6 +102,7 @@ private:
         BiquadFilter    inHP, brightSh, interHP, tightHP, interLP, voicePk, presenceF, spongySh, airLP, dcBlk;
         BiquadFilter    bodySh, subSh, postPk;  // post-clip voicing (see ModeCfg bodyFc/subDb/postHiFc)
         BiquadFilter    lowMidPk, modernAir;    // ~200 Hz load resonance bump + Modern no-NFB air shelf
+        BiquadFilter    lowNotch;               // Modern only: ~82 Hz woof control between the sub and the punch
         BiquadFilter    lowKeepLP;              // parallel low path lowpass (see ModeCfg lowKeep)
         TriodeComponent stage[kMaxStage];
         TriodeComponent stagePI;
