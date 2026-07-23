@@ -22,6 +22,51 @@ function (event, funcs) {
     function setNodeVal(icon, pfx, txt) { icon.find('[rata-role=nv-' + pfx + ']').text(txt == null ? '' : txt); }
     function setModelVal(icon, pfx, idx) { var a = NV[pfx]; setNodeVal(icon, pfx, (a && a[idx]) || ''); }
 
+    // ── EQ block: preset curves (mirror GraphicEQ kPre in hexforge_plugin.cpp) + the
+    // live response scope. Selecting a preset LOADS its curve into the faders and
+    // snaps back to Manual (the Cali V pattern), so the values live ON the controls.
+    var EQ_BANDS = ['100', '200', '400', '800', '1k6', '3k2'];
+    var EQ_FC = [100, 200, 400, 800, 1600, 3200];
+    var EQ_PRE = { 1: [3, 0, -1, 2, 1, 2], 2: [-2, -4, -3, 1, 1, 0], 3: [3, 1, -3, 0, 2, 4],
+                   4: [4, -2, -5, -2, 2, 4], 5: [-1, 0, 1, 3, 4, 5], 6: [-4, -2, 2, 7, 2, -4] };
+    var EQ_SYMS = ['eq_100', 'eq_200', 'eq_400', 'eq_800', 'eq_1k6', 'eq_3k2', 'eq_level'];
+    function eqScope(icon) {
+        var line = icon.find('[rata-role=eqline]'); if (!line.length) return;
+        var v = icon.data('hf_eq_v') || [0, 0, 0, 0, 0, 0];
+        var lvl = parseFloat(icon.data('hf_eq_lvl')) || 0;
+        var base = EQ_PRE[parseInt(icon.data('hf_eq_p'), 10) || 0] || [0, 0, 0, 0, 0, 0];
+        var d = '';
+        for (var i = 0; i <= 80; ++i) {
+            var f = 40 * Math.pow(250, i / 80), db = lvl;
+            for (var b = 0; b < 6; ++b) {
+                var g = base[b] + v[b]; if (g > 15) g = 15; if (g < -15) g = -15;
+                var o = Math.log(f / EQ_FC[b]) / Math.LN2;
+                db += g * Math.exp(-(o * o) / 0.605);          // ~Q 1.1 bell on the log axis
+            }
+            if (db > 17) db = 17; if (db < -17) db = -17;
+            d += (i ? 'L' : 'M') + (400 * i / 80).toFixed(1) + ' ' + (50 - db * (40 / 15)).toFixed(1);
+        }
+        line.attr('d', d);
+        icon.find('[rata-role=eqfill]').attr('d', d + 'L400 100L0 100Z');
+    }
+    function loadEqBlockPreset(icon, v) {
+        var pv = EQ_PRE[parseInt(v, 10)];
+        if (!pv || !funcs || typeof funcs.set_port_value !== 'function') return;
+        for (var i = 0; i < 6; ++i) funcs.set_port_value(EQ_SYMS[i], pv[i]);
+        funcs.set_port_value('eq_preset', 0);   // back to Manual — the loaded faders drive the EQ
+        icon.data('hf_eq_v', pv.slice()); icon.data('hf_eq_p', 0);
+        setNodeVal(icon, 'eq', NV.eq[parseInt(v, 10)]);
+        eqScope(icon);
+    }
+    function eqTrack(icon, sym, val) {   // returns true if sym belongs to the EQ scope state
+        if (sym === 'eq_preset') { icon.data('hf_eq_p', parseInt(val, 10) || 0); return true; }
+        var k = EQ_SYMS.indexOf(sym);
+        if (k < 0) return false;
+        if (sym === 'eq_level') icon.data('hf_eq_lvl', parseFloat(val));
+        else { var a = (icon.data('hf_eq_v') || [0, 0, 0, 0, 0, 0]).slice(); a[k] = parseFloat(val); icon.data('hf_eq_v', a); }
+        return true;
+    }
+
     function nodeOf(icon, b)  { return icon.find('.hf-node[data-block="' + b + '"]'); }
     function panelOf(icon, b) { return icon.find('.hf-detail-panel[data-block="' + b + '"]'); }
     // ── Strobe tuner: note name + a disc that spins by cents (still + green = in tune) ──
@@ -476,13 +521,14 @@ function (event, funcs) {
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
             else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6); }
-            else if (sym === 'eq_preset')          setModelVal(icon, 'eq', parseInt(val, 10));
+            else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             fns.set_port_value(sym, val);
         });
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
         micPadUpdate(icon);
+        eqScope(icon);
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
         if (drm != null) applyDrive(icon, drm);
         selectNode(icon, icon.data('hf_sel'));   // keep selection valid + refresh the panel
@@ -573,7 +619,11 @@ function (event, funcs) {
         applyDrive(icon, drm);
         var _mt0 = parseInt(map.md_type || 0, 10);
         setModelVal(icon, 'md', _mt0);
+        icon.data('hf_eq_v', EQ_SYMS.slice(0, 6).map(function (k) { return parseFloat(map[k]) || 0; }));
+        icon.data('hf_eq_lvl', parseFloat(map.eq_level) || 0);
+        icon.data('hf_eq_p', parseInt(map.eq_preset || 0, 10));
         setModelVal(icon, 'eq', parseInt(map.eq_preset || 0, 10));
+        eqScope(icon);
         show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6);
         setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
@@ -697,7 +747,10 @@ function (event, funcs) {
         } else if (s === 'dr_model') {
             applyDrive(icon, parseInt(event.value, 10));
         } else if (s === 'eq_preset') {
-            setModelVal(icon, 'eq', parseInt(event.value, 10));
+            if (event.value > 0) loadEqBlockPreset(icon, event.value);
+            else { icon.data('hf_eq_p', 0); eqScope(icon); }
+        } else if (eqTrack(icon, s, event.value)) {
+            eqScope(icon);
         } else if (s === 'md_type') {
             var mt = parseInt(event.value, 10);
             setModelVal(icon, 'md', mt);

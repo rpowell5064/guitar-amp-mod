@@ -1056,9 +1056,26 @@ def render_agroups(pfx, group_defs, all_sufs):
                    '<div class="hf-agroup-body">%s</div></div>' % leftover)
     return '<div class="hf-agroups">' + "".join(out) + '</div>'
 
-# ── EQ block body: preset dropdown over a row of VERTICAL FADERS (the Cali V
-# graphic-EQ slider widget, reused) — a graphic EQ reads as faders, not knobs.
+# ── EQ block body: preset dropdown + live response SCOPE + a row of VERTICAL
+# FADERS (the Cali V graphic-EQ slider widget, reused) — a graphic EQ reads as
+# faders, not knobs. The scope is an SVG the JS redraws from the live band values
+# (grid lines pre-computed here on the same log-f axis the JS uses: 40 Hz..10 kHz).
 def eq_body():
+    import math
+    def fx(f):  # log-frequency → scope x (viewBox width 400)
+        return 400.0 * math.log(f / 40.0) / math.log(10000.0 / 40.0)
+    grid = "".join('<line x1="%.1f" y1="4" x2="%.1f" y2="96" class="hf-eqs-grid"/>' % (fx(f), fx(f))
+                   for f in (100, 200, 400, 800, 1600, 3200))
+    grid += "".join('<line x1="0" y1="%.1f" x2="400" y2="%.1f" class="hf-eqs-grid%s"/>'
+                    % (y, y, "0" if db == 0 else "") for db, y in ((12, 18.0), (0, 50.0), (-12, 82.0)))
+    scope = ('<div class="hf-eqscope">'
+             '<svg viewBox="0 0 400 100" preserveAspectRatio="none" aria-hidden="true">'
+             + grid +
+             '<path rata-role="eqfill" class="hf-eqs-fill" d="M0 50L400 50L400 100L0 100Z"/>'
+             '<path rata-role="eqline" class="hf-eqs-line" d="M0 50L400 50"/>'
+             '</svg>'
+             '<span class="hf-eqs-lab hf-eqs-lab-t">+12</span><span class="hf-eqs-lab hf-eqs-lab-m">0 dB</span><span class="hf-eqs-lab hf-eqs-lab-b">−12</span>'
+             '</div>')
     def fad(suf, freq):
         sym = "eq_" + suf
         c = CTRL_BY_SYM[sym]
@@ -1070,8 +1087,8 @@ def eq_body():
                                                 ("800","800"),("1k6","1.6k"),("3k2","3.2k"),("level","LVL")])
            + '</div>')
     inner = (SCREWS
-             + '<div class="hf-agroups"><div class="hf-agroup"><span class="hf-agroup-title">GRAPHIC EQ</span>'
-             + '<div class="hf-agroup-body hf-eqbody">' + render_ctrl(CTRL_BY_SYM["eq_preset"]) + row + '</div></div></div>')
+             + '<div class="hf-agroups"><div class="hf-agroup hf-eqpanel"><span class="hf-agroup-title">GRAPHIC EQ</span>'
+             + '<div class="hf-agroup-body hf-eqbody">' + render_ctrl(CTRL_BY_SYM["eq_preset"]) + scope + row + '</div></div></div>')
     return '<div class="hf-plate">%s</div>' % inner
 
 # ── Detail panel (the selected block's full controls, shown at the bottom) ─────
