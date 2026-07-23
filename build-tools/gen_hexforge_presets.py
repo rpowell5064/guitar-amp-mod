@@ -789,6 +789,28 @@ add(
     cab={"micpos":0.20,"micdist":0.10,"lowcut":76,"highcut":8000}),
 )
 
+# ── Bank 15 (index 14) slot C — MAROMARO · Retro Poland (2026-07-23, user request) ──
+# Polish guitarist maromaro (Ibanez artist — hence the Iceman; ex-Czerwone Gitary lead):
+# the viral "Retro Poland" covers of 90s hits — post-punk 80s/90s nostalgia. The sound:
+# a compressed clean at the EDGE of break-up with a deep SEASICK chorus. Packed into the
+# Muse bank's free C slot per the no-blanks rule ("fill the banks with what I have").
+add(
+  preset(14, 2, "Maromaro Retro", out_level=-13.4,   # measured on-device 2026-07-23: -20.4 dBFS DI at the -20 placeholder -> -13.4 hits the -13.8 clean parity band (peak ~ -1)
+    # Once76 (1176-style FET) squish — the always-on jangle sustain under every note
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-32,"attack":4,"release":4,"knee":4,"makeup":4},
+    # Fender-clean pushed to the edge: humbucker Iceman + gain .58 = hair on the attack,
+    # clean under a light touch (the compressor keeps it seated either way)
+    amp={"model":"Clean Meanie","gain":0.58,"bass":0.5,"mid":0.6,"treble":0.58,"presence":0.5,"master":0.7,"sag":0.3},
+    # SEASICK: Small Clone voicing, full depth, a bit faster than the Come As You Are
+    # wobble, mix well past half, and 12 ms of centre delay pushing it toward a detuned
+    # doubler — the queasy pitch heave, not a polite shimmer
+    md={"enable":1,"type":"Nevermind Chorus","rate":0.5,"depth":1.0,"mix":0.7,"width":0.6,"offset":12},
+    rv={"enable":1,"predelay":10,"decay":1.1,"damping":0.55,"mix":0.16},
+    gt={"enable":1,"thresh":-52,"release":300},
+    cab_ir="@american-ob",   # open-back 2x12 jangle — the retro-clean platform, not a 4x12
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":9500}),
+)
+
 # ── Bank 15 (index 14) — MUSE · the LAST bank (allowed partial): Plug In Baby + Knights of Cydonia ──
 # Matt Bellamy's Z.Vex Fuzz Factory ("Fizz Factory") showcase. This is the final populated bank, so it's
 # allowed to be non-full (2 presets). Everything before it is packed full.
