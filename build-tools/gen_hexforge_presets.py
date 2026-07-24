@@ -519,19 +519,18 @@ add(
   preset(9, 0, "Surf Splash", out_level=OUT,             # Dick Dale — Misirlou
     # RESEARCHED: Misirlou has NO tremolo (that is fast tremolo-PICKING) — the hero is a Fender 6G15
     # outboard SPRING reverb: bright, undamped, very wet. Fender Showman, bridge SC, staccato (gate).
-    # REDONE 2026-07-24 (user: "we can get a better tone — add a slight drive, edge of breakup").
-    # The real Showman was CRANKED into JBL D130s — hair on the pick attack, not hi-fi clean. So:
-    # Green Man TS push (anti-fizz recipe: drive LOW, level HIGH ~unity) + amp gain 0.15->0.42 =
-    # edge-of-breakup; a little sag for the cranked-supply feel. Cab @factory V30 4x12 ->
-    # @american-ob (open-back Fender-family = far closer to the bright JBL rig). Spring tank
-    # (rv_type=1 below) stays very wet — the 6G15 is still the hero; treble/presence eased a
-    # touch since the pushed front end now supplies the edge.
-    dr={"enable":1,"model":"Green Man","drive":0.18,"tone":0.62,"level":0.9,"mix":1.0},
-    amp={"model":"Clean Meanie","gain":0.42,"bass":0.42,"mid":0.52,"treble":0.75,"presence":0.7,"master":0.85,"sag":0.35},
+    # REBUILT FROM SCRATCH 2026-07-24 (user dropped the earlier edge-of-breakup idea): pure CLEAN
+    # Showman. Huge headroom (master high, sag LOW = the stiff big-iron supply — a Showman does not
+    # sag), THICK lows (Dale's heavy strings / low-E chug: bass up, lowcut 85) under a bright but
+    # not shrill top; a light FAST comp glues the machine-gun tremolo picking (the tape-era squash
+    # that's all over the record); @american-ob open-back for the JBL-era Fender rig; spring tank
+    # (rv_type=1 below) cranked — long undamped dwell, very wet, the 6G15 IS the hero.
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":4,"knee":3,"makeup":3},
+    amp={"model":"Clean Meanie","gain":0.3,"bass":0.52,"mid":0.55,"treble":0.72,"presence":0.65,"master":0.8,"sag":0.2},
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":40,"release":90,"hyst":8},
-    rv={"enable":1,"predelay":5,"decay":2.6,"damping":0.15,"mix":0.55},
+    rv={"enable":1,"predelay":4,"decay":3.0,"damping":0.1,"mix":0.62},
     cab_ir="@american-ob",
-    cab={"micpos":0.15,"micdist":0.40,"lowcut":90,"highcut":11000}),
+    cab={"micpos":0.15,"micdist":0.35,"lowcut":85,"highcut":10800}),
   preset(9, 1, "Apache Echo", out_level=OUT,             # The Shadows / Hank Marvin — Apache
     # RESEARCHED: Vox AC15 (Chime Thirty) + Meazzi/Binson multi-head echo ~130ms (3 taps swelling).
     # NO tremolo — Marvins "vibrato" is the Strat vibrato ARM. Clean bell-like twang, alnico cab.
@@ -1062,7 +1061,8 @@ for _nm, _d in ROOMDENSE_MEAS_DELTA.items():
 # These values are normalized to -20 (true = raw - (baked + 20)); two runs at different
 # baked levels agree to 0.01 dB, and the fixed tool re-verified them directly.
 REDO_MEAS = {   # name: (rms@-20, peak@-20)
-    "Surf Splash": (-22.66, -10.45), "March Stabs": (-23.31, -8.77),
+    "Surf Splash": (-33.54, -21.75),   # rev-60 from-scratch clean rebuild (fixed hfmeas, 2026-07-24)
+    "March Stabs": (-23.31, -8.77),
     "World Went Away": (-8.99, -1.58), "Broken Crush": (-8.97, 1.82),
     "Con Molars": (-15.90, -5.36),
 }
@@ -1079,6 +1079,19 @@ for _p in PRESETS:
         _out_rms  = -20.0 + (_tgt - MEAS_RMS_AT_M20[_nm])
         _out_peak = PEAK_CEIL - 20.0 - MEAS_PEAK_AT_M20.get(_nm, -6.0)   # cap: peak stays under the ceiling
         _p["vals"][SYM_IDX["out_level"]] = round(max(-40.0, min(6.0, min(_out_rms, _out_peak))), 1)
+
+# Perceptual loudness trims (2026-07-24, user: "March Stabs and Con Molars are louder
+# compared to the other presets"): their end-of-chain EQ pushes the 1.6-3.2k presence
+# region (+800 Hz on Con Molars) where the ear is most sensitive, so they read louder
+# than the rest AT measured RMS parity (March Stabs even sits ~2 dB under target from
+# its peak cap and still reads loud). Ear-offset applied AFTER the parity computation
+# so the MEAS pipeline stays live for future re-measures.
+PERC_TRIM_DB = {"March Stabs": -2.5, "Con Molars": -2.5}
+for _p in PRESETS:
+    _t = PERC_TRIM_DB.get(_p["name"])
+    if _t:
+        _i = SYM_IDX["out_level"]
+        _p["vals"][_i] = round(max(-40.0, _p["vals"][_i] + _t), 1)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Verification: decode the ORIGINAL four inline presets to prove whether they sit
