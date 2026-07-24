@@ -742,6 +742,16 @@ function (event, funcs) {
                 if (e.keyCode === 27) { el.value = ''; icon.data('hf_ps_q', ''); psApplyFilter(icon); } });   // Esc clears
             el.addEventListener('input', function () { icon.data('hf_ps_q', el.value || ''); psApplyFilter(icon); });
         });
+        icon.find('[rata-role=pssearchclear]').each(function () {
+            var el = this;
+            el.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var inp = icon.find('[rata-role=pssearch]')[0];
+                if (inp) { inp.value = ''; inp.focus(); }
+                icon.data('hf_ps_q', ''); psApplyFilter(icon);
+            });
+        });
         if ('ps_bank' in map) icon.data('ps_bank', parseInt(map.ps_bank, 10));
         if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));
         psBankLabel(icon); psRenderList(icon, funcs);
