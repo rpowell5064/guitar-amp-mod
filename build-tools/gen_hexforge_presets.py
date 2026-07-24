@@ -1103,6 +1103,23 @@ for _p in PRESETS:
     if _p["name"] in ("Surf Splash", "Apache Echo"):
         _p["vals"][SYM_IDX["rv_type"]] = 1.0
 
+# Lead Cut on every lead preset (2026-07-24 user request): EQ block at end-of-chain with
+# the stock "Lead Cut" curve. The DSP reads the SLIDERS only, so the curve is baked into
+# the band ports; eq_preset=5 is the retained UI selection (dropdown shows "Lead Cut").
+# Curve mirrors EQ_PRE[5] in script-hexforge.js: -1/0/+1/+3/+4/+5 — low trim + rising
+# upper-mid/presence push so the lead steps out front.
+# EXCLUDED: Cardinal Lead (user-preserved dial-in) + the stock Bank-1 "Lead" (user's own
+# reference set, inline seeds).
+LEAD_CUT = {"eq_enable": 1.0, "eq_pos": 13.0, "eq_preset": 5.0,
+            "eq_100": -1.0, "eq_200": 0.0, "eq_400": 1.0,
+            "eq_800": 3.0, "eq_1k6": 4.0, "eq_3k2": 5.0}
+LEAD_NAMES = ("Regal Sustain", "Sermon Solo", "Imperial Lead", "Numb Sustain", "Gravity Lead",
+              "Hazy Solo", "Skye Soar", "Regal Solo", "Quarter-Tone Lead", "Spectrum Lead")
+for _p in PRESETS:
+    if _p["name"] in LEAD_NAMES:
+        for _s, _v in LEAD_CUT.items():
+            _p["vals"][SYM_IDX[_s]] = _v
+
 # Loudness deltas measured on-device AFTER the polish (coupling adds level on the
 # pushed presets) — applied to the MEAS table so the parity pipeline re-levels.
 POLISH_MEAS_DELTA = {   # measured on-device 2026-07-23 (pdfast before/after, real rev-53 build)
@@ -1167,6 +1184,13 @@ REDO_MEAS = {   # name: (rms@-20, peak@-20)
     "World Went Away": (-8.99, -1.58), "Broken Crush": (-16.64, -4.26),
     "Con Molars": (-13.82, -3.25),
     "Flatliner": (-13.52, -4.04), "Prayer Djent": (-13.64, -4.21),   # rev-63 end-chain EQ added
+    # rev-64 Lead Cut pass (2026-07-24): all 10 leads re-measured after the EQ curve landed
+    # (two shuffled batches, ≤0.04 dB; peak = the higher of the two runs, conservative cap):
+    "Regal Sustain": (-10.28, 0.05), "Sermon Solo": (-10.58, 0.05),
+    "Imperial Lead": (-11.70, -0.85), "Numb Sustain": (-9.03, 1.53),
+    "Gravity Lead": (-28.35, -13.08), "Hazy Solo": (-10.97, 0.99),
+    "Skye Soar": (-12.35, -0.90), "Regal Solo": (-9.89, 0.95),
+    "Quarter-Tone Lead": (-11.59, 0.95), "Spectrum Lead": (-11.96, -0.94),
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
