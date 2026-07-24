@@ -881,6 +881,66 @@ add(
     cab={"micpos":0.10,"micdist":0.05,"lowcut":85,"highcut":8800}),
 )
 
+# ── Bank 15/D + Bank 16 (index 15) — NU METAL (2026-07-24, user request; first Diamond
+# Plate presets). User plays DROP D: low D fundamental = 73.4 Hz, so chug presets run
+# lowcut 76-82 (keep the fundamental, cut the sub-mud) and hard fast gates for the
+# genre's staccato (all thresholds vs the measured -45 dBFS hands-off rig floor).
+# Modern tight metal keeps mic 0/0 (close cap edge) per the mic-placement doctrine.
+# "Duality Crush" rides in the Muse bank's free D slot (the no-blanks packing rule);
+# the four picks fill Bank 16.
+add(
+  preset(14, 3, "Duality Crush", out_level=OUT,   # Slipknot — Iowa-era wall (bonus 5th nu tone)
+    # Mick/Jim's Iowa rhythm: Recto CH3 Modern + silicon (tightest, most brutal), TS out front at
+    # drive~0/level-high to clamp the low end for the machine chugs, DEEP amp scoop (mid 0.3),
+    # hard fast gate. V30 4x12 close.
+    dr={"enable":1,"model":"Green Man","drive":0.0,"tone":0.5,"level":0.76,"mix":1.0},
+    amp={"model":"Diamond Plate","rc_mode":"CH3 Modern","rc_variac":"Bold","rc_rect":"Silicon",
+         "gain":0.72,"bass":0.58,"mid":0.3,"treble":0.58,"presence":0.55,"master":0.6},
+    gt={"enable":1,"thresh":-47,"attack":0.8,"hold":70,"release":140,"hyst":8},
+    cab_ir="@factory",
+    cab={"lowcut":78,"highcut":7800}),
+)
+add(
+  preset(15, 0, "Blind Squall", out_level=OUT,   # Korn — Blind / self-titled+Life Is Peachy era
+    # RESEARCHED: early Korn = 2-channel Mesa Rectos, LOOSE and clanky (Ross Robinson era) — no
+    # tightening pedal. Recto CH2 Vintage + TUBE rectifier (the sag/bounce IS the Korn feel),
+    # scooped mids, gate riding the staccato bounce but with enough hold for the loose lows.
+    amp={"model":"Diamond Plate","rc_mode":"CH2 Vintage","rc_variac":"Bold","rc_rect":"Tube",
+         "gain":0.68,"bass":0.62,"mid":0.32,"treble":0.55,"presence":0.5,"master":0.6},
+    gt={"enable":1,"thresh":-48,"attack":1,"hold":100,"release":200,"hyst":8},
+    cab_ir="@factory",
+    cab={"lowcut":76,"highcut":7600}),
+  preset(15, 1, "Quiet Drive", out_level=OUT,   # Deftones — Be Quiet and Drive (Around the Fur)
+    # Carpenter's washy shimmer-clean: compressed clean 4x12, wide chorus, dreamy digital delay
+    # + big plate. Optical comp (smooth), gate deep + long (clean sustain > noise, per the
+    # deliberate clean-gate doctrine).
+    cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":5,"release":5,"knee":3,"makeup":4},
+    amp={"model":"Clean Meanie","gain":0.32,"bass":0.5,"mid":0.5,"treble":0.62,"presence":0.55,"master":0.75,"sag":0.3},
+    md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.55,"mix":0.45,"width":0.8},
+    dl={"enable":1,"type":"Digital","time":420,"feedback":0.3,"mix":0.18,"width":0.7},
+    rv={"enable":1,"predelay":20,"decay":2.6,"damping":0.4,"mix":0.3},
+    gt={"enable":1,"thresh":-56,"attack":2,"hold":160,"release":320,"hyst":8},
+    cab_ir="@factory",
+    cab={"lowcut":80,"highcut":10000}),
+  preset(15, 2, "One Step Deeper", out_level=OUT,   # Linkin Park — One Step Closer (Hybrid Theory)
+    # Delson's Hybrid Theory rhythm: Dual Rec CH3 Modern but TIGHTER and more mid-present than the
+    # Korn scoop — TS tightener (drive~0/level high), mids 0.45, silicon/Bold, short hard gate.
+    dr={"enable":1,"model":"Green Man","drive":0.05,"tone":0.55,"level":0.78,"mix":1.0},
+    amp={"model":"Diamond Plate","rc_mode":"CH3 Modern","rc_variac":"Bold","rc_rect":"Silicon",
+         "gain":0.55,"bass":0.5,"mid":0.45,"treble":0.58,"presence":0.55,"master":0.6},
+    gt={"enable":1,"thresh":-48,"attack":1,"hold":80,"release":160,"hyst":8},
+    cab_ir="@factory",
+    cab={"lowcut":82,"highcut":8200}),
+  preset(15, 3, "Sweet Soy Stabs", out_level=OUT,   # System of a Down — Chop Suey! / Toxicity
+    # Daron's hyper-staccato Recto: CH3 Vintage + TUBE rectifier (the bouncy attack), mids FORWARD
+    # (0.58 — the anti-scoop of the genre), no pedals, the tightest gate in the bank for the stabs.
+    amp={"model":"Diamond Plate","rc_mode":"CH3 Vintage","rc_variac":"Bold","rc_rect":"Tube",
+         "gain":0.6,"bass":0.55,"mid":0.58,"treble":0.6,"presence":0.5,"master":0.62},
+    gt={"enable":1,"thresh":-47,"attack":0.7,"hold":70,"release":130,"hyst":8},
+    cab_ir="@factory",
+    cab={"lowcut":80,"highcut":8500}),
+)
+
 # ── Loudness calibration ─────────────────────────────────────────────────────
 # Measured on-device with build-tools/hexforge_meas.cpp (a worker-capable LV2 host;
 # DI from build-tools/gen_di.py): each preset recalled, a sustained DI power chord run
@@ -912,6 +972,9 @@ MEAS_RMS_AT_M20 = {   # re-measured 2026-07-14 AFTER the rev-32 authenticity pas
     "Quarter-Tone Lead":-12.6, "Anyone Can Play Guitar":-17.64, "Winterborn":-29.82,
     "Castaway Groove":-13.2, "Marionette Master":-15.25, "Spectrum Rhythm":-15.29,
     "Spectrum Lead":-15.04, "Grunge Drop":-15.29, "Plug-In Junior":-14.95, "Cavalier Charge":-15.08,
+    # NU METAL bank (2026-07-24, fixed hfmeas, rev-62 build — true @ out=-20, no delta folds apply):
+    "Duality Crush":-12.90, "Blind Squall":-7.04, "Quiet Drive":-5.93,
+    "One Step Deeper":-14.24, "Sweet Soy Stabs":-8.13,
 }
 # Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
 # below the limiter ceiling (prevents pumping/crush on peaky presets).
@@ -930,10 +993,13 @@ MEAS_PEAK_AT_M20 = {
     "Quarter-Tone Lead":-1.93, "Anyone Can Play Guitar":-6.61, "Winterborn":-17.24,
     "Castaway Groove":-4.27, "Marionette Master":-5.44, "Spectrum Rhythm":-5.35,
     "Spectrum Lead":-4.51, "Grunge Drop":-5.03, "Plug-In Junior":-4.52, "Cavalier Charge":-4.22,
+    "Duality Crush":-3.60, "Blind Squall":-0.37, "Quiet Drive":1.04,
+    "One Step Deeper":-3.42, "Sweet Soy Stabs":-1.10,
 }
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water", "Winterborn",
-               "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime"}
+               "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime",
+               "Quiet Drive"}
 SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small perceptual lift
 # ── LOUDNESS PARITY (2026-07-09) ─────────────────────────────────────────────
 # User: "clean and high-gain presets should all be the SAME volume; the new factory
