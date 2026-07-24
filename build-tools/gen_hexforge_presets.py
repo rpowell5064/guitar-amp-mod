@@ -978,6 +978,53 @@ add(
     cab={"lowcut":84,"highcut":9200}),
 )
 
+# ── Bank 17 (index 16) — HEX AMBIENT (2026-07-25): showcase bank for the new ambient
+# reverb type (rv_type=2 "Ambient": Cloudburst/SLO-family blooming tail — see
+# PlateReverbBlock; verified with tools/ambient_verify.cpp). All four are CLEAN
+# platforms so the wash is the hero; gates deep+long per the clean-gate doctrine.
+add(
+  preset(16, 0, "Sweet Dispersion", out_level=OUT,   # The Temper Trap — Sweet Disposition (2008)
+    # The anthem jangle: chimey AC30-family clean, hard comp glue, THE dotted-8th delay at the
+    # song's ~130 BPM (0.75 x 462 = 346 ms), and the ambient wash floating behind the repeats.
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":2,"release":4,"knee":3,"makeup":4},
+    amp={"model":"Chime Thirty","gain":0.35,"bass":0.4,"mid":0.5,"treble":0.7,"presence":0.6,"master":0.7,"sag":0.4},
+    dl={"enable":1,"type":"Seraph","time":346,"feedback":0.45,"mix":0.36,"width":0.85,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.08,"modrate":0.25},
+    rv={"enable":1,"type":"Ambient","bloom":0.65,"predelay":15,"decay":3.5,"damping":0.35,"mix":0.34},
+    gt={"enable":1,"thresh":-56,"attack":2,"hold":160,"release":320,"hyst":8},
+    cab_ir="@vox2x12",
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
+  preset(16, 1, "Homesick Alien", out_level=OUT,   # Radiohead — Subterranean Homesick Alien (OK Computer)
+    # The watery floating fills: AC30-family clean, subtle chorus shimmer, dark tape echo, and a
+    # DEEP darker ambient tail (bloom .8, damping .45) — the eerie underwater OKC space.
+    amp={"model":"Chime Thirty","gain":0.3,"bass":0.45,"mid":0.5,"treble":0.62,"presence":0.5,"master":0.68,"sag":0.4},
+    md={"enable":1,"type":"Lush-2","rate":0.25,"depth":0.3,"mix":0.22,"width":0.6},
+    dl={"enable":1,"type":"Tape","time":480,"feedback":0.32,"mix":0.22,"width":0.5,"wow":0.004,"flutter":0.001},
+    rv={"enable":1,"type":"Ambient","bloom":0.8,"predelay":20,"decay":4.5,"damping":0.45,"mix":0.4},
+    gt={"enable":1,"thresh":-58,"attack":2,"hold":200,"release":400,"hyst":8},
+    cab_ir="@vox2x12",
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":82,"highcut":9500}),
+  preset(16, 2, "Hand in Mine", out_level=OUT,   # Explosions in the Sky — Your Hand in Mine
+    # The post-rock glass: pristine Fender clean, optical comp, singing digital repeats and a wide
+    # ambient bed — the melody floats on its own wash.
+    cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":4,"release":5,"knee":3,"makeup":4},
+    amp={"model":"Clean Meanie","gain":0.32,"bass":0.5,"mid":0.5,"treble":0.62,"presence":0.55,"master":0.75,"sag":0.3},
+    dl={"enable":1,"type":"Digital","time":375,"feedback":0.42,"mix":0.3,"width":0.7},
+    rv={"enable":1,"type":"Ambient","bloom":0.6,"predelay":15,"decay":4.0,"damping":0.3,"mix":0.3},
+    gt={"enable":1,"thresh":-58,"attack":2,"hold":200,"release":400,"hyst":8},
+    cab_ir="@american-ob",
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
+  preset(16, 3, "Cloudforge", out_level=OUT,   # SHOWCASE — the Hex Ambient itself, wide open
+    # Pure reverb demonstration: high-headroom clean, no delay — pre-delay 30 ms keeps the attack
+    # articulate, then decay 6 s / bloom MAX / damping .25 / mix .55: the blooming cinematic pad.
+    # Play a chord, let go, listen to the density GROW.
+    cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":4,"release":5,"knee":3,"makeup":3},
+    amp={"model":"Clean Meanie","gain":0.28,"bass":0.48,"mid":0.5,"treble":0.6,"presence":0.55,"master":0.75,"sag":0.25},
+    rv={"enable":1,"type":"Ambient","bloom":1.0,"predelay":30,"decay":6.0,"damping":0.25,"mix":0.55},
+    gt={"enable":1,"thresh":-58,"attack":2,"hold":250,"release":500,"hyst":8},
+    cab_ir="@american-ob",
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10500}),
+)
+
 # ── Loudness calibration ─────────────────────────────────────────────────────
 # Measured on-device with build-tools/hexforge_meas.cpp (a worker-capable LV2 host;
 # DI from build-tools/gen_di.py): each preset recalled, a sustained DI power chord run
@@ -1012,6 +1059,9 @@ MEAS_RMS_AT_M20 = {   # re-measured 2026-07-14 AFTER the rev-32 authenticity pas
     # NU METAL bank (2026-07-24, rev-63 build w/ end-chain EQ, race-fixed tool — true @ out=-20):
     "Duality Crush":-10.45, "Blind Squall":-8.95, "Quiet Drive":-11.68,
     "One Step Deeper":-11.83, "Sweet Soy Stabs":-11.19,
+    # HEX AMBIENT bank (2026-07-25, rev-66 build, LFO-phase-deterministic — two shuffled
+    # orders agree ≤0.02 dB):
+    "Sweet Dispersion":-18.24, "Homesick Alien":-14.50, "Hand in Mine":-17.63, "Cloudforge":-17.55,
 }
 # Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
 # below the limiter ceiling (prevents pumping/crush on peaky presets).
@@ -1032,11 +1082,13 @@ MEAS_PEAK_AT_M20 = {
     "Spectrum Lead":-4.51, "Grunge Drop":-5.03, "Plug-In Junior":-4.52, "Cavalier Charge":-4.22,
     "Duality Crush":-1.08, "Blind Squall":-1.28, "Quiet Drive":-2.19,
     "One Step Deeper":-1.83, "Sweet Soy Stabs":-2.52,
+    "Sweet Dispersion":-6.83, "Homesick Alien":-3.81, "Hand in Mine":-7.03, "Cloudforge":-8.00,
 }
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water", "Winterborn",
                "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime",
-               "Quiet Drive"}
+               "Quiet Drive",
+               "Sweet Dispersion", "Homesick Alien", "Hand in Mine", "Cloudforge"}
 SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small perceptual lift
 # ── LOUDNESS PARITY (2026-07-09) ─────────────────────────────────────────────
 # User: "clean and high-gain presets should all be the SAME volume; the new factory
@@ -1200,7 +1252,9 @@ for _nm, (_r, _pk) in REDO_MEAS.items():
 
 MANUAL_OUT = {   # hand-locks: presets the user tuned BY EAR at a specific level — re-measuring would change what they heard
     "Surf Splash": 2.4,    # user's 2026-07-24 device dial-in was made at the rev-61 out (+2.4); baked verbatim with it
-    "Quiet Drive": -21.3,  # user's 2026-07-24 amp dial-in (Recto CH2 Modern/Spongy) made at the rev-63 out; level is what they heard
+    "Quiet Drive": -25.2,  # user's 2026-07-24 amp dial-in (Recto CH2 Modern/Spongy), tuned at -21.3 — then the suite-wide
+                           # sag floor (56ba803) bounded the Spongy brown-out and the preset came out +3.9 dB hotter
+                           # (measured -7.77 vs the locked-era -11.68); -25.2 restores the loudness they dialed at.
 }
 for _p in PRESETS:
     _nm = _p["name"]
@@ -1343,7 +1397,7 @@ def emit_header():
     return "\n".join(L)
 
 if __name__ == "__main__":
-    assert N_PORTS == 223, "port count drift: got %d" % N_PORTS   # 223: + rv_type/cab_roomdense (v26); 221: + rv_density (v25)
+    assert N_PORTS == 224, "port count drift: got %d" % N_PORTS   # 224: + rv_bloom (v27); 223: + rv_type/cab_roomdense (v26)
     # ── Auto-match a built-in cab to each preset from its amp model ──────────────
     # Explicit preset(cab_ir=...) wins; unmatched amps (EVH/Orange/Beardo/NAM) keep
     # the Factory Cab (@factory / V30). See CabModels.h for the voicings.

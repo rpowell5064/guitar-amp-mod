@@ -419,10 +419,16 @@ ctrl.append(mkport("RV_DENSITY", "rv_density", "Reverb Density", "e", 0, 1, 0,
 # three-spring tank (from the Deluxe Reverb model) as a selectable reverb type;
 # Room Density = the reverb-Density treatment for the cab's room ambience.
 # Both default 0 = bit-identical. Migrated v26.
-ctrl.append(mkport("RV_TYPE", "rv_type", "Reverb Type", "e", 0, 1, 0,
-    [("Plate",0),("Spring",1)], "Type"))
+ctrl.append(mkport("RV_TYPE", "rv_type", "Reverb Type", "e", 0, 2, 0,
+    [("Plate",0),("Spring",1),("Ambient",2)], "Type"))
 ctrl.append(mkport("CAB_ROOMDENSE", "cab_roomdense", "Cab Room Density", "e", 0, 1, 0,
     [("Classic",0),("Dense",1)], "Room Density"))
+
+# ── Hex Ambient Bloom (2026-07-25): the Cloudburst/SLO-family ambient reverb's one
+# macro knob — drives smear, diffusion, recirculating density-over-time, slow motion
+# and stereo width together. Only audible when Reverb Type = Ambient (plate/spring
+# ignore it). Appended before the commands; pre-v27 blobs migrate to 0.5. Migrated v27.
+ctrl.append(mkport("RV_BLOOM", "rv_bloom", "Reverb Bloom", "f", 0, 1, 0.5, None, "Bloom"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.

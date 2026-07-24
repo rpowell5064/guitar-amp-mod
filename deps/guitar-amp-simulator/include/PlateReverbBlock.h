@@ -24,6 +24,13 @@ public:
         clear(preDelay);
         for (auto& a : ap) clear(a.dl);
         for (auto& c : combs) { clear(c.dl); c.lastLP = 0.0f; }
+        for (auto& a : smearAp) clear(a.dl);
+        clear(bloomLine);
+        bloomLP = inHP = loopHP = 0.0f;
+        // Re-seed the comb LFO phases (2026-07-25): free-running phases made every
+        // recall land on a different interference pattern — audible tail variance
+        // (and ±1 dB measurement jitter on wet ambient presets). Deterministic now.
+        for (int i = 0; i < kNumComb; ++i) lfoPhase[i] = lfoPhase0[i];
     }
 
 private:
@@ -43,6 +50,16 @@ private:
     bool  springOn   = false;
     DR_SpringReverb spring;
     std::vector<float> springBuf;
+    // Type 2 (2026-07-25): HEX AMBIENT — Cloudburst/SLO-family ambient tail.
+    // Same tank members re-lengthened (prime-staggered ~1.6x plate), plus:
+    //   * two long SMEAR allpasses in front (attack softening / diffused wash),
+    //   * a band-limited BLOOM recirculation (comb sum -> LP -> ~90 ms line ->
+    //     back into the diffusers) so density GROWS over time,
+    //   * slow incommensurate per-comb mod (non-pitchy, no chorus wobble),
+    //   * loop HP (no mud build-up) + mono-safe width expansion.
+    // `bloom` (0..1) drives smear g, recirc gain, mod depth and width together.
+    bool  ambientOn  = false;
+    float bloom      = 0.5f;
 
     // ---- Internal delay-line wrappers ----
     struct DelayLine {
@@ -140,12 +157,24 @@ private:
     AllpassDelay ap[kNumAP];
     CombDelay    combs[kNumComb];
 
-    // Per-comb LFO state
-    float lfoPhase[kNumComb] = {};
+    // Per-comb LFO state (+ the prepare()-seeded initial phases reset() returns to)
+    float lfoPhase[kNumComb]  = {};
+    float lfoPhase0[kNumComb] = {};
 
     // Scaled delay lengths (set in prepare())
     int apLengths[kNumAP]     = {};
     int combLengths[kNumComb] = {};
+
+    // ── Hex Ambient extras ────────────────────────────────────────────────
+    int ambApLengths[kNumAP]     = {};   // longer diffuser set (prime-staggered)
+    int ambCombLengths[kNumComb] = {};   // longer tail set (~x1.6 plate)
+    AllpassDelay smearAp[2];             // long pre-diffusers (attack smear)
+    int          smearLengths[2] = {};
+    DelayLine    bloomLine;              // ~90 ms recirculation line
+    float        bloomLP  = 0.0f;        // recirc band-limit state (dark bloom)
+    float        inHP     = 0.0f;        // wet-send high-pass state (~100 Hz)
+    float        loopHP   = 0.0f;        // in-loop high-pass state (~110 Hz, anti-mud)
+    float        ambFeedback[kNumComb] = {};   // ambient RT60 set (decay x2.2, longer lines)
 
     void recalcFeedback();
     void recalcDamping();

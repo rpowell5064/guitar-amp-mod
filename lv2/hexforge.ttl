@@ -1324,9 +1324,10 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 198 ; lv2:symbol "rv_type" ; lv2:name "Reverb Type" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Plate" ; rdf:value 0 ] ;
-        lv2:scalePoint [ rdfs:label "Spring" ; rdf:value 1 ]
+        lv2:scalePoint [ rdfs:label "Spring" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Ambient" ; rdf:value 2 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 199 ; lv2:symbol "cab_roomdense" ; lv2:name "Cab Room Density" ;
@@ -1336,117 +1337,121 @@
         lv2:scalePoint [ rdfs:label "Dense" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 200 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:index 200 ; lv2:symbol "rv_bloom" ; lv2:name "Reverb Bloom" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 201 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 201 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:index 202 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 202 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:index 203 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 203 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:index 204 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 204 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        lv2:index 205 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 205 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        lv2:index 206 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 206 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        lv2:index 207 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 207 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        lv2:index 208 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 208 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        lv2:index 209 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 209 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
+        lv2:index 210 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 210 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
+        lv2:index 211 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 211 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        lv2:index 212 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 127
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 212 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        lv2:index 213 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 31
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 213 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        lv2:index 214 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 214 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        lv2:index 215 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 215 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
+        lv2:index 216 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 216 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
+        lv2:index 217 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 217 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
+        lv2:index 218 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 218 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
+        lv2:index 219 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 219 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
+        lv2:index 220 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 220 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
+        lv2:index 221 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
         lv2:portProperty lv2:integer ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 11
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 221 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
+        lv2:index 222 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
         lv2:default 0.0 ; lv2:minimum -50.0 ; lv2:maximum 50.0
     ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 222 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 223 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -1848,48 +1853,50 @@
         ] , [
             lv2:index 193 ; lv2:symbol "cab_roomdense" ; lv2:name "Cab Room Density"
         ] , [
-            lv2:index 194 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+            lv2:index 194 ; lv2:symbol "rv_bloom" ; lv2:name "Reverb Bloom"
         ] , [
-            lv2:index 195 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+            lv2:index 195 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
         ] , [
-            lv2:index 196 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+            lv2:index 196 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
         ] , [
-            lv2:index 197 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+            lv2:index 197 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
         ] , [
-            lv2:index 198 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+            lv2:index 198 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
         ] , [
-            lv2:index 199 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+            lv2:index 199 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
         ] , [
-            lv2:index 200 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+            lv2:index 200 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
         ] , [
-            lv2:index 201 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+            lv2:index 201 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
         ] , [
-            lv2:index 202 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+            lv2:index 202 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
         ] , [
-            lv2:index 203 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+            lv2:index 203 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
         ] , [
-            lv2:index 204 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+            lv2:index 204 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
         ] , [
-            lv2:index 205 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+            lv2:index 205 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
         ] , [
-            lv2:index 206 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank"
+            lv2:index 206 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
         ] , [
-            lv2:index 207 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot"
+            lv2:index 207 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank"
         ] , [
-            lv2:index 208 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
+            lv2:index 208 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot"
         ] , [
-            lv2:index 209 ; lv2:symbol "in_meter" ; lv2:name "Input Level"
+            lv2:index 209 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ] , [
-            lv2:index 210 ; lv2:symbol "out_meter" ; lv2:name "Output Level"
+            lv2:index 210 ; lv2:symbol "in_meter" ; lv2:name "Input Level"
         ] , [
-            lv2:index 211 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
+            lv2:index 211 ; lv2:symbol "out_meter" ; lv2:name "Output Level"
         ] , [
-            lv2:index 212 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
+            lv2:index 212 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
         ] , [
-            lv2:index 213 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
+            lv2:index 213 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
         ] , [
-            lv2:index 214 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note"
+            lv2:index 214 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
         ] , [
-            lv2:index 215 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents"
+            lv2:index 215 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note"
+        ] , [
+            lv2:index 216 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents"
         ]
     ] .
