@@ -518,6 +518,28 @@ function (event, funcs) {
             icon.data('hf_addbanks', Math.min(showBanks + 1, 32));   // reveal the next empty bank
             psRenderList(icon, fns);
         });
+        psApplyFilter(icon);   // keep the current search filter across re-renders
+    }
+    // Live preset search (menu header, between Later and Backup): hides non-matching
+    // slots, bank rows with no hits, and (while searching) empty slots + "+ Add Bank".
+    function psApplyFilter(icon) {
+        var q = ('' + (icon.data('hf_ps_q') || '')).toLowerCase();
+        var box = icon.find('[rata-role=pslist]'); if (!box.length) return;
+        box.find('.hf-ps-bankrow').each(function () {
+            var row = this, vis = 0;
+            var items = row.querySelectorAll('.hf-ps-item');
+            for (var k = 0; k < items.length; k++) {
+                var el = items[k];
+                var nm = (el.textContent || '').toLowerCase();
+                var isEmpty = el.classList.contains('hf-ps-empty');
+                var show = !q || (!isEmpty && nm.indexOf(q) !== -1);
+                el.style.display = show ? '' : 'none';
+                if (show) vis++;
+            }
+            row.style.display = vis ? '' : 'none';
+        });
+        var addr = box.find('.hf-ps-addrow')[0];
+        if (addr) addr.style.display = q ? 'none' : '';
     }
     function psSetName(icon, nm) {
         var el = icon.find('[rata-role=psname]')[0];
@@ -711,6 +733,14 @@ function (event, funcs) {
             };
             el.addEventListener('change', commit);
             el.addEventListener('keydown', function (e) { if (e.keyCode === 13) { e.preventDefault(); commit(); } });
+        });
+        icon.find('[rata-role=pssearch]').each(function () {
+            var el = this;
+            el.addEventListener('mousedown', function (e) { e.stopPropagation(); });   // don't close the menu
+            el.addEventListener('click',     function (e) { e.stopPropagation(); });
+            el.addEventListener('keydown',   function (e) { e.stopPropagation();       // keep MOD hotkeys out of typing
+                if (e.keyCode === 27) { el.value = ''; icon.data('hf_ps_q', ''); psApplyFilter(icon); } });   // Esc clears
+            el.addEventListener('input', function () { icon.data('hf_ps_q', el.value || ''); psApplyFilter(icon); });
         });
         if ('ps_bank' in map) icon.data('ps_bank', parseInt(map.ps_bank, 10));
         if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));

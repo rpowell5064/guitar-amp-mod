@@ -596,7 +596,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 139 ;")
+    L.append("    lv2:microVersion 140 ;")   # 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1272,6 +1272,9 @@ def emit_icon():
         '        <div class="hf-ps-menuhead">\n'
         '          <button type="button" class="hf-ps-btn hf-ps-mvup" aria-label="Move preset earlier" title="Move this preset earlier in the list">▲ Earlier</button>\n'
         '          <button type="button" class="hf-ps-btn hf-ps-mvdn" aria-label="Move preset later" title="Move this preset later in the list">▼ Later</button>\n'
+        # Live search (2026-07-25 user request): filters the 32-slot list as you type;
+        # sits between Later and Backup. Wired in script-hexforge.js (psApplyFilter).
+        '          <input type="text" class="hf-ps-search" rata-role="pssearch" spellcheck="false" placeholder="Search…" aria-label="Search presets" title="Filter presets by name" />\n'
         '          <span class="hf-ps-menusep" aria-hidden="true"></span>\n'
         '          <button type="button" class="hf-ps-btn hf-ps-backup" aria-label="Back up all presets to disk" title="Back up all 32 presets to disk (survives delete/re-add &amp; updates)">⭳ Backup</button>\n'
         '          <button type="button" class="hf-ps-btn hf-ps-restore" aria-label="Restore all presets from disk" title="Restore all presets from the last backup on disk">⭱ Restore</button>\n'
