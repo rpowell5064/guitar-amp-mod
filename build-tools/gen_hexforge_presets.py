@@ -519,10 +519,19 @@ add(
   preset(9, 0, "Surf Splash", out_level=OUT,             # Dick Dale — Misirlou
     # RESEARCHED: Misirlou has NO tremolo (that is fast tremolo-PICKING) — the hero is a Fender 6G15
     # outboard SPRING reverb: bright, undamped, very wet. Fender Showman, bridge SC, staccato (gate).
-    amp={"model":"Clean Meanie","gain":0.15,"bass":0.45,"mid":0.5,"treble":0.8,"presence":0.75,"master":0.85},
+    # REDONE 2026-07-24 (user: "we can get a better tone — add a slight drive, edge of breakup").
+    # The real Showman was CRANKED into JBL D130s — hair on the pick attack, not hi-fi clean. So:
+    # Green Man TS push (anti-fizz recipe: drive LOW, level HIGH ~unity) + amp gain 0.15->0.42 =
+    # edge-of-breakup; a little sag for the cranked-supply feel. Cab @factory V30 4x12 ->
+    # @american-ob (open-back Fender-family = far closer to the bright JBL rig). Spring tank
+    # (rv_type=1 below) stays very wet — the 6G15 is still the hero; treble/presence eased a
+    # touch since the pushed front end now supplies the edge.
+    dr={"enable":1,"model":"Green Man","drive":0.18,"tone":0.62,"level":0.9,"mix":1.0},
+    amp={"model":"Clean Meanie","gain":0.42,"bass":0.42,"mid":0.52,"treble":0.75,"presence":0.7,"master":0.85,"sag":0.35},
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":40,"release":90,"hyst":8},
-    rv={"enable":1,"predelay":5,"decay":2.6,"damping":0.15,"mix":0.6},
-    cab={"micpos":0.15,"micdist":0.40,"lowcut":80,"highcut":10500}),
+    rv={"enable":1,"predelay":5,"decay":2.6,"damping":0.15,"mix":0.55},
+    cab_ir="@american-ob",
+    cab={"micpos":0.15,"micdist":0.40,"lowcut":90,"highcut":11000}),
   preset(9, 1, "Apache Echo", out_level=OUT,             # The Shadows / Hank Marvin — Apache
     # RESEARCHED: Vox AC15 (Chime Thirty) + Meazzi/Binson multi-head echo ~130ms (3 taps swelling).
     # NO tremolo — Marvins "vibrato" is the Strat vibrato ARM. Clean bell-like twang, alnico cab.
@@ -613,8 +622,12 @@ add(
     # 9030 speaker sim (Guitar World 4/94): no cranked power amp on the record, the Nail IS the voice.
     amp={"model":"Crunchy McCrunchFace","gain":0.35,"bass":0.5,"mid":0.5,"treble":0.6,"presence":0.6,"master":0.55,"sag":0.3},
     gt={"enable":1,"thresh":-52,"attack":1.2,"hold":90,"release":180,"hyst":8},
+    # 2026-07-24 user's END-OF-CHAIN TDS mix-EQ (eq block, pos 13 = after everything): enforce the
+    # band-passed mechanical midrange — deep low/low-mid cuts + a 1.6k push. The user's 7-band table
+    # also had -4 dB @6.4k; the 6-band eq has no 6.4k band, so that's folded into cab highcut 7800->6800.
+    eq={"enable":1,"pos":13,"100":-6,"200":-4,"400":-6,"800":-2,"1k6":4,"3k2":1},
     cab_ir="@greenback",
-    cab={"lowcut":95,"highcut":7800}),
+    cab={"lowcut":95,"highcut":6800}),
   preset(11, 1, "World Went Away", out_level=OUT,       # The Day the World Went Away — The Fragile (1999)
     # The Fragile's crushing wall: fat, saturated, Muff-leaning distortion. Nail "Delicate"
     # (Swollen-Pickle-ish: fat lows, gentle scoop) into a thick amp + the big dark Doom cab with
@@ -623,8 +636,11 @@ add(
     amp={"model":"Crunchy McCrunchFace","gain":0.3,"bass":0.6,"mid":0.4,"treble":0.5,"presence":0.45,"master":0.7,"sag":0.4},
     rv={"enable":1,"predelay":14,"decay":2.2,"damping":0.45,"mix":0.22},
     gt={"enable":1,"thresh":-58,"attack":2,"hold":160,"release":320,"hyst":8},
+    # 2026-07-24 user's END-OF-CHAIN Fragile mix-EQ (eq pos 13): clean the mud, keep the wall wide —
+    # 200 warmth up, 400/800 mud out, gentle air. +2 dB @6.4k (no band) -> cab highcut 7000->7800.
+    eq={"enable":1,"pos":13,"100":-1,"200":2,"400":-4,"800":-2,"1k6":1,"3k2":2},
     cab_ir="@doom",
-    cab={"lowcut":80,"highcut":7000}),
+    cab={"lowcut":80,"highcut":7800}),
   preset(11, 2, "Broken Crush", out_level=OUT,          # Broken EP — Wish / Happiness in Slavery (1992)
     # The angriest NIN: harsh, lo-fi DIGITAL distortion. Nail "Broke" mode (hard-clip -> sample-rate
     # decimation + bit-crush) into a clean/tight solid-state platform so the digital grit stays raw;
@@ -632,8 +648,11 @@ add(
     nail={"enable":1,"pos":4,"mode":"Broke","drive":0.75,"tone":0.55,"texture":0.5,"level":0.32},
     amp={"model":"Backline Plus","gain":0.25,"bass":0.5,"mid":0.6,"treble":0.6,"presence":0.55,"master":0.55,"sag":0.3},
     gt={"enable":1,"thresh":-50,"attack":1.0,"hold":70,"release":150,"hyst":8},
+    # 2026-07-24 user's END-OF-CHAIN Broken mix-EQ (eq pos 13): reduce mud + fizz, push the 1.6-3.2k
+    # snarl — the grit is already in the Nail. +1 dB @6.4k (no band) -> cab highcut 8500->9000.
+    eq={"enable":1,"pos":13,"100":-4,"200":-1,"400":-5,"800":-3,"1k6":2,"3k2":3},
     cab_ir="@american-ob",
-    cab={"lowcut":90,"highcut":8500}),
+    cab={"lowcut":90,"highcut":9000}),
   preset(11, 3, "Con Molars", out_level=OUT,            # With Teeth — The Hand That Feeds / Only (2005)
     # The 2005 return to a raw, direct live-band rock tone. Nail "Con Molars" (bright aggressive
     # clip -> speaker/cab voicing: low-cut + mid push) into a real cranked Marshall for the
@@ -641,6 +660,9 @@ add(
     nail={"enable":1,"pos":4,"mode":"Con Molars","drive":0.7,"tone":0.55,"texture":0.5,"level":0.58},
     amp={"model":"Crunchy McCrunchFace","gain":0.5,"bass":0.5,"mid":0.58,"treble":0.58,"presence":0.55,"master":0.82,"sag":0.35},
     gt={"enable":1,"thresh":-48,"attack":1.5,"hold":120,"release":220,"hyst":8},   # raised -54->-48: couldn't close vs the measured floor, and NIN staccato wants a tight gate anyway
+    # 2026-07-24 user's END-OF-CHAIN With-Teeth mix-EQ (eq pos 13): tighten lows, push 800 Hz forward
+    # (modern-rock mid punch) without adding harshness. 6.4k = 0 in the user's table -> highcut untouched.
+    eq={"enable":1,"pos":13,"100":-3,"200":1,"400":-3,"800":3,"1k6":2,"3k2":2},
     cab_ir="@greenback",
     cab={"lowcut":90,"highcut":8800}),
 )
@@ -1029,6 +1051,23 @@ ROOMDENSE_MEAS_DELTA = {
 for _nm, _d in ROOMDENSE_MEAS_DELTA.items():
     if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
     if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d
+
+# Surf Splash redo + NIN end-of-chain EQ (2026-07-24, rev 59): the 5 changed presets
+# re-measured on-device (hfmeas, rev-59 build). ABSOLUTE overwrites, not deltas — the
+# Surf rework moved ~10 dB (gain 0.15 clean -> TS-pushed edge-of-breakup) and the EQ
+# curves reshaped each NIN preset's crest, so the stacked delta history is meaningless
+# for these five. Supersedes every delta above for these names.
+# NOTE: hfmeas's out_level=-20 force had been broken by the seamless (deferred) recall
+# — raw readings came out at each preset's BAKED out_level (tool fixed 2026-07-24).
+# These values are normalized to -20 (true = raw - (baked + 20)); two runs at different
+# baked levels agree to 0.01 dB, and the fixed tool re-verified them directly.
+REDO_MEAS = {   # name: (rms@-20, peak@-20)
+    "Surf Splash": (-22.66, -10.45), "March Stabs": (-23.31, -8.77),
+    "World Went Away": (-8.99, -1.58), "Broken Crush": (-8.97, 1.82),
+    "Con Molars": (-15.90, -5.36),
+}
+for _nm, (_r, _pk) in REDO_MEAS.items():
+    MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
 
 MANUAL_OUT = {}   # no hand-locks — full parity re-level (bump kFactoryRev to push to users)
 for _p in PRESETS:

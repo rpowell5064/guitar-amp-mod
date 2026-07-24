@@ -75,13 +75,20 @@ int main(int argc,char** argv){
         int idx=atoi(argv[a]);
         // Force a FIXED -20 dB output level for every preset so the measurement is
         // independent of each preset's stored out_level. Recall with the host out_level
-        // port at 0 (so lastPort=0 != -20), then set it to -20 -> the plugin's override
-        // layer folds the "knob move" into eff[out_level].
+        // port at 0, WAIT for the recall to actually land, then set -20 -> the plugin's
+        // override layer folds the "knob move" into eff[out_level].
+        // GOTCHA (bit us 2026-07-24): ps_goto now goes through psRecallRequest -> the
+        // SEAMLESS mute-ramp -> psRecall fires several cycles later. Setting -20 on the
+        // very next cycle got OVERWRITTEN by the deferred recall (psRecall re-seeds
+        // eff[out]=baked and lastPort[out]=host, killing the fold) -> every preset
+        // silently measured at its BAKED out_level. The -20 set must come AFTER the
+        // recall has landed.
         val[HF_OUT_LEVEL]=0.0f; val[HF_PS_GOTO]=(float)idx;
-        outSeq(notify); d->run(inst,NF);           // recall preset
+        outSeq(notify); d->run(inst,NF);           // request recall (deferred to ramp zero)
+        for(int s=0;s<40;++s){ outSeq(notify); d->run(inst,NF); }  // ~53 ms: fade completes, recall lands, amp model loads
         val[HF_OUT_LEVEL]=-20.0f;
-        outSeq(notify); d->run(inst,NF);           // fold out_level=-20 into eff
-        for(int s=0;s<4;++s){ outSeq(notify); d->run(inst,NF); }   // settle + let the amp model load
+        outSeq(notify); d->run(inst,NF);           // NOW fold out_level=-20 into eff
+        for(int s=0;s<4;++s){ outSeq(notify); d->run(inst,NF); }   // settle
         // measure over the DI
         double sumsq=0,peak=0; uint64_t cnt=0; size_t pos=0; uint64_t gi=0;
         while(pos<di.size()){
