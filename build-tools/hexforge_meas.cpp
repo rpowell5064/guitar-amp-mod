@@ -83,9 +83,15 @@ int main(int argc,char** argv){
         // eff[out]=baked and lastPort[out]=host, killing the fold) -> every preset
         // silently measured at its BAKED out_level. The -20 set must come AFTER the
         // recall has landed.
+        // SECOND GOTCHA (bit us 2026-07-24, cost a day of tainted tables): the AMP MODEL swap is
+        // double-deferred — recall lands at fade-zero #1, the run() after it detects the model
+        // change and schedules the worker load, and the loaded amp (pendAmp) is only SWAPPED IN at
+        // fade-zero #2. With a short settle every preset measured through the PREVIOUS preset's
+        // amp model (the swap landed mid-measurement -> readings were a mix, order-dependent).
+        // 500 cycles (~0.67 s @64f) covers both fade cycles with wide margin.
         val[HF_OUT_LEVEL]=0.0f; val[HF_PS_GOTO]=(float)idx;
         outSeq(notify); d->run(inst,NF);           // request recall (deferred to ramp zero)
-        for(int s=0;s<40;++s){ outSeq(notify); d->run(inst,NF); }  // ~53 ms: fade completes, recall lands, amp model loads
+        for(int s=0;s<500;++s){ outSeq(notify); d->run(inst,NF); } // recall + amp-swap fades BOTH complete
         val[HF_OUT_LEVEL]=-20.0f;
         outSeq(notify); d->run(inst,NF);           // NOW fold out_level=-20 into eff
         for(int s=0;s<4;++s){ outSeq(notify); d->run(inst,NF); }   // settle

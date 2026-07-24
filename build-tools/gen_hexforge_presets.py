@@ -452,6 +452,11 @@ add(
     amp={"model":"Gainzilla","gain":0.58,"bass":0.25,"mid":0.62,"treble":0.62,"presence":0.55,"master":0.4,"channel":1,"resonance":0.5,"sag":0.2},
     dr={"enable":1,"model":"Green Man","drive":0.0,"tone":0.7,"level":0.72,"mix":1.0},
     gt={"enable":1,"thresh":-42,"attack":0.5,"hold":90,"release":200,"hyst":8},
+    # EQ intent 2026-07-24 (djent end-chain polish — Misha's own mix moves): -2 @100 / -1 @200 =
+    # the post-cab tightness the Precision-Drive philosophy demands (the amp already got the
+    # pre-cut), +0.5 @800 / +1 @1.6k note definition, +1 @3.2k pick articulation. 400 -1 only —
+    # the amp scoop already lives there.
+    eq={"enable":1,"pos":13,"100":-2,"200":-1,"400":-1,"800":0.5,"1k6":1,"3k2":1},
     cab={"lowcut":100,"highcut":7300}),
   preset(7, 3, "Prayer Djent", out_level=OUT,            # Periphery — Prayer Position
     # RESEARCHED: same PVH 6160 core as Flatliner, slightly more bass/mid for chug weight, EVEN
@@ -463,6 +468,10 @@ add(
     amp={"model":"Gainzilla","gain":0.58,"bass":0.22,"mid":0.65,"treble":0.6,"presence":0.52,"master":0.42,"channel":1,"resonance":0.5,"sag":0.18},
     dr={"enable":1,"model":"Green Man","drive":0.0,"tone":0.72,"level":0.72,"mix":1.0},
     gt={"enable":1,"thresh":-40,"attack":0.5,"hold":80,"release":180,"hyst":8},
+    # EQ intent 2026-07-24 (as Flatliner but chuggier): -2 @100 / -1 @200 post-cab tightness,
+    # +1 @800 = the chug KNOCK this preset leans on harder than Flatliner, +1 @1.6k definition,
+    # +0.5 @3.2k only (even tighter top than Flatliner — 3 gates live, zero fizz budget).
+    eq={"enable":1,"pos":13,"100":-2,"200":-1,"400":-1,"800":1,"1k6":1,"3k2":0.5},
     cab={"lowcut":105,"highcut":7200}),
 )
 
@@ -897,6 +906,10 @@ add(
     amp={"model":"Diamond Plate","rc_mode":"CH3 Modern","rc_variac":"Bold","rc_rect":"Silicon",
          "gain":0.72,"bass":0.58,"mid":0.3,"treble":0.58,"presence":0.55,"master":0.6},
     gt={"enable":1,"thresh":-47,"attack":0.8,"hold":70,"release":140,"hyst":8},
+    # EQ intent (Iowa wall): deepen the scoop the RIGHT way — -2.5 @400 (the Iowa hole) with only
+    # -1.5 @100 / -1 @200 so the drop-D chug keeps its chest, -1 @800 out of the way, +1 @1.6k /
+    # +1.5 @3.2k = the serrated attack that keeps the wall aggressive instead of woolly.
+    eq={"enable":1,"pos":13,"100":-1.5,"200":-1,"400":-2.5,"800":-1,"1k6":1,"3k2":1.5},
     cab_ir="@factory",
     cab={"lowcut":78,"highcut":7800}),
 )
@@ -908,6 +921,10 @@ add(
     amp={"model":"Diamond Plate","rc_mode":"CH2 Vintage","rc_variac":"Bold","rc_rect":"Tube",
          "gain":0.68,"bass":0.62,"mid":0.32,"treble":0.55,"presence":0.5,"master":0.6},
     gt={"enable":1,"thresh":-48,"attack":1,"hold":100,"release":200,"hyst":8},
+    # EQ intent (Korn CLANK): keep the low-D weight (only -1 @100) but pull the 90s-Recto box
+    # (-1.5 @200) and mud (-2 @400), dip the honk (-1 @800), then +1.5 @1.6k / +1 @3.2k = the
+    # clanky pick attack that defines Blind without brightening the amp itself.
+    eq={"enable":1,"pos":13,"100":-1,"200":-1.5,"400":-2,"800":-1,"1k6":1.5,"3k2":1},
     cab_ir="@factory",
     cab={"lowcut":76,"highcut":7600}),
   preset(15, 1, "Quiet Drive", out_level=OUT,   # Deftones — Be Quiet and Drive (Around the Fur)
@@ -920,6 +937,10 @@ add(
     dl={"enable":1,"type":"Digital","time":420,"feedback":0.3,"mix":0.18,"width":0.7},
     rv={"enable":1,"predelay":20,"decay":2.6,"damping":0.4,"mix":0.3},
     gt={"enable":1,"thresh":-56,"attack":2,"hold":160,"release":320,"hyst":8},
+    # EQ intent (Deftones shimmer-clean): the chorus+plate wash stacks low-mid energy, so -1.5
+    # @100 and -1.5 @400 clean the wash without thinning the guitar; +0.5 @1.6k presence and
+    # +1.5 @3.2k AIR = the glassy top the intro strums float on. 200/800 untouched (the body).
+    eq={"enable":1,"pos":13,"100":-1.5,"200":0,"400":-1.5,"800":0,"1k6":0.5,"3k2":1.5},
     cab_ir="@factory",
     cab={"lowcut":80,"highcut":10000}),
   preset(15, 2, "One Step Deeper", out_level=OUT,   # Linkin Park — One Step Closer (Hybrid Theory)
@@ -929,16 +950,27 @@ add(
     amp={"model":"Diamond Plate","rc_mode":"CH3 Modern","rc_variac":"Bold","rc_rect":"Silicon",
          "gain":0.55,"bass":0.5,"mid":0.45,"treble":0.58,"presence":0.55,"master":0.6},
     gt={"enable":1,"thresh":-48,"attack":1,"hold":80,"release":160,"hyst":8},
+    # EQ intent (Hybrid Theory tight): -2 @100 / -1 @200 = studio-tight drop-D chug (the record's
+    # low end is drums+bass, not guitar), -1.5 @400 de-mud, +1 @800 the produced mid punch,
+    # +1 @1.6k definition, +0.5 @3.2k only (the album top is smooth, not fizzy).
+    eq={"enable":1,"pos":13,"100":-2,"200":-1,"400":-1.5,"800":1,"1k6":1,"3k2":0.5},
     cab_ir="@factory",
     cab={"lowcut":82,"highcut":8200}),
   preset(15, 3, "Sweet Soy Stabs", out_level=OUT,   # System of a Down — Chop Suey! / Toxicity
     # Daron's hyper-staccato Recto: CH3 Vintage + TUBE rectifier (the bouncy attack), mids FORWARD
     # (0.58 — the anti-scoop of the genre), no pedals, the tightest gate in the bank for the stabs.
+    # 2026-07-24 user: "boomy and muffled" — the tube-rect CH3 Vintage runs dark+saggy, so: bass
+    # .55->.45 + lowcut 80->84 (boom), treble .6->.66 + presence .5->.58 + highcut 8500->9200
+    # (muffle), and the end-chain EQ (below) carves what the amp knobs can't.
     amp={"model":"Diamond Plate","rc_mode":"CH3 Vintage","rc_variac":"Bold","rc_rect":"Tube",
-         "gain":0.6,"bass":0.55,"mid":0.58,"treble":0.6,"presence":0.5,"master":0.62},
+         "gain":0.6,"bass":0.45,"mid":0.58,"treble":0.66,"presence":0.58,"master":0.62},
     gt={"enable":1,"thresh":-47,"attack":0.7,"hold":70,"release":130,"hyst":8},
+    # EQ intent (SOAD): kill the residual tube-rect BOOM (-3 @100, -2 @200), clear the mud shelf
+    # (-1.5 @400), then push the STAB itself: +1 @800 (punch), +2 @1.6k (pick attack), +2 @3.2k
+    # (the choppy top that "Chop Suey" lives on).
+    eq={"enable":1,"pos":13,"100":-3,"200":-2,"400":-1.5,"800":1,"1k6":2,"3k2":2},
     cab_ir="@factory",
-    cab={"lowcut":80,"highcut":8500}),
+    cab={"lowcut":84,"highcut":9200}),
 )
 
 # ── Loudness calibration ─────────────────────────────────────────────────────
@@ -972,9 +1004,9 @@ MEAS_RMS_AT_M20 = {   # re-measured 2026-07-14 AFTER the rev-32 authenticity pas
     "Quarter-Tone Lead":-12.6, "Anyone Can Play Guitar":-17.64, "Winterborn":-29.82,
     "Castaway Groove":-13.2, "Marionette Master":-15.25, "Spectrum Rhythm":-15.29,
     "Spectrum Lead":-15.04, "Grunge Drop":-15.29, "Plug-In Junior":-14.95, "Cavalier Charge":-15.08,
-    # NU METAL bank (2026-07-24, fixed hfmeas, rev-62 build — true @ out=-20, no delta folds apply):
-    "Duality Crush":-12.90, "Blind Squall":-7.04, "Quiet Drive":-5.93,
-    "One Step Deeper":-14.24, "Sweet Soy Stabs":-8.13,
+    # NU METAL bank (2026-07-24, rev-63 build w/ end-chain EQ, race-fixed tool — true @ out=-20):
+    "Duality Crush":-10.45, "Blind Squall":-8.95, "Quiet Drive":-11.68,
+    "One Step Deeper":-11.83, "Sweet Soy Stabs":-11.19,
 }
 # Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
 # below the limiter ceiling (prevents pumping/crush on peaky presets).
@@ -993,8 +1025,8 @@ MEAS_PEAK_AT_M20 = {
     "Quarter-Tone Lead":-1.93, "Anyone Can Play Guitar":-6.61, "Winterborn":-17.24,
     "Castaway Groove":-4.27, "Marionette Master":-5.44, "Spectrum Rhythm":-5.35,
     "Spectrum Lead":-4.51, "Grunge Drop":-5.03, "Plug-In Junior":-4.52, "Cavalier Charge":-4.22,
-    "Duality Crush":-3.60, "Blind Squall":-0.37, "Quiet Drive":1.04,
-    "One Step Deeper":-3.42, "Sweet Soy Stabs":-1.10,
+    "Duality Crush":-1.08, "Blind Squall":-1.28, "Quiet Drive":-2.19,
+    "One Step Deeper":-1.83, "Sweet Soy Stabs":-2.52,
 }
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water", "Winterborn",
@@ -1117,20 +1149,19 @@ for _nm, _d in ROOMDENSE_MEAS_DELTA.items():
     if _nm in MEAS_RMS_AT_M20:  MEAS_RMS_AT_M20[_nm]  += _d
     if _nm in MEAS_PEAK_AT_M20: MEAS_PEAK_AT_M20[_nm] += _d
 
-# Surf Splash redo + NIN end-of-chain EQ (2026-07-24, rev 59): the 5 changed presets
-# re-measured on-device (hfmeas, rev-59 build). ABSOLUTE overwrites, not deltas — the
-# Surf rework moved ~10 dB (gain 0.15 clean -> TS-pushed edge-of-breakup) and the EQ
-# curves reshaped each NIN preset's crest, so the stacked delta history is meaningless
-# for these five. Supersedes every delta above for these names.
-# NOTE: hfmeas's out_level=-20 force had been broken by the seamless (deferred) recall
-# — raw readings came out at each preset's BAKED out_level (tool fixed 2026-07-24).
-# These values are normalized to -20 (true = raw - (baked + 20)); two runs at different
-# baked levels agree to 0.01 dB, and the fixed tool re-verified them directly.
+# ABSOLUTE re-measurements (2026-07-24, rev 63) — supersede every delta above for these
+# names. History: TWO hfmeas flaws fixed today. (1) The seamless deferred recall broke the
+# out_level=-20 force (readings came out at baked out). (2) Worse: the amp-model swap
+# response landed during the recall's fade-IN and was never applied until the NEXT preset
+# switch — every preset measured through the PREVIOUS preset's amp model (also a real
+# plugin race, fixed in work_response). Values below are from the fully-fixed tool +
+# race-fixed plugin, verified ORDER-INDEPENDENT (two shuffled batches agree ≤0.02 dB).
+# (Surf Splash needs no entry — MANUAL_OUT locks its level.)
 REDO_MEAS = {   # name: (rms@-20, peak@-20)
-    "Surf Splash": (-35.36, -22.56),   # rev-61 surf-recipe retune (mid scoop; fixed hfmeas, 2026-07-24)
-    "March Stabs": (-23.31, -8.77),
-    "World Went Away": (-8.99, -1.58), "Broken Crush": (-8.97, 1.82),
-    "Con Molars": (-15.90, -5.36),
+    "March Stabs": (-16.90, -5.53),
+    "World Went Away": (-8.99, -1.58), "Broken Crush": (-16.64, -4.26),
+    "Con Molars": (-13.82, -3.25),
+    "Flatliner": (-13.52, -4.04), "Prayer Djent": (-13.64, -4.21),   # rev-63 end-chain EQ added
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
@@ -1154,7 +1185,8 @@ for _p in PRESETS:
 # than the rest AT measured RMS parity (March Stabs even sits ~2 dB under target from
 # its peak cap and still reads loud). Ear-offset applied AFTER the parity computation
 # so the MEAS pipeline stays live for future re-measures.
-PERC_TRIM_DB = {"March Stabs": -2.5, "Con Molars": -2.5}
+PERC_TRIM_DB = {"March Stabs": -2.5, "Con Molars": -2.5,
+                "One Step Deeper": -1.5}   # 2026-07-24 user: "a little loud" (tight+mid-punchy reads hot at RMS parity)
 for _p in PRESETS:
     _t = PERC_TRIM_DB.get(_p["name"])
     if _t:
