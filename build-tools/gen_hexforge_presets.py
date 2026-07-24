@@ -521,14 +521,17 @@ add(
     # outboard SPRING reverb: bright, undamped, very wet. Fender Showman, bridge SC, staccato (gate).
     # REBUILT FROM SCRATCH 2026-07-24 (user dropped the earlier edge-of-breakup idea): pure CLEAN
     # Showman. Huge headroom (master high, sag LOW = the stiff big-iron supply — a Showman does not
-    # sag), THICK lows (Dale's heavy strings / low-E chug: bass up, lowcut 85) under a bright but
-    # not shrill top; a light FAST comp glues the machine-gun tremolo picking (the tape-era squash
-    # that's all over the record); @american-ob open-back for the JBL-era Fender rig; spring tank
-    # (rv_type=1 below) cranked — long undamped dwell, very wet, the 6G15 IS the hero.
+    # sag); a light FAST comp glues the machine-gun tremolo picking (the tape-era squash);
+    # @american-ob open-back for the JBL-era Fender rig; spring tank (rv_type=1 below) is the hero.
+    # RETUNED 2026-07-24 to the user's surf-recipe ("sounds bad" — the v60 pass was mid-honky and
+    # over-drenched): Fender-surf EQ = Bass 4-5 / MID 3-4 (the scoop was the missing piece) /
+    # Treble 6-7 / Presence 5-6; reverb mix into the 40-60% band (was 62), decay 2.5-3 s, bright
+    # (damping stays 0.1), and pre-delay 15 ms (was 4) so the staccato ATTACK stays clean ahead
+    # of the drip.
     cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":4,"knee":3,"makeup":3},
-    amp={"model":"Clean Meanie","gain":0.3,"bass":0.52,"mid":0.55,"treble":0.72,"presence":0.65,"master":0.8,"sag":0.2},
+    amp={"model":"Clean Meanie","gain":0.3,"bass":0.45,"mid":0.35,"treble":0.68,"presence":0.55,"master":0.8,"sag":0.2},
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":40,"release":90,"hyst":8},
-    rv={"enable":1,"predelay":4,"decay":3.0,"damping":0.1,"mix":0.62},
+    rv={"enable":1,"predelay":15,"decay":2.8,"damping":0.1,"mix":0.5},
     cab_ir="@american-ob",
     cab={"micpos":0.15,"micdist":0.35,"lowcut":85,"highcut":10800}),
   preset(9, 1, "Apache Echo", out_level=OUT,             # The Shadows / Hank Marvin — Apache
@@ -1061,7 +1064,7 @@ for _nm, _d in ROOMDENSE_MEAS_DELTA.items():
 # These values are normalized to -20 (true = raw - (baked + 20)); two runs at different
 # baked levels agree to 0.01 dB, and the fixed tool re-verified them directly.
 REDO_MEAS = {   # name: (rms@-20, peak@-20)
-    "Surf Splash": (-33.54, -21.75),   # rev-60 from-scratch clean rebuild (fixed hfmeas, 2026-07-24)
+    "Surf Splash": (-35.36, -22.56),   # rev-61 surf-recipe retune (mid scoop; fixed hfmeas, 2026-07-24)
     "March Stabs": (-23.31, -8.77),
     "World Went Away": (-8.99, -1.58), "Broken Crush": (-8.97, 1.82),
     "Con Molars": (-15.90, -5.36),
