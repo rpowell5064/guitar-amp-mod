@@ -516,24 +516,21 @@ add(
 
 # ── Bank 10 (index 9) — TWANG & FUZZ (Dick Dale / Shadows / QOTSA / Ronson) ───
 add(
-  preset(9, 0, "Surf Splash", out_level=OUT,             # Dick Dale — Misirlou
-    # RESEARCHED: Misirlou has NO tremolo (that is fast tremolo-PICKING) — the hero is a Fender 6G15
-    # outboard SPRING reverb: bright, undamped, very wet. Fender Showman, bridge SC, staccato (gate).
-    # REBUILT FROM SCRATCH 2026-07-24 (user dropped the earlier edge-of-breakup idea): pure CLEAN
-    # Showman. Huge headroom (master high, sag LOW = the stiff big-iron supply — a Showman does not
-    # sag); a light FAST comp glues the machine-gun tremolo picking (the tape-era squash);
-    # @american-ob open-back for the JBL-era Fender rig; spring tank (rv_type=1 below) is the hero.
-    # RETUNED 2026-07-24 to the user's surf-recipe ("sounds bad" — the v60 pass was mid-honky and
-    # over-drenched): Fender-surf EQ = Bass 4-5 / MID 3-4 (the scoop was the missing piece) /
-    # Treble 6-7 / Presence 5-6; reverb mix into the 40-60% band (was 62), decay 2.5-3 s, bright
-    # (damping stays 0.1), and pre-delay 15 ms (was 4) so the staccato ATTACK stays clean ahead
-    # of the drip.
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":3,"release":4,"knee":3,"makeup":3},
-    amp={"model":"Clean Meanie","gain":0.3,"bass":0.45,"mid":0.35,"treble":0.68,"presence":0.55,"master":0.8,"sag":0.2},
+  preset(9, 0, "Surf Splash", out_level=OUT,             # Dick Dale — Misirlou (out locked via MANUAL_OUT)
+    # USER DIAL-IN BAKED VERBATIM (2026-07-24, read from the device .dat — USER-PRESERVED, do not
+    # retune): after the v61 recipe retune the user dialed their own surf in on the device. Theirs is
+    # CLEANER (gain .165) and THICKER (bass .615, mid .495 — no scoop after all), with a slow DEEP
+    # TREMOLO (rate .13, depth .71, mix .46 — Misirlou has none, but their surf does) and a LONGER,
+    # darker spring (decay 4.3, damping .37, mix .42, predelay 11.5). Comp OFF (bypassed + parked).
+    # Chain REORDERED: Gate -> Amp -> Cab -> Trem -> Spring (fz/dr/eq/dl parked disabled at 7-10).
+    cp={"enable":0,"bypass":1,"pos":6,"type":1,"ratio":1,"thresh":-42,"attack":0.7,"release":2.2,"knee":3,"makeup":3},
+    fz={"pos":7}, dr={"pos":8}, eq={"pos":9}, dl={"pos":10}, wh={"pos":11}, oc={"pos":12}, nail={"pos":13},
+    amp={"pos":2,"model":"Clean Meanie","gain":0.165,"bass":0.615,"mid":0.495,"treble":0.6325,"presence":0.5075,"master":0.8575,"sag":0.2},
+    cab={"pos":3,"micpos":0.15,"micdist":0.35,"lowcut":85,"highcut":10800},
+    md={"pos":4,"enable":1,"type":"Tremolo","rate":0.1325,"depth":0.7075,"mix":0.4625},
+    rv={"pos":5,"enable":1,"predelay":11.5,"decay":4.30675,"damping":0.37125,"mix":0.4175},
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":40,"release":90,"hyst":8},
-    rv={"enable":1,"predelay":15,"decay":2.8,"damping":0.1,"mix":0.5},
-    cab_ir="@american-ob",
-    cab={"micpos":0.15,"micdist":0.35,"lowcut":85,"highcut":10800}),
+    cab_ir="@american-ob"),
   preset(9, 1, "Apache Echo", out_level=OUT,             # The Shadows / Hank Marvin — Apache
     # RESEARCHED: Vox AC15 (Chime Thirty) + Meazzi/Binson multi-head echo ~130ms (3 taps swelling).
     # NO tremolo — Marvins "vibrato" is the Strat vibrato ARM. Clean bell-like twang, alnico cab.
@@ -1072,7 +1069,9 @@ REDO_MEAS = {   # name: (rms@-20, peak@-20)
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
 
-MANUAL_OUT = {}   # no hand-locks — full parity re-level (bump kFactoryRev to push to users)
+MANUAL_OUT = {   # hand-locks: presets the user tuned BY EAR at a specific level — re-measuring would change what they heard
+    "Surf Splash": 2.4,   # user's 2026-07-24 device dial-in was made at the rev-61 out (+2.4); baked verbatim with it
+}
 for _p in PRESETS:
     _nm = _p["name"]
     if _nm in MANUAL_OUT:
