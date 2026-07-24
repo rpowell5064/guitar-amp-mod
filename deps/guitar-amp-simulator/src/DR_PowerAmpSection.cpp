@@ -74,7 +74,7 @@ float DR_PowerAmpSection::processSample(float x) noexcept {
 
     // Supply droop reduces headroom proportionally to the sag envelope.
     // sag_ = 0 → no droop; sag_ = 1 → up to 30% level reduction at max signal.
-    const float supply = 1.0f - sag_ * 0.30f * sagEnv_;
+    const float supply = std::fmax(0.35f, 1.0f - sag_ * 0.30f * sagEnv_);   // floored: unbounded env could collapse to zero on hard picks (see VoxAC30Model 2026-07-25 note)
     out *= supply;
 
     // Master volume (non-original post-stage attenuator).

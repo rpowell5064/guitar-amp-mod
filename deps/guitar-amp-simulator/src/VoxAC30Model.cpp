@@ -88,7 +88,11 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     // Cathode-biased Class-A sag: springy, more give than the Hiwatt.
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
-    const float sag = 1.0f - sag_ * c.sagEnv * 0.25f;
+    // FLOORED 2026-07-25: sagEnv follows the post-master signal UNBOUNDED — a hard pick
+    // pumped the envelope past the falling signal and the multiplier hit zero/negative
+    // (the "cuts out when I pick hard" collapse on the cranked Queen presets; ~150 ms
+    // overshoot + ~1 s audible recovery). 0.35 = -9 dB max squish, never silence.
+    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.25f);
     x *= sag;
 
     return softLimit(x);

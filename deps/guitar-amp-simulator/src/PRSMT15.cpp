@@ -183,7 +183,7 @@ float PRSMT15::processSample(float x, int chn) noexcept {
     // Minimal sag — the MT15's percussive, fast-recovery feel.
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
-    x *= (1.0f - sag_ * c.sagEnv * kSagDepth);
+    x *= std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * kSagDepth);   // floored (see VoxAC30Model 2026-07-25 note)
 
     x = softLimit(x * satClip_) * satClipInv_ * m.makeup;
     x = c.bodySh.process(x);

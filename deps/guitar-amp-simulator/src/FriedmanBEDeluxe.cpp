@@ -165,7 +165,7 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
     // EL34 supply sag under drive.
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
-    const float sag = 1.0f - sag_ * c.sagEnv * 0.25f;
+    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.25f);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
     return c.dnr.process(softLimit(x), channel_ != CH_CLEAN && gain_ > 0.4f);

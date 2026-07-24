@@ -164,7 +164,7 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         // Envelope-following compression models the EL34 supply-voltage sag.
         // On sustained notes, sagEnv rises → gain drops → "blooming" sustain.
         // Attack is preserved (sagDecay = 300 ms is slower than note transients).
-        x *= 1.0f - sag_ * s.sagEnv * 0.25f;
+        x *= std::fmax(0.35f, 1.0f - sag_ * s.sagEnv * 0.25f);   // floored (see VoxAC30Model 2026-07-25 note)
 
     } else {
         // ── Clean channel: 2 softer triode stages (preserved from original) ───
@@ -175,7 +175,7 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         x = s.inter34HPF.process(x);
         const float g = kCleanMin + gEff * (kCleanMax - kCleanMin);
         for (int stage = 0; stage < kCleanN; ++stage) {
-            const float bias = -sag_ * s.sagEnv * 0.04f;
+            const float bias = -sag_ * std::fmin(s.sagEnv, 2.5f) * 0.04f;   // env bounded (see VoxAC30Model 2026-07-25 note)
             x = std::tanh((x + bias) * g * 0.65f) / (g * 0.65f);
         }
         x = s.bassF.process(x);

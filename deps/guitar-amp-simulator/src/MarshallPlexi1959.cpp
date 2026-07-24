@@ -117,7 +117,7 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     const float sagAttack = 1.0f - c.sagDecay;
     const float level = std::abs(x);
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * level;
-    const float sag = 1.0f - sag_ * c.sagEnv * 0.28f;
+    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.28f);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
     return softLimit(x);

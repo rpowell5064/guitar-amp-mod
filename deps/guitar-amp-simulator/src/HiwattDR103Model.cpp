@@ -103,7 +103,7 @@ float HiwattDR103Model::processSample(float x, int channel) noexcept {
     // Stiff supply: very little sag
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
-    const float sag = 1.0f - sag_ * c.sagEnv * 0.10f;
+    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.10f);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
     return softLimit(x);

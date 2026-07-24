@@ -235,7 +235,7 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     // Power-supply sag VCA — depth/τ resolved from (rect, variac) in rebuild().
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
-    x *= (1.0f - sag_ * c.sagEnv * sagDepth_);
+    x *= std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * sagDepth_);   // floored (see VoxAC30Model 2026-07-25 note); Spongy variac keeps its brown-out inside the -9 dB bound
 
     // Per-mode clip drive (unity small-signal gain: the clip point moves, not the level).
     x = softLimit(x * satClip_) * satClipInv_ * m.makeup;

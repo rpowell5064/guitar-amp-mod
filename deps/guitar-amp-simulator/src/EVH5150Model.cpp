@@ -142,7 +142,7 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // 6L6 supply sag: tight, fast (solid-state rectifier feel)
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
-    const float sag = 1.0f - sag_ * c.sagEnv * 0.18f;
+    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.18f);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
     // Post-limiter: tone-knob deviations from noon + presence (noon = all identity,
