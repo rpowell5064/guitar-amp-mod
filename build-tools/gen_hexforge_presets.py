@@ -927,12 +927,17 @@ add(
     eq={"enable":1,"pos":13,"100":-1,"200":-1.5,"400":-2,"800":-1,"1k6":1.5,"3k2":1},
     cab_ir="@factory",
     cab={"lowcut":76,"highcut":7600}),
-  preset(15, 1, "Quiet Drive", out_level=OUT,   # Deftones — Be Quiet and Drive (Around the Fur)
-    # Carpenter's washy shimmer-clean: compressed clean 4x12, wide chorus, dreamy digital delay
-    # + big plate. Optical comp (smooth), gate deep + long (clean sustain > noise, per the
-    # deliberate clean-gate doctrine).
+  preset(15, 1, "Quiet Drive", out_level=OUT,   # Deftones — Be Quiet and Drive (Around the Fur); out locked via MANUAL_OUT
+    # Carpenter's washy shimmer: compressed 4x12, wide chorus, dreamy digital delay + big plate.
+    # Optical comp (smooth), gate deep + long (clean sustain > noise, per the clean-gate doctrine).
+    # USER AMP DIAL-IN BAKED VERBATIM (2026-07-24, from the device .dat — do not retune the amp):
+    # they moved the platform Clean Meanie -> Diamond Plate CH2 MODERN with the Variac on SPONGY
+    # (browned-out sag), gain .4225 / treble .54 / presence .485 / master .67 — a driven saggy
+    # edge under the wash instead of a pristine clean (closer to the record, honestly). FX chain
+    # left exactly as shipped; out stays -21.3 (the level they dialed at).
     cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":5,"release":5,"knee":3,"makeup":4},
-    amp={"model":"Clean Meanie","gain":0.32,"bass":0.5,"mid":0.5,"treble":0.62,"presence":0.55,"master":0.75,"sag":0.3},
+    amp={"model":"Diamond Plate","rc_mode":"CH2 Modern","rc_variac":"Spongy",
+         "gain":0.4225,"bass":0.5,"mid":0.5,"treble":0.54,"presence":0.485,"master":0.67,"sag":0.3},
     md={"enable":1,"type":"Lush-2","rate":0.3,"depth":0.55,"mix":0.45,"width":0.8},
     dl={"enable":1,"type":"Digital","time":420,"feedback":0.3,"mix":0.18,"width":0.7},
     rv={"enable":1,"predelay":20,"decay":2.6,"damping":0.4,"mix":0.3},
@@ -1167,7 +1172,8 @@ for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
 
 MANUAL_OUT = {   # hand-locks: presets the user tuned BY EAR at a specific level — re-measuring would change what they heard
-    "Surf Splash": 2.4,   # user's 2026-07-24 device dial-in was made at the rev-61 out (+2.4); baked verbatim with it
+    "Surf Splash": 2.4,    # user's 2026-07-24 device dial-in was made at the rev-61 out (+2.4); baked verbatim with it
+    "Quiet Drive": -21.3,  # user's 2026-07-24 amp dial-in (Recto CH2 Modern/Spongy) made at the rev-63 out; level is what they heard
 }
 for _p in PRESETS:
     _nm = _p["name"]
