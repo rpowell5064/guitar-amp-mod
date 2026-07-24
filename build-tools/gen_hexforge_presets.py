@@ -1108,13 +1108,15 @@ for _p in PRESETS:
 # the band ports; eq_preset=5 is the retained UI selection (dropdown shows "Lead Cut").
 # Curve mirrors EQ_PRE[5] in script-hexforge.js: -1/0/+1/+3/+4/+5 — low trim + rising
 # upper-mid/presence push so the lead steps out front.
-# EXCLUDED: Cardinal Lead (user-preserved dial-in) + the stock Bank-1 "Lead" (user's own
-# reference set, inline seeds).
+# Cardinal Lead INCLUDED on user request 2026-07-25 ("cardinal lead was left out") — the EQ
+# appends at end-of-chain, their preserved amp/drive dial-in is untouched. Still excluded:
+# the stock Bank-1 "Lead" (user's own reference set, inline seeds).
 LEAD_CUT = {"eq_enable": 1.0, "eq_pos": 13.0, "eq_preset": 5.0,
             "eq_100": -1.0, "eq_200": 0.0, "eq_400": 1.0,
             "eq_800": 3.0, "eq_1k6": 4.0, "eq_3k2": 5.0}
 LEAD_NAMES = ("Regal Sustain", "Sermon Solo", "Imperial Lead", "Numb Sustain", "Gravity Lead",
-              "Hazy Solo", "Skye Soar", "Regal Solo", "Quarter-Tone Lead", "Spectrum Lead")
+              "Hazy Solo", "Skye Soar", "Regal Solo", "Quarter-Tone Lead", "Spectrum Lead",
+              "Cardinal Lead")
 for _p in PRESETS:
     if _p["name"] in LEAD_NAMES:
         for _s, _v in LEAD_CUT.items():
@@ -1191,6 +1193,7 @@ REDO_MEAS = {   # name: (rms@-20, peak@-20)
     "Gravity Lead": (-28.35, -13.08), "Hazy Solo": (-10.97, 0.99),
     "Skye Soar": (-12.35, -0.90), "Regal Solo": (-9.89, 0.95),
     "Quarter-Tone Lead": (-11.59, 0.95), "Spectrum Lead": (-11.96, -0.94),
+    "Cardinal Lead": (-12.26, -0.90),   # rev-65: joined the Lead Cut set on user request
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
