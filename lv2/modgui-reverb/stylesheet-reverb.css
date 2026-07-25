@@ -11,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 506px;
+    height: 636px;  /* 506 -> 636 (2026-07-25): + Tank group (Type/Density/Bloom) */
     width: 480px;
     position: absolute;
     border-radius: 12px;
@@ -79,6 +79,7 @@
 
 /* MODEL SELECT (labeled dropdown, matches the Hex Forge detail-panel select) */
 .mod-pedal-guitaramp-reverb{{{cns}}} .hf-sel-wrap { display: inline-block; width: 176px; vertical-align: top; text-align: left; margin-top: 2px; }
+.mod-pedal-guitaramp-reverb{{{cns}}} .hf-sel-mid { width: 132px; }   /* Tank row: two selects + Bloom knob fit the plate */
 .mod-pedal-guitaramp-reverb{{{cns}}} .hf-sel-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: .5px; text-transform: uppercase; color: #c2cad8; margin: 0 0 5px 1px; }
 .mod-pedal-guitaramp-reverb{{{cns}}} .mod-enumerated { background-color: rgba(0,0,0,.5); border: 1px solid rgba(95,115,225,.55); border-radius: 4px; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 13px; font-weight: bold; color: #fff; line-height: 1.9; position: relative; overflow: visible; text-align: left; }
 .mod-pedal-guitaramp-reverb{{{cns}}} .hf-sel { width: 100%; }

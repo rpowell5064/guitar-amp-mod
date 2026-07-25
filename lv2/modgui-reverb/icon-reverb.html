@@ -37,6 +37,32 @@
                     {{#controls.4}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
                 </div>
             </div>
+            <!-- TANK (2026-07-25): Type Plate/Spring/Ambient (8) + Density Classic/Dense (7)
+                 + the Hex Ambient Bloom (9). These ports existed but had NO widgets. -->
+            <div class="hf-agroup">
+                <span class="hf-agroup-title">Tank</span>
+                <div class="hf-agroup-body">
+                    {{#controls.8}}
+                    <div class="hf-sel-wrap hf-sel-mid" title="{{name}}">
+                        <span class="hf-sel-label">Type</span>
+                        <div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                        </div>
+                    </div>
+                    {{/controls.8}}
+                    {{#controls.7}}
+                    <div class="hf-sel-wrap hf-sel-mid" title="{{name}}">
+                        <span class="hf-sel-label">Density</span>
+                        <div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                        </div>
+                    </div>
+                    {{/controls.7}}
+                    {{#controls.9}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.9}}
+                </div>
+            </div>
         </div>
     </div>
 

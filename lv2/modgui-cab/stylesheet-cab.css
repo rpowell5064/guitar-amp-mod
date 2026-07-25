@@ -11,8 +11,8 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 586px;
-    width: 600px;
+    height: 640px;  /* 586 -> 640 (2026-07-25): Voice/Density moved to their own rows */
+    width: 660px;   /* 600 -> 660 (2026-07-25): the two-column body was overflowing the plate */
     position: absolute;
     border-radius: 12px;
     border-top: 2px solid #56aaff;
@@ -27,7 +27,7 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-pedal-input,
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-pedal-output { top:150px; }
-.mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch { margin-left:525px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
+.mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch { margin-left:585px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-powerswitch-image.off { background-position:0 0; }
