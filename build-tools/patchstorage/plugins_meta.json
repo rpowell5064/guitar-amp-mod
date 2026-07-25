@@ -179,8 +179,8 @@
         "open-source"
       ],
       "nam": false,
-      "short": "Seven modulations in one block: two choruses, vibe, phaser, flanger, tremolo, rotary.",
-      "long": "A modulation block with SEVEN voicings: Lush-2 (warm bucket-brigade-style analog chorus), Uni-Verse (throbbing photocell swirl for your inner '69), Phaser, Flanger, Tremolo, Rotary (a spinning-speaker doppler swirl) and Nevermind Chorus (the watery, seasick analog chorus that defined a certain 1991 intro).\n\nA Center Delay control (0–100 ms) shifts the delay line the chorus/flanger modulates around — from tight comb-filter shimmer to wide doubling. Unity-gain wet/dry mix, so engaging it never drops your level. Light on CPU; runs on every target including 32-bit Pi.\n\nFree and open source (GPL-3)."
+      "short": "Eight modulations in one block: two choruses, vibe, seasick tape-warble, phaser, flanger, tremolo, rotary.",
+      "long": "A modulation block with EIGHT voicings:\n\n- Lush-2 — warm bucket-brigade-style analog chorus\n- Uni-Verse — throbbing photocell swirl for your inner '69\n- Phaser — classic four-stage swoosh, slow haze to fast ripple\n- Flanger — metallic jet sweep with feedback\n- Tremolo — amplitude pulse, gentle shimmer to hard square chop\n- Rotary — a spinning-speaker doppler swirl\n- Nevermind Chorus — the watery, seasick analog chorus that defined a certain 1991 intro\n- Seasick Vibe — a deep tape-warble that genuinely heaves in pitch: an extended sweep range, slow two-sine tape drift, and a true dry/wet crossfade so the queasiness comes through instead of averaging out\n\nA Center Delay control (0–100 ms) shifts the delay line the chorus/flanger modulates around — from tight comb-filter shimmer to wide doubling. Level-safe wet/dry handling means engaging it never drops your volume. Light on CPU; runs on every target including 32-bit Pi.\n\nWorks standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3)."
     },
     "delay": {
       "title": "Hex Chain Delay",
