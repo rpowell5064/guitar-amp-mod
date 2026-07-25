@@ -871,23 +871,20 @@ add(
     rv={"enable":1,"predelay":10,"decay":1.3,"damping":0.5,"mix":0.1},
     cab_ir="@greenback",
     cab={"micpos":0.10,"micdist":0.05,"lowcut":85,"highcut":8500}),
-  preset(14, 1, "Cavalier Charge", out_level=-16.5,   # Muse — "Knights of Cydonia"-style galloping fuzz riff + epic lead
-    # Bellamy's spaghetti-western epic: the Fizz Factory driving a bright cranked Marshall, dotted-8th delay for
-    # the galloping ride, and enough Stab edge for the unhinged solo. RESEARCHED: Knights = Fuzz Factory + big
-    # delay (+ a Whammy octave on the solo harmonies, approximated here by the delay/room width). Bright, cutting.
-    # Same-era Bellamy FF recipe as Plug-In Junior (Drive high / Comp low / Stab high), a touch smoother
-    # for the gallop: Stab 0.8 keeps it quiet at Gate 0.4 (probe-verified), less octave-rasp than PIB's 1.0.
-    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.95,"bias":0.35,"inputtrim":0.4,"getemp":0.8,"volume":0.55},
-    amp={"model":"Crunchy","gain":0.5,"bass":0.45,"mid":0.6,"treble":0.62,"presence":0.55,"master":0.65,"sag":0.3},
-    gt={"enable":1,"thresh":-58,"attack":1,"hold":200,"release":400,"hyst":8},   # opened -48->-58 (fuzz-choke fix, see Plug-In Junior)
-    # 2026-07-14: delay 400->330 ms (Knights is ~137 BPM; dotted-8th = 328 ms — 400 implied ~112 BPM) and
-    # added the missing MXR Phase 90 that's wired into Bellamy's Manson (cited for the KOC lead sweep):
-    # subtle, pre-fuzz (pos 3, in-the-guitar), slow-medium.
-    md={"enable":1,"pos":3,"type":"Phaser","rate":0.35,"depth":0.5,"mix":0.2},
-    dl={"enable":1,"type":"Seraph","time":330,"feedback":0.4,"mix":0.22,"width":0.6,"pattern":"Dotted 8th","ducking":0.2,"moddepth":0.12,"modrate":0.3},
-    rv={"enable":1,"predelay":15,"decay":1.6,"damping":0.45,"mix":0.2},
-    cab_ir="@greenback",
-    cab={"micpos":0.10,"micdist":0.05,"lowcut":85,"highcut":8800}),
+  preset(14, 1, "Cydonia Sunrise", out_level=OUT,   # Muse — Knights of Cydonia INTRO/VERSE (replaces "Cavalier Charge", user 2026-07-25)
+    # The OTHER Knights tone: not the gallop — the retro SCI-FI SURF broadcast that opens the song
+    # (Bellamy channeling Joe Meek/Telstar, The Shadows, Morricone). Bright scooped clean at the
+    # edge of percussive breakup, FAST DEEP tremolo (the pulse before the guitars gallop), light
+    # 140 ms slapback + small plate room; airy top, tight lows. Leans INTRO (the iconic trem) with
+    # the verse's slap/openness — back the tremolo Mix off for the verse's wide clean.
+    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":2,"release":4,"knee":3,"makeup":3},
+    amp={"model":"Chime Thirty","gain":0.3,"bass":0.42,"mid":0.45,"treble":0.72,"presence":0.65,"master":0.75,"sag":0.4},
+    gt={"enable":1,"thresh":-56,"attack":1,"hold":140,"release":280,"hyst":8},
+    md={"enable":1,"type":"Tremolo","rate":0.72,"depth":0.85,"mix":0.85,"width":0.5},
+    dl={"enable":1,"type":"Digital","time":140,"feedback":0.15,"mix":0.14,"width":0.4},
+    rv={"enable":1,"predelay":10,"decay":1.0,"damping":0.5,"mix":0.12},
+    cab_ir="@vox2x12",
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
 )
 
 # ── Bank 15/D + Bank 16 (index 15) — NU METAL (2026-07-24, user request; first Diamond
@@ -1074,6 +1071,7 @@ MEAS_RMS_AT_M20 = {   # re-measured 2026-07-14 AFTER the rev-32 authenticity pas
     # orders agree ≤0.02 dB):
     "Sweet Dispersion":-18.24, "Homesick Saucer":-14.50, "Hand in Cloud":-17.63,
     # ("I Saw a Deer" — the user's Cloudforge rework — is MANUAL_OUT-locked, no MEAS entry needed)
+    "Cydonia Sunrise":-26.61,   # rev-69 KOC intro/verse (replaces Cavalier Charge; repeat-stable)
 }
 # Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
 # below the limiter ceiling (prevents pumping/crush on peaky presets).
@@ -1095,12 +1093,14 @@ MEAS_PEAK_AT_M20 = {
     "Duality Crush":-1.08, "Blind Squall":-1.28, "Quiet Drive":-2.19,
     "One Step Deeper":-1.83, "Sweet Soy Stabs":-2.52,
     "Sweet Dispersion":-6.83, "Homesick Saucer":-3.81, "Hand in Cloud":-7.03,
+    "Cydonia Sunrise":-11.77,
 }
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water", "Winterborn",
                "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime",
                "Quiet Drive",
-               "Sweet Dispersion", "Homesick Saucer", "Hand in Cloud", "I Saw a Deer"}
+               "Sweet Dispersion", "Homesick Saucer", "Hand in Cloud", "I Saw a Deer",
+               "Cydonia Sunrise"}
 SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small perceptual lift
 # ── LOUDNESS PARITY (2026-07-09) ─────────────────────────────────────────────
 # User: "clean and high-gain presets should all be the SAME volume; the new factory
