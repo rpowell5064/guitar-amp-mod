@@ -871,18 +871,24 @@ add(
     rv={"enable":1,"predelay":10,"decay":1.3,"damping":0.5,"mix":0.1},
     cab_ir="@greenback",
     cab={"micpos":0.10,"micdist":0.05,"lowcut":85,"highcut":8500}),
-  preset(14, 1, "Cydonia Sunrise", out_level=OUT,   # Muse — Knights of Cydonia INTRO/VERSE (replaces "Cavalier Charge", user 2026-07-25)
-    # The OTHER Knights tone: not the gallop — the retro SCI-FI SURF broadcast that opens the song
-    # (Bellamy channeling Joe Meek/Telstar, The Shadows, Morricone). Bright scooped clean at the
-    # edge of percussive breakup, FAST DEEP tremolo (the pulse before the guitars gallop), light
-    # 140 ms slapback + small plate room; airy top, tight lows. Leans INTRO (the iconic trem) with
-    # the verse's slap/openness — back the tremolo Mix off for the verse's wide clean.
-    cp={"enable":1,"type":1,"ratio":1,"thresh":-24,"attack":2,"release":4,"knee":3,"makeup":3},
-    amp={"model":"Chime Thirty","gain":0.3,"bass":0.42,"mid":0.45,"treble":0.72,"presence":0.65,"master":0.75,"sag":0.4},
+  preset(14, 1, "Knights of Fuzz", out_level=OUT,   # Muse — KOC, the user's full-arc build (out locked via MANUAL_OUT)
+    # USER DIAL-IN BAKED VERBATIM (2026-07-25, from the device .dat — USER-PRESERVED, do not
+    # retune) + RENAMED from "Cydonia Sunrise" per user. They took the sci-fi-surf intro preset
+    # and built the WHOLE song into it: slapback delay IN FRONT of a near-max Fuzz Zachary
+    # (sustain .9775, Bellamy recipe) stacked into a Super Nova (SD-1 drive .295), low-gain
+    # JCM800 platform (gain .1925, mids up), the intro tremolo eased to taste (depth .66,
+    # mix .705), the HEX AMBIENT wash (decay 2.63, mix .5) and the Lead Cut EQ post-reverb.
+    # Chain: GT DL FZ DR AMP CAB MD RV EQ (CP) (WH) (OC) (NAIL). Parked disabled comp stripped
+    # to defaults per the user's no-residue rule (the Klon lesson).
+    dl={"pos":2,"enable":1,"type":"Digital","time":220.89,"feedback":0.1862,"mix":0.115,"width":0.5075},
+    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.51,"volume":0.25,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
+    dr={"enable":1,"model":"Super Nova","drive":0.295,"tone":0.5,"level":0.5975,"mix":1.0},
+    amp={"model":"Crunchy McCrunchFace","gain":0.1925,"bass":0.37,"mid":0.6175,"treble":0.72,"presence":0.59,"master":0.5775,"sag":0.4},
     gt={"enable":1,"thresh":-56,"attack":1,"hold":140,"release":280,"hyst":8},
-    md={"enable":1,"type":"Tremolo","rate":0.72,"depth":0.85,"mix":0.85,"width":0.5},
-    dl={"enable":1,"type":"Digital","time":140,"feedback":0.15,"mix":0.14,"width":0.4},
-    rv={"enable":1,"predelay":10,"decay":1.0,"damping":0.5,"mix":0.12},
+    md={"enable":1,"type":"Tremolo","rate":0.7175,"depth":0.6575,"mix":0.705,"width":0.5},
+    rv={"pos":8,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.628,"damping":0.5,"mix":0.5},
+    eq={"pos":9,"enable":1,"preset":5,"100":-1,"200":0,"400":1,"800":3,"1k6":4,"3k2":5},
+    cp={"pos":10}, wh={"pos":11}, oc={"pos":12}, nail={"pos":13},
     cab_ir="@vox2x12",
     cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
 )
@@ -1070,8 +1076,7 @@ MEAS_RMS_AT_M20 = {   # re-measured 2026-07-14 AFTER the rev-32 authenticity pas
     # HEX AMBIENT bank (2026-07-25, rev-66 build, LFO-phase-deterministic — two shuffled
     # orders agree ≤0.02 dB):
     "Sweet Dispersion":-18.24, "Homesick Saucer":-14.50, "Hand in Cloud":-17.63,
-    # ("I Saw a Deer" — the user's Cloudforge rework — is MANUAL_OUT-locked, no MEAS entry needed)
-    "Cydonia Sunrise":-26.61,   # rev-69 KOC intro/verse (replaces Cavalier Charge; repeat-stable)
+    # ("I Saw a Deer" + "Knights of Fuzz" — user reworks — are MANUAL_OUT-locked, no MEAS entries)
 }
 # Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
 # below the limiter ceiling (prevents pumping/crush on peaky presets).
@@ -1093,14 +1098,12 @@ MEAS_PEAK_AT_M20 = {
     "Duality Crush":-1.08, "Blind Squall":-1.28, "Quiet Drive":-2.19,
     "One Step Deeper":-1.83, "Sweet Soy Stabs":-2.52,
     "Sweet Dispersion":-6.83, "Homesick Saucer":-3.81, "Hand in Cloud":-7.03,
-    "Cydonia Sunrise":-11.77,
 }
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water", "Winterborn",
                "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime",
                "Quiet Drive",
-               "Sweet Dispersion", "Homesick Saucer", "Hand in Cloud", "I Saw a Deer",
-               "Cydonia Sunrise"}
+               "Sweet Dispersion", "Homesick Saucer", "Hand in Cloud", "I Saw a Deer"}
 SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small perceptual lift
 # ── LOUDNESS PARITY (2026-07-09) ─────────────────────────────────────────────
 # User: "clean and high-gain presets should all be the SAME volume; the new factory
@@ -1268,6 +1271,7 @@ MANUAL_OUT = {   # hand-locks: presets the user tuned BY EAR at a specific level
                            # sag floor (56ba803) bounded the Spongy brown-out and the preset came out +3.9 dB hotter
                            # (measured -7.77 vs the locked-era -11.68); -25.2 restores the loudness they dialed at.
     "I Saw a Deer": -20.94,  # user's 2026-07-25 on-device rework of Cloudforge, baked verbatim at their exact level
+    "Knights of Fuzz": -18.6,  # user's 2026-07-25 full-arc KOC rework of Cydonia Sunrise, baked verbatim at their exact level
 }
 for _p in PRESETS:
     _nm = _p["name"]
