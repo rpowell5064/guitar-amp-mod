@@ -993,7 +993,7 @@ add(
     gt={"enable":1,"thresh":-56,"attack":2,"hold":160,"release":320,"hyst":8},
     cab_ir="@vox2x12",
     cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
-  preset(16, 1, "Homesick Alien", out_level=OUT,   # Radiohead — Subterranean Homesick Alien (OK Computer)
+  preset(16, 1, "Homesick Saucer", out_level=OUT,   # Radiohead — Subterranean Homesick Alien (OK Computer)
     # The watery floating fills: AC30-family clean, subtle chorus shimmer, dark tape echo, and a
     # DEEP darker ambient tail (bloom .8, damping .45) — the eerie underwater OKC space.
     amp={"model":"Chime Thirty","gain":0.3,"bass":0.45,"mid":0.5,"treble":0.62,"presence":0.5,"master":0.68,"sag":0.4},
@@ -1003,7 +1003,7 @@ add(
     gt={"enable":1,"thresh":-58,"attack":2,"hold":200,"release":400,"hyst":8},
     cab_ir="@vox2x12",
     cab={"micpos":0.20,"micdist":0.15,"lowcut":82,"highcut":9500}),
-  preset(16, 2, "Hand in Mine", out_level=OUT,   # Explosions in the Sky — Your Hand in Mine
+  preset(16, 2, "Hand in Cloud", out_level=OUT,   # Explosions in the Sky — Your Hand in Mine
     # The post-rock glass: pristine Fender clean, optical comp, singing digital repeats and a wide
     # ambient bed — the melody floats on its own wash.
     cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":4,"release":5,"knee":3,"makeup":4},
@@ -1013,16 +1013,26 @@ add(
     gt={"enable":1,"thresh":-58,"attack":2,"hold":200,"release":400,"hyst":8},
     cab_ir="@american-ob",
     cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
-  preset(16, 3, "Cloudforge", out_level=OUT,   # SHOWCASE — the Hex Ambient itself, wide open
-    # Pure reverb demonstration: high-headroom clean, no delay — pre-delay 30 ms keeps the attack
-    # articulate, then decay 6 s / bloom MAX / damping .25 / mix .55: the blooming cinematic pad.
-    # Play a chord, let go, listen to the density GROW.
+  preset(16, 3, "I Saw a Deer", out_level=OUT,   # SHOWCASE — user's on-device rework (out locked via MANUAL_OUT)
+    # USER DIAL-IN BAKED VERBATIM (2026-07-25, from the device .dat — USER-PRESERVED, do not
+    # retune) + RENAMED from "Cloudforge" per user. They rebuilt the plain pad showcase into a
+    # gorgeous weirdness machine: octave-UP (dry .51) -> Nail mode 1 backed off -> MAXED phaser
+    # (rate/depth 1.0) -> clean amp -> short HOT tape slap (76 ms, fb .79 = self-echo shimmer) ->
+    # the Hex Ambient wide open (decay 6 / bloom 1.0 kept) -> Clean Sparkle EQ at pos 10; Gilded
+    # Horse parked BYPASSED at 11. Chain: GT CP OC NAIL MD AMP CAB DL RV EQ (DR) (FZ) (WH).
     cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":4,"release":5,"knee":3,"makeup":3},
-    amp={"model":"Clean Meanie","gain":0.28,"bass":0.48,"mid":0.5,"treble":0.6,"presence":0.55,"master":0.75,"sag":0.25},
+    oc={"pos":3,"enable":1,"up":1.0,"down":0.465,"dry":0.5075,"interval":1},
+    nail={"pos":4,"enable":1,"mode":1,"drive":0.4875,"tone":0.5375,"texture":0.5025,"level":0.4725},
+    md={"pos":5,"enable":1,"type":"Phaser","rate":1.0,"depth":1.0,"mix":0.3975},
+    amp={"pos":6,"model":"Clean Meanie","gain":0.28,"bass":0.48,"mid":0.5,"treble":0.6,"presence":0.55,"master":0.75,"sag":0.25},
+    cab={"pos":7,"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10500},
+    dl={"enable":1,"type":"Tape","time":75.9625,"feedback":0.79135,"mix":0.595},
     rv={"enable":1,"type":"Ambient","bloom":1.0,"predelay":30,"decay":6.0,"damping":0.25,"mix":0.55},
+    eq={"pos":10,"enable":1,"preset":1,"100":3,"200":0,"400":-1,"800":2,"1k6":1,"3k2":2},
+    dr={"pos":11,"bypass":1,"model":"Gilded Horse","drive":0.615},
+    fz={"pos":12}, wh={"pos":13},
     gt={"enable":1,"thresh":-58,"attack":2,"hold":250,"release":500,"hyst":8},
-    cab_ir="@american-ob",
-    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10500}),
+    cab_ir="@american-ob"),
 )
 
 # ── Loudness calibration ─────────────────────────────────────────────────────
@@ -1061,7 +1071,8 @@ MEAS_RMS_AT_M20 = {   # re-measured 2026-07-14 AFTER the rev-32 authenticity pas
     "One Step Deeper":-11.83, "Sweet Soy Stabs":-11.19,
     # HEX AMBIENT bank (2026-07-25, rev-66 build, LFO-phase-deterministic — two shuffled
     # orders agree ≤0.02 dB):
-    "Sweet Dispersion":-18.24, "Homesick Alien":-14.50, "Hand in Mine":-17.63, "Cloudforge":-17.55,
+    "Sweet Dispersion":-18.24, "Homesick Saucer":-14.50, "Hand in Cloud":-17.63,
+    # ("I Saw a Deer" — the user's Cloudforge rework — is MANUAL_OUT-locked, no MEAS entry needed)
 }
 # Peak dBFS at out_level=-20 (same run) — CAP out_level so high-crest clean/lead transients stay
 # below the limiter ceiling (prevents pumping/crush on peaky presets).
@@ -1082,13 +1093,13 @@ MEAS_PEAK_AT_M20 = {
     "Spectrum Lead":-4.51, "Grunge Drop":-5.03, "Plug-In Junior":-4.52, "Cavalier Charge":-4.22,
     "Duality Crush":-1.08, "Blind Squall":-1.28, "Quiet Drive":-2.19,
     "One Step Deeper":-1.83, "Sweet Soy Stabs":-2.52,
-    "Sweet Dispersion":-6.83, "Homesick Alien":-3.81, "Hand in Mine":-7.03, "Cloudforge":-8.00,
+    "Sweet Dispersion":-6.83, "Homesick Saucer":-3.81, "Hand in Cloud":-7.03,
 }
 CLEAN_NAMES = {"Candlelit Clean", "Dreamlit Shimmer", "Berlin Wall Pulse", "Dark Side Air", "Little Feather",
                "Nevermind Verse", "Come As Water", "Winterborn",
                "Bottle Jangle", "Forest Wash", "Disco Chuck", "Surf Splash", "Apache Echo", "Streets Chime",
                "Quiet Drive",
-               "Sweet Dispersion", "Homesick Alien", "Hand in Mine", "Cloudforge"}
+               "Sweet Dispersion", "Homesick Saucer", "Hand in Cloud", "I Saw a Deer"}
 SUNN_NAMES  = {"Wizard's Doom"}   # Sunn's dark voicing reads quiet -> small perceptual lift
 # ── LOUDNESS PARITY (2026-07-09) ─────────────────────────────────────────────
 # User: "clean and high-gain presets should all be the SAME volume; the new factory
@@ -1255,6 +1266,7 @@ MANUAL_OUT = {   # hand-locks: presets the user tuned BY EAR at a specific level
     "Quiet Drive": -25.2,  # user's 2026-07-24 amp dial-in (Recto CH2 Modern/Spongy), tuned at -21.3 — then the suite-wide
                            # sag floor (56ba803) bounded the Spongy brown-out and the preset came out +3.9 dB hotter
                            # (measured -7.77 vs the locked-era -11.68); -25.2 restores the loudness they dialed at.
+    "I Saw a Deer": -20.94,  # user's 2026-07-25 on-device rework of Cloudforge, baked verbatim at their exact level
 }
 for _p in PRESETS:
     _nm = _p["name"]
