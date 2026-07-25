@@ -1018,8 +1018,10 @@ add(
     # retune) + RENAMED from "Cloudforge" per user. They rebuilt the plain pad showcase into a
     # gorgeous weirdness machine: octave-UP (dry .51) -> Nail mode 1 backed off -> MAXED phaser
     # (rate/depth 1.0) -> clean amp -> short HOT tape slap (76 ms, fb .79 = self-echo shimmer) ->
-    # the Hex Ambient wide open (decay 6 / bloom 1.0 kept) -> Clean Sparkle EQ at pos 10; Gilded
-    # Horse parked BYPASSED at 11. Chain: GT CP OC NAIL MD AMP CAB DL RV EQ (DR) (FZ) (WH).
+    # the Hex Ambient wide open (decay 6 / bloom 1.0 kept) -> Clean Sparkle EQ at pos 10.
+    # Chain: GT CP OC NAIL MD AMP CAB DL RV EQ (DR) (FZ) (WH). The bypassed Gilded Horse left
+    # over from their experimenting was CLEANED per user ("there shouldn't be a klon") — the
+    # drive slot keeps only its parked position, all other dr params factory-default.
     cp={"enable":1,"type":0,"ratio":1,"thresh":-26,"attack":4,"release":5,"knee":3,"makeup":3},
     oc={"pos":3,"enable":1,"up":1.0,"down":0.465,"dry":0.5075,"interval":1},
     nail={"pos":4,"enable":1,"mode":1,"drive":0.4875,"tone":0.5375,"texture":0.5025,"level":0.4725},
@@ -1029,8 +1031,7 @@ add(
     dl={"enable":1,"type":"Tape","time":75.9625,"feedback":0.79135,"mix":0.595},
     rv={"enable":1,"type":"Ambient","bloom":1.0,"predelay":30,"decay":6.0,"damping":0.25,"mix":0.55},
     eq={"pos":10,"enable":1,"preset":1,"100":3,"200":0,"400":-1,"800":2,"1k6":1,"3k2":2},
-    dr={"pos":11,"bypass":1,"model":"Gilded Horse","drive":0.615},
-    fz={"pos":12}, wh={"pos":13},
+    dr={"pos":11}, fz={"pos":12}, wh={"pos":13},
     gt={"enable":1,"thresh":-58,"attack":2,"hold":250,"release":500,"hyst":8},
     cab_ir="@american-ob"),
 )
