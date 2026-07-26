@@ -376,3 +376,12 @@ Smith, Holters & Parker, Eichas, Dempwolf & Zölzer), ElectroSmash circuit
 analyses, geofex, Aiken Amps tech pages, ampbooks DSP series, ChowDSP repos
 (AnalogTapeModel, KlonCentaur, chowdsp_wdf, ADAA), setBfree whirl, Klippel,
 Orfanidis EQ paper.
+
+## DEPLOYED 2026-07-26 (overnight)
+Branch fidelity-phase1 built + deployed to the pi-Stomp and MOD restarted (verified:
+services active, plugins dlopen-clean, new param strings in the deployed .so).
+LIVE/testable on device: gate hum-reject, Small Clone/Rotary Hermite, IR+master DC,
+tape cluster (tapeVoice=1), spring drip (0.5), authentic wah (voicing=1), authentic
+uni-vibe (authentic=1). Capture-tuned pedal/amp features stay OFF (Phase-2 re-tune).
+Build gotcha fixed: removed stale shadow headers src/DS1Distortion.h + src/SuperOverdriveSD1.h
+on the Pi (they shadowed include/ and lacked new members). Not committed to repo (Pi-local cruft).
