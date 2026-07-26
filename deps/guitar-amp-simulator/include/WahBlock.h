@@ -102,7 +102,7 @@ public:
 private:
     float fs_ = 48000.0f;
     float type_ = 0.0f, freq_ = 0.4f, depth_ = 0.7f, sens_ = 0.5f, q_ = 0.6f, mix_ = 0.8f;
-    float voicing_ = 0.0f;   // 0 = classic boost (default, bit-identical), 1 = authentic wah
+    float voicing_ = 1.0f;   // authentic thinning wah ON by default (item 35); set 0 for the old boost
     float envA_ = 0.0f, envR_ = 0.0f;
     struct ChannelState { float env = 0.0f, ic1 = 0.0f, ic2 = 0.0f; };
     ChannelState ch_[2];

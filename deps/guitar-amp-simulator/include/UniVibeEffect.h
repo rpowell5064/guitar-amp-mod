@@ -67,7 +67,7 @@ private:
     // Authentic Uni-Vibe voicing (item 32): morphs the stage stagger toward the
     // real lopsided caps AND swaps the linear photocell law for the log-law CdS
     // sweep (dwells dark, flicks bright = the throb). 0 = classic (bit-identical).
-    float authentic_   = 0.0f;   // [0,1]
+    float authentic_   = 1.0f;   // [0,1] — authentic Shin-Ei voicing ON by default (item 32); 0 = classic
 
     // ── Smoothed depth (IIR, avoids clicks on depth changes) ──────────────
     float depthSmooth_ = 0.0f;

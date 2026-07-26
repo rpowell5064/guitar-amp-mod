@@ -152,7 +152,7 @@ private:
     float mix_   = 0.25f;
     float decay_ = 0.6f;
     float damp_  = 0.25f;
-    float drip_  = 0.0f;   // dispersion amount (0 = off, bit-identical)
+    float drip_  = 0.5f;   // dispersion "drip" ON by default (item 31); set 0 for the old dry tank
 
     // Drive/recovery: simple soft-saturator representing V2A/V2B triodes.
     // No full Koren model needed — mild saturation is enough for reverb drive.
