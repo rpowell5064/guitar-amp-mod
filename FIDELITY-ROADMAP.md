@@ -397,3 +397,10 @@ on the Pi (they shadowed include/ and lacked new members). Not committed to repo
   - #20 Octave divider de-glitch ("deglitch" default 1): Schmitt hysteresis (±0.12·env)
     + implied-period reject on the flip-flop. Verified with a strong 2nd harmonic the sub
     purity goes 0.000→0.667 (old divider fully double-triggers). Fixes the humbucker glitch.
+
+- **2026-07-26 Batch K — DONE, offline-verified (Tier-3, self-contained):**
+  - #33 Rotary two-band Leslie rewrite ("voicing" default 1): horn (highs) and drum
+    (lows) are now separate physical rotors — ~800 Hz crossover, own Doppler tap + AM,
+    drum spins 0.80× the horn, and ROTOR INERTIA (horn slew ~0.5 s / drum ~2.2 s) so a
+    speed change blooms. Shaped (directional) horn AM. voicing 0 = old single-band.
+    Verified two-band active + stable (peak 0.75), crossover keeps both bands.
