@@ -17,6 +17,7 @@ enum ModfxPorts {
     P_WIDTH  = 8,
     P_BYPASS = 9,
     P_OFFSET = 10,   // Center Delay (ms) — pushes the modulation centre out (delay types only)
+    P_SHAPE  = 11,   // Tremolo waveform: 0 bias / 1 opto / 2 harmonic (tremolo only)
     P_N_PORTS
 };
 
@@ -54,6 +55,7 @@ static void modfx_run(LV2_Handle h, uint32_t n) {
     p->dsp.setParameter("mix",         *p->ports[P_MIX]);
     p->dsp.setParameter("stereoWidth", *p->ports[P_WIDTH]);
     p->dsp.setParameter("centerDelay", *p->ports[P_OFFSET]);   // ms (0 for effects without a delay line)
+    p->dsp.setParameter("shape",       *p->ports[P_SHAPE]);    // tremolo waveform (ignored by other types)
 
     float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
     float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };

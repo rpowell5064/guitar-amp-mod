@@ -40,6 +40,18 @@
                     <span rata-role="offsetctl" class="mod-cond mod-hidden">
                     {{#controls.6}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
                     </span>
+                    <!-- Shape: tremolo only (bias/opto/harmonic); script-modfx.js toggles mod-hidden -->
+                    <span rata-role="shapectl" class="mod-cond mod-hidden">
+                    {{#controls.7}}
+                    <div class="hf-sel-wrap">
+                        <span class="hf-sel-label">{{name}}</span>
+                        <div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                        </div>
+                    </div>
+                    {{/controls.7}}
+                    </span>
                 </div>
             </div>
         </div>

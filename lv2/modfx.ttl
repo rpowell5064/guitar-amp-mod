@@ -17,7 +17,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 31 ;
+    lv2:microVersion 32 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -72,6 +72,15 @@
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0 ;
         units:unit units:ms ;
         rdfs:comment "Delay the modulation centre by 0–100 ms (chorus/flanger/small-clone only; 0 = stock voicing)."
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "shape" ; lv2:name "Shape" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Bias"     ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Opto"     ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Harmonic" ; rdf:value 2 ] ;
+        rdfs:comment "Tremolo waveform: Bias (classic sine), Opto (hard photocell chop), Harmonic (brownface phase-split). Tremolo only."
     ] ;
 
     modgui:gui [
@@ -98,5 +107,7 @@
             lv2:index 5 ; lv2:symbol "bypass"       ; lv2:name "Bypass"
         ] , [
             lv2:index 6 ; lv2:symbol "offset"       ; lv2:name "Center Delay"
+        ] , [
+            lv2:index 7 ; lv2:symbol "shape"        ; lv2:name "Shape"
         ]
     ] .

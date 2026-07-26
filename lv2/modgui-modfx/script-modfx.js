@@ -6,6 +6,8 @@ function (event, funcs) {
         var t = parseInt(value, 10);
         var hasDelay = (t === 0 || t === 3 || t === 6 || t === 7);
         icon.find('[rata-role=offsetctl]').toggleClass('mod-hidden', !hasDelay);
+        // Shape (bias/opto/harmonic waveform) only applies to Tremolo (type 4).
+        icon.find('[rata-role=shapectl]').toggleClass('mod-hidden', t !== 4);
     }
     if (event.type == 'start') {
         var icon = event.icon, map = {};
