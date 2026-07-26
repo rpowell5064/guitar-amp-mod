@@ -68,9 +68,21 @@ public:
                 s.lpIn += lpInA_ * (x - s.lpIn);
                 const float lp = s.lpIn;
 
-                // Rising zero-crossing: drives BOTH the sub-octave flip-flop and the
-                // fundamental-pitch tracker for the shimmer.
-                const bool rising = (lp > 0.0f && s.prevLp <= 0.0f);
+                // Rising crossing: drives BOTH the sub-octave flip-flop and the
+                // fundamental-pitch tracker. Schmitt trigger with envelope-proportional
+                // hysteresis (deglitch_): fire when lp rises past +h, re-arm when it
+                // falls below −h — so a strong 2nd harmonic (neck humbucker) can't
+                // double-trigger the divider and drop the sub for a cycle. Also reject
+                // an implied period < 0.6× the tracked one (a residual glitch).
+                // deglitch_=0 → h=0 → the old rising-zero-crossing behaviour.
+                const float h = deglitch_ * kHystFrac * s.env;
+                bool rising = false;
+                if      (!s.armed && lp >  h) { rising = true; s.armed = true; }
+                else if ( s.armed && lp < -h) { s.armed = false; }
+                if (rising && deglitch_ > 0.0f && s.f0 > 0.0f
+                    && static_cast<float>(s.sinceCross) < 0.6f * (fs_ / s.f0))
+                    rising = false;
+
                 if (rising) {
                     if (s.env > 0.003f && s.sinceCross > 8 && s.sinceCross < static_cast<int>(fs_ / 40.0f)) {
                         const float f0raw = fs_ / static_cast<float>(s.sinceCross);   // 40..~6000 Hz window
@@ -129,10 +141,11 @@ public:
             return;
         }
         v = std::max(0.0f, std::min(1.0f, v));
-        if      (id == "up")    up_ = v;
-        else if (id == "down")  down_ = v;
-        else if (id == "dry")   dry_ = v;
-        else if (id == "micro") micro_ = v;
+        if      (id == "up")       up_ = v;
+        else if (id == "down")     down_ = v;
+        else if (id == "dry")      dry_ = v;
+        else if (id == "micro")    micro_ = v;
+        else if (id == "deglitch") deglitch_ = v;   // divider hysteresis (default on)
     }
     float getParameter(const std::string& id) const override {
         if (id == "up")       return up_;
@@ -140,9 +153,11 @@ public:
         if (id == "dry")      return dry_;
         if (id == "micro")    return micro_;
         if (id == "interval") return static_cast<float>(interval_);
+        if (id == "deglitch") return deglitch_;
         return 0.0f;
     }
 private:
+    static constexpr float kHystFrac = 0.12f;   // Schmitt hysteresis as a fraction of env
     // 2nd-order all-pass: H(z) = (a − z^-2)/(1 − a z^-2).
     struct AP2 { float x1=0, x2=0, y1=0, y2=0; };
     // Polyphase-IIR Hilbert half-band all-pass coefficients (8-pole, ~60 Hz–8 kHz 90°).
@@ -166,11 +181,13 @@ private:
 
     float fs_ = 48000.0f;
     float up_ = 0.0f, down_ = 0.5f, dry_ = 1.0f, micro_ = 0.0f;
+    float deglitch_ = 1.0f;   // divider hysteresis ON by default (set 0 for the old divider)
     int   interval_ = 0;
     float microRatio_ = 1.0f;
     float envA_ = 0.0f, envR_ = 0.0f, lpInA_ = 0.0f, subLPA_ = 0.0f, upLPA_ = 0.0f;
     struct ChannelState {
         float env = 0.0f, lpIn = 0.0f, prevLp = 0.0f, flip = 1.0f, subLP = 0.0f, upLP = 0.0f;
+        bool  armed = false;
         int   sinceCross = 0;
         float f0 = 0.0f, shift = 0.0f, oscPh = 0.0f, hilbZ1 = 0.0f;
         AP2   apI[4], apQ[4];

@@ -385,3 +385,15 @@ tape cluster (tapeVoice=1), spring drip (0.5), authentic wah (voicing=1), authen
 uni-vibe (authentic=1). Capture-tuned pedal/amp features stay OFF (Phase-2 re-tune).
 Build gotcha fixed: removed stale shadow headers src/DS1Distortion.h + src/SuperOverdriveSD1.h
 on the Pi (they shadowed include/ and lacked new members). Not committed to repo (Pi-local cruft).
+
+- **2026-07-26 Batch J — DONE, offline-verified (modulation/effects):**
+  - #18 Phaser exponential sweep ("voicing" default 1): fc=fLo·(fHi/fLo)^tri (JFET
+    log sweep) blended vs the old linear. Verified active.
+  - #19 Flanger feedback damping ("voicing" default 1): ~5 kHz 1-pole LP in the loop
+    so high feedback blooms instead of ringing glassy (also stabilizing). Verified −1.6 dB
+    HF ring, bounded.
+  - #34 Tremolo shapes ("shape" 0=bias default / 1=opto / 2=harmonic brownface — LP/HP
+    anti-phase). Verified harmonic mode active. NEEDS PORT to select 1/2 (land-only for now).
+  - #20 Octave divider de-glitch ("deglitch" default 1): Schmitt hysteresis (±0.12·env)
+    + implied-period reject on the flip-flop. Verified with a strong 2nd harmonic the sub
+    purity goes 0.000→0.667 (old divider fully double-triggers). Fixes the humbucker glitch.

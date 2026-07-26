@@ -34,7 +34,14 @@ public:
                 float phi = lfo_;
                 if (c == 1) { phi += 0.5f * stereoWidth_; if (phi >= 1.0f) phi -= 1.0f; }
                 const float tri = (phi < 0.5f) ? phi * 2.0f : 2.0f - phi * 2.0f;  // 0..1
-                const float fc  = fLo + tri * (fHi - fLo);
+                // Real JFET phasers sweep ~exponentially in frequency (JFET channel
+                // resistance vs Vgs), so the sweep lingers low and whips through the
+                // top; a linear-in-Hz sweep parks perceptually at the top. voicing_
+                // blends linear(0)↔exponential(1); default 1 (authentic). [ElectroSmash
+                // Phase 90; Eichas et al. DAFx-14.]
+                const float fcLin = fLo + tri * (fHi - fLo);
+                const float fcExp = fLo * std::pow(fHi / fLo, tri);
+                const float fc    = fcLin + voicing_ * (fcExp - fcLin);
                 const float d   = std::min(0.49f, fc / fs_) * 3.14159265f;        // ~tan(pi fc/fs)
                 const float a   = (1.0f - d) / (1.0f + d);                        // allpass coeff
                 const float dry = in[c][i];
@@ -56,12 +63,14 @@ public:
         else if (id == "depth")       depth_ = v;
         else if (id == "mix")         mix_ = v;
         else if (id == "stereoWidth") stereoWidth_ = v;
+        else if (id == "voicing")     voicing_ = v;   // 0=linear sweep, 1=exponential (default)
     }
     float getParameter(const std::string& id) const override {
         if (id == "rate") return rate_;
         if (id == "depth") return depth_;
         if (id == "mix") return mix_;
         if (id == "stereoWidth") return stereoWidth_;
+        if (id == "voicing") return voicing_;
         return 0.0f;
     }
 private:
@@ -70,6 +79,7 @@ private:
     static constexpr float kRateMin = 0.1f, kRateMax = 6.0f;
     float fs_ = 48000.0f;
     float rate_ = 0.4f, depth_ = 0.6f, mix_ = 0.5f, stereoWidth_ = 0.5f;
+    float voicing_ = 1.0f;   // exponential sweep by default (set 0 for the old linear sweep)
     float ap_[kMaxCh][kStages] = {};
     float fb_[kMaxCh] = {};
     float lfo_ = 0.0f;

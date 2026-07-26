@@ -13,6 +13,7 @@ class FlangerEffect : public ModulationEffect {
 public:
     void prepare(double sampleRate, int /*maxBlockSize*/, int /*numChannels*/) override {
         fs_ = static_cast<float>(sampleRate);
+        fbLPCoeff_ = 1.0f - std::exp(-2.0f * 3.14159265f * 5000.0f / fs_);   // ~5 kHz feedback damping
         const int maxSamp = static_cast<int>(std::ceil((kBaseMs + kOffsetMaxMs + kSweepMs + 2.0f) * fs_ * 0.001f));
         int sz = 1; while (sz <= maxSamp) sz <<= 1;
         mask_ = sz - 1;
@@ -22,7 +23,7 @@ public:
     void reset() noexcept override {
         for (int c = 0; c < kMaxCh; ++c) {
             if (!buf_[c].empty()) { std::fill(buf_[c].begin(), buf_[c].end(), 0.0f); w_[c] = static_cast<int>(buf_[c].size()) >> 1; }
-            fb_[c] = 0.0f;
+            fb_[c] = 0.0f; fbLP_[c] = 0.0f;
         }
         lfo_ = 0.0f;
         offsetSmooth_ = 0.0f;
@@ -63,7 +64,12 @@ public:
                 const float hc3 = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
                 const float wet = ((hc3 * fr + hc2) * fr + hc1) * fr + x0;
                 ++w_[c];
-                fb_[c] = wet;
+                // Damp the feedback: analog BBD flangers band-limit every recirculation,
+                // so high feedback BLOOMS instead of ringing glassy/metallic (and it's
+                // stabilizing — HF can't build up in the loop). 1-pole LP ~5 kHz, blended
+                // by voicing_ (default 1 = damped; 0 = the old full-bandwidth feedback).
+                fbLP_[c] += fbLPCoeff_ * (wet - fbLP_[c]);
+                fb_[c] = wet + voicing_ * (fbLP_[c] - wet);
                 out[c][i] = dry + mix_ * wet;
             }
             for (int c = ch; c < numChannels; ++c) if (in[c] != out[c]) out[c][i] = in[c][i];
@@ -76,6 +82,7 @@ public:
         else if (id == "depth")       depth_ = v;
         else if (id == "mix")         mix_ = v;
         else if (id == "stereoWidth") stereoWidth_ = v;
+        else if (id == "voicing")     voicing_ = v;   // 0=full-bw feedback, 1=BBD-damped (default)
     }
     float getParameter(const std::string& id) const override {
         if (id == "rate") return rate_;
@@ -83,6 +90,7 @@ public:
         if (id == "mix") return mix_;
         if (id == "stereoWidth") return stereoWidth_;
         if (id == "centerDelay") return offsetMs_;
+        if (id == "voicing") return voicing_;
         return 0.0f;
     }
 private:
@@ -92,9 +100,12 @@ private:
     static constexpr float kOffsetMaxMs = 100.0f;   // user "Center Delay" pushes the centre out (0 = stock)
     float fs_ = 48000.0f;
     float rate_ = 0.3f, depth_ = 0.6f, mix_ = 0.5f, stereoWidth_ = 0.5f;
+    float voicing_ = 1.0f;   // BBD-damped feedback by default (set 0 for old full-bandwidth)
     float offsetMs_ = 0.0f, offsetSmooth_ = 0.0f;
     std::vector<float> buf_[kMaxCh];
     int w_[kMaxCh] = {}; int mask_ = 0;
     float fb_[kMaxCh] = {};
+    float fbLP_[kMaxCh] = {};   // feedback-damping 1-pole state per channel
+    float fbLPCoeff_ = 0.0f;
     float lfo_ = 0.0f;
 };
