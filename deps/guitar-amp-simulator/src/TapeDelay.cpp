@@ -22,7 +22,7 @@ void TapeDelay::prepare(double sr, int maxBlock, int numCh) {
         ch_[c].tapeLPState  = 0.0f;
         // Random-walk wow/flutter (decorrelated seeds per channel + per walk).
         ch_[c].wowWalk.prepare(0.5f, static_cast<float>(sr), 0x1234567u + 0x1000u * c);
-        ch_[c].scrapeWalk.prepare(11.0f, static_cast<float>(sr), 0x9E37u + 0x2000u * c);
+        ch_[c].scrapeWalk.prepare(8.0f, static_cast<float>(sr), 0x9E37u + 0x2000u * c);
     }
 
     timeSmoother_.prepare(static_cast<float>(sr), 50.0f);
@@ -83,8 +83,11 @@ float TapeDelay::processSample(float x, int ch) noexcept {
 
     const float modOld  = wowDepth_ * std::sin(s.wowPhase)
                         + flutterDepth_ * std::sin(s.flutterPhase);
-    const float modAuth = wowDepth_ * wowW
-                        + flutterDepth_ * (0.55f * std::sin(s.capPhase) + 0.45f * scrapeW);
+    // Authentic mod: mostly smooth (slow sine wow + capstan periodic flutter) with a
+    // GENTLE aperiodic random component. The random walks are blended low so they add
+    // texture without jittering the read pointer fast enough to sound grainy.
+    const float modAuth = wowDepth_     * (0.7f  * std::sin(s.wowPhase) + 0.3f  * wowW)
+                        + flutterDepth_ * (0.8f  * std::sin(s.capPhase) + 0.2f  * scrapeW);
     const float mod = modOld + tapeVoice_ * (modAuth - modOld);
 
     delaySamples += delaySamples * mod;
@@ -93,28 +96,31 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     // Read delayed sample (Hermite — the wow/flutter-modulated tap).
     const float delayed = readFracHermite(s.buf, delaySamples, s.writeIdx);
 
-    // ── Record/playback coloring — applied to EVERY repeat, incl. the first ─
-    // Tape HF roll-off (1-pole, stateful) → playback-head bump (LF resonance,
-    // blended by tapeVoice_) → soft saturation. The old model applied these to the
-    // feedback ONLY, leaving the first repeat digitally clean; here the read tap is
-    // coloured once and used for BOTH the wet output and the feedback.
+    // ── Record/playback coloring ────────────────────────────────────────────
+    // RECORD path (fed back into the loop): tape HF roll-off (stateful 1-pole) →
+    // soft saturation → tone filters. This is exactly the old, stable feedback
+    // chain — CRUCIALLY the playback-head bump is NOT here, so its +3.5 dB low
+    // shelf can't compound on every repeat (that built up the lows into clipping/
+    // static at higher feedback). The first-repeat coloring now comes from the tape
+    // LP + saturation being applied to the read tap (not from the head bump).
     const float lpA = tapeLPCoeff_;
     s.tapeLPState = lpA * s.tapeLPState + (1.0f - lpA) * delayed;
-    float colored = s.tapeLPState;
-    const float bumped = s.headBump.process(colored);          // keep filter state coherent
-    colored = colored + tapeVoice_ * (bumped - colored);       // head bump (authentic only)
+    float satd = s.tapeLPState;
     if (saturation_ > 0.0f) {
         const float drive = 1.0f + saturation_ * 4.0f;
-        colored = std::tanh(colored * drive) / drive;
+        satd = std::tanh(satd * drive) / drive;
     }
 
-    // Feedback voicing (2nd-order tone filters) on the coloured signal.
-    float fb = s.fbHP.process(colored);
+    // Feedback voicing (2nd-order tone filters) on the recorded signal → write.
+    float fb = s.fbHP.process(satd);
     fb = s.fbLP.process(fb);
-
-    // Write.
     s.buf[s.writeIdx] = x + feedbackSmoother_.current() * fb;
     s.writeIdx = (s.writeIdx + 1) % bufLen;
+
+    // PLAYBACK head bump colours the OUTPUT only (not recirculated) — warm, round
+    // repeats without any feedback build-up.
+    const float bumped  = s.headBump.process(satd);
+    const float colored = satd + tapeVoice_ * (bumped - satd);
 
     // Wet: raw read (old, clean first repeat) ↔ coloured read (authentic), by tapeVoice_.
     const float wet = delayed + tapeVoice_ * (colored - delayed);
