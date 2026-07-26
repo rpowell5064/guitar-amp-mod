@@ -18,6 +18,15 @@ void FenderDeluxeModel::prepare(double oversampledSampleRate, int /*maxBlockSize
 
         c.stage2.prepare(oversampledFs_, TriodeComponent::kFenderV2);
 
+        // Clean-class keystone (2026-07-26, measured vs the '65 Deluxe Reverb clean
+        // capture): the real amp is STIFF (peak→sustain bloom ~0.5 dB). The uniform
+        // 0.38 cathode comp made the model too spongy (+1.2 dB bloom); near-off lands
+        // it on the capture. Cathode is symmetric so harmonics/FR are unaffected — this
+        // only removes the excess sustain droop. (The separate level-compression gap is
+        // a power-amp matter, not the cathode.)
+        c.stage1.setCathodeDepth(0.08f);
+        c.stage2.setCathodeDepth(0.08f);
+
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Fender);
         c.tonestack.setBass(bass_);
         c.tonestack.setMid(mid_);

@@ -40,6 +40,12 @@ void DeluxeReverbAmpAB763::prepare(double nativeSampleRate, int maxBlockSize) {
     // ── V1B (kFenderV2: Ra=100kΩ, hotter bias, slight asymmetry) ────────────
     v1b_.prepare(preampFs, TriodeComponent::kFenderV2);
 
+    // Clean-class keystone (2026-07-26): near-off cathode comp — the '65 Deluxe Reverb
+    // clean capture is stiff (~0.5 dB bloom); the uniform 0.38 was too spongy. Symmetric,
+    // so harmonics/FR unaffected. (Both stages DO have a 25 µF bypass.)
+    v1a_.setCathodeDepth(0.08f);
+    v1b_.setCathodeDepth(0.08f);
+
     // ── Output coupling HPF (40 Hz, same as inter-stage) ─────────────────────
     outCoupHP_.setCoeffs(Filters::highpass1pole(40.0, preampFs));
 
