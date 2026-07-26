@@ -87,6 +87,7 @@ void PlateReverbBlock::syncSpring() {
     if (d < 0.0f) d = 0.0f; if (d > 1.0f) d = 1.0f;
     spring.setDecay(d);
     spring.setDamping(damping);
+    spring.setDrip(drip);
 }
 
 void PlateReverbBlock::recalcFeedback() {
@@ -155,11 +156,13 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
         return;
     }
     else if (id == "mix")        { mix      = std::clamp(v, 0.0f, 1.0f); spring.setMix(mix); }
+    else if (id == "drip")       { drip     = std::clamp(v, 0.0f, 1.0f); spring.setDrip(drip); }  // spring dispersion (item 31)
 }
 
 float PlateReverbBlock::getParameter(const std::string& id) const {
     if (id == "density") return dense ? 1.0f : 0.0f;
     if (id == "type")    return ambientOn ? 2.0f : springOn ? 1.0f : 0.0f;
+    if (id == "drip")    return drip;
     if (id == "bloom")   return bloom;
     if (id == "preDelayMs") return preDelayMs;
     if (id == "decayTime")  return decayTime;

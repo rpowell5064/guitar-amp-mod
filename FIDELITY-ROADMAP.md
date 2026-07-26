@@ -72,6 +72,18 @@
     of steps 2-5 with loop-stability risk). The #22 triode hook (setSagBias) already
     exists from Batch D; driving it belongs with the NFB restructure.
 
+- **2026-07-26 Batch F — DONE, offline-verified (Tier-3, self-contained, no preset re-voicing):**
+  - #31 spring-reverb dispersion ("drip", default 0 = bit-identical): the old
+    "dispersion" allpasses were Schroeder DIFFUSERS (no frequency-dependent group
+    delay → could never chirp). Added a real in-loop cascade of 100 first-order
+    allpasses H(z)=(a+z⁻¹)/(1+a·z⁻¹) per spring (a = drip·0.72, bypassed at 0) +
+    a ~5.5 kHz transition LP → lows travel slower than highs → the descending
+    "boing", re-chirping every recirculation. Verified: drip 0→0.85 pushes the
+    LF-minus-HF arrival from 9.8 ms to 26.3 ms (descending chirp), loop stays
+    stable/bounded, drip=0 still reverberates. Serves BOTH the user spring type
+    (PlateReverbBlock, "drip" param wired) AND the Deluxe amp's tank. Full port/
+    modgui exposure + a tasteful default = Phase-2. [Parker & Bilbao DAFx'09.]
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).

@@ -33,6 +33,10 @@ public:
     void setMix   (float v) noexcept { mix_    = v; }
     void setDecay (float v) noexcept { decay_  = v; recalcFeedback(); }
     void setDamping(float v) noexcept { damp_  = v; recalcDamping();  }
+    // Dispersion "drip" [0,1] — the chirped descending "boing" of a real spring
+    // (item 31). 0 = OFF (bit-identical to the old diffusion-only tank). See
+    // recalcDrip(): drives the in-loop first-order allpass cascade's coefficient.
+    void setDrip  (float v) noexcept { drip_  = v; recalcDrip(); }
 
     // Process a mono block in-place.  numSamples ≤ maxBlockSize.
     void processBlock(float* data, int numSamples) noexcept;
@@ -74,9 +78,41 @@ private:
         void reset() noexcept { std::fill(dl.buf.begin(), dl.buf.end(), 0.0f); dl.writeIdx = 0; }
     };
 
+    // ── Dispersive allpass cascade (the spring "drip"/chirp) ───────────────────
+    // A real spring is a DISPERSIVE transmission line: low frequencies travel
+    // slower than highs, so a transient smears into a descending "boing". The old
+    // Schroeder diffusers spread echoes (diffusion) but add no frequency-dependent
+    // group delay, so the tank could never drip. This is a cascade of identical
+    // 1st-order allpasses H(z)=(a+z⁻¹)/(1+a·z⁻¹): each delays lows more than highs,
+    // and the cascade sums that into an audible chirp. Placed INSIDE the feedback
+    // loop so every recirculation re-chirps (the characteristic repeating boing).
+    // a=0 → each section is a pure 1-sample delay → skipped entirely (bit-identical).
+    // Refs: Parker & Bilbao, "Spring Reverberation: A Physical Perspective" (DAFx'09);
+    // Abel/Berners/Costello/Smith, AES 121 (2006).
+    static constexpr int kDispSections = 100;
+    struct Dispersion {
+        struct AP1 { float x1 = 0.0f, y1 = 0.0f; };
+        std::array<AP1, kDispSections> ap;
+        float a       = 0.0f;   // allpass coefficient (0 = bypass, bit-identical)
+        float lpState = 0.0f;   // transition-band LP state
+        float lpCoeff = 0.0f;   // ~5.5 kHz 1-pole: springs disperse only below the transition
+
+        float process(float x) noexcept {
+            if (a <= 0.0f) return x;                       // bypass = bit-identical
+            for (auto& s : ap) {
+                const float y = a * x + s.x1 - a * s.y1;   // 1st-order allpass
+                s.x1 = x; s.y1 = y; x = y;
+            }
+            lpState += lpCoeff * (x - lpState);            // tame the metallic top
+            return lpState;
+        }
+        void reset() noexcept { for (auto& s : ap) { s.x1 = 0.0f; s.y1 = 0.0f; } lpState = 0.0f; }
+    };
+
     // ── One spring ────────────────────────────────────────────────────────────
     struct Spring {
-        AllpassDiffuser ap[2];  // pre-delay diffusion (dispersion)
+        AllpassDiffuser ap[2];  // pre-delay diffusion
+        Dispersion      disp;   // dispersive chirp (in-loop), off unless drip>0
         DelayLine       delay;  // main spring delay
         float           fb     = 0.82f;  // feedback coefficient
         float           damp   = 0.25f;  // 1-pole LP coefficient (damping)
@@ -87,14 +123,15 @@ private:
             x = ap[1].process(x);
 
             const int len = static_cast<int>(delay.buf.size()) - 4;
-            const float d = delay.read(len);
+            float d = delay.read(len);
+            d = disp.process(d);                          // dispersive chirp (in the loop)
             lpState = d * (1.0f - damp) + lpState * damp; // 1-pole LP damping
             delay.write(x + fb * lpState);
             return d;
         }
 
         void reset() noexcept {
-            ap[0].reset(); ap[1].reset();
+            ap[0].reset(); ap[1].reset(); disp.reset();
             std::fill(delay.buf.begin(), delay.buf.end(), 0.0f);
             delay.writeIdx = 0;
             lpState = 0.0f;
@@ -115,6 +152,7 @@ private:
     float mix_   = 0.25f;
     float decay_ = 0.6f;
     float damp_  = 0.25f;
+    float drip_  = 0.0f;   // dispersion amount (0 = off, bit-identical)
 
     // Drive/recovery: simple soft-saturator representing V2A/V2B triodes.
     // No full Koren model needed — mild saturation is enough for reverb drive.
@@ -122,6 +160,7 @@ private:
 
     void recalcFeedback() noexcept;
     void recalcDamping()  noexcept;
+    void recalcDrip()     noexcept;
 
     double sampleRate_ = 48000.0;
 };

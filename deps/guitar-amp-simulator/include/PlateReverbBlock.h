@@ -48,6 +48,7 @@ private:
     // decay/damping/mix map onto the spring's own controls; predelay/mod are
     // plate-only. Default plate = bit-identical.
     bool  springOn   = false;
+    float drip       = 0.0f;   // spring dispersion "drip" [0,1], 0 = off (item 31)
     DR_SpringReverb spring;
     std::vector<float> springBuf;
     // Type 2 (2026-07-25): HEX AMBIENT — Cloudburst/SLO-family ambient tail.

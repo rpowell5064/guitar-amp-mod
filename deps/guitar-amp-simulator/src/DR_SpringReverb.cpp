@@ -15,8 +15,14 @@ void DR_SpringReverb::prepare(double sampleRate, int /*maxBlockSize*/) {
         springs_[s].delay.resize(mainLen);
     }
 
+    // Transition-band LP for the dispersion path (~5.5 kHz): a real spring
+    // disperses the low/mid band and passes the top more directly.
+    const float lpC = 1.0f - std::exp(-2.0f * 3.14159265f * 5500.0f / static_cast<float>(sampleRate));
+    for (auto& sp : springs_) sp.disp.lpCoeff = lpC;
+
     recalcFeedback();
     recalcDamping();
+    recalcDrip();
     reset();
 }
 
@@ -35,6 +41,15 @@ void DR_SpringReverb::recalcDamping() noexcept {
     // damp_ [0,1]: 0 = bright (LP coeff ~0.05), 1 = dark (LP coeff ~0.55).
     const float d = 0.05f + damp_ * 0.50f;
     for (auto& sp : springs_) sp.damp = d;
+}
+
+void DR_SpringReverb::recalcDrip() noexcept {
+    // drip_ [0,1] → allpass coefficient [0, 0.72]. Higher a = more group-delay
+    // spread per section → longer chirp. 0 disables the cascade entirely (each
+    // section would otherwise be a pure 1-sample delay), keeping the tank
+    // bit-identical to the pre-dispersion model.
+    const float a = drip_ * 0.72f;
+    for (auto& sp : springs_) sp.disp.a = a;
 }
 
 float DR_SpringReverb::softSaturate(float x, float drive) noexcept {
