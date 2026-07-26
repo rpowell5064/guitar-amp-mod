@@ -49,11 +49,32 @@ public:
                 const float a3 = g * a2;
                 const float v3 = x - s.ic2;
                 const float v1 = a1 * s.ic1 + a2 * v3;       // bandpass
-                const float v2 = s.ic2 + a2 * s.ic1 + a3 * v3;
+                const float v2 = s.ic2 + a2 * s.ic1 + a3 * v3;  // lowpass
                 s.ic1 = 2.0f * v1 - s.ic1;
                 s.ic2 = 2.0f * v2 - s.ic2;
                 const float bpNorm = v1 * k;                 // ~unity peak regardless of Q
-                out[c][i] = x + mix_ * bpNorm * 2.2f;        // dry + swept resonant peak
+
+                // Classic voicing: dry + a swept resonant peak (a boost EQ — the lows
+                // never thin, because full dry always passes).
+                const float classic = x + mix_ * bpNorm * 2.2f;
+
+                if (voicing_ <= 0.0f) {
+                    out[c][i] = classic;
+                } else {
+                    // Authentic GCB-95 transfer (item 35): the signal passes THROUGH a
+                    // resonant band, so below the peak the lows roll off (toe-down
+                    // thinning) — the vowel, not a boost. Built from the SVF: resonant
+                    // peak (bandpass) + a treble bleed (highpass) + a small broadband
+                    // floor that sets the notch depth away from the peak. The peak gain
+                    // falls slightly toward the toe (the inductor's finite Q).
+                    // [ElectroSmash GCB-95 analysis.]
+                    const float hp     = x - k * v1 - v2;                // highpass (cuts lows)
+                    const float fcNorm = std::min(1.0f, std::max(0.0f, (fc - 300.0f) / 2000.0f));
+                    const float pkG    = 2.2f * (1.0f - 0.25f * fcNorm); // finite-Q rolloff toward toe
+                    const float wet    = pkG * bpNorm + 0.40f * hp + 0.12f * x;
+                    const float authentic = (1.0f - mix_) * x + mix_ * wet;
+                    out[c][i] = classic + voicing_ * (authentic - classic);
+                }
             }
             for (int c = chs; c < nch; ++c) if (in[c] != out[c]) out[c][i] = in[c][i];
         }
@@ -66,6 +87,7 @@ public:
         else if (id == "sens")  sens_ = v;
         else if (id == "q")     q_ = v;
         else if (id == "mix")   mix_ = v;
+        else if (id == "voicing") voicing_ = v;   // 0=classic boost, 1=authentic thinning wah (item 35)
     }
     float getParameter(const std::string& id) const override {
         if (id == "type")  return type_;
@@ -74,11 +96,13 @@ public:
         if (id == "sens")  return sens_;
         if (id == "q")     return q_;
         if (id == "mix")   return mix_;
+        if (id == "voicing") return voicing_;
         return 0.0f;
     }
 private:
     float fs_ = 48000.0f;
     float type_ = 0.0f, freq_ = 0.4f, depth_ = 0.7f, sens_ = 0.5f, q_ = 0.6f, mix_ = 0.8f;
+    float voicing_ = 0.0f;   // 0 = classic boost (default, bit-identical), 1 = authentic wah
     float envA_ = 0.0f, envR_ = 0.0f;
     struct ChannelState { float env = 0.0f, ic1 = 0.0f, ic2 = 0.0f; };
     ChannelState ch_[2];

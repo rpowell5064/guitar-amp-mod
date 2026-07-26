@@ -84,6 +84,15 @@
     (PlateReverbBlock, "drip" param wired) AND the Deluxe amp's tank. Full port/
     modgui exposure + a tasteful default = Phase-2. [Parker & Bilbao DAFx'09.]
 
+- **2026-07-26 Batch G — DONE, offline-verified (Tier-3, self-contained):**
+  - #35 wah authentic transfer ("voicing", default 0 = classic boost, bit-identical):
+    the old wah was `x + mix·bp·2.2` (resonant boost on FULL dry → lows never thin).
+    Authentic path passes the signal THROUGH the resonant band (built from the SVF:
+    peak·bandpass + treble-bleed·highpass + small dry floor, peak gain falling toward
+    the toe for the inductor's finite Q). Verified: toe-down a 150 Hz note thins −16.5 dB
+    vs classic, the peak vowel is preserved, and low/peak scoop is 4× deeper (0.077 vs
+    0.316). Pot-taper refinement deferred (would shift the classic fc map). [ElectroSmash GCB-95.]
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).
