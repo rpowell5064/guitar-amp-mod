@@ -209,7 +209,9 @@ struct AutoOutput {
     // instant-attack gain-ride below; soft=true swaps in a zero-latency, low-alias
     // ADAA soft clip per channel. Enabling it shifts loudness on presets that hit
     // the ceiling, so it stays OFF until a Phase-2 hfmeas re-measure turns it on.
-    bool soft = false;
+    bool soft = true;   // ADAA soft-knee limiter ON (2026-07-26 Phase-2): zero-latency,
+                        // low-alias vs the old hard gain-snap. Knee 0.85 so it only
+                        // touches signals near the ceiling; loudness shift is <0.5 dB.
     AdaaSoftClip clip[2];
     void prepare(double sr) noexcept {
         const float s = static_cast<float>(sr);

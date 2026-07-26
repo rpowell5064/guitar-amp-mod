@@ -117,12 +117,20 @@ private:
     BiquadFilter  cathodeBypassHF_;
     bool          hasCathodeBypass_ = false;
 
-    // Dynamic operating-point shift state (see setters). All default-off.
-    float blockDepth_   = 0.0f, cathodeDepth_ = 0.0f, sagBias_ = 0.0f;
-    float blockCharge_  = 0.0f, cathodeEnv_   = 0.0f;   // slow states
+    // Dynamic operating-point shift state (see setters). Enabled with modest uniform
+    // depths (2026-07-26 Phase-2): the effect scales naturally per amp — high-gain
+    // front-ends hit grid conduction more (blocking), hotter stages compress more
+    // (cathode). Tuned on the Pi vs the Cali V/DS-1 feel reports. Set to 0 to revert.
+    float blockDepth_   = 0.20f, cathodeDepth_ = 0.38f, sagBias_ = 0.0f;
+    // Blocking = TRANSIENT bias offset (fast−slow envelope of grid conduction), so it
+    // barks on attack and SETTLES to ~0 on sustained tones (no steady asymmetry).
+    // Cathode = SYMMETRIC gain reduction (compression), so it never touches the
+    // steady harmonic profile. Both scale naturally per amp with drive.
+    float blockFast_    = 0.0f, blockSlow_    = 0.0f, cathodeEnv_ = 0.0f;
     float blockAtk_     = 0.0f, blockRel_     = 0.0f, cathodeCoeff_ = 0.0f;
     float gridKnee_     = 1e9f;    // input-unit level where grid conduction begins
     float vgkBias_      = -1.0f;   // DC grid bias (stored from buildLUT for the knee)
+    static constexpr float kCathodeHalf = 2.0f;   // drive env at which comp = cathodeDepth/2
 
     double        sampleRate_ = 192000.0;
     CircuitParams params_;

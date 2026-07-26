@@ -404,3 +404,23 @@ on the Pi (they shadowed include/ and lacked new members). Not committed to repo
     drum spins 0.80× the horn, and ROTOR INERTIA (horn slew ~0.5 s / drum ~2.2 s) so a
     speed change blooms. Shaped (directional) horn AM. voicing 0 = old single-band.
     Verified two-band active + stable (peak 0.75), crossover keeps both bands.
+
+## PHASE-2 CAPTURE-TUNING (2026-07-26, nam_compare on Pi vs Downloads captures)
+Enabled + VERIFIED (measured, not guessed):
+- Amp triode keystone: REWORKED (blocking = transient fast-slow bias so it barks on
+  attack and settles to 0; cathode = SYMMETRIC gain reduction, bypassed stages only,
+  floored 30ms env) -> no steady even-harmonic regression. block 0.20 / cathode 0.38.
+  Verified: Fender clean compression -6.2 (was stiff) + harmonics match; EVH h2 2.6
+  (NAM 3.1); JCM800 h2 25.3 < its keystone-OFF baseline 40.6 (helps, not hurts).
+- Power-amp xover 0.12 + fluxOT ON: Cali V h3 37.9->41.9 (closer to NAM 49.4).
+- Comp sidechain HPF 85 Hz ON (CompressorBlock); ADAA limiter soft ON (hexforge).
+- DS-1 dynamic bark ON (depth 0.40): static-neutral (h2 0.0, transient settles).
+LEFT OFF (measured to REGRESS the already-tuned pedal captures — kept tuned voicings):
+- TS-808 cleanPath (+3.5 dB hot + FR shift vs the tuned +-1.4dB/-1.1dB), RAT gainLegs
+  (-14dB bass shelf shifts FR), Octavia geThresh (shifts octave harmonics). These were
+  speculative circuit-additions layered on pedals ALREADY nam_compare-matched.
+- Tremolo opto/harmonic shapes still need a port to select (modgui task).
+KEY LESSON: dynamic bias/blocking must be TRANSIENT + cathode comp SYMMETRIC or it adds
+steady even harmonics the static NAM captures don't have (looks like a regression). And
+high-gain harmonic readouts are NOISY (~50% THD) — always measure the keystone-OFF
+baseline before calling a delta a regression.

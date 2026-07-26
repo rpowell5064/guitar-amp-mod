@@ -7,7 +7,7 @@
 
 void DS1Distortion::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
     fs_ = oversampledFs;
-    for (auto& c : ch_) c.bias.prepare(static_cast<float>(fs_));
+    for (auto& c : ch_) { c.bias.prepare(static_cast<float>(fs_)); c.bias.setDepth(0.40f); }  // dynamic bark ON
     driveS_.reset(fs_, 0.005);
     toneS_ .reset(fs_, 0.005);
     levelS_.reset(fs_, 0.005);

@@ -24,8 +24,8 @@ public:
         sampleRate   = sr;
         numChannels  = nCh;
         maxBlockSize_ = maxBlockSize;
-        for (auto& v : vca_) v.prepare(sr);
-        for (auto& f : fet_) f.prepare(sr);
+        for (auto& v : vca_) { v.prepare(sr); v.setSidechainHP(scHP_); }
+        for (auto& f : fet_) { f.prepare(sr); f.setSidechainHP(scHP_); }
     }
 
     void process(float** in, float** out, int numSamples, int nCh) override {
@@ -80,7 +80,8 @@ public:
             for (auto& c : fet_) c.setOutputGain(v * 0.1f);
 
         } else if (id == "scHP") {
-            // Detector-only sidechain high-pass, Hz. 0 = OFF (default, no change).
+            // Detector-only sidechain high-pass, Hz. 0 = OFF.
+            scHP_ = v;
             for (auto& c : vca_) c.setSidechainHP(v);
             for (auto& c : fet_) c.setSidechainHP(v);
 
@@ -105,6 +106,9 @@ private:
 
     Type type_ = Type::VCA;
     int  maxBlockSize_ = 512;
+    // Detector-only sidechain high-pass, ON by default (2026-07-26 Phase-2) so the
+    // low string / hum doesn't pump the whole signal. Set "scHP" 0 to disable.
+    float scHP_ = 85.0f;
 
     std::array<VCACompressor,     kMaxCh> vca_;
     std::array<FETCompressor1176, kMaxCh> fet_;

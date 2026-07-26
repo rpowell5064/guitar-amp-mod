@@ -64,13 +64,13 @@ private:
     // Class-AB crossover notch (item 25, additive default 0 = bit-identical): a soft
     // gain dip near the zero crossing = both power tubes near cutoff. Gives the
     // "dirty when quiet" crossover grit on note decays; Phase-2 sets per-amp depth.
-    float    xoverDepth_ = 0.0f;
+    float    xoverDepth_ = 0.12f;   // class-AB crossover ON, modest (2026-07-26 Phase-2)
     // Flux-domain OT saturation (item 26, additive default off): the transformer core
     // saturates on FLUX (∫V·dt), so low frequencies saturate far earlier than highs
     // (pushed small-iron LF grind). Implemented as a self-inverting leaky integrator
     // → tanh(flux) → differentiator, so it is EXACTLY unity + uncoloured until the
     // flux actually clips. Off = the original instantaneous-voltage tanh.
-    bool     fluxOT_    = false;
+    bool     fluxOT_    = true;    // flux-domain OT saturation ON (2026-07-26 Phase-2)
     float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
     float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
 

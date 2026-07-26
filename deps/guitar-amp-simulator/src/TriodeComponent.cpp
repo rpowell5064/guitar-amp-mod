@@ -284,12 +284,17 @@ void TriodeComponent::prepare(double sampleRate, const CircuitParams& p) noexcep
     // (they resist blocking) — physically correct.
     const float voltPerUnit = p.gridVoltRange / (p.inputMax - p.inputMin);
     gridKnee_ = (voltPerUnit > 1e-9f) ? ((-0.5f - vgkBias_) / voltPerUnit) : 1e9f;
-    // Coupling-cap grid-current charge: fast attack (~0.3 ms), slow leak Rg·Cc (~22 ms).
+    // Coupling-cap grid-current charge as a fast−slow envelope pair: a brief fast
+    // spike (0.3 ms) minus the slow mean (22 ms) → a short attack "bark" that carries
+    // little energy (keeping steady even-harmonic contribution low), settling to ~0.
     blockAtk_ = 1.0f - std::exp(-1.0f / (0.0003f * static_cast<float>(sampleRate)));
     blockRel_ = 1.0f - std::exp(-1.0f / (0.0220f * static_cast<float>(sampleRate)));
-    // Cathode network time constant = Rk·Ck (fall back to ~10 ms if unbypassed).
-    const float ckTau = (p.Ck > 0.0f) ? p.Rk * p.Ck : 0.010f;
-    cathodeCoeff_ = 1.0f - std::exp(-1.0f / (std::max(0.001f, ckTau) * static_cast<float>(sampleRate)));
+    // Cathode-compression envelope time constant. Floored at 30 ms — well above any
+    // note period — so the gain reduction is a smooth ENVELOPE, not a per-cycle
+    // modulation (which would add harmonics). Only bypassed stages compress (see
+    // process): the bypass cap is what stores the charge for the dynamic bias sag.
+    const float ckTau = std::max(0.030f, p.Ck * p.Rk);
+    cathodeCoeff_ = 1.0f - std::exp(-1.0f / (ckTau * static_cast<float>(sampleRate)));
 
     reset();
 }
@@ -297,8 +302,9 @@ void TriodeComponent::prepare(double sampleRate, const CircuitParams& p) noexcep
 void TriodeComponent::reset() noexcept {
     gridStopLP_.reset();
     cathodeBypassHF_.reset();
-    blockCharge_ = 0.0f;
-    cathodeEnv_  = 0.0f;
+    blockFast_  = 0.0f;
+    blockSlow_  = 0.0f;
+    cathodeEnv_ = 0.0f;
 }
 
 float TriodeComponent::lookupLUT(float x) const noexcept {
@@ -314,11 +320,13 @@ float TriodeComponent::process(float x) noexcept {
     // 1. Grid stopper RC (HF rolloff at grid).
     const float xFiltered = gridStopLP_.process(x);
 
-    // 2. Dynamic operating-point shift (all terms 0 by default → bit-identical).
-    //    Blocking and cathode charge push the effective grid COLDER; sag is external.
+    // 2. Blocking distortion — TRANSIENT bias offset only. The fast−slow envelope of
+    //    grid-conduction overshoot spikes on the pick attack (bark) and decays to ~0
+    //    on a sustained note, so it does NOT leave a steady operating-point asymmetry
+    //    (that would add even harmonics the static NAM captures don't have). sag is
+    //    external. All terms 0 → bit-identical.
     const float xBiased = xFiltered
-                        - blockDepth_   * blockCharge_
-                        - cathodeDepth_ * cathodeEnv_
+                        - blockDepth_ * (blockFast_ - blockSlow_)
                         + sagBias_;
 
     // 3. LUT nonlinearity (Koren load-line).
@@ -328,15 +336,23 @@ float TriodeComponent::process(float x) noexcept {
     if (hasCathodeBypass_)
         y = cathodeBypassHF_.process(y);
 
-    // 5. Advance the slow bias states from this sample (only when engaged, so a
-    //    stage with dynamics off costs nothing beyond three multiply-adds above).
-    if (blockDepth_ > 0.0f) {
-        const float target = xFiltered - gridKnee_;          // grid-conduction overshoot
-        const float t      = target > 0.0f ? target : 0.0f;
-        const float c      = (t > blockCharge_) ? blockAtk_ : blockRel_;   // fast charge, slow leak
-        blockCharge_ += c * (t - blockCharge_);
+    // 5. Cathode-bias compression — SYMMETRIC gain reduction under sustained drive
+    //    (the cathode network warms up → gain sags → bloom/compression). Scaling the
+    //    output is symmetric, so it changes level/touch WITHOUT shifting the harmonic
+    //    balance (no even-harmonic regression vs the static captures).
+    if (cathodeDepth_ > 0.0f && hasCathodeBypass_) {
+        const float comp = cathodeEnv_ / (cathodeEnv_ + kCathodeHalf);   // [0,1)
+        y *= 1.0f - cathodeDepth_ * comp;
     }
-    if (cathodeDepth_ > 0.0f)
+
+    // 6. Advance the slow states (only when engaged).
+    if (blockDepth_ > 0.0f) {
+        const float over = xFiltered - gridKnee_;            // grid-conduction overshoot
+        const float t    = over > 0.0f ? over : 0.0f;
+        blockFast_ += blockAtk_ * (t - blockFast_);          // fast (~0.3 ms)
+        blockSlow_ += blockRel_ * (t - blockSlow_);          // slow (~22 ms)
+    }
+    if (cathodeDepth_ > 0.0f && hasCathodeBypass_)
         cathodeEnv_ += cathodeCoeff_ * (std::fabs(xFiltered) - cathodeEnv_);
 
     return y;
