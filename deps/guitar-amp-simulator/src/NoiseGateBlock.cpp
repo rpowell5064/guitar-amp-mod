@@ -6,8 +6,8 @@ void NoiseGateBlock::prepare(double sr, int maxBlock, int nCh) {
     sampleRate   = sr;
     maxBlockSize = maxBlock;
     numChannels  = nCh;
+    for (auto& s : ch) s = {};   // reset state first, then stamp filter coeffs
     recalcCoeffs();
-    for (auto& s : ch) s = {};
 }
 
 void NoiseGateBlock::recalcCoeffs() {
@@ -27,6 +27,14 @@ void NoiseGateBlock::recalcCoeffs() {
     gainAttack  = makeCoeff(std::max(0.1f, attackMs));
     gainRelease = makeCoeff(std::max(0.1f, releaseMs));
     holdSamplesTotal = static_cast<int>(holdMs * 0.001f * static_cast<float>(sampleRate));
+
+    // Detector-only hum-reject comb (60/120/180/240 Hz). Q=18 matches the shared
+    // HumNotchComb design: ~15 dB off the hum stack, ~1 dB on a low B, no phantom
+    // tones (LTI). Coeffs depend on fs only; stamped onto the (already-reset) state.
+    static const double humF[kHumNotches] = {60.0, 120.0, 180.0, 240.0};
+    for (auto& s : ch)
+        for (int k = 0; k < kHumNotches; ++k)
+            s.scNotch[k].setCoeffs(Filters::notch(humF[k], 18.0, sampleRate));
 }
 
 void NoiseGateBlock::setParameter(const std::string& id, float v) {
@@ -35,6 +43,7 @@ void NoiseGateBlock::setParameter(const std::string& id, float v) {
     else if (id == "release")    releaseMs    = v;
     else if (id == "hold")       holdMs       = v;
     else if (id == "hysteresis") hysteresisDB = v;
+    else if (id == "humReject")  humReject    = v > 0.5f;
     recalcCoeffs();
 }
 
@@ -44,13 +53,18 @@ float NoiseGateBlock::getParameter(const std::string& id) const {
     if (id == "release")    return releaseMs;
     if (id == "hold")       return holdMs;
     if (id == "hysteresis") return hysteresisDB;
+    if (id == "humReject")  return humReject ? 1.0f : 0.0f;
     return 0.0f;
 }
 
 // Processes one sample for one channel; returns gated output.
 float NoiseGateBlock::processSample(float x, ChannelState& s) noexcept {
-    // 1. Peak envelope follower
-    const float peak = std::abs(x);
+    // 1. Peak envelope follower — on the hum-rejected DETECTOR copy, not the audio.
+    //    The returned signal (step 4) is still the original x times the gate gain.
+    float det = x;
+    if (humReject)
+        for (int k = 0; k < kHumNotches; ++k) det = s.scNotch[k].process(det);
+    const float peak = std::abs(det);
     if (peak > s.envelope)
         s.envelope = peak + (s.envelope - peak) * envAttack;
     else

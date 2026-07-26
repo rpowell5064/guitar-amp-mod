@@ -121,6 +121,20 @@ inline BiquadCoeffs lowpass1pole(double fc, double fs) noexcept {
     return { b0, b0, 0.0, a1, 0.0 };
 }
 
+// 2nd-order notch (band-reject), unity passband (Audio EQ Cookbook "notch").
+// alpha = sin(w0)/(2·Q). Higher Q = narrower notch.
+inline BiquadCoeffs notch(double fc, double Q, double fs) noexcept {
+    const double w0    = 2.0 * M_PI * fc / fs;
+    const double cw    = std::cos(w0);
+    const double alpha = std::sin(w0) / (2.0 * Q);
+    const double a0    = 1.0 + alpha;
+    return {  1.0        / a0,
+             -2.0 * cw   / a0,
+              1.0        / a0,
+             -2.0 * cw   / a0,
+             (1.0 - alpha) / a0 };
+}
+
 // 2nd-order BPF, 0 dB peak gain (Audio EQ Cookbook "BPF" type 2).
 // H(s) = (s/Q) / (s² + s/Q + 1), peak amplitude = 1.
 // alpha = sin(w0)/(2·Q).

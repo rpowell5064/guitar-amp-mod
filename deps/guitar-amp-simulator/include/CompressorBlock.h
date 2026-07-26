@@ -78,6 +78,16 @@ public:
             const float makeupLin = std::pow(10.0f, v * 2.0f * 0.05f);
             for (auto& c : vca_) c.setMakeupGain(makeupLin);
             for (auto& c : fet_) c.setOutputGain(v * 0.1f);
+
+        } else if (id == "scHP") {
+            // Detector-only sidechain high-pass, Hz. 0 = OFF (default, no change).
+            for (auto& c : vca_) c.setSidechainHP(v);
+            for (auto& c : fet_) c.setSidechainHP(v);
+
+        } else if (id == "progRel") {
+            // Program-dependent (dual-TC) release for the VCA. 0 = OFF (default).
+            // The 1176 path is already program-dependent by design.
+            for (auto& c : vca_) c.setProgramRelease(v >= 0.5f);
         }
     }
 

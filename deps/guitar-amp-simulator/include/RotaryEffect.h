@@ -53,9 +53,15 @@ public:
                 const float rPos = static_cast<float>(w_[c]) - delayS;
                 const int   ri = static_cast<int>(std::floor(rPos));
                 const float fr = rPos - static_cast<float>(ri);
-                const float s0 = buf_[c][ ri      & mask_];
-                const float s1 = buf_[c][(ri + 1) & mask_];
-                float wet = s0 + fr * (s1 - s0);
+                // 4-point Catmull-Rom (Hermite) read on the Doppler tap (was linear).
+                const float pA = buf_[c][(ri - 1) & mask_];
+                const float pB = buf_[c][ ri      & mask_];
+                const float pC = buf_[c][(ri + 1) & mask_];
+                const float pD = buf_[c][(ri + 2) & mask_];
+                const float h1 = 0.5f * (pC - pA);
+                const float h2 = pA - 2.5f * pB + 2.0f * pC - 0.5f * pD;
+                const float h3 = 0.5f * (pD - pA) + 1.5f * (pB - pC);
+                float wet = ((h3 * fr + h2) * fr + h1) * fr + pB;
                 ++w_[c];
                 // Amplitude modulation (horn-dominant)
                 const float am = 1.0f - amAmt * (0.5f - 0.5f * (0.7f * hornSin + 0.3f * drumSin));

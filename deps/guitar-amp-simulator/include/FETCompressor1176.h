@@ -2,6 +2,7 @@
 #include <cmath>
 #include <algorithm>
 #include <array>
+#include "BiquadFilter.h"
 
 // 1176-style FET compressor.
 //
@@ -32,12 +33,20 @@ public:
         recalcTimeConstants();
     }
 
+    // Detector-only sidechain high-pass (Hz). 0 = OFF (default, bit-identical).
+    void setSidechainHP(float hz) noexcept {
+        scHz_ = std::max(0.0f, hz);
+        if (scHz_ > 0.0f && fs_ > 0.0)
+            scHP_.setCoeffs(Filters::highpass(scHz_, 0.707, fs_));
+    }
+
     void reset() noexcept {
         peakEnv_     = 0.0f;
         grFast_      = 0.0f;
         grSlow_      = 0.0f;
         for (auto& s : laBuffer_) s = 0.0f;
         laHead_      = 0;
+        scHP_.reset();
     }
 
     // 0-1 normalised input/output trim
@@ -57,8 +66,12 @@ public:
         laHead_ = (laHead_ + 1) % laLen_;
         const float delayed = laBuffer_[laHead_]; // 1 ms delayed input signal
 
-        // Peak detector on un-delayed signal (looking ahead into the future)
-        const float absIn = std::abs(x * inputGain_);
+        // Peak detector on un-delayed signal (looking ahead into the future).
+        // Optional sidechain HP keeps sub-bass/hum out of the detector; the
+        // delayed AUDIO tap above is never filtered.
+        float det = x * inputGain_;
+        if (scHz_ > 0.0f) det = scHP_.process(det);
+        const float absIn = std::abs(det);
         if (absIn > peakEnv_)
             peakEnv_ = attackCoeff_  * peakEnv_ + (1.0f - attackCoeff_)  * absIn;
         else
@@ -143,4 +156,8 @@ private:
     std::array<float, kMaxLookAhead> laBuffer_{};
     int laLen_  = 1;
     int laHead_ = 0;
+
+    // Detector-only sidechain high-pass; 0 = OFF (default, bit-identical).
+    BiquadFilter scHP_;
+    float        scHz_ = 0.0f;
 };

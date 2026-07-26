@@ -79,7 +79,8 @@ void SmallClone::process(float** in, float** out,
             float phi = lfoPhase_;
             if (c == 1) { phi += 0.5f * stereoWidth_; if (phi >= 1.0f) phi -= 1.0f; }
             const float lfoVal    = triangle(phi);
-            const float delaySamp = std::max(1.0f,
+            // min clamp 2.0 (not 1.0) so the +2 Hermite tap stays inside written history
+            const float delaySamp = std::max(2.0f,
                 std::min(baseSamples_ + offsetSmooth_ + drift + depthSmooth_ * lfoVal, maxDelaySamp));
 
             const float dry = in[c][i];
@@ -93,9 +94,16 @@ void SmallClone::process(float** in, float** out,
             const float rPos = static_cast<float>(writeIdx_[c]) - delaySamp;
             const int   ri   = static_cast<int>(std::floor(rPos));
             const float frac = rPos - static_cast<float>(ri);
-            const float s0   = delayBuf_[c][ ri      & bufMask_];
-            const float s1   = delayBuf_[c][(ri + 1) & bufMask_];
-            const float bbdOut = s0 + frac * (s1 - s0);
+            // 4-point Catmull-Rom (Hermite) read — lower HF grain than linear on the
+            // deep, short BBD sweeps; parity with the 2026-07-14 CE-2/flanger pass.
+            const float pA = delayBuf_[c][(ri - 1) & bufMask_];
+            const float pB = delayBuf_[c][ ri      & bufMask_];
+            const float pC = delayBuf_[c][(ri + 1) & bufMask_];
+            const float pD = delayBuf_[c][(ri + 2) & bufMask_];
+            const float h1 = 0.5f * (pC - pA);
+            const float h2 = pA - 2.5f * pB + 2.0f * pC - 0.5f * pD;
+            const float h3 = 0.5f * (pD - pA) + 1.5f * (pB - pC);
+            const float bbdOut = ((h3 * frac + h2) * frac + h1) * frac + pB;
             ++writeIdx_[c];
 
             chState_[c].lpOut += lpOutAlpha_ * (bbdOut - chState_[c].lpOut);

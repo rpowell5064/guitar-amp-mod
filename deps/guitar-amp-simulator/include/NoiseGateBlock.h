@@ -1,9 +1,17 @@
 #pragma once
 #include "AudioBlock.h"
+#include "BiquadFilter.h"
 
 // Noise gate with configurable threshold, attack, hold, release and hysteresis.
 // Uses a fast peak envelope follower to detect signal level, then applies
 // a smoothed gain based on a 5-state machine to avoid chattering.
+//
+// The DETECTOR (only) runs through a fixed 60/120/180/240 Hz notch comb before
+// the envelope follower ("hum-reject sidechain"). On this rig the hands-off floor
+// is ~89% 60 Hz mains hum (see rig-noise memory); keeping the hum out of the
+// detector drops the effective floor the threshold has to clear by ~8-10 dB, so
+// the same threshold lets note tails ring far longer with identical rejection
+// between notes. The audio path is untouched — the comb never colours the output.
 class NoiseGateBlock : public AudioBlock {
 public:
     void prepare(double sampleRate, int maxBlockSize, int numChannels) override;
@@ -18,6 +26,7 @@ private:
     float releaseMs    = 250.0f; // long, smooth fade so tails ring out (detection stays fast — see .cpp)
     float holdMs       = 120.0f; // ride through note transitions / palm mutes before releasing
     float hysteresisDB =   8.0f; // dead-band width (wider = no chatter)
+    bool  humReject    = true;   // detector-only 60Hz hum-comb (see class note); "humReject" param
 
     // Derived coefficients (recalculated in prepare/setParameter)
     float envAttack{}, envRelease{};
@@ -29,11 +38,14 @@ private:
 
     enum class GateState { Closed, Attacking, Open, Holding, Releasing };
 
+    static constexpr int kHumNotches = 4;   // 60/120/180/240 Hz detector comb
+
     struct ChannelState {
-        float     envelope     = 0.0f;
-        float     gateGain     = 0.0f;
-        int       holdCounter  = 0;
-        GateState state        = GateState::Closed;
+        float        envelope     = 0.0f;
+        float        gateGain     = 0.0f;
+        int          holdCounter  = 0;
+        GateState    state        = GateState::Closed;
+        BiquadFilter scNotch[kHumNotches];   // sidechain hum-reject (detector only)
     } ch[kMaxChannels];
 
     void recalcCoeffs();
