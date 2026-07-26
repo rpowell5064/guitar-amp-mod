@@ -32,6 +32,7 @@
 #include "HumNotchComb.h"
 #include "PickupLoadSim.h"
 #include "IrResample.h"
+#include "AdaaSoftClip.h"
 #include "NoiseGateBlock.h"
 #include "CompressorBlock.h"
 #include "OversamplingWrapper.h"
@@ -200,17 +201,41 @@ struct AutoOutput {
     float rel = 0.0f, lvlCoef = 0.0f;
     bool  primed = false;
     static constexpr float kCeiling = 0.98f;   // ~-0.18 dBFS: only catch true overs
+    // Subsonic DC blocker on the master (ACTIVE): removes DC/rumble that fuzz bias
+    // shift, octave-down or a DC-offset user IR can push into the limiter/meters.
+    // ~5 Hz 1-pole — inaudible on guitar (<0.05 dB above 80 Hz), pure hygiene.
+    BiquadFilter dcHP[2];
+    // ADAA soft-knee limiter (item 14). soft=false (default) keeps the exact
+    // instant-attack gain-ride below; soft=true swaps in a zero-latency, low-alias
+    // ADAA soft clip per channel. Enabling it shifts loudness on presets that hit
+    // the ceiling, so it stays OFF until a Phase-2 hfmeas re-measure turns it on.
+    bool soft = false;
+    AdaaSoftClip clip[2];
     void prepare(double sr) noexcept {
         const float s = static_cast<float>(sr);
         rel     = std::exp(-1.0f / (0.045f * s));   // ~45 ms limiter release (low dulling)
         lvlCoef = std::exp(-1.0f / (0.010f * s));   // ~10 ms gain smoothing (no zipper)
+        const auto hp = Filters::highpass1pole(5.0, sr);
+        for (auto& b : dcHP) b.setCoeffs(hp);
+        for (auto& c : clip) c.set(0.85f, kCeiling);
     }
-    void reset() noexcept { env = 1.0f; }
+    void reset() noexcept {
+        env = 1.0f;
+        for (auto& b : dcHP) b.reset();
+        for (auto& c : clip) c.reset();
+    }
     void process(float* L, float* R, uint32_t n, float gain, bool limit) noexcept {
         if (!primed) { lvlZ = gain; primed = true; }
         for (uint32_t i = 0; i < n; ++i) {
             lvlZ = lvlCoef * lvlZ + (1.0f - lvlCoef) * gain;         // smoothed master gain
-            float l = L[i] * lvlZ, r = R[i] * lvlZ;
+            float l = dcHP[0].process(L[i]) * lvlZ;
+            float r = dcHP[1].process(R[i]) * lvlZ;
+            if (limit && soft) {
+                // Zero-latency ADAA soft clip (no envelope → no attack-snap alias).
+                L[i] = clip[0].process(l);
+                R[i] = clip[1].process(r);
+                continue;
+            }
             float des = 1.0f;
             if (limit) {
                 const float a = std::fmax(std::fabs(l), std::fabs(r));   // stereo-linked peak

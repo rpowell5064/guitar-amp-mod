@@ -22,6 +22,19 @@ namespace irresample {
 //     ambience belongs to the Room block, not the IR).
 inline void conditionIr(std::vector<float>& ir, double rate) {
     if (ir.empty() || rate <= 0.0) return;
+    // DC-correct first (2026-07-26): a user .wav with converter DC offset would
+    // otherwise pass DC straight through the convolution and eat limiter/meter
+    // headroom. A cab IR has no DC response, so subtracting the mean is exact and
+    // also makes the trailing silence truly ~0 (so the -80 dB trim below works).
+    {
+        double mean = 0.0;
+        for (float v : ir) mean += v;
+        mean /= static_cast<double>(ir.size());
+        if (std::fabs(mean) > 1e-9) {
+            const float m = static_cast<float>(mean);
+            for (float& v : ir) v -= m;
+        }
+    }
     float peak = 0.0f;
     for (float v : ir) peak = std::max(peak, std::fabs(v));
     if (peak <= 0.0f) { ir.assign(1, 0.0f); return; }
