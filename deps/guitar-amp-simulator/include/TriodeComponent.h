@@ -91,6 +91,21 @@ public:
     float process(float x) noexcept;
     void  reset()  noexcept;
 
+    // ── Dynamic operating-point shift (keystone; ALL default-off = bit-identical) ──
+    // The static LUT is solved at a fixed DC bias, so it can't move its operating
+    // point under drive the way a real triode does. These add a slow per-sample bias
+    // offset to the LUT input:
+    //   • #21 grid conduction / "blocking distortion": hard positive grid swings draw
+    //     grid current that charges the coupling cap, so the stage sits COLDER for
+    //     ~Rg·Cc afterwards — attack "spit", choked/farty recovery on big transients.
+    //   • #23 dynamic cathode bias: sustained current charges the cathode network over
+    //     Rk·Ck, shifting bias cold → gain compresses then blooms back (touch feel).
+    //   • #22 sag: the power-supply/rectifier droop shifts the whole stage via
+    //     setSagBias(), driven by the power-amp sag envelope (wired in Phase-2).
+    void setBlockingDepth(float d) noexcept { blockDepth_   = (d > 0.0f) ? d : 0.0f; }
+    void setCathodeDepth (float d) noexcept { cathodeDepth_ = (d > 0.0f) ? d : 0.0f; }
+    void setSagBias      (float b) noexcept { sagBias_      = b; }
+
 private:
     static constexpr int kLutSize = 1024;
 
@@ -101,6 +116,13 @@ private:
     BiquadFilter  gridStopLP_;
     BiquadFilter  cathodeBypassHF_;
     bool          hasCathodeBypass_ = false;
+
+    // Dynamic operating-point shift state (see setters). All default-off.
+    float blockDepth_   = 0.0f, cathodeDepth_ = 0.0f, sagBias_ = 0.0f;
+    float blockCharge_  = 0.0f, cathodeEnv_   = 0.0f;   // slow states
+    float blockAtk_     = 0.0f, blockRel_     = 0.0f, cathodeCoeff_ = 0.0f;
+    float gridKnee_     = 1e9f;    // input-unit level where grid conduction begins
+    float vgkBias_      = -1.0f;   // DC grid bias (stored from buildLUT for the knee)
 
     double        sampleRate_ = 192000.0;
     CircuitParams params_;

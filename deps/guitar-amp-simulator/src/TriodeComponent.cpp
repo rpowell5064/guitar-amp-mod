@@ -211,6 +211,7 @@ void TriodeComponent::buildLUT() noexcept {
         vgk_bias = -ia * p.Rk;
     }
     const float vpk_bias = solveLoadLine(vgk_bias, p);
+    vgkBias_ = vgk_bias;   // keep the DC grid bias for the grid-conduction knee
 
     // Step 2: small-signal slope at bias point (for normalisation).
     // Δvpk / Δvin ≈ (vpk(vgk+δ) − vpk(vgk−δ)) / (2δ)  in voltage-domain terms.
@@ -277,12 +278,27 @@ void TriodeComponent::prepare(double sampleRate, const CircuitParams& p) noexcep
         hasCathodeBypass_ = false;
     }
 
+    // ── Dynamic-bias coefficients (used only when a depth is enabled) ──────────
+    // Grid conduction begins ~0.5 V before Vgk reaches 0; convert that grid voltage
+    // to LUT input units. Colder-biased stages get a knee beyond the input range
+    // (they resist blocking) — physically correct.
+    const float voltPerUnit = p.gridVoltRange / (p.inputMax - p.inputMin);
+    gridKnee_ = (voltPerUnit > 1e-9f) ? ((-0.5f - vgkBias_) / voltPerUnit) : 1e9f;
+    // Coupling-cap grid-current charge: fast attack (~0.3 ms), slow leak Rg·Cc (~22 ms).
+    blockAtk_ = 1.0f - std::exp(-1.0f / (0.0003f * static_cast<float>(sampleRate)));
+    blockRel_ = 1.0f - std::exp(-1.0f / (0.0220f * static_cast<float>(sampleRate)));
+    // Cathode network time constant = Rk·Ck (fall back to ~10 ms if unbypassed).
+    const float ckTau = (p.Ck > 0.0f) ? p.Rk * p.Ck : 0.010f;
+    cathodeCoeff_ = 1.0f - std::exp(-1.0f / (std::max(0.001f, ckTau) * static_cast<float>(sampleRate)));
+
     reset();
 }
 
 void TriodeComponent::reset() noexcept {
     gridStopLP_.reset();
     cathodeBypassHF_.reset();
+    blockCharge_ = 0.0f;
+    cathodeEnv_  = 0.0f;
 }
 
 float TriodeComponent::lookupLUT(float x) const noexcept {
@@ -298,12 +314,30 @@ float TriodeComponent::process(float x) noexcept {
     // 1. Grid stopper RC (HF rolloff at grid).
     const float xFiltered = gridStopLP_.process(x);
 
-    // 2. LUT nonlinearity (Koren load-line).
-    float y = lookupLUT(xFiltered);
+    // 2. Dynamic operating-point shift (all terms 0 by default → bit-identical).
+    //    Blocking and cathode charge push the effective grid COLDER; sag is external.
+    const float xBiased = xFiltered
+                        - blockDepth_   * blockCharge_
+                        - cathodeDepth_ * cathodeEnv_
+                        + sagBias_;
 
-    // 3. Cathode bypass high-shelf (gain boost above bypass fc).
+    // 3. LUT nonlinearity (Koren load-line).
+    float y = lookupLUT(xBiased);
+
+    // 4. Cathode bypass high-shelf (gain boost above bypass fc).
     if (hasCathodeBypass_)
         y = cathodeBypassHF_.process(y);
+
+    // 5. Advance the slow bias states from this sample (only when engaged, so a
+    //    stage with dynamics off costs nothing beyond three multiply-adds above).
+    if (blockDepth_ > 0.0f) {
+        const float target = xFiltered - gridKnee_;          // grid-conduction overshoot
+        const float t      = target > 0.0f ? target : 0.0f;
+        const float c      = (t > blockCharge_) ? blockAtk_ : blockRel_;   // fast charge, slow leak
+        blockCharge_ += c * (t - blockCharge_);
+    }
+    if (cathodeDepth_ > 0.0f)
+        cathodeEnv_ += cathodeCoeff_ * (std::fabs(xFiltered) - cathodeEnv_);
 
     return y;
 }
