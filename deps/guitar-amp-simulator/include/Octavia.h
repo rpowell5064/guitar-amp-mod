@@ -27,6 +27,13 @@ public:
     const char* modelName() const noexcept override { return "Octavia"; }
 
 private:
+    // Germanium rectifier threshold (item 3): fz is a normalized ±1 tanh, so the
+    // ~0.2-0.3 V real diode knee maps to a small fraction; kGeNorm restores unity
+    // gain above the knee so the octave level matches the ideal rectifier at full tilt.
+    static constexpr float kGeVf   = 0.12f;
+    static constexpr float kGeNorm = 1.0f / (1.0f - kGeVf);
+    bool  geThresh_ = false;   // false = ideal |x| (default, bit-identical); "geThresh"
+
     double fs_ = 0.0;
     float drive_ = 0.7f, tone_ = 0.5f, level_ = 0.6f;
 

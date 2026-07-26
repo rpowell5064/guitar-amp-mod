@@ -64,12 +64,25 @@ float TubeScreamer808::processSample(float x, int ch) noexcept {
     // lows + boosted, clipped mids/treble — NOT a bass-cut of the whole signal.
     const float hp   = s.inputHP.process(x);
     const float gain = 1.0f + kGainSpan * driveCur_;
-    const float boosted = x + (gain - 1.0f) * hp;
 
     // Symmetric soft clip: anti-parallel 1N4148 pair in the feedback loop →
     // odd-harmonic (TS-808 signature, not the asymmetric MXR/DS-1 kind).
     // Bounded to ±kClip so output loudness stays ~constant vs the Drive knob.
-    float wet = kClip * std::tanh(boosted * (1.0f / kClip));
+    float wet;
+    if (!cleanPath_) {
+        // Original path (default, bit-identical): the whole boosted sum is clipped.
+        const float boosted = x + (gain - 1.0f) * hp;
+        wet = kClip * std::tanh(boosted * (1.0f / kClip));
+    } else {
+        // Circuit-accurate op-amp output: Vout = Vin + diode-limited feedback.
+        // The clean input passes at UNITY (uncompressed even when dimed); only the
+        // amplified high-passed band is driven into the diodes. This preserves the
+        // low end and dynamics at high drive — the TS's whole identity. Enabling it
+        // shifts levels/THD, so kGainSpan/kClip/kLevelSpan get re-fit to the captures
+        // in a Phase-2 nam_compare pass; OFF by default until then. [ElectroSmash
+        // TS analysis; Yeh & Smith DAFx-07 clean + clipped-feedback structure.]
+        wet = x + kClip * std::tanh((gain - 1.0f) * hp * (1.0f / kClip));
+    }
 
     // Post-clip LPF removes aliasing harmonics / sets the top-end rolloff.
     wet = s.outputLP.process(wet);
@@ -96,6 +109,7 @@ void TubeScreamer808::setParameter(const std::string& id, float v) noexcept {
     else if (id == "tone")  { tone_  = c; recalcFilters(); }
     else if (id == "level") { level_ = c; levelSmooth_.setTargetValue(c); }
     else if (id == "mix")   { mix_   = c; mixSmooth_.setTargetValue(c); }
+    else if (id == "cleanPath") { cleanPath_ = v > 0.5f; }   // circuit-accurate topology (Phase-2)
 }
 
 float TubeScreamer808::getParameter(const std::string& id) const noexcept {

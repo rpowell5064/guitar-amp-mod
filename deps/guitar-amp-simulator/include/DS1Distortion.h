@@ -1,6 +1,7 @@
 #pragma once
 #include "OverdriveBase.h"
 #include "BiquadFilter.h"
+#include "DynamicBias.h"
 #include <array>
 #include <cmath>
 #include <string>
@@ -58,6 +59,7 @@ private:
 
     struct Ch {
         BiquadFilter inHP, preHP, mid, lp, hp, dcBlk;
+        DynamicBias  bias;   // dynamic operating-point shift (opt-in, "biasShift")
     };
     std::array<Ch, kMaxCh> ch_;
 

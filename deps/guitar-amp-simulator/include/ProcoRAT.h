@@ -103,6 +103,7 @@ private:
     float distortion_ = 0.60f;
     float filter_     = 0.50f;
     float volume_     = 0.70f;
+    bool  gainLegs_   = false;   // frequency-dependent gain legs (default off, "gainLegs")
 
     // ── Smoothers ────────────────────────────────────────────────────────────
     LinearSmoother distSmooth_, volSmooth_;
@@ -113,6 +114,7 @@ private:
         BiquadFilter inputHP;    // 72.3 Hz 1-pole RC HP  (R=100kΩ, C=22nF)
         BiquadFilter filterLP;   // variable 1-pole RC LP (560pF, 0–100kΩ)
         BiquadFilter dcBlock;    // ~8 Hz HP — removes the DC the asymmetric clip adds
+        BiquadFilter legShelf;   // gain-leg low-shelf (bass gets less drive; opt-in)
         double       vout = 0.0; // LM308N output of previous sample (for slew)
     };
     std::array<ChannelState, kMaxCh> ch_;

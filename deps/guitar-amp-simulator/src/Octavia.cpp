@@ -32,8 +32,15 @@ float Octavia::processSample(float x, int ch) noexcept {
     // octave (h2 dominant, low h4) — over-squaring here dumps too much h4 (harsh 2nd octave).
     const float gain = 1.5f + 9.0f * driveCur_;    // gentle: keeps fz sine-ish → STRONG clean octave (h2)
     const float fz   = std::tanh(gain * cond);
-    // Full-wave rectifier → octave up.
-    const float rect = std::fabs(fz);
+    // Full-wave rectifier → octave up. The real Octavia rectifies through germanium
+    // diodes with a ~0.2-0.3 V forward threshold, so the octave is LEVEL-DEPENDENT:
+    // strong on the pick attack, collapsing into crossover sputter as the note
+    // decays below the diode knee (the classic "only sings above the 12th fret /
+    // neck pickup" behaviour). geThresh_ off (default) = the ideal |x| rectifier.
+    // [R.G. Keen, "The Technology of the Octavia" (geofex).]
+    const float rect = geThresh_
+        ? (std::max(std::fabs(fz) - kGeVf, 0.0f) * kGeNorm)   // soft-thresholded (Ge knee)
+        : std::fabs(fz);                                      // ideal full-wave
     const float oct  = s.octHP.process(rect);     // strip DC
     // More fundamental under the octave: the real Proctavia is BASS-HEAVY (+8 dB @50 rel 500)
     // and has strong ODD content (h3/h5) that a symmetric full-wave rectifier alone can't make.
@@ -47,6 +54,7 @@ void Octavia::setParameter(const std::string& id, float v) noexcept {
     if      (id == "drive" || id == "sustain") { drive_ = c; driveSmooth_.setTargetValue(c); }
     else if (id == "tone")                     { tone_  = c; recalcFilters(); }
     else if (id == "level" || id == "volume")  { level_ = c; levelSmooth_.setTargetValue(c); }
+    else if (id == "geThresh")                  { geThresh_ = v > 0.5f; }   // Ge rectifier knee (Phase-2)
 }
 
 float Octavia::getParameter(const std::string& id) const noexcept {

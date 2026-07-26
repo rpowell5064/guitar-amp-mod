@@ -48,7 +48,14 @@ float ProcoRAT::processSample(float x, int ch) noexcept {
     // ── Stage 1: input high-pass (R=100 kΩ, C=22 nF, fc=72.3 Hz) ────────────
     // This removes DC and very low sub-bass before the op-amp stage, matching
     // the input coupling network of the real RAT.
-    const double vin = s.inputHP.process(x);
+    double vin = s.inputHP.process(x);
+
+    // Frequency-dependent gain legs (item 2, default off): the real RAT sets gain
+    // with two RC legs (≈60 Hz and ≈1.5 kHz corners), so bass gets far less gain
+    // than mids/treble — tight palm-mutes, defined low chords under heavy dist.
+    // Modelled as a low-shelf CUT on the drive into the (flat-gain) clipper. Phase-2
+    // fits the shelf to the RAT captures + flips it on. [ElectroSmash ProCo RAT.]
+    if (gainLegs_) vin = s.legShelf.process(static_cast<float>(vin));
 
     // ── Stage 2: LM308N feedback clipper ──────────────────────────────────────
     // Feedback resistance: 47 Ω (fixed stability resistor) + distortion pot.
@@ -122,6 +129,7 @@ void ProcoRAT::setParameter(const std::string& id, float v) noexcept {
     if      (id == "drive") { distortion_ = c; distSmooth_.setTargetValue(c); }
     else if (id == "tone")  { filter_     = c; recalcFilters(); }
     else if (id == "level") { volume_     = c; volSmooth_ .setTargetValue(c); }
+    else if (id == "gainLegs") { gainLegs_ = v > 0.5f; }   // frequency-dependent gain (Phase-2)
     // "mix" and "octave" are not part of the RAT circuit; silently ignored.
 }
 
@@ -150,10 +158,15 @@ void ProcoRAT::recalcFilters() noexcept {
     const double fc_lp  = 1.0 / (2.0 * M_PI * R_filt * kCfilt);
     const auto   lpC    = Filters::lowpass1pole(std::min(fc_lp, fs * 0.49), fs);
 
+    // Gain-leg low-shelf: bass below ~250 Hz gets ~14 dB less drive into the clipper
+    // (the real RAT's legs give bass far less gain than mids; exact depth is Phase-2).
+    const auto legC = Filters::lowshelf(250.0, -14.0, fs);
+
     for (auto& c : ch_) {
         c.inputHP .setCoeffs(hpC);
         c.filterLP.setCoeffs(lpC);
         c.dcBlock .setCoeffs(dcC);
+        c.legShelf.setCoeffs(legC);
     }
 }
 

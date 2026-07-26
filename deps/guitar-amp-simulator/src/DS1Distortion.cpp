@@ -7,6 +7,7 @@
 
 void DS1Distortion::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
     fs_ = oversampledFs;
+    for (auto& c : ch_) c.bias.prepare(static_cast<float>(fs_));
     driveS_.reset(fs_, 0.005);
     toneS_ .reset(fs_, 0.005);
     levelS_.reset(fs_, 0.005);
@@ -21,7 +22,7 @@ void DS1Distortion::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept
 void DS1Distortion::reset() noexcept {
     for (auto& c : ch_) {
         c.inHP.reset(); c.preHP.reset(); c.mid.reset();
-        c.lp.reset(); c.hp.reset(); c.dcBlk.reset();
+        c.lp.reset(); c.hp.reset(); c.dcBlk.reset(); c.bias.reset();
     }
     driveS_.setCurrentAndTargetValue(drive_);
     toneS_ .setCurrentAndTargetValue(tone_);
@@ -67,12 +68,19 @@ float DS1Distortion::processSample(float x, int chn) noexcept {
     const double g = kGainMin * std::pow(kGainMax / kGainMin, static_cast<double>(driveCur_));
     double y = v * g;
 
+    // Dynamic bias shift (item 4, default off): the AC-coupled stage's operating
+    // point drifts with a slow rectified envelope → duty-cycle "bark" on attack,
+    // settle, and decay sputter. The DC block below removes the steady component,
+    // leaving the dynamic even-harmonic motion. depth 0 = bit-identical.
+    y -= static_cast<double>(s.bias.offset()) * kVclip;
+
     // Op-amp single-supply output swing, then the 1N4148 hard SHUNT clip to
     // ~±0.6 V. Soft knee (kClipHard) approximates the diode I/V so it isn't a
     // perfect square; the 4× oversampling keeps the high harmonics from aliasing.
     y = kSwing * std::tanh(y / kSwing);   // SOFT op-amp rail (was a hard min/max clamp = harsh square edges)
     const double a  = y / kVclip;
     const double yc = a / std::pow(1.0 + std::pow(std::abs(a), kClipHard), 1.0 / kClipHard); // ±1
+    s.bias.update(static_cast<float>(yc));   // update the envelope from the clip output
 
     // ── DC block → mid scoop → tone tilt (bass ↔ treble) → level ──────────────
     double d  = s.dcBlk.process(static_cast<float>(yc));
@@ -90,6 +98,7 @@ void DS1Distortion::setParameter(const std::string& id, float value) noexcept {
     if      (id == "drive") { drive_ = c; driveS_.setTargetValue(c); }
     else if (id == "tone")  { tone_  = c; toneS_ .setTargetValue(c); }
     else if (id == "level") { level_ = c; levelS_.setTargetValue(c); }
+    else if (id == "biasShift") { for (auto& ch : ch_) ch.bias.setDepth(c); }  // dynamic bias (Phase-2)
     // "mix"/"octave" not part of the DS-1 circuit — ignored.
 }
 
