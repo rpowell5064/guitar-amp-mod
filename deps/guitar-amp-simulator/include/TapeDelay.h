@@ -50,7 +50,9 @@ private:
     // EVERY repeat (incl. the first) + head bump + random-walk wow/flutter; 0 = the
     // old model (first repeat digitally clean, pure-sine flutter). Default ON so the
     // tape sounds like tape; set to 0 to A/B the old behaviour.
-    float tapeVoice_    =   1.0f;
+    float tapeVoice_    =   0.0f;   // reverted to the original tape by default (2026-07-26):
+                                    // the head-bump + random-walk voicing sounded boomy /
+                                    // "didn't fade" — needs refinement before default-on again.
 
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
 
