@@ -18,7 +18,11 @@ void TapeDelay::prepare(double sr, int maxBlock, int numCh) {
         ch_[c].wowPhase     = 0.0f;
         // Stagger flutter phases L/R by π/2 — provides natural stereo de-correlation.
         ch_[c].flutterPhase = static_cast<float>(c) * static_cast<float>(M_PI) * 0.5f;
+        ch_[c].capPhase     = static_cast<float>(c) * 1.3f;
         ch_[c].tapeLPState  = 0.0f;
+        // Random-walk wow/flutter (decorrelated seeds per channel + per walk).
+        ch_[c].wowWalk.prepare(0.5f, static_cast<float>(sr), 0x1234567u + 0x1000u * c);
+        ch_[c].scrapeWalk.prepare(11.0f, static_cast<float>(sr), 0x9E37u + 0x2000u * c);
     }
 
     timeSmoother_.prepare(static_cast<float>(sr), 50.0f);
@@ -37,7 +41,11 @@ void TapeDelay::reset() noexcept {
         std::fill(c.buf.begin(), c.buf.end(), 0.0f);
         c.writeIdx    = 0;
         c.wowPhase    = 0.0f;
+        c.capPhase    = 0.0f;
         c.tapeLPState = 0.0f;
+        c.wowWalk.setImmediate(0.0f);
+        c.scrapeWalk.setImmediate(0.0f);
+        c.headBump.reset();
         c.fbLP.reset();
         c.fbHP.reset();
     }
@@ -61,48 +69,56 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     // Base delay in samples (from smoothed time).
     float delaySamples = timeSmoother_.current() * fs / 1000.0f;
 
-    // Wow: ~0.8 Hz sine per channel.
-    // Advances independently per channel → subtle stereo width on slow variations.
-    const float wowRate = 0.8f;
-    s.wowPhase += twoPi * wowRate / fs;
-    if (s.wowPhase > twoPi) s.wowPhase -= twoPi;
+    // ── Wow/flutter modulation ──────────────────────────────────────────────
+    // Old: pure sine wow (0.8 Hz) + sine flutter (6 Hz) — reads as an LFO.
+    // Authentic: aperiodic random-walk wow drift + a once-per-rotation capstan
+    // periodic term (rate ∝ 1/timeMs, like real transport speed) + random-walk
+    // scrape flutter — a spectrum, not a single tone. Blended by tapeVoice_.
+    s.wowPhase     += twoPi * 0.8f / fs; if (s.wowPhase     > twoPi) s.wowPhase     -= twoPi;
+    s.flutterPhase += twoPi * 6.0f / fs; if (s.flutterPhase > twoPi) s.flutterPhase -= twoPi;
+    const float capRate = std::clamp(1500.0f / std::max(1.0f, timeSmoother_.current()), 2.0f, 15.0f);
+    s.capPhase += twoPi * capRate / fs;  if (s.capPhase > twoPi) s.capPhase -= twoPi;
+    const float wowW    = s.wowWalk.next();
+    const float scrapeW = s.scrapeWalk.next();
 
-    // Flutter: ~6 Hz sine per channel (phase-staggered in prepare()).
-    const float flutterRate = 6.0f;
-    s.flutterPhase += twoPi * flutterRate / fs;
-    if (s.flutterPhase > twoPi) s.flutterPhase -= twoPi;
+    const float modOld  = wowDepth_ * std::sin(s.wowPhase)
+                        + flutterDepth_ * std::sin(s.flutterPhase);
+    const float modAuth = wowDepth_ * wowW
+                        + flutterDepth_ * (0.55f * std::sin(s.capPhase) + 0.45f * scrapeW);
+    const float mod = modOld + tapeVoice_ * (modAuth - modOld);
 
-    // Apply modulation as fractional delay offset (proportional to base delay
-    // like tape speed — relative deviation constant regardless of time setting).
-    delaySamples += delaySamples * (wowDepth_     * std::sin(s.wowPhase) +
-                                    flutterDepth_ * std::sin(s.flutterPhase));
+    delaySamples += delaySamples * mod;
     delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
 
-    // Read delayed sample (Hermite, 2026-07-14 — the wow/flutter-modulated tap loses HF
-    // fraction-dependently with linear interpolation; keep the tape LP the only rolloff).
+    // Read delayed sample (Hermite — the wow/flutter-modulated tap).
     const float delayed = readFracHermite(s.buf, delaySamples, s.writeIdx);
 
-    // Tape HF roll-off: 1-pole LP in feedback path (coefficient pre-built in rebuildFilters).
-    // tapeAge=0 → fc=12 kHz (new tape), tapeAge=1 → fc=2 kHz (old tape).
+    // ── Record/playback coloring — applied to EVERY repeat, incl. the first ─
+    // Tape HF roll-off (1-pole, stateful) → playback-head bump (LF resonance,
+    // blended by tapeVoice_) → soft saturation. The old model applied these to the
+    // feedback ONLY, leaving the first repeat digitally clean; here the read tap is
+    // coloured once and used for BOTH the wet output and the feedback.
     const float lpA = tapeLPCoeff_;
     s.tapeLPState = lpA * s.tapeLPState + (1.0f - lpA) * delayed;
-    float fb = s.tapeLPState;
-
-    // Soft saturation in feedback: tanh with drive proportional to saturation_.
+    float colored = s.tapeLPState;
+    const float bumped = s.headBump.process(colored);          // keep filter state coherent
+    colored = colored + tapeVoice_ * (bumped - colored);       // head bump (authentic only)
     if (saturation_ > 0.0f) {
         const float drive = 1.0f + saturation_ * 4.0f;
-        fb = std::tanh(fb * drive) / drive;
+        colored = std::tanh(colored * drive) / drive;
     }
 
-    // 2nd-order tone filters (LP and HP) in feedback path.
-    fb = s.fbHP.process(fb);
+    // Feedback voicing (2nd-order tone filters) on the coloured signal.
+    float fb = s.fbHP.process(colored);
     fb = s.fbLP.process(fb);
 
     // Write.
     s.buf[s.writeIdx] = x + feedbackSmoother_.current() * fb;
     s.writeIdx = (s.writeIdx + 1) % bufLen;
 
-    return x + mixSmoother_.current() * delayed;   // dry unity + wet on top (no level drop)
+    // Wet: raw read (old, clean first repeat) ↔ coloured read (authentic), by tapeVoice_.
+    const float wet = delayed + tapeVoice_ * (colored - delayed);
+    return x + mixSmoother_.current() * wet;   // dry unity + wet on top (no level drop)
 }
 
 void TapeDelay::setParameter(const std::string& id, float v) noexcept {
@@ -115,6 +131,7 @@ void TapeDelay::setParameter(const std::string& id, float v) noexcept {
     else if (id == "tapeAge")     { tapeAge_      = std::clamp(v, 0.0f, 1.0f); rebuildFilters(); }
     else if (id == "lowCutHz")    { lowCutHz_     = v; rebuildFilters(); }
     else if (id == "highCutHz")   { highCutHz_    = v; rebuildFilters(); }
+    else if (id == "tapeVoice")     tapeVoice_    = std::clamp(v, 0.0f, 1.0f);
 }
 
 float TapeDelay::getParameter(const std::string& id) const noexcept {
@@ -127,6 +144,7 @@ float TapeDelay::getParameter(const std::string& id) const noexcept {
     if (id == "tapeAge")      return tapeAge_;
     if (id == "lowCutHz")     return lowCutHz_;
     if (id == "highCutHz")    return highCutHz_;
+    if (id == "tapeVoice")    return tapeVoice_;
     return 0.0f;
 }
 
@@ -140,8 +158,12 @@ void TapeDelay::rebuildFilters() noexcept {
 
     const BiquadCoeffs hp = Filters::highpass(static_cast<double>(lowCutHz_),  0.707, sampleRate_);
     const BiquadCoeffs lp = Filters::lowpass (static_cast<double>(highCutHz_), 0.707, sampleRate_);
+    // Playback-head LF resonance ("head bump"): the +3-6 dB rise ~60-120 Hz that
+    // makes tape echoes warm/round. Slides down slightly as the tape ages.
+    const BiquadCoeffs bump = Filters::lowshelf(115.0 - tapeAge_ * 25.0, 3.5, sampleRate_);
     for (auto& c : ch_) {
         c.fbHP.setCoeffs(hp);
         c.fbLP.setCoeffs(lp);
+        c.headBump.setCoeffs(bump);
     }
 }

@@ -107,6 +107,14 @@
     whole band — so "HF reach" can't discriminate voicings; the static response can.
     LFO rate-skew deferred (the asymmetric lamp rise/fall already skews the sweep).
 
+- **2026-07-26 Batch I — DONE, offline-verified (tape cluster, "tapeVoice" default 1.0=ON):**
+  Record/playback chain now colours EVERY repeat incl. the first (was: first repeat raw,
+  tape LP/sat feedback-only) + playback head bump (+3.5 dB ~105 Hz low shelf, slides with
+  tapeAge) + random-walk wow (~0.5 Hz) / capstan periodic (rate ∝ 1/timeMs) / scrape
+  flutter (~11 Hz) replacing the pure sines. tapeVoice blends old↔authentic (default ON so
+  tape sounds like tape; set 0 to A/B). Verified first echo −2.2 dB HF + 3.0 dB LF head bump,
+  stable under deep wow/flutter. (Overnight-deploy note: defaulted ON to be testable.)
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).

@@ -46,6 +46,11 @@ private:
     float flutterDepth_ =   0.001f;
     float saturation_   =   0.3f;
     float tapeAge_      =   0.5f;
+    // Authentic tape voicing (items 6/3/5): 1 = the record/playback chain colours
+    // EVERY repeat (incl. the first) + head bump + random-walk wow/flutter; 0 = the
+    // old model (first repeat digitally clean, pure-sine flutter). Default ON so the
+    // tape sounds like tape; set to 0 to A/B the old behaviour.
+    float tapeVoice_    =   1.0f;
 
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
 
@@ -55,8 +60,12 @@ private:
 
         float wowPhase     = 0.0f;
         float flutterPhase = 0.0f;
+        float capPhase     = 0.0f;  // once-per-rotation capstan periodic term
         float tapeLPState  = 0.0f;  // 1-pole tape HF state variable
 
+        RandomWalk   wowWalk;       // slow aperiodic wow drift (~0.5 Hz)
+        RandomWalk   scrapeWalk;    // fast scrape flutter (~11 Hz)
+        BiquadFilter headBump;      // playback-head LF resonance (+3.5 dB ~105 Hz)
         BiquadFilter fbLP, fbHP;
     };
     std::array<ChannelState, kMaxCh> ch_;
