@@ -47,6 +47,12 @@ public:
 
     // Canonical center frequencies at kRpcellCtr (one per all-pass stage)
     static constexpr float kApfCtrHz[4] = {82.0f, 196.0f, 440.0f, 1020.0f};
+    // Real Shin-Ei cap values (0.22µF / 0.015µF / 0.0047µF / 470pF) put the four
+    // stages at a LOPSIDED, non-harmonic spread (~10 / 140 / 450 / 4500 Hz at centre
+    // R) — only 1-2 notches sit in the audible meat at once, which is the Uni-Vibe
+    // "chew". Our default is a polite, evenly-spread phaser. "authentic" morphs
+    // (in log-frequency) toward the real stagger. [R.G. Keen, geofex univibe tech.]
+    static constexpr float kApfRealHz[4] = {9.6f, 140.0f, 449.0f, 4488.0f};
 
 private:
     double sampleRate_ = 44100.0;
@@ -58,6 +64,10 @@ private:
     float stereoWidth_ = 0.0f;   // [0,1] → 0..90° ch1 LFO offset
     bool  vibrato_     = false;  // false=Chorus, true=Vibrato (100% wet)
     float outputLevel_ = 0.5f;   // [0,1] → -6..+6 dB
+    // Authentic Uni-Vibe voicing (item 32): morphs the stage stagger toward the
+    // real lopsided caps AND swaps the linear photocell law for the log-law CdS
+    // sweep (dwells dark, flicks bright = the throb). 0 = classic (bit-identical).
+    float authentic_   = 0.0f;   // [0,1]
 
     // ── Smoothed depth (IIR, avoids clicks on depth changes) ──────────────
     float depthSmooth_ = 0.0f;

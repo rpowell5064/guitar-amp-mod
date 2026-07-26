@@ -27,10 +27,15 @@ void UniVibeEffect::rebuildCoeffs() noexcept {
     // Depth-change smoothing: 10 ms τ
     depthCoeff_ = 1.0f - std::exp(-1.0f / (0.010f * sr));
 
-    // Capacitor values so each stage hits kApfCtrHz[k] at R_pcell = kRpcellCtr:
+    // Capacitor values so each stage hits its centre freq at R_pcell = kRpcellCtr:
     //   f_k = 1/(2π·R·C_k)  →  C_k = 1/(2π·f_k·kRpcellCtr)
-    for (int k = 0; k < 4; ++k)
-        C_[k] = 1.0f / (2.0f * kPiF * kApfCtrHz[k] * kRpcellCtr);
+    // "authentic" morphs the centre from the classic even spread toward the real
+    // lopsided Shin-Ei stagger, in log-frequency (pow(...,0)=1 → classic exactly).
+    for (int k = 0; k < 4; ++k) {
+        const float fCtr = kApfCtrHz[k]
+                         * std::pow(kApfRealHz[k] / kApfCtrHz[k], authentic_);
+        C_[k] = 1.0f / (2.0f * kPiF * fCtr * kRpcellCtr);
+    }
 }
 
 void UniVibeEffect::reset() noexcept {
@@ -78,9 +83,18 @@ void UniVibeEffect::process(float** in, float** out,
             s.lampBright += lampAlpha * (lampTarget - s.lampBright);
 
             // ── Photocell resistance ────────────────────────────────────────
-            // R = R_min + (1 - L) * (R_max - R_min)
-            const float R_pcell = kRpcellMin
-                                + (1.0f - s.lampBright) * (kRpcellMax - kRpcellMin);
+            // Classic: linear R = R_min + (1-L)·(R_max-R_min).
+            // Authentic: log-law CdS cell R = R_max·(R_min/R_max)^L — R sweeps
+            // GEOMETRICALLY, so the all-pass frequency (∝1/R) sweeps exponentially,
+            // dwelling at the dark/low end and flicking through bright (the throb).
+            const float R_lin = kRpcellMin
+                              + (1.0f - s.lampBright) * (kRpcellMax - kRpcellMin);
+            float R_pcell = R_lin;
+            if (authentic_ > 0.0f) {
+                const float R_log = kRpcellMax
+                                  * std::pow(kRpcellMin / kRpcellMax, s.lampBright);
+                R_pcell = R_lin + authentic_ * (R_log - R_lin);
+            }
 
             // ── Pre-emphasis HPF ────────────────────────────────────────────
             float x       = in[c][i];
@@ -132,6 +146,7 @@ void UniVibeEffect::setParameter(const std::string& id, float v) {
     else if (id == "stereoWidth") stereoWidth_ = std::max(0.0f, std::min(1.0f, v));
     else if (id == "mode")        vibrato_     = (v > 0.5f);
     else if (id == "outputLevel") outputLevel_ = std::max(0.0f, std::min(1.0f, v));
+    else if (id == "authentic") { authentic_ = std::max(0.0f, std::min(1.0f, v)); rebuildCoeffs(); }
     // "preampOn" from CE-2 is silently ignored here
 }
 
@@ -142,5 +157,6 @@ float UniVibeEffect::getParameter(const std::string& id) const {
     if (id == "stereoWidth") return stereoWidth_;
     if (id == "mode")        return vibrato_ ? 1.0f : 0.0f;
     if (id == "outputLevel") return outputLevel_;
+    if (id == "authentic")   return authentic_;
     return 0.0f;
 }

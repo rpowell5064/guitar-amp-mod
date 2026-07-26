@@ -93,6 +93,20 @@
     vs classic, the peak vowel is preserved, and low/peak scoop is 4× deeper (0.077 vs
     0.316). Pot-taper refinement deferred (would shift the classic fc map). [ElectroSmash GCB-95.]
 
+- **2026-07-26 Batch H — DONE, offline-verified (Tier-3, self-contained):**
+  - #32 Uni-Vibe truth pass ("authentic", default 0 = classic, bit-identical): morphs
+    the 4 all-pass stage centres from our polite even spread {82,196,440,1020} toward
+    the REAL lopsided Shin-Ei caps {~10,140,450,4500} (log-freq morph of C_[k]) AND
+    swaps the linear photocell for the log-law CdS sweep R=Rmax·(Rmin/Rmax)^L (geometric
+    R → exponential freq sweep that dwells dark, flicks bright = the throb). Verified:
+    reshapes the static HF response 4.6 dB, dynamic output 98.5% different + stable +
+    still throbs. Tonal "chew/throb" rests on the real component values (cited geofex);
+    best A/B'd by ear in Phase-2 — a 4-stage LFO phaser's timbre doesn't reduce to one
+    offline scalar. NOTE learned: allpass phaser notches are NOT at the stage centres
+    (accumulated phase), and the 83:1 photocell R sweep makes every stage cover the
+    whole band — so "HF reach" can't discriminate voicings; the static response can.
+    LFO rate-skew deferred (the asymmetric lamp rise/fall already skews the sweep).
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).
