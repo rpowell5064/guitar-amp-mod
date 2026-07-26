@@ -56,6 +56,22 @@
   Lesson banked: at hard-clipped drive the cathode bias shift moves the WAVEFORM (even
   harmonics/duty) more than RMS — measure harmonics, not just level, when tuning.
 
+- **2026-07-26 Batch E — power-amp (PARTIAL), offline-verified (additive default-off):**
+  - #25 class-AB crossover ("xover" depth): soft dead-zone `y -= xover·dz·tanh(y/dz)`
+    in tubeWaveshaper (odd, f(0)=0, no DC). Reduced small-signal gain + zero-crossing
+    kink = "dirty when quiet". Verified crossover effect 3× bigger at moderate vs loud
+    level (0.125 vs 0.042). NOTE: first tried a Gaussian dip — it made sub-dead-zone
+    signals LOUDER; the tanh dead-zone is the correct odd model.
+  - #26 flux-domain OT saturation ("fluxOT" bool): step-5 OT now integrate→tanh(flux)→
+    differentiate — a SELF-INVERTING leaky integrator/differentiator, so it's exactly
+    unity+uncoloured until the core flux clips, and LF (which accumulates far more flux)
+    grinds before HF. Verified 82 Hz THD +76% / 2 kHz unchanged; transparent below sat.
+    fluxPole ~25 Hz, fluxDrive 0.015 (Phase-2 tunable).
+  - DEFERRED to a dedicated power-amp session: #22 sag-into-ceiling (entangled with the
+    already-tuned pre-sag + bloomVca) and #24 NFB-wraps-nonlinearity (structural reorder
+    of steps 2-5 with loop-stability risk). The #22 triode hook (setSagBias) already
+    exists from Batch D; driving it belongs with the NFB restructure.
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).

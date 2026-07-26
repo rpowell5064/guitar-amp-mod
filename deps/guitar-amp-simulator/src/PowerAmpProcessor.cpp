@@ -103,7 +103,7 @@ const PowerAmpProcessor::TubeParams PowerAmpProcessor::kKT88 = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tube waveshaper — static, no state, safe to call at oversampled rate
 // ─────────────────────────────────────────────────────────────────────────────
-float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p) noexcept {
+float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xover) noexcept {
     // Shift input to the cathode bias operating point.
     // A positive biasShift displaces the load-line intersection upward,
     // making positive-half-cycle clipping occur earlier than negative.
@@ -121,6 +121,15 @@ float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p) noexcept {
     // bias shift that occurs as the cathode resistor voltage rises under signal.
     y = y / (1.0f + p.cathodeComp * y * y);
 
+    // Class-AB crossover (item 25): a soft dead-zone near y≈0 where both push-pull
+    // tubes sit near cutoff — small-signal gain drops to (1−xover) and the zero
+    // crossing gains the characteristic kink (crossover grit, "dirty when quiet").
+    // Odd function, f(0)=0, so it adds no DC. xover 0 → bit-identical.
+    if (xover > 0.0f) {
+        constexpr float kDz = 0.06f;   // crossover dead-zone width
+        y -= xover * kDz * std::tanh(y / kDz);
+    }
+
     return (y - p.dcOffset) * p.outputGain;
 }
 
@@ -135,9 +144,10 @@ void PowerAmpProcessor::recalcTubeParams() noexcept {
     case TubeType::Tube_EL84:  tp = kEL84;  break;
     case TubeType::Tube_KT88:  tp = kKT88;  break;
     }
-    // Compute the raw output at x=0 so we can null the DC offset.
+    // Compute the raw output at x=0 so we can null the DC offset (at no crossover;
+    // any residual DC the crossover adds is removed by the transformer HP downstream).
     tp.dcOffset = 0.0f;
-    tp.dcOffset = tubeWaveshaper(0.0f, tp) / tp.outputGain; // before outputGain
+    tp.dcOffset = tubeWaveshaper(0.0f, tp, 0.0f) / tp.outputGain; // before outputGain
     // Verify: tubeWaveshaper(0, tp) should now be ≈ 0.
 }
 
@@ -213,6 +223,10 @@ void PowerAmpProcessor::recalcFilters() {
     // Bloom envelope smoothing (~100ms).
     bloomEnvCoef = static_cast<float>(std::exp(-1.0 / (0.100 * sr)));
 
+    // Flux-domain OT integrator pole — corner ~25 Hz (just below the OT LF rolloff)
+    // so the guitar LF band accumulates flux and saturates before the highs (item 26).
+    fluxPole_ = static_cast<float>(std::exp(-2.0 * M_PI * 25.0 / sr));
+
     // Post-saturation sag-VCA envelope: slow-ish 2.5 ms attack lets the pick
     // transient overshoot before the VCA clamps (= bloom); 13 ms release sets the
     // recovery τ (matches the JCM800 capture's ~13 ms).
@@ -247,6 +261,8 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         bloomLP[c].reset();
         nfbPrev[c]      = 0.0f;
         xfmrSatState[c] = 0.0f;
+        fluxState[c]    = 0.0f;
+        fluxSatPrev[c]  = 0.0f;
         bloomEnv[c]     = 0.0f;
         bloomVcaEnv[c]  = 0.0f;
     }
@@ -286,6 +302,8 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "resonance"){ resonance = c01; needFilters = true; }
     else if (id == "coupling") { coupling  = c01; }
     else if (id == "airFeel")  { airFeelOn = v > 0.5f; }
+    else if (id == "xover")    { xoverDepth_ = c01; }       // class-AB crossover (Phase-2)
+    else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
 
     if (needFilters)
         recalcFilters();
@@ -302,6 +320,8 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "resonance")return resonance;
     if (id == "coupling") return coupling;
     if (id == "airFeel")  return airFeelOn ? 1.0f : 0.0f;
+    if (id == "xover")    return xoverDepth_;
+    if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -393,7 +413,7 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
         {
             const int osLen = numSamples * 2;
             for (int i = 0; i < osLen; ++i)
-                osPtr[i] = tubeWaveshaper(osPtr[i], tp);
+                osPtr[i] = tubeWaveshaper(osPtr[i], tp, xoverDepth_);
         }
 
         // Step 3: downsample 2× — LP filter at OS rate then decimate.
@@ -430,10 +450,22 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
         for (int i = 0; i < numSamples; ++i) {
             float s = xfmrHP[ch].process(out[ch][i]);
             s       = xfmrLP[ch].process(s);
-            // Iron-core saturation: smooth with history to model hysteresis lag.
-            xfmrSatState[ch] = 0.97f * xfmrSatState[ch] + 0.03f * s;
-            s = std::tanh(s + 0.15f * xfmrSatState[ch]); // soft asymmetric limit
-            s /= std::tanh(1.15f); // normalise so unity gain at small signal
+            if (!fluxOT_) {
+                // Original: instantaneous-voltage soft clip with a hysteresis lag.
+                xfmrSatState[ch] = 0.97f * xfmrSatState[ch] + 0.03f * s;
+                s = std::tanh(s + 0.15f * xfmrSatState[ch]); // soft asymmetric limit
+                s /= std::tanh(1.15f); // normalise so unity gain at small signal
+            } else {
+                // Flux-domain core saturation (item 26): integrate → saturate flux →
+                // differentiate. Self-inverting, so it is EXACTLY s until the flux
+                // clips; LF (which accumulates far more flux) grinds well before HF.
+                const float a    = fluxPole_;
+                const float flux = a * fluxState[ch] + s;                       // ∫ (leaky)
+                const float sat  = std::tanh(flux * fluxDrive_) / fluxDrive_;   // flux limit
+                s                = sat - a * fluxSatPrev[ch];                   // d/dt (inverse)
+                fluxState[ch]    = flux;
+                fluxSatPrev[ch]  = sat;
+            }
             out[ch][i] = s;
         }
 

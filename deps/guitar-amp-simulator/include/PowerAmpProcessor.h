@@ -61,6 +61,18 @@ private:
     // as the power stage works harder — real damping collapse, the Fractal-class
     // speaker interaction feel. Uses the previously dormant spkrPeak filters.
     float    coupling  = 0.0f;  // [0,1]
+    // Class-AB crossover notch (item 25, additive default 0 = bit-identical): a soft
+    // gain dip near the zero crossing = both power tubes near cutoff. Gives the
+    // "dirty when quiet" crossover grit on note decays; Phase-2 sets per-amp depth.
+    float    xoverDepth_ = 0.0f;
+    // Flux-domain OT saturation (item 26, additive default off): the transformer core
+    // saturates on FLUX (∫V·dt), so low frequencies saturate far earlier than highs
+    // (pushed small-iron LF grind). Implemented as a self-inverting leaky integrator
+    // → tanh(flux) → differentiator, so it is EXACTLY unity + uncoloured until the
+    // flux actually clips. Off = the original instantaneous-voltage tanh.
+    bool     fluxOT_    = false;
+    float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
+    float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
 
     // ── Per-tube model constants ───────────────────────────────────────────────
     struct TubeParams {
@@ -124,6 +136,8 @@ private:
     std::array<BiquadFilter, kMaxCh> xfmrHP; // LF resonant pole pair
     std::array<BiquadFilter, kMaxCh> xfmrLP; // HF leakage-inductance rolloff
     float xfmrSatState[kMaxCh] = {};          // smoothed output for soft-clip history
+    float fluxState[kMaxCh]   = {};           // core flux (leaky integral) — item 26
+    float fluxSatPrev[kMaxCh] = {};           // previous saturated flux (differentiator)
 
     // ── Speaker impedance curve ───────────────────────────────────────────────
     std::array<BiquadFilter, kMaxCh> spkrPeak; // peaking at cone resonance
@@ -150,5 +164,6 @@ private:
     void  recalcFilters();
 
     // Static waveshaper — no state; safe to call at OS rate.
-    static float tubeWaveshaper(float x, const TubeParams& p) noexcept;
+    // xover = class-AB crossover depth (0 = none, bit-identical).
+    static float tubeWaveshaper(float x, const TubeParams& p, float xover) noexcept;
 };
