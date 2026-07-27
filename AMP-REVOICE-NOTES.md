@@ -154,6 +154,18 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   fully resolve the swoosh. A complete fix needs someone to properly work out the
   flux-differentiator's rate-compensation math — real DSP design work for a dedicated
   session, not something to retry blind.
+- PASS #3 (same day, user: "still swooshes, but I can tame it with EQ — maybe the EQ
+  is messed up too"): this redirected suspicion onto the pass-#2 presence EQ itself —
+  a large, fairly resonant peaking filter (+16 dB/Q0.4 on Red at 3 kHz) sitting in the
+  harmonically-dense high-gain signal could plausibly RING on its own, independent of
+  any PA-stage aliasing. Cut both channels to unified, gentler, wider values
+  (presencePk 16/11→6 dB both, Q 0.4→0.7; topShelf 9/4→3 dB both) — a direct test of
+  the "my own filter is ringing" hypothesis, at the cost of FR accuracy vs the capture
+  (Red is back to running 7-8 dB short in 2-8k). Listen for: is the swoosh gone/much
+  better now? If YES → the EQ was (at least a big part of) the cause; re-add presence
+  later more carefully (lower gain, even wider Q, maybe a shelf not a peak). If NO →
+  the PA-aliasing theory stands and the pre-saturation LP above is the real lever;
+  the presence EQ can go back up since it wasn't the culprit after all.
 
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
