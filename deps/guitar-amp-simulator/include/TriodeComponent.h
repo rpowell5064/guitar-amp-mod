@@ -117,11 +117,14 @@ private:
     BiquadFilter  cathodeBypassHF_;
     bool          hasCathodeBypass_ = false;
 
-    // Dynamic operating-point shift state (see setters). Enabled with modest uniform
-    // depths (2026-07-26 Phase-2): the effect scales naturally per amp — high-gain
-    // front-ends hit grid conduction more (blocking), hotter stages compress more
-    // (cathode). Tuned on the Pi vs the Cali V/DS-1 feel reports. Set to 0 to revert.
-    float blockDepth_   = 0.20f, cathodeDepth_ = 0.38f, sagBias_ = 0.0f;
+    // Dynamic operating-point shift state (see setters). Cathode compression enabled;
+    // BLOCKING DISABLED 2026-07-27 (user: "amps go to full gain too quickly / lost
+    // dynamics / attack transient squashed" on ALL high-gain amps). The transient grid-
+    // conduction bias was CHOKING the pick attack instead of adding spit — measured:
+    // it cut the EVH attack bloom to −0.58 dB vs the capture (stiff); with it off the
+    // bloom lands at +0.14 dB (spot-on) and the Fender clean is if anything LESS spongy.
+    // Kept as a param (setBlockingDepth) but default 0 — it was net-negative for feel.
+    float blockDepth_   = 0.00f, cathodeDepth_ = 0.38f, sagBias_ = 0.0f;
     // Blocking = TRANSIENT bias offset (fast−slow envelope of grid conduction), so it
     // barks on attack and SETTLES to ~0 on sustained tones (no steady asymmetry).
     // Cathode = SYMMETRIC gain reduction (compression), so it never touches the
