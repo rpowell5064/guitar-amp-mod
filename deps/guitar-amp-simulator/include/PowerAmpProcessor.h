@@ -168,6 +168,16 @@ private:
     float xfmrSatState[kMaxCh] = {};          // smoothed output for soft-clip history
     float fluxState[kMaxCh]   = {};           // core flux (leaky integral) — item 26
     float fluxSatPrev[kMaxCh] = {};           // previous saturated flux (differentiator)
+    // Gentle FIXED pre-saturation low-pass (2026-07-27): the flux integrate->
+    // saturate->differentiate design is a self-inverting pair whose "1-sample
+    // delay" is calibrated for the NATIVE rate — two attempts to protect it with
+    // dedicated oversampling both measurably changed an already-tuned amp's
+    // distortion character (the differentiator's implicit 1/T gain doesn't cancel
+    // cleanly at 2x rate; reverted both times, see PowerAmpProcessor.cpp history).
+    // This is a much lower-risk mitigation instead: a plain native-rate LP right
+    // before the nonlinearity, trimming only the top octave or so of energy that's
+    // most alias-prone, without touching the calibrated recursive design at all.
+    std::array<BiquadFilter, kMaxCh> preSatLP;
 
     // ── Speaker impedance curve ───────────────────────────────────────────────
     std::array<BiquadFilter, kMaxCh> spkrPeak; // peaking at cone resonance

@@ -207,6 +207,13 @@ void PowerAmpProcessor::recalcFilters() {
         xfmrLP[c].setCoeffs(xfmrLPC);
     }
 
+    // Gentle pre-saturation LP (2026-07-27, low-risk aliasing mitigation — see the
+    // header comment): fixed at 0.72 * native Nyquist, well above any tone-shaping
+    // role, purely to trim the alias-prone top octave feeding the nonlinearity.
+    const BiquadCoeffs preSatLPC = Filters::lowpass(sr * 0.36, 0.707, sr);
+    for (int c = 0; c < kMaxCh; ++c)
+        preSatLP[c].setCoeffs(preSatLPC);
+
     // Speaker impedance: peaking at cone resonance (scaled by resonance knob),
     // plus LP for voice-coil inductance.  The amplitude of the resonance peak
     // is controlled by the damping factor (inversely proportional to NFB amount).
@@ -284,7 +291,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         upAA[c].reset();
         downAA[c].reset();
         nfbHP[c].reset();
-        xfmrHP[c].reset(); xfmrLP[c].reset();
+        xfmrHP[c].reset(); xfmrLP[c].reset(); preSatLP[c].reset();
         spkrPeak[c].reset(); spkrLP[c].reset();
         cplShelf[c].reset(); cplEnv[c] = 0.0f;
         presEQ[c].reset(); depthEQ[c].reset();
@@ -507,6 +514,11 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
         for (int i = 0; i < numSamples; ++i) {
             float s = xfmrHP[ch].process(out[ch][i]);
             s       = xfmrLP[ch].process(s);
+            // Gentle pre-saturation LP (2026-07-27, low-risk aliasing mitigation —
+            // see the header comment): trims the alias-prone top octave feeding the
+            // nonlinearity below, without touching the flux integrator/differentiator
+            // pair's calibrated native-rate timing at all.
+            s = preSatLP[ch].process(s);
             if (!fluxOT_) {
                 // Original: instantaneous-voltage soft clip with a hysteresis lag.
                 xfmrSatState[ch] = 0.97f * xfmrSatState[ch] + 0.03f * s;
