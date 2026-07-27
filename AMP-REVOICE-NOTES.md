@@ -135,6 +135,25 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
 - Listen for (all amps, esp. EVH/high-gain): does turning the gain knob up still
   produce an audible sweeping/whooshing artifact? If yes, the xfmr-stage fix above is
   next. If it's gone/much better, this WAS the fix and #2 can wait.
+- UPDATE (same day, user: "blue sounds better, red still swooshes"): tried the proper
+  fix for #2 TWICE — giving the xfmr saturation dedicated 2x oversampling. BOTH attempts
+  measurably changed JCM800's distortion (h3 43%->61-65%), even in the "surgical"
+  version where NFB was left completely untouched at native rate. Root cause: the flux
+  integrate->saturate->differentiate design is a self-inverting pair calibrated for the
+  NATIVE rate's implicit "1 sample = 1 unit delay"; the differentiator's 1/T gain
+  doesn't cancel cleanly at 2x rate no matter how the integrator pole is rate-adjusted
+  (tried both a properly-rescaled pole and the original native pole — both shifted
+  tone, rescaled pole was CLOSER but not exact). Making this truly rate-invariant is a
+  real DSP redesign (properly deriving the differentiator's rate-compensation), not a
+  quick fix. BOTH attempts reverted.
+- SHIPPED INSTEAD (lower risk): a single fixed, native-rate low-pass (0.72x Nyquist)
+  right before the tanh/flux nonlinearity — touches NOTHING recursive. Verified safe
+  (JCM800 unchanged within noise) and measurably active (EVH Red THD@1k 151-162% vs
+  145-166% before). This is a PARTIAL mitigation — trims the most alias-prone content
+  feeding the nonlinearity, but does NOT give it full oversampling protection. May not
+  fully resolve the swoosh. A complete fix needs someone to properly work out the
+  flux-differentiator's rate-compensation math — real DSP design work for a dedicated
+  session, not something to retry blind.
 
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
