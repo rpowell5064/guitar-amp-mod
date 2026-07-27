@@ -68,6 +68,7 @@ private:
     struct ChannelState {
         // Input conditioning
         BiquadFilter inputHPF;      // 1-pole HPF @ 100 Hz
+        BiquadFilter preEmph;       // bright tilt into the cascade (mid/high THD like the capture)
 
         // Koren triode stages (LUT-based, replaces tanh waveshapers)
         TriodeComponent stage1;     // kRVB_S1 — soft asymmetric, pick attack
@@ -117,7 +118,7 @@ private:
     static constexpr float kS1Base  = 1.2f,  kS1Range = 19.0f;
     static constexpr float kS2Base  = 1.8f,  kS2Range = 17.0f;
     static constexpr float kS3Base  = 2.8f,  kS3Range = 15.0f;
-    static constexpr float kS4Pre   = 3.0f;                      // Stage 4: fixed
+    static constexpr float kS4Pre   = 3.0f;                      // Stage 4: fixed (5.0 overshot h7/h9 fizz — capture is LOW-order rich, soft-clipped)
 
     // Stage post-gains (level normalisation after each waveshaper)
     static constexpr float kS1Post  = 0.88f;
@@ -126,9 +127,21 @@ private:
     static constexpr float kS4Post  = 0.80f;
 
     // Inter-stage coupling voltage-divider factors
-    static constexpr float kCouple12 = 0.50f;
-    static constexpr float kCouple23 = 0.45f;
-    static constexpr float kCouple34 = 0.42f;
+    // 2026-07-26 re-voice vs the dimed Rockerverb capture (Gain10 B10 M10 T10): the
+    // old 0.50/0.45/0.42 couplings ate the drive — stages never saturated (25% THD
+    // at dimed vs the amp's 43-60%). Higher couplings let the cascade actually rail.
+    static constexpr float kCouple12 = 0.70f;
+    static constexpr float kCouple23 = 0.65f;
+    static constexpr float kCouple34 = 0.60f;
+    // Stage asymmetry bias (LUT-input units, range ±10): shifts stages 2/3 off their
+    // symmetric operating point → the rich EVEN harmonics the capture shows (h2 17%,
+    // h4 13%, h6 11% vs the model's 4/2/0.5). DC is removed by the inter-stage HPFs.
+    // Evens via duty-cycle shift (RAT lesson): offsets into stages 2/3 get swamped by
+    // the ±100+ swing; the effective place is STAGE 4, whose input swing (~±11) is
+    // comparable to the ±10 LUT window — a 2-unit offset there shifts duty ~18% → h2.
+    static constexpr float kAsym2 = 1.6f;
+    static constexpr float kAsym3 = 2.6f;
+    static constexpr float kAsym4 = 4.5f;   // deep into the LUT knee: low-order evens (h2/h4/h6) without square-edge fizz
 
     // Normalization into tonestack
     static constexpr float kPreEQGain = 0.40f;

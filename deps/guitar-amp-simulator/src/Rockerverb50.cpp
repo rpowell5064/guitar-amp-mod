@@ -37,6 +37,7 @@ void Rockerverb50::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept 
 void Rockerverb50::reset() noexcept {
     for (auto& c : ch_) {
         c.inputHPF.reset();
+        c.preEmph.reset();
         c.stage1.reset();
         c.stage2.reset();
         c.stage3.reset();
@@ -90,6 +91,9 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
     x *= gk * gk * gk;
 
     if (!cleanChannel_) {
+        // Bright tilt into the cascade: the capture distorts mids/highs far more than
+        // lows (60% THD@1k vs 43@110); emphasise them pre-clip (removed by voicing after).
+        x = s.preEmph.process(x);
         // ── Dirty channel: 4 cascaded triode-like stages ─────────────────────
         //
         // Global Gain [0,1] drives stages 1–3.  Stage 4 is fixed.
@@ -109,8 +113,8 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         //   ×0.50         — output-Z / input-Z voltage divider (coupling cap load).
         x = s.inter12HPF.process(x) * kCouple12;
 
-        // Stage 2 — main gain builder.
-        x = s.stage2.process(g2 * x) * kS2Post;
+        // Stage 2 — main gain builder (kAsym2 bias → even harmonics; HPF clears the DC).
+        x = s.stage2.process(g2 * x + kAsym2) * kS2Post;
 
         // Inter-stage 2→3:
         //   LP @ 7 kHz    — tames high-frequency fizz before heavy clipping stage.
@@ -123,8 +127,8 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         x = s.inter23HPF.process(x);
         x = s.inter23Peak.process(x) * kCouple23;
 
-        // Stage 3 — aggressive clipping / compression.
-        x = s.stage3.process(g3 * x) * kS3Post;
+        // Stage 3 — aggressive clipping / compression (kAsym3 bias → even harmonics).
+        x = s.stage3.process(g3 * x + kAsym3) * kS3Post;
 
         // Inter-stage 3→4:
         //   LP @ 5 kHz    — prevents stage-3 fizz from reaching the output stage.
@@ -138,7 +142,7 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         // gain settings actually clean up (it was a fixed clipper flooring the OD
         // channel at ~13% THD even on soft playing; the real amp cleans to ~1%).
         const float g4 = 1.0f + gt * (kS4Pre - 1.0f);
-        x = s.stage4.process(g4 * x) * kS4Post;
+        x = s.stage4.process(g4 * x + gt * kAsym4) * kS4Post;   // duty-shift here → even harmonics
 
         // Normalise pre-EQ level so the tonestack sees a consistent drive.
         x *= kPreEQGain;
@@ -277,7 +281,7 @@ void Rockerverb50::recalcFilters() noexcept {
     //           At max (1.0): +9 dB above 4 kHz — bright, aggressive presence
     //           At noon (0.5): flat
     //           At min (0.0): −9 dB — dark, "wooly" Orange character
-    const double bassDb   = (static_cast<double>(bass_)   * 2.0 - 1.0) * 11.0;
+    const double bassDb   = (static_cast<double>(bass_)   * 2.0 - 1.0) * 9.5;   // was 11: dimed capture shows less sub-lift
     const double midDb    = (static_cast<double>(mid_)    * 2.0 - 1.0) *  9.0;
     const double trebleDb = (static_cast<double>(treble_) * 2.0 - 1.0) *  9.0;
 
@@ -305,6 +309,7 @@ void Rockerverb50::recalcFilters() noexcept {
     // Apply to all channels (L/R)
     for (auto& c : ch_) {
         c.inputHPF.setCoeffs(inputHPFc);
+        c.preEmph.setCoeffs(Filters::highshelf(800.0, 8.0, fs));
         c.inter12HPF.setCoeffs(inter12HPFc);
         c.inter23LP.setCoeffs(inter23LPc);
         c.inter23HPF.setCoeffs(inter23HPFc);
