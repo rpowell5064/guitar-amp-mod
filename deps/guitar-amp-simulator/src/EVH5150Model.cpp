@@ -48,7 +48,15 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
 void EVH5150Model::recalcFilters() noexcept {
     // Presence: ±12 dB shelf @ 5 kHz
     const double presDb = (static_cast<double>(presence_) - 0.5) * 2.0 * 12.0;
-    const double devB = (static_cast<double>(bass_)   - 0.5) * 2.0 * 10.0;
+    // 2026-07-27: range halved 10->5 dB (user: "boosting the bass makes it cut out").
+    // Measured: a low-shelf boost this large, POST-limiter, feeding the shared
+    // PowerAmpProcessor's flux-domain saturation, drives it into a genuine near-
+    // collapse at max bass (-6.8 dB RMS drop measured on the UNTOUCHED pre-tonight
+    // baseline -- a pre-existing bug, not something this session introduced, though
+    // the bodyRestore addition below stacked on top of it and made it worse). Halving
+    // the knob's own range keeps the WORST CASE combined boost safely below where the
+    // flux saturation collapses.
+    const double devB = (static_cast<double>(bass_)   - 0.5) * 2.0 * 5.0;
     const double devM = (static_cast<double>(mid_)    - 0.5) * 2.0 * 8.0;
     const double devT = (static_cast<double>(treble_) - 0.5) * 2.0 * 20.0;
     // Resonance: 0 → flat, 1 → +8 dB peak @ 80 Hz (Q=2.5) — EVH deep resonance
@@ -67,7 +75,7 @@ void EVH5150Model::recalcFilters() noexcept {
         // Red needed much more gain to reach target FR, Blue clipped hard at half that —
         // so presence/top are scaled by channel; the low restore behaves consistently
         // on both and stays fixed.
-        c.bodyRestore.setCoeffs(Filters::lowshelf(100.0, 9.0, oversampledFs_));
+        c.bodyRestore.setCoeffs(Filters::lowshelf(100.0, 3.0, oversampledFs_));
         // 2026-07-27 pass #3: user reports the swoosh is still there but CAN be tamed
         // with EQ (cutting where the boost sits) -- strong evidence the large,
         // fairly resonant peaking filter above (+16 dB / Q0.4 on Red) is ITSELF
