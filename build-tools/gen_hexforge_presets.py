@@ -885,15 +885,19 @@ add(
     # Chain: GT DL FZ DR AMP CAB MD RV EQ (CP) (WH) (OC) (NAIL). Parked disabled comp stripped
     # to defaults per the user's no-residue rule (the Klon lesson).
     dl={"pos":2,"enable":1,"type":"Digital","time":220.89,"feedback":0.1862,"mix":0.115,"width":0.5075},
-    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.58,"volume":0.33,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
-    dr={"enable":1,"model":"Super Nova","drive":0.295,"tone":0.5,"level":0.5975,"mix":1.0},
+    # 2026-07-27 USER (pass 2): remove the drive (SD-1) — more authentic (Bellamy runs the
+    # Fuzz Factory STRAIGHT into a bright Marshall for KOC) — and work the fuzz<->amp interaction.
+    # With the SD-1 gone the amp sees the fuzz directly: fuzz volume .33->.50 keeps the amp driven
+    # (SD-1 was adding level), amp gain .1925->.26 for more Marshall grind under the fuzz.
+    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.58,"volume":0.50,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
+    dr={"enable":0},   # drive removed (was Super Nova SD-1); stripped to defaults, no residue
     # 2026-07-27 USER: "make it sound like the lead guitar in the VERSES" (not the surf intro).
     # The verse lead is a STEADY, bright, forward, singing fuzz lead — so the intro character
     # (dominant tremolo chop + big ambient wash) is pulled way back and the lead is voiced to
     # cut: tremolo mix .705->.20 + depth .66->.42 (subtle movement, not a chop), ambient mix
     # .5->.30 (present, not washed), presence .59->.66 + fuzz tone .51->.58 for lead bite,
     # fuzz volume .25->.33 to push the singing lead forward. Fuzz sustain/gain staging kept.
-    amp={"model":"Crunchy McCrunchFace","gain":0.1925,"bass":0.37,"mid":0.6175,"treble":0.72,"presence":0.66,"master":0.5775,"sag":0.4},
+    amp={"model":"Crunchy McCrunchFace","gain":0.26,"bass":0.37,"mid":0.6175,"treble":0.72,"presence":0.66,"master":0.5775,"sag":0.4},
     gt={"enable":1,"thresh":-56,"attack":1,"hold":140,"release":280,"hyst":8},
     md={"enable":1,"type":"Tremolo","rate":0.7175,"depth":0.42,"mix":0.20,"width":0.5},
     rv={"pos":8,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.2,"damping":0.5,"mix":0.30},
@@ -1286,7 +1290,7 @@ REDO_MEAS = {   # FULL RE-MEASURE 2026-07-27 (all presets, current build: amp re
     "Hand in Cloud": (-19.99, -9.16),
     # 2026-07-27 unlocked from MANUAL_OUT + re-leveled to parity:
     "Quiet Drive": (-10.84, -1.13),      # user: was "way too quiet" at the old -25.2 lock
-    "Knights of Fuzz": (-18.95, -5.03),  # user: reworked to the KOC verse lead (less wash)
+    "Knights of Fuzz": (-16.62, -4.39),  # user: KOC verse lead, drive removed, fuzz<->amp worked
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
