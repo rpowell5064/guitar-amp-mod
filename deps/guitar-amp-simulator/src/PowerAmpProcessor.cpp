@@ -163,15 +163,31 @@ void PowerAmpProcessor::recalcTubeParams() noexcept {
 void PowerAmpProcessor::recalcFilters() {
     const double sr   = sampleRate;
     const double osr  = sr * 2.0;   // oversampled rate
-    const double aaFC = sr * 0.45;  // anti-alias cutoff at 0.45 * native Nyquist
 
-    // 4th-order Butterworth anti-alias filter (two biquad stages, Butterworth Q cascade).
-    // Q1 = 1.3066, Q2 = 0.5412 — standard Butterworth pole pair decomposition for N=4.
-    const BiquadCoeffs aaC0 = Filters::lowpass(aaFC, 1.3066, osr);
-    const BiquadCoeffs aaC1 = Filters::lowpass(aaFC, 0.5412, osr);
+    // 8th-order Butterworth anti-alias filter (2026-07-27, replaces the old 4th-order
+    // pair — see the OsFilter comment in the header). Prewarped bilinear design,
+    // identical construction to OversamplingWrapper::computeAACoeffs (factor=2 here,
+    // vs 4 there); kCutoffFrac=0.90 matches the old aaFC = sr*0.45 target exactly
+    // (0.45*sr = 0.90 * (sr/2) = 0.90 * native Nyquist).
+    constexpr double kCutoffFrac = 0.90;
+    const double K  = std::tan(M_PI * kCutoffFrac / (2.0 * 2.0));  // factor_ = 2
+    const double K2 = K * K;
+    auto makeSOS = [&](double Q) -> BiquadCoeffs {
+        const double D = K2 + K / Q + 1.0;
+        return { K2 / D, 2.0 * K2 / D, K2 / D, 2.0 * (K2 - 1.0) / D, (K2 - K / Q + 1.0) / D };
+    };
+    // Pole Q's: Q_k = 1/(2*cos((2k+1)*pi/16)), k = 0..3 -> {0.5098, 0.6013, 0.9000, 2.5629}
+    const BiquadCoeffs sos[4] = {
+        makeSOS(1.0 / (2.0 * std::cos(1.0 * M_PI / 16.0))),
+        makeSOS(1.0 / (2.0 * std::cos(3.0 * M_PI / 16.0))),
+        makeSOS(1.0 / (2.0 * std::cos(5.0 * M_PI / 16.0))),
+        makeSOS(1.0 / (2.0 * std::cos(7.0 * M_PI / 16.0))),
+    };
     for (int c = 0; c < kMaxCh; ++c) {
-        upAA[c].s0.setCoeffs(aaC0);   upAA[c].s1.setCoeffs(aaC1);
-        downAA[c].s0.setCoeffs(aaC0); downAA[c].s1.setCoeffs(aaC1);
+        upAA[c].s0.setCoeffs(sos[0]);   upAA[c].s1.setCoeffs(sos[1]);
+        upAA[c].s2.setCoeffs(sos[2]);   upAA[c].s3.setCoeffs(sos[3]);
+        downAA[c].s0.setCoeffs(sos[0]); downAA[c].s1.setCoeffs(sos[1]);
+        downAA[c].s2.setCoeffs(sos[2]); downAA[c].s3.setCoeffs(sos[3]);
     }
 
     // NFB high-pass: presence knob raises the cutoff, reducing NFB in the upper

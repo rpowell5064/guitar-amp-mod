@@ -141,12 +141,17 @@ private:
     // ── Power-supply ripple LFO ────────────────────────────────────────────────
     float ripplePhase = 0.0f;
 
-    // ── 2× oversampling anti-alias filters (4th-order Butterworth per channel) ─
-    // Two cascaded biquads at 0.45*fs, run at 2*fs, for both up and down paths.
+    // ── 2× oversampling anti-alias filters (2026-07-27: raised 4th->8th order to
+    // match OversamplingWrapper's fix — this stage runs the tube waveshaper's hard
+    // nonlinearity and was still on the WEAKER 4th-order design the preamp wrapper
+    // was upgraded FROM ("left a measurable alias floor on high-gain amps"); the
+    // power amp had never gotten the same fix, despite doing its own saturation.
+    // Four cascaded biquads (prewarped bilinear 8th-order Butterworth, see
+    // OversamplingWrapper::computeAACoeffs — same design, factor=2 here) at 0.45*fs.
     struct OsFilter {
-        BiquadFilter s0, s1; // stages with Q=1.3066 and Q=0.5412
-        float process(float x) noexcept { return s1.process(s0.process(x)); }
-        void  reset()  noexcept { s0.reset(); s1.reset(); }
+        BiquadFilter s0, s1, s2, s3;
+        float process(float x) noexcept { return s3.process(s2.process(s1.process(s0.process(x)))); }
+        void  reset()  noexcept { s0.reset(); s1.reset(); s2.reset(); s3.reset(); }
     };
     std::array<OsFilter, kMaxCh> upAA, downAA;
     std::vector<float> osBuf[kMaxCh]; // 2 × maxBlockSize scratch
