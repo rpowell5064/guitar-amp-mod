@@ -83,6 +83,20 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   thing to flag. Your hand-locked presets (Surf Splash, Quiet Drive, I Saw a Deer, Knights
   of Fuzz) were left exactly as you dialed them.
 
+### 9. Niche DSP batch (2026-07-27) — #7
+- TAPE rework: authentic voicing (tapeVoice>0) fixed — head bump lowshelf->peak (no
+  boom), gentler flutter. Default still 0 (no preset shift); good + ready to enable.
+- CHORUS BBD clock-warp: SHIPPED default-on (Lush-2 presets) — subtle ±0.4% clock
+  jitter = organic CE-2 wander. Level-neutral + deterministic (re-level stays valid).
+  Listen for: chorus feels a touch more organic/analog. If you hear pitch instability,
+  it's this — easy to disable.
+- CAB speaker comp (#40): NO change — the cab ALREADY has a level-invariant "glue"
+  compressor (CabinetBlock.cpp:159) that delivers the speaker-compression feel; a
+  separate thermal stage would be marginal + must be default-off. Effectively covered.
+- PITCH WSOLA (#43): DEFERRED — current pitch is standard 2-grain Hann COLA granular
+  (working, preset-used). WSOLA reduces warble but a blind rewrite risks clicks/
+  artifacts worse than shipped. Needs an A/B session with your ears; not shipped blind.
+
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
 - Mark V / Cali V (IIC+ HG bal: FR ±0.4 dB, harmonics overlay)
