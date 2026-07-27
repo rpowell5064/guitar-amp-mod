@@ -80,7 +80,12 @@ float PeaveyBackstageModel::processSample(float x, int channel) noexcept {
     const float gEff = g < 0.35f ? 0.35f : g;
     const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
     x *= gk * gk * gk;
-    x = std::tanh(x * (2.5f + gEff * 55.0f)) * 0.62f;
+    // 2026-07-26 re-voice vs the labeled DI capture (Pre10 Sat3 Pos7 L9 M6 H5): the
+    // model ran ~10.5 dB too quiet into the clipper — the whole dynamic curve tracked
+    // the NAM offset by -10 dB and THD engaged too late (10% vs the amp's 26-34%,
+    // which is near-level-independent). Drive the clipper to the capture's operating
+    // point and make up the output (tanh rails, so the makeup restores DI level).
+    x = std::tanh(x * 3.2f * (2.5f + gEff * 55.0f)) * 0.62f * 1.9f;
 
     x *= kPreToneGain;
 
