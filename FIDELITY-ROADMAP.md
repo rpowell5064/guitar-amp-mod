@@ -424,3 +424,50 @@ KEY LESSON: dynamic bias/blocking must be TRANSIENT + cathode comp SYMMETRIC or 
 steady even harmonics the static NAM captures don't have (looks like a regression). And
 high-gain harmonic readouts are NOISY (~50% THD) — always measure the keystone-OFF
 baseline before calling a delta a regression.
+
+## FULL AMP RE-VOICE SWEEP (2026-07-26 night, vs the user's Downloads captures)
+101 curated DI captures staged to Pi ~/dl_caps/amps2/ (10 amps). Methodology: baseline
+at the capture's documented knobs (or best-fit when unlabeled), fix only knob-robust
+defects, verify every change with nam_compare, commit per amp. nam_compare supports ALL
+14 amps (the usage string was stale).
+
+RE-VOICED (committed + deployed):
+- JCM800 (knob-matched capture): softened cascade + bright-cap pre-emph + input HPF
+  60->130 + opened top + body restore. Fizz h7 30->10 / h9 25->6, THD@110 78->51,
+  h2 19->10. USER-APPROVED ("sounds great").
+- Rockerverb dirty (knob-exact dimed capture): couplings 0.50/0.45/0.42 ->
+  0.70/0.65/0.60 (cascade actually saturates now: THD@110 36 vs target 38-43), bright
+  pre-emph 800/+8, stage 2/3/4 asym bias (h2 1.7->5.5; full 17 needs PA duty asym),
+  dimed bass shelf 11->9.5. FR within ~2 dB. GOTCHA: --channel 0 = dirty (1 = clean)!
+- Backline Plus / Peavey (labeled capture, Sat3->gain 0.3 mapping): clipper ran
+  ~10.5 dB too quiet -> drove to the capture's operating point (x3.2 pre, x1.9 out).
+  THD in range, 223 Hz harmonic profile now overlays the capture.
+- Hiwatt (labeled ALL-12/Master-10): THD already matched; FR-only fix (bodyShelf
+  -1.5 -> lowshelf 90/+5.5, 180 Hz -2.6 dip in the unused brightShelf slot).
+  FR within ~1.4 dB (was -5.6 @50).
+
+VERIFIED ALREADY-GOOD (no change): Plexi CH I (THD 54/51 vs 48/50, FR ~2 dB),
+Mark V IIC+ HG bal (FR within 0.4 dB, 223 Hz harmonics overlay), Recto CH3 Modern
+(FR dead-on incl +20 dB @50 resonance), Friedman BE gain-sweep (its tuning ref),
+MT15 vs Metal_Sweet_Spot gain 0.7 (FR +-0.1 dB — its tuning ref; satDrive push
+tried + REVERTED: made odd-square, cost 6 dB level).
+
+DEFERRED (documented, needs supervised session):
+- EVH: LF 2x over-distorted + mids half + lows dark, CONFIRMED capture-robust across
+  two independent packs (Beji Red + Blue) — but the fix needs inter-stage filter
+  restructure on the flagship high-gain amp with unknown-knob captures.
+- Vox AC30: resists the pattern (1-pole tighten no-op at 110, post-shelf eaten by the
+  limiter), capture labels ambiguous (M8? Cut?). Was previously NAM-tuned.
+- Sunn: no DI capture (Shift Line pack is full-rig IRs).
+
+UNIVERSAL STRUCTURAL FINDING (every amp): the models are ODD-dominant where real amps
+are EVEN-rich (h2/h4/h6), and THD@1k runs ~half the captures' (flat-with-level = PA
+crossover/duty-asymmetry signature). Both need power-amp-level structural work
+(per-amp duty asymmetry / crossover), not per-amp preamp tuning. The Rockerverb
+stage-4 bias experiment quantified it: LUT-stage offsets max out around h2 5-6%.
+
+MEASUREMENT GOTCHAS (hard-won): match the capture's knobs BEFORE reading deltas
+(the "10 dB Fender compression gap" was a knob mismatch); scp Windows->Pi can land
+mtimes BEHIND build objects (clock skew) — always touch after scp; --channel
+conventions differ per amp (Rockerverb 0=dirty); some captures are pedal-boosted
+(808/TS9/SD1 in the name = skip for amp voicing).
