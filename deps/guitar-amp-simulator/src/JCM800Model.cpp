@@ -15,14 +15,22 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
         // cold-clipper stages (nam_compare: bass was 49-65% THD / h2 36% vs a real
         // JCM800's 20-31% / 7%). Tighter bass INTO the gain = the mids drive the crunch
         // like a real 800; the post-gain tonestack still restores the low-mid body.
-        c.inputHPF.setCoeffs(Filters::highpass1pole(60.0, oversampledFs_));
+        c.inputHPF.setCoeffs(Filters::highpass1pole(130.0, oversampledFs_));  // was 60: keep bass OUT of stage 1 (the LF over-saturation happens here, before the inter HPFs)
+        // Marshall bright-cap pre-emphasis: tilt the signal bright BEFORE the clipper so
+        // the mids/highs break up (real 800 is 30%@110 / 61%@1k THD) and the lows don't
+        // over-saturate — the missing piece behind the LF-weighted distortion + dark FR.
+        c.preEmph.setCoeffs(Filters::highshelf(700.0, 8.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kMarshallV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(110.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(150.0, oversampledFs_));
 
         c.stage2.prepare(oversampledFs_, TriodeComponent::kMarshallV2);
-        c.inter23HPF.setCoeffs(Filters::highpass1pole(90.0, oversampledFs_));
-        c.inter23LP.setCoeffs(Filters::lowpass1pole(8000.0, oversampledFs_));
+        // Tighter bass into stages 2/3 (150/140 Hz) so the low end doesn't over-clip
+        // (was 68% THD@110 / h2 28% vs the amp's ~32% / ~2%); the post-clip body shelf
+        // restores the lows in the FR. Wider inter23 LP (11k) lets the mids/highs break
+        // up like the real amp (THD@1k was too clean) and brightens the top.
+        c.inter23HPF.setCoeffs(Filters::highpass1pole(140.0, oversampledFs_));
+        c.inter23LP.setCoeffs(Filters::lowpass1pole(11000.0, oversampledFs_));
 
         c.stage3.prepare(oversampledFs_, TriodeComponent::kMarshallV3);
 
@@ -49,8 +57,8 @@ void JCM800Model::recalcFilters() noexcept {
     const double presDb = (static_cast<double>(presence_) - 0.5) * 2.0 * 10.0; // ±10 dB
     for (auto& c : ch_) {
         c.presenceF.setCoeffs(Filters::highshelf(4000.0, presDb, oversampledFs_));
-        c.airLP.setCoeffs(Filters::lowpass1pole(14000.0, oversampledFs_));
-        c.bodyShelf.setCoeffs(Filters::lowshelf(200.0, 3.0, oversampledFs_));
+        c.airLP.setCoeffs(Filters::lowpass1pole(19000.0, oversampledFs_));   // brighter top (was 14k, FR -5dB@3-8k)
+        c.bodyShelf.setCoeffs(Filters::lowshelf(260.0, 7.5, oversampledFs_)); // restore the low-mid body the tight input HPF pulls out (FR 125-260 Hz)
     }
 }
 
@@ -59,6 +67,7 @@ void JCM800Model::reset() noexcept {
     masterSmooth_.setCurrentAndTargetValue(master_);
     for (auto& c : ch_) {
         c.inputHPF.reset();
+        c.preEmph.reset();
         c.stage1.reset();
         c.inter12HPF.reset();
         c.stage2.reset();
@@ -99,18 +108,23 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     const float gEff = g < 0.35f ? 0.35f : g;
     const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
     x *= gk * gk * gk;
+    x = c.preEmph.process(x);   // bright-cap tilt into the cascade
 
     // Stage 1 (cold, tight)
-    x = c.stage1.process(x * (1.5f + gEff * 8.5f)) * 0.90f * kCouple12;
+    // 2026-07-26 re-voice: softened drive spans so the 4-stage cascade doesn't square up.
+    // The knob-matched JCM800 capture is a clean h3-dominant Marshall (h4-h9 single-digit);
+    // the old ×10/×12/×11 drives railed each stage hard → h4-h9 at 20-30% (fizz). Lower
+    // spans keep the stages in the softer LUT knee → h3-dominant like the real amp.
+    x = c.stage1.process(x * (1.5f + gEff * 5.0f)) * 0.90f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2 (no bypass cap, even harmonics)
-    x = c.stage2.process(x * (2.5f + gEff * 9.5f)) * 0.80f * kCouple23;
+    x = c.stage2.process(x * (2.2f + gEff * 5.5f)) * 0.80f * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);
 
     // Stage 3 (full bypass, aggressive)
-    x = c.stage3.process(x * (3.0f + gEff * 8.0f)) * 0.82f;
+    x = c.stage3.process(x * (2.6f + gEff * 5.0f)) * 0.82f;
     x *= kPreToneGain;
 
     // Tonestack

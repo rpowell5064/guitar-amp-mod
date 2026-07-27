@@ -54,6 +54,7 @@ private:
 
     struct ChannelState {
         BiquadFilter     inputHPF;     // sub-bass cut @ 60 Hz
+        BiquadFilter     preEmph;      // Marshall bright-cap pre-emphasis into the clipper
         TriodeComponent  stage1;       // kMarshallV1
         BiquadFilter     inter12HPF;   // 100 Hz HPF
         TriodeComponent  stage2;       // kMarshallV2
