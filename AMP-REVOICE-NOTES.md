@@ -166,6 +166,21 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   later more carefully (lower gain, even wider Q, maybe a shelf not a peak). If NO →
   the PA-aliasing theory stands and the pre-saturation LP above is the real lever;
   the presence EQ can go back up since it wasn't the culprit after all.
+- **BASS-KNOB CUTOUT FIX (same day, user: "boosting the bass makes it cut out"):**
+  measured a 13.2 dB output collapse (Red, noon->max bass — nearly silent). Root-caused
+  via A/B against the pre-tonight baseline: this is a PRE-EXISTING bug (untouched
+  baseline already drops 6.8 dB noon->max) — the shared PowerAmpProcessor's flux-domain
+  transformer saturation grinds hardest on LF content and can collapse toward silence
+  rather than clip cleanly when driven too hard. This session's bodyRestore addition
+  (+9 dB fixed low-shelf, post-limiter) stacked ADDITIVELY with the Bass knob's own
+  up-to-+10 dB low-shelf at the same ~100 Hz, adding ~6 dB more collapse on top. Fix
+  (EVH-local, zero blast radius): bodyRestore 9->3 dB, Bass knob's own range halved
+  10->5 dB. Verified: noon->max now -3.1 dB (normal tonal shift), was -13.2 dB. The
+  deeper ~7 dB PowerAmpProcessor-level bass-sensitivity still exists in principle
+  (shared code, other amps could theoretically hit it with enough bass boost) but
+  EVH's narrower range no longer reaches it audibly. If ANY other amp's presets/EQ
+  ever reports a similar "cuts out on bass boost," check for the same additive-
+  stacking-into-flux-saturation pattern first.
 - **CONFIRMED (user, same day): swoosh is GONE with the gentler EQ.** Root cause was
   the presence filter's OWN resonance, not PA-stage aliasing — the 8th-order AA fix
   and the pre-saturation LP (items above) were real, legitimate hygiene improvements
