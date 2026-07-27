@@ -59,15 +59,20 @@ void EVH5150Model::recalcFilters() noexcept {
         c.devMid.setCoeffs   (Filters::peaking  (600.0, devM, 0.7, oversampledFs_));
         c.devTreble.setCoeffs(Filters::highshelf(3600.0, devT, oversampledFs_));
         c.resonanceF.setCoeffs(Filters::peaking  (80.0, resDb, 2.5, oversampledFs_));
-        // Post-clip CLEAN low restore + musical presence (fixed voicing, 2026-07-27):
-        // brings the tightened lows back full (capture is +5 dB @50 vs our thinned -15)
-        // without re-muddying, and lifts the 3 kHz presence the muffled top was missing.
-        c.bodyRestore.setCoeffs(Filters::lowshelf(150.0, 9.0, oversampledFs_));
-        // Broad presence LIFT (high shelf, not a peak): un-muffles the whole 1.5k+
-        // band the model rolled off; the steeper airLP then rolls the very top so it's
-        // present without the harsh >6 kHz fizz. Tune by ear from here.
-        c.presencePk.setCoeffs (Filters::highshelf(1400.0, 9.0, oversampledFs_));
-        c.airLP.setCoeffs     (Filters::lowpass1pole(7000.0, oversampledFs_));
+        // Post-clip CLEAN low restore + musical presence, vs the speaker-less "5150
+        // Head Only Pack" captures (2026-07-27 re-voice #2 — the earlier speaker-baked
+        // captures wrongly suggested a cab curve; the amp itself really does have a
+        // broad presence hump + low punch). Red (4-stage cascade) and Blue (3-stage,
+        // less headroom) saturate very differently under the SAME fixed EQ boost —
+        // Red needed much more gain to reach target FR, Blue clipped hard at half that —
+        // so presence/top are scaled by channel; the low restore behaves consistently
+        // on both and stays fixed.
+        c.bodyRestore.setCoeffs(Filters::lowshelf(100.0, 9.0, oversampledFs_));
+        const double presenceGain = redChannel_ ? 16.0 : 11.0;
+        const double topGain      = redChannel_ ?  9.0 : 4.0;
+        c.presencePk.setCoeffs (Filters::peaking(3000.0, presenceGain, 0.4, oversampledFs_));
+        c.topShelf.setCoeffs   (Filters::highshelf(6000.0, topGain, oversampledFs_));
+        c.airLP.setCoeffs     (Filters::lowpass1pole(9500.0, oversampledFs_));
     }
 }
 
@@ -91,6 +96,7 @@ void EVH5150Model::reset() noexcept {
         c.resonanceF.reset();
         c.bodyRestore.reset();
         c.presencePk.reset();
+        c.topShelf.reset();
         c.airLP.reset();
         c.sagEnv = 0.0f;
         c.dnr.reset();
@@ -169,6 +175,7 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // of the cascade + the broad 5150 presence hump the muffled top was missing.
     y = c.bodyRestore.process(y);
     y = c.presencePk.process(y);
+    y = c.topShelf.process(y);
     y = c.devBass.process(y);
     y = c.devMid.process(y);
     y = c.devTreble.process(y);
@@ -186,7 +193,7 @@ void EVH5150Model::setParameter(const std::string& id, float value) noexcept {
     else if (id == "presence")  { presence_ = value; recalcFilters(); }
     else if (id == "resonance") { resonance_ = value; recalcFilters(); }
     // channel: 0.0 = Blue (rhythm), 1.0 = Red (lead)
-    else if (id == "channel")   { redChannel_ = (value >= 0.5f); }
+    else if (id == "channel")   { redChannel_ = (value >= 0.5f); recalcFilters(); }  // Red/Blue presence gain differs
 }
 
 float EVH5150Model::getParameter(const std::string& id) const noexcept {

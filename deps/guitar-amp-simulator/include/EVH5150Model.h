@@ -82,6 +82,7 @@ private:
                                        // tightened out of the cascade come back full,
                                        // not as distorted mud)
         BiquadFilter     presencePk;   // fixed musical presence for the muffled highs
+        BiquadFilter     topShelf;     // extended top (5-8k+), independent of the presence peak
         BiquadFilter     airLP;        // 12 kHz LP
         DnrRolloff       dnr;          // decay darkener (engaged on the Red channel)
 
