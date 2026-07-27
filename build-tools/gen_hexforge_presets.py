@@ -894,8 +894,12 @@ add(
     # Fuzz Factory STRAIGHT into a bright Marshall for KOC) — and work the fuzz<->amp interaction.
     # With the SD-1 gone the amp sees the fuzz directly: fuzz volume .33->.50 keeps the amp driven
     # (SD-1 was adding level), amp gain .1925->.26 for more Marshall grind under the fuzz.
-    # tone .58->.48 (was too bright/harsh — pass 3)
-    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.48,"volume":0.50,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
+    # 2026-07-27 USER pass 4: RESTORED the user's dialed Fuzz Factory settings (sustain .9775,
+    # volume .25, bias/inputtrim .7725, getemp .5275). NOTE: the "tone" param is INERT for the
+    # Fuzz Factory — the real ZVex FF has no tone knob and the model ignores it (the fz block
+    # just shares one tone control across all its fuzz pedals; Muff/Octavia use it, FF doesn't).
+    # The brightness fix (pass 3) was the amp/EQ/cab, not the fuzz.
+    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.51,"volume":0.25,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
     dr={"enable":0},   # drive removed (was Super Nova SD-1); stripped to defaults, no residue
     # 2026-07-27 USER: "make it sound like the lead guitar in the VERSES" (not the surf intro).
     # The verse lead is a STEADY, bright, forward, singing fuzz lead — so the intro character
@@ -906,7 +910,10 @@ add(
     # presence .66->.56 + treble .72->.66 (tame the harsh top — pass 3)
     amp={"model":"Crunchy McCrunchFace","gain":0.26,"bass":0.37,"mid":0.6175,"treble":0.66,"presence":0.56,"master":0.5775,"sag":0.4},
     gt={"enable":1,"thresh":-56,"attack":1,"hold":140,"release":280,"hyst":8},
-    md={"enable":1,"type":"Tremolo","rate":0.7175,"depth":0.42,"mix":0.20,"width":0.5},
+    # 2026-07-27 USER pass 4: "there might be a light phaser in the song" (Bellamy runs an MXR
+    # phaser). Swapped the MD block from Tremolo to a LIGHT Phaser (slow, subtle). NOTE: hexforge
+    # has ONE modulation slot, so this is phaser INSTEAD of tremolo — say if you want the trem back.
+    md={"enable":1,"type":"Phaser","rate":0.28,"depth":0.5,"mix":0.35,"width":0.5},
     rv={"pos":9,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.2,"damping":0.5,"mix":0.30},
     # EQ removed (was the Lead-Cut boost @1.6-3.2k = a big part of the harshness); parked disabled at the freed slot 2.
     eq={"pos":2,"enable":0},
@@ -1298,7 +1305,7 @@ REDO_MEAS = {   # FULL RE-MEASURE 2026-07-27 (all presets, current build: amp re
     "Hand in Cloud": (-19.99, -9.16),
     # 2026-07-27 unlocked from MANUAL_OUT + re-leveled to parity:
     "Quiet Drive": (-10.84, -1.13),      # user: was "way too quiet" at the old -25.2 lock
-    "Knights of Fuzz": (-20.14, -8.52),  # user pass 3: darker + EQ removed + delay repositioned
+    "Knights of Fuzz": (-21.13, -9.08),  # user pass 4: dialed fuzz restored + phaser
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
