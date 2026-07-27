@@ -210,7 +210,9 @@ add(
     # + the Klon drive 0.35->0.16 (now a light singing boost, not a stacked-gain wall).
     # 2026-07-11 revoice: Beardo re-voice + input-clip removal made the HBE bright/harsh; eased treble 0.65->0.58,
     # presence 0.68->0.6, high-cut 8800->8100 (the singing lead shouldn't be fizzy). Klon boost kept.
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":0,"gain":0.56,"bass":0.4,"mid":0.52,"treble":0.58,"presence":0.6,"master":0.65,"sag":0.4},
+    # 2026-07-27 user: "a little more gain" on the Imperial Lead. 0.56 -> 0.66 (still short of the old 0.72
+    # "fuzz" point). Beardo BE is unchanged this session, so this is a pure gain bump; re-measured below.
+    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":0,"gain":0.66,"bass":0.4,"mid":0.52,"treble":0.58,"presence":0.6,"master":0.65,"sag":0.4},
     # 2026-07-14 research: Akesson cut the Impera SOLOS with a '70s DOD Preamp 250 (the Sugar Drive was the
     # rhythm pedal); level 0.55 mirrors the user's proven DOD-into-HBE dial (Cardinal Lead) — boost, not fuzz-stack.
     dr={"enable":1,"model":"Preamp 250","drive":0.16,"tone":0.6,"level":0.55,"mix":1.0},
@@ -236,7 +238,9 @@ add(
     # Åkesson, Skeleta solos). VALUES = the user's own on-device dial-in (2026-07-05, read back from the
     # preset store): amp gain pulled WAY back (0.24) + mids forward (0.73) + DOD drive low (0.178) so it's
     # a clean mid-boost, not a stacked-gain wall. DO NOT re-tune without the user — this is their setting.
-    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.24,"bass":0.25,"mid":0.73,"treble":0.6975,"presence":0.7,"master":0.65,"sag":0.32},
+    # 2026-07-27 user: "a little more gain" on the Cardinal Lead. 0.24 -> 0.34 (still a clean mid-boost dial,
+    # sat switch on). Beardo BE unchanged this session; re-measured below.
+    amp={"model":"Beardo BE","fr_channel":"HBE","fr_sat":1,"gain":0.34,"bass":0.25,"mid":0.73,"treble":0.6975,"presence":0.7,"master":0.65,"sag":0.32},
     dr={"enable":1,"model":"Preamp 250","drive":0.1775,"tone":0.6225,"level":0.55,"mix":1.0},
     md={"enable":1,"type":"Lush-2","rate":0.20,"depth":0.30,"mix":0.18,"width":0.30},  # subtle CE-2 chorus — user pref over the researched MXR phaser (phaser read wrong on-rig)
     gt={"enable":1,"thresh":-45,"attack":0.5,"hold":120,"release":260,"hyst":8},
@@ -1248,19 +1252,32 @@ for _nm, _d in ROOMDENSE_MEAS_DELTA.items():
 # plugin race, fixed in work_response). Values below are from the fully-fixed tool +
 # race-fixed plugin, verified ORDER-INDEPENDENT (two shuffled batches agree ≤0.02 dB).
 # (Surf Splash needs no entry — MANUAL_OUT locks its level.)
-REDO_MEAS = {   # name: (rms@-20, peak@-20)
-    "March Stabs": (-16.90, -5.53),
-    "World Went Away": (-8.99, -1.58), "Broken Crush": (-16.64, -4.26),
-    "Con Molars": (-13.82, -3.25),
-    "Flatliner": (-13.52, -4.04), "Prayer Djent": (-13.64, -4.21),   # rev-63 end-chain EQ added
-    # rev-64 Lead Cut pass (2026-07-24): all 10 leads re-measured after the EQ curve landed
-    # (two shuffled batches, ≤0.04 dB; peak = the higher of the two runs, conservative cap):
-    "Regal Sustain": (-10.28, 0.05), "Sermon Solo": (-10.58, 0.05),
-    "Imperial Lead": (-11.70, -0.85), "Numb Sustain": (-9.03, 1.53),
-    "Gravity Lead": (-28.35, -13.08), "Hazy Solo": (-10.97, 0.99),
-    "Skye Soar": (-12.35, -0.90), "Regal Solo": (-9.89, 0.95),
-    "Quarter-Tone Lead": (-11.59, 0.95), "Spectrum Lead": (-11.96, -0.94),
-    "Cardinal Lead": (-12.26, -0.90),   # rev-65: joined the Lead Cut set on user request
+REDO_MEAS = {   # FULL RE-MEASURE 2026-07-27 (all presets, current build: amp re-voices +
+                # accumulated Phase-2 power-amp/keystone/cab drift). rms@-20, peak@-20.
+                # MANUAL_OUT presets (Surf Splash/Quiet Drive/I Saw a Deer/Knights of Fuzz)
+                # stay hand-locked and are intentionally NOT here.
+    "Regal Sustain": (-11.78, -0.90), "Nevermind Verse": (-26.43, -13.65), "Nevermind Wall": (-10.02, -1.29),
+    "Come As Water": (-19.47, -7.15), "Candlelit Clean": (-17.21, -7.08), "Sermon Crunch": (-16.38, -6.03),
+    "Sermon Rhythm": (-15.84, -5.40), "Sermon Solo": (-11.71, -1.43), "Imperial Rhythm": (-16.78, -7.01),
+    "Imperial Lead": (-12.44, -1.92), "Cardinal Rhythm": (-17.10, -7.85), "Cardinal Lead": (-12.65, -1.95),
+    "Dark Side Air": (-25.73, -11.99), "Berlin Wall Pulse": (-13.53, 0.34), "Numb Sustain": (-12.57, -1.55),
+    "Gravity Lead": (-32.26, -16.51), "Mauve Haze": (-13.40, -3.47), "Hazy Solo": (-11.68, -0.17),
+    "Little Feather": (-21.37, -10.62), "Holy Smoke": (-15.30, -4.74), "Skye Crusher": (-15.68, -5.20),
+    "Skye (No Mod)": (-15.16, -5.48), "Skye Soar": (-13.29, -0.87), "Wizard's Doom": (-8.82, -1.31),
+    "Vanishing Drive": (-17.18, -6.44), "Dreamlit Shimmer": (-34.78, -22.65), "Flatliner": (-15.78, -6.09),
+    "Prayer Djent": (-15.63, -6.21), "Bridge Vibe": (-15.10, -5.24), "Bottle Jangle": (-15.18, -2.36),
+    "Forest Wash": (-31.05, -19.74), "Disco Chuck": (-36.82, -24.96), "Apache Echo": (-24.74, -12.10),
+    "Desert Robot": (-8.50, 1.24), "Moondust Glam": (-10.11, 0.81), "Innerspeaker Swirl": (-15.89, -3.27),
+    "Glide Wall": (-16.41, -4.75), "Streets Chime": (-21.14, -10.04), "Regal Solo": (-11.38, -0.11),
+    "March Stabs": (-16.94, -6.50), "World Went Away": (-11.17, -3.28), "Broken Crush": (-14.95, -2.32),
+    "Con Molars": (-15.14, -4.39), "Quarter-Tone Lead": (-12.59, -0.52),
+    "Anyone Can Play Guitar": (-19.25, -7.15), "Winterborn": (-31.22, -19.99),
+    "Castaway Groove": (-15.72, -6.26), "Marionette Master": (-17.15, -6.41),
+    "Spectrum Rhythm": (-16.94, -7.04), "Spectrum Lead": (-13.70, -2.94), "Grunge Drop": (-16.19, -5.84),
+    "Plug-In Junior": (-16.05, -5.07), "Retro Poland": (-25.34, -15.46), "Duality Crush": (-13.07, -3.32),
+    "Blind Squall": (-11.81, -3.42), "One Step Deeper": (-14.10, -4.34), "Sweet Soy Stabs": (-14.23, -4.57),
+    "Sweet Dispersion": (-22.06, -10.42), "Homesick Saucer": (-17.05, -6.09),
+    "Hand in Cloud": (-19.99, -9.16),
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
