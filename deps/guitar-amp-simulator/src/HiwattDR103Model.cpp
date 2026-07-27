@@ -40,10 +40,13 @@ void HiwattDR103Model::prepare(double oversampledSampleRate, int /*maxBlockSize*
         // sets the ~2-5 kHz "hi-fi plateau".  NOTE: the shared clean PowerAmp
         // (Fender, canonical idx 0) rolls the top off ~10 dB, so the preamp is
         // pre-emphasised HARD here to land on the DR103 DI after the PA.
-        c.brightShelf.setCoeffs(Filters::highshelf(2000.0, 0.0, oversampledFs_));
+        // 2026-07-26 re-voice vs the knob-labeled 'HIWATT DI ALL 12 MASTER 10' capture:
+        // THD already matches (4-28% across drive); FR was -5.6 dB @50 / -3.2 @80 with a
+        // +2.2 dB 200-315 hump. Restore the master-dimed low bloom below the hump and
+        // trim the hump (brightShelf slot repurposed — it was set to 0 dB/unused).
+        c.brightShelf.setCoeffs(Filters::peaking(180.0, -2.6, 0.8, oversampledFs_));
         c.presencePk.setCoeffs(Filters::peaking(2400.0, 9.0, 0.5, oversampledFs_));
-        // Lows ran hot — a gentle low-shelf CUT tightens without going thin.
-        c.bodyShelf.setCoeffs(Filters::lowshelf(150.0, -1.5, oversampledFs_));
+        c.bodyShelf.setCoeffs(Filters::lowshelf(90.0, 5.5, oversampledFs_));
     }
     reset();
 }
