@@ -110,14 +110,13 @@ float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xove
     // making positive-half-cycle clipping occur earlier than negative.
     const float xs = x + p.biasShift;
 
-    // Push-pull duty asymmetry (2026-07-26): offset the TANH ARGUMENT (inside the
-    // clip window) so the +/- flat-tops last different fractions of the cycle —
-    // even harmonics that SURVIVE full rail (amplitude asymmetry doesn't). Models
-    // unmatched output tubes / PI imbalance. duty 0 → bit-identical.
-    const float dOff = duty * 0.8f;
+    // (duty is handled as STATEFUL flat-top droop in process() — memoryless offsets
+    // here were measured inert on already-squared preamp signals: a two-level input
+    // has fixed zero-crossings, so no static shaper can shift its duty cycle.)
+    (void)duty;
 
     // Primary soft saturation via hyperbolic tangent.
-    float y = std::tanh(p.driveScale * xs + dOff);
+    float y = std::tanh(p.driveScale * xs);
 
     // Screen grid compression: the screen draws extra current on positive swings,
     // pulling down the plate voltage faster — creates harder positive-peak rolloff.
@@ -137,18 +136,6 @@ float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xove
         y -= xover * kDz * std::tanh(y / kDz);
     }
 
-    if (duty > 0.0f) {
-        // Exact zero-input compensation for the duty offset (p.dcOffset only covers
-        // biasShift): evaluate the same chain at x = 0 and subtract.
-        float y0 = std::tanh(p.driveScale * p.biasShift + dOff);
-        if (y0 > 0.0f) y0 = y0 / (1.0f + p.screenComp * y0);
-        y0 = y0 / (1.0f + p.cathodeComp * y0 * y0);
-        if (xover > 0.0f) {
-            constexpr float kDz = 0.06f;
-            y0 -= xover * kDz * std::tanh(y0 / kDz);
-        }
-        return (y - y0) * p.outputGain;
-    }
     return (y - p.dcOffset) * p.outputGain;
 }
 
@@ -268,6 +255,9 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
     maxBlockSize = maxBlock;
     numChannels  = nCh;
 
+    // Flat-top droop rate for the duty mechanism (~8 ms coupling tilt, at 2x OS rate).
+    dutyCoef = 1.0f - std::exp(-1.0f / (float)(sr * 2.0 * 0.008));
+
     for (int c = 0; c < kMaxCh; ++c) {
         osBuf[c].assign(static_cast<size_t>(maxBlock) * 2, 0.0f);
         upAA[c].reset();
@@ -284,6 +274,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         fluxSatPrev[c]  = 0.0f;
         bloomEnv[c]     = 0.0f;
         bloomVcaEnv[c]  = 0.0f;
+        dutyEnv[c]      = 0.0f;
     }
     sagEnv    = 0.0f;
     ripplePhase = 0.0f;
@@ -323,6 +314,8 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "airFeel")  { airFeelOn = v > 0.5f; }
     else if (id == "xover")    { xoverDepth_ = c01; }       // class-AB crossover (Phase-2)
     else if (id == "duty")     { duty_ = c01; }             // push-pull duty asymmetry (even harmonics)
+    else if (id == "padrive")  { paDrive_  = std::clamp(v, 0.25f, 8.0f); }  // PA distortion drive
+    else if (id == "pamakeup") { paMakeup_ = std::clamp(v, 0.1f,  4.0f); }  // PA level restore
     else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
 
     if (needFilters)
@@ -342,6 +335,8 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "airFeel")  return airFeelOn ? 1.0f : 0.0f;
     if (id == "xover")    return xoverDepth_;
     if (id == "duty")     return duty_;
+    if (id == "padrive")  return paDrive_;
+    if (id == "pamakeup") return paMakeup_;
     if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
     return 0.0f;
 }
@@ -439,7 +434,21 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
         {
             const int osLen = numSamples * 2;
             for (int i = 0; i < osLen; ++i)
-                osPtr[i] = tubeWaveshaper(osPtr[i], tp, xoverDepth_, duty_);
+                osPtr[i] = tubeWaveshaper(paDrive_ * osPtr[i], tp, xoverDepth_, duty_) * paMakeup_;
+            // Push-pull asymmetric flat-top droop (duty v2, stateful): the + half
+            // droops toward its coupling network while the − half doesn't — the
+            // positive flat-top TILTS, adding the even harmonics (h2/h4/h6) real
+            // push-pull stages show. Zero-crossings untouched; DC-free by symmetry
+            // of the droop state (removed downstream by the xfmr HP regardless).
+            if (duty_ > 0.0f) {
+                float& e = dutyEnv[ch];
+                const float k = dutyCoef;
+                for (int i = 0; i < osLen; ++i) {
+                    const float pos = osPtr[i] > 0.0f ? osPtr[i] : 0.0f;
+                    e += k * (pos - e);
+                    osPtr[i] -= duty_ * e * (osPtr[i] > 0.0f ? 1.0f : 0.0f);
+                }
+            }
         }
 
         // Step 3: downsample 2× — LP filter at OS rate then decimate.

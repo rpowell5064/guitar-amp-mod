@@ -75,12 +75,36 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   back). Needs the EVH-style post-limiter EQ restructure. Reverted.
 - Sunn: no DI capture exists in Downloads (Shift Line pack is full-rig).
 
-## THE BIG STRUCTURAL FINDING (next real project)
-Every model is odd-harmonic-dominant where every capture is even-rich (h2/h4/h6),
-and THD@1k runs ~half the captures' everywhere. Root cause measured: the shared
-PowerAmpProcessor contributes almost no distortion at current gain-staging (the
-preamps dominate), so it can't supply the push-pull evens or the power-stage mid
-saturation real cranked amps have. Confirmed by experiment: PA duty 0.45 on
-Rockerverb = no measurable change (diluted). The fix is a supervised project:
-drive the PA as a first-class distortion contributor per amp + re-level with the
-hfmeas preset workflow.
+## THE EVENS/MID-THD PROJECT — mechanism search results (2026-07-27 ~3 AM)
+The "promote the PA" project was executed as far as blind measurement allows.
+FIVE candidate mechanisms implemented + measured against the knob-exact dimed
+Rockerverb capture (target h2 17 / h4 13 / h6 11; THD@1k 60 vs our 31):
+
+1. PA input drive x4 (padrive): INERT — the PA waveshaper is ALREADY railed
+   (tanh arg ~±2.3 at stock); more drive doesn't change a railed waveform.
+2. Static tanh-arg offset (duty v1, up to 1.76): INERT.
+3. NFB reduction to 0.02: INERT (THD@1k 31→34 — NFB isn't the ceiling either).
+4. Offset + low NFB combos: INERT.
+5. Stateful positive-flat-top droop (duty v2, 8 ms): level shifts but h2 stays
+   fixed — the droop settles within the half-cycle and degenerates into amplitude
+   asymmetry.
+
+WHY (the actual physics, worth internalizing): the high-gain preamps output a
+near-SQUARE. A two-level signal has fixed zero-crossings, so NO memoryless
+post-nonlinearity can shift its duty cycle or add even harmonics — offsets just
+rescale the two levels (DC-blocked away). And a settled envelope droop is the
+same thing. Real push-pull stages get their evens from CONTINUOUS asymmetric
+coupling dynamics (different +/− RC time constants → frequency-dependent
+flat-top TILT) and from PI grid-current — mechanisms with real filter state per
+half. Designing that correctly needs an OFFLINE harmonic harness (square in →
+candidate mechanism → FFT) before ever touching the live PA again.
+
+WHAT SHIPPED (all default-neutral, verified bit-identical at defaults):
+- PowerAmpProcessor: padrive/pamakeup/duty params + per-amp AmpDefaults fields
+  + the stateful droop implementation (duty 0 = off for every amp).
+- nam_compare: --padrive/--pamakeup/--paduty/--panfb CLI overrides (sweep any
+  PA config against any capture with NO rebuild — the tool the next session
+  needs).
+NEXT SESSION: build tools/evens_harness (offline square+mechanism+FFT), find the
+coupling-tilt mechanism that yields h2 15-20% on a square, THEN wire it into the
+PA duty param and tune per amp vs captures. Do NOT retry memoryless approaches.

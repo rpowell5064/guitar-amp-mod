@@ -40,6 +40,8 @@ public:
         float sag;
         float bloomVca; // post-saturation sag-VCA depth (bloom + recovery), per amp
         float duty = 0.0f; // push-pull duty asymmetry → even harmonics (0 = symmetric)
+        float paDrive  = 1.0f; // pre-waveshaper drive (PA distortion contribution)
+        float paMakeup = 1.0f; // post-waveshaper level restore (loudness-neutral pair)
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -79,6 +81,13 @@ private:
     // preamp cascades can't make. Zero-input response exactly compensated. Per-amp
     // via AmpDefaults.duty; only amps whose captures demand it get a non-zero value.
     float    duty_      = 0.0f;    // [0,1] → up to ±0.8 tanh-arg offset
+    // PA-as-distortion-contributor (2026-07-26, the "promote the PA" project): the
+    // shared PA barely distorted at stock gain-staging (preamps dominate → the
+    // suite-wide missing evens + THD@1k-at-half). paDrive pushes INTO the waveshaper,
+    // paMakeup restores the level after — tuned as a loudness-neutral pair per amp
+    // vs its capture. Both 1.0 = bit-identical.
+    float    paDrive_   = 1.0f;    // [0.25,8] pre-waveshaper drive
+    float    paMakeup_  = 1.0f;    // [0.1,4]  post-waveshaper level restore
     float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
     float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
 
@@ -119,6 +128,13 @@ private:
     // pick "bloom" the real power amp shows. Depth is per-amp (getDefaultsForModel).
     float bloomVcaDepth     = 0.0f;
     float bloomVcaEnv[kMaxCh] = {};
+    // Push-pull asymmetric flat-top droop state (duty mechanism v2): the + half's
+    // coupling droops at a different rate than the −, TILTING the positive flat-top.
+    // A tilted square has EVEN harmonics even though its zero-crossings are fixed —
+    // the only way to add evens to an already-squared preamp signal (memoryless
+    // offsets measured mathematically inert on two-level input).
+    float dutyEnv[kMaxCh] = {};
+    float dutyCoef = 0.0f;   // droop rate (~8 ms), set in prepare
     float bloomVcaAttCoef   = 0.0f, bloomVcaRelCoef = 0.0f;
 
     // ── Power-supply ripple LFO ────────────────────────────────────────────────
