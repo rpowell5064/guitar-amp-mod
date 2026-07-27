@@ -56,21 +56,36 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   bit-identical for every amp. No amp uses it yet (see finding below).
 - Listen for: nothing — it's inert plumbing.
 
-### 7. EVH 5150 III (`EVH5150Model.cpp/.h`) — 2026-07-27  [RE-VOICED, user-reported bad]
-- Was: shipped voicing sounded muddy/dark AND harsh/fizzy (both prior blind attempts
-  had been reverted, so this is the first real fix, done with the user's ears).
-- What: softened cascade drive spans ~30% (kills the square-wave fizz at source);
-  tightened lows out of the cascade with GENTLE 1-pole HPFs (input 60->100, inter
-  ->130/120/110 — 1-pole ONLY; 2-pole overshot+sprayed fizz before); new POST-limiter
-  fixed EQ (bodyRestore lowshelf 150/+9 restores clean lows, presencePk highshelf
-  1400/+9 un-muffles the top); airLP 16k->7k rolls the harsh >6 kHz fizz.
-- Listen for: smoother (less buzzy/brittle) top, tighter+fuller low end, more present
-  mids. If STILL muffled → raise the presencePk gain; if now too bright/harsh → lower
-  it or the airLP corner. If low end thin → raise bodyRestore; if boomy → lower it.
-  These are single-constant tweaks in recalcFilters() — tell me which direction.
-- KEY: the raw capture wants ~+11 dB @2k, which means it includes speaker/mic colour
-  (mic'd 4x12) — so this is tuned to a musical voice BY EAR, not the capture curve.
-  Your cab block shapes the final tone. Both channels changed (Blue skips stage 4).
+### 7. EVH 5150 III (`EVH5150Model.cpp/.h`) — pass #1, 2026-07-27  [superseded by #7b]
+- What: first fix (softened cascade, gentle 1-pole HPFs, first post-limiter EQ pass).
+  User verdict: "sounds better" but still dark/muddy/boxy/synthetic, esp. Red.
+
+### 7b. EVH 5150 III re-voice #2 — 2026-07-27 (later same day)  [current, needs A/B]
+- User supplied genuine SPEAKER-LESS captures ("EVH 5150 III Head Only Pack" — All
+  Sixes / Balanced). These proved the presence hump is NOT speaker/mic coloration —
+  the real 5150 head itself has a broad +6-8 dB hump (1.2-8k) and a +4-5 dB low punch
+  (~100 Hz). Pass #1's highshelf-based EQ was the wrong SHAPE (climbs forever, never
+  comes back down) — replaced with peaking/shelf filters matching the real curve.
+- What changed: bodyRestore stays a 100 Hz low shelf (+9 dB — a 100 Hz PEAKING version
+  was tried and found to corrupt the 1 kHz THD reading via some filter/PA interaction,
+  reverted). presencePk is now a 3 kHz peaking filter. NEW topShelf (6 kHz shelf)
+  extends the top independently. Gains are LARGE and CHANNEL-DEPENDENT (Red 16/9,
+  Blue 11/4) — see "why so large" below.
+- Why so large: the shared PowerAmpProcessor's own tube saturation eats a big chunk of
+  any post-preamp EQ boost (confirmed with --nopa: same filter measures near-perfect
+  with the PA bypassed, badly short with it engaged) — NOT a bug, the numbers are
+  deliberately oversized to compensate for real downstream compression.
+- Listen for: Red should be noticeably more open/present at the top (3-8k), especially
+  compared to pass #1. Blue improves more modestly — it has much less headroom before
+  a fixed EQ boost over/under-saturates it (this is the known weak point of this pass).
+- KNOWN GAPS (be specific if these show up): (1) FR still runs 3-7 dB under the real
+  amp in several bands — pushing further risked destabilizing the PA saturation during
+  tuning, stopped at a safe point; (2) a PRE-EXISTING gain-taper mismatch at low knob
+  settings (~0.5, "Balanced") causes loudness/THD overshoot — confirmed present in the
+  pass-#1 baseline too, NOT something this pass introduced, separate future work.
+- Revert to pass #1 if this is worse: `git revert` this commit only (topShelf member +
+  the presencePk/bodyRestore/channel-scaling changes); pass #1's EQ is still the commit
+  right before it.
 
 ### 8. Preset re-level + lead gain (2026-07-27)  [test the volumes + the two leads]
 - Imperial Lead gain 0.56->0.66, Cardinal Lead 0.24->0.34 (you asked for "a little more"
