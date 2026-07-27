@@ -68,9 +68,16 @@ void EVH5150Model::recalcFilters() noexcept {
         // so presence/top are scaled by channel; the low restore behaves consistently
         // on both and stays fixed.
         c.bodyRestore.setCoeffs(Filters::lowshelf(100.0, 9.0, oversampledFs_));
-        const double presenceGain = redChannel_ ? 16.0 : 11.0;
-        const double topGain      = redChannel_ ?  9.0 : 4.0;
-        c.presencePk.setCoeffs (Filters::peaking(3000.0, presenceGain, 0.4, oversampledFs_));
+        // 2026-07-27 pass #3: user reports the swoosh is still there but CAN be tamed
+        // with EQ (cutting where the boost sits) -- strong evidence the large,
+        // fairly resonant peaking filter above (+16 dB / Q0.4 on Red) is ITSELF
+        // ringing on the harmonically-dense high-gain signal, not purely PA aliasing.
+        // Cut both channels to the same much gentler, wider (less resonant) values —
+        // sacrifices some FR accuracy vs the captures in exchange for not exciting a
+        // resonance. If the swoosh is gone/much better now, this WAS the cause.
+        const double presenceGain = 6.0;
+        const double topGain      = 3.0;
+        c.presencePk.setCoeffs (Filters::peaking(3000.0, presenceGain, 0.7, oversampledFs_));
         c.topShelf.setCoeffs   (Filters::highshelf(6000.0, topGain, oversampledFs_));
         c.airLP.setCoeffs     (Filters::lowpass1pole(9500.0, oversampledFs_));
     }
