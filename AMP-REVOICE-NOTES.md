@@ -112,6 +112,30 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   (working, preset-used). WSOLA reduces warble but a blind rewrite risks clicks/
   artifacts worse than shipped. Needs an A/B session with your ears; not shipped blind.
 
+### 10. Shared PowerAmpProcessor anti-aliasing — 2026-07-27  [affects EVERY amp]
+- User report on EVH ("gain swooshes the higher the gain stages get", "almost every
+  company gets this right") pointed at classic under-aliased digital distortion.
+- Found: OversamplingWrapper (wraps every preamp at 4x) was explicitly raised 4th->8th
+  order previously because "4th-order left a measurable alias floor on high-gain amps"
+  — but the SHARED PowerAmpProcessor's own 2x-oversampling AA filter (runs the tube
+  waveshaper's hard saturation for every amp) was STILL the old 4th-order design
+  (confirmed: identical Q values to the ones the wrapper's own comment names as
+  superseded). Raised to the same 8th-order prewarped-bilinear Butterworth.
+- Verified SAFE (not regressive): JCM800 measures byte-for-byte identical FR/THD/
+  harmonics before/after (true A/B). But nam_compare's harmonic tool can only measure
+  energy at EXACT integer harmonics — it structurally CANNOT detect aliasing (which is
+  inharmonic) — so this is verified safe, NOT verified to cure the swoosh. Needs ears.
+- SECOND CANDIDATE FOUND, NOT YET FIXED: the output-transformer saturation stage
+  (xfmrHP/xfmrLP + the tanh/flux-domain saturation) runs AFTER downAA — i.e. entirely
+  OUTSIDE the oversampled domain, with ZERO anti-aliasing protection at all, in every
+  amp. Likely a bigger contributor than the one fixed here. Moving it inside the
+  oversampled window is a bigger, riskier restructuring of shared code (affects every
+  amp's transformer-saturation timing) — deliberately NOT attempted blind; do this
+  properly in a supervised session if the swoosh persists after this fix.
+- Listen for (all amps, esp. EVH/high-gain): does turning the gain knob up still
+  produce an audible sweeping/whooshing artifact? If yes, the xfmr-stage fix above is
+  next. If it's gone/much better, this WAS the fix and #2 can wait.
+
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
 - Mark V / Cali V (IIC+ HG bal: FR ±0.4 dB, harmonics overlay)
