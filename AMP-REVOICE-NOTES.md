@@ -56,6 +56,22 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   bit-identical for every amp. No amp uses it yet (see finding below).
 - Listen for: nothing — it's inert plumbing.
 
+### 7. EVH 5150 III (`EVH5150Model.cpp/.h`) — 2026-07-27  [RE-VOICED, user-reported bad]
+- Was: shipped voicing sounded muddy/dark AND harsh/fizzy (both prior blind attempts
+  had been reverted, so this is the first real fix, done with the user's ears).
+- What: softened cascade drive spans ~30% (kills the square-wave fizz at source);
+  tightened lows out of the cascade with GENTLE 1-pole HPFs (input 60->100, inter
+  ->130/120/110 — 1-pole ONLY; 2-pole overshot+sprayed fizz before); new POST-limiter
+  fixed EQ (bodyRestore lowshelf 150/+9 restores clean lows, presencePk highshelf
+  1400/+9 un-muffles the top); airLP 16k->7k rolls the harsh >6 kHz fizz.
+- Listen for: smoother (less buzzy/brittle) top, tighter+fuller low end, more present
+  mids. If STILL muffled → raise the presencePk gain; if now too bright/harsh → lower
+  it or the airLP corner. If low end thin → raise bodyRestore; if boomy → lower it.
+  These are single-constant tweaks in recalcFilters() — tell me which direction.
+- KEY: the raw capture wants ~+11 dB @2k, which means it includes speaker/mic colour
+  (mic'd 4x12) — so this is tuned to a musical voice BY EAR, not the capture curve.
+  Your cab block shapes the final tone. Both channels changed (Blue skips stage 4).
+
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
 - Mark V / Cali V (IIC+ HG bal: FR ±0.4 dB, harmonics overlay)
