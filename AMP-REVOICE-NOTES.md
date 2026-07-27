@@ -166,6 +166,17 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   later more carefully (lower gain, even wider Q, maybe a shelf not a peak). If NO →
   the PA-aliasing theory stands and the pre-saturation LP above is the real lever;
   the presence EQ can go back up since it wasn't the culprit after all.
+- **CONFIRMED (user, same day): swoosh is GONE with the gentler EQ.** Root cause was
+  the presence filter's OWN resonance, not PA-stage aliasing — the 8th-order AA fix
+  and the pre-saturation LP (items above) were real, legitimate hygiene improvements
+  but NOT what was making Red swoosh. Current state (presencePk 6 dB/Q0.7 both
+  channels, topShelf 3 dB both) is the known-good, swoosh-free baseline — do not
+  raise these gains again without re-testing for the ring returning. Red's FR now
+  runs 7-8 dB short of the capture target in 2-8k (thinner/less bright than pass #2)
+  — that's the deliberate trade for stability. If more brightness is wanted later,
+  go WIDER (lower Q handled carelessly can still ring — prefer very broad Q like
+  0.9-1.2, or a true shelf) and gentler-stepped (raise a couple dB at a time,
+  re-test each step) rather than a big single jump.
 
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
