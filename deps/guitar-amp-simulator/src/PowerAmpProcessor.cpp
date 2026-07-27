@@ -103,14 +103,21 @@ const PowerAmpProcessor::TubeParams PowerAmpProcessor::kKT88 = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tube waveshaper — static, no state, safe to call at oversampled rate
 // ─────────────────────────────────────────────────────────────────────────────
-float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xover) noexcept {
+float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xover,
+                                        float duty) noexcept {
     // Shift input to the cathode bias operating point.
     // A positive biasShift displaces the load-line intersection upward,
     // making positive-half-cycle clipping occur earlier than negative.
     const float xs = x + p.biasShift;
 
+    // Push-pull duty asymmetry (2026-07-26): offset the TANH ARGUMENT (inside the
+    // clip window) so the +/- flat-tops last different fractions of the cycle —
+    // even harmonics that SURVIVE full rail (amplitude asymmetry doesn't). Models
+    // unmatched output tubes / PI imbalance. duty 0 → bit-identical.
+    const float dOff = duty * 0.8f;
+
     // Primary soft saturation via hyperbolic tangent.
-    float y = std::tanh(p.driveScale * xs);
+    float y = std::tanh(p.driveScale * xs + dOff);
 
     // Screen grid compression: the screen draws extra current on positive swings,
     // pulling down the plate voltage faster — creates harder positive-peak rolloff.
@@ -130,6 +137,18 @@ float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xove
         y -= xover * kDz * std::tanh(y / kDz);
     }
 
+    if (duty > 0.0f) {
+        // Exact zero-input compensation for the duty offset (p.dcOffset only covers
+        // biasShift): evaluate the same chain at x = 0 and subtract.
+        float y0 = std::tanh(p.driveScale * p.biasShift + dOff);
+        if (y0 > 0.0f) y0 = y0 / (1.0f + p.screenComp * y0);
+        y0 = y0 / (1.0f + p.cathodeComp * y0 * y0);
+        if (xover > 0.0f) {
+            constexpr float kDz = 0.06f;
+            y0 -= xover * kDz * std::tanh(y0 / kDz);
+        }
+        return (y - y0) * p.outputGain;
+    }
     return (y - p.dcOffset) * p.outputGain;
 }
 
@@ -303,6 +322,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "coupling") { coupling  = c01; }
     else if (id == "airFeel")  { airFeelOn = v > 0.5f; }
     else if (id == "xover")    { xoverDepth_ = c01; }       // class-AB crossover (Phase-2)
+    else if (id == "duty")     { duty_ = c01; }             // push-pull duty asymmetry (even harmonics)
     else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
 
     if (needFilters)
@@ -321,6 +341,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "coupling") return coupling;
     if (id == "airFeel")  return airFeelOn ? 1.0f : 0.0f;
     if (id == "xover")    return xoverDepth_;
+    if (id == "duty")     return duty_;
     if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
     return 0.0f;
 }
@@ -342,6 +363,11 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral
         case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550)
         case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f }; // Orange Rockerverb 100 MKII
+        // NOTE (2026-07-26): duty 0.45 was tried here for the dimed capture's even-rich
+        // profile (h2 17/h4 13/h6 11%) and measured NO effect — the PA contributes so
+        // little distortion vs the preamp (35% THD) that PA evens dilute to ~nothing.
+        // The evens gap needs the PA driven as a first-class distortion contributor
+        // (gain-staging re-architecture + full preset re-level) — supervised project.
         case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f }; // Friedman BE-Deluxe (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
         case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f }; // Mesa Dual Rectifier (Diamond Plate) — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
         case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
@@ -413,7 +439,7 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
         {
             const int osLen = numSamples * 2;
             for (int i = 0; i < osLen; ++i)
-                osPtr[i] = tubeWaveshaper(osPtr[i], tp, xoverDepth_);
+                osPtr[i] = tubeWaveshaper(osPtr[i], tp, xoverDepth_, duty_);
         }
 
         // Step 3: downsample 2× — LP filter at OS rate then decimate.

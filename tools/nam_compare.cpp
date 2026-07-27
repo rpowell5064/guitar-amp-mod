@@ -424,6 +424,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("nfb", rectoModern ? 0.05f : d.nfb);
     pa.setParameter("sag", d.sag);
     pa.setParameter("bloomvca", d.bloomVca);
+    pa.setParameter("duty", d.duty);
     pa.setParameter("resonance", 0.5f);
     pa.setParameter("airFeel", 0.0f);
     pa.setTubeType(static_cast<TubeType>(m.tube));

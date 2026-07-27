@@ -39,6 +39,7 @@ public:
         float nfb;
         float sag;
         float bloomVca; // post-saturation sag-VCA depth (bloom + recovery), per amp
+        float duty = 0.0f; // push-pull duty asymmetry → even harmonics (0 = symmetric)
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -71,6 +72,13 @@ private:
     // → tanh(flux) → differentiator, so it is EXACTLY unity + uncoloured until the
     // flux actually clips. Off = the original instantaneous-voltage tanh.
     bool     fluxOT_    = true;    // flux-domain OT saturation ON (2026-07-26 Phase-2)
+    // Push-pull duty asymmetry (2026-07-26, additive default 0 = bit-identical): a DC
+    // offset on the WAVESHAPER ARGUMENT (inside the clip window, so it survives full
+    // rail — the RAT duty-cycle lesson) models unmatched power tubes / imperfect PI
+    // balance = the EVEN harmonics (h2/h4/h6) every capture shows but symmetric
+    // preamp cascades can't make. Zero-input response exactly compensated. Per-amp
+    // via AmpDefaults.duty; only amps whose captures demand it get a non-zero value.
+    float    duty_      = 0.0f;    // [0,1] → up to ±0.8 tanh-arg offset
     float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
     float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
 
@@ -165,5 +173,6 @@ private:
 
     // Static waveshaper — no state; safe to call at OS rate.
     // xover = class-AB crossover depth (0 = none, bit-identical).
-    static float tubeWaveshaper(float x, const TubeParams& p, float xover) noexcept;
+    static float tubeWaveshaper(float x, const TubeParams& p, float xover,
+                                float duty = 0.0f) noexcept;
 };
