@@ -2,6 +2,28 @@
 #include <cmath>
 #include <algorithm>
 
+// 2026-07-27 (user: "boosting the bass makes it cut out"): the tonestack's OWN
+// internal Bass shelf (Marshall spec, ±14 dB @ 100 Hz) sits POST-cascade on an
+// already heavily-distorted, broadband signal, so a full +14 dB boost there
+// measurably inflates the ABSOLUTE LEVEL reaching the shared PowerAmpProcessor.
+// Confirmed via --nopa (bypassing the shared PA): the bug (311 ms attack delay +
+// 8.4 dB bloom on a plain note) nearly vanishes without it (5 ms / 0.7 dB) —
+// it's the PA's own 6L6GC supply-sag detector (200 ms release, tracks absolute
+// level) reacting to EVH's level swing, not a PA bug — so it's fixed HERE
+// (EVH-local), not by duplicating the power amp. A broadband post-hoc gain
+// compensation was tried first and barely helped (PA's sag was already
+// saturating near its floor at this drive level, so a uniform level cut doesn't
+// proportionally unsag it once triggered) — cutting the excess at its actual
+// source, by compressing how far the knob can push the tonestack's own shelf,
+// works instead. Range needed compressing all the way to ~15% of the Marshall
+// spec's ±14 dB (not just halved, like devB's range cut elsewhere) before the
+// attack-time symptom actually cleared — see AMP-REVOICE-NOTES.md for the full
+// dB/ms sweep. Knob is still tonally useful: ~4-6 dB more low end at max vs
+// noon (measured against the capture), just far short of a full ±14 dB swing.
+static inline float kBassKnobToStack(float v) noexcept {
+    return 0.5f + (v - 0.5f) * 0.15f;
+}
+
 void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
     oversampledFs_ = oversampledSampleRate;
 
@@ -32,7 +54,7 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         c.stage4.prepare(oversampledFs_, TriodeComponent::kEVH_S4);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
-        c.tonestack.setBass(bass_);
+        c.tonestack.setBass(kBassKnobToStack(bass_));
         c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_);
         c.tonestack.setPresence(presence_);
@@ -167,6 +189,16 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
 
     x *= kPreToneGain;
 
+    // Sag-detector source (2026-07-27): captured HERE, before the tonestack, not
+    // after. A real amp's power-supply sag responds to how hard you're playing —
+    // NOT to where the tone knobs are set, so the detector shouldn't be able to see
+    // any tonestack-EQ-driven level swing at all. NOTE: this alone turned out NOT to
+    // fix the "boosting the bass makes it cut out" bug (measured zero change) — the
+    // real cause was downstream, in the shared PowerAmpProcessor's own sag detector
+    // (see kBassKnobToStack() above) — but it's kept anyway as the conceptually
+    // correct tap point for EVH's own internal sag mechanism.
+    const float sagSrc = x;
+
     // Marshall-style tonestack
     x = c.tonestack.process(x);
 
@@ -176,9 +208,9 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // Air rolloff (presence moved POST-limiter where it can be heard)
     x = c.airLP.process(x);
 
-    // 6L6 supply sag: tight, fast (solid-state rectifier feel)
+    // 6L6 supply sag: tight, fast (solid-state rectifier feel).
     const float sagAttack = 1.0f - c.sagDecay;
-    c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
+    c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(sagSrc);
     const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.18f);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
@@ -202,7 +234,7 @@ void EVH5150Model::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")      { gain_   = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")    { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")       { sag_    = value; }
-    else if (id == "bass")      { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); recalcFilters(); }
+    else if (id == "bass")      { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(kBassKnobToStack(value)); recalcFilters(); }
     else if (id == "mid")       { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); recalcFilters(); }
     else if (id == "treble")    { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); recalcFilters(); }
     else if (id == "presence")  { presence_ = value; recalcFilters(); }

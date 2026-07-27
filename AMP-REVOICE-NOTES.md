@@ -192,6 +192,51 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   go WIDER (lower Q handled carelessly can still ring — prefer very broad Q like
   0.9-1.2, or a true shelf) and gentler-stepped (raise a couple dB at a time,
   re-test each step) rather than a big single jump.
+- **BASS-KNOB CUTOUT, ROUND 2 (user: "not the whole way. do we need to make
+  multiple poweramps?"):** the round-1 fix (above) only addressed a STEADY-STATE
+  RMS collapse; nam_compare's attack/bloom test (section A, 1 kHz burst) exposed
+  the REAL remaining bug was a TRANSIENT one — at bass=1.0, a note took 311 ms to
+  reach 90% of its target level with 8.4 dB of bloom (vs instant/healthy at
+  bass=0.5) — i.e. a genuine "quiet hit that blooms up a third of a second later,"
+  which is what "cuts out" actually describes. Two dead-end diagnoses first: (1)
+  hypothesized EVH's own `c.sagEnv` was driven by raw bass energy in `abs(x)` —
+  added a high-pass on the detector's input (300 Hz, then 1000 Hz) — ZERO
+  measurable effect either time, disproving the theory; (2) re-sourced the
+  detector to tap PRE-tonestack (so bass_ genuinely cannot reach it at all) —
+  STILL zero effect, proving EVH's own internal sag mechanism was never the
+  cause. ROOT CAUSE (confirmed via `--nopa`, bypassing the shared
+  PowerAmpProcessor entirely): bass=1.0 with `--nopa` measures only 5 ms/0.7 dB
+  (nearly healthy) vs 311 ms/8.4 dB with it in the loop. EVH's own tonestack Bass
+  shelf (Marshall spec, ±14 dB @ 100 Hz, `ToneStackComponent::kMarshall`) sits
+  POST-cascade on an already heavily-distorted broadband signal — a full +14 dB
+  boost there genuinely inflates the ABSOLUTE LEVEL reaching the shared PA, and
+  the PA's own 6L6GC supply-sag detector (200 ms release constant, tracks
+  absolute level, see `PowerAmpProcessor::k6L6GC.sagRelMs`) reacts by holding a
+  much deeper gain reduction that only recovers on its own fixed clock. **This
+  directly answers the user's question: no, multiple power amps are not
+  needed** — the shared PA's sag behavior is correct/by-design for normal
+  playing dynamics; the bug was that a STATIC EQ knob was swinging the absolute
+  level feeding it far more than any real amp's tone control would. Tried a
+  broadband post-hoc gain compensation first (cancel ~40% of the shelf's own
+  dB in a flat trim) — barely moved the needle (8.4→8.1 dB) because the PA's sag
+  was already saturating near its floor at this drive level, so a uniform level
+  cut doesn't proportionally unsag it once triggered. Fixed at the actual
+  source instead: compress how far the Bass knob can push the tonestack's OWN
+  internal shelf via a new `kBassKnobToStack()` mapping in EVH5150Model.cpp
+  (0.5 + (v-0.5)*0.15, i.e. the knob's effective internal range is now ~15% of
+  Marshall's ±14 dB spec, down from the full range) — fully EVH-local, does NOT
+  touch the shared `ToneStackComponent` spec (JCM800 and everything else using
+  Marshall-type stacks is untouched/bit-identical). Verified: bass=1.0 attack
+  0.0 ms / bloom 1.8 dB (was 311 ms / 8.4 dB); bass=0.5 unaffected (healthy);
+  Blue channel healthy at both settings (0.68/0.75 dB bloom, 0 ms attack — was
+  never as badly affected as Red). Knob is still tonally useful: ~4-6 dB more
+  low end at max vs noon (80 Hz: -2.3 vs -6.4 dB; 50 Hz: -3.8 vs -9.8 dB vs
+  capture), just far short of a full ±14 dB swing. LESSON for future amps: a
+  per-amp tonestack knob range that looks reasonable in isolation can still
+  overload the SHARED PowerAmpProcessor's absolute-level-keyed sag detector if
+  applied post-cascade to an already-distorted signal — when tuning any amp's
+  Bass/tonestack range, sanity-check nam_compare's attack/bloom section at the
+  knob's extremes, not just at noon.
 
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
