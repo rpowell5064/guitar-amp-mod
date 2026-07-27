@@ -72,6 +72,17 @@ is its own commit), rebuild `guitaramp_amp` + `guitaramp_hexforge`, deploy.
   (mic'd 4x12) — so this is tuned to a musical voice BY EAR, not the capture curve.
   Your cab block shapes the final tone. Both channels changed (Blue skips stage 4).
 
+### 8. Preset re-level + lead gain (2026-07-27)  [test the volumes + the two leads]
+- Imperial Lead gain 0.56->0.66, Cardinal Lead 0.24->0.34 (you asked for "a little more"
+  — both still short of a fuzz-wall; tell me up/down). Beardo BE amp itself unchanged.
+- FULL preset re-measure: found the whole suite had drifted ~2-3 dB QUIET (cleans -4 dB)
+  from all the accumulated fidelity work never being re-leveled. Re-leveled every non-
+  manual preset back to the -12.5/-13.0 dirty/clean parity targets. This is tone-neutral
+  (out_level = post-gain only) but EVERY preset's volume moved — most got LOUDER by 2-3 dB
+  to hit target. If the overall set now feels too hot or uneven vs your Bank 1, that's the
+  thing to flag. Your hand-locked presets (Surf Splash, Quiet Drive, I Saw a Deer, Knights
+  of Fuzz) were left exactly as you dialed them.
+
 ## TESTED AND VERIFIED ALREADY-GOOD — unchanged, no action needed
 - Plexi (CH I High: THD 54/51 vs 48/50, FR ~2 dB)
 - Mark V / Cali V (IIC+ HG bal: FR ±0.4 dB, harmonics overlay)
