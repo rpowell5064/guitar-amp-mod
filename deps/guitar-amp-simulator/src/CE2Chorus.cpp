@@ -57,6 +57,10 @@ void CE2Chorus::reset() noexcept {
     lfoPhase_    = 0.0f;
     depthSmooth_ = 0.0f;
     offsetSmooth_= 0.0f;
+    clockWarp_   = 0.0f;
+    clockTarget_ = 0.0f;
+    clkRng_      = 0x2545F491u;   // fixed seed = deterministic jitter
+    clkCtr_      = 0;
 }
 
 // ── process ───────────────────────────────────────────────────────────────────
@@ -91,6 +95,16 @@ void CE2Chorus::process(float** in, float** out,
         lfoPhase_ += lfoIncr;
         if (lfoPhase_ >= 1.0f) lfoPhase_ -= 1.0f;
 
+        // ── BBD clock jitter: slow random walk of the whole (shared) delay clock ──
+        if (--clkCtr_ <= 0) {
+            clkCtr_ = 128;
+            clkRng_ = clkRng_ * 1664525u + 1013904223u;
+            const float r = static_cast<int32_t>(clkRng_) * (1.0f / 2147483648.0f); // [-1,1)
+            clockTarget_ = r * 0.004f;    // ±0.4% clock drift
+        }
+        clockWarp_ += 0.0008f * (clockTarget_ - clockWarp_);   // ~26 ms slew = organic wander
+        const float clkScale = 1.0f + clockWarp_;
+
         for (int c = 0; c < chCount; ++c) {
             // ── LFO phase (ch1 offset for stereo widening) ────────────────────
             float phi = lfoPhase_;
@@ -100,7 +114,7 @@ void CE2Chorus::process(float** in, float** out,
             }
             const float lfoVal    = triangle(phi);           // [-1, +1]
             const float delaySamp = std::max(1.0f,
-                std::min(baseSamples_ + offsetSmooth_ + depthSmooth_ * lfoVal, maxDelaySamp));
+                std::min(baseSamples_ * clkScale + offsetSmooth_ + depthSmooth_ * lfoVal, maxDelaySamp));
 
             float x       = in[c][i];
             const float dry = x;

@@ -3,6 +3,7 @@
 #include <vector>
 #include <cmath>
 #include <algorithm>
+#include <cstdint>
 
 // Boss CE-2 Chorus model.
 //
@@ -63,6 +64,16 @@ private:
     float lfoPhase_    = 0.0f;  // [0, 1)
     float depthSmooth_ = 0.0f;  // smoothed depth in samples (audio thread only)
     float offsetSmooth_= 0.0f;  // smoothed centre-delay offset in samples (click-free knob sweeps)
+
+    // ── BBD clock jitter (#36, 2026-07-27) ────────────────────────────────────
+    // A real bucket-brigade's clock isn't perfectly steady, so the WHOLE delay line
+    // wobbles a hair on top of the LFO — the organic "not-quite-steady" chorus
+    // character. Tiny (±0.4% of the base delay) + seeded LCG (deterministic, so the
+    // preset loudness measurements stay reproducible). Shared clock → one mono drift.
+    float clockWarp_   = 0.0f;  // current fractional delay warp
+    float clockTarget_ = 0.0f;  // random-walk target
+    uint32_t clkRng_   = 0x2545F491u;
+    int      clkCtr_   = 0;
 
     // ── Delay buffer ──────────────────────────────────────────────────────────
     static constexpr int kMaxCh = 2;
