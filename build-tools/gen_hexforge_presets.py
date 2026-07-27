@@ -884,12 +884,18 @@ add(
     # mix .705), the HEX AMBIENT wash (decay 2.63, mix .5) and the Lead Cut EQ post-reverb.
     # Chain: GT DL FZ DR AMP CAB MD RV EQ (CP) (WH) (OC) (NAIL). Parked disabled comp stripped
     # to defaults per the user's no-residue rule (the Klon lesson).
-    dl={"pos":2,"enable":1,"type":"Digital","time":220.89,"feedback":0.1862,"mix":0.115,"width":0.5075},
+    # 2026-07-27 USER pass 3: too bright/harsh + move the delay + drop the EQ.
+    # Delay moved from pos 2 (in FRONT of the fuzz — echoes fed the fuzz, messy) to its
+    # correct post-amp lead slot (pos 8: after cab+trem, before reverb) with proper lead
+    # settings (dotted-8th-ish 330 ms, feedback .30, mix .24) so the repeats are clean echoes
+    # of the fully-formed lead tone.
+    dl={"pos":8,"enable":1,"type":"Digital","time":330.0,"feedback":0.30,"mix":0.24,"width":0.5075},
     # 2026-07-27 USER (pass 2): remove the drive (SD-1) — more authentic (Bellamy runs the
     # Fuzz Factory STRAIGHT into a bright Marshall for KOC) — and work the fuzz<->amp interaction.
     # With the SD-1 gone the amp sees the fuzz directly: fuzz volume .33->.50 keeps the amp driven
     # (SD-1 was adding level), amp gain .1925->.26 for more Marshall grind under the fuzz.
-    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.58,"volume":0.50,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
+    # tone .58->.48 (was too bright/harsh — pass 3)
+    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.48,"volume":0.50,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
     dr={"enable":0},   # drive removed (was Super Nova SD-1); stripped to defaults, no residue
     # 2026-07-27 USER: "make it sound like the lead guitar in the VERSES" (not the surf intro).
     # The verse lead is a STEADY, bright, forward, singing fuzz lead — so the intro character
@@ -897,14 +903,16 @@ add(
     # cut: tremolo mix .705->.20 + depth .66->.42 (subtle movement, not a chop), ambient mix
     # .5->.30 (present, not washed), presence .59->.66 + fuzz tone .51->.58 for lead bite,
     # fuzz volume .25->.33 to push the singing lead forward. Fuzz sustain/gain staging kept.
-    amp={"model":"Crunchy McCrunchFace","gain":0.26,"bass":0.37,"mid":0.6175,"treble":0.72,"presence":0.66,"master":0.5775,"sag":0.4},
+    # presence .66->.56 + treble .72->.66 (tame the harsh top — pass 3)
+    amp={"model":"Crunchy McCrunchFace","gain":0.26,"bass":0.37,"mid":0.6175,"treble":0.66,"presence":0.56,"master":0.5775,"sag":0.4},
     gt={"enable":1,"thresh":-56,"attack":1,"hold":140,"release":280,"hyst":8},
     md={"enable":1,"type":"Tremolo","rate":0.7175,"depth":0.42,"mix":0.20,"width":0.5},
-    rv={"pos":8,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.2,"damping":0.5,"mix":0.30},
-    eq={"pos":9,"enable":1,"preset":5,"100":-1,"200":0,"400":1,"800":3,"1k6":4,"3k2":5},
+    rv={"pos":9,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.2,"damping":0.5,"mix":0.30},
+    # EQ removed (was the Lead-Cut boost @1.6-3.2k = a big part of the harshness); parked disabled at the freed slot 2.
+    eq={"pos":2,"enable":0},
     cp={"pos":10}, wh={"pos":11}, oc={"pos":12}, nail={"pos":13},
     cab_ir="@vox2x12",
-    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":10000}),
+    cab={"micpos":0.20,"micdist":0.15,"lowcut":85,"highcut":8200}),   # highcut 10k->8.2k: roll the fizzy top (pass 3)
 )
 
 # ── Bank 15/D + Bank 16 (index 15) — NU METAL (2026-07-24, user request; first Diamond
@@ -1290,7 +1298,7 @@ REDO_MEAS = {   # FULL RE-MEASURE 2026-07-27 (all presets, current build: amp re
     "Hand in Cloud": (-19.99, -9.16),
     # 2026-07-27 unlocked from MANUAL_OUT + re-leveled to parity:
     "Quiet Drive": (-10.84, -1.13),      # user: was "way too quiet" at the old -25.2 lock
-    "Knights of Fuzz": (-16.62, -4.39),  # user: KOC verse lead, drive removed, fuzz<->amp worked
+    "Knights of Fuzz": (-20.14, -8.52),  # user pass 3: darker + EQ removed + delay repositioned
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
