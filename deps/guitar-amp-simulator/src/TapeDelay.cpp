@@ -86,8 +86,11 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     // Authentic mod: mostly smooth (slow sine wow + capstan periodic flutter) with a
     // GENTLE aperiodic random component. The random walks are blended low so they add
     // texture without jittering the read pointer fast enough to sound grainy.
-    const float modAuth = wowDepth_     * (0.7f  * std::sin(s.wowPhase) + 0.3f  * wowW)
-                        + flutterDepth_ * (0.8f  * std::sin(s.capPhase) + 0.2f  * scrapeW);
+    // 2026-07-27: random-walk fractions cut (0.3->0.15 wow, 0.2->0.1 scrape) — the old
+    // blend jittered the read pointer enough to sound "wrong"/grainy. Now 85-90% smooth
+    // sine with just a whisper of aperiodic drift = natural tape wander.
+    const float modAuth = wowDepth_     * (0.85f * std::sin(s.wowPhase) + 0.15f * wowW)
+                        + flutterDepth_ * (0.90f * std::sin(s.capPhase) + 0.10f * scrapeW);
     const float mod = modOld + tapeVoice_ * (modAuth - modOld);
 
     delaySamples += delaySamples * mod;
@@ -166,7 +169,11 @@ void TapeDelay::rebuildFilters() noexcept {
     const BiquadCoeffs lp = Filters::lowpass (static_cast<double>(highCutHz_), 0.707, sampleRate_);
     // Playback-head LF resonance ("head bump"): the +3-6 dB rise ~60-120 Hz that
     // makes tape echoes warm/round. Slides down slightly as the tape ages.
-    const BiquadCoeffs bump = Filters::lowshelf(115.0 - tapeAge_ * 25.0, 3.5, sampleRate_);
+    // 2026-07-27 rework: was a LOW-SHELF (+3.5 dB) which boosted ALL sub-lows -> boomy /
+    // "didn't fade" (the user's report). A real playback-head bump is a RESONANT PEAK
+    // ~60-100 Hz that returns to flat BELOW it. Peaking @ ~90 Hz / +2.5 dB / Q 1.1 gives
+    // the warm tape thump without the sub-bass boom.
+    const BiquadCoeffs bump = Filters::peaking(95.0 - tapeAge_ * 20.0, 2.5, 1.1, sampleRate_);
     for (auto& c : ch_) {
         c.fbHP.setCoeffs(hp);
         c.fbLP.setCoeffs(lp);
