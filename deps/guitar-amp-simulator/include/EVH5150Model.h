@@ -78,6 +78,10 @@ private:
                                         // final limiter, so knob deviations from noon
                                         // are re-applied where they can be heard
         BiquadFilter     resonanceF;   // peak @ 80 Hz (EVH deep resonance)
+        BiquadFilter     bodyRestore;  // 2026-07-27: post-clip CLEAN low restore (lows
+                                       // tightened out of the cascade come back full,
+                                       // not as distorted mud)
+        BiquadFilter     presencePk;   // fixed musical presence for the muffled highs
         BiquadFilter     airLP;        // 12 kHz LP
         DnrRolloff       dnr;          // decay darkener (engaged on the Red channel)
 

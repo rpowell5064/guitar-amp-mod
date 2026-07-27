@@ -12,18 +12,22 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
 
     for (auto& c : ch_) {
         c.dcBlock.setCoeffs(Filters::highpass1pole(45.0, oversampledFs_));
-        c.inputTightHP.setCoeffs(Filters::highpass1pole(60.0, oversampledFs_));
+        // 2026-07-27 re-voice (user: muddy/dark + harsh/fizzy). Same recipe as the
+        // JCM800 fix: tighten the lows OUT of the cascade with GENTLE 1-pole HPFs
+        // (2-pole Butterworth here overshot and sprayed high-order fizz last time),
+        // so the boomy over-distorted low end stops muddying + intermod-buzzing.
+        c.inputTightHP.setCoeffs(Filters::highpass1pole(100.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kEVH_S1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(85.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(130.0, oversampledFs_));
 
         c.stage2.prepare(oversampledFs_, TriodeComponent::kEVH_S2);
-        c.inter23HPF.setCoeffs(Filters::highpass1pole(65.0, oversampledFs_));
-        c.inter23LP.setCoeffs(Filters::lowpass1pole(9000.0, oversampledFs_));
+        c.inter23HPF.setCoeffs(Filters::highpass1pole(120.0, oversampledFs_));
+        c.inter23LP.setCoeffs(Filters::lowpass1pole(8500.0, oversampledFs_));
 
         c.stage3.prepare(oversampledFs_, TriodeComponent::kEVH_S3);
-        c.inter34HPF.setCoeffs(Filters::highpass1pole(75.0, oversampledFs_));
-        c.inter34LP.setCoeffs(Filters::lowpass1pole(8000.0, oversampledFs_));
+        c.inter34HPF.setCoeffs(Filters::highpass1pole(110.0, oversampledFs_));
+        c.inter34LP.setCoeffs(Filters::lowpass1pole(7500.0, oversampledFs_));
 
         c.stage4.prepare(oversampledFs_, TriodeComponent::kEVH_S4);
 
@@ -55,7 +59,15 @@ void EVH5150Model::recalcFilters() noexcept {
         c.devMid.setCoeffs   (Filters::peaking  (600.0, devM, 0.7, oversampledFs_));
         c.devTreble.setCoeffs(Filters::highshelf(3600.0, devT, oversampledFs_));
         c.resonanceF.setCoeffs(Filters::peaking  (80.0, resDb, 2.5, oversampledFs_));
-        c.airLP.setCoeffs     (Filters::lowpass1pole(16000.0, oversampledFs_));
+        // Post-clip CLEAN low restore + musical presence (fixed voicing, 2026-07-27):
+        // brings the tightened lows back full (capture is +5 dB @50 vs our thinned -15)
+        // without re-muddying, and lifts the 3 kHz presence the muffled top was missing.
+        c.bodyRestore.setCoeffs(Filters::lowshelf(150.0, 9.0, oversampledFs_));
+        // Broad presence LIFT (high shelf, not a peak): un-muffles the whole 1.5k+
+        // band the model rolled off; the steeper airLP then rolls the very top so it's
+        // present without the harsh >6 kHz fizz. Tune by ear from here.
+        c.presencePk.setCoeffs (Filters::highshelf(1400.0, 9.0, oversampledFs_));
+        c.airLP.setCoeffs     (Filters::lowpass1pole(7000.0, oversampledFs_));
     }
 }
 
@@ -77,6 +89,8 @@ void EVH5150Model::reset() noexcept {
         c.tonestack.reset();
         c.presenceF.reset();
         c.resonanceF.reset();
+        c.bodyRestore.reset();
+        c.presencePk.reset();
         c.airLP.reset();
         c.sagEnv = 0.0f;
         c.dnr.reset();
@@ -108,17 +122,19 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
     x *= gk * gk * gk;
 
-    // Stage 1: hot bias, significant asymmetry
-    x = c.stage1.process(x * (2.5f + gEff * 11.0f)) * 0.88f * kCouple12;
+    // Stage 1: hot bias, significant asymmetry. 2026-07-27: drive spans softened
+    // (~30%) so the 4-stage cascade doesn't square up to the harsh/fizzy near-square
+    // the user heard (same fix as JCM800). Still high-gain; the character is smoother.
+    x = c.stage1.process(x * (2.2f + gEff * 7.5f)) * 0.88f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2: very hot, heavy clipping
-    x = c.stage2.process(x * (3.8f + gEff * 11.0f)) * 0.78f * kCouple23;
+    x = c.stage2.process(x * (3.2f + gEff * 7.5f)) * 0.78f * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);
 
     // Stage 3: hard clip (lower Ra), compressed
-    x = c.stage3.process(x * (5.0f + gEff * 9.0f)) * 0.70f * kCouple34;
+    x = c.stage3.process(x * (4.2f + gEff * 6.5f)) * 0.70f * kCouple34;
     x = c.inter34HPF.process(x);
     x = c.inter34LP.process(x);
 
@@ -148,6 +164,11 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // Post-limiter: tone-knob deviations from noon + presence (noon = all identity,
     // so the shipped noon voicing and every preset at noon are bit-identical).
     float y = softLimit(x);
+    // Fixed re-voice EQ (2026-07-27) — POST-limiter, or the hot limiter crushes it
+    // (same reason the dev EQ below sits here): restore the clean lows tightened out
+    // of the cascade + the broad 5150 presence hump the muffled top was missing.
+    y = c.bodyRestore.process(y);
+    y = c.presencePk.process(y);
     y = c.devBass.process(y);
     y = c.devMid.process(y);
     y = c.devTreble.process(y);
