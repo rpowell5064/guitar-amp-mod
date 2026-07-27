@@ -885,12 +885,18 @@ add(
     # Chain: GT DL FZ DR AMP CAB MD RV EQ (CP) (WH) (OC) (NAIL). Parked disabled comp stripped
     # to defaults per the user's no-residue rule (the Klon lesson).
     dl={"pos":2,"enable":1,"type":"Digital","time":220.89,"feedback":0.1862,"mix":0.115,"width":0.5075},
-    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.51,"volume":0.25,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
+    fz={"enable":1,"pedal":"Fuzz Zachary","sustain":0.9775,"tone":0.58,"volume":0.33,"bias":0.7725,"inputtrim":0.7725,"getemp":0.5275},
     dr={"enable":1,"model":"Super Nova","drive":0.295,"tone":0.5,"level":0.5975,"mix":1.0},
-    amp={"model":"Crunchy McCrunchFace","gain":0.1925,"bass":0.37,"mid":0.6175,"treble":0.72,"presence":0.59,"master":0.5775,"sag":0.4},
+    # 2026-07-27 USER: "make it sound like the lead guitar in the VERSES" (not the surf intro).
+    # The verse lead is a STEADY, bright, forward, singing fuzz lead — so the intro character
+    # (dominant tremolo chop + big ambient wash) is pulled way back and the lead is voiced to
+    # cut: tremolo mix .705->.20 + depth .66->.42 (subtle movement, not a chop), ambient mix
+    # .5->.30 (present, not washed), presence .59->.66 + fuzz tone .51->.58 for lead bite,
+    # fuzz volume .25->.33 to push the singing lead forward. Fuzz sustain/gain staging kept.
+    amp={"model":"Crunchy McCrunchFace","gain":0.1925,"bass":0.37,"mid":0.6175,"treble":0.72,"presence":0.66,"master":0.5775,"sag":0.4},
     gt={"enable":1,"thresh":-56,"attack":1,"hold":140,"release":280,"hyst":8},
-    md={"enable":1,"type":"Tremolo","rate":0.7175,"depth":0.6575,"mix":0.705,"width":0.5},
-    rv={"pos":8,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.628,"damping":0.5,"mix":0.5},
+    md={"enable":1,"type":"Tremolo","rate":0.7175,"depth":0.42,"mix":0.20,"width":0.5},
+    rv={"pos":8,"enable":1,"type":"Ambient","predelay":12.75,"decay":2.2,"damping":0.5,"mix":0.30},
     eq={"pos":9,"enable":1,"preset":5,"100":-1,"200":0,"400":1,"800":3,"1k6":4,"3k2":5},
     cp={"pos":10}, wh={"pos":11}, oc={"pos":12}, nail={"pos":13},
     cab_ir="@vox2x12",
@@ -1278,17 +1284,20 @@ REDO_MEAS = {   # FULL RE-MEASURE 2026-07-27 (all presets, current build: amp re
     "Blind Squall": (-11.81, -3.42), "One Step Deeper": (-14.10, -4.34), "Sweet Soy Stabs": (-14.23, -4.57),
     "Sweet Dispersion": (-22.06, -10.42), "Homesick Saucer": (-17.05, -6.09),
     "Hand in Cloud": (-19.99, -9.16),
+    # 2026-07-27 unlocked from MANUAL_OUT + re-leveled to parity:
+    "Quiet Drive": (-10.84, -1.13),      # user: was "way too quiet" at the old -25.2 lock
+    "Knights of Fuzz": (-18.95, -5.03),  # user: reworked to the KOC verse lead (less wash)
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
 
 MANUAL_OUT = {   # hand-locks: presets the user tuned BY EAR at a specific level — re-measuring would change what they heard
     "Surf Splash": 2.4,    # user's 2026-07-24 device dial-in was made at the rev-61 out (+2.4); baked verbatim with it
-    "Quiet Drive": -25.2,  # user's 2026-07-24 amp dial-in (Recto CH2 Modern/Spongy), tuned at -21.3 — then the suite-wide
-                           # sag floor (56ba803) bounded the Spongy brown-out and the preset came out +3.9 dB hotter
-                           # (measured -7.77 vs the locked-era -11.68); -25.2 restores the loudness they dialed at.
+    # Quiet Drive: UNLOCKED 2026-07-27 (user: "way too quiet"). The -25.2 lock was to restore a
+    #   pre-sag-floor era loudness; the user now wants it at normal parity, so it re-levels via REDO_MEAS.
     "I Saw a Deer": -20.94,  # user's 2026-07-25 on-device rework of Cloudforge, baked verbatim at their exact level
-    "Knights of Fuzz": -18.6,  # user's 2026-07-25 full-arc KOC rework of Cydonia Sunrise, baked verbatim at their exact level
+    # Knights of Fuzz: UNLOCKED 2026-07-27 — reworked toward the KOC VERSE LEAD (tremolo/ambient
+    #   pulled back, lead voiced forward), so it re-levels to parity via REDO_MEAS (measured below).
 }
 for _p in PRESETS:
     _nm = _p["name"]
