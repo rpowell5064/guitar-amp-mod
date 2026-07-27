@@ -1304,8 +1304,6 @@ REDO_MEAS = {   # FULL RE-MEASURE 2026-07-27 (all presets, current build: amp re
     "Sweet Dispersion": (-22.06, -10.42), "Homesick Saucer": (-17.05, -6.09),
     "Hand in Cloud": (-19.99, -9.16),
     # 2026-07-27 unlocked from MANUAL_OUT + re-leveled to parity:
-    "Quiet Drive": (-10.84, -1.13),      # user: was "way too quiet" at the old -25.2 lock
-    "Knights of Fuzz": (-21.13, -9.08),  # user pass 4: dialed fuzz restored + phaser
 }
 for _nm, (_r, _pk) in REDO_MEAS.items():
     MEAS_RMS_AT_M20[_nm] = _r; MEAS_PEAK_AT_M20[_nm] = _pk
@@ -1341,6 +1339,22 @@ for _p in PRESETS:
     if _t:
         _i = SYM_IDX["out_level"]
         _p["vals"][_i] = round(max(-40.0, _p["vals"][_i] + _t), 1)
+
+# ── VERBATIM device dial-ins (2026-07-27, user "use my edit") ────────────────
+# Knights of Fuzz + Quiet Drive were dialed on the device and read back from
+# ~/.config/hexchain/hexforge-presets.dat. Override the FULL vals + IR here, LAST,
+# so no leveling / polish / perc-trim can alter what the user set on-device
+# (incl. their own out_level = loudness choice). This is the MANUAL_OUT idea taken
+# all the way: the entire preset is locked to the device state.
+try:
+    from device_verbatim_vals import DEVICE_VERBATIM
+    for _p in PRESETS:
+        _dv = DEVICE_VERBATIM.get(_p["name"])
+        if _dv:
+            _p["vals"] = [float(x) for x in _dv["vals"]]
+            _p["cab"]  = _dv["ir"]
+except ImportError:
+    pass   # device_verbatim_vals.py not present → keep the authored versions
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Verification: decode the ORIGINAL four inline presets to prove whether they sit
