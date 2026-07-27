@@ -128,13 +128,14 @@ private:
     // pick "bloom" the real power amp shows. Depth is per-amp (getDefaultsForModel).
     float bloomVcaDepth     = 0.0f;
     float bloomVcaEnv[kMaxCh] = {};
-    // Push-pull asymmetric flat-top droop state (duty mechanism v2): the + half's
-    // coupling droops at a different rate than the −, TILTING the positive flat-top.
-    // A tilted square has EVEN harmonics even though its zero-crossings are fixed —
-    // the only way to add evens to an already-squared preamp signal (memoryless
-    // offsets measured mathematically inert on two-level input).
-    float dutyEnv[kMaxCh] = {};
-    float dutyCoef = 0.0f;   // droop rate (~8 ms), set in prepare
+    // Dual-corner asymmetric coupling (duty mechanism, derived offline in
+    // tools/evens_harness): the + and − halves of the squared PA output are high-
+    // passed at DIFFERENT corners (sign-split by a fast selector), so the two flat-
+    // tops tilt/curve differently → the EVEN harmonics (h2/h4) real push-pull stages
+    // show but a symmetric preamp cascade + memoryless PA cannot make. duty_=0 → off.
+    // Verified on the Rockerverb dimed capture: h2 5.5→~18, h4 1.5→~11 at depth 0.8.
+    float dcLpA[kMaxCh] = {}, dcLpB[kMaxCh] = {}, dcSgn[kMaxCh] = {};
+    float dcKA = 0.0f, dcKB = 0.0f, dcKSgn = 0.0f;   // corners set in prepare
     float bloomVcaAttCoef   = 0.0f, bloomVcaRelCoef = 0.0f;
 
     // ── Power-supply ripple LFO ────────────────────────────────────────────────

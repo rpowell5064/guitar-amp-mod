@@ -108,3 +108,24 @@ WHAT SHIPPED (all default-neutral, verified bit-identical at defaults):
 NEXT SESSION: build tools/evens_harness (offline square+mechanism+FFT), find the
 coupling-tilt mechanism that yields h2 15-20% on a square, THEN wire it into the
 PA duty param and tune per amp vs captures. Do NOT retry memoryless approaches.
+
+### UPDATE (2026-07-27): harness SUCCEEDED, real-chain integration PARTIAL
+tools/evens_harness.cpp built + run. Two mechanisms tested on a clean railed square:
+- M1 grid-restore (fast/slow DC envelope): INERT (h2 max 4.4) — settles to memoryless.
+- M2 dual-corner (sign-split HP, different corner per half): WORKS. Best on a clean
+  square: depth 0.8 / fcA 600 / fcB 3 / sign-selector 4 kHz → 111Hz h2 19.8 h3 23.6
+  h4 11.2 (targets 17/22/13). Evens comparable to odds — the mechanism is correct.
+  This is now the PA duty mechanism (PowerAmpProcessor dcLpA/dcLpB/dcSgn, corners in
+  prepare); duty_ = blend depth, 0 = off = bit-identical.
+BUT wired into the real PA and measured via nam_compare it does NOT hit targets:
+at duty 0.4-0.6 h2@111 barely moves (2-1%, even DROPS vs the 5.5 baseline); only at
+duty 0.9 do evens appear (h2 15.5@223) and then FREQUENCY-LOPSIDED (223>>111) with the
+ODDS inflated too (h3 42, h5 27) and a real FR shift (125Hz -1.7, 800Hz +1.8). NFB is
+NOT the cause (panfb 0.05 vs 0.4 identical). ROOT CAUSE: the harness fed a PURE
+full-rail square; the real preamp output reaching the PA is BAND-LIMITED (rounded
+edges from inter-stage LPs ~8-9kHz) + level-dependent, so the dual-corner has weak
+flat-tops to key off. Kept default-OFF for every amp (verified bit-identical).
+NEXT: either (a) apply the mechanism to a sharper/re-squared node, (b) make depth
+level+edge-adaptive, or (c) accept that DI-capture even-harmonic matching may need a
+fundamentally different power-stage topology. The harness (--paduty/--panfb sweep
+flags + tools/evens_harness) is the desk-loop for all of it.

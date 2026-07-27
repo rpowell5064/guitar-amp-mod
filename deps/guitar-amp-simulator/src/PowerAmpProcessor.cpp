@@ -255,8 +255,13 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
     maxBlockSize = maxBlock;
     numChannels  = nCh;
 
-    // Flat-top droop rate for the duty mechanism (~8 ms coupling tilt, at 2x OS rate).
-    dutyCoef = 1.0f - std::exp(-1.0f / (float)(sr * 2.0 * 0.008));
+    // Dual-corner coupling corners for the duty mechanism (at 2x OS rate), tuned in
+    // tools/evens_harness vs the Rockerverb capture: fast HP 600 Hz (curves the +
+    // flat-top), slow HP 3 Hz (− half ≈ untouched), sharp 4 kHz sign selector.
+    const double osr = sr * 2.0;
+    dcKA   = static_cast<float>(1.0 - std::exp(-2.0 * M_PI * 600.0  / osr));
+    dcKB   = static_cast<float>(1.0 - std::exp(-2.0 * M_PI *   3.0  / osr));
+    dcKSgn = static_cast<float>(1.0 - std::exp(-2.0 * M_PI * 4000.0 / osr));
 
     for (int c = 0; c < kMaxCh; ++c) {
         osBuf[c].assign(static_cast<size_t>(maxBlock) * 2, 0.0f);
@@ -274,7 +279,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         fluxSatPrev[c]  = 0.0f;
         bloomEnv[c]     = 0.0f;
         bloomVcaEnv[c]  = 0.0f;
-        dutyEnv[c]      = 0.0f;
+        dcLpA[c] = 0.0f; dcLpB[c] = 0.0f; dcSgn[c] = 0.0f;
     }
     sagEnv    = 0.0f;
     ripplePhase = 0.0f;
@@ -435,18 +440,19 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             const int osLen = numSamples * 2;
             for (int i = 0; i < osLen; ++i)
                 osPtr[i] = tubeWaveshaper(paDrive_ * osPtr[i], tp, xoverDepth_, duty_) * paMakeup_;
-            // Push-pull asymmetric flat-top droop (duty v2, stateful): the + half
-            // droops toward its coupling network while the − half doesn't — the
-            // positive flat-top TILTS, adding the even harmonics (h2/h4/h6) real
-            // push-pull stages show. Zero-crossings untouched; DC-free by symmetry
-            // of the droop state (removed downstream by the xfmr HP regardless).
+            // Dual-corner asymmetric coupling (duty mechanism): sign-split HP with
+            // different corners per half → the + and − flat-tops tilt differently →
+            // even harmonics on the squared signal. duty_ = blend depth (0 = off).
+            // The xfmr HP downstream removes any residual DC.
             if (duty_ > 0.0f) {
-                float& e = dutyEnv[ch];
-                const float k = dutyCoef;
+                float& la = dcLpA[ch]; float& lb = dcLpB[ch]; float& sg = dcSgn[ch];
                 for (int i = 0; i < osLen; ++i) {
-                    const float pos = osPtr[i] > 0.0f ? osPtr[i] : 0.0f;
-                    e += k * (pos - e);
-                    osPtr[i] -= duty_ * e * (osPtr[i] > 0.0f ? 1.0f : 0.0f);
+                    const float x = osPtr[i];
+                    la += dcKA   * (x - la);
+                    lb += dcKB   * (x - lb);
+                    sg += dcKSgn * ((x > 0.0f ? 1.0f : 0.0f) - sg);
+                    const float mixed = sg * (x - la) + (1.0f - sg) * (x - lb);
+                    osPtr[i] = x + duty_ * (mixed - x);
                 }
             }
         }
