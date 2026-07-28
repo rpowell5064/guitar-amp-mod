@@ -857,9 +857,49 @@ meaning for an active gain-stage EQ. `HiwattDR103Model` already only used
 `setExactCircuit` call was added there, it's correctly unaffected and stays
 on the heuristic path -- the right outcome, not a gap to fill later.
 
-**Remaining scope (tracked as separate tasks):** Vox AC30 (different,
-non-TMB topology -- needs its own circuit research, task tracked
-separately); Mesa Dual Rectifier / Cali V / MT15 (per-mode `tsType`, only
-some modes select `Type::Recto` -- needs verified Recto-topology component
-values); Orange Rockerverb50 (bespoke custom tonestack, doesn't use
-`ToneStackComponent` at all -- would need porting, not just a preset).
+**Vox AC30 -- real schematic found, implementation deliberately NOT
+attempted (topology genuinely ambiguous from the available scan).**
+Fetched an actual vintage Vox Sound Ltd factory schematic (drawing "OS/013,
+AC30 Amplifier -- Treble & Bass," via voxac30.org.uk) and traced the Top
+Boost tone stack by eye (repeated crops/zooms via Python PIL, since the
+Read tool's PDF pipeline needs `pdftoppm`, unavailable in this
+environment, so only direct image formats -- JPG/PNG/GIF -- could be
+read). Confirmed component VALUES with reasonable confidence: a 12AX7
+gain+cathode-follower stage feeds, via 60pF, a "TREBLE 1M LOG" pot, then
+.022uF + 100K(shunt) + .018uF, then 10K into a "BASS 1M LOG" pot --
+structurally consistent with an independent secondary source's claim that
+the Vox stack is "similar to the Fender Bassman, but without a middle
+control." BUT the exact pot-WIPER wiring (does the treble wiper shunt to
+ground, forming a rheostat divider, as one careful trace suggested, or
+something else?) could not be confirmed with full confidence from a
+55-year-old hand-drawn/scanned schematic, and -- unlike Fender/Marshall --
+there is no published peer-reviewed paper (like Yeh & Smith's) to verify
+a from-scratch derivation against. Getting a subtle wiring detail wrong
+would ship something LABELED exact that's actually wrong, which is worse
+than the honest existing heuristic. Deliberately did not guess. To finish
+this: either find a cleaner/higher-res scan of this exact schematic, or
+build and check a SPICE netlist of the traced topology against the
+independently-known "480Hz scoop / 780Hz crossover" reference behavior
+(cited by ampbooks.com's own SPICE analysis) before trusting it.
+
+**Mesa Dual Rectifier (Cali V / MT15 share lineage) -- real factory
+schematic found, implementation deferred as its own project (more complex
+than a single TMB network).** Found and read the actual Mesa-Boogie Dual
+Rectifier "PREAMP RF-1F" factory schematic (prowessamplifiers.com,
+drawn 6-93). Unlike JCM800/Plexi, this is not a single tone stack: the Red
+and Orange channels each have their OWN tone network (TRBL 250K pot +
+680pF for Red, 250K pot + 500pF for Orange; shared/switched components
+via LDR opto-relay switches per the schematic's own legend -- LDR8 "RD
+TONE CAPS" / LDR9 "OR TONE CAPS" -- meaning the two networks are
+electrically separate, switched in/out per channel, not one stack with
+shared values). Correctly deriving this means mapping each schematic
+sub-network onto `MesaDualRectifier`'s existing per-mode `tsType` table
+before implementing anything -- real, careful work, not a quick value
+swap like Friedman. Deferred as a properly-scoped follow-up rather than
+rushed; the schematic PDF is a solid starting point (values above are
+real, schematic-read, not guessed).
+
+**Orange Rockerverb50 -- not attempted.** Bespoke custom tonestack, does
+not use `ToneStackComponent` at all -- would need porting the class to
+use `YehSmithToneStack` first (a bigger refactor), not just a new preset.
+Not researched this session; tracked as a separate task.
