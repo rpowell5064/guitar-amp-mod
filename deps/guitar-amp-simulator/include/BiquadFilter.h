@@ -149,4 +149,102 @@ inline BiquadCoeffs bandpass(double fc, double Q, double fs) noexcept {
              (1.0 - alpha) / a0 };
 }
 
+// ── Decramped EQ (item #42, 2026-07-28) ───────────────────────────────────────
+// The plain RBJ `peaking()`/`highshelf()`/`lowshelf()` above are exact at the
+// requested center frequency itself, but their AWAY-from-fc behaviour (in
+// particular, whether the response actually returns to 0 dB by the time it
+// reaches Nyquist) degrades as fc approaches fs/2 — the classic bilinear-
+// transform "cramping" near Nyquist. These two additions fix that, verified
+// against real, cited sources (not reconstructed from memory) — see each
+// function's comment. Purely additive (new functions, existing ones untouched);
+// apply only to genuinely user-facing EQ controls, not capture-tuned internal
+// amp/cab voicing curves (those are already tuned to compensate for the plain
+// RBJ behaviour, so swapping formulas there would silently re-voice them).
+
+// Orfanidis parametric-EQ peaking filter with prescribed (matched) Nyquist-
+// frequency gain. Verified byte-for-byte against Appendix B (peq.m) of
+// S. J. Orfanidis, "Digital Parametric Equalizer Design with Prescribed
+// Nyquist-Frequency Gain," J. Audio Eng. Soc., vol. 45, no. 6, June 1997
+// (fetched + cross-checked against the primary source PDF directly, not just
+// a third-party reproduction). GB = bandwidth-edge gain, here derived from Q
+// the same way as a small independent reference implementation confirmed
+// against the same paper (bandwidth gain = dBgain/sqrt(2) in dB terms, then
+// Dw = w0/(1.588308819*Q) — an empirical Q-to-bandwidth mapping, not from the
+// paper itself, kept only so callers can pass a familiar Q rather than an
+// explicit bandwidth). Reduces to an exact identity at dBgain=0 (G==GB).
+inline BiquadCoeffs peakingDecramped(double fc, double dBgain, double Q, double fs) noexcept {
+    const double G0 = 1.0;
+    const double G  = std::pow(10.0, dBgain / 20.0);
+    const double GB = std::pow(10.0, (dBgain / std::sqrt(2.0)) / 20.0);
+    if (G == GB) return { 1.0, 0.0, 0.0, 0.0, 0.0 };   // flat: exact passthrough
+    const double w0 = 2.0 * M_PI * fc / fs;
+    const double Dw = w0 / (1.588308819 * Q);
+
+    const double F   = std::abs(G*G   - GB*GB);
+    const double G00 = std::abs(G*G   - G0*G0);
+    const double F00 = std::abs(GB*GB - G0*G0);
+
+    const double num = G0*G0 * (w0*w0 - M_PI*M_PI) * (w0*w0 - M_PI*M_PI)
+                      + G*G * F00 * M_PI*M_PI * Dw*Dw / F;
+    const double den = (w0*w0 - M_PI*M_PI) * (w0*w0 - M_PI*M_PI)
+                      + F00 * M_PI*M_PI * Dw*Dw / F;
+    const double G1  = std::sqrt(num / den);   // actual matched Nyquist gain
+
+    const double G01 = std::abs(G*G  - G0*G1);
+    const double G11 = std::abs(G*G  - G1*G1);
+    const double F01 = std::abs(GB*GB - G0*G1);
+    const double F11 = std::abs(GB*GB - G1*G1);
+
+    const double W2 = std::sqrt(G11 / G00) * std::pow(std::tan(w0 / 2.0), 2);
+    const double DW = (1.0 + std::sqrt(F00 / F11) * W2) * std::tan(Dw / 2.0);
+
+    const double C = F11 * DW*DW - 2.0 * W2 * (F01 - std::sqrt(F00 * F11));
+    const double D = 2.0 * W2 * (G01 - std::sqrt(G00 * G11));
+
+    const double A = std::sqrt((C + D) / F);
+    const double B = std::sqrt((G*G * C + GB*GB * D) / F);
+    const double a0 = 1.0 + W2 + A;
+
+    return { (G1 + G0*W2 + B) / a0,
+             -2.0 * (G1 - G0*W2) / a0,
+             (G1 - B + G0*W2) / a0,
+             -2.0 * (1.0 - W2) / a0,
+             (1.0 + W2 - A) / a0 };
+}
+
+// Nyquist-exact first-order shelf: crossfades between the flat reference gain
+// and a first-order allpass. A first-order allpass A(z)=(a+z⁻¹)/(1+a·z⁻¹) is
+// EXACTLY +1 at DC and EXACTLY −1 at Nyquist for any coefficient a — so
+// shelf(z) = C1 + C2·A(z) lands on the two requested gains EXACTLY at both
+// ends, for any corner frequency, with no cramping possible by construction
+// (proved directly, not just cited — verified numerically: DC/Nyquist gain
+// error was 0.000 dB at every fc/gain combination tested, including fc within
+// one octave of Nyquist). At dBgain=0 the stored b1/a1 look nonzero (both
+// equal the allpass coefficient `a`) but the transfer function is an EXACT
+// identity — verified bit-exact through BiquadFilter's recursive state too,
+// not just algebraically (s1 stays exactly 0.0 every sample once b1==a1).
+// This is the classic Regalia–Mitra allpass-based
+// shelf [P. A. Regalia & S. K. Mitra, "Tunable Digital Frequency Response
+// Equalization Filters," IEEE Trans. ASSP, 35(1), Jan 1987], also reproduced
+// in Zölzer/Holters' parametric shelving-filter work. NOTE: being first-order,
+// the transition is gentler/fixed-slope (no adjustable Q/steepness) — a
+// genuine trade vs the 2nd-order RBJ shelf's adjustable-but-cramped slope, not
+// a strict superset. Reduces to an exact identity at dBgain=0.
+inline BiquadCoeffs highshelfDecramped(double fc, double dBgain, double fs) noexcept {
+    const double G0 = 1.0;
+    const double G  = std::pow(10.0, dBgain / 20.0);
+    const double K  = std::tan(M_PI * fc / fs);
+    const double a  = (K - 1.0) / (K + 1.0);
+    const double C1 = (G0 + G) * 0.5, C2 = (G0 - G) * 0.5;
+    return { C1 + C2 * a, C1 * a + C2, 0.0, a, 0.0 };
+}
+inline BiquadCoeffs lowshelfDecramped(double fc, double dBgain, double fs) noexcept {
+    const double G0 = 1.0;
+    const double G  = std::pow(10.0, dBgain / 20.0);
+    const double K  = std::tan(M_PI * fc / fs);
+    const double a  = (K - 1.0) / (K + 1.0);
+    const double C1 = (G + G0) * 0.5, C2 = (G - G0) * 0.5;
+    return { C1 + C2 * a, C1 * a + C2, 0.0, a, 0.0 };
+}
+
 } // namespace Filters

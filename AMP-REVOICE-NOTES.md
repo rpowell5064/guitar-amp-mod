@@ -490,3 +490,48 @@ Drive = Subtle then Full on the Cab block (or the Cab tab in Hex Forge) and
 listen for a more "speaker-like" response under hard playing (compression +
 bass grit + a slight dulling of the top on sustained loud passages) vs. an
 artifact. Not yet enabled on any factory preset -- pure opt-in for now.
+
+## TIER 3 ITEM #42 — decramped EQ, VERIFIED + IMPLEMENTED, no wiring target yet (2026-07-28)
+
+The roadmap named "Orfanidis peak / Massberg shelf" — the Orfanidis half checked out
+(verified BYTE-FOR-BYTE against Appendix B / peq.m of the actual 1997 JAES paper,
+fetched and text-extracted directly, not just cited from memory), but "Massberg
+shelf" does not appear to be a real, findable reference: M. Massberg's actual
+published work is on dynamic-range compressor design, not shelving filters, and
+searching found no shelf technique under that name. Per the user's direction,
+found the real, correct technique instead: the classic Regalia & Mitra (1987)
+allpass-based shelf. Its Nyquist-exactness is provable directly, not just cited --
+a first-order allpass is EXACTLY +1 at DC and EXACTLY -1 at Nyquist for ANY
+coefficient, so `shelf(z) = C1 + C2*allpass(z)` lands on the two requested gains
+exactly at both ends by construction, for any corner frequency. Verified
+numerically (0.000 dB error at every fc/gain tested, including fc within one
+octave of Nyquist) AND via a from-scratch C++ port cross-checked against the
+Python verification (not just trusting the derivation once).
+
+Added both as new, purely additive functions in `BiquadFilter.h`:
+`Filters::peakingDecramped()` and `Filters::highshelfDecramped()` /
+`lowshelfDecramped()`. Existing `peaking()`/`highshelf()`/`lowshelf()` untouched.
+Both new functions confirmed exact-identity at 0 dB gain (the shelf's stored
+coefficients look nonzero at 0 dB but the recursive filter state provably stays
+at exactly 0.0 forever once b1==a1, verified in the C++ test, not just algebra).
+
+**No live wiring target found, on purpose -- did not force one.** Investigated
+where this would actually apply: the roadmap's own example frequencies (4 kHz
+peak / 8 kHz shelf / 16 kHz high-cut) match `OutputEQBlock` exactly, but that
+class is ONLY used by the old JUCE `GuitarAmpProcessor` -- confirmed via grep
+that NO LV2 plugin references it at all, so it's unreachable dead code from the
+user's perspective. The one genuinely reachable, truly user-facing EQ in the
+live LV2 suite is Hex Forge's 6-band `GraphicEQ` (100-3200 Hz, peaking only, no
+shelf bands) -- but numerically verified the PLAIN RBJ peaking filter is
+ALREADY exact at both its center frequency AND at Nyquist for all 6 of its
+bands (the forced-0dB-at-Nyquist assumption in the naive formula happens to be
+correct at these frequencies, since they're not close enough to Nyquist for the
+assumption to break down) -- swapping formulas there would be pure downside
+(shifts every EQ-using preset's exact tonal curve for zero measurable benefit).
+Every OTHER higher-frequency filter in the live suite (amp presence/air shelves,
+cab mic-placement filters) is internal, capture-tuned voicing -- explicitly
+off-limits per the item's own "avoid re-voicing internal curves" scope.
+**Conclusion: infrastructure is real, verified, and ready — reach for it the
+next time a genuinely user-facing EQ or shelf control is added that operates
+anywhere near Nyquist (a > ~8kHz peaking/shelf knob would be the natural
+trigger). Nothing to enable or test right now.**
