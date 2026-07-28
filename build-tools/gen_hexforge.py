@@ -430,6 +430,14 @@ ctrl.append(mkport("CAB_ROOMDENSE", "cab_roomdense", "Cab Room Density", "e", 0,
 # ignore it). Appended before the commands; pre-v27 blobs migrate to 0.5. Migrated v27.
 ctrl.append(mkport("RV_BLOOM", "rv_bloom", "Reverb Bloom", "f", 0, 1, 0.5, None, "Bloom"))
 
+# ── Cab Speaker Drive (item #40, 2026-07-28): PRE-convolution phenomenological
+# cone/coil response — envelope-driven program compression + level-dependent LF
+# soft-sat (Bl droop) + a slow thermal HF tilt. One enumerated depth control, same
+# pattern as Cab Room Density. Default 0 = bit-identical; pre-v28 blobs zero-fill
+# to Off (append-only, no migration needed). Migrated v28.
+ctrl.append(mkport("CAB_SPKDRIVE", "cab_spkdrive", "Cab Speaker Drive", "e", 0, 2, 0,
+    [("Off",0),("Subtle",1),("Full",2)], "Speaker Drive"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -1051,7 +1059,7 @@ BLOCK_GROUPS = {
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
-    "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix"]),
+    "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset"]),
             ("CLOCK SYNC", None, ["sync", "div"])],

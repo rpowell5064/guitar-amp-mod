@@ -19,6 +19,24 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
     compAtt_  = 1.0f - std::exp(-1.0f / (0.030f * (float)sr));  // 30 ms attack
     compRel_  = 1.0f - std::exp(-1.0f / (0.180f * (float)sr));  // 180 ms release
     compSlow_ = 1.0f - std::exp(-1.0f / (1.500f * (float)sr));  // sliding reference (~1.5 s)
+
+    // Item #40: LF-band envelope (fast, tracks note-to-note bass dynamics) vs its
+    // own slower reference, and the thermal envelope (seconds-scale "how hot right
+    // now" vs a tens-of-seconds "normal operating level" baseline).
+    spkLfAtt_     = 1.0f - std::exp(-1.0f / (0.010f  * (float)sr));  // 10 ms
+    spkLfRel_     = 1.0f - std::exp(-1.0f / (0.060f  * (float)sr));  // 60 ms
+    spkLfRefCoef_ = 1.0f - std::exp(-1.0f / (1.200f  * (float)sr));  // ~1.2 s reference
+    spkThAtt_     = 1.0f - std::exp(-1.0f / (2.500f  * (float)sr));  // 2.5 s (heating)
+    spkThRel_     = 1.0f - std::exp(-1.0f / (6.000f  * (float)sr));  // 6 s (cooling, slower)
+    spkThRefCoef_ = 1.0f - std::exp(-1.0f / (25.00f  * (float)sr));  // ~25 s baseline
+    for (auto& s : spkState_) {
+        s.compEnv = 0.0f; s.compRef = 0.0f;
+        s.lfSplit.setCoeffs(Filters::lowpass1pole(120.0, sr));
+        s.lfFastEnv = 0.0f; s.lfRef = 0.0f;
+        s.hfShelf.setCoeffs(Filters::highshelf(3000.0, -3.0, sr));  // fixed max thermal-hot cut
+        s.thermalEnv = 0.0f; s.thermalRef = 0.0f;
+        s.lfSplit.reset(); s.hfShelf.reset();
+    }
     // Room buffers sized for the largest room (Amount = 1) once; lengths follow the knob.
     for (int c = 0; c < kMaxCh; ++c) {
         auto& rs = room_[c];
@@ -104,6 +122,59 @@ float CabinetBlock::roomTick(RoomState& rs, float x) noexcept {
     return apy2;
 }
 
+// One sample of the pre-convolution speaker-drive chain (item #40). All three
+// sub-mechanisms are LEVEL-INVARIANT: each compares a fast/medium envelope
+// against its OWN slower reference rather than an absolute threshold, so the
+// same spkDriveAmt_ setting behaves consistently whether the cab sits after a
+// line-hot fuzz or a quiet clean boost.
+float CabinetBlock::spkDriveTick(SpkDriveState& s, float x) noexcept {
+    const float depth = spkDriveAmt_;
+
+    // 1) ~1.2:1 program compression (mirrors the Studio-voice bus glue's pattern,
+    //    reusing its coefficients, but a much gentler ratio and small max GR).
+    {
+        const float a = std::fabs(x);
+        s.compEnv += (a > s.compEnv ? compAtt_ : compRel_) * (a - s.compEnv);
+        s.compRef += compSlow_ * (a - s.compRef);
+        if (s.compEnv > s.compRef && s.compRef > 1e-6f) {
+            float g = std::pow(s.compRef / s.compEnv, depth * (1.0f - 1.0f / 1.2f));
+            if (g < 0.891f) g = 0.891f;   // cap ~1 dB GR at full depth
+            x *= g;
+        }
+    }
+
+    // 2) Level-dependent LF soft-sat below ~120 Hz (Bl droop under excursion):
+    //    the LF band saturates harder specifically when the BASS itself is
+    //    louder than its own recent average, not on absolute level.
+    {
+        const float lf = s.lfSplit.process(x);
+        const float hf = x - lf;   // complementary band (approximate, fine for character)
+        const float a  = std::fabs(lf);
+        s.lfFastEnv += (a > s.lfFastEnv ? spkLfAtt_ : spkLfRel_) * (a - s.lfFastEnv);
+        s.lfRef     += spkLfRefCoef_ * (a - s.lfRef);
+        float lfExcess = 0.0f;
+        if (s.lfRef > 1e-6f) lfExcess = std::max(0.0f, s.lfFastEnv / s.lfRef - 1.0f);
+        const float drive = 1.0f + 2.5f * depth * std::min(1.0f, lfExcess);
+        const float lfSat = std::tanh(lf * drive) / drive;
+        x = lfSat + hf;
+    }
+
+    // 3) Slow thermal HF tilt: voice-coil heating dulls the top under SUSTAINED
+    //    (seconds-scale) drive above the cab's recent "normal" operating level.
+    {
+        const float a = std::fabs(x);
+        s.thermalEnv += (a > s.thermalEnv ? spkThAtt_ : spkThRel_) * (a - s.thermalEnv);
+        s.thermalRef += spkThRefCoef_ * (a - s.thermalRef);
+        float excess = 0.0f;
+        if (s.thermalRef > 1e-6f) excess = std::max(0.0f, s.thermalEnv / s.thermalRef - 1.0f);
+        const float tiltAmt = std::min(1.0f, excess) * depth;
+        const float shelfOut = s.hfShelf.process(x);   // always run: keeps state warm
+        x = x + tiltAmt * (shelfOut - x);
+    }
+
+    return x;
+}
+
 void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     if (bypassed) { copyBlock(in, out, numSamples, nCh); return; }
 
@@ -126,6 +197,14 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     for (int c = 0; c < chCount; ++c) {
         // Capture dry signal before convolution (handles in-place in==out).
         std::copy(in[c], in[c] + numSamples, dryBuf_.begin());
+
+        // Item #40: speaker-drive compression, PRE-convolution (models the cone/coil's
+        // own response to being driven, not the "dry" bypass signal). Off by default.
+        if (spkDriveOn_) {
+            auto& sp = spkState_[c];
+            for (int i = 0; i < numSamples; ++i)
+                in[c][i] = spkDriveTick(sp, in[c][i]);
+        }
 
         // Overlap-add convolution (writes wet to out[c]).
         convolvers_[slot][c].process(in[c], out[c], numSamples);
@@ -230,6 +309,11 @@ void CabinetBlock::reset() noexcept {
         for (auto& w : rs.cw) w = 0;
         rs.aw = 0; rs.aw2 = 0;
     }
+    for (auto& s : spkState_) {
+        s.compEnv = 0.0f; s.compRef = 0.0f;
+        s.lfSplit.reset(); s.lfFastEnv = 0.0f; s.lfRef = 0.0f;
+        s.hfShelf.reset(); s.thermalEnv = 0.0f; s.thermalRef = 0.0f;
+    }
     monoActive_ = false;
 }
 
@@ -242,6 +326,10 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
     monoActive_ = true;
 
     std::copy(L, L + numSamples, dryBuf_.begin());
+    if (spkDriveOn_) {
+        auto& sp = spkState_[0];
+        for (int i = 0; i < numSamples; ++i) L[i] = spkDriveTick(sp, L[i]);
+    }
     convolvers_[slot][0].process(L, L, numSamples);
     auto& e = eqState_[0];
 
@@ -321,6 +409,8 @@ void CabinetBlock::setParameter(const std::string& id, float v) {
     else if (id == "roomamt")   { const float a = std::clamp(v, 0.0f, 1.0f);
                                   if (a != roomAmt_) { roomAmt_ = a; rebuildRoom(); } }
     else if (id == "voice")     { studio_ = v > 0.5f; }
+    else if (id == "spkdrive")    { spkDriveOn_  = v > 0.5f; }
+    else if (id == "spkdriveamt") { spkDriveAmt_ = std::clamp(v, 0.0f, 1.0f); }
     else if (id == "roomdense") {
         const bool want = v > 0.5f;
         if (want && !roomDense_)   // engaging: clear the extra room elements
@@ -346,6 +436,8 @@ float CabinetBlock::getParameter(const std::string& id) const {
     if (id == "roommix")   return roomMix_;
     if (id == "roomamt")   return roomAmt_;
     if (id == "voice")     return studio_ ? 1.0f : 0.0f;
+    if (id == "spkdrive")    return spkDriveOn_ ? 1.0f : 0.0f;
+    if (id == "spkdriveamt") return spkDriveAmt_;
     if (id == "roomdense") return roomDense_ ? 1.0f : 0.0f;
     return 0.0f;
 }

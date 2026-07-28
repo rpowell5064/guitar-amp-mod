@@ -77,6 +77,20 @@ private:
     bool  studio_   = false;
     bool  monoActive_ = false;   // processMonoToStereo ran (ch1 conv/EQ state stale)
 
+    // Speaker drive compression (item #40, 2026-07-28): a phenomenological, PRE-
+    // convolution model of how a real cone/coil responds to being driven hard —
+    // envelope-driven ~1.2:1 program compression + level-dependent LF soft
+    // saturation below ~120 Hz (Bl force-factor droop under excursion) + a very
+    // slow thermal HF tilt (voice-coil resistance rises under sustained heat,
+    // dulling the top). All three are LEVEL-INVARIANT by design (same reasoning
+    // as the Studio-voice bus glue below): they react to how loud the signal is
+    // relative to its OWN recent/long-term average, never an absolute threshold,
+    // since the cab's insertion point can run at very different absolute levels
+    // depending on what's upstream (a hot fuzz vs. a clean boost). Off (default)
+    // is bit-identical -- the per-channel state below is only touched when on.
+    bool  spkDriveOn_  = false;
+    float spkDriveAmt_ = 0.5f;   // [0,1] overall depth of all three sub-mechanisms
+
     static constexpr int kMaxCh    = 2;
     static constexpr int kNumSlots = 2;  // double-buffer: front / back
 
@@ -111,6 +125,24 @@ private:
         float compRef = 0.0f;                      // bus glue: slow sliding reference
     };
     std::array<EQState, kMaxCh> eqState_;
+
+    // Item #40 pre-convolution speaker-drive state (per channel).
+    struct SpkDriveState {
+        float compEnv = 0.0f, compRef = 0.0f;      // 1.2:1 program compression (fast vs ~1.5s ref)
+        BiquadFilter lfSplit;                       // ~120 Hz LP: isolates the LF band
+        float lfFastEnv = 0.0f, lfRef = 0.0f;       // LF band level vs its own slower reference
+        BiquadFilter hfShelf;                       // fixed high-shelf cut (max thermal-hot tilt)
+        float thermalEnv = 0.0f, thermalRef = 0.0f; // seconds-scale envelope vs tens-of-seconds baseline
+    };
+    std::array<SpkDriveState, kMaxCh> spkState_;
+    // Coefficients (set in prepare()): reuses compAtt_/compRel_/compSlow_ (30 ms /
+    // 180 ms / 1.5 s, already tuned for the Studio-voice glue) for the program
+    // compressor; the LF-band and thermal envelopes get their own, purpose-scaled
+    // time constants below.
+    float spkLfAtt_ = 0.0f, spkLfRel_ = 0.0f, spkLfRefCoef_ = 0.0f;
+    float spkThAtt_ = 0.0f, spkThRel_ = 0.0f, spkThRefCoef_ = 0.0f;
+    // One sample of the speaker-drive chain (in place, pre-convolution).
+    float spkDriveTick(SpkDriveState& s, float x) noexcept;
 
     // Per-channel small-room state (short prime-spaced combs + one allpass).
     struct RoomState {   // sized for Dense (6 combs + 2 APs); Classic uses the first 4 / 1

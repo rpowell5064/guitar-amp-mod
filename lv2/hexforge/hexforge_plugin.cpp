@@ -345,7 +345,7 @@ struct GraphicEQ {
 // any change triggers the seamless-switch mute ramp.
 static const int kSwWatch[] = {
     HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE, HF_RV_DENSITY,
-    HF_RV_TYPE, HF_CAB_ROOMDENSE,
+    HF_RV_TYPE, HF_CAB_ROOMDENSE, HF_CAB_SPKDRIVE,
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
     HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE,
 };
@@ -778,9 +778,12 @@ static_assert(HF_RV_DENSITY == HF_AMP_PAMP_COUPL + 1, "reverb density after the 
 //   * Reverb Type + Cab Room Density — added v26, last before the commands.
 static_assert(HF_RV_TYPE == HF_RV_DENSITY + 1 && HF_CAB_ROOMDENSE == HF_RV_TYPE + 1,
               "v26 ports must be contiguous");
-//   * Hex Ambient bloom — 1 port, added v27, last before the commands.
-static_assert(HF_RV_BLOOM == HF_CAB_ROOMDENSE + 1 && HF_RV_BLOOM == HF_SW_A - 1,
-              "v27 port must be contiguous, right before the commands");
+//   * Hex Ambient bloom — 1 port, added v27.
+static_assert(HF_RV_BLOOM == HF_CAB_ROOMDENSE + 1,
+              "v27 port must be contiguous");
+//   * Cab Speaker Drive (item #40) — 1 port, added v28, last before the commands.
+static_assert(HF_CAB_SPKDRIVE == HF_RV_BLOOM + 1 && HF_CAB_SPKDRIVE == HF_SW_A - 1,
+              "v28 port must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -863,6 +866,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v27 appended the Hex Ambient bloom; default 0.5 (inert unless type = Ambient).
     const bool blGap = (srcVer < 27);
     const int blAt = HF_RV_BLOOM;
+    // v28 appended Cab Speaker Drive (item #40); default 0 (Off).
+    const bool spkGap = (srcVer < 28);
+    const int spkAt = HF_CAB_SPKDRIVE;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -888,6 +894,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (rdGap && i == rdAt)                     vals[i] = 0.0f;             // reverb density Classic
         else if (rtGap && i >= rtAt && i < rtEnd)        vals[i] = 0.0f;             // plate / classic room
         else if (blGap && i == blAt)                     vals[i] = 0.5f;             // ambient bloom (inert on plate/spring)
+        else if (spkGap && i == spkAt)                   vals[i] = 0.0f;             // speaker drive Off
         else                                             vals[i] = old[o++];
     }
 }
@@ -896,7 +903,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(27); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(28); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1691,6 +1698,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
     p->reverb.setParameter("bloom",   *p->ports[HF_RV_BLOOM]);         // Hex Ambient bloom (v27)
     p->cab.setParameter("roomdense",  *p->ports[HF_CAB_ROOMDENSE]);    // classic / dense room (v26)
+    {   // Speaker Drive (item #40, v28): 0 Off/1 Subtle/2 Full -> CabinetBlock's two
+        // internal params. Subtle/Full (0.35/0.75) chosen conservatively for a brand-
+        // new, not-yet-user-tuned character feature.
+        const int spk = static_cast<int>(*p->ports[HF_CAB_SPKDRIVE] + 0.5f);
+        p->cab.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
+        p->cab.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
+    }
     {   // EQ block: preset base curve + slider offsets + level (rebuilds only on change)
         const float eqDb[GraphicEQ::kBands] = {
             *p->ports[HF_EQ_100], *p->ports[HF_EQ_200], *p->ports[HF_EQ_400],
@@ -2088,7 +2102,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(27);                 // version (27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(28);                 // version (28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];

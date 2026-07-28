@@ -424,3 +424,69 @@ first (see the pre-existing "kCanonical rows are SHARED" note above).
   their own value without also hitting the solid-state amp.
 - **Sunn Model T** (row 4) -- PA is bypassed entirely for Sunn (own SunnPowerAmp6550),
   so any value here is inert regardless; left at 0 for clarity, not function.
+
+## TIER 2/3 ITEM #40 — speaker drive compression, SHIPPED (2026-07-28)
+
+Added a PRE-convolution, phenomenological cone/coil-response model to
+`CabinetBlock` (shared by the standalone Cab plugin and Hex Forge): (1)
+envelope-driven ~1.2:1 program compression (max ~1 dB GR), (2) level-dependent
+LF soft-sat below ~120 Hz modeling Bl force-factor droop under excursion, (3) a
+very slow (seconds-scale) thermal HF tilt modeling voice-coil heating. All
+three are LEVEL-INVARIANT by design (fast/medium envelope vs. the signal's OWN
+slower reference, never an absolute threshold) since the cab's insertion point
+runs at very different absolute levels depending on what's upstream (a hot fuzz
+vs. a clean boost) -- same reasoning as the pre-existing Studio-voice bus glue.
+Default off = bit-identical (structurally guaranteed: the new code only runs
+inside `if (spkDriveOn_)`).
+
+Verified via a throwaway heap-allocated harness (not committed): stable at
+max depth (no NaN/blowup), measurably active (a loud swell compressed ~1.85 dB
+vs. off), and the quiet tail after the swell recovers cleanly with no stuck-
+compression hangover. Hit one real bug along the way: linking a freshly-
+compiled test harness against a STALE `libGuitarAmpSim.a` (built before the
+CabinetBlock changes synced into that specific build tree) produced a classic
+ABI-mismatch segfault (garbage pointer = the bit pattern of a stray `double`
+value) -- rebuild the exact static lib you're linking against, every time.
+
+**Exposed as ONE enumerated control (Off/Subtle/Full) instead of a toggle+knob
+pair** -- collapses two ports into the same compact dropdown-row pattern
+already proven for Cab Voice/Room Density, avoiding the standalone Cab
+plugin's tight `nowrap` knob rows (which explicitly overflow if crowded, per
+existing comments) while still giving Hex Forge's `wrap`-friendly layout a
+consistent widget. Subtle=0.35 / Full=0.75 depth, conservative since this is
+brand-new and not yet user-tuned.
+
+**Wiring, both plugins:**
+- Standalone Cab (`cab.ttl` microVersion 44->45): new `spk_drive` port
+  (index 17, enumerated 0/1/2), control/notify shifted to 19/20. Cab
+  plugin maps it to `CabinetBlock`'s two internal params.
+- Hex Forge: added via `build-tools/gen_hexforge.py` (the port-generator
+  script — hexforge_ports.h/hexforge.ttl/icon-hexforge.html are ALL
+  auto-generated from it, do not hand-edit) as `HF_CAB_SPKDRIVE`, appended
+  right before `HF_SW_A` (the fixed preset-command block) — the established,
+  lowest-risk append point. This required the full "port append" checklist:
+  (a) fixed the boundary `static_assert` in `hexforge_plugin.cpp` (was
+  `HF_RV_BLOOM == HF_SW_A - 1`, now `HF_CAB_SPKDRIVE == HF_SW_A - 1`) — **there
+  is a SECOND, independent copy of this exact assert chain in
+  `build-tools/hexforge_migrate_test.cpp`** ("copied verbatim... do not edit by
+  hand" applies to hexforge_ports.h, NOT this file, which is genuinely
+  hand-maintained and silently drifts — confirmed it was already stale since
+  v27 shipped, meaning this test hadn't actually passed in a while unnoticed);
+  (b) added `HF_CAB_SPKDRIVE` to `kSwWatch[]` (enumerated ports get the
+  mute-ramp-on-change treatment); (c) added explicit gap-fill migration
+  (`spkGap`) in `migratePorts()` — **appending a port right before a fixed
+  block is NOT automatically zero-fill-safe**: without the explicit gap, old
+  blobs would silently consume the wrong old value at this index, shifting
+  EVERY subsequent port (switches, preset commands, meters, tuner) by one
+  slot; (d) bumped the blob version 27->28 at both `putU32` call sites. Fixed
+  the pre-existing stale test cases in `hexforge_migrate_test.cpp` too (their
+  hardcoded tail-shift math hadn't accounted for v27's bloom port either) and
+  added a dedicated v27->v28 case; full suite now passes (0 failures) —
+  previously would have failed silently since nothing was running it.
+
+**Needs the user's ears**, same as items #27/#22 -- this is a character/
+authenticity feature with no numeric target to verify against. Try Speaker
+Drive = Subtle then Full on the Cab block (or the Cab tab in Hex Forge) and
+listen for a more "speaker-like" response under hard playing (compression +
+bass grit + a slight dulling of the top on sustained loud passages) vs. an
+artifact. Not yet enabled on any factory preset -- pure opt-in for now.

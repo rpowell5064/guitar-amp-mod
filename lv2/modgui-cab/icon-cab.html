@@ -69,6 +69,17 @@
                     </div>
                 </div>
                 {{/controls.11}}
+                <!-- Speaker Drive (item #40, 2026-07-28): PRE-convolution cone/coil
+                     response, same compact dropdown-row pattern as Voice/Density above. -->
+                {{#controls.13}}
+                <div class="hf-voice-row" title="{{name}}">
+                    <span class="hf-voice-label">Speaker</span>
+                    <div class="mod-enumerated hf-voice-sel" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                </div>
+                {{/controls.13}}
             </div>
             <div class="hf-agroup">
                 <span class="hf-agroup-title">Room</span>

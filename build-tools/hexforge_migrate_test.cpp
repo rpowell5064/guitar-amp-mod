@@ -31,11 +31,13 @@ static_assert(HF_EQ_POS == HF_OUT_DOUBLER + 1 && HF_EQ_BYPASS == HF_EQ_POS + 10,
 static_assert(HF_IT_LOAD == HF_EQ_BYPASS + 1 && HF_AMP_PAMP_COUPL == HF_IT_LOAD + 1,
               "fidelity ports must be contiguous");
 static_assert(HF_RV_DENSITY == HF_AMP_PAMP_COUPL + 1, "reverb density after fidelity pair");
-static_assert(HF_RV_TYPE == HF_RV_DENSITY + 1 && HF_CAB_ROOMDENSE == HF_RV_TYPE + 1
-              && HF_CAB_ROOMDENSE == HF_SW_A - 1,
-              "v26 ports must be contiguous, right before the commands");
+static_assert(HF_RV_TYPE == HF_RV_DENSITY + 1 && HF_CAB_ROOMDENSE == HF_RV_TYPE + 1,
+              "v26 ports must be contiguous");
+static_assert(HF_RV_BLOOM == HF_CAB_ROOMDENSE + 1, "v27 port must be contiguous");
+static_assert(HF_CAB_SPKDRIVE == HF_RV_BLOOM + 1 && HF_CAB_SPKDRIVE == HF_SW_A - 1,
+              "v28 port must be contiguous, right before the commands");
 
-// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v26) ──────────────
+// ── migratePorts, copied verbatim from hexforge_plugin.cpp (v28) ──────────────
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -86,6 +88,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     const int rdAt = HF_RV_DENSITY;
     const bool rtGap = (srcVer < 26);
     const int rtAt = HF_RV_TYPE, rtEnd = HF_RV_TYPE + 2;
+    const bool blGap = (srcVer < 27);
+    const int blAt = HF_RV_BLOOM;
+    const bool spkGap = (srcVer < 28);
+    const int spkAt = HF_CAB_SPKDRIVE;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
@@ -110,6 +116,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (fidGap && i >= fidAt && i < fidEnd)     vals[i] = 0.0f;
         else if (rdGap && i == rdAt)                     vals[i] = 0.0f;
         else if (rtGap && i >= rtAt && i < rtEnd)        vals[i] = 0.0f;
+        else if (blGap && i == blAt)                     vals[i] = 0.5f;
+        else if (spkGap && i == spkAt)                   vals[i] = 0.0f;
         else                                             vals[i] = old[o++];
     }
 }
@@ -117,9 +125,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
 int main() {
     int fails = 0;
 
-    // ── v25 -> v26: reverb type + cab room density inserted at the very end.
+    // ── v25 -> current: reverb type + cab room density (v26) + ambient bloom (v27)
+    // + cab speaker drive (v28) all inserted at the very end, in order.
     {
-        const int npOld = HF_N_PORTS - 2;
+        const int npOld = HF_N_PORTS - 4;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -130,19 +139,43 @@ int main() {
             }
         if (vals[HF_RV_TYPE] != 0.0f || vals[HF_CAB_ROOMDENSE] != 0.0f)
             { std::printf("FAIL: v26 defaults wrong\n"); ++fails; }
-        for (int i = HF_CAB_ROOMDENSE + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 2 < npOld) ? static_cast<float>((i - 2) + 1) : 0.0f;
+        if (vals[HF_RV_BLOOM] != 0.5f) { std::printf("FAIL: v27 bloom default wrong (%g)\n", vals[HF_RV_BLOOM]); ++fails; }
+        if (vals[HF_CAB_SPKDRIVE] != 0.0f) { std::printf("FAIL: v28 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
+        for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
+            float want = (i - 4 < npOld) ? static_cast<float>((i - 4) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v25 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v25->v26: pre-insert preserved, plate/classic defaults, tail shifted +2\n");
+        std::printf("v25->current: pre-insert preserved, all defaults, tail shifted +4\n");
     }
 
-    // ── v19 -> v26: rc3 + mt2 + cv2 + EQ11 + fidelity2 + density1 + type/room2 = 23
-    // ports inserted. A v19 blob had HF_N_PORTS - 23 params.
+    // ── v27 -> v28: Cab Speaker Drive (item #40) inserted at the very end, alone.
     {
-        const int npOld = HF_N_PORTS - 23;
+        const int npOld = HF_N_PORTS - 1;
+        float vals[HF_N_PORTS];
+        for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
+        for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
+        migratePorts(vals, 27);
+        for (int i = 0; i < HF_CAB_SPKDRIVE; ++i)
+            if (vals[i] != static_cast<float>(i + 1)) {
+                std::printf("FAIL: v27 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
+            }
+        if (vals[HF_CAB_SPKDRIVE] != 0.0f)
+            { std::printf("FAIL: v28 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
+        for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
+            float want = (i - 1 < npOld) ? static_cast<float>((i - 1) + 1) : 0.0f;
+            if (vals[i] != want) {
+                std::printf("FAIL: v27 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
+            }
+        }
+        std::printf("v27->v28: pre-insert preserved, spkdrive Off default, tail shifted +1\n");
+    }
+
+    // ── v19 -> current: rc3 + mt2 + cv2 + EQ11 + fidelity2 + density1 + type/room2
+    // + bloom1 + spkdrive1 = 25 ports inserted. A v19 blob had HF_N_PORTS - 25 params.
+    {
+        const int npOld = HF_N_PORTS - 25;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);   // sentinels
@@ -161,21 +194,23 @@ int main() {
         if (vals[HF_CAB_VOICE]   != 0.0f) { std::printf("FAIL: v19 cab_voice not 0 (%g)\n",   vals[HF_CAB_VOICE]);   ++fails; }
         if (vals[HF_OUT_DOUBLER] != 0.0f) { std::printf("FAIL: v19 out_doubler not 0 (%g)\n", vals[HF_OUT_DOUBLER]); ++fails; }
         if (vals[HF_EQ_POS]      != 6.0f) { std::printf("FAIL: v19 eq_pos not 6 (%g)\n",      vals[HF_EQ_POS]);      ++fails; }
-        // Command/status slots after the inserts: shifted up by 23.
-        for (int i = HF_CAB_ROOMDENSE + 1; i < HF_N_PORTS; ++i) {
-            float want = (i - 23 < npOld) ? static_cast<float>((i - 23) + 1) : 0.0f;
+        if (vals[HF_RV_BLOOM] != 0.5f) { std::printf("FAIL: v19 bloom default wrong (%g)\n", vals[HF_RV_BLOOM]); ++fails; }
+        if (vals[HF_CAB_SPKDRIVE] != 0.0f) { std::printf("FAIL: v19 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
+        // Command/status slots after the inserts: shifted up by 25.
+        for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
+            float want = (i - 25 < npOld) ? static_cast<float>((i - 25) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v19->v26: pre-insert preserved, all gap defaults, tail shifted +23\n");
+        std::printf("v19->current: pre-insert preserved, all gap defaults, tail shifted +25\n");
     }
 
     // ── v13 -> v20: the full multi-gap walk. Count the inserted slots for a v13
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2;
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1;  // + bloom1 + spkdrive1
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -204,6 +239,8 @@ int main() {
             { std::printf("FAIL: v13 rv_density not defaulted\n"); ++fails; }
         if (vals[HF_RV_TYPE] != 0.0f || vals[HF_CAB_ROOMDENSE] != 0.0f)
             { std::printf("FAIL: v13 v26 ports not defaulted\n"); ++fails; }
+        if (vals[HF_RV_BLOOM] != 0.5f) { std::printf("FAIL: v13 bloom default wrong (%g)\n", vals[HF_RV_BLOOM]); ++fails; }
+        if (vals[HF_CAB_SPKDRIVE] != 0.0f) { std::printf("FAIL: v13 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
         // Every non-gap slot must hold consecutive sentinels in order (the walk is
         // order-preserving); just verify the LAST old value survived to the end.
         int o = 0; float lastSeen = -1.0f;
@@ -218,7 +255,9 @@ int main() {
                           || (i >= HF_EQ_POS && i <= HF_EQ_BYPASS)
                           || (i >= HF_IT_LOAD && i <= HF_AMP_PAMP_COUPL)
                           || (i == HF_RV_DENSITY)
-                          || (i >= HF_RV_TYPE && i <= HF_CAB_ROOMDENSE);
+                          || (i >= HF_RV_TYPE && i <= HF_CAB_ROOMDENSE)
+                          || (i == HF_RV_BLOOM)
+                          || (i == HF_CAB_SPKDRIVE);
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
             if (vals[i] != want) {

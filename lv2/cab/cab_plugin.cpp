@@ -40,6 +40,7 @@ enum CabPorts {
     P_ROOMON, P_ROOMMIX, P_ROOMAMT,  // room ambience (2026-07-14): toggle + wet mix + size/decay; off = bit-identical
     P_VOICE,                   // cab voice (2026-07-22): 0 Room (untouched legacy path) / 1 Studio (recorded chain)
     P_ROOMDENSE,               // room density (2026-07-23): 0 Classic 4-comb / 1 Dense 6-comb+2AP
+    P_SPKDRIVE,                // speaker drive (item #40, 2026-07-28): 0 Off / 1 Subtle / 2 Full
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
@@ -303,6 +304,15 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->dsp.setParameter("roomamt",   *p->ports[P_ROOMAMT]);
         p->dsp.setParameter("voice",     *p->ports[P_VOICE]);
         p->dsp.setParameter("roomdense", *p->ports[P_ROOMDENSE]);
+        // Speaker Drive (item #40): one enumerated depth control (0 Off/1 Subtle/2
+        // Full) maps to CabinetBlock's two internal params -- Subtle/Full chosen
+        // conservatively (0.35/0.75) since this is a brand-new, not-yet-user-tuned
+        // character feature; the internal API stays continuous for future tuning.
+        {
+            const int spk = static_cast<int>(*p->ports[P_SPKDRIVE] + 0.5f);
+            p->dsp.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
+            p->dsp.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
+        }
         float* ins[2]  = { inL,  inR  };
         float* outs[2] = { outL, outR };
         p->dsp.process(ins, outs, static_cast<int>(n), 2);

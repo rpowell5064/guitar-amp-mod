@@ -34,7 +34,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 44 ;   # 44: wider pedal (600->660), Voice/Density on their own rows, Room Density widget added
+    lv2:microVersion 45 ;   # 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
 
     # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -124,19 +124,32 @@
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0.0 ] ;
         lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1.0 ]
     ] , [
+        # ── Speaker Drive (item #40, 2026-07-28): PRE-convolution phenomenological
+        # cone/coil response -- program compression + LF soft-sat + slow thermal HF
+        # tilt. One enumerated depth control (Off = bit-identical) instead of a
+        # toggle+knob pair -- fits the same compact dropdown-row pattern as
+        # Voice/Density rather than crowding the (already nowrap) knob rows. ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 17 ; lv2:symbol "spk_drive" ; lv2:name "Speaker Drive" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 2.0 ;
+        lv2:scalePoint [ rdfs:label "Off"    ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Subtle" ; rdf:value 1.0 ] ;
+        lv2:scalePoint [ rdfs:label "Full"   ; rdf:value 2.0 ]
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 17 ; lv2:symbol "control" ; lv2:name "Control"
+        lv2:index 18 ; lv2:symbol "control" ; lv2:name "Control"
     ] , [
         a lv2:OutputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 18 ; lv2:symbol "notify" ; lv2:name "Notify"
+        lv2:index 19 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
@@ -180,5 +193,7 @@
             lv2:index 11 ; lv2:symbol "voice" ; lv2:name "Voice"
         ] , [
             lv2:index 12 ; lv2:symbol "room_density" ; lv2:name "Room Density"
+        ] , [
+            lv2:index 13 ; lv2:symbol "spk_drive" ; lv2:name "Speaker Drive"
         ]
     ] .
