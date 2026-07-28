@@ -15,9 +15,13 @@ enum class TubeType {
 // Power amp stage: power tube transfer function, dynamic sag, output transformer,
 // speaker impedance interaction, and amp-in-the-room feel.
 //
-// Signal path:
-//   in → sag reduction → 2x upsample → tube waveshaper → 2x downsample
-//      → NFB loop → transformer model → speaker impedance → presence/depth EQ
+// Signal path (item #24, 2026-07-28: NFB now wraps the whole power stage,
+// closing sample-by-sample around the nonlinearity — was a post-hoc correction
+// on the already-clipped output, now a true closed loop):
+//   in → [NFB: subtract HP(prev fully-processed output)] → sag reduction
+//      → 2x upsample → tube waveshaper → 2x downsample → transformer model
+//      → speaker impedance ─┘ (feeds NFB for the next sample)
+//      → presence/depth EQ [outside the loop]
 //      → [early reflections + LF bloom] → master volume → out
 class PowerAmpProcessor : public AudioBlock {
 public:
@@ -172,7 +176,6 @@ private:
         void  reset()  noexcept { s0.reset(); s1.reset(); s2.reset(); s3.reset(); }
     };
     std::array<OsFilter, kMaxCh> upAA, downAA;
-    std::vector<float> osBuf[kMaxCh]; // 2 × maxBlockSize scratch
 
     // ── Negative feedback loop ─────────────────────────────────────────────────
     // HP filters the feedback signal so NFB only affects mids/highs.

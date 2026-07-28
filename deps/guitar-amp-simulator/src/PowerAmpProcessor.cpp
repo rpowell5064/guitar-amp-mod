@@ -287,7 +287,6 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
     dcKSgn = static_cast<float>(1.0 - std::exp(-2.0 * M_PI * 4000.0 / osr));
 
     for (int c = 0; c < kMaxCh; ++c) {
-        osBuf[c].assign(static_cast<size_t>(maxBlock) * 2, 0.0f);
         upAA[c].reset();
         downAA[c].reset();
         nfbHP[c].reset();
@@ -434,9 +433,8 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
 
     // ── Pre-compute sag per native-rate sample (mono sidechain from ch0) ──────
     // The supply droops based on the RMS-like envelope of the signal entering
-    // the power tubes. We use ch0 as the sidechain.
-    // Result is stored temporarily in osBuf[0] (first numSamples elements)
-    // as a gain factor, then used during the per-channel loop.
+    // the power tubes. We use ch0 as the sidechain. Result is stored as a gain
+    // factor in sagGain[], applied per-sample in the per-channel loop below.
     static thread_local std::vector<float> sagGain;
     if (static_cast<int>(sagGain.size()) < numSamples)
         sagGain.resize(static_cast<size_t>(numSamples));
@@ -471,124 +469,105 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
     }
 
     // ── Per-channel processing ────────────────────────────────────────────────
+    // Item #24 (2026-07-28): NFB now wraps the WHOLE power stage — sag/upsample,
+    // tube waveshaper, downsample, output transformer, and speaker-impedance
+    // coupling all sit INSIDE the loop, closing sample-by-sample around the
+    // nonlinearity instead of correcting the already-clipped output after the
+    // fact. This is a genuine restructure (was 5 separate whole-block passes;
+    // is now 1 unified per-sample loop, since the feedback for sample i needs
+    // sample i-1's FULLY processed output before sample i's upsample/waveshaper
+    // can run). All the per-sample stateful math (duty dual-corner, flux OT,
+    // speaker-coupling envelope) is UNCHANGED and still processed in the exact
+    // same relative order — only the NFB tap POINT moved, from after the
+    // waveshaper to before it, with the feedback source now the fully-processed
+    // output (including the speaker-impedance tap, physically the transformer-
+    // secondary/speaker-facing signal a real amp's loop actually derives from).
+    // Presence/depth EQ (Step 7) stays OUTSIDE the loop, same as before — a
+    // real amp's tone controls sit downstream of the power section, not inside
+    // its feedback path.
+    const float nfbScale = nfbAmount * 0.35f; // max ~35% feedback depth (unchanged)
     for (int ch = 0; ch < chCount; ++ch) {
-        float* osPtr = osBuf[ch].data();
+        for (int i = 0; i < numSamples; ++i) {
+            // NFB: subtract a HP-filtered portion of the PREVIOUS sample's fully-
+            // processed output from this sample's drive, before the nonlinearity.
+            const float fb    = nfbHP[ch].process(nfbPrev[ch]) * nfbScale;
+            const float drive = in[ch][i] * sagGain[i] - fb;
 
-        // Step 1: apply sag gain reduction and upsample 2×.
-        // Zero-insertion upsampling: for each native sample feed [x, 0] through
-        // the anti-alias LP filter running at 2× rate. Multiply by 2 to
-        // compensate for the signal energy halved by the zero stuffing.
-        {
-            int osIdx = 0;
-            for (int i = 0; i < numSamples; ++i) {
-                const float saggedSample = in[ch][i] * sagGain[i];
-                osPtr[osIdx++] = 2.0f * upAA[ch].process(saggedSample);
-                osPtr[osIdx++] = 2.0f * upAA[ch].process(0.0f);
-            }
-        }
+            // Step 1: 2× upsample (zero-insertion + AA LP), one native sample at
+            // a time — same math as before, just no longer a separate whole-
+            // block pass.
+            float osA = 2.0f * upAA[ch].process(drive);
+            float osB = 2.0f * upAA[ch].process(0.0f);
 
-        // Step 2: tube waveshaper at 2× oversampled rate.
-        // Running at 2× rate reduces aliasing from the nonlinear waveshaper
-        // to components above the original Nyquist, which are then filtered out.
-        {
-            const int osLen = numSamples * 2;
-            for (int i = 0; i < osLen; ++i)
-                osPtr[i] = tubeWaveshaper(paDrive_ * osPtr[i], tp, xoverDepth_, duty_) * paMakeup_;
-            // Dual-corner asymmetric coupling (duty mechanism): sign-split HP with
-            // different corners per half → the + and − flat-tops tilt differently →
-            // even harmonics on the squared signal. duty_ = blend depth (0 = off).
-            // The xfmr HP downstream removes any residual DC.
+            // Step 2: tube waveshaper at 2× oversampled rate.
+            osA = tubeWaveshaper(paDrive_ * osA, tp, xoverDepth_, duty_) * paMakeup_;
+            osB = tubeWaveshaper(paDrive_ * osB, tp, xoverDepth_, duty_) * paMakeup_;
+            // Dual-corner asymmetric coupling (duty mechanism) — unchanged math,
+            // now applied inline to this sample's two OS sub-samples in the same
+            // relative order (osA then osB) as the old whole-block pass.
             if (duty_ > 0.0f) {
                 float& la = dcLpA[ch]; float& lb = dcLpB[ch]; float& sg = dcSgn[ch];
-                for (int i = 0; i < osLen; ++i) {
-                    const float x = osPtr[i];
+                float osv[2] = { osA, osB };
+                for (int k = 0; k < 2; ++k) {
+                    const float x = osv[k];
                     la += dcKA   * (x - la);
                     lb += dcKB   * (x - lb);
                     sg += dcKSgn * ((x > 0.0f ? 1.0f : 0.0f) - sg);
                     const float mixed = sg * (x - la) + (1.0f - sg) * (x - lb);
-                    osPtr[i] = x + duty_ * (mixed - x);
+                    osv[k] = x + duty_ * (mixed - x);
                 }
+                osA = osv[0]; osB = osv[1];
             }
-        }
 
-        // Step 3: downsample 2× — LP filter at OS rate then decimate.
-        // Process both even and odd OS samples through the filter to keep
-        // filter state coherent; output only the even-indexed (original) samples.
-        {
-            int osIdx = 0;
-            for (int i = 0; i < numSamples; ++i) {
-                const float s0 = downAA[ch].process(osPtr[osIdx++]);
-                /*discard*/      downAA[ch].process(osPtr[osIdx++]);
-                out[ch][i] = s0;
+            // Step 3: downsample 2× — LP filter at OS rate then decimate.
+            const float s0 = downAA[ch].process(osA);
+            /*discard*/      downAA[ch].process(osB);
+            float y = s0;
+
+            // Step 5: output transformer model.
+            // HP models LF rolloff / resonance from primary inductance.
+            // LP models HF rolloff from leakage inductance + winding capacitance.
+            // A soft tanh saturation models iron-core saturation at high levels.
+            {
+                float s = xfmrHP[ch].process(y);
+                s       = xfmrLP[ch].process(s);
+                s       = preSatLP[ch].process(s);
+                if (!fluxOT_) {
+                    xfmrSatState[ch] = 0.97f * xfmrSatState[ch] + 0.03f * s;
+                    s = std::tanh(s + 0.15f * xfmrSatState[ch]);
+                    s /= std::tanh(1.15f);
+                } else {
+                    const float a    = fluxPole_;
+                    const float flux = a * fluxState[ch] + s;
+                    const float sat  = std::tanh(flux * fluxDrive_) / fluxDrive_;
+                    s                = sat - a * fluxSatPrev[ch];
+                    fluxState[ch]    = flux;
+                    fluxSatPrev[ch]  = sat;
+                }
+                y = s;
             }
-        }
 
-        // Step 4: negative feedback loop.
-        // A high-pass-filtered portion of the output feeds back negatively,
-        // reducing distortion and output impedance. The presence knob raises
-        // the HP cutoff so NFB attenuates only the very high end — the classic
-        // "presence" feel of a well-tuned power amp.
-        {
-            const float nfbScale = nfbAmount * 0.35f; // max ~35% feedback depth
-            for (int i = 0; i < numSamples; ++i) {
-                const float fb  = nfbHP[ch].process(nfbPrev[ch]) * nfbScale;
-                const float y   = out[ch][i] - fb;
-                out[ch][i]      = y;
-                nfbPrev[ch]     = y;
-            }
-        }
-
-        // Step 5: output transformer model.
-        // HP models LF rolloff / resonance from primary inductance.
-        // LP models HF rolloff from leakage inductance + winding capacitance.
-        // A soft tanh saturation models iron-core saturation at high levels.
-        for (int i = 0; i < numSamples; ++i) {
-            float s = xfmrHP[ch].process(out[ch][i]);
-            s       = xfmrLP[ch].process(s);
-            // Gentle pre-saturation LP (2026-07-27, low-risk aliasing mitigation —
-            // see the header comment): trims the alias-prone top octave feeding the
-            // nonlinearity below, without touching the flux integrator/differentiator
-            // pair's calibrated native-rate timing at all.
-            s = preSatLP[ch].process(s);
-            if (!fluxOT_) {
-                // Original: instantaneous-voltage soft clip with a hysteresis lag.
-                xfmrSatState[ch] = 0.97f * xfmrSatState[ch] + 0.03f * s;
-                s = std::tanh(s + 0.15f * xfmrSatState[ch]); // soft asymmetric limit
-                s /= std::tanh(1.15f); // normalise so unity gain at small signal
-            } else {
-                // Flux-domain core saturation (item 26): integrate → saturate flux →
-                // differentiate. Self-inverting, so it is EXACTLY s until the flux
-                // clips; LF (which accumulates far more flux) grinds well before HF.
-                const float a    = fluxPole_;
-                const float flux = a * fluxState[ch] + s;                       // ∫ (leaky)
-                const float sat  = std::tanh(flux * fluxDrive_) / fluxDrive_;   // flux limit
-                s                = sat - a * fluxSatPrev[ch];                   // d/dt (inverse)
-                fluxState[ch]    = flux;
-                fluxSatPrev[ch]  = sat;
-            }
-            out[ch][i] = s;
-        }
-
-        // Step 6: speaker-impedance coupling ("coupling" 0..1, default 0 = OFF,
-        // bit-identical). Shaped path = the cone-resonance peak (spkrPeak — gain
-        // rides the Resonance knob, frequency per tube type) + a fixed voice-coil
-        // HF-rise shelf. The blend amount follows a drive envelope: at idle ~35%
-        // of the dialed coupling, rising to 100% as the stage is pushed — the
-        // damping collapse that makes a cranked amp thump and shimmer.
-        if (coupling > 0.0f) {
-            for (int i = 0; i < numSamples; ++i) {
-                const float x = out[ch][i];
-                float z = spkrPeak[ch].process(x);
+            // Step 6: speaker-impedance coupling ("coupling" 0..1, default 0 =
+            // OFF, bit-identical). Shaped path = cone-resonance peak + voice-
+            // coil HF-rise shelf, blended in following a drive envelope.
+            if (coupling > 0.0f) {
+                float z = spkrPeak[ch].process(y);
                 z = cplShelf[ch].process(z);
-                const float a = std::fabs(x);
+                const float a = std::fabs(y);
                 cplEnv[ch] += (a > cplEnv[ch] ? cplAtt : cplRel) * (a - cplEnv[ch]);
                 float dr = cplEnv[ch] * 1.6f; if (dr > 1.0f) dr = 1.0f;
                 const float amt = coupling * (0.35f + 0.65f * dr);
-                out[ch][i] = x + amt * (z - x);
+                y = y + amt * (z - y);
             }
+
+            // NFB feedback tap: the fully-processed output (post transformer +
+            // speaker coupling) is what closes the loop for the NEXT sample.
+            nfbPrev[ch] = y;
+            out[ch][i]  = y;
         }
 
-        // Step 7: presence and depth EQ.
+        // Step 7: presence and depth EQ — downstream of the power section,
+        // outside the NFB loop (unchanged from before).
         for (int i = 0; i < numSamples; ++i) {
             float s    = presEQ[ch].process(out[ch][i]);
             s          = depthEQ[ch].process(s);

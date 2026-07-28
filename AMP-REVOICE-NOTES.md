@@ -535,3 +535,56 @@ off-limits per the item's own "avoid re-voicing internal curves" scope.
 next time a genuinely user-facing EQ or shelf control is added that operates
 anywhere near Nyquist (a > ~8kHz peaking/shelf knob would be the natural
 trigger). Nothing to enable or test right now.**
+
+## TIER 2 ITEM #24 — NFB wrapping the nonlinearity, SHIPPED all amps (2026-07-28)
+
+The shared `PowerAmpProcessor`'s negative-feedback loop previously tapped the
+signal AFTER the tube waveshaper (`out[ch][i] - HP(prev)*nfbScale`) — a fixed
+post-hoc EQ correction on the already-clipped output, not real feedback.
+Restructured into a genuine closed loop: the HP-filtered PREVIOUS sample's
+FULLY-PROCESSED output (post transformer + speaker-impedance coupling) is now
+subtracted from the drive signal BEFORE the tube waveshaper, sample-by-sample
+— matching how a real amp's NFB loop actually works (feedback derived from the
+transformer-secondary/speaker-facing signal, applied at the input of the power
+stage, ahead of the nonlinearity).
+
+**This required converting what were 5 separate whole-block passes (upsample,
+waveshape, downsample, NFB, transformer+coupling) into ONE unified per-sample
+loop** — a true closed loop needs sample i's processing to depend on sample
+i-1's FULLY finished output, which the old block-wise architecture couldn't
+express. All the existing per-sample stateful math (duty dual-corner
+coupling, flux-domain OT saturation, speaker-coupling envelope) is
+UNCHANGED, just now inlined in the same relative order rather than run as
+separate whole-block passes — verified this preserves exact behavior via the
+zero-feedback sanity check below. Presence/depth EQ stays OUTSIDE the loop
+(downstream tone shaping in a real amp, not part of the feedback path).
+
+**Verification (JCM800, the reliable reference amp):**
+- `--panfb 0` (feedback forced off): output BYTE-IDENTICAL to the pre-refactor
+  baseline (`diff` exit 0) — confirms the restructuring itself introduced no
+  bugs; the only behavior change comes from the loop topology actually being
+  active, exactly as intended.
+- Default nfb (0.42): small, plausible differences vs the old topology —
+  8kHz FR shifted -3.0→-2.1dB (closer to the capture), mid-band THD@1k's
+  "too saturated" flag cleared at -12dBFS (a genuine improvement), harmonics
+  shifted by ~0.1-0.4 percentage points, feel metrics (bloom/compression/sag
+  tau) shifted by ~0.05dB / ~1ms. Modest, not dramatic, at this feedback depth.
+- Stability stress tests: `--panfb 1.0` (max), `--panfb 3.0` (3x beyond the
+  normal range), EVH Red at gain=1.0 (max drive, a known stress config this
+  session) with both default and max NFB -- NO NaN, no blowup, no runaway
+  values at any of these. The roadmap's own "watch stability at high β"
+  warning did not materialize in testing.
+- Interestingly, 0.42 vs 1.0 nfb produced only TINY differences (~0.1dB, ~0.1-
+  0.2 percentage points) despite a 2.4x change in feedback depth -- the NFB
+  signal itself is inherently small (a narrow HP'd slice of the output), so
+  its effect on the total signal stays subtle across this whole range. This
+  is a real property of the mechanism at CURRENT per-amp nfb values, not a
+  bug -- if a more dramatic "damping collapse" character is wanted, the
+  natural next step is retuning each amp's nfb default now that the topology
+  has genuinely changed (not done yet -- every amp kept its existing nfb
+  value; the topology change alone is the deliverable here).
+
+Deployed to the Pi's live `guitaramp_amp`/`guitaramp_hexforge`; mod-host/mod-ui
+restarted clean. Removed the now-unused `osBuf` scratch member (replaced by
+per-sample local upsample/downsample, no longer needs a whole-block buffer).
+Cost: as estimated in the roadmap (~0.2%), no measurable CPU concern.
