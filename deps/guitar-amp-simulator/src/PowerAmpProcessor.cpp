@@ -104,11 +104,15 @@ const PowerAmpProcessor::TubeParams PowerAmpProcessor::kKT88 = {
 // Tube waveshaper — static, no state, safe to call at oversampled rate
 // ─────────────────────────────────────────────────────────────────────────────
 float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xover,
-                                        float duty) noexcept {
+                                        float duty, float ltpBias) noexcept {
     // Shift input to the cathode bias operating point.
     // A positive biasShift displaces the load-line intersection upward,
     // making positive-half-cycle clipping occur earlier than negative.
-    const float xs = x + p.biasShift;
+    // ltpBias (item #29) rides the SAME offset: a long-tailed-pair's shared
+    // tail resistor pulls both grids colder in common-mode as combined drive
+    // rises, so it's computed as an EXTRA, level-dependent bias term in
+    // process() and simply added here alongside the fixed biasShift.
+    const float xs = x + p.biasShift + ltpBias;
 
     // (duty is handled as STATEFUL flat-top droop in process() — memoryless offsets
     // here were measured inert on already-squared preamp signals: a two-level input
@@ -256,6 +260,14 @@ void PowerAmpProcessor::recalcFilters() {
     // so the guitar LF band accumulates flux and saturates before the highs (item 26).
     fluxPole_ = static_cast<float>(std::exp(-2.0 * M_PI * 25.0 / sr));
 
+    // LTP tail-coupling envelope (item #29): fast, tail-resistor-scale time
+    // constants — much quicker than sag's power-supply-scale envelope, since a
+    // real tail resistor's RC is dominated by a small bypass cap, not the B+
+    // reservoir. 2 ms attack lets the envelope track pick transients; 8 ms
+    // release keeps it from chasing individual cycles at guitar fundamentals.
+    ltpAtt_ = 1.0f - static_cast<float>(std::exp(-1.0 / (0.002 * sr)));
+    ltpRel_ = 1.0f - static_cast<float>(std::exp(-1.0 / (0.008 * sr)));
+
     // Post-saturation sag-VCA envelope: slow-ish 2.5 ms attack lets the pick
     // transient overshoot before the VCA clamps (= bloom); 13 ms release sets the
     // recovery τ (matches the JCM800 capture's ~13 ms).
@@ -302,6 +314,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         bloomEnv[c]     = 0.0f;
         bloomVcaEnv[c]  = 0.0f;
         dcLpA[c] = 0.0f; dcLpB[c] = 0.0f; dcSgn[c] = 0.0f;
+        ltpEnv[c] = 0.0f;
     }
     sagEnv    = 0.0f;
     ripplePhase = 0.0f;
@@ -345,6 +358,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "pamakeup") { paMakeup_ = std::clamp(v, 0.1f,  4.0f); }  // PA level restore
     else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
     else if (id == "ripplesag"){ rippleSagCoupling_ = std::max(0.0f, v); }  // item #27, 0 = off
+    else if (id == "ltptail")  { ltpTail_ = std::max(0.0f, v); }            // item #29, 0 = off
 
     if (needFilters)
         recalcFilters();
@@ -367,6 +381,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "pamakeup") return paMakeup_;
     if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
     if (id == "ripplesag")return rippleSagCoupling_;
+    if (id == "ltptail")  return ltpTail_;
     return 0.0f;
 }
 
@@ -394,7 +409,10 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // authentic" (the AM sidebands are inharmonic to the test tone, invisible to
         // the FR/THD/harmonic/feel sections; confirmed byte-identical there), so this
         // needs the user's ears before going wider. See AMP-REVOICE-NOTES.md.
-        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f }; // Marshall JCM800 2203
+        // ltpTail 0.15 (item #29 pilot, 2026-07-28): JCM800 is one of the three amps
+        // PhaseInverter.cpp documents as genuinely LTP-topology (kMarshall_LTP) --
+        // the natural pilot for the dynamic tail-coupling mechanism.
+        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f, 0.15f }; // Marshall JCM800 2203
         // rippleSagCoupling 0.012 (item #27 rollout, 2026-07-28): EVH already has its
         // OWN internal sag/bloom (bloomVca=0 above to avoid double-counting that), so
         // kept modest here too -- the PA-level ripple is meant to layer a subtle mains
@@ -493,6 +511,15 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             const float fb    = nfbHP[ch].process(nfbPrev[ch]) * nfbScale;
             const float drive = in[ch][i] * sagGain[i] - fb;
 
+            // LTP tail coupling (item #29): fast envelope of the drive signal,
+            // a proxy for "how hard both grids are swinging together" absent a
+            // literal two-path PI split. Bias grows colder (more negative) as
+            // the envelope rises — the shared tail resistor's common-mode
+            // voltage pulling both grids down together under heavier drive.
+            const float driveAbs = std::fabs(drive);
+            ltpEnv[ch] += (driveAbs > ltpEnv[ch] ? ltpAtt_ : ltpRel_) * (driveAbs - ltpEnv[ch]);
+            const float ltpBias = -ltpTail_ * 0.15f * ltpEnv[ch];
+
             // Step 1: 2× upsample (zero-insertion + AA LP), one native sample at
             // a time — same math as before, just no longer a separate whole-
             // block pass.
@@ -500,8 +527,8 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             float osB = 2.0f * upAA[ch].process(0.0f);
 
             // Step 2: tube waveshaper at 2× oversampled rate.
-            osA = tubeWaveshaper(paDrive_ * osA, tp, xoverDepth_, duty_) * paMakeup_;
-            osB = tubeWaveshaper(paDrive_ * osB, tp, xoverDepth_, duty_) * paMakeup_;
+            osA = tubeWaveshaper(paDrive_ * osA, tp, xoverDepth_, duty_, ltpBias) * paMakeup_;
+            osB = tubeWaveshaper(paDrive_ * osB, tp, xoverDepth_, duty_, ltpBias) * paMakeup_;
             // Dual-corner asymmetric coupling (duty mechanism) — unchanged math,
             // now applied inline to this sample's two OS sub-samples in the same
             // relative order (osA then osB) as the old whole-block pass.

@@ -63,6 +63,19 @@ public:
         // intermodulation, not just a constant hum floor. 0 = bit-identical (the
         // fixed base term is unchanged either way).
         float rippleSagCoupling = 0.0f;
+        // LTP tail coupling (item #29, 2026-07-28): a long-tailed-pair phase
+        // inverter's two triodes share one large tail resistor, so when BOTH
+        // grids swing toward conduction together (louder/harder playing), the
+        // tail voltage rises and pulls BOTH grids colder in common-mode — a
+        // LEVEL-DEPENDENT imbalance/compression that grows under drive, not a
+        // fixed offset. The suite's real per-amp LTP presets already exist in
+        // PhaseInverter.cpp (kMarshall_LTP/kEVH_LTP/kOrange_LTP) but that class
+        // isn't wired into the shared PowerAmpProcessor at all (only Sunn/DR use
+        // it) and its imbalance is a STATIC constant, not level-dependent — this
+        // adds the missing dynamic piece directly to the existing lumped
+        // waveshaper (see tubeWaveshaper's ltpBias param) rather than
+        // introducing a full two-path PI split. 0 = bit-identical.
+        float ltpTail = 0.0f;
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -112,6 +125,13 @@ private:
     float    rippleSagCoupling_ = 0.0f;   // item #27: extra ripple depth per unit sagEnv, 0 = off
     float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
     float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
+    // LTP tail coupling (item #29): coupling depth (0 = off) + fast per-channel
+    // envelope of the pre-waveshaper drive (proxy for "how hard both grids are
+    // swinging together" absent a literal two-path PI split). Time constants
+    // are fast (tail-resistor-scale, not power-supply-scale like sag).
+    float    ltpTail_   = 0.0f;
+    float    ltpEnv[kMaxCh] = {};
+    float    ltpAtt_ = 0.0f, ltpRel_ = 0.0f;
 
     // ── Per-tube model constants ───────────────────────────────────────────────
     struct TubeParams {
@@ -226,6 +246,9 @@ private:
 
     // Static waveshaper — no state; safe to call at OS rate.
     // xover = class-AB crossover depth (0 = none, bit-identical).
+    // ltpBias = item #29 tail-coupling bias offset (0 = none, bit-identical),
+    // computed per-sample from the stateful envelope in process() and passed
+    // in here since this function itself holds no state.
     static float tubeWaveshaper(float x, const TubeParams& p, float xover,
-                                float duty = 0.0f) noexcept;
+                                float duty = 0.0f, float ltpBias = 0.0f) noexcept;
 };

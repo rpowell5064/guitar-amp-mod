@@ -588,3 +588,50 @@ Deployed to the Pi's live `guitaramp_amp`/`guitaramp_hexforge`; mod-host/mod-ui
 restarted clean. Removed the now-unused `osBuf` scratch member (replaced by
 per-sample local upsample/downsample, no longer needs a whole-block buffer).
 Cost: as estimated in the roadmap (~0.2%), no measurable CPU concern.
+
+## TIER 2 ITEM #29 — LTP tail coupling, SHIPPED as JCM800 pilot (2026-07-28)
+
+A real-amp long-tailed-pair phase inverter has two triodes sharing one large
+tail resistor: when BOTH grids swing toward conduction together (harder
+playing), the shared tail voltage rises and pulls BOTH grids colder in
+common-mode — a level-dependent imbalance, not a fixed offset. The suite
+already has a `PhaseInverter` class with real per-amp LTP presets
+(`kMarshall_LTP`/`kEVH_LTP`/`kOrange_LTP` — JCM800, EVH, Rockerverb, exactly
+matching this item's target amps) but it's wired into NOTHING except
+SunnModelT/DeluxeReverb, and its `ltpImbalance`/`ltpBiasOffset` are FIXED
+constants, not level-dependent — the missing dynamic piece this item wants.
+
+**Did not do a full two-path PI split.** The shared `PowerAmpProcessor` used
+by every other amp has no concept of two separate phase-inverter grids at
+all (a single lumped `tubeWaveshaper()` call represents the whole power
+stage) — introducing a literal dual-path PI would be a much bigger
+architectural change than this item calls for, and would only reach 3 amps
+while leaving the other 10 with no equivalent mechanism. Instead, followed
+the SAME pattern items #25 (crossover)/#26 (duty) already use to approximate
+push-pull effects on a single lumped signal: track a fast envelope of the
+pre-waveshaper drive signal (a proxy for "how hard both grids are swinging
+together" absent a literal split) and apply a bias shift that grows colder as
+the envelope rises. Added as `tubeWaveshaper`'s new `ltpBias` parameter
+(computed statefully in `process()`, passed in since the waveshaper itself
+holds no state) and a new `AmpDefaults::ltpTail` coupling coefficient.
+
+**Verification:** confirmed a real bug along the way -- `nam_compare` and both
+live plugins were never wired to actually READ `AmpDefaults::ltpTail` (copy-
+paste gap from the #27 rollout), so the first test showed literally zero
+effect; fixed the missing `setParameter("ltptail", ...)` calls in all three
+places. After the fix: JCM800 at the shipped depth (0.15) shows a small,
+plausible shift (harmonics move by a few tenths of a percentage point).
+Pushed to 20x the shipped depth (--paltptail 3.0) as a stability/correctness
+stress test: even-harmonic content (h2/h4) clearly and monotonically
+increases with depth exactly as the physical mechanism predicts, confirming
+the mechanism works as intended -- the shipped value is just conservative by
+design, not weakly-implemented. No NaN/instability at any depth tested.
+
+**Shipped as a JCM800-only pilot** (`ltpTail = 0.15`, case 1 in
+`getDefaultsForModel()`) -- EVH and Rockerverb (the other two amps
+`PhaseInverter.cpp` documents as genuinely LTP-topology) stay at 0 pending a
+listening check, matching the established pilot-before-rollout pattern.
+Deployed to the Pi's live plugins. **Needs the user's ears**, same caveat as
+every character-tuning item this session (#22/#27/#40): no numeric target
+exists for "sounds like a cranked LTP," only physical plausibility and
+stability, both confirmed.

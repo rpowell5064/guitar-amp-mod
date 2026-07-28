@@ -407,6 +407,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).bloomVca);
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).duty);
     p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).rippleSagCoupling);
+    p->pa.setParameter("ltptail",  PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).ltpTail);
     if (desiredTube != p->lastTube) { p->lastTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
 
     const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);
