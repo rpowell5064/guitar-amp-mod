@@ -1670,6 +1670,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).bloomVca);
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).duty);
+    p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).rippleSagCoupling);
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);

@@ -51,6 +51,14 @@ public:
         float duty = 0.0f; // push-pull duty asymmetry → even harmonics (0 = symmetric)
         float paDrive  = 1.0f; // pre-waveshaper drive (PA distortion contribution)
         float paMakeup = 1.0f; // post-waveshaper level restore (loudness-neutral pair)
+        // Current-dependent mains ripple (item #27, 2026-07-28): the rectified-mains
+        // ripple riding the B+ has historically been a fixed −50 dBFS AM term
+        // regardless of how hard the amp is being driven. Real ripple grows with
+        // rectifier current draw — this scales additional ripple depth by the sag
+        // envelope so louder playing = deeper ripple = real "ghost note"
+        // intermodulation, not just a constant hum floor. 0 = bit-identical (the
+        // fixed base term is unchanged either way).
+        float rippleSagCoupling = 0.0f;
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -97,6 +105,7 @@ private:
     // vs its capture. Both 1.0 = bit-identical.
     float    paDrive_   = 1.0f;    // [0.25,8] pre-waveshaper drive
     float    paMakeup_  = 1.0f;    // [0.1,4]  post-waveshaper level restore
+    float    rippleSagCoupling_ = 0.0f;   // item #27: extra ripple depth per unit sagEnv, 0 = off
     float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
     float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
 

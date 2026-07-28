@@ -345,6 +345,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "padrive")  { paDrive_  = std::clamp(v, 0.25f, 8.0f); }  // PA distortion drive
     else if (id == "pamakeup") { paMakeup_ = std::clamp(v, 0.1f,  4.0f); }  // PA level restore
     else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
+    else if (id == "ripplesag"){ rippleSagCoupling_ = std::max(0.0f, v); }  // item #27, 0 = off
 
     if (needFilters)
         recalcFilters();
@@ -366,6 +367,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "padrive")  return paDrive_;
     if (id == "pamakeup") return paMakeup_;
     if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
+    if (id == "ripplesag")return rippleSagCoupling_;
     return 0.0f;
 }
 
@@ -381,7 +383,12 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
     //   touch; EVH already blooms in its own preamp (matches), so 0 — no double-count.
     switch (idx) {
         case 0: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.74f,  0.15f }; // Fender Deluxe Reverb AB763
-        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f }; // Marshall JCM800 2203
+        // rippleSagCoupling 0.02 (item #27 pilot, 2026-07-28): current-dependent mains
+        // ripple, JCM800 only for now -- offline harness can't score "sounds more
+        // authentic" (the AM sidebands are inharmonic to the test tone, invisible to
+        // the FR/THD/harmonic/feel sections; confirmed byte-identical there), so this
+        // needs the user's ears before going wider. See AMP-REVOICE-NOTES.md.
+        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f }; // Marshall JCM800 2203
         case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f }; // EVH 5150 III
         case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral
         case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550)
@@ -427,8 +434,13 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             sagEnv = sagRelCoef * sagEnv + (1.0f - sagRelCoef) * absIn;
 
         // Supply voltage factor: drops proportionally to sag envelope.
-        // Small ripple from the rectified mains rides on the droop.
-        const float ripple = 0.003f * std::sin(ripplePhase); // -50 dBFS
+        // Small ripple from the rectified mains rides on the droop. Item #27
+        // (2026-07-28): rectifier ripple physically grows with current draw, so
+        // add extra depth proportional to the sag envelope on top of the fixed
+        // quiescent term -- rippleSagCoupling_ 0 (default, every amp) keeps this
+        // identical to the old fixed -50 dBFS term.
+        const float rippleAmt = 0.003f + rippleSagCoupling_ * sagEnv; // base -50 dBFS + current-dependent growth
+        const float ripple = rippleAmt * std::sin(ripplePhase);
         const float vSupply = 1.0f
                             - sagAmount * tp.sagDepth * sagEnv
                             + ripple * (1.0f - sagAmount * sagEnv);

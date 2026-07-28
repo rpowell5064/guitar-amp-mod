@@ -374,6 +374,7 @@ static bool g_bypassPA = false;
 // PA promotion sweep overrides (2026-07-26): tune padrive/pamakeup/duty from the CLI
 // without rebuilding. <0 = use the amp's AmpDefaults value.
 static float g_paDrive = -1.0f, g_paMakeup = -1.0f, g_paDuty = -1.0f, g_paNfb = -1.0f;
+static float g_paRippleSag = -1.0f;  // item #27 sweep override, <0 = use the amp's AmpDefaults value
 
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
@@ -430,6 +431,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("duty",     g_paDuty   >= 0.0f ? g_paDuty   : d.duty);
     pa.setParameter("padrive",  g_paDrive  >= 0.0f ? g_paDrive  : d.paDrive);
     pa.setParameter("pamakeup", g_paMakeup >= 0.0f ? g_paMakeup : d.paMakeup);
+    pa.setParameter("ripplesag",g_paRippleSag >= 0.0f ? g_paRippleSag : d.rippleSagCoupling);
     pa.setParameter("resonance", 0.5f);
     pa.setParameter("airFeel", 0.0f);
     pa.setTubeType(static_cast<TubeType>(m.tube));
@@ -753,6 +755,7 @@ int main(int argc, char** argv) {
     if (const char* s = argVal(argc, argv, "--pamakeup")) g_paMakeup = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paduty"))   g_paDuty   = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--panfb"))    g_paNfb    = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--paripplesag")) g_paRippleSag = float(std::atof(s));
     for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--nopa")) g_bypassPA = true;
 
     Knobs k;

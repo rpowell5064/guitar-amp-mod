@@ -357,3 +357,37 @@ something other than the triode bias entirely (e.g. a downstream makeup-gain or
 softLimit knee); or (b) accept #22 as not viable in this architecture and reallocate
 Tier-2 effort to #24 (NFB wrapping) or #27 (current-dependent ripple) instead, which
 don't share this mechanism.
+
+## TIER 2 ITEM #27 — current-dependent mains ripple, SHIPPED on JCM800 pilot (2026-07-28)
+
+Real rectifier ripple grows with current draw; the existing ripple term in
+`PowerAmpProcessor::process()` was a fixed constant (`0.003f`, -50 dBFS) regardless of
+how hard the amp was being driven. Added `rippleSagCoupling` to `AmpDefaults` (new
+trailing field, default 0.0 = every amp except JCM800 unaffected) and changed the
+ripple amplitude to `0.003f + rippleSagCoupling_ * sagEnv` -- additional depth that
+grows with the SAME sag envelope already driving the supply-voltage droop, so louder/
+harder playing = deeper ripple = real mains-ripple "ghost note" intermodulation, not
+just a constant hum floor. Wired the default into both plugins + `nam_compare`
+(`--paripplesag` sweep override).
+
+**Cannot be offline-verified beyond "doesn't regress existing metrics."** Confirmed
+byte-identical FR/THD/harmonic-profile/attack-bloom/dynamic-gain-curve/sag-recovery on
+JCM800 at rippleSagCoupling 0 and 0.02 -- every number in nam_compare's report was
+IDENTICAL at both values. This is expected, not a bug in the verification: the ripple
+rides at the mains frequency (100/120 Hz) and produces sidebands INHARMONIC to
+whatever test tone is being measured, so none of the existing harmonic/FR/feel
+sections (which only look at exact integer harmonics of the test tone, or broadband
+level/timing) can see it at all -- same blind spot already noted for aliasing
+detection. There is no numeric target to tune against here; this is a pure
+character/authenticity addition, "best A/B'd by ear" (same caveat as the Uni-Vibe/
+wah/spring-dispersion Tier-3 items).
+
+**Shipped as a PILOT on JCM800 only** (`rippleSagCoupling = 0.02`, case 1 in
+`getDefaultsForModel()`) -- every other amp stays at the struct default 0.0
+(unaffected, confirmed via EVH sanity check). Built, deployed to the Pi's live
+`guitaramp_amp`/`guitaramp_hexforge`, mod-host/mod-ui restarted clean. **Needs the
+user's ears**: listen for a subtle mains-ripple "breathing"/ghost-note character that
+grows under harder playing on JCM800 specifically, and report back whether it reads as
+authentic texture or an artifact -- that verdict decides whether to tune the coupling
+value further or roll it out to the other amps (each would want its own tuned
+coupling, same as bloomVca/duty/nfb already are per-amp).
