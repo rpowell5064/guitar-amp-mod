@@ -899,7 +899,47 @@ swap like Friedman. Deferred as a properly-scoped follow-up rather than
 rushed; the schematic PDF is a solid starting point (values above are
 real, schematic-read, not guessed).
 
-**Orange Rockerverb50 -- not attempted.** Bespoke custom tonestack, does
-not use `ToneStackComponent` at all -- would need porting the class to
-use `YehSmithToneStack` first (a bigger refactor), not just a new preset.
-Not researched this session; tracked as a separate task.
+**Orange Rockerverb50 -- IMPLEMENTED + VERIFIED, mixed result (needs
+re-voicing before shipping as default, like Fender).** Found and read the
+actual official Orange factory schematic ("ORA-CD204, Orange Rockerverb
+Main Preamp PCB," Orange Musical Electronic Co Ltd, dated 27-2-2004) via
+`el34world.com` -- rendered locally at high resolution (installed
+`pymupdf` since the environment lacked `pdftoppm`, which the Read tool's
+PDF pipeline needs for page-range/zoom requests) and got an exceptionally
+clear read of the tone stack: the SAME classic Fender/Marshall "FMV"
+topology (plate output -> treble cap+pot, bridged by a fixed slope
+resistor to the mid/bass cap+pot network), with Orange's own values --
+C37=560pF (treble cap), C40=C41=22nF (mid/bass caps, same 0.022uF
+Marshall/Bassman use), RV7=250k Lin (treble pot, same as Marshall),
+RV5=500k Log (bass pot, half the Bassman/Marshall 1M, same taper),
+RV6=25k Lin (mid pot, matches Marshall's ~25k), R62=39k (slope resistor,
+between Marshall's 33k and Bassman's 56k). Confidence in this read is
+HIGH (unlike Vox) -- a clean vector-drawn 2004 CAD schematic, not a
+hand-drawn 1970s scan.
+
+Since `Rockerverb50` doesn't use `ToneStackComponent` at all (its own
+bespoke `bassF`/`midF`/`trebleF` biquad chain), wired a `YehSmithToneStack`
+member directly into it (mirroring the `ToneStackComponent::setExact`
+pattern rather than refactoring Rockerverb50 to route through
+`ToneStackComponent` -- smaller, more surgical change): new `exactTS`
+member + `useExact_` flag, an `"exactts"` opt-in parameter, both tonestack
+call sites (dirty AND clean channel each call the 3-biquad chain
+separately) branch on `useExact_`. Default off = bit-identical.
+
+**Measured result via `nam_compare --model rockerverb --exactts` is
+GENUINELY MIXED, split by channel:** on the DIRTY/OD channel (documented-
+knob capture `RV50 OD--G_12_00--B_12_00--M_12_00--T_14_00--V_09_00`), it's
+a mild net improvement (80Hz delta -4.5dB->-1.5dB, 200Hz -5.1->-3.4,
+315Hz -1.9->-1.2; a couple of upper-mid bands got very slightly worse,
+1.2k/2k by ~1-2dB). But on the CLEAN channel (`RV50 CL` all-noon capture),
+it's a clear REGRESSION: bass bands that were already close (50Hz -2.5dB
+delta, 125Hz +3.6) blow out to +3.9dB and +9.1dB respectively -- the exact
+network's own inherent bass response, with less pre-tonestack filtering to
+mask it on the clean path, doesn't suit the rest of the amp's existing
+voicing. This is the SAME "needs a proper re-voice of the amp's other
+filters" situation as Fender (see the `#28` Fender writeup above), not a
+clean win like JCM800/Plexi/Friedman -- so it was NOT hardwired on.
+Shipped as verified, opt-in-only infrastructure (default false, bit-
+identical), same as Fender's `exactts` pilot. Folds into task #25
+(re-voice around the new exact tone stack) rather than being its own new
+task.

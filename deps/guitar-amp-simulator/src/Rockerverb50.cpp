@@ -26,6 +26,7 @@ void Rockerverb50::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept 
         c.stage3.prepare(oversampledFs, TriodeComponent::kRVB_S3);
         c.stage4.prepare(oversampledFs, TriodeComponent::kRVB_S4);
         c.dnr.prepare(oversampledFs);
+        c.exactTS.prepare(oversampledFs, YehSmithToneStack::kOrangeRockerverb50);
     }
 
     recalcFilters();
@@ -51,6 +52,7 @@ void Rockerverb50::reset() noexcept {
         c.bassF.reset();
         c.midF.reset();
         c.trebleF.reset();
+        c.exactTS.reset();
         c.presenceF.reset();
         c.airLP.reset();
         c.cleanInterLP.reset();
@@ -152,9 +154,13 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
         //   bass   → low shelf  @ 90 Hz,   dB = (knob*2−1) × 11
         //   mid    → peaking   @ 720 Hz,  dB = (knob*2−1) × 9,  Q=0.65
         //   treble → high shelf @ 4 kHz,   dB = (knob*2−1) × 9
-        x = s.bassF.process(x);
-        x = s.midF.process(x);
-        x = s.trebleF.process(x);
+        if (useExact_) {
+            x = s.exactTS.process(x);
+        } else {
+            x = s.bassF.process(x);
+            x = s.midF.process(x);
+            x = s.trebleF.process(x);
+        }
 
         // ── Post-EQ presence / air shaping ───────────────────────────────────
         // Presence: fixed +2.5 dB high shelf @ 5 kHz — inherent amp brightness.
@@ -182,9 +188,13 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
             const float bias = -sag_ * std::fmin(s.sagEnv, 2.5f) * 0.04f;   // env bounded (see VoxAC30Model 2026-07-25 note)
             x = std::tanh((x + bias) * g * 0.65f) / (g * 0.65f);
         }
-        x = s.bassF.process(x);
-        x = s.midF.process(x);
-        x = s.trebleF.process(x);
+        if (useExact_) {
+            x = s.exactTS.process(x);
+        } else {
+            x = s.bassF.process(x);
+            x = s.midF.process(x);
+            x = s.trebleF.process(x);
+        }
         x = s.cleanHFRolloff.process(x);
         x = s.cleanScoop.process(x);    // Orange clean mid scoop (~1.4 kHz)
         x = s.cleanLift.process(x);     // treble recovery (undo dark power-amp defaults)
@@ -212,6 +222,10 @@ void Rockerverb50::setParameter(const std::string& id, float value) noexcept {
     else if (id == "presence") { if (presence_ != value) { presence_ = value; recalcFilters(); } }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
+    // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack, wired to
+    // schematic-verified Rockerverb values (YehSmithToneStack::kOrangeRockerverb50).
+    // Default off (0) = bit-identical to the existing heuristic path.
+    else if (id == "exactts")  { useExact_ = value > 0.5f; recalcFilters(); }
 }
 
 float Rockerverb50::getParameter(const std::string& id) const noexcept {
@@ -223,6 +237,7 @@ float Rockerverb50::getParameter(const std::string& id) const noexcept {
     else if (id == "presence") return presence_;
     else if (id == "master")   return master_;
     else if (id == "sag")      return sag_;
+    if (id == "exactts")       return 0.0f;   // write-only pilot toggle
     return 0.0f;
 }
 
@@ -319,6 +334,11 @@ void Rockerverb50::recalcFilters() noexcept {
         c.bassF.setCoeffs(bassc);
         c.midF.setCoeffs(midc);
         c.trebleF.setCoeffs(treblec);
+        if (useExact_) {
+            c.exactTS.setBass(bass_);
+            c.exactTS.setMid(mid_);
+            c.exactTS.setTreble(treble_);
+        }
         c.presenceF.setCoeffs(presencec);
         c.airLP.setCoeffs(airLPc);
         c.cleanInterLP.setCoeffs(cleanInterLPc);

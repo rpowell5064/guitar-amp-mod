@@ -73,6 +73,21 @@ public:
     // verification trail stays documented and independently correctable.
     static constexpr CircuitParams kMarshall1959 = kMarshallJCM800;
 
+    // Orange Rockerverb 50 (2026-07-28) -- read directly off the official Orange
+    // factory schematic (drawing "ORA-CD204, Orange Rockerverb Main Preamp PCB,"
+    // Orange Musical Electronic Co Ltd, dated 27-2-2004): same classic Fender/
+    // Marshall-derived "FMV" TMB topology (plate output -> treble cap+pot,
+    // bridged by a fixed slope resistor to the mid/bass cap+pot network) but
+    // with Orange's own values: C37=560pF (treble cap), C40=C41=22nF (mid/bass
+    // caps -- same 0.022uF Marshall/Bassman use), RV7=250k Lin (treble pot,
+    // same as Marshall), RV5=500k Log (bass pot -- half the Bassman/Marshall
+    // 1M, same log taper), RV6=25k Lin (mid pot, matches Marshall's ~25k),
+    // R62=39k (slope resistor, between Marshall's 33k and Bassman's 56k).
+    static constexpr CircuitParams kOrangeRockerverb50 = {
+        560e-12, 22e-9, 22e-9,
+        250e3, 500e3, 25e3, 39e3
+    };
+
     void prepare(double sampleRate, const CircuitParams& p) noexcept {
         sampleRate_ = sampleRate;
         params_     = p;

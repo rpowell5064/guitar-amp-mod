@@ -3,6 +3,7 @@
 #include "BiquadFilter.h"
 #include "TriodeComponent.h"
 #include "DnrRolloff.h"
+#include "YehSmithToneStack.h"
 #include <array>
 #include <string>
 
@@ -59,6 +60,7 @@ private:
     float presence_     = 0.43f; // slightly darker than flat; Rockerverb has thick EL34 top-end
     float master_       = 0.54f;
     float sag_          = 0.40f; // EL34 cathode-cap compression, 120 ms release
+    bool  useExact_     = false; // item #28: exact tone stack opt-in (see ChannelState::exactTS)
 
     LinearSmoother gainSmooth_, masterSmooth_;
     float gainCurrent_   = 0.5f;
@@ -88,6 +90,11 @@ private:
         BiquadFilter bassF;         // low shelf  @ 90 Hz,   ±11 dB
         BiquadFilter midF;          // peaking    @ 720 Hz,  ±9 dB, Q=0.65
         BiquadFilter trebleF;       // high shelf @ 4000 Hz, ±9 dB
+        // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack, opt-in
+        // via useExact_ -- wired to schematic-verified Orange values (see
+        // YehSmithToneStack::kOrangeRockerverb50). Default off = bit-identical
+        // (the 3 biquads above stay the live path).
+        YehSmithToneStack exactTS;
 
         // Post-EQ shaping (dirty channel only)
         BiquadFilter presenceF;     // high shelf @ 5000 Hz, fixed +2.5 dB
