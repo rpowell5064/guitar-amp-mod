@@ -382,6 +382,13 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
     //   hard (driven comp gap) but stays clean when quiet (env-gated); Rockerverb a
     //   touch; EVH already blooms in its own preamp (matches), so 0 — no double-count.
     switch (idx) {
+        // rippleSagCoupling deliberately left at 0 (item #27 rollout, 2026-07-28): this
+        // row is SHARED across Fender/Hiwatt/Vox (all tube) AND Peavey Backline (SOLID-
+        // STATE, kCanonical idx 9 -> row 0) -- a solid-state supply doesn't have the
+        // tube-rectifier ripple-modulated "ghost note" character, so adding it here
+        // would incorrectly color Backline. Needs the row split (see the existing
+        // "kCanonical rows are SHARED" note) before Fender/Hiwatt/Vox can get their own
+        // ripple value without also hitting the solid-state amp.
         case 0: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.74f,  0.15f }; // Fender Deluxe Reverb AB763
         // rippleSagCoupling 0.02 (item #27 pilot, 2026-07-28): current-dependent mains
         // ripple, JCM800 only for now -- offline harness can't score "sounds more
@@ -389,18 +396,30 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // the FR/THD/harmonic/feel sections; confirmed byte-identical there), so this
         // needs the user's ears before going wider. See AMP-REVOICE-NOTES.md.
         case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f }; // Marshall JCM800 2203
-        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f }; // EVH 5150 III
-        case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral
-        case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550)
-        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f }; // Orange Rockerverb 100 MKII
+        // rippleSagCoupling 0.012 (item #27 rollout, 2026-07-28): EVH already has its
+        // OWN internal sag/bloom (bloomVca=0 above to avoid double-counting that), so
+        // kept modest here too -- the PA-level ripple is meant to layer a subtle mains
+        // texture on top, not compete with EVH's already-tuned dynamics.
+        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 1.0f, 1.0f, 0.012f }; // EVH 5150 III
+        case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral -- left at 0: user-supplied captures may already carry real ripple color, or may not; don't guess
+        case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550) -- PA is bypassed for Sunn, so rippleSagCoupling here is inert either way
+        // rippleSagCoupling 0.022 (item #27 rollout): highest sag (0.47) of the EL34
+        // rows besides Fender -> proportionally the most ripple depth.
+        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 1.0f, 1.0f, 0.022f }; // Orange Rockerverb 100 MKII
         // NOTE (2026-07-26): duty 0.45 was tried here for the dimed capture's even-rich
         // profile (h2 17/h4 13/h6 11%) and measured NO effect — the PA contributes so
         // little distortion vs the preamp (35% THD) that PA evens dilute to ~nothing.
         // The evens gap needs the PA driven as a first-class distortion contributor
         // (gain-staging re-architecture + full preset re-level) — supervised project.
-        case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f }; // Friedman BE-Deluxe (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
-        case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f }; // Mesa Dual Rectifier (Diamond Plate) — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
-        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
+        // rippleSagCoupling 0.018 (item #27 rollout): EL34, moderate sag (0.35).
+        case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f,  0.0f, 1.0f, 1.0f, 0.018f }; // Friedman BE-Deluxe (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
+        // rippleSagCoupling 0.010 (item #27 rollout): TIGHT supply (bloom only 4 dB
+        // vs the capture) -> proportionally less ripple depth than JCM800/Rockerverb.
+        case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f,  0.0f, 1.0f, 1.0f, 0.010f }; // Mesa Dual Rectifier (Diamond Plate) — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
+        // rippleSagCoupling 0.006 (item #27 rollout): tightest/most percussive amp in
+        // the suite (sag 0.15) -> smallest ripple depth, so it doesn't fight the
+        // deliberately tight/snappy character.
+        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f,  0.0f, 1.0f, 1.0f, 0.006f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }

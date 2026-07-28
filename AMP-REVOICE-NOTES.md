@@ -391,3 +391,36 @@ grows under harder playing on JCM800 specifically, and report back whether it re
 authentic texture or an artifact -- that verdict decides whether to tune the coupling
 value further or roll it out to the other amps (each would want its own tuned
 coupling, same as bloomVca/duty/nfb already are per-amp).
+
+**USER CONFIRMED (2026-07-28): "sounds great."** Rolled out to the rest of the amps
+that have their own dedicated (or clearly-defined) PowerAmpProcessor row, scaling each
+value roughly proportional to that row's existing `sag` field: EVH 0.012 (kept modest
+-- EVH already has its own internal sag/bloom, bloomVca=0 there to avoid double-
+counting, so PA-level ripple should layer lightly, not compete), Rockerverb 0.022
+(highest sag of the EL34 rows besides Fender), Friedman 0.018, Recto/Diamond Plate
+0.010 (explicitly a TIGHT-supply amp per its own comment), MT15/Tremont 15 0.006
+(tightest/most percussive amp in the suite -- kept smallest so it doesn't fight that
+character). All confirmed byte-identical vs each amp's existing FR/THD/harmonic/feel
+baseline (EVH re-verified explicitly).
+
+**IMPORTANT DISCOVERY while rolling out:** `kCanonical` (both `amp_plugin.cpp` and
+`hexforge_plugin.cpp`) maps MULTIPLE LV2 amp models onto the SAME `getDefaultsForModel`
+row -- row 1 (JCM800) is also used by Plexi (idx 10) and Mesa Mark V/Cali V (idx 11).
+**The JCM800 pilot value (0.02) has therefore been live on Plexi and Cali V too since
+deployment, not JCM800 alone** -- the user's "sounds great" verdict was on JCM800
+specifically but likely also covers those two (same EL34 PA family, which is *why*
+they share the row in the first place). Flagging this rather than silently letting it
+ride; if Plexi/Cali V should get their OWN tuned value later, the row needs splitting
+first (see the pre-existing "kCanonical rows are SHARED" note above).
+
+**Left at 0 (not rolled out):**
+- **NAM neutral** (row 3) -- user-supplied captures may already carry real ripple
+  color from whatever the capture chain included, or may not; adding synthetic ripple
+  on top risks an unpredictable double-up. Needs a deliberate decision, not a guess.
+- **Row 0 (Fender/Hiwatt/Vox + Peavey Backline)** -- this row is shared with Backline,
+  the suite's ONE solid-state amp. A solid-state supply doesn't have the tube-
+  rectifier ripple-modulated "ghost note" character, so adding it here would
+  incorrectly color Backline. Needs the row split before Fender/Hiwatt/Vox can get
+  their own value without also hitting the solid-state amp.
+- **Sunn Model T** (row 4) -- PA is bypassed entirely for Sunn (own SunnPowerAmp6550),
+  so any value here is inert regardless; left at 0 for clarity, not function.
