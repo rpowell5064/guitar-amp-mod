@@ -674,6 +674,89 @@ retuning their preserved tone, matching how "dense reverb tank on every
 factory preset" and similar blanket additions were handled previously.
 Bumped `kFactoryRev` 70->71 so existing saved boards get the refresh.
 
+## TIER 2 ITEM #28 — Yeh-Smith exact closed-form tone stack (2026-07-28)
+
+The current `ToneStackComponent` approximates the real passive TMB (Treble/
+Mid/Bass) tone stack's control INTERACTION (raising bass+treble together
+deepens the mid scoop) with 4 independent biquads plus a hand-tuned
+`passiveScoop` heuristic addend. The real circuit is a 3rd-order passive RC
+network where this interaction falls out of the circuit math automatically
+-- the heuristic is an approximation of an approximation.
+
+**Researched and verified the exact source** (D. T. Yeh & J. O. Smith,
+"Discretization of the '59 Fender Bassman Tone Stack," DAFx-06) by fetching
+and text-extracting the actual paper PDF directly (not relying on memory or
+a third-party reproduction) -- got the complete symbolic H(s) coefficients
+(Eqn. 1) and the exact bilinear-transform discretization (Eqn. 2), plus the
+paper's own SPICE-verified '59 Bassman component values (C1=0.25nF,
+C2=C3=20nF, R1=250k, R2=1M, R3=25k, R4=56k) straight from its schematic PDF.
+
+**Triple-verified before touching any amp model:**
+1. Independent Python re-derivation of the continuous-time transfer function
+   -- confirmed the classic Marshall/Fender "V-scoop" shape at t=m=l=0.5
+   (scoop bottoms at -12.4 dB around 700 Hz-1 kHz, rises toward both bass and
+   treble), and confirmed the expected strong scoop when bass+treble are
+   maxed with mid at 0 (the textbook "scooped mids" sound).
+2. Stability check across every knob extreme tested (0,0,0 / 1,1,1 / mixed):
+   all filter poles have negative real parts (stable) -- expected for a
+   passive RC network, matching the paper's own claim that all 3 poles are
+   always real.
+3. Independent C++ port, cross-checked against the Python reference: matches
+   to within ~0.01-0.07 dB at the tested frequencies, with slightly larger
+   (still small) deviation at higher frequencies -- exactly the behavior the
+   paper's own Figs. 4-9 describe for bilinear-transform discretization at
+   audio sample rates. New `YehSmithToneStack.h`, generically parametrized by
+   R1-4/C1-3 so it's reusable once other amps' real values are confirmed.
+
+**Wired as an opt-in pilot on `ToneStackComponent::Type::Fender`** (the only
+type with a verified real-circuit source) via a new `setExact(bool)` method
+-- default false = bit-identical (structurally guaranteed: the new code path
+only runs when explicitly engaged, which nothing currently does). Added a
+matching `exactts` parameter to `FenderDeluxeModel` and a `--exactts` sweep
+flag to `nam_compare` for testing. Presence is left untouched either way (a
+separate NFB-loop-style control in real amps, not part of the classic
+3-knob TMB network this paper models).
+
+**Measured result on FenderDeluxeModel vs. its NAM capture: genuinely
+mixed, exactly matching the roadmap's "biggest preset-migration event"
+warning.** Bass-frequency accuracy improved dramatically (50 Hz delta -6.8dB
+-> -0.9dB, 80 Hz -4.9dB -> +0.6dB, 125 Hz -2.8dB -> +2.1dB) -- the classic
+Fender low-end behavior the old heuristic couldn't quite capture. But the
+mid-highs got WORSE (800Hz-2kHz deltas roughly doubled darker; 5kHz swung
+from +0.9 to +4.0 too bright). This is expected, not a bug in the tone
+stack itself: `FenderDeluxeModel`'s OTHER filters (input HPFs, inter-stage
+coupling, etc.) were originally tuned to work WITH the old heuristic
+tonestack's specific coloration -- swapping in a more accurate tonestack
+changes the overall FR shape enough that the rest of the amp's voicing no
+longer complements it. Getting a clean win here needs a proper re-voice of
+FenderDeluxeModel's other filters around the new tonestack (the same kind
+of multi-variable re-voicing project as the EVH/JCM800 work earlier this
+session), not just swapping the tonestack in isolation.
+
+**Not exposed anywhere reachable by the user yet** -- no LV2 port, not on
+any preset. It's dev-only (nam_compare CLI flag + the model's own
+setParameter) pending a decision on next steps.
+
+**Marshall shares the exact same circuit topology** (confirmed via
+independent research: both are "TMB Fender-style" stacks per multiple
+sources) but reliable, complete, consistently-cited real component values
+for the JCM800 specifically were NOT found with enough confidence to use --
+secondary sources cite conflicting/partial values (e.g. one source's "R1"
+doesn't clearly map to the paper's R1 naming) and used DIFFERENT internal
+labeling conventions across schematics. Given the entire point of this item
+is EXACTNESS, guessing values would defeat the purpose. Vox/Orange/Recto
+likely use genuinely different tone stack topologies (not just different
+component values on the same Fender-style network) and would need their own
+circuit research entirely -- not attempted.
+
+**Recommended next steps, in order of value:** (a) properly re-voice
+FenderDeluxeModel's other filters around the exact tonestack to turn the
+mixed result into a clean win (real DSP work, own session); (b) find a
+reliably-sourced, complete JCM800 component value set (ideally from an
+actual schematic, not a secondary blog) to extend this to Marshall/EVH/
+Rockerverb/Plexi (which all likely share this topology); (c) research Vox's
+actual tone stack topology separately if it's wanted too.
+
 Deployed to the Pi. One transient SEGV on the very first mod-host restart
 immediately after the `.so` swap, self-resolved on the next restart (clean
 for two subsequent cycles) -- matches a benign, already-observed pattern

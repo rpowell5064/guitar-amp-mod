@@ -113,6 +113,9 @@ void FenderDeluxeModel::setParameter(const std::string& id, float value) noexcep
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.tonestack.setPresence(value); }
+    // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack, opt-in
+    // pilot -- default off (0) = bit-identical to the existing heuristic path.
+    else if (id == "exactts")  { for (auto& c : ch_) c.tonestack.setExact(value > 0.5f); }
 }
 
 float FenderDeluxeModel::getParameter(const std::string& id) const noexcept {
@@ -122,6 +125,7 @@ float FenderDeluxeModel::getParameter(const std::string& id) const noexcept {
     if (id == "mid")      return mid_;
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
+    if (id == "exactts")  return 0.0f;   // write-only pilot toggle
     if (id == "sag")      return sag_;
     return 0.0f;
 }

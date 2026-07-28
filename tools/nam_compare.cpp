@@ -376,6 +376,7 @@ static bool g_bypassPA = false;
 static float g_paDrive = -1.0f, g_paMakeup = -1.0f, g_paDuty = -1.0f, g_paNfb = -1.0f;
 static float g_paRippleSag = -1.0f;  // item #27 sweep override, <0 = use the amp's AmpDefaults value
 static float g_paLtpTail   = -1.0f;  // item #29 sweep override, <0 = use the amp's AmpDefaults value
+static bool  g_exactTS     = false;  // item #28: exact closed-form tone stack pilot (Fender only)
 
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
@@ -405,6 +406,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
         amp.setParameter("treble", k.treble);
     }
     amp.setParameter("presence", k.presence);
+    amp.setParameter("exactts", g_exactTS ? 1.0f : 0.0f);  // item #28 pilot, ignored by other models
     amp.setParameter("master", k.master);
     amp.setParameter("sag", k.sag);
     amp.setParameter("channel", k.channel);
@@ -759,6 +761,7 @@ int main(int argc, char** argv) {
     if (const char* s = argVal(argc, argv, "--panfb"))    g_paNfb    = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paripplesag")) g_paRippleSag = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paltptail"))   g_paLtpTail   = float(std::atof(s));
+    for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--exactts")) g_exactTS = true;
     for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--nopa")) g_bypassPA = true;
 
     Knobs k;

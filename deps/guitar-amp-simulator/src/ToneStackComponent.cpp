@@ -94,16 +94,19 @@ void ToneStackComponent::prepare(double sampleRate, Type type) noexcept {
 void ToneStackComponent::setBass(float v) noexcept {
     bass_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
+    if (useExact_) exact_.setBass(bass_);
 }
 
 void ToneStackComponent::setMid(float v) noexcept {
     mid_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
+    if (useExact_) exact_.setMid(mid_);
 }
 
 void ToneStackComponent::setTreble(float v) noexcept {
     treble_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
+    if (useExact_) exact_.setTreble(treble_);
 }
 
 void ToneStackComponent::setPresence(float v) noexcept {
@@ -111,18 +114,34 @@ void ToneStackComponent::setPresence(float v) noexcept {
     recalc();
 }
 
+void ToneStackComponent::setExact(bool on) noexcept {
+    useExact_ = on && (type_ == Type::Fender);   // no-op on types without verified circuit values
+    if (useExact_) {
+        exact_.prepare(sampleRate_, YehSmithToneStack::kBassman59);
+        exact_.setBass(bass_);
+        exact_.setMid(mid_);
+        exact_.setTreble(treble_);
+    }
+}
+
 void ToneStackComponent::reset() noexcept {
     bassF_.reset();
     midF_.reset();
     trebleF_.reset();
     presenceF_.reset();
+    exact_.reset();
 }
 
 float ToneStackComponent::process(float x) noexcept {
-    float y = bassF_.process(x);
-    y = midF_.process(y);
-    y = trebleF_.process(y);
-    y = presenceF_.process(y);
+    float y;
+    if (useExact_) {
+        y = exact_.process(x);
+    } else {
+        y = bassF_.process(x);
+        y = midF_.process(y);
+        y = trebleF_.process(y);
+    }
+    y = presenceF_.process(y);   // unchanged either way -- see setExact() comment
     return y;
 }
 

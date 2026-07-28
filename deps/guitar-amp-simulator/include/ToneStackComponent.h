@@ -1,5 +1,6 @@
 #pragma once
 #include "BiquadFilter.h"
+#include "YehSmithToneStack.h"
 #include <cmath>
 #include <algorithm>
 
@@ -32,6 +33,19 @@ public:
     void setMid     (float v) noexcept;
     void setTreble  (float v) noexcept;
     void setPresence(float v) noexcept;
+
+    // Item #28 (2026-07-28): swap the 4-biquad + passiveScoop-heuristic bass/
+    // mid/treble path for the EXACT closed-form Yeh & Smith circuit solution
+    // (see YehSmithToneStack.h) -- cheaper (one 3rd-order filter vs 3 biquads)
+    // AND correct by construction (the real control interaction falls out of
+    // the circuit math, not a hand-tuned scoop-depth addend). Presence is
+    // UNCHANGED either way (it's a separate NFB-loop-style control in real
+    // amps, not part of the classic 3-knob TMB network this models). Only
+    // meaningful for Type::Fender right now -- the only type with a verified
+    // real-circuit component source (Yeh & Smith's own paper, SPICE-checked);
+    // a no-op on any other type until their own values are confirmed.
+    // Default false = bit-identical to the existing heuristic path.
+    void setExact(bool on) noexcept;
 
     float process(float x) noexcept;
     void  reset()           noexcept;
@@ -68,4 +82,9 @@ private:
     BiquadFilter midF_;
     BiquadFilter trebleF_;
     BiquadFilter presenceF_;
+
+    // Item #28: exact closed-form path, engaged only when useExact_ is true
+    // AND type_ == Type::Fender (see setExact()).
+    bool useExact_ = false;
+    YehSmithToneStack exact_;
 };
