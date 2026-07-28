@@ -311,3 +311,49 @@ NEXT: either (a) apply the mechanism to a sharper/re-squared node, (b) make dept
 level+edge-adaptive, or (c) accept that DI-capture even-harmonic matching may need a
 fundamentally different power-stage topology. The harness (--paduty/--panfb sweep
 flags + tools/evens_harness) is the desk-loop for all of it.
+
+## TIER 2 ITEM #22 — sag-into-operating-point, plumbing built + pilot tuned NEGATIVE (2026-07-28)
+
+Built the shared plumbing for "sag into the operating point, not just the volume"
+(roadmap #22): `PowerAmpProcessor::getSagEnvNorm()` exposes its own mono supply-sag
+envelope; `AmpModelBase::setExternalSag()` is a new default-no-op virtual hook; both
+`amp_plugin.cpp` and `hexforge_plugin.cpp` call `amp->setExternalSag(pa.getSagEnvNorm())`
+right after `pa.process()` each block (one-block-stale feedback, negligible given
+sag's 10-350ms time constants); `nam_compare` mirrors the same call so it can be used
+to tune it offline. Verified inert (byte-identical JCM800/EVH via nam_compare) before
+any amp used it.
+
+**PILOT (JCM800): NEGATIVE RESULT.** Implemented `JCM800Model::setExternalSag()`
+forwarding `kSagBiasCoupling * paSagEnv` to all 4 TriodeComponent stages'
+`setSagBias()`. Swept ±0.3/0.8/1.5 against nam_compare's attack/bloom section
+(gain 1.0, the driven JCM800 capture): **every nonzero value made the model STIFFER**
+(bloom -0.41 dB baseline -> -0.87/-1.07 dB at |0.8|/|1.5| -- moving AWAY from NAM's
++1.53 dB target), and **symmetrically** (±0.3 produced the IDENTICAL -0.41 dB either
+direction -- sign doesn't matter, only magnitude, and magnitude only hurts). Harmonics
+barely moved either (h3@111 stayed ~43.6-43.7 across all three magnitudes).
+
+This is the SAME failure mode already found and disabled for item #21 (grid-conduction
+blocking distortion, see `TriodeComponent.h`'s "BLOCKING DISABLED... net-negative for
+feel" comment) -- both items drive the identical additive `xBiased = xFiltered -
+blockDepth_*(...) + sagBias_` mechanism in `TriodeComponent::process()`. Two
+independent Tier-2 sub-items, using the same underlying mechanism, have now both
+converged on the same negative result. **Suspected root cause:** `buildLUT()` solves
+`normScale` (unity small-signal gain) AT the DC bias point specifically, so the LUT's
+gain is HIGHEST exactly there by construction -- any additive offset in either
+direction pushes the operating point into a lower-slope region of the Koren curve,
+which generically makes the stage LESS sensitive/dynamic, not more. An additive
+bias-shift on a LUT built this way may be structurally the wrong lever for "touch"
+feel, regardless of what drives it (blocking distortion or sag).
+
+**Reverted to inert** (`kSagBiasCoupling = 0.0f`, confirmed byte-identical vs the
+pre-sweep baseline) and deployed in that state -- the plumbing (getter/hook/wiring)
+stays in the tree since it's genuinely reusable infra and free when off, but do NOT
+naively roll `setExternalSag()` out to the other ~12 amps using this same "scale a
+raw sag amount, add it to the LUT input" pattern without addressing the root cause
+first. Two real paths forward if this is revisited: (a) a genuinely different
+coupling -- e.g. modulate the LUT's own `normScale`/gain multiplicatively as sag rises
+(so the operating point doesn't move but the local sensitivity does), or feed sag into
+something other than the triode bias entirely (e.g. a downstream makeup-gain or
+softLimit knee); or (b) accept #22 as not viable in this architecture and reallocate
+Tier-2 effort to #24 (NFB wrapping) or #27 (current-dependent ripple) instead, which
+don't share this mechanism.

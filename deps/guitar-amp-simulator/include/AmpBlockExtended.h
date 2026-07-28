@@ -108,6 +108,13 @@ public:
     // (-1 means "keep current setting").
     int getRecommendedTubeType() const noexcept { return recommendedTube_; }
 
+    // Supply-sag feedback passthrough (item #22, 2026-07-28) -- see
+    // AmpModelBase::setExternalSag(). No-op for NAM/NeuralCustom (extModel_
+    // null): those captures don't use TriodeComponent stages.
+    void setExternalSag(float paSagEnv) noexcept {
+        if (extModel_) extModel_->getModel()->setExternalSag(paSagEnv);
+    }
+
 private:
     std::unique_ptr<OversamplingWrapper> extModel_;
     int recommendedTube_ = -1;

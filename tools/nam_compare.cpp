@@ -446,6 +446,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
         float* p = scratch.data();
         amp.process(&p, &p, len, 1);
         pa.process(&p, &p, len, 1);
+        amp.setExternalSag(pa.getSagEnvNorm()); // item #22, 2026-07-28 — mirrors the plugins
         std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
     }
 }

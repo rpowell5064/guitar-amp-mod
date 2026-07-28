@@ -450,6 +450,11 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         float* outs[2] = { outL + off, outR + off };
         amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);
+        // Feed the power amp's own supply-sag envelope back to the preamp for
+        // the NEXT block (2026-07-28, item #22) -- one block stale, negligible
+        // given sag's ~10-350 ms time constants. Default per-amp coupling is 0
+        // (bit-identical) until tuned; see AmpModelBase::setExternalSag().
+        amp->setExternalSag(p->pa.getSagEnvNorm());
     }
     const float mk = kModelMakeup[modelIdx];
     if (mk != 1.0f) for (uint32_t i = 0; i < n; ++i) { outL[i] *= mk; outR[i] *= mk; }

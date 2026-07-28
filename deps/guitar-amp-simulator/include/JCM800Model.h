@@ -39,6 +39,14 @@ public:
     int         recommendedTubeType() const noexcept override { return 1; } // EL34
     const char* modelName()           const noexcept override { return "Marshall JCM800"; }
 
+    // Supply-sag-into-operating-point (item #22, pilot amp, 2026-07-28): pushes
+    // the shared PowerAmpProcessor's own sag envelope back into every preamp
+    // triode stage's bias via TriodeComponent::setSagBias(), so the whole
+    // cascade droops together like a real amp's single shared B+ rail — not
+    // just a post-hoc volume dip. kSagBiasCoupling default 0.0 = bit-identical;
+    // see AMP-REVOICE-NOTES.md for the tuning sweep before this goes nonzero.
+    void setExternalSag(float paSagEnv) noexcept override;
+
 private:
     double oversampledFs_ = 0.0;
 
@@ -49,6 +57,20 @@ private:
     float presence_ = 0.55f; // slight presence boost above flat — classic rock starting point
     float master_   = 0.62f;
     float sag_      = 0.22f; // solid-state rectifier with large caps — very stiff B+ supply
+
+    // Item #22 pilot (2026-07-28): swept ±0.3/0.8/1.5 against nam_compare's
+    // attack/bloom section. BOTH signs made the model STIFFER (bloom -0.41 ->
+    // -0.87/-1.07 dB vs NAM's +1.53 dB target) -- moving AWAY from the goal,
+    // symmetrically (±0.3 gave the IDENTICAL -0.41 dB either direction). This
+    // is the same failure mode already found and disabled for item #21
+    // (TriodeComponent.h: "blocking...was net-negative for feel") -- both use
+    // the identical additive xBiased mechanism. Root cause suspected: the LUT's
+    // gain is highest AT the small-signal bias point by construction (normScale
+    // sets unity there), so ANY offset in either direction pushes into a lower-
+    // slope region -- generically less sensitive/dynamic, not more. See
+    // AMP-REVOICE-NOTES.md and pedal-amp-already-tuned-findings.md before
+    // reviving this on any other amp; default 0.0 keeps it fully inert.
+    static constexpr float kSagBiasCoupling = 0.0f;
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

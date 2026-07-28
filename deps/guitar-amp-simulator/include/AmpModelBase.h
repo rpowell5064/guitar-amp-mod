@@ -34,6 +34,17 @@ public:
     // Indices match the TubeType enum: 0=6L6GC 1=EL34 2=EL84 3=KT88.
     virtual int recommendedTubeType() const noexcept { return 1; }
 
+    // Supply-sag feedback (item #22, 2026-07-28, keystone Tier-2 sag-into-
+    // operating-point project): called once per block with the downstream
+    // PowerAmpProcessor's own sag envelope (getSagEnvNorm(), one block stale —
+    // negligible given the ~10-350 ms time constants involved), so a model can
+    // shift its internal TriodeComponent stages' bias via setSagBias() the same
+    // way a real amp's single shared B+ rail droops every stage together, not
+    // just the power tubes. Default no-op = bit-identical for any model that
+    // doesn't override it (and for any model whose own coupling coefficient is
+    // left at its default 0).
+    virtual void setExternalSag(float /*paSagEnv*/) noexcept {}
+
     virtual const char* modelName() const noexcept = 0;
 
 protected:

@@ -90,6 +90,17 @@ void JCM800Model::advanceSmoothing() noexcept {
     masterSmooth_.getNextValue();
 }
 
+void JCM800Model::setExternalSag(float paSagEnv) noexcept {
+    if (kSagBiasCoupling == 0.0f) return;   // inert by default
+    const float bias = kSagBiasCoupling * paSagEnv;
+    for (auto& c : ch_) {
+        c.stage1.setSagBias(bias);
+        c.stage2.setSagBias(bias);
+        c.stage3.setSagBias(bias);
+        c.stage4.setSagBias(bias);
+    }
+}
+
 float JCM800Model::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
     const float g = gainSmooth_.getCurrentValue();

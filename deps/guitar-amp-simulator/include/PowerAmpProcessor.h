@@ -29,6 +29,15 @@ public:
     void     setTubeType(TubeType type) noexcept;
     TubeType getTubeType() const noexcept { return tubeType; }
 
+    // Supply-sag envelope (item #22, 2026-07-28): the mono, pre-oversampling
+    // envelope that already drives the power tube's own sag gain reduction
+    // (process(), "Pre-compute sag" section) — tracks abs(ch0 input) with the
+    // per-tube attack/release pair. Exposed read-only so the PREAMP stages can
+    // be fed the same physically-shared supply droop (real amps: one B+ rail
+    // feeds every stage). Same units as the audio signal (not normalised to
+    // [0,1]) — callers scale by their own coupling coefficient.
+    float getSagEnvNorm() const noexcept { return sagEnv; }
+
     // Per-amp historically calibrated power-amp defaults.
     // ampModelIdx matches the plugin's amp_model choice parameter:
     //   0=Fender Deluxe, 1=JCM800, 2=EVH5150, 3=NAM, 4=SunnModelT, 5=Rockerverb50.

@@ -1863,12 +1863,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         float* io1[1] = { L };
                         amp->process(io1, io1, len, 1);
                         p->pa.process(io1, io1, len, 1);
+                        amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
                     } else {
                         float* io[2] = { L, R };
                         amp->process(io, io, len, 2);
                         p->pa.process(io, io, len, 2);
+                        amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
                     }
                     // NOTE: the amp's output is mono-identical when its input was — do NOT
