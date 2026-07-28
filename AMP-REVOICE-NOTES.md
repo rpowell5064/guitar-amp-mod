@@ -635,3 +635,48 @@ Deployed to the Pi's live plugins. **Needs the user's ears**, same caveat as
 every character-tuning item this session (#22/#27/#40): no numeric target
 exists for "sounds like a cranked LTP," only physical plausibility and
 stability, both confirmed.
+
+**ROLLOUT (user, same day): "apply this to the rest of the amps."** Rolled
+out to the other two `PhaseInverter.cpp`-documented LTP amps: EVH (`ltpTail
+0.12`, kept modest for the same "don't compete with EVH's own tuned
+dynamics" reason as its ripple coupling) and Rockerverb (`ltpTail 0.18`,
+highest of the three, matching Rockerverb also having the highest sag/
+bloomVca of the group). Verified no instability. Only these 3 amps get a
+nonzero value -- `PhaseInverter.cpp` doesn't document any other amp as
+genuinely LTP-topology, so nothing else was touched.
+
+## ITEM #40 ROLLOUT — Speaker Drive baked into factory presets (2026-07-28)
+
+User request: "Subtle for clean and Vox amp, Full for JCM800 and high-gain
+amps." Rather than making the cab auto-follow whichever amp is currently
+selected (would fight a preset's own saved `cab_spkdrive` value every time
+that preset reloads -- the internal PowerAmpProcessor per-amp defaults like
+bloomVca/duty are safe to auto-recompute every block because they're NOT
+separately saved ports, but `cab_spkdrive` is a real, preset-persisted port),
+baked sensible values into the factory preset table instead: a new loop in
+`seedFactoryPresets()`, run AFTER every preset (Bank 1 + all extras) is
+loaded, keyed on each preset's own `HF_AMP_MODEL` value:
+- **Subtle (1):** Fender/"Clean Meanie" (idx 0), Vox AC30/"Chime Thirty" (idx 8).
+- **Full (2):** JCM800/"Crunchy McCrunchFace" (idx 1), EVH/"Gainzilla" (idx 2),
+  Friedman/"Beardo BE" (idx 6), Recto/"Diamond Plate" (idx 12),
+  MT15/"Tremont 15" (idx 13) -- the suite's high-gain amps.
+- **Untouched (stays Off):** Sunn, Rockerverb, Hiwatt, Backline, Plexiglass,
+  Cali V, NAM -- the user specified only the two categories above; nothing
+  guessed for amps in between (several of these span clean-to-dirty modes,
+  so a single blanket Off/Subtle/Full call per amp MODEL wouldn't be
+  well-founded without a mode-aware pass, which wasn't asked for).
+
+Applied uniformly across ALL factory presets regardless of "user-preserved"
+status (several presets are marked "user's exact dial-in, do not retune" in
+the changelog) -- Speaker Drive is a brand-new capability that didn't exist
+when those presets were dialed in, so adding it is additive polish, not
+retuning their preserved tone, matching how "dense reverb tank on every
+factory preset" and similar blanket additions were handled previously.
+Bumped `kFactoryRev` 70->71 so existing saved boards get the refresh.
+
+Deployed to the Pi. One transient SEGV on the very first mod-host restart
+immediately after the `.so` swap, self-resolved on the next restart (clean
+for two subsequent cycles) -- matches a benign, already-observed pattern
+from earlier in this session (crashes only on the first restart right after
+swapping a loaded plugin's `.so`, never on a clean subsequent start); not
+caused by this change.

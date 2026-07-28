@@ -417,12 +417,18 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // OWN internal sag/bloom (bloomVca=0 above to avoid double-counting that), so
         // kept modest here too -- the PA-level ripple is meant to layer a subtle mains
         // texture on top, not compete with EVH's already-tuned dynamics.
-        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 1.0f, 1.0f, 0.012f }; // EVH 5150 III
+        // ltpTail 0.12 (item #29 rollout, 2026-07-28): one of PhaseInverter.cpp's three
+        // documented LTP amps (kEVH_LTP); kept slightly below JCM800's pilot value for
+        // the same "don't compete with EVH's already-heavily-tuned dynamics" reason.
+        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 1.0f, 1.0f, 0.012f, 0.12f }; // EVH 5150 III
         case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral -- left at 0: user-supplied captures may already carry real ripple color, or may not; don't guess
         case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550) -- PA is bypassed for Sunn, so rippleSagCoupling here is inert either way
         // rippleSagCoupling 0.022 (item #27 rollout): highest sag (0.47) of the EL34
         // rows besides Fender -> proportionally the most ripple depth.
-        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 1.0f, 1.0f, 0.022f }; // Orange Rockerverb 100 MKII
+        // ltpTail 0.18 (item #29 rollout, 2026-07-28): the third of PhaseInverter.cpp's
+        // documented LTP amps (kOrange_LTP); highest of the three, matching Rockerverb
+        // also having the highest sag/bloomVca of the group.
+        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 1.0f, 1.0f, 0.022f, 0.18f }; // Orange Rockerverb 100 MKII
         // NOTE (2026-07-26): duty 0.45 was tried here for the dimed capture's even-rich
         // profile (h2 17/h4 13/h6 11%) and measured NO effect — the PA contributes so
         // little distortion vs the preamp (35% THD) that PA evens dilute to ~nothing.
