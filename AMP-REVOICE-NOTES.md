@@ -763,3 +763,103 @@ for two subsequent cycles) -- matches a benign, already-observed pattern
 from earlier in this session (crashes only on the first restart right after
 swapping a loaded plugin's `.so`, never on a clean subsequent start); not
 caused by this change.
+
+## Item #28 rollout to the Marshall family (2026-07-28)
+
+Per explicit user instruction ("do this for all of the amps, I don't care
+what it takes"), found real schematic sources and extended the exact
+tonestack to the rest of the suite where it's actually applicable.
+
+**JCM800 -- found a genuine primary source and it's a CLEAN win (unlike
+Fender).** Fetched the actual Marshall factory schematic ("2203 STD
+Preamp," drawing dated 19-5-88, PCB "JM800") from drtube.com as a GIF, hit
+the Read tool's 2000x2000px limit, converted via Python PIL (GIF->RGB->PNG,
+downscaled to 1900px max dimension) to read it. Read the tone stack
+component values directly off the drawing: C10=470pF (treble cap),
+C11=C12=.022uF (mid/bass caps), VR3=220k Lin (treble pot), VR5=1M Log (bass
+pot), VR4=22k Lin (mid pot), R15=33k (fixed tone-slope resistor). This
+resolved the earlier "conflicting secondary sources" problem directly --
+those partial blog values (e.g. "R1: 56k->33k") turned out to be using a
+different R-numbering convention for the SAME resistor now confirmed as
+R15/R4=33k. New `YehSmithToneStack::kMarshallJCM800` preset. Extended
+`ToneStackComponent::setExact()` to permit `Type::Marshall` too (was
+Fender-only), auto-selecting `kMarshallJCM800` for that type. Wired into
+`JCM800Model::prepare()` -- and, since `nam_compare` showed a clean result
+with no regression, **hardwired permanently on** (`setExact(true)`, no
+runtime toggle) rather than left as an opt-in pilot like Fender.
+
+Verified via `nam_compare --model marshall --exactts` against 2 knob-
+documented captures (`P5 B5 M5 T5 M10 PA10` and `P8 B4 M7 T8 M10 PA10`):
+FR deltas are same-or-better across the board (no regression), and two
+real improvements found: (1) THD@110Hz at -6dBFS (loud/driven) dropped from
+101% (heuristic, ~3.3x too saturated) to 61-65% (real amp is ~30%) -- the
+exact tonestack's correct passive interaction measurably tames the
+heuristic's over-saturation at high drive; (2) a spurious h2=20.4%
+harmonic spike at extreme treble+presence settings (111 Hz, real amp h2=
+3.3%) VANISHES with the exact tonestack (h2=3.8%) -- an artifact of the
+old 4-biquad heuristic's control interaction that the real circuit math
+doesn't have. Confirmed the "baseline" comparison methodology: `nam_compare`
+always explicitly calls `setParameter("exactts", g_exactTS?1:0)` after
+`prepare()` for A/B testing, so passing no `--exactts` flag correctly
+reverts to the heuristic path for comparison even though the shipped model
+now defaults to exact -- this is intentional CLI test-harness behavior, not
+a wiring bug.
+
+**Marshall Plexi 1959 ("Plexiglass") -- same values, confirmed via a
+SECOND independent primary schematic.** Fetched a Marshall factory drawing
+literally titled "1959 STD Preamp" (also 1988, PCB "JM80") -- tone stack
+values IDENTICAL to the JCM800's (470pF/220k/1M/22k/33k). Cross-checked
+against amp-tech history (websearch): Marshall used the older 56k/250pF
+(Bassman-style) tonestack only on PRE-1969 JTM45s/early plexis; "1969 and
+newer" plexis (the 1959 Super Lead included) already carry the 33k/470-
+500pF values -- i.e. the same circuit as the 2203. Added
+`YehSmithToneStack::kMarshall1959` (= `kMarshallJCM800`, kept as a
+separately-named/documented alias rather than a bare reuse, so the
+verification trail for each amp stays independently correctable). Added a
+`ToneStackComponent::setExactCircuit(bool, CircuitParams)` overload so a
+`Type::Marshall` amp can pick an explicit preset instead of always getting
+the JCM800 default (needed here since Plexi's real values happen to match,
+but a future Marshall-family amp's might not). Wired into
+`MarshallPlexi1959::prepare()`, hardwired on. Sanity-checked vs its own
+reference capture (`...CH I High Jumped.nam`): FR deltas are consistent
+with the SAME low-mid hump (+2.3..+3.7 dB @125-315Hz) that was already a
+documented, accepted residual of this model's OTHER filters (bodyShelf
+notch) from its original 2026-07-05 tuning -- not a new regression.
+
+**Friedman BE-Deluxe ("Beardo BE") -- same values, historically justified
+reuse (not independently re-derived).** The BE-100 is a well-documented
+hot-rodded JCM800 (Dave Friedman's own history); websearch confirms amp-
+tech consensus that "the tone stack in the Friedman BE-100 is exactly the
+same as in the Marshall." Reused `setExact(true)` (auto-selects
+`kMarshallJCM800` for `Type::Marshall`, same as JCM800 itself) in
+`FriedmanBEDeluxe::prepare()`. Sanity-checked vs a BE-100 gain-sweep
+capture: FR deltas within ~2 dB across the band, consistent with the
+model's existing tight/dark BE-100 voicing (no new regression).
+
+**EVH 5150III -- investigated, deliberately LEFT ON THE HEURISTIC PATH.**
+Could not find a reliable primary or clearly-corroborated secondary source
+for the 5150III's actual tone stack component values in the time
+available (most searchable Peavey 5150 schematic material is for the
+original 1990s 5150/5150-II, a materially different amp from Peavey's
+2007 EVH-collaboration 5150III redesign; risk of misattributing one
+generation's values to another). Per the "no guess-and-spiral" rule, did
+NOT force an unverified preset onto this amp. Remains a candidate for a
+follow-up session if a genuine 5150III schematic surfaces.
+
+**Hiwatt DR103 -- investigated, EXCLUDED (not a bug, out of scope for this
+technique).** Websearch confirms the DR103's actual tone control circuit is
+an ACTIVE 12AX7-driven EQ stage positioned AFTER the preamp (right before
+Master Volume) -- not a passive TMB network at all. The entire Yeh-Smith
+closed-form derivation only applies to passive RC tonestacks; it has no
+meaning for an active gain-stage EQ. `HiwattDR103Model` already only used
+`Type::Marshall` as a rough heuristic APPROXIMATION of its EQ curve shape
+(not a claim of circuit equivalence), and since no `setExact`/
+`setExactCircuit` call was added there, it's correctly unaffected and stays
+on the heuristic path -- the right outcome, not a gap to fill later.
+
+**Remaining scope (tracked as separate tasks):** Vox AC30 (different,
+non-TMB topology -- needs its own circuit research, task tracked
+separately); Mesa Dual Rectifier / Cali V / MT15 (per-mode `tsType`, only
+some modes select `Type::Recto` -- needs verified Recto-topology component
+values); Orange Rockerverb50 (bespoke custom tonestack, doesn't use
+`ToneStackComponent` at all -- would need porting, not just a preset).

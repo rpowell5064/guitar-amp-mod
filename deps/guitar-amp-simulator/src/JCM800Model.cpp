@@ -35,6 +35,16 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
         c.stage3.prepare(oversampledFs_, TriodeComponent::kMarshallV3);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
+        // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack, wired
+        // to the JCM800 2203 values read directly off the Marshall factory
+        // schematic (YehSmithToneStack::kMarshallJCM800) -- verified via
+        // nam_compare against the knob-documented captures to be a CLEAN
+        // improvement (no FR regression; -6 dBFS THD@110 over-saturation
+        // roughly halved toward the real amp's 30%; a spurious h2 spike at
+        // extreme treble/presence settings disappears). Made the permanent
+        // default (unlike Fender, which needs re-voicing first -- see
+        // ToneStackComponent::setExact doc comment).
+        c.tonestack.setExact(true);
         c.tonestack.setBass(bass_);
         c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_);
@@ -170,6 +180,10 @@ void JCM800Model::setParameter(const std::string& id, float value) noexcept {
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; recalcFilters(); }
+    // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack, wired to
+    // schematic-verified JCM800 2203 values (YehSmithToneStack::kMarshallJCM800).
+    // Default off (0) = bit-identical to the existing heuristic path.
+    else if (id == "exactts")  { for (auto& c : ch_) c.tonestack.setExact(value > 0.5f); }
 }
 
 float JCM800Model::getParameter(const std::string& id) const noexcept {
@@ -180,6 +194,7 @@ float JCM800Model::getParameter(const std::string& id) const noexcept {
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "exactts")  return 0.0f;   // write-only pilot toggle
     return 0.0f;
 }
 

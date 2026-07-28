@@ -36,6 +36,11 @@ void FriedmanBEDeluxe::prepare(double oversampledSampleRate, int /*maxBlockSize*
         c.stage3.prepare(oversampledFs_, TriodeComponent::kMarshallV3);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
+        // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack. The
+        // BE-100 is a hot-rodded JCM800 -- amp-tech consensus (and Friedman's
+        // own well-documented history) is its tone stack is UNCHANGED from the
+        // Marshall it's based on, so this reuses the verified JCM800 values.
+        c.tonestack.setExact(true);
         c.tonestack.setBass(bass_);
         c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_);

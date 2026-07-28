@@ -46,6 +46,33 @@ public:
         250e3, 1e6, 25e3, 56e3
     };
 
+    // Marshall JCM800 2203 (2026-07-28) — read directly off the actual Marshall
+    // factory schematic (drawing "2203 STD Preamp," Jim Marshall Products Ltd,
+    // PCB "JM800", dated 19-5-88): C10=470pF (treble cap), C11=C12=.022uF (mid/
+    // bass caps -- essentially identical to the Bassman's 20nF), VR3=220k Lin
+    // (treble pot), VR5=1M Log (bass pot -- identical to Bassman's R2), VR4=22k
+    // Lin (mid pot), R15=33k (the fixed "tone slope resistor" -- Marshall's
+    // R4). Same TMB topology as the Bassman (confirmed both from the schematic
+    // layout and multiple independent sources describing the JCM800 stack as
+    // Fender-derived), just updated component values -- NOT a guess from
+    // secondary sources (which gave conflicting values under inconsistent
+    // R-numbering; this is a direct schematic read).
+    static constexpr CircuitParams kMarshallJCM800 = {
+        470e-12, 0.022e-6, 0.022e-6,
+        220e3, 1e6, 22e3, 33e3
+    };
+
+    // Marshall 1959 Super Lead / "Plexi" (2026-07-28) -- confirmed via a SECOND
+    // primary schematic (Marshall factory drawing literally titled "1959 STD
+    // Preamp," also dated 1988): IDENTICAL tone stack values to the JCM800
+    // above (470pF/220k/1M/22k/33k). Cross-checked against amp-tech history:
+    // Marshall used 56k/250pF (Bassman-style) only on PRE-1969 JTM45s/early
+    // plexis; "1969 and newer" plexis (1959 Super Lead included) already used
+    // 33k/470-500pF -- same circuit as the 2203. Kept as a separate named
+    // alias (not a bare re-use of kMarshallJCM800) so the amp-specific
+    // verification trail stays documented and independently correctable.
+    static constexpr CircuitParams kMarshall1959 = kMarshallJCM800;
+
     void prepare(double sampleRate, const CircuitParams& p) noexcept {
         sampleRate_ = sampleRate;
         params_     = p;

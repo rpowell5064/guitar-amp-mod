@@ -115,9 +115,21 @@ void ToneStackComponent::setPresence(float v) noexcept {
 }
 
 void ToneStackComponent::setExact(bool on) noexcept {
-    useExact_ = on && (type_ == Type::Fender);   // no-op on types without verified circuit values
+    // no-op on types without a schematic-verified circuit source
+    useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall);
     if (useExact_) {
-        exact_.prepare(sampleRate_, YehSmithToneStack::kBassman59);
+        exact_.prepare(sampleRate_, type_ == Type::Marshall ? YehSmithToneStack::kMarshallJCM800
+                                                             : YehSmithToneStack::kBassman59);
+        exact_.setBass(bass_);
+        exact_.setMid(mid_);
+        exact_.setTreble(treble_);
+    }
+}
+
+void ToneStackComponent::setExactCircuit(bool on, const YehSmithToneStack::CircuitParams& params) noexcept {
+    useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall);
+    if (useExact_) {
+        exact_.prepare(sampleRate_, params);
         exact_.setBass(bass_);
         exact_.setMid(mid_);
         exact_.setTreble(treble_);

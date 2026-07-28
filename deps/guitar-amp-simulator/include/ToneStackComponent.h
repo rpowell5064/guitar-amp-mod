@@ -41,11 +41,21 @@ public:
     // the circuit math, not a hand-tuned scoop-depth addend). Presence is
     // UNCHANGED either way (it's a separate NFB-loop-style control in real
     // amps, not part of the classic 3-knob TMB network this models). Only
-    // meaningful for Type::Fender right now -- the only type with a verified
-    // real-circuit component source (Yeh & Smith's own paper, SPICE-checked);
-    // a no-op on any other type until their own values are confirmed.
+    // meaningful for types with a verified real-circuit component source:
+    // Type::Fender (Yeh & Smith's own '59 Bassman paper, SPICE-checked) and
+    // Type::Marshall (JCM800 2203, read directly off the Marshall factory
+    // schematic -- see YehSmithToneStack::kMarshallJCM800). A no-op on any
+    // other type until their own values are confirmed.
     // Default false = bit-identical to the existing heuristic path.
     void setExact(bool on) noexcept;
+
+    // Explicit-circuit variant: use when an amp's real tone stack shares its
+    // Type's general topology but has its own verified component values (e.g.
+    // Marshall 1959 Super Lead vs JCM800 -- both Type::Marshall, values
+    // confirmed identical via separate schematics, but wired explicitly so
+    // future amps with genuinely different values aren't forced to match).
+    // Still gated to Type::Fender / Type::Marshall.
+    void setExactCircuit(bool on, const YehSmithToneStack::CircuitParams& params) noexcept;
 
     float process(float x) noexcept;
     void  reset()           noexcept;

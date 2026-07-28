@@ -22,6 +22,13 @@ void MarshallPlexi1959::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.stage2.prepare(oversampledFs_, TriodeComponent::kMarshallV2);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
+        // Item #28 (2026-07-28): exact closed-form Yeh & Smith tone stack, wired
+        // to the 1959 Super Lead's own verified values (YehSmithToneStack::
+        // kMarshall1959 -- confirmed via a second Marshall factory schematic,
+        // identical to the JCM800's). Made the permanent default (nam_compare-
+        // verified clean improvement on the closely-related JCM800; same
+        // circuit here).
+        c.tonestack.setExactCircuit(true, YehSmithToneStack::kMarshall1959);
         c.tonestack.setBass(bass_);
         c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_);
