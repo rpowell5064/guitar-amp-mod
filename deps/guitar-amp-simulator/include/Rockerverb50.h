@@ -159,7 +159,10 @@ private:
     // ── Clean channel constants (preserved from original) ────────────────────
     static constexpr float kCleanMin = 1.5f, kCleanMax = 5.0f;
     static constexpr int   kCleanN   = 2;
-    static constexpr float kCleanOutGain = 4.5f;  // boosted for in-rig parity with the OD
+    static constexpr float kCleanOutGain = 10.4f;  // boosted for in-rig parity with the OD
+    // (4.5 -> 9.5, 2026-07-29: the PA-evens paDrive 0.4 row runs the shared PA
+    // ~6.5 dB quieter in its LINEAR region -- the dirty channel rides paMakeup
+    // at the rail, the clean channel doesn't, so parity is restored here)
                                                   // channel (DI-match level was too quiet)
 
     // ── Helpers ──────────────────────────────────────────────────────────────

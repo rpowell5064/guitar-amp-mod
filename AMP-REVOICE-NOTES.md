@@ -1539,3 +1539,33 @@ nam_compare --pasag/--pabloom/--pafluxot/--paltpatt/--paltprel/
 ltpTail 3.0 into the Rockerverb AmpDefaults row, re-fit the LF trim +
 loudness, re-level its presets, play-test. Then evaluate the same
 recipe for the other evens-poor amps.
+
+## ROCKERVERB EVENS ENABLEMENT (2026-07-29) -- DEPLOYED, awaiting ears
+
+The phase-2 winner is baked into the Rockerverb AmpDefaults row:
+paDrive 1.0 -> 0.4, paMakeup 1.0 -> 1.75, ltpTail 0.18 -> 3.0.
+
+Final measurements at defaults (dimed DI capture, shipped exact-TS path):
+- h2 19.9 @111 / 17.5 @223 vs targets 17 / 19.4 (baseline was 1.3/3.0)
+- dirty loudness parity: -12.5 vs -12.2 pre-change; attack +0.0 ms
+- clean channel: kCleanOutGain 4.5 -> 10.4 (the paDrive cut runs the
+  PA's linear region ~6.5 dB quieter; dirty rides paMakeup at the rail,
+  clean doesn't) -- parity -17.5 vs -17.2
+- gain 0.6 sanity: level/attack consistent
+
+Attempted + REJECTED: an 80 Hz -3.5 dB model-side trim for the +4.7 dB
+LF hump. Findings: (a) the hump is PRE-EXISTING on the shipped path
+(identical under old + new PA rows -- NOT a regression from this
+change), (b) the trim's biquad phase rotation collapsed the 223 Hz
+evens 17.5 -> ~7 while only expressing -1.4 dB of FR through the PA.
+Doctrine call (pedal-amp-already-tuned-findings): single-capture LF
+deltas may be capture-side; the evens are the point of this task.
+
+FLAG FOR EARS: bloom now +3.5 dB vs the capture's (was +0.49) -- the
+un-railed shaper passes supply-wobble the old rail used to clamp.
+Counter-levers measured and all made it WORSE (sag down -> +4.0, bloom
+VCA up -> +5.3), so it ships as-is as a feel flavor: MORE blooming,
+compressed-then-swelling sustain on the dirty channel. If the user
+dislikes it, the mechanism hunt continues; if they like it, it's free
+EL34 character. Also still open: h4/h6 under target, THD@110 32.7 vs
+42.7, THD@1k structural gap.

@@ -455,7 +455,13 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // ltpTail 0.18 (item #29 rollout, 2026-07-28): the third of PhaseInverter.cpp's
         // documented LTP amps (kOrange_LTP); highest of the three, matching Rockerverb
         // also having the highest sag/bloomVca of the group.
-        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 1.0f, 1.0f, 0.022f, 0.18f }; // Orange Rockerverb 100 MKII
+        // Rockerverb paDrive/paMakeup/ltpTail re-tuned 2026-07-29 (PA evens
+        // phase 2, AMP-REVOICE-NOTES.md): the railed waveshaper was re-squaring
+        // away the even harmonics the preamp already generates. paDrive 0.4
+        // keeps the shaper in its curved region; ltpTail 3.0 turns the LTP
+        // grid-bias envelope ripple into the h2 generator (hits the dimed
+        // capture's h2 at BOTH 111/223 Hz); paMakeup restores loudness parity.
+        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 0.4f, 1.75f, 0.022f, 3.0f }; // Orange Rockerverb 100 MKII
         // NOTE (2026-07-26): duty 0.45 was tried here for the dimed capture's even-rich
         // profile (h2 17/h4 13/h6 11%) and measured NO effect — the PA contributes so
         // little distortion vs the preamp (35% THD) that PA evens dilute to ~nothing.
