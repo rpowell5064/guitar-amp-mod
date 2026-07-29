@@ -1255,3 +1255,40 @@ every amp in the suite now runs a schematic-verified exact tone stack
 except Hiwatt (active EQ -- technique doesn't apply), Sunn (own bespoke
 stack), Backline (solid-state), NAM (runtime capture), and MT15/Mark-V
 non-lead modes (no published schematics).
+
+## Roadmap stragglers #41 + #34 landed; #45 scoped out (2026-07-29)
+
+**#41 (studio inter-mic time offset) -- landed with honest scope.** micDist
+now adds real mic time-of-flight (0-0.9 ms = 0-30 cm) in CabinetBlock on
+both the studio and plain mic paths; micDist 0 = bit-identical. The
+roadmap's OTHER half (a fixed 0.2-0.6 ms delay on the studio ribbon blend)
+was implemented, measured, and REJECTED: 0.4 ms against the 35% coherent
+blend digs ~10 dB comb notches with the first null at ~1.25 kHz, straight
+through the ear-approved studio voicing -- cab_voice_check failed all four
+spectral signatures, and the math says any single audible delay at that
+blend ratio notches somewhere in the passband. The coherent blend IS the
+studio voice's design; ribbon stays time-aligned (decision documented in
+rebuildEQ, ring infrastructure retained for future use). cab_voice_check
+passes 0 failures with the final config.
+
+**#34 (tremolo shape) -- the missing Hex Forge port added, blob v29.** The
+DSP (bias lagged-sine / opto hard-chop LDR / harmonic brownface LP-HP
+phase-split) and the standalone modfx port both landed 7/26; Hex Forge
+could not reach it. Added `md_shape` via the full 11-step port-append
+checklist (memory: hexforge-port-append-checklist) -- generator + three
+regenerated outputs, split boundary static_asserts (v28/v29) in BOTH
+copies, kSwWatch entry, explicit gap-fill in BOTH migratePorts copies,
+blob version bumped at both sites, DSP wiring next to the centerDelay
+push. hexforge_migrate_test extended (new v28->v29 case + all hardcoded
+tail-shift arithmetic updated across the four existing cases): PASSED
+(0 failures). Live-verified on the Pi (lv2info shows md_shape, all
+services clean).
+
+**#45 (fuzz source impedance) -- deliberately NOT attempted, scoped for
+its own session.** It needs: (a) a NEW port (guitar-volume / source-
+impedance control -- another full checklist append), (b) a change INSIDE
+ToneBenderMkII's Newton-Raphson germanium solve with bit-identical-at-
+Rs=0 verification against its capture-tuned voicing, (c) the per-pedal
+input-Z table (TS ~500k / Muff ~40k / RAT ~1M / TB+FF 5-10k) with
+preset-compat decisions around the existing it_load knob. Multi-hour,
+capture-reverification work -- not a straggler.
