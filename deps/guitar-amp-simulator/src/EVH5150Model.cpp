@@ -118,8 +118,19 @@ void EVH5150Model::recalcFilters() noexcept {
         // wide Q"), shipping ~60% of that tonight -- both filters stay wide
         // (Q 0.6 / shelf) and well under the +16/Q0.4 config that rang. If
         // tomorrow's ears confirm no swoosh, the remainder can follow.
-        const double presenceGain = 7.5;
-        const double topGain      = 6.0;
+        // 2026-07-29: ears confirmed no swoosh at 60%, and the flux-OT fix
+        // (AmpDefaults.fluxOT=false for EVH) landed the feel/LF -- stepped the
+        // remainder, re-measured with flux off. HARD CEILING FOUND: at 9.5/8.0
+        // (and above) the Red's ~300 ms attack swell DIES (-298 ms, binary
+        // cliff between 9.0 and 9.5) -- the boosted HF onset pushes the burst
+        // envelope past 90% instantly, swamping the slow LF bloom. 9.0/7.5 is
+        // the max swell-safe setting and it lands BLUE almost exactly on its
+        // capture (FR within 0.3 dB @ 2k-5k, THD@1k 96.3 vs 96.4); Red keeps
+        // the swell (+4 ms) with THD@1k 83 vs 95 and a residual -1.6..-4 dB
+        // presence-band darkness that is CAPPED BY THE CLIFF -- do not raise
+        // these to chase Red's FR; the swell outranks it (user-confirmed).
+        const double presenceGain = 9.0;
+        const double topGain      = 7.5;
         c.presencePk.setCoeffs (Filters::peaking(2300.0, presenceGain, 0.6, oversampledFs_));
         c.topShelf.setCoeffs   (Filters::highshelf(3500.0, topGain, oversampledFs_));
         c.airLP.setCoeffs     (Filters::lowpass1pole(9500.0, oversampledFs_));
