@@ -93,6 +93,7 @@ private:
         // 36% vs a real 800's 7%). This shelf adds the low-mid body back AFTER all the
         // distortion, so the tone keeps Marshall chunk but the bass stays tight/clean.
         BiquadFilter     bodyShelf;    // low-shelf @ ~180 Hz
+        BiquadFilter     bassRestore;  // low-shelf @ 90 Hz +4 dB -- LF fundamental restore (fuzzy-fix part 2, 2026-07-28; see .cpp for the PA-collapse constraint that bounds it)
         DnrRolloff       dnr;          // decay darkener (engaged when gain > 0.4)
 
         float sagEnv   = 0.0f;

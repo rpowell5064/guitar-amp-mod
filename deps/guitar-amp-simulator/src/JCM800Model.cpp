@@ -15,7 +15,7 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
         // cold-clipper stages (nam_compare: bass was 49-65% THD / h2 36% vs a real
         // JCM800's 20-31% / 7%). Tighter bass INTO the gain = the mids drive the crunch
         // like a real 800; the post-gain tonestack still restores the low-mid body.
-        c.inputHPF.setCoeffs(Filters::highpass1pole(130.0, oversampledFs_));  // was 60: keep bass OUT of stage 1 (the LF over-saturation happens here, before the inter HPFs)
+        c.inputHPF.setCoeffs(Filters::highpass1pole(70.0, oversampledFs_));  // was 60: keep bass OUT of stage 1 (the LF over-saturation happens here, before the inter HPFs)
         // Marshall bright-cap pre-emphasis: tilt the signal bright BEFORE the clipper so
         // the mids/highs break up (real 800 is 30%@110 / 61%@1k THD) and the lows don't
         // over-saturate — the missing piece behind the LF-weighted distortion + dark FR.
@@ -68,7 +68,22 @@ void JCM800Model::recalcFilters() noexcept {
     for (auto& c : ch_) {
         c.presenceF.setCoeffs(Filters::highshelf(4000.0, presDb, oversampledFs_));
         c.airLP.setCoeffs(Filters::lowpass1pole(19000.0, oversampledFs_));   // brighter top (was 14k, FR -5dB@3-8k)
-        c.bodyShelf.setCoeffs(Filters::lowshelf(260.0, 7.5, oversampledFs_)); // restore the low-mid body the tight input HPF pulls out (FR 125-260 Hz)
+        c.bodyShelf.setCoeffs(Filters::lowshelf(260.0, 6.0, oversampledFs_)); // restore the low-mid body the tight input HPF pulls out (FR 125-260 Hz)
+        // Fuzzy-when-driven fix, part 2 (2026-07-28): restore the LF FUNDAMENTAL
+        // -- a buried fundamental under full-strength harmonics IS the "fuzzy"
+        // percept, and the dark LF (-12 dB @ 50 Hz vs the knob-matched capture)
+        // inflated every measured harmonic ratio at 111 Hz ~2x (the underlying
+        // LF distortion is nearly correct once FR-corrected). CONSTRAINT
+        // (measured hard, this session): the shared PowerAmpProcessor's flux-
+        // domain OT saturation collapses on big static LF boosts at the model
+        // output (+12 dB shelf -> output fell to -67 dBFS -- the same
+        // mechanism as the EVH bass-knob cutout), and pre-clip restore just
+        // gets re-compressed away by the cascade. +4 dB is the EVH-proven safe
+        // ballpark (EVH ships +3). A matching top-tame shelf was tried and
+        // REVERTED: any post-clip level change at 1k+ tips the PA off a
+        // sensitive knee (THD@1k 57% -> 88% at hot input from a -3.7 dB
+        // shelf); the +2-3 dB brightness stays (presence knob trims it).
+        c.bassRestore.setCoeffs(Filters::lowshelf(90.0, 2.5, oversampledFs_));
     }
 }
 
@@ -90,6 +105,7 @@ void JCM800Model::reset() noexcept {
         c.presenceF.reset();
         c.airLP.reset();
         c.bodyShelf.reset();
+        c.bassRestore.reset();
         c.sagEnv = 0.0f;
         c.dnr.reset();
     }
@@ -140,7 +156,20 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     x = c.inter12HPF.process(x);
 
     // Stage 2 (no bypass cap, even harmonics)
-    x = c.stage2.process(x * (2.2f + gEff * 5.5f)) * 0.80f * kCouple23;
+    // Fuzzy-when-driven fix, part 1 (2026-07-28): drive CAPPED at 1.6, well
+    // below kMarshallV2's duty-collapse window (documented in the 2026-07-23
+    // Friedman audit: drive ~3.6-4.7 into this stage = fundamental
+    // cancellation, 94-135% THD). The old uncapped 2.2+g*5.5 hit 7.7 at max
+    // gain -- and was already at 4.1 (inside the window) at MINIMUM gain --
+    // measured as h2=41% of fundamental at 223 Hz (real amp: 3.7%) = octave-up
+    // sputter in power-chord range, plus 101% THD@110Hz at -6 dBFS input. At
+    // 1.6 the 223 Hz profile lands on the capture (h4/h5/h7/h9 within 0.6pt,
+    // h2 41->10). Friedman's cap+reroute-into-stage-3 pattern was tried; the
+    // reroute only re-added evens via stage 3 (h2 +6pt), so it's dropped here
+    // (stage 3 keeps its own full gain-scaled drive -- the knob still sweeps).
+    const float d2raw = 2.2f + gEff * 5.5f;
+    const float d2    = d2raw > 2.0f ? 2.0f : d2raw;
+    x = c.stage2.process(x * d2) * 0.80f * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);
 
@@ -161,6 +190,7 @@ float JCM800Model::processSample(float x, int channel) noexcept {
 
     // Restore low-mid body after all clipping (bass stays tight, not flubby)
     x = c.bodyShelf.process(x);
+    x = c.bassRestore.process(x);   // LF fundamental restore (fuzzy-fix part 2)
 
     // Supply sag (EL34 B+ under drive)
     const float sagAttack = 1.0f - c.sagDecay;

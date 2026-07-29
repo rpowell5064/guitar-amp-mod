@@ -1027,3 +1027,55 @@ and was re-verified unchanged after these edits.
 Both changes verified via `nam_compare --exactts` rebuild+re-measure
 cycles only (host-side, Windows) -- not yet built or deployed to the Pi
 live plugins.
+
+## JCM800 "fuzzy when driven" fix (2026-07-28, user-reported after Pi play-test)
+
+**User report:** the JCM800 has a fuzzy character when driven. Confirmed
+first that this was PRE-EXISTING, not caused by the same-day exact-tone-
+stack change (harmonic profiles byte-identical before/after it).
+
+**Measured signature** (knob-documented capture, gain 1.0): (a) THD@110Hz
+blowing up to 101% at -6 dBFS input -- fundamental cancellation, literal
+fuzz-pedal behavior on hard-played low notes; (b) at 223 Hz the model was
+EVEN-dominant, h2 = 41% of fundamental vs the real amp's 3.7% = octave-up
+sputter squarely in low-string power-chord range; (c) all odd harmonics at
+111 Hz reading ~2x the real amp.
+
+**Root cause 1 (fixed): stage-2 duty collapse.** The 2026-07-23 Friedman
+audit documented that TriodeComponent::kMarshallV2 hits a duty-collapse
+window at drive ~3.6-4.7 (fundamental cancellation, 94-135% THD) and
+FriedmanBEDeluxe got a drive cap -- but the fix was never backported to
+JCM800Model, whose stage 2 ran the SAME triode at up to 7.7 (and was
+already inside the window at MINIMUM gain, 4.1). Capped at 2.0 (probed
+3.2/2.8/2.0/1.6: h2@223 falls monotonically 29.9/23.5/12.8/10.4, but 1.6
+traded THD@1k-at-hot-input up to 97% -- stage 2's saturation had been
+acting as a limiter protecting later stages; 2.0 keeps that). Friedman's
+reroute-into-stage-3 was tried and dropped -- it just re-added evens via
+stage 3 (+6pt h2).
+
+**Root cause 2 (partially fixed, PA-bounded): buried LF fundamental.** FR
+ran -12/-10/-5 dB dark at 50/80/125 vs the capture while harmonics
+(200-800 Hz) sat near flat -- a weak fundamental under full-strength
+harmonics IS the fuzz percept, and it arithmetically inflates every
+harmonic ratio measured at 111 Hz ~2x (FR-corrected, the model's LF
+distortion is nearly right: h3 ~25 vs 23, h5 ~10.3 vs 10.7). BUT
+correcting the FR fully proved impossible against the shared
+PowerAmpProcessor: (i) a +12 dB post-clip shelf collapsed output to -67
+dBFS (the EVH bass-cutout flux-saturation mechanism, reproduced exactly);
+(ii) pre-clip restore (inputHPF 130->70) gets re-compressed away by the
+cascade (only ~+1.5 dB reaches the output); (iii) even a -3.7 dB top-tame
+shelf tipped the PA off a sensitive knee (THD@1k 57->88% at hot input) --
+REVERTED; (iv) at master 1.0 the PA's OT-flux stage generates LF evens in
+proportion to the LF level fed to it (h2@223 moved 14->26 from a +4 dB
+bass shelf alone) -- the remaining h2@223 gap (17 vs 3.7) is generated in
+the PA, not the preamp, and is "PA promotion project" territory, not
+fixable here. Shipped: inputHPF 130->70 + bassRestore lowshelf(90,+2.5)
+(new member; EVH-proven safe ballpark) + bodyShelf 7.5->6.0.
+
+**Final shipped config vs the pre-fix baseline** (everything at-or-better,
+nothing regressed): THD@110 -6dBFS 101->51.5%; h2@223 41.3->17.0; h3@223
+8.4->26.4 (capture: 25.8 -- nailed); h5/h6@223 land on the capture;
+THD@1k 51-60 (capture 55-61); loudness x0.98 (no makeup change needed);
+feel section the best it has measured (compression delta +0.1 dB, attack
+exact, bloom -0.27); FR essentially unchanged from the baseline the user
+had previously play-approved. Deployed to the Pi (both amp + hexforge).
