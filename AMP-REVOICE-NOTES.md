@@ -1415,3 +1415,38 @@ tamed .38 -> .32 per the fuzz->cranked-amp staging rule; wah + Greenbacks
 rebuilt hexforge_meas (the stale-binary gotcha bit again -- an old
 binary gave -16.28, the correct rebuild -13.99): -22.4 -> -18.5 for the
 -12.5 dirty-parity target. kFactoryRev 73 -> 74. Deployed.
+
+## EVH bass-range/LF restoration + Vox LF-THD attempt (2026-07-29 morning)
+
+**EVH (SHIPPED): bodyRestore back to 9 dB + bass-knob range 0.15 -> 0.40.**
+Last night's paDrive 0.30 changed the safety calculus enough to re-sweep
+the old bass-cutout constraints: bodyRestore at 9 dB (cut to 3 during the
+cutout saga) now measures completely safe at noon (bloom -1.61, level
+parity) and buys +4 dB at 50 Hz (-12.3 -> -8.2). The knob range re-swept
+at extremes: 0.40 healthy at max bass (+1.6 dB bloom = musical sag
+flavor, -1 dB level, +7.8 dB real 50 Hz authority), 0.55 starts the
+nonlinear growth (+2.8 dB bloom), 1.0 still fully explodes (+19.7 dB --
+the PA sag detector tracks the RAW input, so paDrive does NOT shield it).
+~2.7x the knob authority of the original fix.
+
+**The ~300 ms Red attack swell did NOT return** from LF energy alone
+(bodyRestore 9 at noon: attack still reads 0 ms) -- it predates last
+night and died somewhere in the July re-voices (HPF raises + the old
+bodyRestore cut). Restoring it needs June-era model archaeology (git
+diff of the LF path vs the 2026-06-14 state that measured 311 ms) --
+scoped as its own item, not chased blind.
+
+**Vox LF-THD fix: attempted, measured, REVERTED -- the premise was
+half-wrong.** The 2-pole @160 input HPF DID nail the LF THD shape again
+(10.9/21/31.8/37.2 vs capture 7/17/24/26 -- rising with level, real
+cleanup dynamics) and even cleaned the top end. But restoring the lows
+afterward re-inflated the THD to exactly the original values: the
+post-limiter slot only fixed the MODEL-side re-clip; the downstream
+shared PA is a SECOND re-clipper that grinds whatever LF the restore
+adds (restore sweep: none = great THD/dark FR; full = original THD/good
+FR; every point between = a strict tradeoff). The original Vox config
+was already at the achievable optimum for this architecture. REAL
+prerequisite identified: give Vox its own canonical PA row (currently
+SHARED row 0 with Fender/Hiwatt/Backline) and reduce its paDrive like
+EVH's -- which then cascades into re-fitting all of last night's Vox
+post-limiter EQ. A proper future session, cleanly scoped.

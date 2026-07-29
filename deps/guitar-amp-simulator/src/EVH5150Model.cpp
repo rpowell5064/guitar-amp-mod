@@ -18,10 +18,15 @@
 // works instead. Range needed compressing all the way to ~15% of the Marshall
 // spec's ±14 dB (not just halved, like devB's range cut elsewhere) before the
 // attack-time symptom actually cleared — see AMP-REVOICE-NOTES.md for the full
-// dB/ms sweep. Knob is still tonally useful: ~4-6 dB more low end at max vs
-// noon (measured against the capture), just far short of a full ±14 dB swing.
+// dB/ms sweep. RELAXED 0.15 -> 0.40 (2026-07-29): after the paDrive 0.30 fix
+// plus bodyRestore back at 9 dB, re-swept the range at bass extremes — 0.40
+// measures healthy at max (bloom +1.6 dB = musical sag flavor, level -1 dB,
+// +7.8 dB real low-end authority at 50 Hz) while 0.55 starts the nonlinear
+// pathology growth (+2.8 dB bloom, -1.8 dB dip) and 1.0 still fully explodes
+// (+19.7 dB bloom — the sag detector tracks the RAW PA input, so paDrive does
+// not shield it). ~2.7x the knob authority of the original fix.
 static inline float kBassKnobToStack(float v) noexcept {
-    return 0.5f + (v - 0.5f) * 0.15f;
+    return 0.5f + (v - 0.5f) * 0.4f;
 }
 
 void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
@@ -97,7 +102,7 @@ void EVH5150Model::recalcFilters() noexcept {
         // Red needed much more gain to reach target FR, Blue clipped hard at half that —
         // so presence/top are scaled by channel; the low restore behaves consistently
         // on both and stays fixed.
-        c.bodyRestore.setCoeffs(Filters::lowshelf(100.0, 3.0, oversampledFs_));
+        c.bodyRestore.setCoeffs(Filters::lowshelf(100.0, 9.0, oversampledFs_));
         // 2026-07-27 pass #3: user reports the swoosh is still there but CAN be tamed
         // with EQ (cutting where the boost sits) -- strong evidence the large,
         // fairly resonant peaking filter above (+16 dB / Q0.4 on Red) is ITSELF
