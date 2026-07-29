@@ -422,7 +422,15 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // ltpTail 0.12 (item #29 rollout, 2026-07-28): one of PhaseInverter.cpp's three
         // documented LTP amps (kEVH_LTP); kept slightly below JCM800's pilot value for
         // the same "don't compete with EVH's already-heavily-tuned dynamics" reason.
-        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 1.0f, 1.0f, 0.012f, 0.12f }; // EVH 5150 III
+        // EVH paDrive 0.30 / paMakeup 1.25 (2026-07-29, user: EVH reads weakest
+        // post-overhauls): the model's hot output was driving the shared PA so
+        // deep into saturation that it crushed ~80% of any post-limiter EQ AND
+        // the dynamics -- measured: backing the PA waveshaper drive off moved
+        // EVERY metric toward the head-only Red capture simultaneously (2k FR
+        // -7.7->-4.5, 5k -5.7->-1.9, THD@1k 58->72 toward the real 93, THD@110
+        // 30->24 toward 16, bloom -2.37->-1.72). Makeup restores loudness
+        // (loudness-neutral pair); sag/NFB/ripple character all still active.
+        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 0.30f, 1.25f, 0.012f, 0.12f }; // EVH 5150 III
         case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral -- left at 0: user-supplied captures may already carry real ripple color, or may not; don't guess
         case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550) -- PA is bypassed for Sunn, so rippleSagCoupling here is inert either way
         // rippleSagCoupling 0.022 (item #27 rollout): highest sag (0.47) of the EL34

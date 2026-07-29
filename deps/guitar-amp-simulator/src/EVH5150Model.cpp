@@ -105,10 +105,18 @@ void EVH5150Model::recalcFilters() noexcept {
         // Cut both channels to the same much gentler, wider (less resonant) values —
         // sacrifices some FR accuracy vs the captures in exchange for not exciting a
         // resonance. If the swoosh is gone/much better now, this WAS the cause.
-        const double presenceGain = 6.0;
-        const double topGain      = 3.0;
-        c.presencePk.setCoeffs (Filters::peaking(3000.0, presenceGain, 0.7, oversampledFs_));
-        c.topShelf.setCoeffs   (Filters::highshelf(6000.0, topGain, oversampledFs_));
+        // 2026-07-29 (user: EVH reads weakest post-overhauls): step 1 of closing
+        // the deliberate post-swoosh FR deficit (mids/presence measured -5.6 to
+        // -7.7 dB vs the head-only Red capture). Least-squares fit wanted
+        // peaking(2310,+12,Q0.56)+highshelf(3500,+10) after the ~0.75 PA
+        // absorption factor; per the swoosh lesson ("step gains up gradually,
+        // wide Q"), shipping ~60% of that tonight -- both filters stay wide
+        // (Q 0.6 / shelf) and well under the +16/Q0.4 config that rang. If
+        // tomorrow's ears confirm no swoosh, the remainder can follow.
+        const double presenceGain = 7.5;
+        const double topGain      = 6.0;
+        c.presencePk.setCoeffs (Filters::peaking(2300.0, presenceGain, 0.6, oversampledFs_));
+        c.topShelf.setCoeffs   (Filters::highshelf(3500.0, topGain, oversampledFs_));
         c.airLP.setCoeffs     (Filters::lowpass1pole(9500.0, oversampledFs_));
     }
 }

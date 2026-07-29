@@ -1345,3 +1345,48 @@ scaling the Input Trim's load sweep by the first pedal's real input Z
 preset that carries a nonzero it_load value (the 2026-07-23 fidelity
 polish seeded many) — needs a preset-compat decision + re-measure, its own
 session.
+
+## EVH 5150 III improvement pass (2026-07-29 overnight, user: "weakest after the amp overhauls")
+
+**ROOT CAUSE FOUND: the model's hot output was over-saturating the shared
+PowerAmpProcessor so deeply that the PA crushed ~80% of any post-limiter
+EQ and flattened the dynamics** -- measured directly: an EQ step adding
++4.5 dB at 2 kHz expressed only +0.9 dB at the output (~20% expression vs
+the ~75-78% measured on Vox/Fender). The 5150's own power amp in the
+capture is far more linear at the capture's operating point; ours was
+being fed a rail-to-rail square at full drive. This single mechanism
+explains the "weakest/boxed/compressed" percept better than any FR
+number alone.
+
+**Shipped: EVH AmpDefaults paDrive 0.30 / paMakeup 1.25** (the per-amp
+loudness-neutral pair; EVH has its own kCanonical row, so no other amp is
+touched). Every metric moved toward the head-only Red capture
+SIMULTANEOUSLY: 2 kHz FR -7.7 -> -4.4, 3.1k -6.6 -> -3.4, 5k -5.7 -> -2.0,
+8k -5.8 -> -2.9, THD@1k 58 -> 72% (real: 93 -- the Red is nearly square),
+THD@110 30 -> 24% (real: 16), bloom -2.37 -> -1.71 dB. Loudness at exact
+baseline parity (-11.7 vs -11.9 dBFS at noon = no preset re-level).
+Sag/NFB/ripple character all remain active (only the waveshaper drive
+dropped). PA drive (padrive x2/x4) and duty were measured first and ruled
+out as levers: drive is railed-inert upward, duty adds h7/h9 fizz.
+
+**Also shipped: presence EQ step 1** -- presencePk peaking(3000,+6,Q0.7)
+-> (2300,+7.5,Q0.6), topShelf highshelf(6000,+3) -> (3500,+6). The
+least-squares fit wants ~(2310,+12,Q0.56)+(3500,+10) after absorption;
+per the swoosh lesson ("step gains up gradually, wide Q") only ~60% is
+shipped tonight. If tomorrow's ears confirm no swoosh, the remainder can
+follow. BLUE channel with the combined changes now lands ON the capture
+through the mids (800 Hz-5 kHz all within 0.7 dB).
+
+**Guards verified:** bass-knob extremes show NO sag pathology (bloom
+-1.44..-1.71 across bass 0/0.5/1.0, level stable +/-0.1 dB -- the lower
+PA drive actually reduces the sag-detector trigger risk from the old
+bass-cutout saga); all EQ Q <= 0.7; loudness parity exact.
+
+**Still open (documented, not chased tonight):** the remaining ~40% of
+the presence fit (pending swoosh ear-check); THD@1k 72 vs the real 93
+(the Red's >90% THD implies a partially-suppressed fundamental --
+duty/bias territory, structural); LF FR darkness (-12 dB @ 50 Hz, the
+same buried-fundamental family as JCM800 but bounded by the same PA LF
+physics); the lost ~300 ms Red attack swell (PRE-EXISTING -- verified
+identical at baseline; a documented casualty of the bass-cutout range
+compression, not tonight's change).
