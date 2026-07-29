@@ -150,6 +150,9 @@ private:
     float    ltpTail_   = 0.0f;
     float    ltpEnv[kMaxCh] = {};
     float    ltpAtt_ = 0.0f, ltpRel_ = 0.0f;
+    float    ltpAttMs_ = 2.0f, ltpRelMs_ = 8.0f;   // LTP env time constants (evens desk-loop)
+    float    screenScale_ = 1.0f, biasScale_ = 1.0f; // waveshaper asymmetry scales (evens desk-loop)
+    void     prepareLtp() noexcept;
 
     // ── Per-tube model constants ───────────────────────────────────────────────
     struct TubeParams {

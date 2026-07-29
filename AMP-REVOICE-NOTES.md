@@ -1484,3 +1484,58 @@ unchanged.
 Lesson for the Vox future session: fluxOT is now a per-amp lever --
 worth probing flux-off for Vox alongside the paDrive cut, since its
 LF-THD tradeoff had the same "second re-clipper" signature.
+
+## PA EVENS PHASE 2 (2026-07-29) -- h2 MECHANISM FOUND; h4/h6 still open
+
+Desk-loop session on the dimed Rockerverb capture (targets 111 Hz: h2 17
+h4 13.2 h6 11.5 / 223 Hz: h2 19.4 h4 20.3 h6 20.8). Chronology matters
+-- half of it was spent on a WRONG PATH:
+
+**The nam_compare exactts trap (now fixed).** nam_compare defaulted
+"exactts" OFF while the shipped plugins run the exact tone stacks
+(Rockerverb/Recto/MarkV honor the param; other amps hardwired). Every
+un-flagged Rockerverb run measured the heuristic stack -- on that path
+the LTP mechanism showed a perfect-looking 111 Hz result plus a total
+223 Hz collapse (h2 0.6, ANTIPHASE cancellation) that sent the session
+into a frequency-fragility rabbit hole. On the SHIPPED path the
+cancellation does not exist. nam_compare now defaults exactts ON
+(--noexactts to opt out). Rule: any Rockerverb/Recto/MarkV measurement
+made without --exactts before 2026-07-29 tested a non-shipped sound.
+
+**Findings on the shipped path:**
+- tools/pa_node_dump (new): the preamp NODE signal already carries evens
+  (h2 10.1 @111 / 5.4 @223, rail dwell 68%/40%) -- stage asymmetries
+  work. The PA was destroying them: the railed waveshaper re-squares
+  (two-level = evens erased), confirmed by padrive/pamakeup sweeps.
+- evens_harness2 (new): band-limiting does NOT kill the dual-corner on
+  synthetic squares -- the phase-1 "band-limited input" postmortem was
+  wrong. Static flux bias (M3) inert (integrator swing >> bias).
+- Static curve asymmetry (screenComp/biasShift scaling, new pascreen/
+  pabias params) inert at every drive: the shaper is either railed
+  (theorem) or the asymmetry washes through downstream re-normalisers.
+- NFB exonerated (0.0 identical). Sag VCA + bloom VCA exonerated (new
+  --pasag/--pabloom overrides). Flux shear inert for evens.
+- **WINNER: LTP tail-bias envelope ripple at reduced PA drive.**
+  --padrive 0.4 --pamakeup 1.2 --paltptail 3.0 on the exact path:
+  h2 20.9 @111 (target 17) / 17.7 @223 (target 19.4) -- ON TARGET at
+  both frequencies (vs baseline 1.3/3.0). The 2 ms/8 ms envelope
+  discharges within the fundamental's half-cycle, giving a phase-robust
+  intra-cycle bias wobble = real grid-blocking/duty-shift physics.
+  FR at this config: mids/HF within ~1.7 dB (bright), LF +2.6..+4.7
+  bright (needs a modest trim), level -15.4 (makeup ~1.5x for parity).
+- Still open: h4/h6 land at only ~40%/20% of target (6.5/2.4 vs
+  13.2/11.5 @111) -- the LTP bias is first-order asymmetry (h2-rich);
+  higher-order evens need a mechanism with curvature, and every current
+  lever is exhausted (higher drive re-squares and kills h2 itself:
+  padrive 1.0 + tail 3.0 -> h2 7.1). THD@110 32.5 vs capture 42.7,
+  THD@1k ~35 vs 60 (the known structural gap) both remain.
+
+**Deliverables (all default-neutral, EVH regression-checked +4 ms):**
+sweepable ltpatt/ltprel/pascreen/pabias params in PowerAmpProcessor;
+nam_compare --pasag/--pabloom/--pafluxot/--paltpatt/--paltprel/
+--pascreen/--pabias flags; tools/pa_node_dump + tools/evens_harness2.
+
+**NEXT (enablement, own session):** bake padrive 0.4/pamakeup ~1.7/
+ltpTail 3.0 into the Rockerverb AmpDefaults row, re-fit the LF trim +
+loudness, re-level its presets, play-test. Then evaluate the same
+recipe for the other evens-poor amps.

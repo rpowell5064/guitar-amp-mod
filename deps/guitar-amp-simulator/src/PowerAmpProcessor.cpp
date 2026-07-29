@@ -103,6 +103,12 @@ const PowerAmpProcessor::TubeParams PowerAmpProcessor::kKT88 = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Tube waveshaper — static, no state, safe to call at oversampled rate
 // ─────────────────────────────────────────────────────────────────────────────
+void PowerAmpProcessor::prepareLtp() noexcept {
+    if (sampleRate <= 0.0) return;   // prepare() will run this again with a valid rate
+    ltpAtt_ = 1.0f - static_cast<float>(std::exp(-1.0 / (ltpAttMs_ * 1e-3 * sampleRate)));
+    ltpRel_ = 1.0f - static_cast<float>(std::exp(-1.0 / (ltpRelMs_ * 1e-3 * sampleRate)));
+}
+
 float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xover,
                                         float duty, float ltpBias) noexcept {
     // Shift input to the cathode bias operating point.
@@ -154,6 +160,13 @@ void PowerAmpProcessor::recalcTubeParams() noexcept {
     case TubeType::Tube_EL84:  tp = kEL84;  break;
     case TubeType::Tube_KT88:  tp = kKT88;  break;
     }
+    // Evens desk-loop (phase 2): scale the waveshaper's two intrinsic asymmetry
+    // levers. Both are inert on a railed input (two-level theorem), but with the
+    // per-amp paDrive reductions the shaper works in its curved region where
+    // they generate phase-locked (frequency-robust) even harmonics. 1.0/1.0 =
+    // stock constants = bit-identical.
+    tp.screenComp *= screenScale_;
+    tp.biasShift  *= biasScale_;
     // Compute the raw output at x=0 so we can null the DC offset (at no crossover;
     // any residual DC the crossover adds is removed by the transformer HP downstream).
     tp.dcOffset = 0.0f;
@@ -265,8 +278,8 @@ void PowerAmpProcessor::recalcFilters() {
     // real tail resistor's RC is dominated by a small bypass cap, not the B+
     // reservoir. 2 ms attack lets the envelope track pick transients; 8 ms
     // release keeps it from chasing individual cycles at guitar fundamentals.
-    ltpAtt_ = 1.0f - static_cast<float>(std::exp(-1.0 / (0.002 * sr)));
-    ltpRel_ = 1.0f - static_cast<float>(std::exp(-1.0 / (0.008 * sr)));
+    ltpAtt_ = 1.0f - static_cast<float>(std::exp(-1.0 / (ltpAttMs_ * 1e-3 * sr)));
+    ltpRel_ = 1.0f - static_cast<float>(std::exp(-1.0 / (ltpRelMs_ * 1e-3 * sr)));
 
     // Post-saturation sag-VCA envelope: slow-ish 2.5 ms attack lets the pick
     // transient overshoot before the VCA clamps (= bloom); 13 ms release sets the
@@ -360,6 +373,10 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "fluxshear"){ fluxShear_ = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
     else if (id == "ripplesag"){ rippleSagCoupling_ = std::max(0.0f, v); }  // item #27, 0 = off
     else if (id == "ltptail")  { ltpTail_ = std::max(0.0f, v); }            // item #29, 0 = off
+    else if (id == "pascreen") { screenScale_ = std::max(0.0f, v); recalcTubeParams(); }  // evens desk-loop
+    else if (id == "pabias")   { biasScale_   = std::max(0.0f, v); recalcTubeParams(); }  // evens desk-loop
+    else if (id == "ltpatt")   { ltpAttMs_ = std::max(0.05f, v); prepareLtp(); }  // evens desk-loop (ms)
+    else if (id == "ltprel")   { ltpRelMs_ = std::max(0.05f, v); prepareLtp(); }  // evens desk-loop (ms)
 
     if (needFilters)
         recalcFilters();

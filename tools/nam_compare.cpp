@@ -379,7 +379,19 @@ static float g_paDrive = -1.0f, g_paMakeup = -1.0f, g_paDuty = -1.0f, g_paNfb = 
 static float g_paRippleSag = -1.0f;  // item #27 sweep override, <0 = use the amp's AmpDefaults value
 static float g_paLtpTail   = -1.0f;  // item #29 sweep override, <0 = use the amp's AmpDefaults value
 static float g_paFluxShear = -1.0f;  // PA project: OT flux shear sweep, <0 = built-in default
-static bool  g_exactTS     = false;  // item #28: exact closed-form tone stack pilot (Fender only)
+static float g_paFluxOT    = -1.0f;  // PA project: flux OT on/off override, <0 = per-amp default
+static float g_paSag       = -1.0f;  // evens desk-loop: PA sag amount override
+static float g_paBloom     = -1.0f;  // evens desk-loop: post-sat bloom VCA override
+static float g_paScreen    = -1.0f;  // evens desk-loop: screenComp scale
+static float g_paBias      = -1.0f;  // evens desk-loop: biasShift scale
+static float g_paLtpAtt    = -1.0f;  // evens desk-loop: LTP env attack ms override
+static float g_paLtpRel    = -1.0f;  // evens desk-loop: LTP env release ms override
+static bool  g_exactTS     = true;   // DEFAULT ON since 2026-07-29: the SHIPPED plugins run the exact
+                                     // tone stacks (Rockerverb/Recto/MarkV honor this param; the rest are
+                                     // hardwired exact and ignore it). The old default-off silently measured
+                                     // a non-shipped heuristic path -- it cost half an evens session chasing
+                                     // a phantom 223 Hz phase cancellation that only exists on the old stack.
+                                     // --noexactts opts back into the heuristic path for A/B.
 
 // ── Run the algorithmic model exactly like the LV2 plugin (minus cab/makeup) ─
 static void runModel(const ModelSpec& m, const Knobs& k, double sr,
@@ -432,14 +444,18 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("presence", d.presence);
     pa.setParameter("depth", d.depth);
     pa.setParameter("nfb", g_paNfb >= 0.0f ? g_paNfb : (rectoModern ? 0.05f : d.nfb));
-    pa.setParameter("sag", d.sag);
-    pa.setParameter("bloomvca", d.bloomVca);
+    pa.setParameter("sag", g_paSag >= 0.0f ? g_paSag : d.sag);
+    pa.setParameter("bloomvca", g_paBloom >= 0.0f ? g_paBloom : d.bloomVca);
     pa.setParameter("duty",     g_paDuty   >= 0.0f ? g_paDuty   : d.duty);
     pa.setParameter("padrive",  g_paDrive  >= 0.0f ? g_paDrive  : d.paDrive);
     pa.setParameter("pamakeup", g_paMakeup >= 0.0f ? g_paMakeup : d.paMakeup);
     pa.setParameter("ripplesag",g_paRippleSag >= 0.0f ? g_paRippleSag : d.rippleSagCoupling);
     pa.setParameter("ltptail",  g_paLtpTail   >= 0.0f ? g_paLtpTail   : d.ltpTail);
-    pa.setParameter("fluxOT",   d.fluxOT ? 1.0f : 0.0f);
+    pa.setParameter("fluxOT",   g_paFluxOT >= 0.0f ? g_paFluxOT : (d.fluxOT ? 1.0f : 0.0f));
+    if (g_paScreen >= 0.0f) pa.setParameter("pascreen", g_paScreen);
+    if (g_paBias   >= 0.0f) pa.setParameter("pabias",   g_paBias);
+    if (g_paLtpAtt > 0.0f) pa.setParameter("ltpatt", g_paLtpAtt);
+    if (g_paLtpRel > 0.0f) pa.setParameter("ltprel", g_paLtpRel);
     if (g_paFluxShear >= 0.0f) pa.setParameter("fluxshear", g_paFluxShear);
     pa.setParameter("resonance", 0.5f);
     pa.setParameter("airFeel", 0.0f);
@@ -767,7 +783,15 @@ int main(int argc, char** argv) {
     if (const char* s = argVal(argc, argv, "--paripplesag")) g_paRippleSag = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paltptail"))   g_paLtpTail   = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--pafluxshear")) g_paFluxShear = float(std::atof(s));
-    for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--exactts")) g_exactTS = true;
+    if (const char* s = argVal(argc, argv, "--pafluxot"))    g_paFluxOT    = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--pasag"))       g_paSag       = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--pabloom"))     g_paBloom     = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--pascreen"))    g_paScreen    = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--pabias"))      g_paBias      = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--paltpatt"))    g_paLtpAtt    = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--paltprel"))    g_paLtpRel    = float(std::atof(s));
+    for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--exactts"))   g_exactTS = true;
+    for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--noexactts")) g_exactTS = false;
     for (int i = 1; i < argc; ++i) if (!std::strcmp(argv[i], "--nopa")) g_bypassPA = true;
 
     Knobs k;
