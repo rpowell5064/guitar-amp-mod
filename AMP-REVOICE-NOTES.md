@@ -1605,3 +1605,36 @@ Measured vs the labeled AC30 capture (B5 T5 Cut5 M8, gain .6):
 Listen for: Chime Thirty presets (Bank 9 fun bank, Regal Sustain/Solo,
 Cydonia Sunrise, Come As Water) -- fuller lows, cleaner low-string
 notes at the same chime.
+
+### Chime Thirty idle whistle (same day, user-reported) -- FIXED + re-fit
+
+User: "high pitched noise when not playing" right after the row-9
+deploy. tools/vox_idle_probe (new) diagnosed it in two runs:
+
+- NOT self-oscillation: burst-then-silence decays to -300 dBFS. (Though
+  the probe DID show the NFB loop can scream at 5.6 kHz at paDrive
+  1.0 + flux-off -- margin note for future flux-off amps.)
+- The -50 dBFS input floor's output spectrum was CLUSTERED at
+  10.2-10.4 kHz: the chimePk (+14.5 dB, Q1.2 @ 10.27k) was
+  concentrating the noise floor into a whistle band. The old rail/flux
+  compression had been masking it.
+
+Root cause ran deeper: the chime peak's 10 kHz energy was acting as a
+hidden PA-SAG EXCITER -- the PA sag env tracks its raw input, so the
+boosted HF held vSupply down and compressed the ENTIRE morning fit.
+Cutting the chime un-compressed everything (THD@1k 34 -> 10, lows
++4 dB), so the fit was redone honestly:
+
+- chimePk 14.5/Q1.2 -> 9.0/Q1.0 (whistle gone: floor peak -47 -> -55,
+  broadband; silence -314 dBFS)
+- bodyShelf 15.3 -> 13.0, lowBody re-centred 245+2.1 -> 315+1.5/Q0.8
+- row 9: paDrive 0.45 / paMakeup 1.07 (THD@110 21.3/31.4 astride the
+  capture's 24.2/26.1; parity -16.1 exact; bloom +1.21; attack -4 ms)
+- Final FR: 80/125 within 0.2 dB, mids/top within 1.3; accepted
+  residuals 50 Hz +2.1 (likely capture-side rolloff) + 315 -1.7
+  (normalisation-anchor squeeze).
+
+LESSON (goes with the "EQ expresses 2-3x" one): a big pre-PA HF peak
+isn't just tone -- it FEEDS THE SAG DETECTOR. Any fit made with one in
+place is calibrated around its compression; remove/resize it and the
+whole amp must be re-measured.

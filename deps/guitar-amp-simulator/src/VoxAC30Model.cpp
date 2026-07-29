@@ -45,17 +45,17 @@ void VoxAC30Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         // preserving what the old filters already did right). Old values:
         // brightShelf highshelf(1800,+15), bodyShelf lowshelf(300,+10).
         c.brightShelf.setCoeffs(Filters::highshelf(1460.0, 9.5, oversampledFs_));
-        c.bodyShelf.setCoeffs(Filters::lowshelf(297.0, 15.3, oversampledFs_));
-        // lowBody peak (2026-07-29, LF-THD round 2): with Vox on its own PA row
-        // (paDrive 0.3, flux OT off) the "second re-clipper" that ground any
-        // restored lows into distortion is gone, and the model measured a
-        // UNIFORM -1.6..-2.4 dB band across 80-315 Hz vs the labeled AC30
-        // capture (50 Hz already on target -- a shelf bump overshot 50 Hz by
-        // +4.7, hence a wide peak centred in the band instead; it expresses
-        // ~2-3x now that the PA no longer compresses it, so the dB here is
-        // deliberately smaller than the residual).
-        c.lowBody.setCoeffs(Filters::peaking(245.0, 2.1, 0.55, oversampledFs_));
-        c.chimePk.setCoeffs(Filters::peaking(10270.0, 14.5, 1.2, oversampledFs_));   // top-octave air (Q kept at 1.0 per the EVH ringing lesson)
+        c.bodyShelf.setCoeffs(Filters::lowshelf(297.0, 13.0, oversampledFs_));
+        // lowBody peak (2026-07-29, idle-noise re-fit): after the chimePk cut
+        // removed the hidden 10 kHz PA-sag exciter, the whole EQ re-expressed
+        // and the LF was re-trimmed from scratch against the labeled AC30
+        // capture: bodyShelf 15.3 -> 13.0 above + this small 315 Hz peak
+        // (315 sits squeezed against the 500 Hz normalisation anchor; -1.7
+        // residual accepted). 80/125 Hz land within 0.2 dB; 50 Hz +2.1
+        // accepted per the capture-chain doctrine (likely capture-side
+        // rolloff).
+        c.lowBody.setCoeffs(Filters::peaking(315.0, 1.5, 0.8, oversampledFs_));
+        c.chimePk.setCoeffs(Filters::peaking(10270.0, 9.0, 1.0, oversampledFs_));   // top-octave air; 14.5/Q1.2 -> 9.0/Q1.0 2026-07-29: fit through the OLD compressing PA, now over-expressed -- was concentrating the idle noise floor into a 10.3 kHz whistle (user: "high pitched noise when not playing") and its skirt made 8 kHz read +2 bright
     }
     reset();
 }

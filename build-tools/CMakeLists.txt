@@ -33,3 +33,6 @@ target_include_directories(hexforge_migrate_test PRIVATE "${CMAKE_CURRENT_SOURCE
 
 add_executable(pa_node_dump "${CMAKE_CURRENT_SOURCE_DIR}/../tools/pa_node_dump.cpp")
 target_link_libraries(pa_node_dump PRIVATE GuitarAmpSim)
+
+add_executable(vox_idle_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/vox_idle_probe.cpp")
+target_link_libraries(vox_idle_probe PRIVATE GuitarAmpSim)

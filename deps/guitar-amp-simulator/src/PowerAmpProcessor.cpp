@@ -490,7 +490,12 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // the capture. Unlike Rockerverb, the sag lever WORKS here (measured
         // monotone); 0.50 restores the pre-change bloom (+1.85 vs +2.03) with
         // THD unchanged, keeping the famous AC30 springy sag at its prior level.
-        case 9: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.50f,  0.15f,  0.0f, 0.3f, 1.11f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
+        // paDrive 0.3->0.45 / paMakeup 1.11->1.07 (same day, idle-noise re-fit):
+        // the chimePk cut (see VoxAC30Model.cpp) removed 10 kHz energy that had
+        // been acting as a hidden PA-sag exciter, un-compressing the whole
+        // measurement -- drive re-raised to put THD@110 back astride the
+        // capture (27.3/36.5 vs 24.2/26.1) with the re-trimmed model EQ.
+        case 9: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.50f,  0.15f,  0.0f, 0.45f, 1.07f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }
