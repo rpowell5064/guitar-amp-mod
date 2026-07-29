@@ -16,10 +16,14 @@
 
 class DnrRolloff {
 public:
-    void prepare(double fs) noexcept {
+    // cornerHz: the dark-state lowpass corner. 6 kHz (default) suits the
+    // high-gain amps' amplified HISS; the Vox's exposed idle noise is HUM
+    // PARTIALS at 2-4 kHz (2026-07-29 Chime Thirty whine), which need a
+    // deeper corner to actually darken.
+    void prepare(double fs, double cornerHz = 6000.0) noexcept {
         att_ = 1.0f - std::exp(-1.0f / static_cast<float>(fs * 0.0005));   // 0.5 ms: attacks stay bright
         rel_ = 1.0f - std::exp(-1.0f / static_cast<float>(fs * 0.100));    // 100 ms: darken smoothly
-        lp_.setCoeffs(Filters::lowpass(6000.0, 0.707, fs));
+        lp_.setCoeffs(Filters::lowpass(cornerHz, 0.707, fs));
         reset();
     }
     void reset() noexcept { lp_.reset(); env_ = 0.0f; d_ = 1.0f; }

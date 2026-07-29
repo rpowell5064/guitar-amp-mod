@@ -3,6 +3,7 @@
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
 #include "BiquadFilter.h"
+#include "DnrRolloff.h"
 #include <array>
 #include <string>
 
@@ -54,6 +55,14 @@ private:
         BiquadFilter       bodyShelf;    // gentle low-shelf (Vox stays brighter/less bassy)
         BiquadFilter       lowBody;      // wide 180 Hz body peak (LF-THD round 2, 2026-07-29)
         BiquadFilter       chimePk;      // top-octave air peak (item #26 exact-TS re-fit, 2026-07-29)
+
+        DnrRolloff         dnr;          // decay darkener (2026-07-29: the Vox never got
+                                         // the 2026-07-14 DNR extension; with the PA no
+                                         // longer crushing idle HF, open-gate note decays
+                                         // amplified the rig's hum floor through +18 dB of
+                                         // bright voicing = the user's Chime Thirty whine.
+                                         // Engaged when gain > 0.45 -- the chimey clean
+                                         // presets (gain .2-.35) stay untouched)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

@@ -36,6 +36,7 @@ void VoxAC30Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         // Cathode-biased Class-A: quicker (150 ms), deeper sag than a stiff hi-fi supply.
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.15));
         c.sagEnv = 0.0f;
+        c.dnr.prepare(oversampledFs_, 1200.0);   // deep: the whine partials sit at 2-4 kHz
 
         c.preHi.setCoeffs(Filters::highshelf(500.0, 15.0, oversampledFs_));       // moderate high pre-emphasis (drive stays musical, not over-saturated)
         c.airLP.setCoeffs(Filters::lowpass1pole(20000.0, oversampledFs_));
@@ -71,6 +72,7 @@ void VoxAC30Model::reset() noexcept {
         c.stage2.reset();
         c.tonestack.reset();
         c.airLP.reset();
+        c.dnr.reset();
         c.brightShelf.reset();
         c.bodyShelf.reset();
         c.lowBody.reset();
@@ -89,6 +91,7 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     const float g = gainSmooth_.getCurrentValue();
     const float m = masterSmooth_.getCurrentValue();
 
+    c.dnr.track(x);   // decay darkener keyed on the RAW input (pre-everything)
     x = c.inputHPF.process(x);
     x = c.preHi.process(x);   // treble emphasis BEFORE the stages → highs break up + stay bright
 
@@ -132,7 +135,7 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     x = c.brightShelf.process(x);
     x = c.bodyShelf.process(x);
     x = c.lowBody.process(x);
-    return c.chimePk.process(x);
+    return c.dnr.process(c.chimePk.process(x), gain_ > 0.45f);
 }
 
 void VoxAC30Model::setParameter(const std::string& id, float value) noexcept {

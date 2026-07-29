@@ -1682,3 +1682,34 @@ for the -60-threshold clean presets (Come As Water -60, Apache -60,
 Homesick Saucer -58, Sweet Dispersion -56 all latch-prone even
 raw-keyed if the floor is at the documented -45 peak), and/or an idle
 darkener for the bright clean amps.
+
+### Chime Thirty whine round 3 (same evening) -- THE VOX HAD NO DNR
+
+User: whine persists, "none of the other amps do this" -- the decisive
+clue. Live measurement first: while the user heard the whine on Regal
+Sustain, the plugin's DIGITAL output recorded as bit-perfect silence
+(-300 dBFS) at idle -- so pure idle is NOT the path. The audible window
+is the OPEN-GATE window (playing + note decays + hold/release), where
+the amp legitimately amplifies whatever the floor feeds it.
+
+Why only the Vox: VoxAC30Model NEVER GOT the 2026-07-14 DnrRolloff
+decay-darkener extension (EVH/JCM800/Rockerverb/Friedman all did), and
+today's PA row split removed the compression that used to squash its
+amplified-floor decay content. At Regal Sustain's gain 0.9 through
+brightShelf +9.5 + chimePk +9, the rig's hum partials (fresh floor
+measured: lines at 2.1-4.1 kHz) ride every note tail as a bright whine.
+
+FIX: DnrRolloff wired into VoxAC30Model (JCM800 pattern -- track() on
+raw input, process() at terminal output), engaged at gain > 0.45 so the
+chimey clean presets (gain .2-.35) are untouched. DnrRolloff::prepare
+grew a cornerHz parameter (default 6000 = unchanged for existing amps):
+the stock 6 kHz LP was designed for amplified HISS, but the Vox's
+exposed noise is 2-4 kHz HUM PARTIALS -- Vox uses 1200 Hz. Verified
+transparent on all capture metrics (FR/THD/feel/level bit-consistent:
+the darkener only acts below -44 dBFS raw input).
+
+Also shipped this round (all still valid): raw-keyed gate detector
+(latent latch bug), chimePk 14.5->9 re-fit. The pedalboard-snapshot
+lesson: mod-ui restores saved port values (gt_thresh -45 found in
+Hex_Forge.pedalboard) over presets on load -- remember it when a
+preset "ignores" its stored values after reboot.
