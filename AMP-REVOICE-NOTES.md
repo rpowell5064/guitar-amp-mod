@@ -1450,3 +1450,37 @@ prerequisite identified: give Vox its own canonical PA row (currently
 SHARED row 0 with Fender/Hiwatt/Backline) and reduce its paDrive like
 EVH's -- which then cascades into re-fitting all of last night's Vox
 post-limiter EQ. A proper future session, cleanly scoped.
+
+## 2026-07-29 -- EVH attack swell FOUND AND RESTORED (flux OT was the killer)
+
+The archaeology paid off in one mechanism. Bisect established the swell
+was alive as late as 6f46783 (July 25) and that the killer was in shared
+DSP, not EVH5150Model.cpp (June model files + current shared code still
+measured dead). Direct default-toggling at HEAD then isolated it in two
+probes:
+
+- xoverDepth_ 0.12 -> 0: attack still -298 ms (innocent)
+- fluxOT_ true -> false: **attack +4 ms, bloom +0.01 dB** -- the real
+  Red's ~300 ms swell back, essentially exact vs the capture
+
+Mechanism: the Phase-2 flux-domain OT saturation integrates the signal
+(25 Hz leaky integrator) and saturates on FLUX, which makes it
+LF-selective by design. The 5150's swell IS slow LF envelope dynamics --
+the flux stage grinds exactly that band flat. Bonus: flux-off also fixed
+the two other documented EVH gaps in one shot:
+
+- THD@110 now 15.8/19.1 vs capture 15.3/16.3 (was 23-25 "LF 2x
+  over-distorted" -- that verdict's root cause was flux, not the model)
+- LF response +4 dB closer (50 Hz -8.5 vs -12.3 before)
+- Mids/THD@1k/level essentially unchanged; Blue channel also improved
+  (attack +0 ms, LF THD down)
+
+Fix shipped as **per-amp AmpDefaults.fluxOT** (default true -- every
+other amp bit-identical, so none of the last 48 h of Vox/Fender/JCM800
+fits move). EVH row = false. Wired via the existing "fluxOT" param in
+nam_compare + amp plugin + hexforge. JCM800 control run confirmed
+unchanged.
+
+Lesson for the Vox future session: fluxOT is now a per-amp lever --
+worth probing flux-off for Vox alongside the paDrive cut, since its
+LF-THD tradeoff had the same "second re-clipper" signature.

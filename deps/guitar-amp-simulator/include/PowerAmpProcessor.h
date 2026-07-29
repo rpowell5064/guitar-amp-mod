@@ -76,6 +76,14 @@ public:
         // waveshaper (see tubeWaveshaper's ltpBias param) rather than
         // introducing a full two-path PI split. 0 = bit-identical.
         float ltpTail = 0.0f;
+        // Flux-domain OT saturation, per-amp (2026-07-29): ON suite-wide since
+        // Phase-2, but a git-bisect + toggle probe proved it single-handedly
+        // killed the EVH Red's real ~300 ms attack swell AND caused its LF
+        // over-distortion (THD@110 23-25% vs the capture's 15-16; exact with
+        // flux off) -- the flux integrator's LF-selective grind eats exactly
+        // the slow LF dynamics that ARE the 5150's feel. Default true keeps
+        // every other amp bit-identical.
+        bool fluxOT = true;
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 

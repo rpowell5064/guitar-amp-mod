@@ -1747,6 +1747,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).duty);
     p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).rippleSagCoupling);
     p->pa.setParameter("ltptail",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).ltpTail);
+    p->pa.setParameter("fluxOT",   PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).fluxOT ? 1.0f : 0.0f);
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);

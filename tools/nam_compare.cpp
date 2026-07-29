@@ -439,6 +439,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("pamakeup", g_paMakeup >= 0.0f ? g_paMakeup : d.paMakeup);
     pa.setParameter("ripplesag",g_paRippleSag >= 0.0f ? g_paRippleSag : d.rippleSagCoupling);
     pa.setParameter("ltptail",  g_paLtpTail   >= 0.0f ? g_paLtpTail   : d.ltpTail);
+    pa.setParameter("fluxOT",   d.fluxOT ? 1.0f : 0.0f);
     if (g_paFluxShear >= 0.0f) pa.setParameter("fluxshear", g_paFluxShear);
     pa.setParameter("resonance", 0.5f);
     pa.setParameter("airFeel", 0.0f);
