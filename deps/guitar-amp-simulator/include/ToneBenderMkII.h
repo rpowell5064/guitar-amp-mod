@@ -55,6 +55,19 @@ private:
     float bias_      = 0.50f;
     float inputTrim_ = 0.50f;
     float geTemp_    = 0.40f;   // ~16 °C
+    // Roadmap #45 (2026-07-29): guitar volume-pot / source-impedance interaction.
+    // gvol = the GUITAR's volume-pot position (1.0 = full = Rs 0 = bit-identical
+    // to the capture-tuned voicing). Rolling down inserts the pot's Thevenin
+    // source resistance Rs = th*(1-th)*Rpot (max at mid-travel) in series with
+    // Q1's base; in the Ebers-Moll NR solve that is EXACTLY extra emitter
+    // degeneration scaled by 1/beta -- attenuate + linearize together, the
+    // real fuzz "cleanup" a digital rig's hi-Z interface otherwise erases.
+    float gvol_      = 1.0f;
+    // Rs normalization: th(1-th) peaks at 0.25, so kRsNorm = 4x the max added
+    // degeneration (in the solve's normalized emitter units, where Q1's own
+    // re = 0.05). 1.2 -> up to +0.30 at half volume: calibrated offline via
+    // nam_compare --gvol sweeps for a strong-but-musical cleanup (see notes).
+    static constexpr double kRsNorm = 0.5;
 
     LinearSmoother attackSm_, levelSm_;
     float attackCur_ = 0.75f, volCur_ = 0.60f;

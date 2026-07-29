@@ -36,8 +36,10 @@ static_assert(HF_RV_TYPE == HF_RV_DENSITY + 1 && HF_CAB_ROOMDENSE == HF_RV_TYPE 
 static_assert(HF_RV_BLOOM == HF_CAB_ROOMDENSE + 1, "v27 port must be contiguous");
 static_assert(HF_CAB_SPKDRIVE == HF_RV_BLOOM + 1,
               "v28 port must be contiguous");
-static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1 && HF_MD_SHAPE == HF_SW_A - 1,
-              "v29 port must be contiguous, right before the commands");
+static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1,
+              "v29 port must be contiguous");
+static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_FZ_GVOL == HF_SW_A - 1,
+              "v30 port must be contiguous, right before the commands");
 
 // ── migratePorts, copied verbatim from hexforge_plugin.cpp (v28) ──────────────
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
@@ -96,6 +98,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     const int spkAt = HF_CAB_SPKDRIVE;
     const bool shpGap = (srcVer < 29);
     const int shpAt = HF_MD_SHAPE;
+    const bool gvGap2 = (srcVer < 30);
+    const int gvAt2 = HF_FZ_GVOL;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
@@ -123,6 +127,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (blGap && i == blAt)                     vals[i] = 0.5f;
         else if (spkGap && i == spkAt)                   vals[i] = 0.0f;
         else if (shpGap && i == shpAt)                   vals[i] = 0.0f;
+        else if (gvGap2 && i == gvAt2)                   vals[i] = 1.0f;
         else                                             vals[i] = old[o++];
     }
 }
@@ -131,9 +136,10 @@ int main() {
     int fails = 0;
 
     // ── v25 -> current: reverb type + cab room density (v26) + ambient bloom (v27)
-    // + cab speaker drive (v28) + tremolo shape (v29) all inserted at the end, in order.
+    // + cab speaker drive (v28) + tremolo shape (v29) + fuzz guitar vol (v30)
+    // all inserted at the end, in order.
     {
-        const int npOld = HF_N_PORTS - 5;
+        const int npOld = HF_N_PORTS - 6;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -147,18 +153,19 @@ int main() {
         if (vals[HF_RV_BLOOM] != 0.5f) { std::printf("FAIL: v27 bloom default wrong (%g)\n", vals[HF_RV_BLOOM]); ++fails; }
         if (vals[HF_CAB_SPKDRIVE] != 0.0f) { std::printf("FAIL: v28 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
         if (vals[HF_MD_SHAPE] != 0.0f) { std::printf("FAIL: v29 shape default wrong (%g)\n", vals[HF_MD_SHAPE]); ++fails; }
+        if (vals[HF_FZ_GVOL] != 1.0f) { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
-            float want = (i - 5 < npOld) ? static_cast<float>((i - 5) + 1) : 0.0f;
+            float want = (i - 6 < npOld) ? static_cast<float>((i - 6) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v25 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v25->current: pre-insert preserved, all defaults, tail shifted +5\n");
+        std::printf("v25->current: pre-insert preserved, all defaults, tail shifted +6\n");
     }
 
-    // ── v27 -> current: speaker drive (v28) + tremolo shape (v29) at the end.
+    // ── v27 -> current: speaker drive (v28) + shape (v29) + gvol (v30) at the end.
     {
-        const int npOld = HF_N_PORTS - 2;
+        const int npOld = HF_N_PORTS - 3;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -171,18 +178,20 @@ int main() {
             { std::printf("FAIL: v28 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
         if (vals[HF_MD_SHAPE] != 0.0f)
             { std::printf("FAIL: v29 shape default wrong (%g)\n", vals[HF_MD_SHAPE]); ++fails; }
+        if (vals[HF_FZ_GVOL] != 1.0f)
+            { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
-            float want = (i - 2 < npOld) ? static_cast<float>((i - 2) + 1) : 0.0f;
+            float want = (i - 3 < npOld) ? static_cast<float>((i - 3) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v27 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v27->current: pre-insert preserved, both defaults, tail shifted +2\n");
+        std::printf("v27->current: pre-insert preserved, all defaults, tail shifted +3\n");
     }
 
-    // ── v28 -> v29: Tremolo Shape (roadmap #34) inserted at the very end, alone.
+    // ── v28 -> current: tremolo shape (v29) + fuzz guitar vol (v30) at the end.
     {
-        const int npOld = HF_N_PORTS - 1;
+        const int npOld = HF_N_PORTS - 2;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -193,19 +202,44 @@ int main() {
             }
         if (vals[HF_MD_SHAPE] != 0.0f)
             { std::printf("FAIL: v29 shape default wrong (%g)\n", vals[HF_MD_SHAPE]); ++fails; }
+        if (vals[HF_FZ_GVOL] != 1.0f)
+            { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
-            float want = (i - 1 < npOld) ? static_cast<float>((i - 1) + 1) : 0.0f;
+            float want = (i - 2 < npOld) ? static_cast<float>((i - 2) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v28 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v28->v29: pre-insert preserved, shape Bias default, tail shifted +1\n");
+        std::printf("v28->current: pre-insert preserved, both defaults, tail shifted +2\n");
+    }
+
+    // ── v29 -> v30: Fuzz Guitar Vol (roadmap #45) inserted at the very end, alone.
+    // Its default is 1.0 (NOT zero) — full guitar volume = bit-identical voicing.
+    {
+        const int npOld = HF_N_PORTS - 1;
+        float vals[HF_N_PORTS];
+        for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
+        for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
+        migratePorts(vals, 29);
+        for (int i = 0; i < HF_FZ_GVOL; ++i)
+            if (vals[i] != static_cast<float>(i + 1)) {
+                std::printf("FAIL: v29 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
+            }
+        if (vals[HF_FZ_GVOL] != 1.0f)
+            { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
+        for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
+            float want = (i - 1 < npOld) ? static_cast<float>((i - 1) + 1) : 0.0f;
+            if (vals[i] != want) {
+                std::printf("FAIL: v29 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
+            }
+        }
+        std::printf("v29->v30: pre-insert preserved, gvol FULL default, tail shifted +1\n");
     }
 
     // ── v19 -> current: rc3 + mt2 + cv2 + EQ11 + fidelity2 + density1 + type/room2
-    // + bloom1 + spkdrive1 + shape1 = 26 ports inserted. A v19 blob had HF_N_PORTS - 26.
+    // + bloom1 + spkdrive1 + shape1 + gvol1 = 27 inserted. A v19 blob had HF_N_PORTS - 27.
     {
-        const int npOld = HF_N_PORTS - 26;
+        const int npOld = HF_N_PORTS - 27;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);   // sentinels
@@ -227,21 +261,22 @@ int main() {
         if (vals[HF_RV_BLOOM] != 0.5f) { std::printf("FAIL: v19 bloom default wrong (%g)\n", vals[HF_RV_BLOOM]); ++fails; }
         if (vals[HF_CAB_SPKDRIVE] != 0.0f) { std::printf("FAIL: v19 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
         if (vals[HF_MD_SHAPE] != 0.0f) { std::printf("FAIL: v19 shape default wrong (%g)\n", vals[HF_MD_SHAPE]); ++fails; }
-        // Command/status slots after the inserts: shifted up by 26.
+        if (vals[HF_FZ_GVOL] != 1.0f) { std::printf("FAIL: v19 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
+        // Command/status slots after the inserts: shifted up by 27.
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
-            float want = (i - 26 < npOld) ? static_cast<float>((i - 26) + 1) : 0.0f;
+            float want = (i - 27 < npOld) ? static_cast<float>((i - 27) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
-        std::printf("v19->current: pre-insert preserved, all gap defaults, tail shifted +26\n");
+        std::printf("v19->current: pre-insert preserved, all gap defaults, tail shifted +27\n");
     }
 
     // ── v13 -> v20: the full multi-gap walk. Count the inserted slots for a v13
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1 + 1;  // + bloom1 + spkdrive1 + shape1
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1 + 1 + 1;  // + bloom1 + spkdrive1 + shape1 + gvol1
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -273,6 +308,7 @@ int main() {
         if (vals[HF_RV_BLOOM] != 0.5f) { std::printf("FAIL: v13 bloom default wrong (%g)\n", vals[HF_RV_BLOOM]); ++fails; }
         if (vals[HF_CAB_SPKDRIVE] != 0.0f) { std::printf("FAIL: v13 spkdrive default wrong (%g)\n", vals[HF_CAB_SPKDRIVE]); ++fails; }
         if (vals[HF_MD_SHAPE] != 0.0f) { std::printf("FAIL: v13 shape default wrong (%g)\n", vals[HF_MD_SHAPE]); ++fails; }
+        if (vals[HF_FZ_GVOL] != 1.0f) { std::printf("FAIL: v13 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         // Every non-gap slot must hold consecutive sentinels in order (the walk is
         // order-preserving); just verify the LAST old value survived to the end.
         int o = 0; float lastSeen = -1.0f;
@@ -290,7 +326,8 @@ int main() {
                           || (i >= HF_RV_TYPE && i <= HF_CAB_ROOMDENSE)
                           || (i == HF_RV_BLOOM)
                           || (i == HF_CAB_SPKDRIVE)
-                          || (i == HF_MD_SHAPE);
+                          || (i == HF_MD_SHAPE)
+                          || (i == HF_FZ_GVOL);
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
             if (vals[i] != want) {

@@ -86,12 +86,18 @@ float ToneBenderMkII::processSample(float xin, int ch) noexcept {
     // Input trim (accommodate modern pickups) + input coupling cap. Kept modest so
     // the chain has clean headroom at low guitar volume (dynamic cleanup).
     const double trim = 0.12 + inputTrim_ * 0.85;   // ~0.12 .. 0.97
-    double x = c.inputHP.process(static_cast<float>(xin * trim));
+    // Roadmap #45: guitar volume-pot Thevenin source. th = pot travel; the
+    // divider attenuates by th, and the pot's source resistance th*(1-th)*Rpot
+    // degenerates Q1 (Rs/beta adds to its emitter term below). th = 1 -> both
+    // terms vanish = bit-identical to the capture-tuned voicing.
+    const double th   = static_cast<double>(gvol_);
+    const double rsQ1 = th * (1.0 - th) * kRsNorm;
+    double x = c.inputHP.process(static_cast<float>(xin * trim * th));
 
     const double atk = attackCur_;
 
     // ── Q1: input booster, biased near cutoff (low gain, mild germanium grit) ──
-    double v1 = geStage(x, /*qc*/0.88, /*gain*/0.22, /*re*/0.05, vt_, leak_, c.q1warm);
+    double v1 = geStage(x, /*qc*/0.88, /*gain*/0.22, /*re*/0.05 + rsQ1, vt_, leak_, c.q1warm);
     v1 = c.coup12.process(static_cast<float>(v1));
 
     // ── Q2: near-saturation high-gain core. Bias knob + voltage-starved gating. ──
@@ -130,6 +136,7 @@ void ToneBenderMkII::setParameter(const std::string& id, float value) noexcept {
     if      (id == "attack" || id == "drive") { attack_ = value; attackSm_.setTargetValue(value); }
     else if (id == "level"  || id == "volume"){ level_  = value; levelSm_.setTargetValue(value); }
     else if (id == "bias")                    { bias_   = value; }
+    else if (id == "gvol")                    { gvol_ = std::clamp(value, 0.05f, 1.0f); }
     else if (id == "inputtrim")               { inputTrim_ = value; }
     else if (id == "getemp")                  { geTemp_ = value; recalcTemp(); }
 }
@@ -139,6 +146,7 @@ float ToneBenderMkII::getParameter(const std::string& id) const noexcept {
     if (id == "level"  || id == "volume") return level_;
     if (id == "bias")       return bias_;
     if (id == "inputtrim")  return inputTrim_;
+    if (id == "gvol")       return gvol_;
     if (id == "getemp")     return geTemp_;
     return 0.0f;
 }

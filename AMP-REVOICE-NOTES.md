@@ -1303,3 +1303,45 @@ Rs=0 verification against its capture-tuned voicing, (c) the per-pedal
 input-Z table (TS ~500k / Muff ~40k / RAT ~1M / TB+FF 5-10k) with
 preset-compat decisions around the existing it_load knob. Multi-hour,
 capture-reverification work -- not a straggler.
+
+## Roadmap #45, first half SHIPPED: Tone Bender guitar-volume cleanup (2026-07-29)
+
+**The physics.** A guitar's volume pot presents a Thevenin source resistance
+Rs = th*(1-th)*Rpot to whatever it feeds (zero at full volume, max at
+mid-travel). Against a germanium fuzz's tiny nonlinear input impedance this
+is what creates the famous "roll the guitar back and it cleans up" —
+attenuation, brightening, and LINEARIZATION together. A digital rig's hi-Z
+interface erases the interaction entirely; the pedal model has to recreate
+it, and it needs to be TOLD the pot position (a port) because the real knob
+is invisible upstream.
+
+**The elegant bit:** in ToneBenderMkII's Ebers-Moll Newton-Raphson solve, a
+base-series Rs enters EXACTLY as extra emitter degeneration scaled by
+1/beta — a one-term change to Q1's re argument (re + th(1-th)*kRsNorm),
+plus the th divider on the input. th = 1.0 -> both terms vanish =
+bit-identical to the capture-tuned voicing (verified: the gvol=1.0 sweep
+reproduces the documented HG capture-match numbers exactly, h2 15.6/h3 26.0).
+
+**Calibration (nam_compare --gvol sweeps vs the Page HG captures):** first
+try kRsNorm=1.2 over-drove the near-cutoff Q1 into rectifier-like
+asymmetry (h2 42% at gvol 0.3). At 0.5: gvol 0.75 = smoother edge (h7/h9
+fizz drops 8->2.3/6.6->3.6), gvol 0.5 = the classic "clean with hair"
+(h2 25/h3 22, high orders collapsed), gvol 0.3 = characterful germanium
+sputter (h2-dominant — the famous dying-fuzz roll-off extreme). Level
+holds while rolling down (-1 dB at half, -2.8 dB at 0.3) = the real
+"cleans up without losing volume" behavior.
+
+**Ports:** standalone fuzz "gvol" (index 11, default 1.0, microVersion 32,
+modgui knob in the TB-conditional group, rdflib-verified) + Hex Forge
+`fz_gvol` via the 11-step checklist (blob v29->v30, gap-fill default 1.0 —
+the checklist's first NON-ZERO gap default, worth noting; kSwWatch skipped
+correctly since it's a continuous knob). hexforge_migrate_test extended
+with a v29->v30 case + arithmetic updates: PASSED (0 failures). Live on
+the Pi, both TTLs verified.
+
+**Second half (per-pedal input-Z table on PickupLoadSim) still deferred:**
+scaling the Input Trim's load sweep by the first pedal's real input Z
+(TS ~500k / Muff ~40k / RAT ~1M / TB+FF 5-10k) would shift every factory
+preset that carries a nonzero it_load value (the 2026-07-23 fidelity
+polish seeded many) — needs a preset-compat decision + re-measure, its own
+session.

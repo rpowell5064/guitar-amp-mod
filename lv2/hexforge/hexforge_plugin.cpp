@@ -784,9 +784,12 @@ static_assert(HF_RV_BLOOM == HF_CAB_ROOMDENSE + 1,
 //   * Cab Speaker Drive (item #40) — 1 port, added v28.
 static_assert(HF_CAB_SPKDRIVE == HF_RV_BLOOM + 1,
               "v28 port must be contiguous");
-//   * Tremolo Shape (roadmap #34) — 1 port, added v29, last before the commands.
-static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1 && HF_MD_SHAPE == HF_SW_A - 1,
-              "v29 port must be contiguous, right before the commands");
+//   * Tremolo Shape (roadmap #34) — 1 port, added v29.
+static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1,
+              "v29 port must be contiguous");
+//   * Fuzz Guitar Vol (roadmap #45) — 1 port, added v30, last before the commands.
+static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_FZ_GVOL == HF_SW_A - 1,
+              "v30 port must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -875,6 +878,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v29 appended Tremolo Shape (roadmap #34); default 0 (Bias = shipped voicing).
     const bool shpGap = (srcVer < 29);
     const int shpAt = HF_MD_SHAPE;
+    // v30 appended Fuzz Guitar Vol (roadmap #45); default 1.0 (full = bit-identical).
+    const bool gvGap2 = (srcVer < 30);
+    const int gvAt2 = HF_FZ_GVOL;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -902,6 +908,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (blGap && i == blAt)                     vals[i] = 0.5f;             // ambient bloom (inert on plate/spring)
         else if (spkGap && i == spkAt)                   vals[i] = 0.0f;             // speaker drive Off
         else if (shpGap && i == shpAt)                   vals[i] = 0.0f;             // tremolo shape Bias
+        else if (gvGap2 && i == gvAt2)                   vals[i] = 1.0f;             // fuzz guitar vol FULL
         else                                             vals[i] = old[o++];
     }
 }
@@ -910,7 +917,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(29); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(30); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1609,6 +1616,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->fuzzBender->setParameter("bias",      *p->ports[HF_FZ_BIAS]);
     p->fuzzBender->setParameter("inputtrim", *p->ports[HF_FZ_INPUTTRIM]);
     p->fuzzBender->setParameter("getemp",    *p->ports[HF_FZ_GETEMP]);
+    p->fuzzBender->setParameter("gvol",      *p->ports[HF_FZ_GVOL]);
     p->fuzzOctavia->setParameter("drive", *p->ports[HF_FZ_SUSTAIN]);
     p->fuzzOctavia->setParameter("tone",  *p->ports[HF_FZ_TONE]);
     p->fuzzOctavia->setParameter("level", *p->ports[HF_FZ_VOLUME]);
@@ -2152,7 +2160,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(29);                 // version (29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(30);                 // version (30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];

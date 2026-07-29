@@ -34,6 +34,7 @@ enum FuzzPorts {
     P_TRIM    = 8,   // Tone Bender — input trim
     P_TEMP    = 9,   // Tone Bender — germanium temperature
     P_BYPASS  = 10,
+    P_GVOL    = 11,  // Tone Bender — guitar volume-pot / source impedance (#45)
     P_N_PORTS
 };
 
@@ -96,6 +97,7 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
         p->tb->setParameter("bias",      *p->ports[P_BIAS]);
         p->tb->setParameter("inputtrim", *p->ports[P_TRIM]);
         p->tb->setParameter("getemp",    *p->ports[P_TEMP]);
+        p->tb->setParameter("gvol",      *p->ports[P_GVOL]);
         p->tb->process(ins, outs, static_cast<int>(n), 1);
     } else if (pedal == 2) {
         // ── Octavia (octave-up fuzz) ──

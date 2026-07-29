@@ -446,6 +446,14 @@ ctrl.append(mkport("CAB_SPKDRIVE", "cab_spkdrive", "Cab Speaker Drive", "e", 0, 
 ctrl.append(mkport("MD_SHAPE", "md_shape", "Tremolo Shape", "e", 0, 2, 0,
     [("Bias",0),("Opto",1),("Harmonic",2)], "Shape"))
 
+# ── Fuzz Guitar Vol (roadmap #45, 2026-07-29): guitar volume-pot / source-
+# impedance interaction for the Tone Bender's germanium front-end. 1.0 = full
+# volume = Rs 0 = bit-identical to the capture-tuned voicing; rolling down
+# inserts the pot's Thevenin resistance into the Ebers-Moll solve (attenuate +
+# linearize together = the real fuzz cleanup). Ignored by the other pedals.
+# Pre-v30 blobs migrate to 1.0 via explicit gap-fill. Migrated v30.
+ctrl.append(mkport("FZ_GVOL", "fz_gvol", "Guitar Vol", "f", 0.05, 1, 1, None, "Guitar Vol"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -1064,7 +1072,7 @@ BLOCK_GROUPS = {
     "gt":  [("NOISE GATE", None, ["thresh", "attack", "hold", "release", "hyst"])],
     "cp":  [("COMPRESSOR", None, ["type", "ratio", "thresh", "attack", "release", "knee", "makeup"])],
     "fz":  [("PEDAL", None, ["pedal", "mode"]),
-            ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp"])],
+            ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp", "gvol"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),

@@ -251,6 +251,7 @@ struct Knobs {
     float variac = 0.0f, rect = 0.0f;           // Recto: 0 Bold/Silicon, 1 Spongy/Tube
     float bright = 0.0f;                        // MT15: clean/crunch bright switch
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
+    float gvol = 1.0f;   // #45: guitar volume-pot position (1 = full = bit-identical)
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -311,6 +312,7 @@ static void runTBModel(const ModelSpec& /*m*/, const Knobs& k, double sr,
     w.setParameter("bias",      k.bias);    // Q2 bias (dying-battery gate)
     w.setParameter("inputtrim", k.itrim);
     w.setParameter("getemp",    k.gtemp);
+    w.setParameter("gvol",      k.gvol);
     out.assign(in.size(), 0.0f);
     std::vector<float> scratch(BLK);
     for (size_t off = 0; off < in.size(); off += BLK) {
@@ -780,6 +782,7 @@ int main(int argc, char** argv) {
     knob("--variac", k.variac); knob("--rect", k.rect);  // Recto power-section switches
     knob("--bright", k.bright);  // MT15 bright switch
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
+    knob("--gvol", k.gvol);   // #45 guitar volume-pot (Tone Bender)
 
     // Load the reference capture.
     NamModel nam;
