@@ -1390,3 +1390,28 @@ same buried-fundamental family as JCM800 but bounded by the same PA LF
 physics); the lost ~300 ms Red attack swell (PRE-EXISTING -- verified
 identical at baseline; a documented casualty of the bass-cutout range
 compression, not tonight's change).
+
+## Moondust Glam overhauled to the documented Ronson rig (2026-07-29 overnight)
+
+User: "the moondust glam preset needs an overhaul." Research-confirmed Mick
+Ronson's Ziggy-era rig (GuitarPlayer/Gibson/Equipboard agree): stripped '68
+Les Paul Custom -> Sola Sound TONE BENDER + CRY BABY wah (famously parked
+as a fixed filter -- the Moonage Daydream honk) -> 200 W Marshall MAJOR
+"The Pig" (KT88) -> angled Marshall 4x12.
+
+The old preset already had the right BONES -- I Know It (the germanium
+Tone Bender engine: literally Ronson's pedal) into a parked wah (type 1 @
+freq .72) into @greenback -- but the amp was a HIWATT at gain .81: a
+clean hi-fi platform that left the fuzz doing all the work = thin and
+glam-less. The Ronson sound is fuzz+wah INTO A CRANKED MARSHALL.
+
+Changes: amp Hiwatt -> Plexiglass (Marshall 1959, the Major's direct
+lineage cousin; KT88-vs-EL34 is secondary to the cranked-Marshall
+voicing), JUMPERED per the real 1959 (Vol I .62 / Vol II .5), bass .35 /
+mid .60 / treble .70 / presence .60 / master .80 (power-amp crunch);
+Tone Bender hotter (sustain .59 -> .68, Ronson ran it hot) with volume
+tamed .38 -> .32 per the fuzz->cranked-amp staging rule; wah + Greenbacks
++ small plate kept. out_level re-measured ON DEVICE with a freshly
+rebuilt hexforge_meas (the stale-binary gotcha bit again -- an old
+binary gave -16.28, the correct rebuild -13.99): -22.4 -> -18.5 for the
+-12.5 dirty-parity target. kFactoryRev 73 -> 74. Deployed.
