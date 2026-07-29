@@ -94,19 +94,24 @@ void ToneStackComponent::prepare(double sampleRate, Type type) noexcept {
 void ToneStackComponent::setBass(float v) noexcept {
     bass_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
-    if (useExact_) exact_.setBass(bass_);
+    if (useExact_) { if (type_ == Type::Vox) voxExact_.setBass(bass_); else exact_.setBass(bass_); }
 }
 
 void ToneStackComponent::setMid(float v) noexcept {
     mid_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
-    if (useExact_) exact_.setMid(mid_);
+    if (useExact_) {
+        if (type_ == Type::Vox)   // survives as clean post-EQ (see setExact)
+            voxMidF_.setCoeffs(Filters::peaking(1000.0, (static_cast<double>(mid_) - 0.5) * 2.0 * 10.0, 1.0, sampleRate_));
+        else
+            exact_.setMid(mid_);
+    }
 }
 
 void ToneStackComponent::setTreble(float v) noexcept {
     treble_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
-    if (useExact_) exact_.setTreble(treble_);
+    if (useExact_) { if (type_ == Type::Vox) voxExact_.setTreble(treble_); else exact_.setTreble(treble_); }
 }
 
 void ToneStackComponent::setPresence(float v) noexcept {
@@ -116,13 +121,22 @@ void ToneStackComponent::setPresence(float v) noexcept {
 
 void ToneStackComponent::setExact(bool on) noexcept {
     // no-op on types without a schematic-verified circuit source
-    useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall);
+    useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall || type_ == Type::Vox);
     if (useExact_) {
-        exact_.prepare(sampleRate_, type_ == Type::Marshall ? YehSmithToneStack::kMarshallJCM800
-                                                             : YehSmithToneStack::kBassman59);
-        exact_.setBass(bass_);
-        exact_.setMid(mid_);
-        exact_.setTreble(treble_);
+        if (type_ == Type::Vox) {
+            voxExact_.prepare(sampleRate_);
+            voxExact_.setBass(bass_);
+            voxExact_.setTreble(treble_);
+            // real Top Boost has no mid control; the knob survives as a clean
+            // post-EQ (flat at noon) so existing presets keep their settings
+            voxMidF_.setCoeffs(Filters::peaking(1000.0, (static_cast<double>(mid_) - 0.5) * 2.0 * 10.0, 1.0, sampleRate_));
+        } else {
+            exact_.prepare(sampleRate_, type_ == Type::Marshall ? YehSmithToneStack::kMarshallJCM800
+                                                                 : YehSmithToneStack::kBassman59);
+            exact_.setBass(bass_);
+            exact_.setMid(mid_);
+            exact_.setTreble(treble_);
+        }
     }
 }
 
@@ -142,12 +156,14 @@ void ToneStackComponent::reset() noexcept {
     trebleF_.reset();
     presenceF_.reset();
     exact_.reset();
+    voxExact_.reset();
+    voxMidF_.reset();
 }
 
 float ToneStackComponent::process(float x) noexcept {
     float y;
     if (useExact_) {
-        y = exact_.process(x);
+        y = type_ == Type::Vox ? voxMidF_.process(voxExact_.process(x)) : exact_.process(x);
     } else {
         y = bassF_.process(x);
         y = midF_.process(y);

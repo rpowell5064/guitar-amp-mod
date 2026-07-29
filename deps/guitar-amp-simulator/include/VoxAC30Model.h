@@ -52,6 +52,7 @@ private:
         BiquadFilter       airLP;        // extended top
         BiquadFilter       brightShelf;  // strong brilliance/chime shelf
         BiquadFilter       bodyShelf;    // gentle low-shelf (Vox stays brighter/less bassy)
+        BiquadFilter       chimePk;      // top-octave air peak (item #26 exact-TS re-fit, 2026-07-29)
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

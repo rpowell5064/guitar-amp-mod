@@ -21,6 +21,8 @@ add_executable(fidelity_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/fidelity_che
 target_link_libraries(fidelity_check PRIVATE GuitarAmpSim)
 add_executable(pa_flux_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/pa_flux_probe.cpp")
 target_link_libraries(pa_flux_probe PRIVATE GuitarAmpSim)
+add_executable(vox_ts_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/vox_ts_check.cpp")
+target_link_libraries(vox_ts_check PRIVATE GuitarAmpSim)
 add_executable(conv_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/conv_check.cpp")
 target_link_libraries(conv_check PRIVATE GuitarAmpSim)
 add_executable(cab_voice_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_voice_check.cpp")

@@ -1124,3 +1124,77 @@ JCM800 stage-2 duty-collapse cap was exactly this kind of fix) -- not
 force-feeding the PA. The flux shear stays as a correct-physics
 micro-improvement (protects the edge case of very-long VLF pins) at zero
 measured cost. Deployed to the Pi (amp + hexforge).
+
+## Item #26: Vox AC30 exact Top Boost tone stack -- SHIPPED (2026-07-29)
+
+The deferred Vox tone stack, finished via the SPICE-verification path the
+earlier deferral prescribed, plus a structural fix the amp had needed since
+the 2026-07-26 sweep.
+
+**Topology resolved via two independent primary schematics.** The blocker
+had been pot-wiring ambiguity in the vintage OS/013 scan. Fetched the much
+cleaner JMI OS/010 Top Boost module detail (voxac30.org.uk, hand-annotated
+with component designators: C2=50pF -- the earlier "60pF" was a misread --
+VR7=1M log treble, C3=C4=22nF -- the ".018" was also a scan artifact --
+R3=100K, R4=10K, VR8=1M log bass) AND its documented direct ancestor, the
+Gibson GA-77 Vanguard circuit ("simply a lift" per the Vox historians).
+The GA-77's unambiguous vertical layout resolved the wiring question: the
+input feeds the low network DIRECTLY through R3 (100K) into the midpoint
+of the two 22n caps; R4 (10K) goes to ground; output = treble wiper; bass
+pot is a rheostat bridging across the series cap pair. Genuinely different
+topology from TMB -- no mid control, no Bassman-style slope-into-C2.
+
+**Verified before implementation, all offline:** (1) numeric MNA solve of
+the traced topology reproduces ampbooks' independently published SPICE
+signatures -- both-dimed scoop at 459 Hz (ampbooks: 480), trace crossover
+at 747 Hz (ampbooks: 780), within vintage tolerance; the sweep also
+established the bass-rheostat direction (bass up = more resistance). (2)
+closed-form H(s) solved symbolically (sympy MNA), machine-generated CSE
+C code (no hand transcription), cross-checked vs the numeric solve to
+0.00002 dB over a 5x5 knob grid. (3) new `VoxToneStack.h` (3rd-order
+bilinear/DF2T, the verified YehSmith pattern; Rs=614/RL=544K from
+ampbooks baked in) verified by a new `tools/vox_ts_check.cpp` harness:
+discrete response within 0.35 dB of the analog reference at every grid
+point. That harness also later served as the decisive stale-binary
+detector.
+
+**Wiring:** `ToneStackComponent::setExact()` now covers Type::Vox with the
+new engine. The Mid knob SURVIVES as a clean post-EQ peaking (1 kHz,
++/-10 dB, exactly flat at noon) -- the real Top Boost has no mid control,
+but 9 factory presets set mid off-noon (audited the factory tables:
+Innerspeaker Swirl 0.70, Regal Solo 0.62, etc.), so making the knob inert
+would have silently changed them. Hardwired permanently on in
+VoxAC30Model.
+
+**The structural fix: voicing EQ moved POST-limiter.** The initial re-fit
+(Fender item #25 methodology) mysteriously would not express: 12 dB of
+internal level change produced 0.0 dB of measured output change -- the
+model's terminal softLimit was railing as a hard AGC at performance
+master settings, crushing all pre-limiter EQ back toward flat (this is
+the 2026-07-26 finding "Vox resists the pattern / no post-limiter EQ
+slot" made quantitative). Diagnosis chain: sag ruled out (--sag 0
+identical), stale-binary ruled out (vox_ts_check failed by exactly the
+-12 dB, proving the constant was live), master-knob test proved the
+limiter (FR opened up at master 0.15). Fix = the EVH bodyRestore
+precedent: brightShelf/bodyShelf/chimePk moved AFTER softLimit where they
+are linear. Re-fit in two iterations (the shared PA downstream still
+absorbs ~22% of post-model EQ -- measured, matching the documented EVH
+"PA absorbs post-preamp EQ" effect; iteration 2 scaled by the observed
+0.78 expression ratio). Final: brightShelf highshelf(1460,+9.5),
+bodyShelf lowshelf(297,+15.3), chimePk peaking(10270,+14.5,Q1.2).
+
+**Results vs the knob-documented capture** (B5 T5 Cut5 M8, the only
+documented-knob Vox capture on disk): total |FR error| across all 12
+bands 33.3 dB (heuristic baseline) -> 12.5 dB, every band within 2.2 dB
+(was up to -6.5); loudness unchanged (-16.3 vs -16.1 dBFS = no makeup
+change needed); knob-extreme sweep stable (output within 0.4 dB across
+bass/treble extremes -- passive networks self-balance -- and no
+EVH-style sag/attack pathology). THD character (LF slightly hot, 1 kHz
+too clean) is the PRE-EXISTING drive-staging gap documented in the
+2026-07-26 sweep, untouched by and out of scope for the tonestack work
+-- but note the post-limiter EQ slot now EXISTS, which was the missing
+prerequisite for the previously-reverted Vox LF-THD fix (input 2-pole
+@160 Hz + post-limiter restore) if that gets revisited.
+
+Deployed to the Pi (amp + hexforge). Committed locally; push deferred to
+after 17:00 per the weekday rule.

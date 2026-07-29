@@ -18,6 +18,16 @@ void VoxAC30Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         c.stage2.prepare(oversampledFs_, TriodeComponent::kFenderV2);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Vox);
+        // Item #26 (2026-07-29): exact closed-form Top Boost tone stack, made
+        // the permanent default. Schematic-traced (JMI OS/010, cross-checked
+        // against its documented Gibson GA-77 ancestor), MNA-verified against
+        // ampbooks' published SPICE signatures (459 vs 480 Hz scoop, 747 vs
+        // 780 Hz crossover), discrete implementation verified to <0.35 dB.
+        // The Mid knob survives as a clean post-EQ inside ToneStackComponent
+        // (the real circuit has no mid control); brightShelf/bodyShelf/chimePk
+        // below were least-squares re-fit around the exact network (Fender
+        // item #25 methodology) vs the knob-documented B5 T5 capture.
+        c.tonestack.setExact(true);
         c.tonestack.setBass(bass_);
         c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_);
@@ -29,8 +39,14 @@ void VoxAC30Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
 
         c.preHi.setCoeffs(Filters::highshelf(500.0, 15.0, oversampledFs_));       // moderate high pre-emphasis (drive stays musical, not over-saturated)
         c.airLP.setCoeffs(Filters::lowpass1pole(20000.0, oversampledFs_));
-        c.brightShelf.setCoeffs(Filters::highshelf(1800.0, 15.0, oversampledFs_)); // post top-boost chime (below the level that clips the output soft-limiter)
-        c.bodyShelf.setCoeffs(Filters::lowshelf(300.0, 10.0, oversampledFs_));     // broad low-mid body (125-315 Hz the cab passes)
+        // Re-fit 2026-07-29 for the exact Top Boost tone stack (least-squares
+        // vs the measured deltas on the knob-documented B5 T5 capture, target
+        // = old filters' response minus the delta -- the Fender lesson of
+        // preserving what the old filters already did right). Old values:
+        // brightShelf highshelf(1800,+15), bodyShelf lowshelf(300,+10).
+        c.brightShelf.setCoeffs(Filters::highshelf(1460.0, 9.5, oversampledFs_));
+        c.bodyShelf.setCoeffs(Filters::lowshelf(297.0, 15.3, oversampledFs_));
+        c.chimePk.setCoeffs(Filters::peaking(10270.0, 14.5, 1.2, oversampledFs_));   // top-octave air (Q kept at 1.0 per the EVH ringing lesson)
     }
     reset();
 }
@@ -48,6 +64,7 @@ void VoxAC30Model::reset() noexcept {
         c.airLP.reset();
         c.brightShelf.reset();
         c.bodyShelf.reset();
+        c.chimePk.reset();
         c.sagEnv = 0.0f;
     }
 }
@@ -77,10 +94,7 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     // Vox Top Boost tonestack + presence
     x = c.tonestack.process(x);
 
-    // Extended top + strong brilliance + light body
     x = c.airLP.process(x);
-    x = c.brightShelf.process(x);
-    x = c.bodyShelf.process(x);
 
     // Master volume
     x *= m;
@@ -95,7 +109,19 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.25f);
     x *= sag;
 
-    return softLimit(x);
+    x = softLimit(x);
+
+    // Voicing EQ POST-limiter (item #26 restructure, 2026-07-29): at performance
+    // master settings the terminal softLimit rails hard enough to act as an AGC
+    // -- measured: a -12 dB level change ahead of it produced a 0.0 dB change in
+    // output FR/RMS, and pre-limiter EQ shape was crushed back to flat. This is
+    // the OLD documented Vox finding ("no post-limiter EQ slot ... EVH-style
+    // post-limiter restructure needed") finally executed, following the EVH
+    // bodyRestore/presencePk precedent: the limiter stays the terminal
+    // NONLINEARITY, the voicing EQ after it is linear and fully expresses.
+    x = c.brightShelf.process(x);
+    x = c.bodyShelf.process(x);
+    return c.chimePk.process(x);
 }
 
 void VoxAC30Model::setParameter(const std::string& id, float value) noexcept {
@@ -106,6 +132,10 @@ void VoxAC30Model::setParameter(const std::string& id, float value) noexcept {
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.tonestack.setPresence(value); }
+    // Item #26 (2026-07-29): exact closed-form Top Boost tone stack, opt-in
+    // pilot -- default off (0) = bit-identical to the existing heuristic path.
+    // See VoxToneStack.h for the schematic trace + verification record.
+    else if (id == "exactts")  { for (auto& c : ch_) c.tonestack.setExact(value > 0.5f); }
 }
 
 float VoxAC30Model::getParameter(const std::string& id) const noexcept {
@@ -116,6 +146,7 @@ float VoxAC30Model::getParameter(const std::string& id) const noexcept {
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "exactts")  return 0.0f;   // write-only pilot toggle
     return 0.0f;
 }
 

@@ -1,6 +1,7 @@
 #pragma once
 #include "BiquadFilter.h"
 #include "YehSmithToneStack.h"
+#include "VoxToneStack.h"
 #include <cmath>
 #include <algorithm>
 
@@ -94,7 +95,20 @@ private:
     BiquadFilter presenceF_;
 
     // Item #28: exact closed-form path, engaged only when useExact_ is true
-    // AND type_ == Type::Fender (see setExact()).
+    // AND the type has a schematic-verified circuit (see setExact()).
+    // Fender/Marshall use the TMB YehSmithToneStack; Vox uses its own
+    // Top Boost topology (VoxToneStack, 2026-07-29) -- a genuinely different
+    // circuit (treble cap + slope-fed twin-cap bass network, no mid pot),
+    // NOT a TMB with different values. The Vox exact path IGNORES the mid
+    // control (the real Top Boost has no mid knob; the heuristic's 1 kHz mid
+    // peaking was always an invention).
     bool useExact_ = false;
     YehSmithToneStack exact_;
+    VoxToneStack voxExact_;
+    // Vox-exact mid: the real Top Boost has NO mid control, but this block
+    // advertises one and existing presets set it off-noon -- so in Vox-exact
+    // mode the mid knob stays functional as a CLEAN post-EQ peaking (1 kHz,
+    // +/-10 dB, exactly flat at noon; unlike the heuristic path's midF_,
+    // which bakes in a -5 dB passive-notch at noon plus the scoop addend).
+    BiquadFilter voxMidF_;
 };
