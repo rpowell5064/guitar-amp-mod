@@ -73,6 +73,40 @@ public:
     // verification trail stays documented and independently correctable.
     static constexpr CircuitParams kMarshall1959 = kMarshallJCM800;
 
+    // Mesa Dual Rectifier (2026-07-29) -- read directly off the actual
+    // Mesa-Boogie factory schematic ("DUAL RECTIFIER PREAMP RF-1F", drawn
+    // 6-93, via prowessamplifiers.com). Each channel carries its own complete
+    // standard TMB network (verified node-by-node at 6x zoom: series treble
+    // cap -> 250K treble pot with wiper output, 47K slope resistor from the
+    // input into twin .02uF caps, 1M bass rheostat, 25K mid to ground -- the
+    // Marshall/Bassman layout exactly, so these formulas apply as-is). The
+    // channels differ ONLY in the treble cap: ORANGE (vintage/rhythm)
+    // C5=500pF, RED (modern/lead) C4=680pF. LDR opto-switches (LDR8/9 per the
+    // schematic legend) select which network is live.
+    static constexpr CircuitParams kRectoOrange = {
+        500e-12, 0.02e-6, 0.02e-6,
+        250e3, 1e6, 25e3, 47e3
+    };
+    static constexpr CircuitParams kRectoRed = {
+        680e-12, 0.02e-6, 0.02e-6,
+        250e3, 1e6, 25e3, 47e3
+    };
+
+    // Mesa Mark IIC+ (2026-07-29) -- read directly off the circulating
+    // hand-drawn Mark IIC+ factory schematic (schematicheaven.net,
+    // "MESA/BOOGIE Mark IIC+ Guitar Preamplifier"). The Mark-series stack is
+    // the Fender Blackface network (topology identical, sits right after V1A
+    // and BEFORE the lead cascade -- the "tsPre" position MesaMarkV already
+    // models) with Mesa's values: C1=750pF treble cap (3x the Blackface 250p;
+    // lead mode switches a second 750p in via LDR1 -- not modeled here),
+    // C2=.1uF, C3=.047uF, treble 250K, bass 250K, mid 10K, slope 100K.
+    // Cross-checked against the independently-published "250K treble/250K
+    // bass" description of this schematic.
+    static constexpr CircuitParams kMarkIIC = {
+        750e-12, 0.1e-6, 0.047e-6,
+        250e3, 250e3, 10e3, 100e3
+    };
+
     // Orange Rockerverb 50 (2026-07-28) -- read directly off the official Orange
     // factory schematic (drawing "ORA-CD204, Orange Rockerverb Main Preamp PCB,"
     // Orange Musical Electronic Co Ltd, dated 27-2-2004): same classic Fender/

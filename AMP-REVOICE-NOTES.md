@@ -1198,3 +1198,60 @@ prerequisite for the previously-reverted Vox LF-THD fix (input 2-pole
 
 Deployed to the Pi (amp + hexforge). Committed locally; push deferred to
 after 17:00 per the weekday rule.
+
+## Item #30: Mesa Recto + Cali V exact tone stacks (2026-07-29)
+
+**Mesa Dual Rectifier -- exact TMB on all six dirty modes, hardwired.**
+Zoomed the factory schematic (RF-1F, 6x render) and verified node-by-node
+that each channel carries a COMPLETE standard TMB network (series treble
+cap -> 250K treble pot with wiper output, 47K slope from the input into
+twin .02uF caps, 1M bass rheostat, 25K mid to ground -- the Marshall/
+Bassman layout exactly, so the verified Yeh-Smith formulas apply as-is).
+The channels differ only in treble cap: ORANGE (vintage) C5=500pF, RED
+(modern) C4=680pF, selected by LDR opto-switches. New
+`YehSmithToneStack::kRectoOrange`/`kRectoRed`; channel-faithful per-mode
+wiring in MesaDualRectifier (CH2 modes 2-4 = Orange, CH3 modes 5-7 =
+Red); clean modes 0-1 (Fender-type heuristic approximation of the CH1
+stack, which is NOT on this 2-channel schematic) stay heuristic -- no
+guessing. `setExactCircuit` gating extended to Type::Recto, and
+`ToneStackComponent::prepare()` now clears `useExact_` (a mode switch
+from a Recto mode to a clean mode could otherwise leave a stale exact
+path with the wrong circuit loaded). A/B vs the Solo Head captures
+(CH3 Modern = the model's own tuning reference): NOON RESPONSE ESSENTIALLY
+IDENTICAL to the heuristic (within 0.3 dB per band -- the heuristic was
+already capture-tuned at noon), loudness identical (-18.0 dBFS both), CH2
+Vintage slightly better (total |err| 11.9 -> 10.5). The exact stack's real
+win is correct-by-construction knob interaction OFF-noon, where no
+captures exist to tune a heuristic against. Hardwired live default ON;
+`exactts` A/B toggle (nam_compare convention: flag absent = heuristic
+baseline).
+
+**Mesa Mark IIC+ stack for the Cali V Ch3 lead modes -- a genuine clean
+win, hardwired.** Found and read the circulating hand-drawn Mark IIC+
+factory schematic (schematicheaven.net): the Mark-series stack is the
+Fender Blackface network sitting right after V1A and BEFORE the lead
+cascade (the `tsPre` position MesaMarkV already models!) with Mesa's
+values: C1=750pF treble cap (3x Blackface; lead mode parallels a second
+750p via LDR1, not modeled), C2=.1uF, C3=.047uF, treble 250K, bass 250K,
+mid 10K, slope 100K. New `kMarkIIC` preset, wired to modes 6/7/8 (IIC+/
+Mark IV/Extreme -- the modes explicitly modeling this circuit); Ch1/Ch2
+modes stay heuristic (no schematic for the Mark V's own clean/crunch
+stacks). Measured vs the knob-documented IIC+ HG-bal capture (the amp's
+own tuning reference): **total |FR err| 30.4 -> 18.8 dB** -- the
+125/200 Hz low-mid over-brightness fixed (+4.8 -> +2.0, +3.2 -> -0.7)
+and the famous IIC+ presence region much closer (2k -4.6 -> -2.8, 3.1k
+-5.9 -> -3.9, 5k -3.1 -> -1.2, 8k -6.0 -> -4.0); only 315 Hz slightly
+worse (-0.1 -> -2.0). Loudness identical (-18.0 dBFS both) = no preset
+re-level needed. Hardwired live default ON with the same `exactts` A/B
+toggle.
+
+**PRS MT15 -- excluded, documented.** PRS does not publish schematics for
+its modern amps (2018 design); its Marshall/Fender-type modes stay on the
+heuristic path per the no-guess rule. If a service schematic ever
+surfaces, the wiring pattern above applies directly.
+
+Deployed to the Pi (amp + hexforge). This closes the tone-stack project:
+every amp in the suite now runs a schematic-verified exact tone stack
+except Hiwatt (active EQ -- technique doesn't apply), Sunn (own bespoke
+stack), Backline (solid-state), NAM (runtime capture), and MT15/Mark-V
+non-lead modes (no published schematics).

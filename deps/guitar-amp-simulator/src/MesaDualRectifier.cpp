@@ -108,6 +108,16 @@ void MesaDualRectifier::rebuild() noexcept {
         for (int i = 0; i < m.nStages; ++i) c.stage[i].prepare(oversampledFs_, cfgOf(m.stage[i]));
         c.stagePI.prepare(oversampledFs_, TC::kMarshallV4);
         c.tonestack.prepare(oversampledFs_, m.tsType);
+        // Item #30 (2026-07-29): exact TMB tone stack on the Recto-type (dirty)
+        // modes, values read off the Mesa factory schematic (RF-1F) -- each
+        // channel is a standard TMB differing only in treble cap. Channel-
+        // faithful mapping: CH2 modes (2-4) = ORANGE network (500 pF), CH3
+        // modes (5-7) = RED network (680 pF). Clean modes (0-1, Fender-type
+        // heuristic approximation) stay on the heuristic path -- their real
+        // CH1 stack values are not on this 2-channel schematic; no guessing.
+        if (m.tsType == TSt::Recto && exactTS_)
+            c.tonestack.setExactCircuit(true, mode_ >= 5 ? YehSmithToneStack::kRectoRed
+                                                          : YehSmithToneStack::kRectoOrange);
         c.tonestack.setBass(bass_); c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_); c.tonestack.setPresence(presence_);
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * sagTau));
@@ -283,6 +293,15 @@ void MesaDualRectifier::setParameter(const std::string& id, float value) noexcep
     if (id == "rect") {
         const int r = value >= 0.5f ? 1 : 0;
         if (r != rect_) { rect_ = r; rebuild(); }
+        return;
+    }
+    // Item #30 (2026-07-29): exact TMB tone stack A/B toggle. Default TRUE
+    // (hardwired live); nam_compare's unconditional setParameter("exactts",
+    // g_exactTS) turns it OFF when the flag is absent = the heuristic baseline
+    // for comparison (same convention as JCM800's write-only pilot toggle).
+    if (id == "exactts") {
+        const bool e = value > 0.5f;
+        if (e != exactTS_) { exactTS_ = e; rebuild(); }
         return;
     }
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }

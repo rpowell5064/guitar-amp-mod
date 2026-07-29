@@ -70,6 +70,7 @@ private:
 
     double oversampledFs_ = 0.0;
     int    mode_     = 6;   // default Mark IIC+
+    bool   exactTS_  = true; // item #30: exact IIC+ stack on Ch3 modes (A/B toggle, live default ON)
     float  gain_     = 0.6f, bass_ = 0.5f, mid_ = 0.5f, treble_ = 0.6f;
     float  presence_ = 0.5f, master_ = 0.65f, sag_ = 0.25f;
     float  satDrive_ = 1.0f, satNorm_ = 1.0f;   // preamp waveshaper (per-mode, resolved in rebuild)

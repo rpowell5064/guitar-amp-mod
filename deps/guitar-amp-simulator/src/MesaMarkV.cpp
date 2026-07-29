@@ -82,6 +82,14 @@ void MesaMarkV::rebuild() noexcept {
         for (int i = 0; i < m.nStages; ++i) c.stage[i].prepare(oversampledFs_, cfgOf(m.stage[i]));
         c.stagePI.prepare(oversampledFs_, TC::kMarshallV4);
         c.tonestack.prepare(oversampledFs_, m.tsType);
+        // Item #30 (2026-07-29): exact Mark IIC+ tone stack on the Ch3 lead
+        // modes (6 IIC+ / 7 Mark IV / 8 Extreme -- the modes explicitly
+        // modeling the IIC+ circuit this schematic IS). Values read off the
+        // circulating IIC+ factory schematic; see YehSmithToneStack::kMarkIIC.
+        // Ch1/Ch2 modes stay heuristic (no schematic source for the Mark V's
+        // own clean/crunch stacks; no guessing).
+        if (exactTS_ && mode_ >= 6)
+            c.tonestack.setExactCircuit(true, YehSmithToneStack::kMarkIIC);
         c.tonestack.setBass(bass_); c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_); c.tonestack.setPresence(presence_);
     }
@@ -230,6 +238,13 @@ void MesaMarkV::setParameter(const std::string& id, float value) noexcept {
         int mi = static_cast<int>(value + 0.5f);
         mi = mi < 0 ? 0 : (mi >= kNumModes ? kNumModes - 1 : mi);
         if (mi != mode_) { mode_ = mi; rebuild(); }
+        return;
+    }
+    // Item #30: exact IIC+ tone stack A/B toggle (live default ON; nam_compare
+    // turns it off when --exactts is absent = heuristic baseline).
+    if (id == "exactts") {
+        const bool e = value > 0.5f;
+        if (e != exactTS_) { exactTS_ = e; rebuild(); }
         return;
     }
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }

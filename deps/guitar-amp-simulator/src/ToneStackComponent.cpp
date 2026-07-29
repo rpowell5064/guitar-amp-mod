@@ -88,6 +88,11 @@ const ToneStackComponent::TypeSpec& ToneStackComponent::specFor(Type t) noexcept
 void ToneStackComponent::prepare(double sampleRate, Type type) noexcept {
     sampleRate_ = sampleRate;
     type_       = type;
+    // A re-prepare is a topology reset: drop any exact-circuit engagement so a
+    // mode switch (e.g. MesaDualRectifier Recto-mode -> Fender-type clean)
+    // can't leave a stale exact path with the wrong circuit loaded. Callers
+    // that want exact re-enable it right after prepare (they all do).
+    useExact_ = false;
     recalc();
 }
 
@@ -141,7 +146,10 @@ void ToneStackComponent::setExact(bool on) noexcept {
 }
 
 void ToneStackComponent::setExactCircuit(bool on, const YehSmithToneStack::CircuitParams& params) noexcept {
-    useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall);
+    // TMB-topology types only (explicit params = the caller vouches for the
+    // circuit source). Recto joined 2026-07-29: its factory schematic shows a
+    // standard TMB per channel (see YehSmithToneStack::kRectoOrange/kRectoRed).
+    useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall || type_ == Type::Recto);
     if (useExact_) {
         exact_.prepare(sampleRate_, params);
         exact_.setBass(bass_);

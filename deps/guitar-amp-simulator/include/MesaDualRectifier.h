@@ -88,6 +88,7 @@ private:
 
     double oversampledFs_ = 0.0;
     int    mode_   = 7;   // default CH3 Modern
+    bool   exactTS_ = true;   // item #30: exact TMB stack on Recto-type modes (A/B toggle, live default ON)
     int    variac_ = 0;   // 0 Bold, 1 Spongy
     int    rect_   = 0;   // 0 Silicon, 1 Tube
     float  gain_     = 0.6f, bass_ = 0.5f, mid_ = 0.5f, treble_ = 0.6f;
