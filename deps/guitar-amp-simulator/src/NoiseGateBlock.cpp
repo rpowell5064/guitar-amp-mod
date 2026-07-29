@@ -57,11 +57,12 @@ float NoiseGateBlock::getParameter(const std::string& id) const {
     return 0.0f;
 }
 
-// Processes one sample for one channel; returns gated output.
-float NoiseGateBlock::processSample(float x, ChannelState& s) noexcept {
+// Processes one sample for one channel; returns gated output. keySample drives
+// the detector (== x for the self-keyed path; the raw input for processKeyed).
+float NoiseGateBlock::processSample(float x, float keySample, ChannelState& s) noexcept {
     // 1. Peak envelope follower — on the hum-rejected DETECTOR copy, not the audio.
     //    The returned signal (step 4) is still the original x times the gate gain.
-    float det = x;
+    float det = keySample;
     if (humReject)
         for (int k = 0; k < kHumNotches; ++k) det = s.scNotch[k].process(det);
     const float peak = std::abs(det);
@@ -125,9 +126,21 @@ void NoiseGateBlock::process(float** in, float** out, int numSamples, int nCh) {
     const int chCount = std::min(nCh, kMaxChannels);
     for (int c = 0; c < chCount; ++c)
         for (int i = 0; i < numSamples; ++i)
-            out[c][i] = processSample(in[c][i], ch[c]);
+            out[c][i] = processSample(in[c][i], in[c][i], ch[c]);
 
     // Pass through any extra channels unchanged.
+    for (int c = chCount; c < nCh; ++c)
+        if (in[c] != out[c])
+            for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];
+}
+
+void NoiseGateBlock::processKeyed(float** in, const float* key, float** out,
+                                  int numSamples, int nCh) {
+    if (bypassed) { copyBlock(in, out, numSamples, nCh); return; }
+    const int chCount = std::min(nCh, kMaxChannels);
+    for (int c = 0; c < chCount; ++c)
+        for (int i = 0; i < numSamples; ++i)
+            out[c][i] = processSample(in[c][i], key[i], ch[c]);
     for (int c = chCount; c < nCh; ++c)
         if (in[c] != out[c])
             for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];

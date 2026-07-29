@@ -1638,3 +1638,47 @@ LESSON (goes with the "EQ expresses 2-3x" one): a big pre-PA HF peak
 isn't just tone -- it FEEDS THE SAG DETECTOR. Any fit made with one in
 place is calibrated around its compression; remove/resize it and the
 whole amp must be re-measured.
+
+### Chime Thirty whine round 2 (2026-07-29 evening) -- keyed gate SHIPPED, awaiting ears
+
+User: whine persisted after the chimePk cut. Findings from live-device
+recording + offline analysis (long session, two harness traps burned --
+documented for the next archaeologist):
+
+WHAT THE WHINE IS: the rig's 60 Hz hum floor's odd upper partials
+(540-1380 Hz + 3.2-3.5 kHz lines, 120 Hz comb spacing), distortion-
+regenerated and EQ-emphasized by the amp chain. It rides in whenever the
+NOISE GATE passes the floor.
+
+ROOT CAUSE (structural): in Hex Forge the gate sits AFTER the Input
+Trim's pickup voicing + boost (up to ~+20 dB of pre-gate gain), but the
+gate thresholds were floor-complianced against the RAW rig floor. The
+boosted floor grazes the open threshold and the 8 dB hysteresis LATCHES
+the gate open at idle (close = thresh-4 sits BELOW the boosted floor,
+so it never re-closes).
+
+FIX SHIPPED: NoiseGateBlock::processKeyed -- the DETECTOR now keys on
+the RAW pre-InputTrim input (like a real gate pedal's key input) while
+the gain still gates the in-chain audio. Thresholds now mean what the
+compliance pass measured, independent of in-chain gain staging. Direct
+NoiseGateBlock tests on the real recorded floor: closes at every
+threshold raw, closes at -52 with +6 boost; latches open at -60+boost
+(exactly the Come As Water/Apache Echo settings -- explains preset-to-
+preset variability).
+
+HARNESS TRAPS (do not re-burn): (1) the LV2 test stub's ps_goto recall
+gets OVERWRITTEN by the plugin's deferred initial Bank1/A recall --
+half the session's "Regal Sustain" measurements were actually the stock
+CLEAN preset (which also matched the live recording: the device lands
+on Clean after every mod-host restart, so the "live whine" capture was
+probably Clean too, NOT the preset the user complained about).
+(2) The stub emits a spurious loud 5749 Hz tone under certain run
+patterns (amp-bypass toggles / long warmups) that does NOT exist under
+real mod-host -- it burned hours as a phantom suspect. Next session:
+test at the mod-host level (param_set via socket), not the LV2 stub.
+
+STILL OPEN if ears say the whine persists: per-preset gate thresholds
+for the -60-threshold clean presets (Come As Water -60, Apache -60,
+Homesick Saucer -58, Sweet Dispersion -56 all latch-prone even
+raw-keyed if the floor is at the documented -45 peak), and/or an idle
+darkener for the bright clean amps.

@@ -43,6 +43,8 @@ static void fft(std::vector<std::complex<double>>& a) {
     }
 }
 
+static std::vector<float> g_fileIn;   // optional real device-input recording (raw f32 48k)
+
 struct Cfg { const char* name; float paDrive, paMakeup, sag; bool flux; float nfb = -1.0f; };
 
 static void runCase(const Cfg& cfg, bool noiseIn, bool burst = false) {
@@ -87,10 +89,14 @@ static void runCase(const Cfg& cfg, bool noiseIn, bool burst = false) {
     for (int off = 0; off < total; off += BLK) {
         const int len = std::min(BLK, total - off);
         for (int i = 0; i < len; ++i) {
-            blk[i] = nAmp * dist(rng) * 0.3f;
-            // burst mode: 0.5 s of a loud 220 Hz note at the start, then floor
-            if (burst && off + i < int(kFs * 0.5))
-                blk[i] += 0.25f * std::sin(2.0 * M_PI * 220.0 * (off + i) / kFs);
+            if (!g_fileIn.empty()) {
+                blk[i] = g_fileIn[(off + i) % g_fileIn.size()];
+            } else {
+                blk[i] = nAmp * dist(rng) * 0.3f;
+                // burst mode: 0.5 s of a loud 220 Hz note at the start, then floor
+                if (burst && off + i < int(kFs * 0.5))
+                    blk[i] += 0.25f * std::sin(2.0 * M_PI * 220.0 * (off + i) / kFs);
+            }
         }
         float* p = blk.data();
         amp.process(&p, &p, len, 1);
@@ -128,13 +134,27 @@ static void runCase(const Cfg& cfg, bool noiseIn, bool burst = false) {
     std::printf("\n");
 }
 
-int main() {
+int main(int argc, char** argv) {
+    if (argc > 1) {   // raw f32 48k mono file = real device input recording
+        FILE* f = std::fopen(argv[1], "rb");
+        if (!f) { std::fprintf(stderr, "no %s\n", argv[1]); return 1; }
+        std::fseek(f, 0, SEEK_END); long sz = std::ftell(f); std::fseek(f, 0, SEEK_SET);
+        g_fileIn.resize(size_t(sz) / 4);
+        size_t rd = std::fread(g_fileIn.data(), 4, g_fileIn.size(), f); (void)rd;
+        std::fclose(f);
+        std::printf("real device input: %zu samples\n", g_fileIn.size());
+    }
     const Cfg cfgs[] = {
-        { "NEW row9 (0.3/1.11/flux0)", 0.3f,  1.11f, 0.50f, false },
-        { "OLD row0 (1.0/1.0/flux1)",  1.0f,  1.0f,  0.74f, true  },
-        { "new + nfb 0.15",            0.3f,  1.11f, 0.50f, false, 0.15f },
-        { "new + nfb 0.15 drv 1.0",    1.0f,  1.11f, 0.50f, false, 0.15f },
+        { "SHIPPED row9 0.45/1.07/f0", 0.45f, 1.07f, 0.50f, false },
+        { "OLD row0 1.0/1.0/flux1",    1.0f,  1.0f,  0.74f, true  },
+        { "row9 but flux ON",          0.45f, 1.07f, 0.50f, true  },
+        { "morning row9 0.3/1.11/f0",  0.3f,  1.11f, 0.50f, false },
     };
+    if (!g_fileIn.empty()) {
+        std::printf("-- real device input through model+PA --\n");
+        for (const auto& c : cfgs) runCase(c, false, false);
+        return 0;
+    }
     std::printf("-- burst-then-silence (tail measured after a loud 220 Hz note) --\n");
     for (const auto& c : cfgs) runCase(c, false, true);
     std::printf("-- -50 dB floor --\n");

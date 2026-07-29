@@ -16,6 +16,16 @@ class NoiseGateBlock : public AudioBlock {
 public:
     void prepare(double sampleRate, int maxBlockSize, int numChannels) override;
     void process(float** in, float** out, int numSamples, int numChannels) override;
+    // Keyed variant (2026-07-29, Chime Thirty idle-whine fix): the DETECTOR runs
+    // on `key` (mono, e.g. the raw pre-InputTrim input) while the gain gates the
+    // audio in `in`. Rationale: the gate thresholds were floor-complianced
+    // against the RAW rig floor, but in Hex Forge the gate sits after the Input
+    // Trim's pickup voicing + boost (up to ~+20 dB) -- the boosted floor grazed
+    // the open threshold and the hysteresis latched the gate open at idle
+    // (close = thresh - hyst/2 sat BELOW the boosted floor, so it never
+    // re-closed). Keying on the raw input makes thresholds mean what the
+    // compliance pass measured, independent of in-chain gain staging.
+    void processKeyed(float** in, const float* key, float** out, int numSamples, int numChannels);
     void setParameter(const std::string& id, float value) override;
     float getParameter(const std::string& id) const override;
 
@@ -49,5 +59,5 @@ private:
     } ch[kMaxChannels];
 
     void recalcCoeffs();
-    float processSample(float x, ChannelState& s) noexcept;
+    float processSample(float x, float keySample, ChannelState& s) noexcept;
 };

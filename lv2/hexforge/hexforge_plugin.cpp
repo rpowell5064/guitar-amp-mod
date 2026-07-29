@@ -1939,7 +1939,19 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             const int id = order[oi];
             if (!enabled[id]) continue;
             switch (id) {
-                case B_GATE:  runMono(p->gate, L, R, len, p->mono, stereo); break;
+                case B_GATE: {
+                    // Keyed gate (2026-07-29 idle-whine fix): detector on the RAW
+                    // pre-InputTrim input -- the IT pickup voicing + boost lift the
+                    // in-chain floor up to ~+20 dB, which grazed the open threshold
+                    // and hysteresis-latched the gate open on the rig's hum floor
+                    // (the thresholds were floor-complianced against RAW levels).
+                    if (!stereo) for (int i=0;i<len;++i) p->mono[i] = L[i];
+                    else         for (int i=0;i<len;++i) p->mono[i] = 0.5f*(L[i]+R[i]);
+                    float* io[1] = { p->mono };
+                    p->gate.processKeyed(io, inL + off, io, len, 1);
+                    for (int i=0;i<len;++i) { L[i] = p->mono[i]; R[i] = p->mono[i]; }
+                    break;
+                }
                 case B_COMP:  runMono(p->comp, L, R, len, p->mono, stereo); break;
                 case B_FUZZ:  runMono(fuzzPedal==0 ? *p->fuzzMuff : (fuzzPedal==1 ? *p->fuzzBender : (fuzzPedal==2 ? *p->fuzzOctavia : *p->fuzzFactory)), L, R, len, p->mono, stereo); break;
                 case B_DRIVE:
