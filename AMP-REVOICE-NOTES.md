@@ -1271,6 +1271,17 @@ studio voice's design; ribbon stays time-aligned (decision documented in
 rebuildEQ, ring infrastructure retained for future use). cab_voice_check
 passes 0 failures with the final config.
 
+FOLLOW-UP AUDIT (same night): the shipped micDist delay DOES comb against
+the undelayed ribbon when a user dials micDist>0 while in Studio voice --
+the same physics that killed the fixed ribbon delay. Verified this shifts
+NO factory preset (parsed the factory tables: ZERO presets use Studio
+voice at all, so no baked micdist value meets the blend). Kept BY DESIGN
+with that distinction made explicit: a fixed delay re-carves the curated
+default voicing for everyone; the micDist comb is off-at-zero,
+progressive, user-dialed, and reversible -- it is the real sound of
+pulling one mic of a pair back, i.e. the multi-mic realism the roadmap
+item actually wanted. cab_voice_check guards the micDist=0 baseline.
+
 **#34 (tremolo shape) -- the missing Hex Forge port added, blob v29.** The
 DSP (bias lagged-sine / opto hard-chop LDR / harmonic brownface LP-HP
 phase-split) and the standalone modfx port both landed 7/26; Hex Forge
