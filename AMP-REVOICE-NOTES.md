@@ -1079,3 +1079,48 @@ THD@1k 51-60 (capture 55-61); loudness x0.98 (no makeup change needed);
 feel section the best it has measured (compression delta +0.1 dB, attack
 exact, bloom -0.27); FR essentially unchanged from the baseline the user
 had previously play-approved. Deployed to the Pi (both amp + hexforge).
+
+## PA project, phase 1: OT-flux shear + the collapse mechanism root-caused (2026-07-28/29)
+
+**Shipped: `fluxShear_` (default 0.12) in PowerAmpProcessor's flux-domain OT
+saturator** -- a linear term blended into the tanh (`sat = shear*flux +
+(1-shear)*tanh(...)`) modeling the B-H curve's residual deep-saturation
+slope (air-core inductance + winding resistance). Real iron never goes
+truly flat; without the term, a pinned tanh makes consecutive saturated
+samples cancel in the integrate->saturate->differentiate construction's
+differentiate step (d(flux)/dt = 0 = silence). Small-signal response is
+mathematically unchanged (slope exactly 1). Verified transparent at normal
+levels via nam_compare A/B on the knob-documented JCM800 capture (loudness
+identical, THD within 0.3pt, all harmonics within 0.4pt) and on Fender at
+line-hot input (identical). Tunable via setParameter("fluxshear") + a new
+`--pafluxshear` nam_compare flag.
+
+**New tool: `tools/pa_flux_probe.cpp`** (build-tools target) -- feeds the
+isolated PowerAmpProcessor (a) a single LF sine at an amplitude sweep and
+(b) a two-tone test (big 50 Hz "pinner" + 500 Hz "music" at -12 dBFS,
+Goertzel-measured survival), per shear value.
+
+**The honest, surprising finding: the -67 dBFS in-chain collapse is NOT
+the flux stage.** The isolated PA never collapses on sines (20/30/50 Hz up
+to +18 dBFS in -- every column rises monotonically to a plateau, even at
+shear 0): zero-crossings unpin the flux integrator too often. The two-tone
+test then showed the REAL crush mechanism: the 500 Hz tone loses 32 dB as
+the 50 Hz pinner rises -- IDENTICALLY at every shear value -- meaning the
+cross-modulation lives in the TUBE WAVESHAPER, not the flux stage: any
+memoryless saturator pinned by a huge LF component has ~zero local slope
+for whatever rides on it. That is qualitatively REAL push-pull behavior
+(a real power stage overdriven by massive LF also chokes the music);
+the earlier "+12 dB post-clip LF shelf -> -67 dBFS" was GIGO at a level
+no real amp's power stage would be fed either.
+
+**Reframing for the roadmap:** the "PA LF wall" constraining the JCM800/
+EVH low-end restores is partly PHYSICAL, not purely a model defect. The
+real amps' healthy low end exists because their preamps pass more LF
+fundamental to begin with (and their cascades tolerate it); our models
+carve LF out pre-clip to protect over-hot cascades, then can't reinstate
+it post-clip. The productive lever for the dark-lows gap is therefore
+UPSTREAM -- making each cascade tolerate LF like a real 12AX7 chain (the
+JCM800 stage-2 duty-collapse cap was exactly this kind of fix) -- not
+force-feeding the PA. The flux shear stays as a correct-physics
+micro-improvement (protects the edge case of very-long VLF pins) at zero
+measured cost. Deployed to the Pi (amp + hexforge).

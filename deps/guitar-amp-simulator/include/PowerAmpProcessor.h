@@ -125,6 +125,16 @@ private:
     float    rippleSagCoupling_ = 0.0f;   // item #27: extra ripple depth per unit sagEnv, 0 = off
     float    fluxPole_  = 0.0f;    // leaky-integrator pole (OT LF corner ~25 Hz)
     float    fluxDrive_ = 0.015f;  // flux-saturation onset (Phase-2 tunable)
+    // Flux shear (2026-07-28, PA project): linear term blended into the flux
+    // saturator, modeling the B-H curve's residual deep-saturation slope
+    // (air-core inductance) + winding resistance -- real iron NEVER goes
+    // truly flat. Without it, deep LF overdrive pins the tanh, consecutive
+    // saturated samples cancel in the differentiate step, and the stage
+    // COLLAPSES toward silence (measured -67 dBFS from a +12 dB LF shelf --
+    // the EVH bass-cutout mechanism). With shear a, deep saturation degrades
+    // gracefully to ~a*x instead. Small-signal response is unchanged (slope
+    // still exactly 1).
+    float    fluxShear_ = 0.12f;
     // LTP tail coupling (item #29): coupling depth (0 = off) + fast per-channel
     // envelope of the pre-waveshaper drive (proxy for "how hard both grids are
     // swinging together" absent a literal two-path PI split). Time constants

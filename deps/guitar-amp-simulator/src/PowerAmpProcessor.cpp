@@ -357,6 +357,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "padrive")  { paDrive_  = std::clamp(v, 0.25f, 8.0f); }  // PA distortion drive
     else if (id == "pamakeup") { paMakeup_ = std::clamp(v, 0.1f,  4.0f); }  // PA level restore
     else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
+    else if (id == "fluxshear"){ fluxShear_ = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v); }
     else if (id == "ripplesag"){ rippleSagCoupling_ = std::max(0.0f, v); }  // item #27, 0 = off
     else if (id == "ltptail")  { ltpTail_ = std::max(0.0f, v); }            // item #29, 0 = off
 
@@ -380,6 +381,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "padrive")  return paDrive_;
     if (id == "pamakeup") return paMakeup_;
     if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
+    if (id == "fluxshear") return fluxShear_;
     if (id == "ripplesag")return rippleSagCoupling_;
     if (id == "ltptail")  return ltpTail_;
     return 0.0f;
@@ -572,7 +574,12 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
                 } else {
                     const float a    = fluxPole_;
                     const float flux = a * fluxState[ch] + s;
-                    const float sat  = std::tanh(flux * fluxDrive_) / fluxDrive_;
+                    // Shear blend (see fluxShear_ in the header): the linear
+                    // term keeps d(sat)/d(flux) >= fluxShear_ so the
+                    // differentiate step below can never cancel to silence in
+                    // deep saturation; small-signal slope stays exactly 1.
+                    const float nl   = std::tanh(flux * fluxDrive_) / fluxDrive_;
+                    const float sat  = fluxShear_ * flux + (1.0f - fluxShear_) * nl;
                     s                = sat - a * fluxSatPrev[ch];
                     fluxState[ch]    = flux;
                     fluxSatPrev[ch]  = sat;
