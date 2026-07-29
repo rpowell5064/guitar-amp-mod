@@ -103,11 +103,14 @@ private:
         // Clean channel filters (preserved)
         BiquadFilter cleanInterLP;  // 1-pole LPF @ 5000 Hz
         BiquadFilter cleanHFRolloff;// 1-pole LPF @ 10000 Hz
-        // Clean-channel treble recovery (high-shelf): the shared power amp's dark
-        // presence-EQ/NFB defaults left the clean channel ~8-12 dB too dark at 3-8 kHz
-        // vs the DI capture. Safe to EQ here (low gain, no fizz). Clean-only.
-        BiquadFilter cleanLift;
-        BiquadFilter cleanScoop;    // ~1.4 kHz dip — the Orange clean's mid scoop (DI)
+        // Clean-channel voicing correction (re-fit 2026-07-28 for the exact tone
+        // stack -- see item #28/#25 in AMP-REVOICE-NOTES.md; numerically fit via
+        // least-squares against the measured nam_compare deltas, same method as
+        // FenderDeluxeModel's voiceShelf/voiceCut/voiceMidBoost/voiceBassShelf).
+        BiquadFilter cleanLift;        // presence-region dip (peaking)
+        BiquadFilter cleanScoop;       // low-mid dip (peaking)
+        BiquadFilter cleanBassShelf;   // bass cut (low-shelf)
+        BiquadFilter cleanBassDip;     // sub-bass dip (peaking)
 
         DnrRolloff dnr;             // decay darkener (engaged on the dirty channel when driven)
 

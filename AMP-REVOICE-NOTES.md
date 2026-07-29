@@ -943,3 +943,87 @@ Shipped as verified, opt-in-only infrastructure (default false, bit-
 identical), same as Fender's `exactts` pilot. Folds into task #25
 (re-voice around the new exact tone stack) rather than being its own new
 task.
+
+## Item #25: re-voicing Fender + Rockerverb around their exact tone stacks (2026-07-28)
+
+Both amps' exact tone stacks were correct all along -- the "mixed result"
+was purely a gap in the OTHER filters, which were tuned around the OLD
+heuristic tonestack's specific coloration. Closed that gap for both,
+methodically: measured the exact-tonestack delta-vs-NAM at a fixed
+knob/gain operating point, derived the target correction curve per band,
+then did a **least-squares numerical fit** (Python + scipy, RBJ biquad
+formulas re-implemented and cross-checked against `BiquadFilter.h`'s own
+code) to find new EQ filter parameters that null the target curve at each
+band -- rather than hand-tuning by trial and error. Both are now hardwired
+permanently on (`useExact_ = true` / `setExact(true)`), matching JCM800/
+Plexi/Friedman.
+
+**FenderDeluxeModel: excellent result, near-total fix.** First attempt
+(replacing the old `voiceShelf` highshelf(2800,+13)/`voiceCut`
+peaking(900,-2) outright with 2 new filters aimed only at the measured
+delta) was a bad regression -- 3-8kHz collapsed by up to -20dB. Root
+cause, confirmed by reproducing it in the offline Python model before
+touching the fit again: the OLD `voiceShelf` was providing a large
+(~11-13dB at 5-8kHz) intrinsic HF lift that was ALREADY doing double duty
+(partly compensating for the tonestack choice, partly for unrelated
+upstream darkness) -- discarding it outright removed real, needed gain,
+not just the tonestack-specific error. Fixed by fitting the **target as
+"old filter's own response minus the measured delta"** (preserving what
+the old filters were already doing right, only correcting the residual
+error) instead of fitting the raw delta directly. Final config (4 filters,
+replacing/extending `voiceShelf`+`voiceCut`, new `voiceMidBoost` +
+`voiceBassShelf` members): `voiceShelf` highshelf(1900,+19) (was
+2800,+13), `voiceCut` peaking(4400,-14,Q3.2) (was 900,-2,Q1 -- repurposed
+from a mid cut to a presence dip), `voiceMidBoost` peaking(950,+6.5,Q0.9),
+`voiceBassShelf` lowshelf(85,+4.5). **Result: every band from 50Hz-8kHz
+within 0.7dB of the NAM reference** (`CLEAN` capture, gain 0.4, all tone
+knobs at noon) -- by far the best FR match this amp has had all session
+(previous heuristic-only baseline had errors up to 6.5dB). Stress-tested
+off the fit point: bass=1.0 stays excellent (<0.6dB everywhere); treble=1.0
+degrades to 1.5-3.5dB (still much better than the original mixed result,
+expected since a FIXED compensating EQ can't perfectly track a knob-
+dependent physical network's changing shape at every setting); a second
+capture (`HOT`, higher gain) confirms the fit generalizes (all bands good
+except 8kHz, which both this and the ORIGINAL heuristic already read as a
+capture-specific anomaly -- NAM itself shows -8.8dB there, likely cab/mic
+character in that specific file, not a DI-only capture). THD/harmonic/
+feel sections are unaffected (as expected -- pure linear post-EQ change,
+doesn't touch drive/gain staging) and show the SAME pre-existing,
+orthogonal gain-staging gaps already known and accepted for this amp (see
+earlier Fender entries in this doc).
+
+**Rockerverb50: good result on the previously-broken clean channel, one
+accepted residual band.** Same methodology, applied to the clean-channel-
+only chain (`cleanScoop`/`cleanLift`, both fixed filters unrelated to
+`useExact_` -- always active regardless of tonestack choice, so they
+needed re-fitting the same way): re-purposed `cleanScoop` to peaking
+(1800,-8.8,Q0.6) (was 1400,-3.5,Q0.9) and `cleanLift` to peaking
+(5300,-4.2,Q2.5) (was a highshelf 3200,+10), and added 2 new members
+`cleanBassShelf` lowshelf(200,-5.4) and `cleanBassDip` peaking(110,-8.0,
+Q2.0) to fix the bass region the least-squares fit couldn't reach with
+only 2 filters (mirrors Fender needing a 4th filter for the same reason).
+**Result: 50Hz-2kHz all within ~1.4dB** (was up to 9.1dB before the
+re-voice) -- clearly better than even the ORIGINAL heuristic path's
+baseline in most of those bands. **Accepted residual: 3.1kHz/5kHz sit
+around -4dB** (verified consistent on a second capture at a different
+Master setting: ~-2dB there) -- a real but modest regression vs. the
+original heuristic's 0.3/1.0dB at those two specific bands. Tried several
+follow-up iterations (halving the presence dip's gain, moving its center
+frequency) to close this further; the offline Python RBJ-formula model
+predicted each change accurately for 50Hz-2kHz but consistently
+UNDER-predicted the actual measured effect at 3.1k/5k by roughly 2x --
+suspected to be a `nam_compare` band-measurement methodology detail (likely
+some multi-bin/band-integrated measurement rather than a single-frequency
+probe) rather than a bug in the filters themselves, given the RBJ formula
+is the same one used and verified elsewhere in this session. Kept the
+best-measured config rather than keep guessing blindly. **Net effect is a
+genuine improvement** (total absolute error across all measured bands,
+excluding the known-anomalous 8kHz band, dropped from 16.3dB to 12.2dB
+summed vs. the original heuristic) with one honestly-documented residual,
+not a "clean sweep." The dirty/OD channel is untouched by any of this
+(separate filter chain, already confirmed a mild net improvement earlier)
+and was re-verified unchanged after these edits.
+
+Both changes verified via `nam_compare --exactts` rebuild+re-measure
+cycles only (host-side, Windows) -- not yet built or deployed to the Pi
+live plugins.

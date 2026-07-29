@@ -58,8 +58,10 @@ private:
         // measured ~13 dB too dark at 3-8 kHz (tonestack treble shelf + power-amp
         // presence cut) and a touch too bright at 800 Hz-1.2 k. These restore the
         // bright Fender voice; the Cab plugin then supplies the speaker rolloff.
-        BiquadFilter     voiceShelf;    // treble recovery (high-shelf @ ~2.8 kHz)
-        BiquadFilter     voiceCut;      // low-mid tame (peaking @ ~900 Hz)
+        BiquadFilter     voiceShelf;    // treble recovery (high-shelf)
+        BiquadFilter     voiceCut;      // presence-region dip (peaking)
+        BiquadFilter     voiceMidBoost; // low-mid restore (peaking) -- item #28/#25 re-voice
+        BiquadFilter     voiceBassShelf;// bass restore (low-shelf) -- item #28/#25 re-voice
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;

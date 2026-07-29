@@ -7,6 +7,11 @@
 
 void Rockerverb50::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
     oversampledFs_ = oversampledFs;
+    // Item #28/#25 (2026-07-28): the exact Yeh & Smith tone stack is now the
+    // permanent default -- the mixed result (dirty slightly better, clean
+    // regressed) was a re-voicing gap in cleanScoop/cleanLift (+ 2 new bass
+    // filters) below, not a flaw in the tone stack itself. See recalcFilters().
+    useExact_ = true;
 
     gainSmooth_.reset(oversampledFs, 0.02);
     gainSmooth_.setCurrentAndTargetValue(gain_);
@@ -59,6 +64,8 @@ void Rockerverb50::reset() noexcept {
         c.cleanHFRolloff.reset();
         c.cleanLift.reset();
         c.cleanScoop.reset();
+        c.cleanBassShelf.reset();
+        c.cleanBassDip.reset();
         c.dnr.reset();
         c.sagEnv = 0.0f;
     }
@@ -196,8 +203,10 @@ float Rockerverb50::processSample(float x, int ch) noexcept {
             x = s.trebleF.process(x);
         }
         x = s.cleanHFRolloff.process(x);
-        x = s.cleanScoop.process(x);    // Orange clean mid scoop (~1.4 kHz)
-        x = s.cleanLift.process(x);     // treble recovery (undo dark power-amp defaults)
+        x = s.cleanBassShelf.process(x);
+        x = s.cleanBassDip.process(x);
+        x = s.cleanScoop.process(x);
+        x = s.cleanLift.process(x);
         x *= kCleanOutGain;             // level match to DI
     }
 
@@ -343,8 +352,15 @@ void Rockerverb50::recalcFilters() noexcept {
         c.airLP.setCoeffs(airLPc);
         c.cleanInterLP.setCoeffs(cleanInterLPc);
         c.cleanHFRolloff.setCoeffs(cleanHFRollofc);
-        c.cleanLift.setCoeffs(Filters::highshelf(3200.0, 10.0, fs));
-        c.cleanScoop.setCoeffs(Filters::peaking(1400.0, -3.5, 0.9, fs));
+        // Re-fit for the exact tone stack (2026-07-28, was tuned to the OLD
+        // heuristic's shape): the real circuit's own passive interaction
+        // scoops the reference point (500 Hz) relative to bass AND presence,
+        // needing broad cuts either side rather than the old uniform +10dB
+        // treble-only lift.
+        c.cleanLift.setCoeffs(Filters::peaking(5300.0, -4.2, 2.5, fs));      // presence-region dip (was highshelf 3200/+10)
+        c.cleanScoop.setCoeffs(Filters::peaking(1800.0, -8.8, 0.6, fs));     // low-mid dip (was 1400/-3.5/0.9)
+        c.cleanBassShelf.setCoeffs(Filters::lowshelf(200.0, -5.4, fs));      // bass cut
+        c.cleanBassDip.setCoeffs(Filters::peaking(110.0, -8.0, 2.0, fs));    // sub-bass dip
     }
 }
 

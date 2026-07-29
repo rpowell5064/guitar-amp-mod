@@ -28,6 +28,11 @@ void FenderDeluxeModel::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.stage2.setCathodeDepth(0.08f);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Fender);
+        // Item #28/#25 (2026-07-28): the pilot's exact Yeh & Smith tone stack is
+        // now the permanent default -- the mixed result (bass much better, mid-
+        // highs worse) was a re-voicing gap in the filters below, not a flaw in
+        // the tone stack itself. See voiceShelf/voiceCut below for the re-voice.
+        c.tonestack.setExact(true);
         c.tonestack.setBass(bass_);
         c.tonestack.setMid(mid_);
         c.tonestack.setTreble(treble_);
@@ -38,8 +43,19 @@ void FenderDeluxeModel::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.sagEnv = 0.0f;
 
         c.airLP.setCoeffs(Filters::lowpass1pole(18000.0, oversampledFs_));
-        c.voiceShelf.setCoeffs(Filters::highshelf(2800.0, 13.0, oversampledFs_));
-        c.voiceCut.setCoeffs(Filters::peaking(900.0, -2.0, 1.0, oversampledFs_));
+        // Re-voiced for the exact tone stack (2026-07-28, was tuned to the OLD
+        // heuristic tonestack's darker-above-2.8kHz shape): the real circuit's
+        // own passive interaction leaves a different residual shape vs the DI
+        // capture. Solved numerically (least-squares fit vs the measured
+        // nam_compare deltas, cross-checked against the RBJ biquad formulas in
+        // Python before implementing -- the first attempt at this re-voice
+        // wrongly replaced the old shelf's large intrinsic HF lift outright
+        // instead of preserving it, which had been doing double duty
+        // compensating for upstream darkness unrelated to the tonestack choice).
+        c.voiceShelf.setCoeffs(Filters::highshelf(1900.0, 19.0, oversampledFs_));        // treble recovery (was 2800/+13)
+        c.voiceCut.setCoeffs(Filters::peaking(4400.0, -14.0, 3.2, oversampledFs_));      // presence-region dip
+        c.voiceMidBoost.setCoeffs(Filters::peaking(950.0, 6.5, 0.9, oversampledFs_));    // low-mid restore
+        c.voiceBassShelf.setCoeffs(Filters::lowshelf(85.0, 4.5, oversampledFs_));        // bass restore
     }
     reset();
 }
@@ -56,6 +72,8 @@ void FenderDeluxeModel::reset() noexcept {
         c.airLP.reset();
         c.voiceShelf.reset();
         c.voiceCut.reset();
+        c.voiceMidBoost.reset();
+        c.voiceBassShelf.reset();
         c.sagEnv = 0.0f;
     }
 }
@@ -92,6 +110,8 @@ float FenderDeluxeModel::processSample(float x, int channel) noexcept {
     // Voicing correction (restore bright Fender DI voice; lows kept tight)
     x = c.voiceShelf.process(x);
     x = c.voiceCut.process(x);
+    x = c.voiceMidBoost.process(x);
+    x = c.voiceBassShelf.process(x);
 
     // Master volume
     x *= m;
