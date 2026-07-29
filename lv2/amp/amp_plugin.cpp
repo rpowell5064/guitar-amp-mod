@@ -48,7 +48,7 @@ static const AmpModel kModelMap[14] = {
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
     AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
 };
-static const int kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1, 7, 8 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [8] Vox, [9] Backline → clean PA; [10] Plexi, [11] Mesa → JCM800 EL34 PA; [12] Recto → its own 6L6 case)
+static const int kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 1, 1, 7, 8 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [9] Backline → clean PA; [8] Vox → its own EL84 case 9; [10] Plexi, [11] Mesa → JCM800 EL34 PA; [12] Recto → its own 6L6 case)
 static constexpr int kSunnIdx     = 3;     // Sunn's LV2 model index
 static constexpr int kNamIdx      = 5;     // NAM slot
 static constexpr int kFriedmanIdx = 6;     // Beardo BE

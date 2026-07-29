@@ -135,7 +135,7 @@ static const AmpModel kAmpMap[14] = {
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
     AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
 };
-static const int   kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 0, 0, 1, 1, 7, 8 }; // PowerAmp default lookup ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa → JCM800 EL34 PA)
+static const int   kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 1, 1, 7, 8 }; // PowerAmp default lookup ([8] Vox -> its own EL84 case 9, 2026-07-29) ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa → JCM800 EL34 PA)
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;

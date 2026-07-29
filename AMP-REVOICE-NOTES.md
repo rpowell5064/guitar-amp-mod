@@ -1569,3 +1569,39 @@ compressed-then-swelling sustain on the dirty channel. If the user
 dislikes it, the mechanism hunt continues; if they like it, it's free
 EL34 character. Also still open: h4/h6 under target, THD@110 32.7 vs
 42.7, THD@1k structural gap.
+
+## VOX LF-THD ROUND 2 (2026-07-29) -- FIXED AND DEPLOYED
+
+Round 1 (yesterday) was reverted because restoring lows re-inflated the
+LF THD -- the shared PA was a second re-clipper. With the per-amp levers
+from the EVH/Rockerverb work, round 2 landed in one session:
+
+**Vox split onto its own PA row (case 9; kCanonical[8]=9 in hexforge +
+amp plugin + nam_compare vox spec):** same voicing fields as the shared
+clean row 0, but paDrive 0.3 / fluxOT OFF / paMakeup 1.11 (measured
+loudness parity -15.9 vs -16.1 old) / sag 0.74 -> 0.50. Physically
+right too: a real AC30 has no NFB and a cathode-biased class-A EL84
+output.
+
+Measured vs the labeled AC30 capture (B5 T5 Cut5 M8, gain .6):
+- THD@110: 20.1 / 29.7 straddling the capture's 24.2 / 26.1
+  (was 45.4 / 51.0 -- the original "2x over-distorted" complaint DEAD)
+- LF: most of the missing lows returned FROM THE ROW CHANGE ALONE
+  (80 Hz -4.6 -> -2.0 before any EQ touch -- the flux grind had been
+  eating the model's existing bodyShelf). Remainder closed with a NEW
+  wide lowBody peak (245 Hz, +2.1, Q .55) -- NOT a bodyShelf bump,
+  which overshot 50 Hz by +4.7 dB (the un-compressed PA now expresses
+  EQ at ~2-3x, and 50 Hz was already on target).
+- Final FR: 50-200 Hz within 1.3 dB, mids/top within 0.8, two known
+  residuals left per the capture-chain doctrine: 315 Hz -1.9 (squeezed
+  against the 500 Hz normalisation anchor) and 8 kHz +2.1 (PRE-EXISTING
+  brightness, unchanged by this work).
+- Feel: bloom initially grew +2.0 -> +5.5 (same un-railed-shaper effect
+  as Rockerverb) but unlike Rockerverb the SAG LEVER WORKS on this amp:
+  row sag 0.50 restores the pre-change bloom (+1.85 vs +2.03), THD
+  unchanged. Attack -4 ms unchanged.
+- Fender control run (still row 0): attack +0.0, sane -- untouched.
+
+Listen for: Chime Thirty presets (Bank 9 fun bank, Regal Sustain/Solo,
+Cydonia Sunrise, Come As Water) -- fuller lows, cleaner low-string
+notes at the same chime.

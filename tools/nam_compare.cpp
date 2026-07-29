@@ -204,7 +204,7 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     if (name == "friedman" || name == "beardo" || name == "be")
                               { out = {AmpModel::FriedmanBEDeluxe, 6, 1, false, "Beardo BE (Friedman)"}; return true; }
     if (name == "vox" || name == "chime" || name == "ac30" || name == "chimethirty")
-                              { out = {AmpModel::VoxAC30, 0, 2, false, "Vox AC30 Top Boost (Chime Thirty)"}; return true; }
+                              { out = {AmpModel::VoxAC30, 9, 2, false, "Vox AC30 Top Boost (Chime Thirty)"}; return true; }
     if (name == "peavey" || name == "backline" || name == "backstage" || name == "backlineplus")
                               { out = {AmpModel::PeaveyBackstage, 0, 0, false, "Peavey Backstage Plus (Backline Plus)"}; return true; }
     if (name == "hiwatt" || name == "dr103" || name == "hiwattdr103")

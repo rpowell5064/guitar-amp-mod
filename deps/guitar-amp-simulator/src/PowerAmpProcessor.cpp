@@ -476,6 +476,21 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // the suite (sag 0.15) -> smallest ripple depth, so it doesn't fight the
         // deliberately tight/snappy character.
         case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f,  0.0f, 1.0f, 1.0f, 0.006f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
+        // Vox AC30 split off the shared clean row 0 (2026-07-29, LF-THD round 2):
+        // same voicing fields as row 0, but paDrive 0.3 + fluxOT OFF -- the
+        // shared PA's railed shaper + flux-OT grind were the "second re-clipper"
+        // that re-distorted any LF the model restored (THD@110 45% vs the
+        // capture's 24; probes: paDrive 0.4+flux-off = 23.9 exact at -12,
+        // paDrive 0.2 = 26.0 exact at -6, so 0.3 splits the rungs). An AC30 has
+        // NO negative feedback and a single-ended-feeling cathode-biased EL84
+        // class-A output -- flux-off + low drive is also the physically right
+        // shape. paMakeup restores loudness parity (measured).
+        // sag 0.74 -> 0.50 (same session): the un-railed shaper passes supply
+        // wobble the old rail used to clamp -- bloom grew +2.0 -> +5.5 dB vs
+        // the capture. Unlike Rockerverb, the sag lever WORKS here (measured
+        // monotone); 0.50 restores the pre-change bloom (+1.85 vs +2.03) with
+        // THD unchanged, keeping the famous AC30 springy sag at its prior level.
+        case 9: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.50f,  0.15f,  0.0f, 0.3f, 1.11f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }

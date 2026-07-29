@@ -46,6 +46,15 @@ void VoxAC30Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         // brightShelf highshelf(1800,+15), bodyShelf lowshelf(300,+10).
         c.brightShelf.setCoeffs(Filters::highshelf(1460.0, 9.5, oversampledFs_));
         c.bodyShelf.setCoeffs(Filters::lowshelf(297.0, 15.3, oversampledFs_));
+        // lowBody peak (2026-07-29, LF-THD round 2): with Vox on its own PA row
+        // (paDrive 0.3, flux OT off) the "second re-clipper" that ground any
+        // restored lows into distortion is gone, and the model measured a
+        // UNIFORM -1.6..-2.4 dB band across 80-315 Hz vs the labeled AC30
+        // capture (50 Hz already on target -- a shelf bump overshot 50 Hz by
+        // +4.7, hence a wide peak centred in the band instead; it expresses
+        // ~2-3x now that the PA no longer compresses it, so the dB here is
+        // deliberately smaller than the residual).
+        c.lowBody.setCoeffs(Filters::peaking(245.0, 2.1, 0.55, oversampledFs_));
         c.chimePk.setCoeffs(Filters::peaking(10270.0, 14.5, 1.2, oversampledFs_));   // top-octave air (Q kept at 1.0 per the EVH ringing lesson)
     }
     reset();
@@ -64,6 +73,7 @@ void VoxAC30Model::reset() noexcept {
         c.airLP.reset();
         c.brightShelf.reset();
         c.bodyShelf.reset();
+        c.lowBody.reset();
         c.chimePk.reset();
         c.sagEnv = 0.0f;
     }
@@ -121,6 +131,7 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     // NONLINEARITY, the voicing EQ after it is linear and fully expresses.
     x = c.brightShelf.process(x);
     x = c.bodyShelf.process(x);
+    x = c.lowBody.process(x);
     return c.chimePk.process(x);
 }
 
