@@ -574,7 +574,7 @@ function (event, funcs) {
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
-            else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6 || _mt === 7); }
+            else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6 || _mt === 7); show(icon, 'md', '.c-md-trem', _mt === 4); }
             else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             syncSel(icon, sym, val);               // dropdown labels track recalled values
@@ -684,6 +684,7 @@ function (event, funcs) {
             el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value')); });
         });
         show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6 || _mt0 === 7);
+        show(icon, 'md', '.c-md-trem', _mt0 === 4);
         setNodeVal(icon, 'cab', 'Factory Cab');   // updated by setIr once the IR path arrives
         // Input Trim: dot reflects it_enable (1=active)
         if ('it_enable' in map) nodeOf(icon, 'it').toggleClass('hf-byp', !(map.it_enable > 0.5));
@@ -830,6 +831,7 @@ function (event, funcs) {
             var mt = parseInt(event.value, 10);
             setModelVal(icon, 'md', mt);
             show(icon, 'md', '.c-md-delay', mt === 0 || mt === 3 || mt === 6 || mt === 7);
+            show(icon, 'md', '.c-md-trem', mt === 4);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'cab_micpos') {

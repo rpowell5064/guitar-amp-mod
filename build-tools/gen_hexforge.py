@@ -626,7 +626,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 141 ;")   # 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 142 ;")   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -767,6 +767,8 @@ COND = {
     # amp NAM input/output trims live in the Neural TAB panel (tab-gated) — no COND class needed.
     # modulation — Center Delay only affects the delay-line types (Chorus 0 / Flanger 3 / Small Clone 6)
     "md_offset":"c-md-delay",
+    # modulation — Shape selector only applies to Tremolo (4)
+    "md_shape":"c-md-trem",
     # delay — Wow/Flutter for Tape(1)/Echo Wreck(2); Heads for Echo Wreck(2);
     # Pattern/Ducking/Mod for Seraph(3)
     "dl_wow":"c-dl-tape", "dl_flutter":"c-dl-tape", "dl_heads":"c-dl-heads",
