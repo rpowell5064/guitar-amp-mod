@@ -438,6 +438,14 @@ ctrl.append(mkport("RV_BLOOM", "rv_bloom", "Reverb Bloom", "f", 0, 1, 0.5, None,
 ctrl.append(mkport("CAB_SPKDRIVE", "cab_spkdrive", "Cab Speaker Drive", "e", 0, 2, 0,
     [("Off",0),("Subtle",1),("Full",2)], "Speaker Drive"))
 
+# ── Tremolo Shape (roadmap #34, 2026-07-29): the waveform selector already live
+# in TremoloEffect + the standalone modfx plugin (bias lagged-sine / opto
+# hard-chop LDR / harmonic brownface LP-HP phase-split) finally reachable in
+# Hex Forge. Ignored by non-tremolo mod types. Default 0 = bias = the shipped
+# voicing; pre-v29 blobs zero-fill to 0 via explicit gap migration. Migrated v29.
+ctrl.append(mkport("MD_SHAPE", "md_shape", "Tremolo Shape", "e", 0, 2, 0,
+    [("Bias",0),("Opto",1),("Harmonic",2)], "Shape"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -1061,7 +1069,7 @@ BLOCK_GROUPS = {
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs
-    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset"]),
+    "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset", "shape"]),
             ("CLOCK SYNC", None, ["sync", "div"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
             ("CLOCK SYNC", None, ["sync", "div"]),

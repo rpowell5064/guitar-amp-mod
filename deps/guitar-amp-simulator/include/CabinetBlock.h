@@ -123,6 +123,15 @@ private:
         BiquadFilter conA, conB;                   // console curve
         float compEnv = 0.0f;                      // bus glue: fast envelope
         float compRef = 0.0f;                      // bus glue: slow sliding reference
+        // Item #41 (2026-07-29): inter-mic TIME offsets -- both "mics" were
+        // filter-only (phase-coherent = physically impossible). Small rings:
+        // the ribbon mic sits a fixed ~0.4 ms behind the primary (its edge-of-
+        // room position), and micDist adds real time-of-flight (0-0.9 ms ~=
+        // 0-30 cm). 256 samples covers 0.9 ms up to 192 kHz + margin.
+        static constexpr int kDlyLen = 256;        // power of two (mask wrap)
+        std::array<float, kDlyLen> ribRing{};      // ribbon (w2) fixed offset
+        std::array<float, kDlyLen> distRing{};     // primary-mic distance offset
+        int dlyW = 0;                              // shared write index
     };
     std::array<EQState, kMaxCh> eqState_;
 
@@ -162,6 +171,9 @@ private:
     float roomTick(RoomState& rs, float x) noexcept;
 
     float compAtt_ = 0.0f, compRel_ = 0.0f, compSlow_ = 0.0f;   // bus glue coeffs (set in prepare)
+    // Item #41: inter-mic time offsets in samples (recomputed in rebuildEQ).
+    int ribbonDelay_ = 0;   // fixed ~0.4 ms behind the primary mic (studio voice)
+    int distDelay_   = 0;   // micDist time-of-flight, 0-0.9 ms (0 = bit-identical)
 
     void rebuildEQ();
     void loadIRIntoSlot(int slot);

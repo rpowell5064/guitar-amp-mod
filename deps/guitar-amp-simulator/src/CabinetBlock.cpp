@@ -15,6 +15,7 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
         e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
         e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
         e.compEnv = 0.0f; e.compRef = 0.0f;
+        e.ribRing.fill(0.0f); e.distRing.fill(0.0f); e.dlyW = 0;   // item #41 rings
     }
     compAtt_  = 1.0f - std::exp(-1.0f / (0.030f * (float)sr));  // 30 ms attack
     compRel_  = 1.0f - std::exp(-1.0f / (0.180f * (float)sr));  // 180 ms release
@@ -192,6 +193,7 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
         e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
         e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
         e.compEnv = 0.0f; e.compRef = 0.0f;
+        e.ribRing.fill(0.0f); e.distRing.fill(0.0f); e.dlyW = 0;   // item #41 rings
     }
 
     for (int c = 0; c < chCount; ++c) {
@@ -230,7 +232,14 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                 float w2 = e.mic2LP.process(base);
                 w2 = e.mic2Bite.process(w2);
                 w2 = e.mic2Body.process(w2);
-                float w = 0.65f * w1 + 0.35f * w2;   // phase-coherent blend (same conv source)
+                // Item #41: real inter-mic time offsets (rings written every
+                // sample; distDelay_ 0 reads the current sample = bit-identical)
+                e.distRing[e.dlyW] = w1;
+                e.ribRing[e.dlyW]  = w2;
+                w1 = e.distRing[(e.dlyW - distDelay_)   & (EQState::kDlyLen - 1)];
+                w2 = e.ribRing [(e.dlyW - ribbonDelay_) & (EQState::kDlyLen - 1)];
+                e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
+                float w = 0.65f * w1 + 0.35f * w2;   // two mics, now honestly displaced in time
                 w = e.stHP.process(w);
                 w = e.stLP.process(w);
                 w = e.conA.process(w);
@@ -264,6 +273,10 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                 w = e.micBody.process(w);
                 w = e.distProx.process(w);
                 w = e.distAir.process(w);
+                // Item #41: micDist time-of-flight (0 = bit-identical)
+                e.distRing[e.dlyW] = w;
+                w = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+                e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
                 if (roomOn_) w += roomMix_ * roomTick(room_[c], w);   // room rides the wet cab signal
                 out[c][i] = dryBuf_[i] * (1.0f - mix_) + w * mix_;
             }
@@ -300,6 +313,7 @@ void CabinetBlock::reset() noexcept {
         e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
         e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
         e.compEnv = 0.0f; e.compRef = 0.0f;
+        e.ribRing.fill(0.0f); e.distRing.fill(0.0f); e.dlyW = 0;   // item #41 rings
     }
     for (auto& rs : room_) {
         for (auto& cb : rs.comb) std::fill(cb.begin(), cb.end(), 0.0f);
@@ -348,6 +362,12 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             float w2 = e.mic2LP.process(base);
             w2 = e.mic2Bite.process(w2);
             w2 = e.mic2Body.process(w2);
+            // Item #41: real inter-mic time offsets (see stereo path)
+            e.distRing[e.dlyW] = w1;
+            e.ribRing[e.dlyW]  = w2;
+            w1 = e.distRing[(e.dlyW - distDelay_)   & (EQState::kDlyLen - 1)];
+            w2 = e.ribRing [(e.dlyW - ribbonDelay_) & (EQState::kDlyLen - 1)];
+            e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
             float w = 0.65f * w1 + 0.35f * w2;
             w = e.stHP.process(w);
             w = e.stLP.process(w);
@@ -374,6 +394,10 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             w = e.micBody.process(w);
             w = e.distProx.process(w);
             w = e.distAir.process(w);
+            // Item #41: micDist time-of-flight (0 = bit-identical)
+            e.distRing[e.dlyW] = w;
+            w = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+            e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
             const float dry = dryBuf_[i] * (1.0f - mix_);
             if (roomOn_) {
                 L[i] = dry + (w + roomMix_ * roomTick(room_[0], w)) * mix_;
@@ -481,6 +505,17 @@ void CabinetBlock::rebuildEQ() {
     // distance: close -> ~30 cm. Proximity bass falls away (-4.5 dB shelf @130), slight air loss.
     const BiquadCoeffs dpx = Filters::lowshelf (130.0, -4.5 * d, sampleRate);
     const BiquadCoeffs dar = Filters::highshelf(6500.0, -2.5 * d, sampleRate);
+    // Item #41 (2026-07-29): real mic time-of-flight on the micDist control
+    // (30 cm ~= 0.875 ms; 0 = bit-identical). A fixed ribbon-mic delay was
+    // ALSO tried per the roadmap (0.4 ms on the 35% studio blend) and measured
+    // via cab_voice_check: it digs ~10 dB comb notches with the first null at
+    // ~1.25 kHz, straight through the ear-approved studio voicing (all four
+    // spectral-signature checks failed). Any single audible delay at that
+    // blend ratio notches somewhere in the passband -- the coherent blend IS
+    // the studio voice's deliberate design, so the ribbon stays time-aligned
+    // (ribbonDelay_ kept at 0; ring infrastructure retained).
+    distDelay_   = std::min(static_cast<int>(d * 0.0009 * sampleRate + 0.5), EQState::kDlyLen - 1);
+    ribbonDelay_ = 0;
     // Studio voice fixed chain: ribbon-ish second mic + bracket + console curve.
     const BiquadCoeffs m2l = Filters::lowpass (4800.0, 0.707, sampleRate);
     const BiquadCoeffs m2b = Filters::peaking (4200.0, -3.0, 1.2, sampleRate);
