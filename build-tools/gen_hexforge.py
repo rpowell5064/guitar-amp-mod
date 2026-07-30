@@ -457,7 +457,12 @@ ctrl.append(mkport("FZ_GVOL", "fz_gvol", "Guitar Vol", "f", 0.05, 1, 1, None, "G
 # Engine quality (2026-07-30, user request): Standard = full 4x amp oversampling;
 # Eco halves the amp's oversampling to 2x (~the biggest single CPU lever) for
 # large chains on weaker CPUs. Default Standard = bit-identical; migrated v32.
-ctrl.append(mkport("QUALITY", "quality", "Eco Mode", "t", 0, 1, 0, None, "Eco"))
+ctrl.append(mkport("QUALITY", "quality", "Amp Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
+# Drive Eco (2026-07-30, user: per-effect switches, in each effect's own panel):
+# halves the drive pedal's oversampling via the same wrapper-factor mechanism.
+# Fuzz pedals oversample internally (no wrapper) -- follow-up if demand appears.
+# Migrated v33.
+ctrl.append(mkport("DR_ECO", "dr_eco", "Drive Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -640,7 +645,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 145 ;")   # 145: JS crash guard + compact Eco toggle (2026-07-30). 143: per-block CPU meters   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 146 ;")   # 146: per-effect Eco switches in the panels + panel CPU % (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -999,6 +1004,9 @@ def amp_body():
     pa = ('<div class="hf-pa-face c-amp-pa"><div class="hf-pa-title">Power Amp</div>'
           + onerow(["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence", "pamp_depth",
                     "pamp_sag", "pamp_master", "pamp_nfb", "pamp_resonance", "pamp_coupl", "pamp_airfeel"])
+          # Amp Eco (global `quality` port, no amp_ prefix -> hand-placed): lives in
+          # the effect's own panel per the user's 2026-07-30 UX direction.
+          + '<div class="hf-onerow">' + render_ctrl(CTRL_BY_SYM["quality"]) + '</div>'
           + '</div>')
     # Brite Channel (Sunn) + Beardo BE — each its own chassis, one centered row.
     def chassis(gcls, gtitle, sufs):
@@ -1089,7 +1097,8 @@ BLOCK_GROUPS = {
     "cp":  [("COMPRESSOR", None, ["type", "ratio", "thresh", "attack", "release", "knee", "makeup"])],
     "fz":  [("PEDAL", None, ["pedal", "mode"]),
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp", "gvol"])],
-    "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"])],
+    "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"]),
+            ("PERFORMANCE", None, ["eco"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs
@@ -1338,7 +1347,6 @@ def emit_icon():
         '      <span class="hf-clip" rata-role="clip" role="status" aria-live="assertive" aria-label="Output clipping indicator">CLIP</span>\n'
         '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
         '      <span class="hf-cpu-total" rata-role="cputotal" title="Engine CPU (% of audio budget) - per-block % on each panel">CPU</span>\n'
-        '      ' + render_ctrl(CTRL_BY_SYM["quality"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_doubler"]) + '\n'

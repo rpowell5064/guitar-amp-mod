@@ -348,7 +348,7 @@ static const int kSwWatch[] = {
     HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE, HF_RV_DENSITY,
     HF_RV_TYPE, HF_CAB_ROOMDENSE, HF_CAB_SPKDRIVE, HF_MD_SHAPE,
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
-    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY,
+    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY, HF_DR_ECO,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
 static_assert(kSwWatchN <= 24, "grow swWatchPrev[]");
@@ -794,8 +794,8 @@ static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1,
               "v29 port must be contiguous");
 //   * Fuzz Guitar Vol (roadmap #45) — 1 port, added v30, last before the commands.
 static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_QUALITY == HF_FZ_GVOL + 1
-              && HF_QUALITY == HF_SW_A - 1,
-              "v30 gvol then v32 quality must be contiguous, right before the commands");
+              && HF_DR_ECO == HF_QUALITY + 1 && HF_DR_ECO == HF_SW_A - 1,
+              "gvol, quality, dr_eco must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -894,6 +894,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v32 appended Engine Quality (Eco oversampling switch); default 0 = Standard.
     const bool qGap = (srcVer < 32);
     const int qAt = HF_QUALITY;
+    // v33 appended Drive Eco; default 0 = Standard.
+    const bool deGap = (srcVer < 33);
+    const int deAt = HF_DR_ECO;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -923,7 +926,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (shpGap && i == shpAt)                   vals[i] = 0.0f;             // tremolo shape Bias
         else if (gvGap2 && i == gvAt2)                   vals[i] = 1.0f;             // fuzz guitar vol FULL
         else if (cpuGap && i >= cpuAt && i < cpuEnd)     vals[i] = 0.0f;
-        else if (qGap && i == qAt)                       vals[i] = 0.0f;             // quality Standard             // CPU meters (outputs)
+        else if (qGap && i == qAt)                       vals[i] = 0.0f;             // quality Standard
+        else if (deGap && i == deAt)                     vals[i] = 0.0f;             // drive eco Standard             // CPU meters (outputs)
         else                                             vals[i] = old[o++];
     }
 }
@@ -932,7 +936,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(32); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(33); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1689,6 +1693,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->fuzzBender->setParameter("inputtrim", *p->ports[HF_FZ_INPUTTRIM]);
     p->fuzzBender->setParameter("getemp",    *p->ports[HF_FZ_GETEMP]);
     p->fuzzBender->setParameter("gvol",      *p->ports[HF_FZ_GVOL]);
+    p->drive.setParameter("eco",       *p->ports[HF_DR_ECO]);
     p->fuzzOctavia->setParameter("drive", *p->ports[HF_FZ_SUSTAIN]);
     p->fuzzOctavia->setParameter("tone",  *p->ports[HF_FZ_TONE]);
     p->fuzzOctavia->setParameter("level", *p->ports[HF_FZ_VOLUME]);
@@ -2266,7 +2271,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(32);                 // version (32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(33);                 // version (33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];

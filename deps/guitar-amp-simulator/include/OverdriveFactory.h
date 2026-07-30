@@ -25,7 +25,7 @@ public:
     // Model wrapped in 4× OversamplingWrapper.
     // Valid for TubeScreamer808 and LifePedal only; returns nullptr for NAM
     // (NAM must go through the direct block-processing path in OverdriveBlock).
-    static std::unique_ptr<OversamplingWrapper> createOversampled(OverdriveType type);
+    static std::unique_ptr<OversamplingWrapper> createOversampled(OverdriveType type, bool eco = false);
 
     // Load a .nam file and return a ready-to-use NamOverdrive.
     // Returns nullptr if the file fails to load.

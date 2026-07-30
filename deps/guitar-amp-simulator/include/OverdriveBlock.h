@@ -49,6 +49,8 @@ private:
     static constexpr float kXfadeMs   = 10.0f;
 
     OverdriveType type_ = OverdriveType::TubeScreamer808;
+    bool eco_ = false;         // Engine Quality: 2x oversampling when true
+    bool ecoRebuild_ = false;  // forces setType() through the same-type early-out
 
     // Active model holders — at most one of os/nam is non-null at any time.
     std::unique_ptr<OversamplingWrapper> osModel_;

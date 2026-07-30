@@ -19,7 +19,7 @@ void OverdriveBlock::prepare(double sr, int maxBlock, int numCh) {
 
     // Lazily create the default model if setType() was never explicitly called.
     if (!osModel_ && !namModel_ && type_ != OverdriveType::NAM) {
-        osModel_ = OverdriveFactory::createOversampled(type_);
+        osModel_ = OverdriveFactory::createOversampled(type_, eco_);
         if (osModel_) applyStoredParams(osModel_.get());
     }
 
@@ -32,7 +32,7 @@ void OverdriveBlock::prepare(double sr, int maxBlock, int numCh) {
 // ── setType ───────────────────────────────────────────────────────────────
 
 void OverdriveBlock::setType(OverdriveType newType) {
-    if (newType == type_ && newType != OverdriveType::NAM && osModel_) {
+    if (newType == type_ && newType != OverdriveType::NAM && osModel_ && !ecoRebuild_) {
         // Same model already created — nothing to do.
         // Guard also checks osModel_ != null: on construction type_ defaults to
         // TubeScreamer808 but osModel_ is null, so the first setType(TS808) call
@@ -56,7 +56,7 @@ void OverdriveBlock::setType(OverdriveType newType) {
         }
         if (namModel_) applyStoredParams(namModel_.get());
     } else {
-        osModel_ = OverdriveFactory::createOversampled(newType);
+        osModel_ = OverdriveFactory::createOversampled(newType, eco_);
         if (osModel_ && sampleRate > 0.0)
             osModel_->prepare(sampleRate, maxBlockSize, numChannels);
         if (osModel_) applyStoredParams(osModel_.get());
@@ -103,6 +103,18 @@ bool OverdriveBlock::loadNam(const std::string& filePath) {
 // ── parameter routing ─────────────────────────────────────────────────────
 
 void OverdriveBlock::setParameter(const std::string& id, float value) {
+    if (id == "eco") {
+        const bool e = value > 0.5f;
+        if (e != eco_) {
+            // Rebuild the current model at the new factor through the existing
+            // crossfade machinery (ecoRebuild_ defeats the same-type early-out).
+            eco_ = e;
+            ecoRebuild_ = true;
+            setType(type_);
+            ecoRebuild_ = false;
+        }
+        return;
+    }
     if (id == "model") {
         setType(OverdriveFactory::fromIndex(static_cast<int>(value)));
         return;

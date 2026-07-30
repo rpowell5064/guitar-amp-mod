@@ -23,9 +23,10 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
     }
 }
 
-std::unique_ptr<OversamplingWrapper> OverdriveFactory::createOversampled(OverdriveType type) {
+std::unique_ptr<OversamplingWrapper> OverdriveFactory::createOversampled(OverdriveType type, bool eco) {
     if (type == OverdriveType::NAM) return nullptr;  // NAM uses block path
-    return std::make_unique<OversamplingWrapper>(create(type));
+    // eco (2026-07-30 Engine Quality): 2x instead of the default 4x oversampling.
+    return std::make_unique<OversamplingWrapper>(create(type), eco ? 2 : 4);
 }
 
 std::unique_ptr<NamOverdrive> OverdriveFactory::createNam(const std::string& filePath) {

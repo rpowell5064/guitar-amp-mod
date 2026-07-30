@@ -850,11 +850,17 @@ function (event, funcs) {
             if (ck === 'total') {
                 icon.find('[rata-role=cputotal]').text('CPU ' + (pct < 0.05 ? '--' : pct.toFixed(pct < 9.95 ? 1 : 0)) + '%');
             } else if (CPU_MAP[ck]) {
+                var txt = pct.toFixed(pct < 9.95 ? 1 : 0) + '%';
                 var nd = nodeOf(icon, CPU_MAP[ck]);
                 var badge = nd.find('.hf-cpu-badge');
                 if (!badge.length) badge = $('<span class="hf-cpu-badge"></span>').appendTo(nd);
                 if (pct < 0.05) badge.text('').addClass('mod-hidden');
-                else badge.text(pct.toFixed(pct < 9.95 ? 1 : 0) + '%').removeClass('mod-hidden');
+                else badge.text(txt).removeClass('mod-hidden');
+                // echo into the detail panel header ("CPU 3.2%")
+                var pn = panelOf(icon, CPU_MAP[ck]);
+                var pb = pn.find('.hf-cpu-panel');
+                if (!pb.length) pb = $('<span class="hf-cpu-panel"></span>').insertAfter(pn.find('.hf-dname').first());
+                pb.text(pct < 0.05 ? '' : 'CPU ' + txt);
             }
         } else if (s === 'clip') {
             icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
