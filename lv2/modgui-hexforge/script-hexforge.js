@@ -1040,8 +1040,8 @@ function (event, funcs) {
                     var sn = icon.find('[data-target=' + t[0] + ']');
                     var hide = sn.hasClass('hf-subnode-off') || t[1] < 0.05;
                     var stxt = t[1].toFixed(t[1] < 9.95 ? 1 : 0) + '%';
-                    var sb = sn.find('.hf-cpu-badge');
-                    if (!sb.length) { sn.append('<span class="hf-cpu-badge"></span>'); sb = sn.find('.hf-cpu-badge'); }
+                    var sb = sn.children('.hf-cpu-badge');
+                    if (!sb.length) { sn.append('<span class="hf-cpu-badge"></span>'); sb = sn.children('.hf-cpu-badge'); }
                     sb.text(hide ? '' : stxt).toggleClass('mod-hidden', hide);
                     var pn2 = panelOf(icon, t[0]);
                     var pb2 = pn2.find('.hf-cpu-panel');
@@ -1053,8 +1053,11 @@ function (event, funcs) {
                 // NOTE: no global $ in the modgui sandbox (it killed the whole
                 // script once) -- build elements through the jQuery objects we get.
                 var nd = nodeOf(icon, CPU_MAP[ck]);
-                var badge = nd.find('.hf-cpu-badge');
-                if (!badge.length) { nd.append('<span class="hf-cpu-badge"></span>'); badge = nd.find('.hf-cpu-badge'); }
+                // children() not find(): the Amp/Cab tiles contain the Amp 2/Cab 2
+                // strips, whose OWN cpu badges would otherwise be matched first and
+                // swallow the tile badge (Amp 1/Cab 1 % went missing, 2026-07-30).
+                var badge = nd.children('.hf-cpu-badge');
+                if (!badge.length) { nd.append('<span class="hf-cpu-badge"></span>'); badge = nd.children('.hf-cpu-badge'); }
                 if (pct < 0.05) badge.text('').addClass('mod-hidden');
                 else badge.text(txt).removeClass('mod-hidden');
                 // echo into the detail panel header ("CPU 3.2%")
