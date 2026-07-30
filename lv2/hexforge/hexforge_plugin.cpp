@@ -1844,6 +1844,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     // sentinel; a real path loads on the Cab 2 slot.
                     const char* e2 = (std::strcmp(path, "@builtin") == 0) ? "" : path;
                     std::strncpy(p->ir2Path, e2, kPathMax-1); p->ir2Path[kPathMax-1]='\0';
+                    if (std::strcmp(e2, "@nocab") == 0) { p->lastCab2Model = -2; continue; }   // bypassed below; nothing to load
                     if (e2[0]) {
                         WorkMsg m2; m2.type = W_CAB_IR; m2.namSlot = 1;
                         std::strncpy(m2.path, e2, kPathMax-1); m2.path[kPathMax-1]='\0';
@@ -2091,7 +2092,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
         }
         const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
-        const bool ir2User = (p->ir2Path[0] != '\0');   // user IR overrides the built-in (v39)
+        const bool ir2NoCab = (std::strcmp(p->ir2Path, "@nocab") == 0);   // unified picker's No Cab entry
+        const bool ir2User = (p->ir2Path[0] != '\0') && !ir2NoCab;   // IR/sentinel override active (v39)
         if (ir2User && p->lastCab2Model != -2) {
             // recall/patch installed a user IR; mark the sentinel cache invalid so a
             // later clear re-generates. -2 = "user IR active".
@@ -2213,7 +2215,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
               p->cab2.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f)); }
             // No Cab (Direct): the player may run rig A into a real power amp +
             // physical cab -- rig B then skips speaker sim too.
-            p->cab2.setBypass(clampi(*p->ports[HF_RB_CAB], 0, 6) >= 6);
+            p->cab2.setBypass((std::strcmp(p->ir2Path, "@nocab") == 0)
+                              || (p->ir2Path[0] == '\0' && clampi(*p->ports[HF_RB_CAB], 0, 6) >= 6));
         }
     }
     AmpBlockExtended* amp = p->amp;

@@ -490,12 +490,23 @@
     width: 50px; font-size: 13px; font-weight: 800; color: #fff; text-align: center;
     background: rgba(0,0,0,.5); border: 1px solid var(--acc); border-radius: 4px; position: relative; overflow: visible; line-height: 1.9;
 }
+/* Quiet ghost pill (2026-07-30 redesign): removal is a secondary action, so the
+   resting state is neutral and compact -- it only turns red when you commit to
+   it (hover/focus). Replaces the old always-red slab. */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dremove {
-    margin-left: auto; font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: 1px; white-space: nowrap;
-    color: #ffc2c2; background: rgba(60,16,16,.55); border: 1px solid rgba(255,90,90,.55); border-radius: 7px;
-    padding: 11px 22px; cursor: pointer; transition: color .1s, background .1s, border-color .1s;
+    margin-left: auto; display: inline-flex; align-items: center;
+    font-family: inherit; font-size: 10px; font-weight: 600; letter-spacing: 0.14em; white-space: nowrap;
+    color: rgba(255,255,255,.45); background: transparent;
+    border: 1px solid rgba(255,255,255,.16); border-radius: 999px;
+    padding: 7px 16px; cursor: pointer;
+    transition: color .12s, background-color .12s, border-color .12s, box-shadow .12s;
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dremove:hover { color: #fff; background: #b22; border-color: #ff6a6a; box-shadow: 0 0 12px rgba(255,60,60,.4); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dremove:hover,
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dremove:focus-visible {
+    color: #ffb9b9; background: rgba(120,28,28,.30);
+    border-color: rgba(255,110,110,.55); box-shadow: 0 0 8px rgba(255,70,70,.18);
+    outline: none;
+}
 /* Body = a compact row of dropdowns/pickers on top, then a uniform knob grid below.
    Every control is an equal-height cell with its LABEL on top, so labels and control
    tops line up; and because the wide dropdowns are pulled out into their own row, every

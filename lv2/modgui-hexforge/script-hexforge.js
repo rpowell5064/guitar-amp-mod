@@ -491,7 +491,19 @@ function (event, funcs) {
     }
     var CAB_NAMES = { '@factory':'Factory 4x12 (Thirty-Something)', '@vox2x12':'Chime 2x12 (alnico)',
                       '@american-ob':'American Open-Back 2x12', '@greenback':'Cashback 4x12',
-                      '@hiwatt':'Hi-Volt 4x12', '@doom':'Doom 4x12' };
+                      '@hiwatt':'Hi-Volt 4x12', '@doom':'Doom 4x12', '@nocab':'No Cab (Direct)' };
+    // Cab 2's unified IR picker (2026-07-30, "match cab 1"): its label shows the
+    // ir2 path when set, else mirrors the legacy rb_cab selection (preset recall).
+    var RBCAB_SENT = ['@factory','@vox2x12','@american-ob','@greenback','@hiwatt','@doom','@nocab'];
+    function setIr2Label(icon) {
+        var v = icon.data('hf_ir2');
+        if (v == null || v === '' || v === '@builtin') {
+            var rc = parseInt(icon.data('hf_rb_cab'), 10); if (isNaN(rc) || rc < 0 || rc > 6) rc = 0;
+            v = RBCAB_SENT[rc];
+        }
+        if (CAB_NAMES[v]) { setFile(icon, 'Ir2', v, CAB_NAMES[v]); return; }
+        setFile(icon, 'Ir2', v, 'Factory Cab (built-in)');
+    }
     function setIr(icon, value) {
         if (value == null || value === 'None' || value === '') value = '@factory';
         if (CAB_NAMES[value]) {                      // built-in synthetic cab
@@ -633,6 +645,7 @@ function (event, funcs) {
             else if (sym === 'cab_micpos')         icon.data('hf_micpos', val);    // mod-ui doesn't echo set_port_value → sync the pad by hand
             else if (sym === 'cab_micdist')        icon.data('hf_micdist', val);
             else if (sym === 'rb_amp')             icon.data('hf_rb_m', parseInt(val, 10));
+            else if (sym === 'rb_cab')             { icon.data('hf_rb_cab', parseInt(val, 10)); setIr2Label(icon); }
             else if (sym === 'rb_cabmicpos')       icon.data('hf_rb_micpos', val);
             else if (sym === 'rb_cabmicdist')      icon.data('hf_rb_micdist', val);
             else if (sym === 'rb_pamp_auto')       icon.data('hf_rb_auto', val > 0.5);
@@ -673,8 +686,8 @@ function (event, funcs) {
             else if (uri.indexOf('#drnam') >= 0)  setFile(icon, 'DrNam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#amp2nam') >= 0) setFile(icon, 'Amp2Nam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#ir2file') >= 0) {
-                if (value === '@builtin') value = '';   // defer to the rb_cab dropdown
-                setFile(icon, 'Ir2', value, '-- use Cabinet selection --');
+                icon.data('hf_ir2', value === '@builtin' ? '' : value);
+                setIr2Label(icon);
             }
         }
         (event.parameters || []).forEach(function (pr) {
@@ -800,6 +813,8 @@ function (event, funcs) {
         if ('amp_mv_eqpreset' in map) icon.data('hf_mveq', parseInt(map.amp_mv_eqpreset, 10));
         // Amp 2 / Cab 2 (Rig B): model + PA-auto state, strip lighting from the In-Chain ports.
         if ('rb_amp' in map)        icon.data('hf_rb_m', parseInt(map.rb_amp, 10));
+        if ('rb_cab' in map)        icon.data('hf_rb_cab', parseInt(map.rb_cab, 10));
+        setIr2Label(icon);
         if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
         icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
         icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(map.rb_cab2on > 0.5));
@@ -1007,6 +1022,8 @@ function (event, funcs) {
             icon.data('hf_rb_micdist', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
+        } else if (s === 'rb_cab') {
+            icon.data('hf_rb_cab', parseInt(event.value, 10)); setIr2Label(icon);
         } else if (s === 'rb_amp') {
             icon.data('hf_rb_m', parseInt(event.value, 10)); applyRbAmp(icon);
         } else if (s === 'rb_pamp_auto') {

@@ -500,7 +500,7 @@ RB = [
     ("sag",     "Sag",      "f", 0, 1, 0.3, None),
     ("channel", "Channel",  "t", 0, 1, 0, None),
     ("eco",     "Eco (2x OS)", "t", 0, 1, 0, None),
-    ("cab",     "Cab",      "e", 0, 6, 0, [("Factory 4x12 (Thirty-Something)",0),("Chime 2x12 (Vox)",1),("American Open-Back 2x12",2),("Cashback 4x12",3),("Hi-Volt 4x12",4),("Doom 4x12",5),("No Cab (Direct)",6)]),
+    ("cab",     "Cab",      "e", 0, 6, 0, [("Factory 4x12 (Thirty-Something)",0),("Chime 2x12 (Vox)",1),("American Open-Back 2x12",2),("Cashback 4x12",3),("Hi-Volt 4x12",4),("Doom 4x12",5),("No Cab (Direct)",6)]),   # hidden below: superseded by the unified Cab 2 IR picker
     ("lowcut",  "Cab Low Cut",  "hz", 20, 500, 80, None),
     ("highcut", "Cab High Cut", "hz", 2000, 20000, 16000, None),
     ("blend",   "Blend A/B", "f", 0, 1, 0.5, None),
@@ -509,7 +509,8 @@ RB = [
 ]
 ctrl.append(mkport("RB_ENABLE", "rb_enable", "Amp 2 In Chain", "t", 0, 1, 0, None, "Amp 2"))
 for _suf, _nm, _k, _mn, _mx, _df, _sc in RB:
-    ctrl.append(mkport("RB_" + _suf.upper(), "rb_" + _suf, "Rig B " + _nm, _k, _mn, _mx, _df, _sc, _nm))
+    ctrl.append(mkport("RB_" + _suf.upper(), "rb_" + _suf, "Rig B " + _nm, _k, _mn, _mx, _df, _sc, _nm,
+                       hidden=(_suf == "cab")))   # rb_cab: legacy recall port (unified IR picker owns selection)
 
 # ── Rig B FULL parity (2026-07-30 redesign): clone the remaining amp family, the
 # whole PA section and the cab extras from the A-side definitions so ranges,
@@ -767,7 +768,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 164 ;")   # 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 165 ;")   # 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1272,17 +1273,27 @@ def cab2_body():
         return ('<div class="hf-agroup"><span class="hf-agroup-title">%s</span>'
                 '<div class="hf-agroup-body">%s</div></div>'
                 % (title, "".join(render_ctrl(CTRL_BY_SYM[sy]) for sy in syms)))
-    # User IR picker (mirrors Cabinet 1): head option = defer to the built-in
-    # dropdown selection; a loaded user .wav overrides it (like NAM-over-IR on A).
-    ir2 = ('<div class="hf-ir"><span class="hf-sel-label">User IR (overrides)</span>'
+    # ONE Impulse Response picker, mirroring Cabinet 1's exactly (user 2026-07-30:
+    # "I want it to match cab 1. we need to be consistent") -- the built-in cabs,
+    # a No Cab (Direct) entry, and the user's IR files in a single list on the
+    # #ir2file path param. The legacy rb_cab port stays (hidden) for preset
+    # recall; the JS mirrors its selection into this picker's label when no
+    # ir2 path is set.
+    ir2 = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
            '{{#effect.parameters.4}}{{#path}}'
            '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
-           '<div mod-role="input-parameter-value" rata-role="Ir2" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">-- use Cabinet selection --</div>'
-           '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@builtin">-- use Cabinet selection --</div>'
+           '<div mod-role="input-parameter-value" rata-role="Ir2" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">Factory Cab (built-in)</div>'
+           '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory 4x12 (Thirty-Something)</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@vox2x12">Chime 2x12 (Vox)</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@american-ob">American Open-Back 2x12</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@greenback">Cashback 4x12</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@nocab">No Cab (Direct)</div>'
            '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
            '</div>{{/path}}{{/effect.parameters.4}}</div>')
-    selrow = ('<div class="hf-dselects clearfix">%s%s%s</div>'
-              % (render_ctrl(CTRL_BY_SYM["rb_cab2on"]), render_ctrl(CTRL_BY_SYM["rb_cab"]), ir2))
+    selrow = ('<div class="hf-dselects clearfix">%s%s</div>'
+              % (render_ctrl(CTRL_BY_SYM["rb_cab2on"]), ir2))
     groups = (agroup("CABINET", ["rb_cabvoice", "rb_lowcut", "rb_highcut", "rb_cabmix", "rb_cabspkdrive"])
               + agroup("ROOM", ["rb_cabroomon", "rb_cabroommix", "rb_cabroomamt", "rb_cabroomdense"]))
     pad = MICPAD % (render_ctrl(CTRL_BY_SYM["rb_cabmicpos"]), render_ctrl(CTRL_BY_SYM["rb_cabmicdist"]))
