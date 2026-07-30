@@ -256,10 +256,10 @@
     box-shadow: 0 0 10px rgba(120,90,255,.4);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-nodes {
-    /* 148px tall with top-anchored tiles (2026-07-30): leaves a 30px band under the
-       108px tiles for the stacked Amp 2 / Cab 2 mini-tiles. */
+    /* 160px tall with top-anchored tiles (2026-07-30): leaves a 42px band under the
+       108px tiles for the stacked Amp 2 / Cab 2 mini-tiles (12px readable text). */
     flex: 1 1 auto; min-width: 0; position: relative; display: flex; flex-wrap: nowrap; align-items: flex-start;
-    gap: 12px; height: 148px; padding: 10px 6px 0;
+    gap: 12px; height: 160px; padding: 10px 6px 0;
     /* when there are too many nodes to fit, scroll horizontally (scrollbar hidden globally),
        so the last node is always reachable instead of being clipped off the end */
     overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
@@ -982,13 +982,13 @@
    palette, resort) carries them, but rendered fully below the tile box (top:
    100% + gap). .hf-nodes grows to 146px to give the stack room. ─────────────── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode {
-  position: absolute; top: calc(100% + 4px); left: 6px; right: 6px; z-index: 3;
-  font-size: 9px; letter-spacing: 0.1em; text-align: center; cursor: pointer;
-  padding: 3px 0; border-radius: 7px; color: rgba(240,168,53,0.95);
+  position: absolute; top: calc(100% + 5px); left: 2px; right: 2px; z-index: 3;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-align: center; cursor: pointer;
+  padding: 6px 0; border-radius: 8px; color: rgba(240,168,53,0.98);
   background-color: #171410;
   background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.4));
   border: 1px solid rgba(240,168,53,0.55); border-top: 2px solid rgba(240,168,53,0.85);
-  box-shadow: 0 0 7px rgba(240,168,53,0.22), 0 3px 8px rgba(0,0,0,0.5);
+  box-shadow: 0 0 8px rgba(240,168,53,0.25), 0 3px 8px rgba(0,0,0,0.5);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-palette .hf-subnode { display: none; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-subnode-off {
