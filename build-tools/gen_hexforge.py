@@ -500,7 +500,7 @@ RB = [
     ("sag",     "Sag",      "f", 0, 1, 0.3, None),
     ("channel", "Channel",  "t", 0, 1, 0, None),
     ("eco",     "Eco (2x OS)", "t", 0, 1, 0, None),
-    ("cab",     "Cab",      "e", 0, 5, 0, [("Factory V30",0),("Vox 2x12",1),("American OB",2),("Greenback",3),("Hiwatt",4),("Doom",5)]),
+    ("cab",     "Cab",      "e", 0, 6, 0, [("Factory V30",0),("Vox 2x12",1),("American OB",2),("Greenback",3),("Hiwatt",4),("Doom",5),("No Cab (Direct)",6)]),
     ("lowcut",  "Cab Low Cut",  "hz", 20, 500, 80, None),
     ("highcut", "Cab High Cut", "hz", 2000, 20000, 16000, None),
     ("blend",   "Blend A/B", "f", 0, 1, 0.5, None),
@@ -694,7 +694,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 153 ;")   # 153: RIG B dual amp/cab (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 154 ;")   # 154: Rig B moved into the Amp panel + No Cab option (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -788,7 +788,6 @@ TILES = [
     ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
     ("dr",  "Drive",      "#eb5046", ["model","drive","tone","level"]),                       # drive
     ("dr2", "Drive B",    "#eb7a46", ["model","drive","tone","level"]),                       # drive B (multi-instance)
-    ("rb",  "Rig B",      "#f0a835", ["amp","gain","cab","blend"]),                           # dual amp/cab rig
     ("nail","Nail",       "#d0343a", ["mode","drive","tone","texture","level"]),              # nail (industrial)
     ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
     ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
@@ -980,7 +979,6 @@ ICON = {
     "fz":  '<svg viewBox="0 0 24 24"><path d="M3 12h3l2-7 3 14 2-10 2 6 2-3h4"/></svg>',
     "dr":  '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/></svg>',
     "dr2": '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/><text x="19" y="22" font-size="9" fill="currentColor" stroke="none">2</text></svg>',
-    "rb":  '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="9" height="14" rx="2"/><rect x="13" y="5" width="9" height="14" rx="2"/></svg>',
     "nail":'<svg viewBox="0 0 24 24"><path d="M6 5h12"/><path d="M9 5l1.4 9L12 20l1.6-6L15 5"/></svg>',
     "amp": '<svg viewBox="0 0 24 24"><path d="M7 16V9a5 5 0 0110 0v7z"/><path d="M12 6.5v6.5"/><path d="M9.6 12.6q2.4 2 4.8 0"/><path d="M9 16v2.6M12 16v3.4M15 16v2.6"/></svg>',
     "cab": '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="7" r="1.4"/></svg>',
@@ -1118,17 +1116,30 @@ def amp_body():
     # a time, so the amp detail is no longer a giant vertical stack (mirrors the standalone Amp
     # pedal). script-hexforge.js wires the tab clicks and hides tabs that don't apply to the
     # current model (applyAmp): Voicing only for Sunn/Beardo/Cali V; Power Amp hidden for Sunn/NAM.
+    # Rig B (dual amp/cab, 2026-07-30): lives INSIDE the Amp panel per the user's
+    # UX direction -- it is part of the first amp/cab, not a chain block. Three
+    # chassis rows: B amp, B cab (incl. No Cab for real-poweramp rigs), blend.
+    def rbrow(sufs):
+        return '<div class="hf-onerow">' + ''.join(render_ctrl(CTRL_BY_SYM['rb_' + sf]) for sf in sufs) + '</div>'
+    rigb_panel = ('<div class="hf-pa-face"><div class="hf-pa-title">Rig B — Second Amp</div>'
+                  + rbrow(["enable", "amp", "gain", "bass", "mid", "treble", "presence", "master", "sag", "channel", "eco"])
+                  + '</div>'
+                  '<div class="hf-pa-face"><div class="hf-pa-title">Rig B — Cab &amp; Blend</div>'
+                  + rbrow(["cab", "lowcut", "highcut", "blend", "level", "pol"])
+                  + '</div>')
     tabs = ('<div class="hf-atabs" rata-role="atabs" role="tablist" aria-label="Amp sections">'
             '<div class="hf-atab hf-atab-on" rata-role="atab" data-tab="amp" role="tab" tabindex="0" aria-selected="true">Amp</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="voice" role="tab" tabindex="0" aria-selected="false">Voicing</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="power" role="tab" tabindex="0" aria-selected="false">Power Amp</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="nam" role="tab" tabindex="0" aria-selected="false">Neural</div>'
+            '<div class="hf-atab" rata-role="atab" data-tab="rigb" role="tab" tabindex="0" aria-selected="false">Rig B</div>'
             '</div>')
     panels = ('<div class="hf-atabpanels">'
               '<div class="hf-atabpanel hf-atab-on" rata-role="apanel" data-tab="amp" role="tabpanel" aria-label="Amp">' + face + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + mt15 + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="power" role="tabpanel" aria-label="Power Amp">' + pa + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="rigb" role="tabpanel" aria-label="Rig B">' + rigb_panel + '</div>'
               '</div>')
     return selrow + tabs + panels
 
@@ -1164,9 +1175,6 @@ BLOCK_GROUPS = {
             ("PERFORMANCE", None, ["eco"])],
     "dr2": [("DRIVE B", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
-    "rb":  [("RIG B AMP", None, ["amp", "gain", "bass", "mid", "treble", "presence", "master", "sag", "channel", "eco"]),
-            ("RIG B CAB", None, ["cab", "lowcut", "highcut"]),
-            ("BLEND", None, ["blend", "level", "pol"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs

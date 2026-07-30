@@ -80,7 +80,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 153 ;
+    lv2:microVersion 154 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -1512,13 +1512,14 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 227 ; lv2:symbol "rb_cab" ; lv2:name "Rig B Cab" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 6 ;
         lv2:scalePoint [ rdfs:label "Factory V30" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Vox 2x12" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "American OB" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "Greenback" ; rdf:value 3 ] ;
         lv2:scalePoint [ rdfs:label "Hiwatt" ; rdf:value 4 ] ;
-        lv2:scalePoint [ rdfs:label "Doom" ; rdf:value 5 ]
+        lv2:scalePoint [ rdfs:label "Doom" ; rdf:value 5 ] ;
+        lv2:scalePoint [ rdfs:label "No Cab (Direct)" ; rdf:value 6 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 228 ; lv2:symbol "rb_lowcut" ; lv2:name "Rig B Cab Low Cut" ;

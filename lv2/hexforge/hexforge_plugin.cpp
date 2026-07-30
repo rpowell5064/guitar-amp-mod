@@ -1808,14 +1808,15 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
                 { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; }
         }
-        const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 5);
-        if (rbCab != p->lastCab2Model) {
+        const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
+        if (rbCab != p->lastCab2Model && rbCab < 6) {
             static const char* kRbCabIr[6] = { "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom" };
             WorkMsg msg; msg.type=W_CAB_IR; msg.namSlot=1;
             std::snprintf(msg.path, sizeof(msg.path), "%s", kRbCabIr[rbCab]);
             if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
                 p->lastCab2Model = rbCab;
         }
+        if (rbCab >= 6) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
         if (p->amp2) {
             p->amp2->setBypass(false);
             p->amp2->setParameter("gain",     *p->ports[HF_RB_GAIN]);
@@ -1845,7 +1846,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             p->pa2.setBypass(p->lastAmp2Model == kSunnIdx);
             p->cab2.setParameter("lowcut",  *p->ports[HF_RB_LOWCUT]);
             p->cab2.setParameter("highcut", *p->ports[HF_RB_HIGHCUT]);
-            p->cab2.setBypass(false);
+            // No Cab (Direct): the player may run rig A into a real power amp +
+            // physical cab -- rig B then skips speaker sim too.
+            p->cab2.setBypass(clampi(*p->ports[HF_RB_CAB], 0, 6) >= 6);
         }
     }
     AmpBlockExtended* amp = p->amp;
