@@ -990,13 +990,33 @@ function (event, funcs) {
             // Per-block CPU meters (2026-07-30): badge on each chain node + the
             // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
-                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2', rigb:'rb',
+                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2',
                             gt2:'gt2', cp2:'cp2', fz2:'fz2', nail2:'nail2', md2:'md2',
                             dl2:'dl2', rv2:'rv2', wh2:'wh2', oc2:'oc2', eq2:'eq2' };
             var ck = s.substring(4);
             var pct = parseFloat(event.value);
             if (ck === 'total') {
                 icon.find('[rata-role=cputotal]').text('CPU ' + (pct < 0.05 ? '--' : pct.toFixed(pct < 9.95 ? 1 : 0)) + '%');
+            } else if (ck === 'rigb' || ck === 'cab2') {
+                // Rig B: cpu_rigb times the WHOLE B path, cpu_cab2 the Cab 2 slice —
+                // the strips show Amp 2 = rigb - cab2 and Cab 2 = cab2 (hidden while
+                // the strip is out of the chain).
+                icon.data(ck === 'cab2' ? 'hf_cpu_c2' : 'hf_cpu_rb', pct);
+                var c2v = parseFloat(icon.data('hf_cpu_c2')) || 0;
+                var rbv = parseFloat(icon.data('hf_cpu_rb')) || 0;
+                var a2v = rbv - c2v; if (a2v < 0) a2v = 0;
+                [['amp2', a2v], ['cab2', c2v]].forEach(function (t) {
+                    var sn = icon.find('[data-target=' + t[0] + ']');
+                    var hide = sn.hasClass('hf-subnode-off') || t[1] < 0.05;
+                    var stxt = t[1].toFixed(t[1] < 9.95 ? 1 : 0) + '%';
+                    var sb = sn.find('.hf-cpu-badge');
+                    if (!sb.length) { sn.append('<span class="hf-cpu-badge"></span>'); sb = sn.find('.hf-cpu-badge'); }
+                    sb.text(hide ? '' : stxt).toggleClass('mod-hidden', hide);
+                    var pn2 = panelOf(icon, t[0]);
+                    var pb2 = pn2.find('.hf-cpu-panel');
+                    if (!pb2.length) { pn2.find('.hf-dname').first().after('<span class="hf-cpu-panel"></span>'); pb2 = pn2.find('.hf-cpu-panel'); }
+                    pb2.text(hide ? '' : 'CPU ' + stxt);
+                });
             } else if (CPU_MAP[ck]) {
                 var txt = pct.toFixed(pct < 9.95 ? 1 : 0) + '%';
                 // NOTE: no global $ in the modgui sandbox (it killed the whole

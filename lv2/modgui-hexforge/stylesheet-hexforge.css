@@ -1000,8 +1000,14 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-subnode-off {
   color: rgba(240,168,53,0.85); background-color: #171410;
   background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.4));
-  border: 1px solid rgba(240,168,53,0.5);
+  border: 1px dashed rgba(240,168,53,0.5);
   box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+}
+/* CPU % inside an ENGAGED strip: dark-on-gold, right-aligned (engaged only —
+   the JS hides it while the strip is out of the chain). */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode .hf-cpu-badge {
+  position: absolute; right: 7px; top: 50%; bottom: auto; transform: translateY(-50%);
+  font-size: 9px; color: rgba(26,18,8,0.8); text-shadow: none;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode:hover {
   transform: translateY(-1px); box-shadow: 0 0 12px rgba(240,168,53,0.55), 0 4px 9px rgba(0,0,0,0.5);

@@ -623,6 +623,10 @@ ctrl.append(mkport("CPU_RIGB", "cpu_rigb", "CPU Rig B", "f", 0, 100, 0, None, ou
 for _pfx, _ttl in X2_CLONES:
     ctrl.append(mkport("CPU_" + _pfx.upper() + "2", "cpu_" + _pfx + "2", "CPU " + _ttl + " 2",
                        "f", 0, 100, 0, None, out=True))
+# Cab 2's own meter (2026-07-30): the Rig B path is timed as a whole (cpu_rigb);
+# this carves out the cab2 convolution so the UI can show Amp 2 (= rigb - cab2)
+# and Cab 2 separately. Pure tail append (outputs only -- no blob impact).
+ctrl.append(mkport("CPU_CAB2", "cpu_cab2", "CPU Cab 2", "f", 0, 100, 0, None, out=True))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -747,7 +751,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 162 ;")   # 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 163 ;")   # 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")

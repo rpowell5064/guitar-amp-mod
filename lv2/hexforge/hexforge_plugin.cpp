@@ -489,7 +489,8 @@ struct HexForge {
     int    lastCab2Model = -1;
     bool   rigBHeld      = false;                     // rigBBuf holds this chunk's amp-input tap
     float  rigBBuf[1024] = {};                        // kMaxBlock; mono B-path scratch
-    double cpuRigB       = 0.0;                       // Rig B CPU meter accumulator
+    double cpuRigB       = 0.0;                       // Rig B CPU meter accumulator (whole B path)
+    double cpuCab2       = 0.0;                       // Cab 2 slice of cpuRigB (UI shows Amp 2 = rigb - cab2)
     PowerAmpProcessor pa;
     CabinetBlock      cab;
     ModulationBlock   modfx;
@@ -2444,7 +2445,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             // Cab 2 only when it has been brought into the chain; otherwise rig B
             // joins BEFORE Cab 1 and shares it (incl. sharing its bypass -- the
             // real-poweramp rig works naturally).
-            if (cab2In) p->cab2.process(io1, io1, len, 1);
+            if (cab2In) {
+                const double c2T0 = CpuClk::now();
+                p->cab2.process(io1, io1, len, 1);
+                p->cpuCab2 += CpuClk::now() - c2T0;
+            }
             const float blend = *p->ports[HF_RB_BLEND];
             float g = std::pow(10.0f, *p->ports[HF_RB_LEVEL] / 20.0f) * blend;
             if (*p->ports[HF_RB_POL] > 0.5f) g = -g;
@@ -2609,6 +2614,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (p->hostPorts[HF_CPU_RIGB])
                 *p->hostPorts[HF_CPU_RIGB] = float(100.0 * p->cpuRigB / budget);
             p->cpuRigB = 0.0;
+            if (p->hostPorts[HF_CPU_CAB2])
+                *p->hostPorts[HF_CPU_CAB2] = float(100.0 * p->cpuCab2 / budget);
+            p->cpuCab2 = 0.0;
             p->cpuSamps = 0;
         }
         // If nothing ever spread to stereo, R already mirrors L (mono blocks wrote both;

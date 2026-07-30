@@ -80,7 +80,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 162 ;
+    lv2:microVersion 163 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -2965,11 +2965,15 @@
         lv2:index 433 ; lv2:symbol "cpu_eq2" ; lv2:name "CPU EQ 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 434 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 434 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 435 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -2982,7 +2986,7 @@
         modgui:brand "Hex Chain" ;
         modgui:label "Hex Forge" ;
         modgui:model "mod-pedal-guitaramp-hexforge" ;
-        modgui:monitoredOutputs [ lv2:symbol "clip" ] , [ lv2:symbol "ps_bank" ] , [ lv2:symbol "ps_slot" ] , [ lv2:symbol "in_meter" ] , [ lv2:symbol "out_meter" ] , [ lv2:symbol "tuner_note" ] , [ lv2:symbol "tuner_cents" ] , [ lv2:symbol "cpu_gt" ] , [ lv2:symbol "cpu_cp" ] , [ lv2:symbol "cpu_fz" ] , [ lv2:symbol "cpu_dr" ] , [ lv2:symbol "cpu_amp" ] , [ lv2:symbol "cpu_cab" ] , [ lv2:symbol "cpu_md" ] , [ lv2:symbol "cpu_dl" ] , [ lv2:symbol "cpu_rv" ] , [ lv2:symbol "cpu_wh" ] , [ lv2:symbol "cpu_oc" ] , [ lv2:symbol "cpu_nail" ] , [ lv2:symbol "cpu_eq" ] , [ lv2:symbol "cpu_total" ] , [ lv2:symbol "cpu_dr2" ] , [ lv2:symbol "cpu_rigb" ] , [ lv2:symbol "cpu_gt2" ] , [ lv2:symbol "cpu_cp2" ] , [ lv2:symbol "cpu_fz2" ] , [ lv2:symbol "cpu_nail2" ] , [ lv2:symbol "cpu_md2" ] , [ lv2:symbol "cpu_dl2" ] , [ lv2:symbol "cpu_rv2" ] , [ lv2:symbol "cpu_wh2" ] , [ lv2:symbol "cpu_oc2" ] , [ lv2:symbol "cpu_eq2" ] ;
+        modgui:monitoredOutputs [ lv2:symbol "clip" ] , [ lv2:symbol "ps_bank" ] , [ lv2:symbol "ps_slot" ] , [ lv2:symbol "in_meter" ] , [ lv2:symbol "out_meter" ] , [ lv2:symbol "tuner_note" ] , [ lv2:symbol "tuner_cents" ] , [ lv2:symbol "cpu_gt" ] , [ lv2:symbol "cpu_cp" ] , [ lv2:symbol "cpu_fz" ] , [ lv2:symbol "cpu_dr" ] , [ lv2:symbol "cpu_amp" ] , [ lv2:symbol "cpu_cab" ] , [ lv2:symbol "cpu_md" ] , [ lv2:symbol "cpu_dl" ] , [ lv2:symbol "cpu_rv" ] , [ lv2:symbol "cpu_wh" ] , [ lv2:symbol "cpu_oc" ] , [ lv2:symbol "cpu_nail" ] , [ lv2:symbol "cpu_eq" ] , [ lv2:symbol "cpu_total" ] , [ lv2:symbol "cpu_dr2" ] , [ lv2:symbol "cpu_rigb" ] , [ lv2:symbol "cpu_gt2" ] , [ lv2:symbol "cpu_cp2" ] , [ lv2:symbol "cpu_fz2" ] , [ lv2:symbol "cpu_nail2" ] , [ lv2:symbol "cpu_md2" ] , [ lv2:symbol "cpu_dl2" ] , [ lv2:symbol "cpu_rv2" ] , [ lv2:symbol "cpu_wh2" ] , [ lv2:symbol "cpu_oc2" ] , [ lv2:symbol "cpu_eq2" ] , [ lv2:symbol "cpu_cab2" ] ;
         modgui:port [
             lv2:index 0 ; lv2:symbol "bypass" ; lv2:name "Bypass"
         ] , [
