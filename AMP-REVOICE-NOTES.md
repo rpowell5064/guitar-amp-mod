@@ -1781,3 +1781,21 @@ window, a different regime), and the roadmap already defers EVH to a
 supervised session with knob-labeled captures. DO NOT blind-restructure
 the flagship: acquire/label captures first, then run the same cap-ladder
 methodology per stage.
+
+## ITEM #24 FOLLOW-UP CLOSED (2026-07-30): per-amp nfb re-tune has no headroom
+
+The 2026-07-28 NFB-wrap shipping note left one thread open: "retuning each
+amp's nfb default now that the topology has genuinely changed." Measured
+tonight on the reference JCM800 (dimed knob-matched capture, exact TS):
+nfb swept 0.1 / 0.42 / 0.7 / 1.0 -- 8k FR moves 0.1 dB, THD@1k 0.2 pt,
+223 Hz harmonics identical to the decimal. The HP'd feedback slice is
+inherently tiny at every legal depth; there is nothing to tune. #24 is
+DONE in full.
+
+CONSEQUENCE FOR THE ROADMAP: the three remaining structural gaps --
+THD@1k ~half of captures, the -16 vs -6 dB level-compression gap, and
+h4/h6 evens at 40/20% of target -- now ALL point at the same single
+project: the PA as a first-class distortion contributor (gain-staging
+re-architecture so the power stage carries a real share of the total
+distortion, + full preset re-level). Supervised, one big session, the
+last structural amp item standing.
