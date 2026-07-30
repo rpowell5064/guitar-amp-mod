@@ -618,30 +618,18 @@ function (event, funcs) {
                 });
             });
         });
-        // Cab detail tabs (Rig B lives behind the second tab).
-        panelOf(icon, 'cab').find('[rata-role=cabtab]').each(function () {
-            var el = this;
-            el.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var t = el.getAttribute('data-tab');
-                var pn = panelOf(icon, 'cab');
-                pn.find('[rata-role=cabtab]').removeClass('hf-atab-on').attr('aria-selected', 'false');
-                el.classList.add('hf-atab-on'); el.setAttribute('aria-selected', 'true');
-                pn.find('[rata-role=cabpanel]').removeClass('hf-atab-on');
-                pn.find('[rata-role=cabpanel][data-tab="' + t + '"]').addClass('hf-atab-on');
-            });
-        });
-        // Stacked sub-tiles: AMP 2 / CAB 2 open their parent panel on the Rig B tab.
+        // Docked Amp 2 / Cab 2 sub-tiles open their standalone panels.
         icon.find('[rata-role=subnode]').each(function () {
             var el = this;
             el.addEventListener('click', function (e) {
                 e.stopPropagation();
-                var parent = el.getAttribute('data-parent');
-                nodeOf(icon, parent).trigger('click');   // open the parent panel
-                var pn = panelOf(icon, parent);
-                setTimeout(function () {
-                    pn.find('[rata-role=' + (parent === 'amp' ? 'atab' : 'cabtab') + '][data-tab=rigb]').trigger('click');
-                }, 0);
+                var t = el.getAttribute('data-target');
+                icon.find('.hf-node').removeClass('hf-sel');
+                icon.find('.hf-subnode').removeClass('hf-sel');
+                el.classList.add('hf-sel');
+                icon.find('.hf-detail-panel').removeClass('hf-sel');
+                panelOf(icon, t).addClass('hf-sel');
+                icon.data('hf_sel', t);
             });
         });
         // Amp detail tabs: wire clicks (ignore tabs hidden for the current model).
@@ -874,14 +862,16 @@ function (event, funcs) {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
         } else if (s === 'rb_amp') {
             var rm = parseInt(event.value, 10);
-            show(icon, 'amp', '.c-rb-brite',  rm === 3);
-            show(icon, 'amp', '.c-rb-beardo', rm === 6);
-            show(icon, 'amp', '.c-rb-mesa',   rm === 11);
-            show(icon, 'amp', '.c-rb-recto',  rm === 12);
-            show(icon, 'amp', '.c-rb-mt15',   rm === 13);
-            show(icon, 'amp', '.c-rb-plexi',  rm === 10);
+            show(icon, 'amp2', '.c-rb-brite',  rm === 3);
+            show(icon, 'amp2', '.c-rb-beardo', rm === 6);
+            show(icon, 'amp2', '.c-rb-mesa',   rm === 11);
+            show(icon, 'amp2', '.c-rb-recto',  rm === 12);
+            show(icon, 'amp2', '.c-rb-mt15',   rm === 13);
+            show(icon, 'amp2', '.c-rb-plexi',  rm === 10);
         } else if (s === 'rb_enable') {
-            icon.find('[rata-role=subnode]').toggleClass('mod-hidden', !(event.value > 0.5));
+            icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(event.value > 0.5));
+        } else if (s === 'rb_cab2on') {
+            icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(event.value > 0.5));
         } else if (s && s.indexOf('cpu_') === 0) {
             // Per-block CPU meters (2026-07-30): badge on each chain node + the
             // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
