@@ -645,7 +645,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 149 ;")   # 149: badge bottom-right + outputs off the modgui:port list (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 150 ;")   # 150: no CPU total in the toolbar (mod-ui already shows global CPU) (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1356,7 +1356,6 @@ def emit_icon():
         '      <div class="hf-meter hf-meter-h" role="meter" aria-label="Output level meter" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
         '      <span class="hf-clip" rata-role="clip" role="status" aria-live="assertive" aria-label="Output clipping indicator">CLIP</span>\n'
         '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
-        '      <span class="hf-cpu-total" rata-role="cputotal" title="Engine CPU (% of audio budget) - per-block % on each panel">CPU</span>\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_doubler"]) + '\n'
