@@ -445,6 +445,7 @@ function (event, funcs) {
         var tb = (p === 1);            // I Know It (Tone Bender)
         var ff = (p === 3);            // Fuzz Zachary (ZVex-style)
         show(icon, blk, '.c-fz-ih', p === 0);      // Variant dropdown = ONLY Italian Hero (Muff eras)
+        show(icon, blk, '.c-fz-tone', p === 0 || p === 2);   // Tone: Muff + Octavia only (TB/FF ignore it)
         show(icon, blk, '.c-fz-tb', tb || ff);     // Bias/Trim/Temp trio (Tone Bender + Fuzz Zachary)
         var pn = panelOf(icon, blk);
         pn.find('[rata-role=lbl-' + blk + '_sustain]').text(tb ? 'Attack' : (ff ? 'Drive' : 'Sustain'));
@@ -484,6 +485,24 @@ function (event, funcs) {
     function setDriveModel(icon, m) {
         if (funcs && typeof funcs.set_port_value === 'function') funcs.set_port_value('dr_model', m);
         applyDrive(icon, m);
+    }
+    // Drive 2 Neural (v40): same conditional machinery against the dr2 panel.
+    function applyDrive2(icon, m) {
+        if (m == null) m = 0;
+        icon.data('hf_dr2_m', m);
+        var nam = (m === DR_NAM);
+        show(icon, 'dr2', '.c-dr-oct', m === 1);
+        show(icon, 'dr2', '.c-dr-nam', nam);
+        show(icon, 'dr2', '.c-dr-alg', !nam);
+        show(icon, 'dr2', '.c-dr-int', !nam);
+        panelOf(icon, 'dr2').find('[rata-role=dr2modebtn]').each(function () {
+            this.classList.toggle('hf-mode-on', this.getAttribute('data-mode') === (nam ? 'nam' : 'int'));
+        });
+        setModelVal(icon, 'dr2', m);
+    }
+    function setDrive2Model(icon, m) {
+        if (funcs && typeof funcs.set_port_value === 'function') funcs.set_port_value('dr2_model', m);
+        applyDrive2(icon, m);
     }
     // (Cab loads IMPULSE RESPONSES only — NAM models amps/pedals, not cabinets. The old IR/Neural
     // SOURCE toggle was removed 2026-07-13.)
@@ -667,7 +686,7 @@ function (event, funcs) {
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
             else if (sym === 'dl2_type')           icon.data('hf_dl2_t', parseInt(val, 10));
             else if (sym === 'md_type' || sym === 'md2_type') { var _mb = (sym === 'md2_type') ? 'md2' : 'md'; var _mt = parseInt(val, 10); setModelVal(icon, _mb, _mt); show(icon, _mb, '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6 || _mt === 7); show(icon, _mb, '.c-md-trem', _mt === 4); }
-            else if (sym === 'dr2_model')          setModelVal(icon, 'dr2', parseInt(val, 10));
+            else if (sym === 'dr2_model')          applyDrive2(icon, parseInt(val, 10));
             else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             syncSel(icon, sym, val);               // dropdown labels track recalled values
@@ -694,6 +713,7 @@ function (event, funcs) {
             else if (uri.indexOf('#ampnam') >= 0) setFile(icon, 'AmpNam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#drnam') >= 0)  setFile(icon, 'DrNam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#amp2nam') >= 0) setFile(icon, 'Amp2Nam', value, '-- choose a NAM file --');
+            else if (uri.indexOf('#dr2nam') >= 0)  setFile(icon, 'Dr2Nam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#ir2file') >= 0) {
                 icon.data('hf_ir2', value === '@builtin' ? '' : value);
                 setIr2Label(icon);
@@ -787,19 +807,23 @@ function (event, funcs) {
         });
         // Drive MODE toggle (Internal / Neural): Neural puts the drive on the NAM slot (model 3) and
         // remembers the last internal model; Internal restores it. Mirrors the standalone drive switch.
-        panelOf(icon, 'dr').find('[rata-role=drmodebtn]').each(function () {
-            var el = this;
-            el.addEventListener('click', function (e) {
-                e.stopPropagation();
-                var mode = el.getAttribute('data-mode');
-                var cur = icon.data('hf_dr_m'); if (cur == null) cur = 0;
-                if (mode === 'nam') {
-                    if (cur !== DR_NAM) { icon.data('hf_dr_last_internal', cur); setDriveModel(icon, DR_NAM); }
-                } else if (cur === DR_NAM) {
-                    var li = icon.data('hf_dr_last_internal');
-                    if (li == null || li === DR_NAM) li = 0;
-                    setDriveModel(icon, li);
-                }
+        // Same wiring for Drive 2 (v40).
+        [['dr', 'drmodebtn', 'hf_dr_m', 'hf_dr_last_internal', setDriveModel],
+         ['dr2', 'dr2modebtn', 'hf_dr2_m', 'hf_dr2_last_internal', setDrive2Model]].forEach(function (w) {
+            panelOf(icon, w[0]).find('[rata-role=' + w[1] + ']').each(function () {
+                var el = this;
+                el.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    var mode = el.getAttribute('data-mode');
+                    var cur = icon.data(w[2]); if (cur == null) cur = 0;
+                    if (mode === 'nam') {
+                        if (cur !== DR_NAM) { icon.data(w[3], cur); w[4](icon, DR_NAM); }
+                    } else if (cur === DR_NAM) {
+                        var li = icon.data(w[3]);
+                        if (li == null || li === DR_NAM) li = 0;
+                        w[4](icon, li);
+                    }
+                });
             });
         });
         // (Node connector is now a cheap CSS-scrolled baked strip — no JS animation loop.)
@@ -837,7 +861,7 @@ function (event, funcs) {
         setModelVal(icon, 'md2', _mt2);
         show(icon, 'md2', '.c-md-delay', _mt2 === 0 || _mt2 === 3 || _mt2 === 6 || _mt2 === 7);
         show(icon, 'md2', '.c-md-trem', _mt2 === 4);
-        setModelVal(icon, 'dr2', parseInt(map.dr2_model || 0, 10));
+        applyDrive2(icon, parseInt(map.dr2_model || 0, 10));
         icon.data('hf_eq_v', EQ_SYMS.slice(0, 6).map(function (k) { return parseFloat(map[k]) || 0; }));
         icon.data('hf_eq_lvl', parseFloat(map.eq_level) || 0);
         setModelVal(icon, 'eq', parseInt(map.eq_preset || 0, 10));
@@ -1008,7 +1032,7 @@ function (event, funcs) {
         } else if (s === 'dr_model') {
             applyDrive(icon, parseInt(event.value, 10));
         } else if (s === 'dr2_model') {
-            setModelVal(icon, 'dr2', parseInt(event.value, 10));
+            applyDrive2(icon, parseInt(event.value, 10));
         } else if (eqTrack(icon, s, event.value)) {
             eqScope(icon);
         } else if (s === 'md_type' || s === 'md2_type') {

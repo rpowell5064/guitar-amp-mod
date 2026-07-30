@@ -384,6 +384,12 @@ enum HexForgePort {
     HF_EQ2_BYPASS,
     HF_RB_NAM_GAIN,
     HF_RB_NAM_VOL,
+    HF_FZ_ECO,
+    HF_NAIL_ECO,
+    HF_FZ2_ECO,
+    HF_NAIL2_ECO,
+    HF_DR2_NAM_GAIN,
+    HF_DR2_NAM_VOL,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -436,7 +442,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 438, "port count drift");
+static_assert(HF_N_PORTS == 444, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -503,7 +509,8 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "wh2_bypass", "oc2_pos", "oc2_enable", "oc2_up", "oc2_down", "oc2_dry",
     "oc2_micro", "oc2_interval", "oc2_bypass", "eq2_pos", "eq2_enable", "eq2_preset",
     "eq2_100", "eq2_200", "eq2_400", "eq2_800", "eq2_1k6", "eq2_3k2",
-    "eq2_level", "eq2_bypass", "rb_nam_gain", "rb_nam_vol", "sw_a", "sw_b",
+    "eq2_level", "eq2_bypass", "rb_nam_gain", "rb_nam_vol", "fz_eco", "nail_eco",
+    "fz2_eco", "nail2_eco", "dr2_nam_gain", "dr2_nam_vol", "sw_a", "sw_b",
     "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up",
     "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank", "ps_slot",
     "out_auto", "in_meter", "out_meter", "out_mono", "tuner_on", "tuner_mute",

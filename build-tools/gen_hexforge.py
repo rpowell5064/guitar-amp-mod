@@ -469,7 +469,7 @@ ctrl.append(mkport("DR_ECO", "dr_eco", "Drive Eco (2x OS)", "t", 0, 1, 0, None, 
 # doubling). Same params as Drive A minus the NAM model (one neural slot per
 # suite instance -- keeps worker/memory budget flat; values match OverdriveType
 # so the enums stay aligned). Default: disabled, parked at slot 14. Migrated v34.
-_DR2_SCALE = [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]
+_DR2_SCALE = [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]
 _dr2_posscale = [(str(k), k) for k in range(1, 25)]
 ctrl.append(mkport("DR2_POS",    "dr2_pos",    "Drive 2 Position", "e", 1, 24, 14, _dr2_posscale, "Slot", hidden=True))
 ctrl.append(mkport("DR2_ENABLE", "dr2_enable", "Drive 2 Enable",   "t", 0, 1, 0, None, "On"))
@@ -569,6 +569,19 @@ for _pfx, _ttl in X2_CLONES:
 for _suf in ("nam_gain", "nam_vol"):
     _c = CTRL_BY_SYM_EARLY["amp_" + _suf] if False else next(c for c in ctrl if c["sym"] == "amp_" + _suf)
     ctrl.append(mkport("RB_" + _suf.upper(), "rb_" + _suf, "Rig B " + _c["name"].replace("Amp ", ""),
+                       _c["kind"], _c["mn"], _c["mx"], _c["df"], _c["scale"], _c["short"]))
+
+# ── v40 quick wins (2026-07-30): Eco for the remaining oversampled blocks
+# (fuzz + nail, both instances -- 2x OS halves their cost like amp/drive Eco)
+# + the Drive 2 NAM trims backing the new #dr2nam path param (full mirror of
+# Drive 1's Neural mode). All default 0; migrated v40.
+ctrl.append(mkport("FZ_ECO",    "fz_eco",    "Fuzz Eco (2x OS)",    "t", 0, 1, 0, None, "Eco"))
+ctrl.append(mkport("NAIL_ECO",  "nail_eco",  "Nail Eco (2x OS)",    "t", 0, 1, 0, None, "Eco"))
+ctrl.append(mkport("FZ2_ECO",   "fz2_eco",   "Fuzz 2 Eco (2x OS)",  "t", 0, 1, 0, None, "Eco"))
+ctrl.append(mkport("NAIL2_ECO", "nail2_eco", "Nail 2 Eco (2x OS)",  "t", 0, 1, 0, None, "Eco"))
+for _suf in ("nam_gain", "nam_vol"):
+    _c = next(c for c in ctrl if c["sym"] == "dr_" + _suf)
+    ctrl.append(mkport("DR2_" + _suf.upper(), "dr2_" + _suf, "Drive 2 " + _c["short"],
                        _c["kind"], _c["mn"], _c["mx"], _c["df"], _c["scale"], _c["short"]))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
@@ -734,8 +747,8 @@ def emit_ttl():
     L.append("    rdfs:range atom:Path ;")
     L.append('    mod:fileTypes "cabsim,ir,wav,audio" .')
     L.append("")
-    L.append("# NAM neural-capture file params (Amp slot 5 / Drive slot 3 / Cab dual-mode / Amp 2 slot 5).")
-    for frag, lbl in (("ampnam", "Amp NAM"), ("drnam", "Drive NAM"), ("cabnam", "Cabinet NAM"), ("amp2nam", "Amp 2 NAM")):
+    L.append("# NAM neural-capture file params (Amp slot 5 / Drive slot 3 / Cab dual-mode / Amp 2 slot 5 / Drive 2 slot 3).")
+    for frag, lbl in (("ampnam", "Amp NAM"), ("drnam", "Drive NAM"), ("cabnam", "Cabinet NAM"), ("amp2nam", "Amp 2 NAM"), ("dr2nam", "Drive 2 NAM")):
         L.append("<%s#%s>" % (URI, frag))
         L.append("    a lv2:Parameter ;")
         L.append('    rdfs:label "%s" ;' % lbl)
@@ -749,7 +762,7 @@ def emit_ttl():
     L.append('#   ps_apply : plugin->UI — "sym=val;.." snapshot so the UI re-syncs knobs.')
     L.append("# Declared writable so mod-ui delivers their patch:Set notify messages to the")
     L.append("# custom modgui exactly like the file-picker params (alphabetical indices:")
-    L.append("# amp2nam=0 ampnam=1 cabnam=2 drnam=3 ir2file=4 irfile=5 meters=6 ps_apply=7 ps_index=8 ps_name=9).")
+    L.append("# amp2nam=0 ampnam=1 cabnam=2 dr2nam=3 drnam=4 ir2file=5 irfile=6 meters=7 ps_apply=8 ps_index=9 ps_name=10).")
     for frag, lbl in (("ps_name", "Preset Name"), ("ps_index", "Preset Index"), ("ps_apply", "Preset Apply"), ("meters", "Level Meters")):
         L.append("<%s#%s>" % (URI, frag))
         L.append("    a lv2:Parameter ;")
@@ -768,7 +781,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 166 ;")   # 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 167 ;")   # 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -777,7 +790,7 @@ def emit_ttl():
     L.append("")
     # Order here = effect.parameters order in the modgui: 0 irfile,1 ampnam,2 drnam,3 cabnam.
     L.append("    patch:writable <%s#irfile> , <%s#ampnam> , <%s#drnam> , <%s#cabnam> ," % (URI, URI, URI, URI))
-    L.append("                   <%s#amp2nam> , <%s#ir2file> ," % (URI, URI))
+    L.append("                   <%s#amp2nam> , <%s#ir2file> , <%s#dr2nam> ," % (URI, URI, URI))
     L.append("                   <%s#ps_name> , <%s#ps_index> , <%s#ps_apply> , <%s#meters> ;" % (URI, URI, URI, URI))
     L.append("")
     # audio ports
@@ -914,6 +927,9 @@ COND = {
     # fuzz — Variant only on Italian Hero(0); Tone shared by Italian Hero + Octavia(2)
     # (always shown — Tone Bender just ignores it); Bias/Trim/Temp only on I Know It(1).
     "fz_mode":"c-fz-ih",
+    # Tone is a real control on Italian Hero (Muff stack) + Octavia only; Tone
+    # Bender and Fuzz Zachary ignore it -- hide it there (user 2026-07-30).
+    "fz_tone":"c-fz-tone",
     "fz_bias":"c-fz-tb", "fz_inputtrim":"c-fz-tb", "fz_getemp":"c-fz-tb",
     # drive — Octave only on New Dawn (model 1); Drive/Tone/Level are algorithmic-only (a NAM
     # capture has its own Gain/Level), so they hide in Neural mode (model 3); the NAM Gain/Level
@@ -922,6 +938,9 @@ COND = {
     # Mix stays for both.
     "dr_model":"c-dr-int",
     "dr_octave":"c-dr-oct",
+    "dr2_model":"c-dr-int", "dr2_octave":"c-dr-oct",
+    "dr2_drive":"c-dr-alg", "dr2_tone":"c-dr-alg", "dr2_level":"c-dr-alg",
+    "dr2_nam_gain":"c-dr-nam", "dr2_nam_vol":"c-dr-nam",
     "dr_drive":"c-dr-alg", "dr_tone":"c-dr-alg", "dr_level":"c-dr-alg",
     "dr_nam_gain":"c-dr-nam", "dr_nam_vol":"c-dr-nam",
     # cab — SOURCE toggle (Cabinet IR <-> Neural): the IR picker (c-cab-ir) and the NAM picker +
@@ -1025,7 +1044,7 @@ MICPAD = (
     '</div></div>')
 
 IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
-    '{{#effect.parameters.5}}{{#path}}'
+    '{{#effect.parameters.6}}{{#path}}'
     '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
     '<div mod-role="input-parameter-value" rata-role="Ir" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">Factory Cab (built-in)</div>'
     '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory 4x12 (Thirty-Something)</div>'
@@ -1035,7 +1054,7 @@ IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</sp
     '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12</div>'
     '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
     '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
-    '</div>{{/path}}{{/effect.parameters.5}}</div>')
+    '</div>{{/path}}{{/effect.parameters.6}}</div>')
 
 def nam_picker(idx, rata, cls):
     # NAM file picker bound to effect.parameters.<idx> (1=amp,2=drive,3=cab).
@@ -1280,7 +1299,7 @@ def cab2_body():
     # recall; the JS mirrors its selection into this picker's label when no
     # ir2 path is set.
     ir2 = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</span>'
-           '{{#effect.parameters.4}}{{#path}}'
+           '{{#effect.parameters.5}}{{#path}}'
            '<div class="hf-sel mod-enumerated" mod-role="input-parameter" mod-parameter-uri="{{uri}}" mod-widget="custom-select-path">'
            '<div mod-role="input-parameter-value" rata-role="Ir2" mod-parameter-uri="{{uri}}" class="mod-enumerated-selected">Factory Cab (built-in)</div>'
            '<div class="mod-enumerated-list"><div mod-role="enumeration-option" mod-parameter-value="@factory">Factory 4x12 (Thirty-Something)</div>'
@@ -1291,7 +1310,7 @@ def cab2_body():
            '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
            '<div mod-role="enumeration-option" mod-parameter-value="@nocab">No Cab (Direct)</div>'
            '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
-           '</div>{{/path}}{{/effect.parameters.4}}</div>')
+           '</div>{{/path}}{{/effect.parameters.5}}</div>')
     selrow = ('<div class="hf-dselects clearfix">%s%s</div>'
               % (render_ctrl(CTRL_BY_SYM["rb_cab2on"]), ir2))
     groups = (agroup("CABINET", ["rb_cabvoice", "rb_lowcut", "rb_highcut", "rb_cabmix", "rb_cabspkdrive"])
@@ -1327,12 +1346,14 @@ BLOCK_GROUPS = {
     "gt":  [("NOISE GATE", None, ["thresh", "attack", "hold", "release", "hyst"])],
     "cp":  [("COMPRESSOR", None, ["type", "ratio", "thresh", "attack", "release", "knee", "makeup"])],
     "fz":  [("PEDAL", None, ["pedal", "mode"]),
-            ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp", "gvol"])],
+            ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp", "gvol"]),
+            ("PERFORMANCE", None, ["eco"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
     "dr2": [("DRIVE 2", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
-    "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
+    "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"]),
+            ("PERFORMANCE", None, ["eco"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset", "shape"]),
@@ -1431,7 +1452,13 @@ def panel(pfx, title, accent, keys):
             # MODE toggle (Internal / Neural); the NAM picker + trims live in Neural mode (c-dr-nam),
             # the model dropdown in Internal mode (c-dr-int, applied via COND on dr_model).
             pickers = (mode_seg("drmodebtn", "MODE", [("int", "Internal"), ("nam", "Neural")])
-                       + '<div class="hf-nampick c-dr-nam">' + nam_picker(3, "DrNam", "") + '</div>' + nam_trims)
+                       + '<div class="hf-nampick c-dr-nam">' + nam_picker(4, "DrNam", "") + '</div>' + nam_trims)
+        elif pfx == "dr2":
+            # Drive 2 Neural (v40): full mirror of Drive 1's MODE toggle + NAM
+            # picker + trims (#dr2nam = effect.parameters.3 alphabetically).
+            pickers = (mode_seg("dr2modebtn", "MODE", [("int", "Internal"), ("nam", "Neural")])
+                       + '<div class="hf-nampick c-dr-nam">' + nam_picker(3, "Dr2Nam", "") + '</div>'
+                       + render_ctrl(CTRL_BY_SYM["dr2_nam_gain"]) + render_ctrl(CTRL_BY_SYM["dr2_nam_vol"]))
         elif pfx == "cab":
             # Cabinets load IMPULSE RESPONSES only — NAM models amps/pedals, not cabs (user 2026-07-13:
             # removing the NAM source was the fix). Just the IR picker, no SOURCE toggle, no NAM picker/trims.
