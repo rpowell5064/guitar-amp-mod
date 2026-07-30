@@ -31,7 +31,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 44 ;
+    lv2:microVersion 45 ;
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
@@ -205,7 +205,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 32 ; lv2:symbol "fr_channel" ; lv2:name "BE Channel" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "BE"    ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "HBE"   ; rdf:value 2 ]

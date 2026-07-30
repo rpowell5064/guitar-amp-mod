@@ -106,7 +106,16 @@ function (event, funcs) {
             (m[sym] = m[sym] || []).push(this);
             var el = this;
             Array.prototype.forEach.call(el.querySelectorAll('[mod-role=enumeration-option]'), function (o) {
-                o.addEventListener('click', function () { syncSel(icon, sym, o.getAttribute('mod-port-value')); });
+                o.addEventListener('click', function () {
+                    syncSel(icon, sym, o.getAttribute('mod-port-value'));
+                    // Beardo BE lands on its HBE channel when picked BY HAND (user
+                    // 2026-07-30); preset recalls keep their saved channel.
+                    if (funcs && typeof funcs.set_port_value === 'function'
+                        && parseInt(o.getAttribute('mod-port-value'), 10) === 6) {
+                        if (sym === 'amp_model') { funcs.set_port_value('amp_fr_channel', 2); syncSel(icon, 'amp_fr_channel', 2); }
+                        else if (sym === 'rb_amp') { funcs.set_port_value('rb_fr_channel', 2); syncSel(icon, 'rb_fr_channel', 2); }
+                    }
+                });
             });
         });
         icon.data('hf_selmap', m);

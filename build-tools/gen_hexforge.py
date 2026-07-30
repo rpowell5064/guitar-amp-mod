@@ -254,7 +254,7 @@ for pfx, title, params, dpos in MOVABLE:
 # the existing preset blob layout is preserved (the cab/mod/delay/reverb block ports
 # keep their indices); old presets simply default these to Clean/off.
 AMP_FR = [
-    ("fr_channel", "BE Chan", "e", 0, 2, 1, [("Clean", 0), ("BE", 1), ("HBE", 2)]),
+    ("fr_channel", "BE Chan", "e", 0, 2, 2, [("Clean", 0), ("BE", 1), ("HBE", 2)]),   # default HBE (user 2026-07-30)
     ("fr_fat",     "Fat",     "t", 0, 1, 0, None),
     ("fr_c45",     "C45",     "t", 0, 1, 0, None),
     ("fr_sat",     "Sat",     "t", 0, 1, 0, None),
@@ -768,7 +768,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 165 ;")   # 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 166 ;")   # 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1252,7 +1252,7 @@ def amp_body(ns="amp"):
                 + ('<div class="hf-atab" rata-role="atab" data-tab="blend" role="tab" tabindex="0" aria-selected="false">Blend</div>' if rb else ''))
     tabs = ('<div class="hf-atabs" rata-role="atabs" role="tablist" aria-label="Amp sections">'
             '<div class="hf-atab hf-atab-on" rata-role="atab" data-tab="amp" role="tab" tabindex="0" aria-selected="true">Amp</div>'
-            '<div class="hf-atab" rata-role="atab" data-tab="voice" role="tab" tabindex="0" aria-selected="false">Voicing</div>'
+            '<div class="hf-atab" rata-role="atab" data-tab="voice" role="tab" tabindex="0" aria-selected="false">Voicing / Channel</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="power" role="tab" tabindex="0" aria-selected="false">Power Amp</div>'
             + last_tab + '</div>')
     last_panel = ('<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'
