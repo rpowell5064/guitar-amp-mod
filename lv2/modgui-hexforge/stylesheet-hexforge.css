@@ -243,7 +243,9 @@
 
 /* ── CHAIN STRIP — clickable nodes in signal-flow order (IN → … → OUT) ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-chain {
-    flex: 0 0 auto; position: relative; height: 138px; z-index: 35;
+    /* 172px (2026-07-30): must contain .hf-nodes' 160px — the tile row plus the
+       stacked Amp 2 / Cab 2 mini-tiles. At the old 138px they spilled the border. */
+    flex: 0 0 auto; position: relative; height: 172px; z-index: 35;
     display: flex; align-items: center; gap: 10px; padding: 0 16px; box-sizing: border-box;
     background-color: rgba(8,9,13,.5);
     background-image: var(--hex), linear-gradient(180deg, rgba(120,90,255,.10), rgba(0,0,0,.18));
