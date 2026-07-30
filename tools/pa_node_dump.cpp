@@ -10,7 +10,7 @@
 // about: zero crossings per fundamental cycle, rail-dwell fraction, and the
 // harmonic makeup at the node.
 //
-// Usage: pa_node_dump [out.f32] [freqHz] [inDbfs]
+// Usage: pa_node_dump [out.f32] [freqHz] [inDbfs] [model: rockerverb|marshall]
 #define _USE_MATH_DEFINES
 #include "AmpBlockExtended.h"
 #include <cmath>
@@ -34,10 +34,20 @@ int main(int argc, char** argv) {
     const double sr = 48000.0;
     constexpr int BLK = 512;
 
+    const bool marshall = (argc > 4 && std::strcmp(argv[4], "marshall") == 0);
     AmpBlockExtended amp;
     amp.prepare(sr, BLK, 1);
-    amp.setAmpModel(AmpModel::OrangeRockerverb50);
+    amp.setAmpModel(marshall ? AmpModel::MarshallJCM800 : AmpModel::OrangeRockerverb50);
     amp.setBypass(false);
+    if (marshall) {   // the dimed JFE capture's documented knobs (P5 B5 M5 T5 M10)
+        amp.setParameter("gain", 1.0f);
+        amp.setParameter("bass", 0.5f);
+        amp.setParameter("mid", 0.5f);
+        amp.setParameter("treble", 0.5f);
+        amp.setParameter("presence", 0.5f);
+        amp.setParameter("master", 1.0f);
+        amp.setParameter("sag", 0.3f);
+    } else {
     amp.setParameter("gain", 1.0f);
     amp.setParameter("bass", 1.0f);
     amp.setParameter("mid", 1.0f);
@@ -47,6 +57,7 @@ int main(int argc, char** argv) {
     amp.setParameter("sag", 0.3f);
     amp.setParameter("channel", 0.0f);   // dirty
     amp.setParameter("resonance", 0.5f);
+    }
 
     const double amp0 = std::pow(10.0, inDb / 20.0);
     const int total = int(sr * 3.0);
@@ -78,7 +89,8 @@ int main(int argc, char** argv) {
     }
     const double cycles = wn * f0 / sr;
 
-    std::printf("node: Rockerverb dirty dimed, %.0f Hz sine @ %.0f dBFS in\n", f0, inDb);
+    std::printf("node: %s, %.0f Hz sine @ %.0f dBFS in\n",
+                marshall ? "JCM800 dimed" : "Rockerverb dirty dimed", f0, inDb);
     std::printf("  peak %.3f  rms %.3f (%.1f dBFS)  crest %.1f dB\n",
                 peak, rms, 20*std::log10(rms), 20*std::log10(peak/rms));
     std::printf("  zero crossings/cycle: %.2f (square = 2.00)\n", crossings / cycles);

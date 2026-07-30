@@ -162,13 +162,19 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     // cancellation, 94-135% THD). The old uncapped 2.2+g*5.5 hit 7.7 at max
     // gain -- and was already at 4.1 (inside the window) at MINIMUM gain --
     // measured as h2=41% of fundamental at 223 Hz (real amp: 3.7%) = octave-up
-    // sputter in power-chord range, plus 101% THD@110Hz at -6 dBFS input. At
-    // 1.6 the 223 Hz profile lands on the capture (h4/h5/h7/h9 within 0.6pt,
-    // h2 41->10). Friedman's cap+reroute-into-stage-3 pattern was tried; the
+    // sputter in power-chord range, plus 101% THD@110Hz at -6 dBFS input.
+    // 2026-07-30 evens session: the fix SHIPPED at 2.0 (comment said 1.6) --
+    // that residual gap left h2@223 at ~15%. Cap ladder re-measured against
+    // BOTH knob-documented captures: at 1.4 the whole 223 Hz profile overlays
+    // (h3/h4/h5/h6/h7/h9 within ~1pt, h2 15->10 vs real ~4) at a -0.2 dB
+    // loudness cost and unchanged THD/knob feel. Coupling corners were swept
+    // too (150/140 -> 20/15): they only WORSEN evens at every value -- the
+    // shipped corners already sit at the family optimum.
+    // Friedman's cap+reroute-into-stage-3 pattern was tried; the
     // reroute only re-added evens via stage 3 (h2 +6pt), so it's dropped here
     // (stage 3 keeps its own full gain-scaled drive -- the knob still sweeps).
     const float d2raw = 2.2f + gEff * 5.5f;
-    const float d2    = d2raw > 2.0f ? 2.0f : d2raw;
+    const float d2    = d2raw > 1.4f ? 1.4f : d2raw;
     x = c.stage2.process(x * d2) * 0.80f * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);

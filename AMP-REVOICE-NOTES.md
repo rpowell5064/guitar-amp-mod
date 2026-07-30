@@ -1751,3 +1751,33 @@ RULE FOR FLUX-OFF AMPS (now 2 incidents): after ANY paDrive change on
 a flux-off row, re-run the silence-input oscillation probe IN THE FULL
 PLUGIN CONTEXT (whine_repro pattern), not just the isolated PA probe --
 the loop margin depends on the whole in-loop filter chain.
+
+## JCM800 STAGE-2 CAP GAP CLOSED (2026-07-30 evens session)
+
+The 2026-07-28 fuzzy-fix note documented "capped at 1.6... h2@223 41->10"
+but the SHIPPED code capped at 2.0 -- leaving h2@223 at ~15-17% (real amp
+3.7-4.6%). Cap ladder re-measured against BOTH knob-documented captures
+(P5B5M5T5 + P8B4M7T8, gain 1.0, exact TS): at 1.4 the whole 223 Hz
+profile overlays the capture (h3/h4/h5/h6/h7/h9 within ~1pt; h2 15->10,
+residual 2.5x), -0.2..-0.4 dB level (makeup-absorbable), THD unchanged.
+Coupling-corner sweep (in/i12/i23 70/150/140 down to 20/20/15) checked
+first and REJECTED: lower corners worsen h2 at BOTH frequencies (111:
+2->13.6) while fixing LF FR -- the corners sit at the family optimum and
+the LF darkness (-13 dB @50) remains an accepted capture-chain residual.
+Preset re-level: measured per JCM800 preset (12 of them) at both caps;
+only shifts >0.3 dB re-leveled (see kFactoryRev 85).
+
+TWO STALE-BINARY TRAPS in one session: the Pi's nam_compare measured
+h2@223 = 41.8 (a pre-July-29 build); after rebuild it reads 17.3 =
+matching local. ALWAYS rebuild the measuring binary before believing it.
+
+## EVH 223 Hz EVENS: SAME FAMILY SIGNATURE (2026-07-30, indicative only)
+
+JFE Red-channel capture (knob-UNLABELED -- deltas indicative, not
+verdicts): model h2@223 18.0 vs NAM 4.1, h3 8.1 vs 17.8 (odd collapsed),
+h7/h9 ~2x over. Same shape as the JCM800 defect. BUT the EVH stages run
+at drives 7-9 (fully railed -- past the kMarshallV2-style duty-collapse
+window, a different regime), and the roadmap already defers EVH to a
+supervised session with knob-labeled captures. DO NOT blind-restructure
+the flagship: acquire/label captures first, then run the same cap-ladder
+methodology per stage.
