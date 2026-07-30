@@ -41,6 +41,12 @@ def build(open_tiles=False):
     # screenshot shows a populated chain node + its detail panel.
     html = html.replace('class="hf-node" data-block="amp"', 'class="hf-node hf-sel" data-block="amp"')
     html = html.replace('class="hf-detail-panel" data-block="amp"', 'class="hf-detail-panel hf-sel" data-block="amp"')
+    # X2 clones + other off-by-default blocks start in the palette at runtime (JS
+    # moves them); hide their chain tiles in the static render so the screenshot
+    # matches the real default view.
+    x2hide = ','.join('.hf-node[data-block="%s"]' % b for b in
+                      ('gt2','cp2','fz2','dr2','nail2','md2','dl2','rv2','wh2','oc2','eq2'))
+    css += x2hide + ' { display: none; }'
     page = ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
             'html,body{margin:0;padding:0;background:#0b0d12;}' + css + '</style></head><body>'
             + html + '</body></html>')

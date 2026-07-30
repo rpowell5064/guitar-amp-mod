@@ -242,9 +242,9 @@ for suf, nm, kind, mn, mx, df, sc in IT:
 OFF_BY_DEFAULT = {"cp", "fz", "dr", "md", "wh", "oc"}   # off: Comp, Fuzz, Drive, Mod, Wah, Octave
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
-    posscale = [(str(k), k) for k in range(1, 15)]   # 1..14 dropdown (incl. Nail, EQ, Drive B)
+    posscale = [(str(k), k) for k in range(1, 25)]   # 1..24 dropdown (incl. Nail, EQ, Drive 2 + the X2 clones)
     en_def = 0 if pfx in OFF_BY_DEFAULT else 1
-    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 14, dpos, posscale, "Slot", hidden=True))
+    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 24, dpos, posscale, "Slot", hidden=True))
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
@@ -281,8 +281,8 @@ for pfx, title, params, dpos in MOVABLE:
 # contiguous group [NAIL_POS..NAIL_BYPASS]; old blobs migrate them in (v12). Default OFF,
 # default slot 12 (end of chain) so it doesn't alter the stock sound until enabled.
 NAIL_POS_DEFAULT = 12
-ctrl.append(mkport("NAIL_POS",    "nail_pos",    "Nail Position", "e", 1, 13, NAIL_POS_DEFAULT,
-                   [(str(k), k) for k in range(1, 14)], "Slot", hidden=True))
+ctrl.append(mkport("NAIL_POS",    "nail_pos",    "Nail Position", "e", 1, 24, NAIL_POS_DEFAULT,
+                   [(str(k), k) for k in range(1, 25)], "Slot", hidden=True))
 ctrl.append(mkport("NAIL_ENABLE", "nail_enable", "Nail Enable",   "t", 0, 1, 0, None, "On"))
 for suf, nm, kind, mn, mx, df, sc in NAIL:
     ctrl.append(mkport("NAIL_" + suf.upper(), "nail_" + suf, "Nail " + nm, kind, mn, mx, df, sc, nm))
@@ -470,17 +470,17 @@ ctrl.append(mkport("DR_ECO", "dr_eco", "Drive Eco (2x OS)", "t", 0, 1, 0, None, 
 # suite instance -- keeps worker/memory budget flat; values match OverdriveType
 # so the enums stay aligned). Default: disabled, parked at slot 14. Migrated v34.
 _DR2_SCALE = [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]
-_dr2_posscale = [(str(k), k) for k in range(1, 15)]
-ctrl.append(mkport("DR2_POS",    "dr2_pos",    "Drive B Position", "e", 1, 14, 14, _dr2_posscale, "Slot", hidden=True))
-ctrl.append(mkport("DR2_ENABLE", "dr2_enable", "Drive B Enable",   "t", 0, 1, 0, None, "On"))
-ctrl.append(mkport("DR2_MODEL",  "dr2_model",  "Drive B Model",  "e", 0, 7, 0, _DR2_SCALE, "Model"))
-ctrl.append(mkport("DR2_DRIVE",  "dr2_drive",  "Drive B Drive",  "f", 0, 1, 0.5, None, "Drive"))
-ctrl.append(mkport("DR2_TONE",   "dr2_tone",   "Drive B Tone",   "f", 0, 1, 0.5, None, "Tone"))
-ctrl.append(mkport("DR2_LEVEL",  "dr2_level",  "Drive B Level",  "f", 0, 1, 0.5, None, "Level"))
-ctrl.append(mkport("DR2_MIX",    "dr2_mix",    "Drive B Mix",    "f", 0, 1, 1, None, "Mix"))
-ctrl.append(mkport("DR2_OCTAVE", "dr2_octave", "Drive B Octave", "t", 0, 1, 0, None, "Octave"))
-ctrl.append(mkport("DR2_ECO",    "dr2_eco",    "Drive B Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
-ctrl.append(mkport("DR2_BYPASS", "dr2_bypass", "Drive B Bypass", "t", 0, 1, 0, None, "Bypass", hidden=True))
+_dr2_posscale = [(str(k), k) for k in range(1, 25)]
+ctrl.append(mkport("DR2_POS",    "dr2_pos",    "Drive 2 Position", "e", 1, 24, 14, _dr2_posscale, "Slot", hidden=True))
+ctrl.append(mkport("DR2_ENABLE", "dr2_enable", "Drive 2 Enable",   "t", 0, 1, 0, None, "On"))
+ctrl.append(mkport("DR2_MODEL",  "dr2_model",  "Drive 2 Model",  "e", 0, 7, 0, _DR2_SCALE, "Model"))
+ctrl.append(mkport("DR2_DRIVE",  "dr2_drive",  "Drive 2 Drive",  "f", 0, 1, 0.5, None, "Drive"))
+ctrl.append(mkport("DR2_TONE",   "dr2_tone",   "Drive 2 Tone",   "f", 0, 1, 0.5, None, "Tone"))
+ctrl.append(mkport("DR2_LEVEL",  "dr2_level",  "Drive 2 Level",  "f", 0, 1, 0.5, None, "Level"))
+ctrl.append(mkport("DR2_MIX",    "dr2_mix",    "Drive 2 Mix",    "f", 0, 1, 1, None, "Mix"))
+ctrl.append(mkport("DR2_OCTAVE", "dr2_octave", "Drive 2 Octave", "t", 0, 1, 0, None, "Octave"))
+ctrl.append(mkport("DR2_ECO",    "dr2_eco",    "Drive 2 Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
+ctrl.append(mkport("DR2_BYPASS", "dr2_bypass", "Drive 2 Bypass", "t", 0, 1, 0, None, "Bypass", hidden=True))
 
 # ── RIG B: dual amp/cab parallel rig (2026-07-30, user request, phase 2) ──────
 # The signal splits at the main AMP's input: rig B runs its own amp -> built-in
@@ -533,6 +533,33 @@ for _suf in _RB_CAB_EXTRA:
 # Cab 2 presence (2026-07-30): until Cab 2 is brought in, rig B routes through
 # Cab 1 (sharing its bypass -- real-poweramp rigs work naturally). Migrated v37.
 ctrl.append(mkport("RB_CAB2ON", "rb_cab2on", "Cab 2 In Chain", "t", 0, 1, 0, None, "Cab 2"))
+
+# ── SECOND INSTANCES (2026-07-30, user request): a "2" of every movable effect.
+# Cloned programmatically from the CURRENT ctrl list so every scattered append
+# (fz_gvol, md_offset, rv_bloom, sync/div, EQ bands...) is picked up automatically.
+# Each family is one contiguous group [<p>2_pos .. <p>2_bypass]; defaults are OUT
+# of the chain (enable 0, parked slots 15..24) so existing presets/blobs are
+# untouched. The modgui palette only offers a "2" once its first instance is in
+# the chain (script-hexforge.js gating). Drive 2 (dr2) predates this batch (v34);
+# Amp 2 / Cab 2 are the Rig B parallel design, not chain clones. Migrated v38.
+X2_CLONES = [("gt","Gate"),("cp","Comp"),("fz","Fuzz"),("nail","Nail"),("md","Modulation"),
+             ("dl","Delay"),("rv","Reverb"),("wh","Wah"),("oc","Octave"),("eq","EQ")]
+_x2_park = 15
+_CTRL_SNAP = list(ctrl)
+for _pfx, _ttl in X2_CLONES:
+    _p2 = _pfx + "2"; _T2 = _ttl + " 2"
+    _fam = [c for c in _CTRL_SNAP if c["sym"].startswith(_pfx + "_") and not c["out"]
+            and c["sym"] not in (_pfx + "_pos", _pfx + "_enable", _pfx + "_bypass")]
+    ctrl.append(mkport(_p2.upper() + "_POS", _p2 + "_pos", _T2 + " Position", "e", 1, 24, _x2_park,
+                       [(str(k), k) for k in range(1, 25)], "Slot", hidden=True))
+    ctrl.append(mkport(_p2.upper() + "_ENABLE", _p2 + "_enable", _T2 + " Enable", "t", 0, 1, 0, None, "On"))
+    for _c in _fam:
+        _suf = _c["sym"][len(_pfx) + 1:]
+        ctrl.append(mkport(_p2.upper() + "_" + _suf.upper(), _p2 + "_" + _suf,
+                           _T2 + " " + _c["short"], _c["kind"], _c["mn"], _c["mx"], _c["df"],
+                           _c["scale"], _c["short"], hidden=_c["hidden"]))
+    ctrl.append(mkport(_p2.upper() + "_BYPASS", _p2 + "_bypass", _T2 + " Bypass", "t", 0, 1, 0, None, "Byp"))
+    _x2_park += 1
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -591,8 +618,11 @@ for _sym, _nm in [("GT","Gate"),("CP","Comp"),("FZ","Fuzz"),("DR","Drive"),("AMP
                   ("OC","Octave"),("NAIL","Nail"),("EQ","EQ")]:
     ctrl.append(mkport("CPU_" + _sym, "cpu_" + _sym.lower(), "CPU " + _nm, "f", 0, 100, 0, None, out=True))
 ctrl.append(mkport("CPU_TOTAL", "cpu_total", "CPU Total", "f", 0, 100, 0, None, out=True))
-ctrl.append(mkport("CPU_DR2", "cpu_dr2", "CPU Drive B", "f", 0, 100, 0, None, out=True))
+ctrl.append(mkport("CPU_DR2", "cpu_dr2", "CPU Drive 2", "f", 0, 100, 0, None, out=True))
 ctrl.append(mkport("CPU_RIGB", "cpu_rigb", "CPU Rig B", "f", 0, 100, 0, None, out=True))
+for _pfx, _ttl in X2_CLONES:
+    ctrl.append(mkport("CPU_" + _pfx.upper() + "2", "cpu_" + _pfx + "2", "CPU " + _ttl + " 2",
+                       "f", 0, 100, 0, None, out=True))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -717,7 +747,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 160 ;")   # 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 161 ;")   # 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -801,6 +831,7 @@ def emit_ttl():
 
 # ── Emit the modgui icon HTML (10 logo-free tiles) ────────────────────────────
 TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"dr2":DR,"rb":RB,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL,"eq":EQBLK}
+TABLES.update({_p + "2": TABLES[_p] for _p, _t in X2_CLONES})
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
@@ -810,7 +841,7 @@ TILES = [
     ("cp",  "Comp",       "#4687eb", ["type","thresh","ratio","makeup"]),                     # comp
     ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
     ("dr",  "Drive",      "#eb5046", ["model","drive","tone","level"]),                       # drive
-    ("dr2", "Drive B",    "#eb7a46", ["model","drive","tone","level"]),                       # drive B (multi-instance)
+    ("dr2", "Drive 2",    "#eb7a46", ["model","drive","tone","level"]),                       # drive B (multi-instance)
     ("nail","Nail",       "#d0343a", ["mode","drive","tone","texture","level"]),              # nail (industrial)
     ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
     ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
@@ -821,6 +852,15 @@ TILES = [
     ("wh",  "Wah",        "#c46eff", ["type","freq","depth","sens","q","mix"]),               # wah
     ("oc",  "Octave",     "#5fd0a0", ["up","down","dry"]),                                    # octave
 ]
+# Second-instance tiles: same accent + subtitle keys as the parent, title "X 2",
+# inserted right after the parent so the palette pairs them visually.
+_TILES2 = []
+for _t in TILES:
+    _TILES2.append(_t)
+    for _p, _ttl in X2_CLONES:
+        if _t[0] == _p:
+            _TILES2.append((_p + "2", _t[1] + " 2", _t[2], _t[3]))
+TILES = _TILES2
 
 # Conditional-visibility classes: a control is shown/hidden by script-hexforge.js
 # based on the relevant selector, exactly like the standalone pedals.
@@ -881,6 +921,10 @@ COND = {
 # Rig B (Amp 2): every A-side conditional class gets a c-rb-* scoped twin so the
 # full-parity Amp 2 panel reuses the exact same show/hide machinery (applyAmpP in
 # script-hexforge.js drives both scopes independently).
+# X2 clones: same conditional classes as the parent (show() is panel-scoped).
+for _p, _t in X2_CLONES:
+    for _k in [k for k in COND if k.startswith(_p + "_")]:
+        COND[_p + "2" + _k[len(_p):]] = COND[_k]
 _RB_SYMS = {c["sym"] for c in ctrl}
 for _k in [k for k in COND if k.startswith("amp_")]:
     _rbsym = "rb_" + _k[4:]
@@ -1021,6 +1065,8 @@ ICON = {
     "oc":  '<svg viewBox="0 0 24 24"><path d="M7 15V6M4 9l3-3 3 3"/><path d="M17 9v9M14 15l3 3 3-3"/></svg>',
     "eq":  '<svg viewBox="0 0 24 24"><path d="M5 4v16M12 4v16M19 4v16"/><circle cx="5" cy="14" r="2.2"/><circle cx="12" cy="8" r="2.2"/><circle cx="19" cy="11" r="2.2"/></svg>',
 }
+for _p, _t in X2_CLONES:
+    ICON[_p + "2"] = ICON[_p].replace("</svg>", '<text x="19" y="22" font-size="9" fill="currentColor" stroke="none">2</text></svg>')
 # Node subtitle source. Model-bearing blocks are JS-driven (rata-role=nv-<pfx>,
 # script-hexforge.js maps the model index → the parody label). Scalar blocks bind a
 # representative live value via mod-role so MOD populates value+unit automatically.
@@ -1234,7 +1280,7 @@ BLOCK_GROUPS = {
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp", "gvol"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
-    "dr2": [("DRIVE B", None, ["model", "drive", "tone", "level", "mix", "octave"]),
+    "dr2": [("DRIVE 2", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
@@ -1252,6 +1298,9 @@ BLOCK_GROUPS = {
     "oc":  [("OCTAVE", None, ["up", "down", "dry"]),
             ("MICROTONAL SHIMMER", None, ["micro", "interval"])],
 }
+
+for _p, _t in X2_CLONES:
+    BLOCK_GROUPS[_p + "2"] = BLOCK_GROUPS[_p]
 
 def render_agroups(pfx, group_defs, all_sufs):
     out, covered = [], set()
@@ -1276,7 +1325,7 @@ def render_agroups(pfx, group_defs, all_sufs):
 # FADERS (the Cali V graphic-EQ slider widget, reused) — a graphic EQ reads as
 # faders, not knobs. The scope is an SVG the JS redraws from the live band values
 # (grid lines pre-computed here on the same log-f axis the JS uses: 40 Hz..10 kHz).
-def eq_body():
+def eq_body(pfx="eq"):
     import math
     def fx(f):  # log-frequency → scope x (viewBox width 400)
         return 400.0 * math.log(f / 40.0) / math.log(10000.0 / 40.0)
@@ -1293,7 +1342,7 @@ def eq_body():
              '<span class="hf-eqs-lab hf-eqs-lab-t">+12</span><span class="hf-eqs-lab hf-eqs-lab-m">0 dB</span><span class="hf-eqs-lab hf-eqs-lab-b">−12</span>'
              '</div>')
     def fad(suf, freq):
-        sym = "eq_" + suf
+        sym = pfx + "_" + suf
         c = CTRL_BY_SYM[sym]
         return ('<div class="hf-eqslider" title="%s"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="%s"></div>'
                 '<span class="hf-eqslider-t">%s</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>'
@@ -1319,8 +1368,8 @@ def panel(pfx, title, accent, keys):
     head.append('</div>')
     if pfx == "amp":
         body = amp_body()            # amp keeps its tube bay + per-model faceplate
-    elif pfx == "eq":
-        body = eq_body()             # graphic EQ: vertical faders, not knobs (user 2026-07-23)
+    elif pfx in ("eq", "eq2"):
+        body = eq_body(pfx)          # graphic EQ: vertical faders, not knobs (user 2026-07-23)
     else:
         all_sufs = [r[0] for r in table]
         # Drive/Cab NAM slots get a Gain (input) + Level (output) trim beside their picker, plus a

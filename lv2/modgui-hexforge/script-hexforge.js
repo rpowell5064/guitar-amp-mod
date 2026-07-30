@@ -6,7 +6,12 @@ function (event, funcs) {
     // owns <pfx>_pos (slot 1..11), <pfx>_enable (chain membership) and <pfx>_bypass
     // (active/bypassed). The DSP sorts by pos and runs a block iff enable && !bypass.
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
-    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc','nail','eq','dr2'];
+    var BLOCKS = ['gt','gt2','cp','cp2','fz','fz2','dr','dr2','amp','cab','md','md2',
+                  'dl','dl2','rv','rv2','wh','wh2','oc','oc2','nail','nail2','eq','eq2'];
+    // X2 second instances (2026-07-30): each "2" block is offered in the palette
+    // only while its first instance is in the chain (user rule).
+    var X2 = { gt2:'gt', cp2:'cp', fz2:'fz', dr2:'dr', md2:'md', dl2:'dl',
+               rv2:'rv', wh2:'wh', oc2:'oc', nail2:'nail', eq2:'eq' };
 
     // Node subtitle labels for model-bearing blocks — MUST mirror gen_hexforge.py's
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
@@ -19,6 +24,7 @@ function (event, funcs) {
         dl:  ['Digital','Tape','Echo Wreck','Seraph'],
         eq:  ['Manual','Clean Sparkle','De-Mud','Classic Rock','Metal Rhythm','Lead Cut','Cocked Wah']
     };
+    NV.dr2 = NV.dr; NV.fz2 = NV.fz; NV.md2 = NV.md; NV.dl2 = NV.dl; NV.eq2 = NV.eq;
     function setNodeVal(icon, pfx, txt) { icon.find('[rata-role=nv-' + pfx + ']').text(txt == null ? '' : txt); }
     function setModelVal(icon, pfx, idx) { var a = NV[pfx]; setNodeVal(icon, pfx, (a && a[idx]) || ''); }
 
@@ -30,10 +36,13 @@ function (event, funcs) {
     var EQ_PRE = { 1: [3, 0, -1, 2, 1, 2], 2: [-2, -4, -3, 1, 1, 0], 3: [3, 1, -3, 0, 2, 4],
                    4: [4, -2, -5, -2, 2, 4], 5: [-1, 0, 1, 3, 4, 5], 6: [-4, -2, 2, 7, 2, -4] };
     var EQ_SYMS = ['eq_100', 'eq_200', 'eq_400', 'eq_800', 'eq_1k6', 'eq_3k2', 'eq_level'];
-    function eqScope(icon) {
-        var line = icon.find('[rata-role=eqline]'); if (!line.length) return;
-        var v = icon.data('hf_eq_v') || [0, 0, 0, 0, 0, 0];
-        var lvl = parseFloat(icon.data('hf_eq_lvl')) || 0;
+    var EQ_SYMS2 = ['eq2_100', 'eq2_200', 'eq2_400', 'eq2_800', 'eq2_1k6', 'eq2_3k2', 'eq2_level'];
+    function eqScopeP(icon, blk) {
+        var pn = panelOf(icon, blk);
+        var line = pn.find('[rata-role=eqline]'); if (!line.length) return;
+        var K = blk === 'eq2' ? { v: 'hf_eq2_v', lvl: 'hf_eq2_lvl' } : { v: 'hf_eq_v', lvl: 'hf_eq_lvl' };
+        var v = icon.data(K.v) || [0, 0, 0, 0, 0, 0];
+        var lvl = parseFloat(icon.data(K.lvl)) || 0;
         var d = '';
         for (var i = 0; i <= 80; ++i) {
             var f = 40 * Math.pow(250, i / 80), db = lvl;
@@ -46,27 +55,32 @@ function (event, funcs) {
             d += (i ? 'L' : 'M') + (400 * i / 80).toFixed(1) + ' ' + (50 - db * (40 / 15)).toFixed(1);
         }
         line.attr('d', d);
-        icon.find('[rata-role=eqfill]').attr('d', d + 'L400 100L0 100Z');
+        pn.find('[rata-role=eqfill]').attr('d', d + 'L400 100L0 100Z');
     }
+    function eqScope(icon) { eqScopeP(icon, 'eq'); eqScopeP(icon, 'eq2'); }
     // Selecting a preset (USER CLICK only — never on preset/pedalboard restore,
     // which would clobber saved fader tweaks) loads its curve into the faders.
     // The eq_preset port KEEPS the selection, so it persists in saved presets and
     // pedalboards and the dropdown shows it after reload; the DSP reads only the
     // faders, so the retained selection never double-applies.
-    function loadEqBlockPreset(icon, v) {
+    function loadEqBlockPreset(icon, v, blk) {
+        blk = blk || 'eq';
         var pv = EQ_PRE[parseInt(v, 10)];
         if (!pv || !funcs || typeof funcs.set_port_value !== 'function') return;
-        for (var i = 0; i < 6; ++i) funcs.set_port_value(EQ_SYMS[i], pv[i]);
-        icon.data('hf_eq_v', pv.slice());
-        setNodeVal(icon, 'eq', NV.eq[parseInt(v, 10)]);
+        var syms = blk === 'eq2' ? EQ_SYMS2 : EQ_SYMS;
+        for (var i = 0; i < 6; ++i) funcs.set_port_value(syms[i], pv[i]);
+        icon.data(blk === 'eq2' ? 'hf_eq2_v' : 'hf_eq_v', pv.slice());
+        setNodeVal(icon, blk, NV.eq[parseInt(v, 10)]);
         eqScope(icon);
     }
-    function eqTrack(icon, sym, val) {   // returns true if sym belongs to the EQ scope state
-        if (sym === 'eq_preset') { setModelVal(icon, 'eq', parseInt(val, 10) || 0); return true; }
-        var k = EQ_SYMS.indexOf(sym);
+    function eqTrack(icon, sym, val) {   // returns true if sym belongs to either EQ scope state
+        if (sym === 'eq_preset')  { setModelVal(icon, 'eq',  parseInt(val, 10) || 0); return true; }
+        if (sym === 'eq2_preset') { setModelVal(icon, 'eq2', parseInt(val, 10) || 0); return true; }
+        var k = EQ_SYMS.indexOf(sym), vKey = 'hf_eq_v', lKey = 'hf_eq_lvl', lvlSym = 'eq_level';
+        if (k < 0) { k = EQ_SYMS2.indexOf(sym); vKey = 'hf_eq2_v'; lKey = 'hf_eq2_lvl'; lvlSym = 'eq2_level'; }
         if (k < 0) return false;
-        if (sym === 'eq_level') icon.data('hf_eq_lvl', parseFloat(val));
-        else { var a = (icon.data('hf_eq_v') || [0, 0, 0, 0, 0, 0]).slice(); a[k] = parseFloat(val); icon.data('hf_eq_v', a); }
+        if (sym === lvlSym) icon.data(lKey, parseFloat(val));
+        else { var a = (icon.data(vKey) || [0, 0, 0, 0, 0, 0]).slice(); a[k] = parseFloat(val); icon.data(vKey, a); }
         return true;
     }
 
@@ -170,8 +184,12 @@ function (event, funcs) {
 
     function renderPalette(icon) {
         var pal = icon.find('.hf-palette');
+        // X2 gating: a "2" is offered only while its first instance is in the chain.
+        Object.keys(X2).forEach(function (b2) {
+            pal.find('.hf-node[data-block="' + b2 + '"]').toggleClass('mod-hidden', !inChain(icon, X2[b2]));
+        });
         pal.find('.hf-palette-empty').remove();
-        if (!pal.find('.hf-node').length)
+        if (!pal.find('.hf-node').not('.mod-hidden').length)
             pal.append('<div class="hf-palette-empty">All effects are already in the chain.</div>');
     }
 
@@ -407,27 +425,29 @@ function (event, funcs) {
         for (var i = 0; i < 5; i++) funcs.set_port_value(pfx + 'geq' + i, pv[i]);
         funcs.set_port_value(pfx + 'eqpreset', 0);
     }
-    function applyFuzz(icon) {
-        var p = icon.data('hf_fz_p'); if (p == null) p = 0;
+    function applyFuzzP(icon, blk, key) {
+        var p = icon.data(key); if (p == null) p = 0;
         var tb = (p === 1);            // I Know It (Tone Bender)
         var ff = (p === 3);            // Fuzz Zachary (ZVex-style)
-        show(icon, 'fz', '.c-fz-ih', p === 0);      // Variant dropdown = ONLY Italian Hero (Muff eras); NOT Octavia/Tone Bender/Fuzz Zachary
-        show(icon, 'fz', '.c-fz-tb', tb || ff);     // Bias/Trim/Temp trio (shared by Tone Bender + Fuzz Zachary)
-        var pn = panelOf(icon, 'fz');
-        pn.find('[rata-role=lbl-fz_sustain]').text(tb ? 'Attack' : (ff ? 'Drive' : 'Sustain'));
-        pn.find('[rata-role=lbl-fz_volume]').text(tb ? 'Level' : 'Volume');
-        pn.find('[rata-role=lbl-fz_bias]').text(ff ? 'Comp' : 'Bias');
-        pn.find('[rata-role=lbl-fz_inputtrim]').text(ff ? 'Gate' : 'Trim');
-        pn.find('[rata-role=lbl-fz_getemp]').text(ff ? 'Stab' : 'Temp');
-        setModelVal(icon, 'fz', p);
+        show(icon, blk, '.c-fz-ih', p === 0);      // Variant dropdown = ONLY Italian Hero (Muff eras)
+        show(icon, blk, '.c-fz-tb', tb || ff);     // Bias/Trim/Temp trio (Tone Bender + Fuzz Zachary)
+        var pn = panelOf(icon, blk);
+        pn.find('[rata-role=lbl-' + blk + '_sustain]').text(tb ? 'Attack' : (ff ? 'Drive' : 'Sustain'));
+        pn.find('[rata-role=lbl-' + blk + '_volume]').text(tb ? 'Level' : 'Volume');
+        pn.find('[rata-role=lbl-' + blk + '_bias]').text(ff ? 'Comp' : 'Bias');
+        pn.find('[rata-role=lbl-' + blk + '_inputtrim]').text(ff ? 'Gate' : 'Trim');
+        pn.find('[rata-role=lbl-' + blk + '_getemp]').text(ff ? 'Stab' : 'Temp');
+        setModelVal(icon, blk, p);
     }
-    function applyDelay(icon) {
-        var t = icon.data('hf_dl_t'); if (t == null) t = 0;
-        show(icon, 'dl', '.c-dl-tape', t === 1 || t === 2);
-        show(icon, 'dl', '.c-dl-heads', t === 2);
-        show(icon, 'dl', '.c-dl-seraph', t === 3);
-        setModelVal(icon, 'dl', t);
+    function applyFuzz(icon)  { applyFuzzP(icon, 'fz',  'hf_fz_p'); applyFuzzP(icon, 'fz2', 'hf_fz2_p'); }
+    function applyDelayP(icon, blk, key) {
+        var t = icon.data(key); if (t == null) t = 0;
+        show(icon, blk, '.c-dl-tape', t === 1 || t === 2);
+        show(icon, blk, '.c-dl-heads', t === 2);
+        show(icon, blk, '.c-dl-seraph', t === 3);
+        setModelVal(icon, blk, t);
     }
+    function applyDelay(icon) { applyDelayP(icon, 'dl', 'hf_dl_t'); applyDelayP(icon, 'dl2', 'hf_dl2_t'); }
     // ── Drive: model-driven conditional visibility + MODE toggle highlight (Internal <-> Neural).
     // Neural = model 3 (kDrNamIdx): shows the NAM picker + Gain/Level, hides the algo knobs + the
     // model dropdown. The MODE toggle mirrors the standalone drive's Internal/Neural switch.
@@ -615,8 +635,11 @@ function (event, funcs) {
             else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
+            else if (sym === 'fz2_pedal')          icon.data('hf_fz2_p', parseInt(val, 10));
             else if (sym === 'dl_type')            icon.data('hf_dl_t', parseInt(val, 10));
-            else if (sym === 'md_type')            { var _mt = parseInt(val, 10); setModelVal(icon, 'md', _mt); show(icon, 'md', '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6 || _mt === 7); show(icon, 'md', '.c-md-trem', _mt === 4); }
+            else if (sym === 'dl2_type')           icon.data('hf_dl2_t', parseInt(val, 10));
+            else if (sym === 'md_type' || sym === 'md2_type') { var _mb = (sym === 'md2_type') ? 'md2' : 'md'; var _mt = parseInt(val, 10); setModelVal(icon, _mb, _mt); show(icon, _mb, '.c-md-delay', _mt === 0 || _mt === 3 || _mt === 6 || _mt === 7); show(icon, _mb, '.c-md-trem', _mt === 4); }
+            else if (sym === 'dr2_model')          setModelVal(icon, 'dr2', parseInt(val, 10));
             else if (eqTrack(icon, sym, val))      { /* scope redrawn after the loop */ }
             else if (sym === 'dr_model')           drm = parseInt(val, 10);
             syncSel(icon, sym, val);               // dropdown labels track recalled values
@@ -740,6 +763,8 @@ function (event, funcs) {
         if ('amp_pamp_auto' in map) icon.data('hf_amp_auto', map.amp_pamp_auto > 0.5);
         if ('fz_pedal' in map)      icon.data('hf_fz_p', parseInt(map.fz_pedal, 10));
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
+        if ('fz2_pedal' in map)     icon.data('hf_fz2_p', parseInt(map.fz2_pedal, 10));
+        if ('dl2_type' in map)      icon.data('hf_dl2_t', parseInt(map.dl2_type, 10));
         if ('amp_mv_mode' in map)   icon.data('hf_mv', parseInt(map.amp_mv_mode, 10));
         if ('amp_mv_eqpreset' in map) icon.data('hf_mveq', parseInt(map.amp_mv_eqpreset, 10));
         // Amp 2 / Cab 2 (Rig B): model + PA-auto state, strip lighting from the In-Chain ports.
@@ -753,14 +778,26 @@ function (event, funcs) {
         applyDrive(icon, drm);
         var _mt0 = parseInt(map.md_type || 0, 10);
         setModelVal(icon, 'md', _mt0);
+        var _mt2 = parseInt(map.md2_type || 0, 10);
+        setModelVal(icon, 'md2', _mt2);
+        show(icon, 'md2', '.c-md-delay', _mt2 === 0 || _mt2 === 3 || _mt2 === 6 || _mt2 === 7);
+        show(icon, 'md2', '.c-md-trem', _mt2 === 4);
+        setModelVal(icon, 'dr2', parseInt(map.dr2_model || 0, 10));
         icon.data('hf_eq_v', EQ_SYMS.slice(0, 6).map(function (k) { return parseFloat(map[k]) || 0; }));
         icon.data('hf_eq_lvl', parseFloat(map.eq_level) || 0);
         setModelVal(icon, 'eq', parseInt(map.eq_preset || 0, 10));
+        icon.data('hf_eq2_v', EQ_SYMS2.slice(0, 6).map(function (k) { return parseFloat(map[k]) || 0; }));
+        icon.data('hf_eq2_lvl', parseFloat(map.eq2_level) || 0);
+        setModelVal(icon, 'eq2', parseInt(map.eq2_preset || 0, 10));
         eqScope(icon);
         buildSelMap(icon, map);   // every dropdown shows its selected value from load on
         icon.find('[mod-widget=custom-select][mod-port-symbol="eq_preset"] [mod-role=enumeration-option]').each(function () {
             var el = this;
-            el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value')); });
+            el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value'), 'eq'); });
+        });
+        icon.find('[mod-widget=custom-select][mod-port-symbol="eq2_preset"] [mod-role=enumeration-option]').each(function () {
+            var el = this;
+            el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value'), 'eq2'); });
         });
         show(icon, 'md', '.c-md-delay', _mt0 === 0 || _mt0 === 3 || _mt0 === 6 || _mt0 === 7);
         show(icon, 'md', '.c-md-trem', _mt0 === 4);
@@ -911,17 +948,24 @@ function (event, funcs) {
             if (event.value > 0) loadEqPreset(icon, event.value);   // dropdown preset → load faders + back to Custom
         } else if (s === 'fz_pedal') {
             icon.data('hf_fz_p', parseInt(event.value, 10)); applyFuzz(icon);
+        } else if (s === 'fz2_pedal') {
+            icon.data('hf_fz2_p', parseInt(event.value, 10)); applyFuzz(icon);
         } else if (s === 'dr_model') {
             applyDrive(icon, parseInt(event.value, 10));
+        } else if (s === 'dr2_model') {
+            setModelVal(icon, 'dr2', parseInt(event.value, 10));
         } else if (eqTrack(icon, s, event.value)) {
             eqScope(icon);
-        } else if (s === 'md_type') {
+        } else if (s === 'md_type' || s === 'md2_type') {
+            var mdb = (s === 'md2_type') ? 'md2' : 'md';
             var mt = parseInt(event.value, 10);
-            setModelVal(icon, 'md', mt);
-            show(icon, 'md', '.c-md-delay', mt === 0 || mt === 3 || mt === 6 || mt === 7);
-            show(icon, 'md', '.c-md-trem', mt === 4);
+            setModelVal(icon, mdb, mt);
+            show(icon, mdb, '.c-md-delay', mt === 0 || mt === 3 || mt === 6 || mt === 7);
+            show(icon, mdb, '.c-md-trem', mt === 4);
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
+        } else if (s === 'dl2_type') {
+            icon.data('hf_dl2_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'cab_micpos') {
             icon.data('hf_micpos', parseFloat(event.value)); micPadUpdate(icon, 'cab');
         } else if (s === 'cab_micdist') {
@@ -946,7 +990,9 @@ function (event, funcs) {
             // Per-block CPU meters (2026-07-30): badge on each chain node + the
             // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
-                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2', rigb:'rb' };
+                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2', rigb:'rb',
+                            gt2:'gt2', cp2:'cp2', fz2:'fz2', nail2:'nail2', md2:'md2',
+                            dl2:'dl2', rv2:'rv2', wh2:'wh2', oc2:'oc2', eq2:'eq2' };
             var ck = s.substring(4);
             var pct = parseFloat(event.value);
             if (ck === 'total') {

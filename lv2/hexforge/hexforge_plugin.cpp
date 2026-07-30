@@ -280,16 +280,22 @@ struct OutputBoost {
 };
 
 // ── Movable-block identity ────────────────────────────────────────────────────
-enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_EQ, B_DRIVE2, B_COUNT };
+enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_EQ, B_DRIVE2,
+             // X2 second instances (2026-07-30): a clone of every movable effect
+             B_GATE2, B_COMP2, B_FUZZ2, B_NAIL2, B_MODFX2, B_DELAY2, B_REVERB2, B_WAH2, B_OCTAVE2, B_EQ2, B_COUNT };
 static const int kPosPort[B_COUNT] = {
     HF_GT_POS, HF_CP_POS, HF_FZ_POS, HF_DR_POS, HF_AMP_POS,
     HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS, HF_NAIL_POS,
     HF_EQ_POS, HF_DR2_POS,
+    HF_GT2_POS, HF_CP2_POS, HF_FZ2_POS, HF_NAIL2_POS, HF_MD2_POS,
+    HF_DL2_POS, HF_RV2_POS, HF_WH2_POS, HF_OC2_POS, HF_EQ2_POS,
 };
 static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
     HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE, HF_NAIL_ENABLE,
     HF_EQ_ENABLE, HF_DR2_ENABLE,
+    HF_GT2_ENABLE, HF_CP2_ENABLE, HF_FZ2_ENABLE, HF_NAIL2_ENABLE, HF_MD2_ENABLE,
+    HF_DL2_ENABLE, HF_RV2_ENABLE, HF_WH2_ENABLE, HF_OC2_ENABLE, HF_EQ2_ENABLE,
 };
 // enable = chain membership (1 = in chain, 0 = removed/palette); bypass = active(0)/
 // bypassed(1). A block runs iff enable==1 && bypass==0. Bypassed blocks stay in the chain
@@ -298,6 +304,8 @@ static const int kBypassPort[B_COUNT] = {
     HF_GT_BYPASS, HF_CP_BYPASS, HF_FZ_BYPASS, HF_DR_BYPASS, HF_AMP_BYPASS,
     HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS, HF_NAIL_BYPASS,
     HF_EQ_BYPASS, HF_DR2_BYPASS,
+    HF_GT2_BYPASS, HF_CP2_BYPASS, HF_FZ2_BYPASS, HF_NAIL2_BYPASS, HF_MD2_BYPASS,
+    HF_DL2_BYPASS, HF_RV2_BYPASS, HF_WH2_BYPASS, HF_OC2_BYPASS, HF_EQ2_BYPASS,
 };
 
 // ── 6-band graphic EQ block (2026-07-23) ─────────────────────────────────────
@@ -350,9 +358,12 @@ static const int kSwWatch[] = {
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
     HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY, HF_DR_ECO, HF_DR2_MODEL, HF_DR2_ECO, HF_RB_ENABLE, HF_RB_AMP, HF_RB_CAB, HF_RB_ECO,
     HF_RB_MV_MODE, HF_RB_RC_MODE, HF_RB_MT_MODE, HF_RB_FR_CHANNEL, HF_RB_CABVOICE, HF_RB_CABROOMDENSE, HF_RB_CABSPKDRIVE,
+    // X2 clones (v38): the same audible-step switches as their parents
+    HF_FZ2_PEDAL, HF_FZ2_MODE, HF_DL2_TYPE, HF_MD2_TYPE, HF_MD2_SHAPE,
+    HF_RV2_DENSITY, HF_RV2_TYPE, HF_NAIL2_MODE, HF_CP2_TYPE, HF_WH2_TYPE,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
-static_assert(kSwWatchN <= 40, "grow swWatchPrev[]");
+static_assert(kSwWatchN <= 64, "grow swWatchPrev[]");
 
 // note-division factor relative to a quarter-note beat, indexed by the *_div enum (0..7):
 // 1/2, 1/4., 1/4, 1/4T, 1/8., 1/8, 1/8T, 1/16.  time(ms) = (60000/bpm)*factor; Hz = bpm/(60*factor).
@@ -489,6 +500,23 @@ struct HexForge {
     std::unique_ptr<OversamplingWrapper> nail;        // industrial distortion (NailDistortion, oversampled)
     AutoOutput        autoOut;        // auto-leveling clip protection on the master output
     GraphicEQ         eq;              // 6-band graphic EQ block (movable, v23)
+    // ── X2 second instances (2026-07-30, v38): a clone of every movable effect.
+    // Always constructed (matches the drive2 precedent); processed only when the
+    // block is enabled, so idle cost is zero and RAM is the only standing price.
+    NoiseGateBlock    gate2;
+    CompressorBlock   comp2;
+    std::unique_ptr<OversamplingWrapper> fuzz2Muff;
+    std::unique_ptr<OversamplingWrapper> fuzz2Bender;
+    std::unique_ptr<OversamplingWrapper> fuzz2Octavia;
+    std::unique_ptr<OversamplingWrapper> fuzz2Factory;
+    std::unique_ptr<OversamplingWrapper> nail2;
+    ModulationBlock   modfx2;
+    DelayBlock        delay2;
+    PlateReverbBlock  reverb2;
+    WahBlock          wah2;
+    OctaveBlock       octave2;
+    GraphicEQ         eq2;
+    int lastNail2Mode = 2, lastModfx2Type = 0, lastDelay2Type = 0;
     NamModel*         ampNam = nullptr;   // worker-loaded neural captures
     NamModel*         drNam  = nullptr;
     NamModel*         cabNam = nullptr;
@@ -554,7 +582,7 @@ struct HexForge {
     bool  swEnabledHeld[B_COUNT] = {};
     bool  swEnabledPrev[B_COUNT] = {};
     bool  swPrevInit = false;
-    float swWatchPrev[40] = {};
+    float swWatchPrev[64] = {};
     AmpBlockExtended* pendAmp = nullptr;   // worker-built amp awaiting the zero point
     int   pendAmpModel = -1;
     NamModel* pendNam[3] = {};             // worker-built NAM models awaiting swap
@@ -812,8 +840,17 @@ static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_QUALITY == HF_FZ_GVOL + 1
               && HF_DR_ECO == HF_QUALITY + 1 && HF_DR2_POS == HF_DR_ECO + 1
               && HF_DR2_BYPASS == HF_DR2_POS + 9 && HF_RB_ENABLE == HF_DR2_BYPASS + 1
               && HF_RB_POL == HF_RB_ENABLE + 16 && HF_RB_RESONANCE == HF_RB_POL + 1
-              && HF_RB_CABSPKDRIVE == HF_RB_RESONANCE + 44 && HF_RB_CABSPKDRIVE == HF_SW_A - 1,
-              "params end: Drive B, Rig B core, then the 45-port Rig B parity family");
+              && HF_RB_CABSPKDRIVE == HF_RB_RESONANCE + 44 && HF_RB_CAB2ON == HF_RB_CABSPKDRIVE + 1,
+              "params: Drive 2, Rig B core, the 45-port parity family, Cab 2 presence (v37)");
+//   * X2 second instances (v38): ten contiguous clone families end the param range.
+static_assert(HF_GT2_POS == HF_RB_CAB2ON + 1 && HF_GT2_BYPASS == HF_GT2_POS + 7
+              && HF_CP2_POS == HF_GT2_BYPASS + 1 && HF_FZ2_POS == HF_CP2_POS + 10
+              && HF_NAIL2_POS == HF_FZ2_POS + 12 && HF_MD2_POS == HF_NAIL2_POS + 8
+              && HF_DL2_POS == HF_MD2_POS + 12 && HF_RV2_POS == HF_DL2_POS + 17
+              && HF_WH2_POS == HF_RV2_POS + 12 && HF_OC2_POS == HF_WH2_POS + 9
+              && HF_EQ2_POS == HF_OC2_POS + 8 && HF_EQ2_BYPASS == HF_EQ2_POS + 10
+              && HF_EQ2_BYPASS == HF_SW_A - 1,
+              "v38: the ten X2 clone families (107 ports) end the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -934,6 +971,29 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
                                      1,0,0,1,0.12f,0.35f,0,0,0};
     const bool rb2Gap = (srcVer < 36);
     const int rb2At = HF_RB_RESONANCE, rb2End = HF_RB_RESONANCE + 45;
+    // v37 appended Cab 2 presence (rb_cab2on); default 0 (Cab 2 out of the chain).
+    // ARCHAEOLOGY (2026-07-30): this gap was missed when the port landed, so the
+    // deployed build stamped 318-param blobs as v36 — the loaders disambiguate by
+    // the saved param count (np >= 318 -> treated as v37) before calling this.
+    const bool c2Gap = (srcVer < 37);
+    const int c2At = HF_RB_CAB2ON;
+    // v38 inserted the ten X2 clone families [HF_GT2_POS..HF_EQ2_BYPASS] (107
+    // ports) + their 10 CPU meters at the tail. Defaults: parked slots 15..24,
+    // OUT of the chain (enable 0), params at their port defaults, active.
+    static const float x2def[107] = {
+        15.0f, 0.0f, -60.0f, 2.0f, 120.0f, 250.0f, 8.0f, 0.0f,   // gt2
+        16.0f, 0.0f, 0.0f, -18.0f, 1.0f, 5.0f, 5.0f, 3.0f, 0.0f, 0.0f,   // cp2
+        17.0f, 0.0f, 0.0f, 2.0f, 0.55f, 0.5f, 0.65f, 0.5f, 0.5f, 0.4f, 1.0f, 0.0f,   // fz2
+        18.0f, 0.0f, 2.0f, 0.6f, 0.5f, 0.4f, 0.5f, 0.0f,   // nail2
+        19.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.5f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f,   // md2
+        20.0f, 0.0f, 0.0f, 250.0f, 0.4f, 0.15f, 0.5f, 0.003f, 0.001f, 10.0f, 1.0f, 0.0f, 0.0f, 0.3f, 0.0f, 5.0f, 0.0f,   // dl2
+        21.0f, 0.0f, 10.0f, 1.5f, 0.3f, 0.0f, 0.8f, 0.15f, 0.0f, 0.0f, 0.5f, 0.0f,   // rv2
+        22.0f, 0.0f, 0.0f, 0.4f, 0.7f, 0.5f, 0.6f, 0.8f, 0.0f,   // wh2
+        23.0f, 0.0f, 0.0f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f,   // oc2
+        24.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f,   // eq2
+    };
+    const bool x2Gap = (srcVer < 38);
+    const int x2At = HF_GT2_POS, x2End = HF_GT2_POS + 107;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -969,7 +1029,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (dr2Gap && i == HF_CPU_DR2)              vals[i] = 0.0f;              // Drive B meter
         else if (rbGap && i >= rbAt && i < rbEnd)        vals[i] = rbdef[i - rbAt];   // Rig B off
         else if (rbGap && i == HF_CPU_RIGB)              vals[i] = 0.0f;              // Rig B meter
-        else if (rb2Gap && i >= rb2At && i < rb2End)     vals[i] = rb2def[i - rb2At]; // Rig B parity             // CPU meters (outputs)
+        else if (rb2Gap && i >= rb2At && i < rb2End)     vals[i] = rb2def[i - rb2At]; // Rig B parity
+        else if (c2Gap && i == c2At)                     vals[i] = 0.0f;              // Cab 2 out of the chain
+        else if (x2Gap && i >= x2At && i < x2End)        vals[i] = x2def[i - x2At];   // X2 clones parked
+        else if (x2Gap && i >= HF_CPU_GT2 && i <= HF_CPU_EQ2) vals[i] = 0.0f;         // X2 meters (outputs)
         else                                             vals[i] = old[o++];
     }
 }
@@ -982,7 +1045,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(36); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(38); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1002,10 +1065,11 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 27) return false;
+    if (ver < 2 || ver > 38) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 27);  // …reverb type/room density (v26) + ambient bloom (v27)
+    const bool needMigrate  = (ver < 38);  // ...X2 clone families (v38)
     getU32(np);
+    if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
     const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
     for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -1376,6 +1440,30 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->octave.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
     p->eq.prepare(rate);
+    // X2 second instances (v38)
+    p->gate2.prepare(rate, kMaxBlock, 1);
+    p->comp2.prepare(rate, kMaxBlock, 1);
+    p->fuzz2Muff   = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
+    p->fuzz2Bender = std::make_unique<OversamplingWrapper>(std::make_unique<ToneBenderMkII>());
+    p->fuzz2Octavia= std::make_unique<OversamplingWrapper>(std::make_unique<Octavia>());
+    p->fuzz2Factory= std::make_unique<OversamplingWrapper>(std::make_unique<ZVexFuzzFactory>());
+    p->nail2       = std::make_unique<OversamplingWrapper>(std::make_unique<NailDistortion>());
+    if (!p->fuzz2Muff || !p->fuzz2Bender || !p->fuzz2Octavia || !p->fuzz2Factory || !p->nail2) { delete p; return nullptr; }
+    p->fuzz2Muff->prepare(rate, kMaxBlock, 1);
+    p->fuzz2Bender->prepare(rate, kMaxBlock, 1);
+    p->fuzz2Octavia->prepare(rate, kMaxBlock, 1);
+    p->fuzz2Factory->prepare(rate, kMaxBlock, 1);
+    p->fuzz2Muff->setParameter("era", 2.0f);
+    p->nail2->prepare(rate, kMaxBlock, 1);
+    p->nail2->setParameter("mode", 2.0f);
+    p->modfx2.prepare(rate, kMaxBlock, 2);
+    p->modfx2.setType(ModulationFactory::fromIndex(0));
+    p->delay2.prepare(rate, kMaxBlock, 2);
+    p->delay2.setType(DelayFactory::fromIndex(0));
+    p->reverb2.prepare(rate, kMaxBlock, 2);
+    p->wah2.prepare(rate, kMaxBlock, 2);
+    p->octave2.prepare(rate, kMaxBlock, 2);
+    p->eq2.prepare(rate);
     p->dblBuf.assign(size_t(rate * 0.045) + 4, 0.0f);   // doubler: 28 ms base ± 7 ms wander + margin
     p->dblApA.assign(size_t(rate * 0.0053) + 2, 0.0f);  // mono-blend phase diffusers
     p->dblApB.assign(size_t(rate * 0.0089) + 2, 0.0f);
@@ -2148,11 +2236,141 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->octave.setParameter("micro",    *p->ports[HF_OC_MICRO]);
     p->octave.setParameter("interval", *p->ports[HF_OC_INTERVAL]);
 
+    // ── X2 second instances (v38): params applied only while the block is enabled
+    // (cheap idle; values re-read on the first enabled run, so nothing goes stale).
+    int fz2Pedal = 0;
+    if (*p->ports[HF_GT2_ENABLE] > 0.5f) {
+        p->gate2.setBypass(false);
+        p->gate2.setParameter("threshold",  *p->ports[HF_GT2_THRESH]);
+        p->gate2.setParameter("attack",     *p->ports[HF_GT2_ATTACK]);
+        p->gate2.setParameter("hold",       *p->ports[HF_GT2_HOLD]);
+        p->gate2.setParameter("release",    *p->ports[HF_GT2_RELEASE]);
+        p->gate2.setParameter("hysteresis", *p->ports[HF_GT2_HYST]);
+    }
+    if (*p->ports[HF_CP2_ENABLE] > 0.5f) {
+        p->comp2.setBypass(false);
+        p->comp2.setParameter("type",      *p->ports[HF_CP2_TYPE]);
+        p->comp2.setParameter("threshold", *p->ports[HF_CP2_THRESH]);
+        p->comp2.setParameter("ratio",     *p->ports[HF_CP2_RATIO]);
+        p->comp2.setParameter("attack",    *p->ports[HF_CP2_ATTACK]);
+        p->comp2.setParameter("release",   *p->ports[HF_CP2_RELEASE]);
+        p->comp2.setParameter("knee",      *p->ports[HF_CP2_KNEE]);
+        p->comp2.setParameter("makeup",    *p->ports[HF_CP2_MAKEUP]);
+    }
+    if (*p->ports[HF_FZ2_ENABLE] > 0.5f) {
+        fz2Pedal = clampi(*p->ports[HF_FZ2_PEDAL], 0, 3);
+        p->fuzz2Muff->setBypass(false); p->fuzz2Bender->setBypass(false);
+        p->fuzz2Octavia->setBypass(false); p->fuzz2Factory->setBypass(false);
+        p->fuzz2Muff->setParameter("era",   *p->ports[HF_FZ2_MODE]);
+        p->fuzz2Muff->setParameter("drive", *p->ports[HF_FZ2_SUSTAIN]);
+        p->fuzz2Muff->setParameter("tone",  *p->ports[HF_FZ2_TONE]);
+        p->fuzz2Muff->setParameter("level", *p->ports[HF_FZ2_VOLUME]);
+        p->fuzz2Bender->setParameter("attack",    *p->ports[HF_FZ2_SUSTAIN]);
+        p->fuzz2Bender->setParameter("level",     *p->ports[HF_FZ2_VOLUME]);
+        p->fuzz2Bender->setParameter("bias",      *p->ports[HF_FZ2_BIAS]);
+        p->fuzz2Bender->setParameter("inputtrim", *p->ports[HF_FZ2_INPUTTRIM]);
+        p->fuzz2Bender->setParameter("getemp",    *p->ports[HF_FZ2_GETEMP]);
+        p->fuzz2Bender->setParameter("gvol",      *p->ports[HF_FZ2_GVOL]);
+        p->fuzz2Octavia->setParameter("drive", *p->ports[HF_FZ2_SUSTAIN]);
+        p->fuzz2Octavia->setParameter("tone",  *p->ports[HF_FZ2_TONE]);
+        p->fuzz2Octavia->setParameter("level", *p->ports[HF_FZ2_VOLUME]);
+        p->fuzz2Factory->setParameter("sustain",   *p->ports[HF_FZ2_SUSTAIN]);
+        p->fuzz2Factory->setParameter("bias",      *p->ports[HF_FZ2_BIAS]);
+        p->fuzz2Factory->setParameter("inputtrim", *p->ports[HF_FZ2_INPUTTRIM]);
+        p->fuzz2Factory->setParameter("getemp",    *p->ports[HF_FZ2_GETEMP]);
+        p->fuzz2Factory->setParameter("level",     *p->ports[HF_FZ2_VOLUME]);
+    }
+    if (*p->ports[HF_NAIL2_ENABLE] > 0.5f) {
+        p->nail2->setBypass(false);
+        const int nail2Mode = clampi(*p->ports[HF_NAIL2_MODE], 0, NailDistortion::kNumModes - 1);
+        if (nail2Mode != p->lastNail2Mode) { p->lastNail2Mode = nail2Mode; p->nail2->setParameter("mode", (float)nail2Mode); }
+        p->nail2->setParameter("drive",   *p->ports[HF_NAIL2_DRIVE]);
+        p->nail2->setParameter("tone",    *p->ports[HF_NAIL2_TONE]);
+        p->nail2->setParameter("texture", *p->ports[HF_NAIL2_TEXTURE]);
+        p->nail2->setParameter("level",   *p->ports[HF_NAIL2_LEVEL]);
+    }
+    if (*p->ports[HF_MD2_ENABLE] > 0.5f) {
+        p->modfx2.setBypass(false);
+        const int modfx2Type = clampi(*p->ports[HF_MD2_TYPE], 0, 6);
+        if (modfx2Type != p->lastModfx2Type) { p->lastModfx2Type = modfx2Type; p->modfx2.setType(ModulationFactory::fromIndex(modfx2Type)); }
+        if (*p->ports[HF_MD2_SYNC] > 0.5f) {
+            const int mv2 = clampi(*p->ports[HF_MD2_DIV], 0, 7);
+            const float ps2 = (60.0f / p->hostBpm) * kDivFactor[mv2];
+            p->modfx2.setSyncHz(ps2 > 0.0f ? (1.0f / ps2) : 0.0f);
+        } else p->modfx2.setSyncHz(0.0f);
+        p->modfx2.setParameter("rate",        *p->ports[HF_MD2_RATE]);
+        p->modfx2.setParameter("depth",       *p->ports[HF_MD2_DEPTH]);
+        p->modfx2.setParameter("mix",         *p->ports[HF_MD2_MIX]);
+        p->modfx2.setParameter("centerDelay", *p->ports[HF_MD2_OFFSET]);
+        p->modfx2.setParameter("shape",       *p->ports[HF_MD2_SHAPE]);
+        const bool monoOut2 = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
+        p->modfx2.setParameter("stereoWidth", monoOut2 ? 0.0f : *p->ports[HF_MD2_WIDTH]);
+    }
+    if (*p->ports[HF_DL2_ENABLE] > 0.5f) {
+        p->delay2.setBypass(false);
+        const int delay2Type = clampi(*p->ports[HF_DL2_TYPE], 0, 3);
+        if (delay2Type != p->lastDelay2Type) { p->lastDelay2Type = delay2Type; p->delay2.setType(DelayFactory::fromIndex(delay2Type)); }
+        float dl2Ms = *p->ports[HF_DL2_TIME];
+        if (*p->ports[HF_DL2_SYNC] > 0.5f) {
+            const int dv2 = clampi(*p->ports[HF_DL2_DIV], 0, 7);
+            dl2Ms = (60000.0f / p->hostBpm) * kDivFactor[dv2];
+            if (dl2Ms < 1.0f) dl2Ms = 1.0f; else if (dl2Ms > 2000.0f) dl2Ms = 2000.0f;
+        }
+        const bool monoOut2 = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
+        p->delay2.setParameter("timeMs",       dl2Ms);
+        p->delay2.setParameter("feedback",     *p->ports[HF_DL2_FEEDBACK]);
+        p->delay2.setParameter("mix",          *p->ports[HF_DL2_MIX]);
+        p->delay2.setParameter("stereoWidth",  monoOut2 ? 0.0f : *p->ports[HF_DL2_WIDTH]);
+        p->delay2.setParameter("wowDepth",     *p->ports[HF_DL2_WOW]);
+        p->delay2.setParameter("flutterDepth", *p->ports[HF_DL2_FLUTTER]);
+        p->delay2.setParameter("headMask", static_cast<float>(kEchorecProgram[clampi(*p->ports[HF_DL2_HEADS],0,11)]));
+        p->delay2.setParameter("pattern",  *p->ports[HF_DL2_PATTERN]);
+        p->delay2.setParameter("ducking",  *p->ports[HF_DL2_DUCKING]);
+        p->delay2.setParameter("modDepth", *p->ports[HF_DL2_MODDEPTH]);
+        p->delay2.setParameter("modRate",  *p->ports[HF_DL2_MODRATE]);
+    }
+    if (*p->ports[HF_RV2_ENABLE] > 0.5f) {
+        p->reverb2.setBypass(false);
+        p->reverb2.setParameter("density",    *p->ports[HF_RV2_DENSITY]);
+        p->reverb2.setParameter("type",       *p->ports[HF_RV2_TYPE]);
+        p->reverb2.setParameter("bloom",      *p->ports[HF_RV2_BLOOM]);
+        p->reverb2.setParameter("preDelayMs", *p->ports[HF_RV2_PREDELAY]);
+        p->reverb2.setParameter("decayTime",  *p->ports[HF_RV2_DECAY]);
+        p->reverb2.setParameter("damping",    *p->ports[HF_RV2_DAMPING]);
+        p->reverb2.setParameter("modDepth",   *p->ports[HF_RV2_MODDEPTH]);
+        p->reverb2.setParameter("modRate",    *p->ports[HF_RV2_MODRATE]);
+        p->reverb2.setParameter("mix",        *p->ports[HF_RV2_MIX]);
+    }
+    if (*p->ports[HF_WH2_ENABLE] > 0.5f) {
+        p->wah2.setBypass(false);
+        p->wah2.setParameter("type",  *p->ports[HF_WH2_TYPE]);
+        p->wah2.setParameter("freq",  *p->ports[HF_WH2_FREQ]);
+        p->wah2.setParameter("depth", *p->ports[HF_WH2_DEPTH]);
+        p->wah2.setParameter("sens",  *p->ports[HF_WH2_SENS]);
+        p->wah2.setParameter("q",     *p->ports[HF_WH2_Q]);
+        p->wah2.setParameter("mix",   *p->ports[HF_WH2_MIX]);
+    }
+    if (*p->ports[HF_OC2_ENABLE] > 0.5f) {
+        p->octave2.setBypass(false);
+        p->octave2.setParameter("up",       *p->ports[HF_OC2_UP]);
+        p->octave2.setParameter("down",     *p->ports[HF_OC2_DOWN]);
+        p->octave2.setParameter("dry",      *p->ports[HF_OC2_DRY]);
+        p->octave2.setParameter("micro",    *p->ports[HF_OC2_MICRO]);
+        p->octave2.setParameter("interval", *p->ports[HF_OC2_INTERVAL]);
+    }
+    if (*p->ports[HF_EQ2_ENABLE] > 0.5f) {
+        const float eq2Db[GraphicEQ::kBands] = {
+            *p->ports[HF_EQ2_100], *p->ports[HF_EQ2_200], *p->ports[HF_EQ2_400],
+            *p->ports[HF_EQ2_800], *p->ports[HF_EQ2_1K6], *p->ports[HF_EQ2_3K2],
+        };
+        p->eq2.update((int)*p->ports[HF_EQ2_PRESET], eq2Db, *p->ports[HF_EQ2_LEVEL]);
+    }
+
     // ── Resolve chain order (Input Trim locked first; rest sorted by pos) ──
     int order[B_COUNT];
     for (int i=0;i<B_COUNT;++i) order[i] = i;
     int posv[B_COUNT];
-    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 13);  // 13 movable blocks since the EQ (v23) — clamp must track B_COUNT
+    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 24);  // 24 movable blocks since the X2 clones (v38) — clamp must track B_COUNT
     // stable selection sort by (pos, canonical index)
     for (int a=0;a<B_COUNT-1;++a) {
         int best=a;
@@ -2341,6 +2559,25 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 case B_NAIL:   runMono(*p->nail, L, R, len, p->mono, stereo); break;
                 case B_EQ:     p->eq.processCh(L, len, 0);
                                if (stereo) p->eq.processCh(R, len, 1); break;
+                // X2 second instances (v38)
+                case B_GATE2: {   // keyed on the RAW pre-InputTrim input, like Gate 1
+                    if (!stereo) for (int i=0;i<len;++i) p->mono[i] = L[i];
+                    else         for (int i=0;i<len;++i) p->mono[i] = 0.5f*(L[i]+R[i]);
+                    float* io2[1] = { p->mono };
+                    p->gate2.processKeyed(io2, inL + off, io2, len, 1);
+                    for (int i=0;i<len;++i) { L[i] = p->mono[i]; R[i] = p->mono[i]; }
+                    break;
+                }
+                case B_COMP2:   runMono(p->comp2, L, R, len, p->mono, stereo); break;
+                case B_FUZZ2:   runMono(fz2Pedal==0 ? *p->fuzz2Muff : (fz2Pedal==1 ? *p->fuzz2Bender : (fz2Pedal==2 ? *p->fuzz2Octavia : *p->fuzz2Factory)), L, R, len, p->mono, stereo); break;
+                case B_NAIL2:   runMono(*p->nail2, L, R, len, p->mono, stereo); break;
+                case B_MODFX2:  runStereo(p->modfx2,  L, R, len, stereo); break;
+                case B_DELAY2:  runStereo(p->delay2,  L, R, len, stereo); break;
+                case B_REVERB2: runStereo(p->reverb2, L, R, len, stereo); break;
+                case B_WAH2:    runMono(p->wah2, L, R, len, p->mono, stereo); break;
+                case B_OCTAVE2: runMono(p->octave2, L, R, len, p->mono, stereo); break;
+                case B_EQ2:     p->eq2.processCh(L, len, 0);
+                                if (stereo) p->eq2.processCh(R, len, 1); break;
             }
             p->cpuAcc[id] += CpuClk::now() - blkT0;
             if (id == B_CAB && *p->ports[HF_RB_CAB2ON] > 0.5f) rigBMix();       // Cab 2 present: join after Cab 1
@@ -2358,6 +2595,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 HF_CPU_GT, HF_CPU_CP, HF_CPU_FZ, HF_CPU_DR, HF_CPU_AMP, HF_CPU_CAB,
                 HF_CPU_MD, HF_CPU_DL, HF_CPU_RV, HF_CPU_WH, HF_CPU_OC, HF_CPU_NAIL,
                 HF_CPU_EQ, HF_CPU_DR2,
+                HF_CPU_GT2, HF_CPU_CP2, HF_CPU_FZ2, HF_CPU_NAIL2, HF_CPU_MD2,
+                HF_CPU_DL2, HF_CPU_RV2, HF_CPU_WH2, HF_CPU_OC2, HF_CPU_EQ2,
             };
             for (int b = 0; b < B_COUNT; ++b) {
                 if (p->hostPorts[kCpuPort[b]])
@@ -2550,7 +2789,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(36);                 // version (36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(38);                 // version (38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -2620,10 +2859,11 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 27) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 38) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 27);     // …reverb type/room density (v26) + ambient bloom (v27)
-        getU32(np);                                 // param-port count at save time
+        const bool needMigrate  = (ver < 38);     // ...X2 clone families (v38)
+        getU32(np);
+        if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
