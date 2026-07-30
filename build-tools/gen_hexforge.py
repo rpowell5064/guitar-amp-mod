@@ -645,7 +645,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 147 ;")   # 147: badge JS without global jQuery (sandbox has none) (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 148 ;")   # 148: modgui:monitoredOutputs (outputs never streamed without it!) (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -709,6 +709,13 @@ def emit_ttl():
     L.append('        modgui:brand "Hex Chain" ;')
     L.append('        modgui:label "Hex Forge" ;')
     L.append('        modgui:model "mod-pedal-guitaramp-hexforge" ;')
+    # modgui:monitoredOutputs — REQUIRED for mod-ui to stream output-port values
+    # to the modgui JS (discovered 2026-07-30: without it monitoredOutputs=[] and
+    # NO output port ever reaches the script — the CPU meters, and in fact the
+    # web tuner/level meters/clip, silently received nothing).
+    mons = [c["sym"] for c in ctrl if c.get("out")]
+    L.append("        modgui:monitoredOutputs "
+             + " , ".join('[ lv2:symbol "%s" ]' % m for m in mons) + " ;")
     rows = []
     for j, c in enumerate(ctrl):
         rows.append('            lv2:index %d ; lv2:symbol "%s" ; lv2:name "%s"' % (j, c["sym"], c["name"]))
