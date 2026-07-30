@@ -844,7 +844,7 @@ function (event, funcs) {
             // Per-block CPU meters (2026-07-30): badge on each chain node + the
             // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
-                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq' };
+                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2' };
             var ck = s.substring(4);
             var pct = parseFloat(event.value);
             if (ck === 'total') {

@@ -242,9 +242,9 @@ for suf, nm, kind, mn, mx, df, sc in IT:
 OFF_BY_DEFAULT = {"cp", "fz", "dr", "md", "wh", "oc"}   # off: Comp, Fuzz, Drive, Mod, Wah, Octave
 for pfx, title, params, dpos in MOVABLE:
     P = pfx.upper()
-    posscale = [(str(k), k) for k in range(1, 14)]   # 1..13 dropdown for reordering (incl. Nail + EQ)
+    posscale = [(str(k), k) for k in range(1, 15)]   # 1..14 dropdown (incl. Nail, EQ, Drive B)
     en_def = 0 if pfx in OFF_BY_DEFAULT else 1
-    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 13, dpos, posscale, "Slot", hidden=True))
+    ctrl.append(mkport(P + "_POS",    pfx + "_pos",    title + " Position", "e", 1, 14, dpos, posscale, "Slot", hidden=True))
     ctrl.append(mkport(P + "_ENABLE", pfx + "_enable", title + " Enable",   "t", 0, 1, en_def, None, "On"))
     for suf, nm, kind, mn, mx, df, sc in params:
         ctrl.append(mkport(P + "_" + suf.upper(), pfx + "_" + suf, title + " " + nm, kind, mn, mx, df, sc, nm))
@@ -464,6 +464,24 @@ ctrl.append(mkport("QUALITY", "quality", "Amp Eco (2x OS)", "t", 0, 1, 0, None, 
 # Migrated v33.
 ctrl.append(mkport("DR_ECO", "dr_eco", "Drive Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
 
+# ── DRIVE B: the first multi-instance block (2026-07-30, user request) ────────
+# A full second Drive in the chain (stacking two ODs is the most common real-rig
+# doubling). Same params as Drive A minus the NAM model (one neural slot per
+# suite instance -- keeps worker/memory budget flat; values match OverdriveType
+# so the enums stay aligned). Default: disabled, parked at slot 14. Migrated v34.
+_DR2_SCALE = [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]
+_dr2_posscale = [(str(k), k) for k in range(1, 15)]
+ctrl.append(mkport("DR2_POS",    "dr2_pos",    "Drive B Position", "e", 1, 14, 14, _dr2_posscale, "Slot", hidden=True))
+ctrl.append(mkport("DR2_ENABLE", "dr2_enable", "Drive B Enable",   "t", 0, 1, 0, None, "On"))
+ctrl.append(mkport("DR2_MODEL",  "dr2_model",  "Drive B Model",  "e", 0, 7, 0, _DR2_SCALE, "Model"))
+ctrl.append(mkport("DR2_DRIVE",  "dr2_drive",  "Drive B Drive",  "f", 0, 1, 0.5, None, "Drive"))
+ctrl.append(mkport("DR2_TONE",   "dr2_tone",   "Drive B Tone",   "f", 0, 1, 0.5, None, "Tone"))
+ctrl.append(mkport("DR2_LEVEL",  "dr2_level",  "Drive B Level",  "f", 0, 1, 0.5, None, "Level"))
+ctrl.append(mkport("DR2_MIX",    "dr2_mix",    "Drive B Mix",    "f", 0, 1, 1, None, "Mix"))
+ctrl.append(mkport("DR2_OCTAVE", "dr2_octave", "Drive B Octave", "t", 0, 1, 0, None, "Octave"))
+ctrl.append(mkport("DR2_ECO",    "dr2_eco",    "Drive B Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
+ctrl.append(mkport("DR2_BYPASS", "dr2_bypass", "Drive B Bypass", "t", 0, 1, 0, None, "Bypass", hidden=True))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -521,6 +539,7 @@ for _sym, _nm in [("GT","Gate"),("CP","Comp"),("FZ","Fuzz"),("DR","Drive"),("AMP
                   ("OC","Octave"),("NAIL","Nail"),("EQ","EQ")]:
     ctrl.append(mkport("CPU_" + _sym, "cpu_" + _sym.lower(), "CPU " + _nm, "f", 0, 100, 0, None, out=True))
 ctrl.append(mkport("CPU_TOTAL", "cpu_total", "CPU Total", "f", 0, 100, 0, None, out=True))
+ctrl.append(mkport("CPU_DR2", "cpu_dr2", "CPU Drive B", "f", 0, 100, 0, None, out=True))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -645,7 +664,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 150 ;")   # 150: no CPU total in the toolbar (mod-ui already shows global CPU) (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 151 ;")   # 151: Drive B -- first multi-instance block (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -728,7 +747,7 @@ def emit_ttl():
     return "\n".join(L)
 
 # ── Emit the modgui icon HTML (10 logo-free tiles) ────────────────────────────
-TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL,"eq":EQBLK}
+TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"dr2":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL,"eq":EQBLK}
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
@@ -738,6 +757,7 @@ TILES = [
     ("cp",  "Comp",       "#4687eb", ["type","thresh","ratio","makeup"]),                     # comp
     ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
     ("dr",  "Drive",      "#eb5046", ["model","drive","tone","level"]),                       # drive
+    ("dr2", "Drive B",    "#eb7a46", ["model","drive","tone","level"]),                       # drive B (multi-instance)
     ("nail","Nail",       "#d0343a", ["mode","drive","tone","texture","level"]),              # nail (industrial)
     ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
     ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
@@ -928,6 +948,7 @@ ICON = {
     "cp":  '<svg viewBox="0 0 24 24"><line x1="4" y1="5" x2="20" y2="5"/><line x1="4" y1="19" x2="20" y2="19"/><path d="M8 9l4 3 4-3"/><path d="M8 15l4-3 4 3"/></svg>',
     "fz":  '<svg viewBox="0 0 24 24"><path d="M3 12h3l2-7 3 14 2-10 2 6 2-3h4"/></svg>',
     "dr":  '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/></svg>',
+    "dr2": '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/><text x="19" y="22" font-size="9" fill="currentColor" stroke="none">2</text></svg>',
     "nail":'<svg viewBox="0 0 24 24"><path d="M6 5h12"/><path d="M9 5l1.4 9L12 20l1.6-6L15 5"/></svg>',
     "amp": '<svg viewBox="0 0 24 24"><path d="M7 16V9a5 5 0 0110 0v7z"/><path d="M12 6.5v6.5"/><path d="M9.6 12.6q2.4 2 4.8 0"/><path d="M9 16v2.6M12 16v3.4M15 16v2.6"/></svg>',
     "cab": '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="7" r="1.4"/></svg>',
@@ -1108,6 +1129,8 @@ BLOCK_GROUPS = {
     "fz":  [("PEDAL", None, ["pedal", "mode"]),
             ("VOICE", None, ["sustain", "tone", "volume", "bias", "inputtrim", "getemp", "gvol"])],
     "dr":  [("DRIVE", None, ["model", "drive", "tone", "level", "mix", "octave"]),
+            ("PERFORMANCE", None, ["eco"])],
+    "dr2": [("DRIVE B", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),

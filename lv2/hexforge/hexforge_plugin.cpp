@@ -280,16 +280,16 @@ struct OutputBoost {
 };
 
 // ── Movable-block identity ────────────────────────────────────────────────────
-enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_EQ, B_COUNT };
+enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_EQ, B_DRIVE2, B_COUNT };
 static const int kPosPort[B_COUNT] = {
     HF_GT_POS, HF_CP_POS, HF_FZ_POS, HF_DR_POS, HF_AMP_POS,
     HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS, HF_NAIL_POS,
-    HF_EQ_POS,
+    HF_EQ_POS, HF_DR2_POS,
 };
 static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
     HF_CAB_ENABLE, HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE, HF_NAIL_ENABLE,
-    HF_EQ_ENABLE,
+    HF_EQ_ENABLE, HF_DR2_ENABLE,
 };
 // enable = chain membership (1 = in chain, 0 = removed/palette); bypass = active(0)/
 // bypassed(1). A block runs iff enable==1 && bypass==0. Bypassed blocks stay in the chain
@@ -297,7 +297,7 @@ static const int kEnablePort[B_COUNT] = {
 static const int kBypassPort[B_COUNT] = {
     HF_GT_BYPASS, HF_CP_BYPASS, HF_FZ_BYPASS, HF_DR_BYPASS, HF_AMP_BYPASS,
     HF_CAB_BYPASS, HF_MD_BYPASS, HF_DL_BYPASS, HF_RV_BYPASS, HF_WH_BYPASS, HF_OC_BYPASS, HF_NAIL_BYPASS,
-    HF_EQ_BYPASS,
+    HF_EQ_BYPASS, HF_DR2_BYPASS,
 };
 
 // ── 6-band graphic EQ block (2026-07-23) ─────────────────────────────────────
@@ -348,7 +348,7 @@ static const int kSwWatch[] = {
     HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE, HF_RV_DENSITY,
     HF_RV_TYPE, HF_CAB_ROOMDENSE, HF_CAB_SPKDRIVE, HF_MD_SHAPE,
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
-    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY, HF_DR_ECO,
+    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY, HF_DR_ECO, HF_DR2_MODEL, HF_DR2_ECO,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
 static_assert(kSwWatchN <= 24, "grow swWatchPrev[]");
@@ -463,6 +463,8 @@ struct HexForge {
     std::unique_ptr<OversamplingWrapper> fuzzOctavia;// Octavia (octave-up)
     std::unique_ptr<OversamplingWrapper> fuzzFactory;// Fizz Factory (ZVex-style chaos/gated octave)
     OverdriveBlock    drive;
+    OverdriveBlock    drive2;           // Drive B (first multi-instance block, 2026-07-30)
+    int               lastDrive2Model = -1;
     AmpBlockExtended* amp = nullptr;                  // swapped on model change
     PowerAmpProcessor pa;
     CabinetBlock      cab;
@@ -794,8 +796,9 @@ static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1,
               "v29 port must be contiguous");
 //   * Fuzz Guitar Vol (roadmap #45) — 1 port, added v30, last before the commands.
 static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_QUALITY == HF_FZ_GVOL + 1
-              && HF_DR_ECO == HF_QUALITY + 1 && HF_DR_ECO == HF_SW_A - 1,
-              "gvol, quality, dr_eco must be contiguous, right before the commands");
+              && HF_DR_ECO == HF_QUALITY + 1 && HF_DR2_POS == HF_DR_ECO + 1
+              && HF_DR2_BYPASS == HF_DR2_POS + 9 && HF_DR2_BYPASS == HF_SW_A - 1,
+              "gvol, quality, dr_eco, then the 10-port Drive B family end the params");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -897,6 +900,12 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v33 appended Drive Eco; default 0 = Standard.
     const bool deGap = (srcVer < 33);
     const int deAt = HF_DR_ECO;
+    // v34 appended the Drive B family (10 ports: pos..bypass) + its CPU meter
+    // (after cpu_total). Defaults: parked at slot 14, disabled, Green Man, knobs
+    // at noon-ish, mix full.
+    static const float dr2def[10] = {14.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f};
+    const bool dr2Gap = (srcVer < 34);
+    const int dr2At = HF_DR2_POS, dr2End = HF_DR2_POS + 10;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -927,7 +936,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (gvGap2 && i == gvAt2)                   vals[i] = 1.0f;             // fuzz guitar vol FULL
         else if (cpuGap && i >= cpuAt && i < cpuEnd)     vals[i] = 0.0f;
         else if (qGap && i == qAt)                       vals[i] = 0.0f;             // quality Standard
-        else if (deGap && i == deAt)                     vals[i] = 0.0f;             // drive eco Standard             // CPU meters (outputs)
+        else if (deGap && i == deAt)                     vals[i] = 0.0f;             // drive eco Standard
+        else if (dr2Gap && i >= dr2At && i < dr2End)     vals[i] = dr2def[i - dr2At]; // Drive B parked
+        else if (dr2Gap && i == HF_CPU_DR2)              vals[i] = 0.0f;              // Drive B meter             // CPU meters (outputs)
         else                                             vals[i] = old[o++];
     }
 }
@@ -936,7 +947,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(33); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(34); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1297,6 +1308,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->fuzzFactory->prepare(rate, kMaxBlock, 1);
     p->fuzzMuff->setParameter("era", 2.0f);
     p->drive.prepare(rate, kMaxBlock, 1);
+    p->drive2.prepare(rate, kMaxBlock, 1);
     p->drive.setType(kDriveMap[0]);
     // Nail — industrial distortion (oversampled, like the fuzzes)
     p->nail = std::make_unique<OversamplingWrapper>(std::make_unique<NailDistortion>());
@@ -1712,6 +1724,18 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->drive.setParameter("level",  *p->ports[HF_DR_LEVEL]);
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
+    // Drive B — same pedal family, no NAM (one neural slot per instance); a NAM
+    // selection arriving anyway (e.g. hand-edited pedalboard) falls back to model 0.
+    p->drive2.setBypass(false);
+    int drive2Model = clampi(*p->ports[HF_DR2_MODEL], 0, kDrMax);
+    if (drive2Model == kDrNamIdx) drive2Model = 0;
+    if (drive2Model != p->lastDrive2Model) { p->lastDrive2Model = drive2Model; p->drive2.setType(kDriveMap[drive2Model]); }
+    p->drive2.setParameter("eco",    *p->ports[HF_DR2_ECO]);
+    p->drive2.setParameter("drive",  *p->ports[HF_DR2_DRIVE]);
+    p->drive2.setParameter("tone",   *p->ports[HF_DR2_TONE]);
+    p->drive2.setParameter("level",  *p->ports[HF_DR2_LEVEL]);
+    p->drive2.setParameter("mix",    *p->ports[HF_DR2_MIX]);
+    p->drive2.setParameter("octave", *p->ports[HF_DR2_OCTAVE]);
     // Nail — industrial distortion (mode + drive/tone/texture/level)
     p->nail->setBypass(false);
     const int nailMode = clampi(*p->ports[HF_NAIL_MODE], 0, NailDistortion::kNumModes - 1);
@@ -1984,6 +2008,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (!enabled[id]) continue;
             const double blkT0 = CpuClk::now();
             switch (id) {
+                case B_DRIVE2: runMono(p->drive2, L, R, len, p->mono, stereo); break;
                 case B_GATE: {
                     // Keyed gate (2026-07-29 idle-whine fix): detector on the RAW
                     // pre-InputTrim input -- the IT pickup voicing + boost lift the
@@ -2083,9 +2108,17 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         p->cpuSamps += len;
         if (p->cpuSamps >= 24000) {   // publish ~2x/sec: % of the audio-time budget
             const double budget = double(p->cpuSamps) / p->rate;
+            // Explicit map: the contiguous cpu_gt..cpu_eq region covers the original
+            // 13 blocks; later blocks (Drive B...) have their meters appended after
+            // cpu_total, so HF_CPU_GT + id would land on the wrong port.
+            static const int kCpuPort[B_COUNT] = {
+                HF_CPU_GT, HF_CPU_CP, HF_CPU_FZ, HF_CPU_DR, HF_CPU_AMP, HF_CPU_CAB,
+                HF_CPU_MD, HF_CPU_DL, HF_CPU_RV, HF_CPU_WH, HF_CPU_OC, HF_CPU_NAIL,
+                HF_CPU_EQ, HF_CPU_DR2,
+            };
             for (int b = 0; b < B_COUNT; ++b) {
-                if (p->hostPorts[HF_CPU_GT + b])
-                    *p->hostPorts[HF_CPU_GT + b] = float(100.0 * p->cpuAcc[b] / budget);
+                if (p->hostPorts[kCpuPort[b]])
+                    *p->hostPorts[kCpuPort[b]] = float(100.0 * p->cpuAcc[b] / budget);
                 p->cpuAcc[b] = 0.0;
             }
             if (p->hostPorts[HF_CPU_TOTAL])
@@ -2271,7 +2304,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(33);                 // version (33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(34);                 // version (34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];

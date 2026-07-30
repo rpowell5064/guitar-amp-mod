@@ -39,15 +39,16 @@ static_assert(HF_CAB_SPKDRIVE == HF_RV_BLOOM + 1,
 static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1,
               "v29 port must be contiguous");
 static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_QUALITY == HF_FZ_GVOL + 1
-              && HF_DR_ECO == HF_QUALITY + 1 && HF_DR_ECO == HF_SW_A - 1,
-              "gvol, quality, dr_eco must be contiguous, right before the commands");
+              && HF_DR_ECO == HF_QUALITY + 1 && HF_DR2_POS == HF_DR_ECO + 1
+              && HF_DR2_BYPASS == HF_DR2_POS + 9 && HF_DR2_BYPASS == HF_SW_A - 1,
+              "gvol, quality, dr_eco, then the 10-port Drive B family end the params");
 
 // ── migratePorts, copied verbatim from hexforge_plugin.cpp (v28) ──────────────
 // v31 inserted 14 CPU-meter outputs at HF_CPU_GT (before HF_MIDI_IN): indices at/after
 // the insertion shift +14 and the region itself zero-fills. Tail checks written pre-v31
 // route through these.
-static bool inCpuGap(int i) { return i >= HF_CPU_GT && i < HF_CPU_GT + 14; }
-static int  preCpu(int i)   { return i >= HF_CPU_GT + 14 ? i - 14 : i; }
+static bool inCpuGap(int i) { return i >= HF_CPU_GT && i < HF_CPU_GT + 15; }   // 14 meters + cpu_dr2
+static int  preCpu(int i)   { return i >= HF_CPU_GT + 15 ? i - 15 : i; }
 
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
@@ -115,6 +116,12 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v33 appended Drive Eco; default 0 = Standard.
     const bool deGap = (srcVer < 33);
     const int deAt = HF_DR_ECO;
+    // v34 appended the Drive B family (10 ports: pos..bypass) + its CPU meter
+    // (after cpu_total). Defaults: parked at slot 14, disabled, Green Man, knobs
+    // at noon-ish, mix full.
+    static const float dr2def[10] = {14.0f, 0.0f, 0.0f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.0f, 0.0f};
+    const bool dr2Gap = (srcVer < 34);
+    const int dr2At = HF_DR2_POS, dr2End = HF_DR2_POS + 10;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
@@ -146,6 +153,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (cpuGap && i >= cpuAt && i < cpuEnd)     vals[i] = 0.0f;
         else if (qGap && i == qAt)                       vals[i] = 0.0f;             // quality Standard
         else if (deGap && i == deAt)                     vals[i] = 0.0f;             // drive eco Standard
+        else if (dr2Gap && i >= dr2At && i < dr2End)     vals[i] = dr2def[i - dr2At]; // Drive B parked
+        else if (dr2Gap && i == HF_CPU_DR2)              vals[i] = 0.0f;              // Drive B meter
         else                                             vals[i] = old[o++];
     }
 }
@@ -174,7 +183,7 @@ int main() {
         if (vals[HF_FZ_GVOL] != 1.0f) { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
-            float want = (preCpu(i) - 8 < npOld) ? static_cast<float>((preCpu(i) - 8) + 1) : 0.0f;
+            float want = (preCpu(i) - 18 < npOld) ? static_cast<float>((preCpu(i) - 18) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v25 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -201,7 +210,7 @@ int main() {
             { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
-            float want = (preCpu(i) - 5 < npOld) ? static_cast<float>((preCpu(i) - 5) + 1) : 0.0f;
+            float want = (preCpu(i) - 15 < npOld) ? static_cast<float>((preCpu(i) - 15) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v27 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -226,7 +235,7 @@ int main() {
             { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
-            float want = (preCpu(i) - 4 < npOld) ? static_cast<float>((preCpu(i) - 4) + 1) : 0.0f;
+            float want = (preCpu(i) - 14 < npOld) ? static_cast<float>((preCpu(i) - 14) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v28 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -250,7 +259,7 @@ int main() {
             { std::printf("FAIL: v30 gvol default wrong (%g)\n", vals[HF_FZ_GVOL]); ++fails; }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
-            float want = (preCpu(i) - 3 < npOld) ? static_cast<float>((preCpu(i) - 3) + 1) : 0.0f;
+            float want = (preCpu(i) - 13 < npOld) ? static_cast<float>((preCpu(i) - 13) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v29 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -287,7 +296,7 @@ int main() {
         // Command/status slots after the inserts: shifted up by 27.
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
-            float want = (preCpu(i) - 29 < npOld) ? static_cast<float>((preCpu(i) - 29) + 1) : 0.0f;
+            float want = (preCpu(i) - 39 < npOld) ? static_cast<float>((preCpu(i) - 39) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -299,7 +308,7 @@ int main() {
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1 + 1 + 1 + 14 + 1 + 1;  // ... + cpu14 + quality1 + dreco1
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1 + 1 + 1 + 15 + 1 + 1 + 10;  // ... + cpu14+dr2meter + quality1 + dreco1 + dr2fam10
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -353,6 +362,7 @@ int main() {
                           || (i == HF_FZ_GVOL)
                           || (i == HF_QUALITY)
                           || (i == HF_DR_ECO)
+                          || (i >= HF_DR2_POS && i <= HF_DR2_BYPASS)
                           || inCpuGap(i);
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
