@@ -851,15 +851,17 @@ function (event, funcs) {
                 icon.find('[rata-role=cputotal]').text('CPU ' + (pct < 0.05 ? '--' : pct.toFixed(pct < 9.95 ? 1 : 0)) + '%');
             } else if (CPU_MAP[ck]) {
                 var txt = pct.toFixed(pct < 9.95 ? 1 : 0) + '%';
+                // NOTE: no global $ in the modgui sandbox (it killed the whole
+                // script once) -- build elements through the jQuery objects we get.
                 var nd = nodeOf(icon, CPU_MAP[ck]);
                 var badge = nd.find('.hf-cpu-badge');
-                if (!badge.length) badge = $('<span class="hf-cpu-badge"></span>').appendTo(nd);
+                if (!badge.length) { nd.append('<span class="hf-cpu-badge"></span>'); badge = nd.find('.hf-cpu-badge'); }
                 if (pct < 0.05) badge.text('').addClass('mod-hidden');
                 else badge.text(txt).removeClass('mod-hidden');
                 // echo into the detail panel header ("CPU 3.2%")
                 var pn = panelOf(icon, CPU_MAP[ck]);
                 var pb = pn.find('.hf-cpu-panel');
-                if (!pb.length) pb = $('<span class="hf-cpu-panel"></span>').insertAfter(pn.find('.hf-dname').first());
+                if (!pb.length) { pn.find('.hf-dname').first().after('<span class="hf-cpu-panel"></span>'); pb = pn.find('.hf-cpu-panel'); }
                 pb.text(pct < 0.05 ? '' : 'CPU ' + txt);
             }
         } else if (s === 'clip') {
