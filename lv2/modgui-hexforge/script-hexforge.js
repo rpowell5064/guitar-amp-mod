@@ -6,7 +6,7 @@ function (event, funcs) {
     // owns <pfx>_pos (slot 1..11), <pfx>_enable (chain membership) and <pfx>_bypass
     // (active/bypassed). The DSP sorts by pos and runs a block iff enable && !bypass.
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
-    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc','nail','eq'];
+    var BLOCKS = ['gt','cp','fz','dr','amp','cab','md','dl','rv','wh','oc','nail','eq','dr2'];
 
     // Node subtitle labels for model-bearing blocks — MUST mirror gen_hexforge.py's
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
