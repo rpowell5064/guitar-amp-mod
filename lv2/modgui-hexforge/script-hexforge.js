@@ -380,9 +380,8 @@ function (event, funcs) {
         applyAmpFace(icon, 'amp', m);
         applyMesa(icon);
     }
-    // Amp 2 (Rig B): the same full-UI logic against the c-rb-* scope. No NAM on B
-    // (the enum has no model 5), so no Neural tab and no mode switcheroo; the 4th
-    // tab is Blend (always available).
+    // Amp 2 (Rig B): the same full-UI logic against the c-rb-* scope, including
+    // the Neural slot (model 5, v39) whose tab doubles as the mode switch like A.
     function applyRbAmp(icon) {
         var m = icon.data('hf_rb_m'); if (m == null) m = 1;
         var a = icon.data('hf_rb_auto'); if (a == null) a = true;
@@ -394,18 +393,25 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-mt15', m === 13);
         show(icon, 'amp2', '.c-rb-reso', m === 2);
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
-        show(icon, 'amp2', '.c-rb-pa',   m !== 3);
-        show(icon, 'amp2', '.c-rb-paman', m !== 3 && !a);
+        show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5);
+        show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && !a);
         var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13);
-        var showPower = (m !== 3);
+        var showPower = (m !== 3 && m !== 5);
         var p = panelOf(icon, 'amp2');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
         p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);
+        p.find('[rata-role=atab][data-tab=nam]').removeClass('hf-atab-gone');
         var cur = icon.data('hf_rb_tab') || 'amp';
-        var ok = { amp: true, voice: showVoice, power: showPower, blend: true };
+        if (m === 5 && cur !== 'nam') { setAmpTab(icon, 'amp2', 'nam'); cur = 'nam'; }
+        else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp2', 'amp'); cur = 'amp'; }
+        var ok = { amp: true, voice: showVoice, power: showPower, nam: true, blend: true };
         if (!ok[cur]) setAmpTab(icon, 'amp2', 'amp');
-        p.find('[rata-role=lbl-rb_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : 'Gain'));
+        p.find('[rata-role=lbl-rb_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 5 ? 'Output' : 'Gain')));
         applyAmpFace(icon, 'amp2', m);
+    }
+    function setRbAmpModel(icon, m) {
+        if (funcs && typeof funcs.set_port_value === 'function') funcs.set_port_value('rb_amp', m);
+        icon.data('hf_rb_m', m); applyRbAmp(icon);
     }
     // Cali V (Mesa Mark V) is now DROPDOWNS (Mode + EQ Preset), handled natively by MOD; applyMesa is a
     // no-op kept for its callers. Selecting an EQ preset LOADS its curve into the 5 faders + resets to
@@ -665,6 +671,11 @@ function (event, funcs) {
             if (uri.indexOf('#irfile') >= 0)      setIr(icon, value);
             else if (uri.indexOf('#ampnam') >= 0) setFile(icon, 'AmpNam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#drnam') >= 0)  setFile(icon, 'DrNam', value, '-- choose a NAM file --');
+            else if (uri.indexOf('#amp2nam') >= 0) setFile(icon, 'Amp2Nam', value, '-- choose a NAM file --');
+            else if (uri.indexOf('#ir2file') >= 0) {
+                if (value === '@builtin') value = '';   // defer to the rb_cab dropdown
+                setFile(icon, 'Ir2', value, '-- use Cabinet selection --');
+            }
         }
         (event.parameters || []).forEach(function (pr) {
             if (pr.uri) fileLabel(pr.uri, pr.value);
@@ -715,7 +726,27 @@ function (event, funcs) {
                     e.stopPropagation();
                     if (el.classList.contains('hf-atab-gone')) return;
                     var t = el.getAttribute('data-tab');
-                    if (blk === 'amp2') { setAmpTab(icon, 'amp2', t); return; }
+                    if (blk === 'amp2') {
+                        // Amp 2's Neural tab is the mode switch too (v39): entering it
+                        // puts the B side on the NAM slot (rb_amp 5) and remembers the
+                        // last internal model; any internal tab restores it. Blend
+                        // switches the view only.
+                        var c2 = icon.data('hf_rb_m'); if (c2 == null) c2 = 1;
+                        if (t === 'nam') {
+                            if (c2 !== 5) { icon.data('hf_rb_last_internal', c2); setRbAmpModel(icon, 5); }
+                            setAmpTab(icon, 'amp2', 'nam');
+                        } else if (t === 'blend') {
+                            setAmpTab(icon, 'amp2', 'blend');
+                        } else {
+                            if (c2 === 5) {
+                                var l2 = icon.data('hf_rb_last_internal');
+                                if (l2 == null || l2 === 5) l2 = 1;
+                                setRbAmpModel(icon, l2);
+                            }
+                            setAmpTab(icon, 'amp2', t);
+                        }
+                        return;
+                    }
                     var cur = icon.data('hf_amp_m'); if (cur == null) cur = 1;
                     if (t === 'nam') {
                         if (cur !== 5) { icon.data('hf_amp_last_internal', cur); setAmpModel(icon, 5); }

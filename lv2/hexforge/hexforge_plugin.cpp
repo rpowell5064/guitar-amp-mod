@@ -76,6 +76,8 @@
 #define HEXFORGE_AMPNAM  HEXFORGE_URI "#ampnam"
 #define HEXFORGE_DRNAM   HEXFORGE_URI "#drnam"
 #define HEXFORGE_CABNAM  HEXFORGE_URI "#cabnam"
+#define HEXFORGE_AMP2NAM HEXFORGE_URI "#amp2nam"
+#define HEXFORGE_IR2_URI HEXFORGE_URI "#ir2file"
 static constexpr int kAmpNamIdx = 5;   // amp model slot = Neural (NAM)
 static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
 static constexpr int kDrDs1Idx  = 4;   // drive model slot = Grunge DS (DS-1)
@@ -111,6 +113,8 @@ struct Preset {
     char  name[32] = {0};
     float vals[HF_N_PORTS] = {};
     char  irPath[kPathMax]     = {0};
+    char  ir2Path[kPathMax]    = {0};   // Cab 2 user IR (v39; empty = built-in rb_cab selection)
+    char  amp2NamPath[kPathMax]= {0};   // Amp 2 NAM capture (v39)
     char  ampNamPath[kPathMax] = {0};
     char  drNamPath[kPathMax]  = {0};
     char  cabNamPath[kPathMax] = {0};
@@ -384,7 +388,7 @@ struct WorkMsg {
 struct URIs {
     LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID ir_file, amp_nam, dr_nam, cab_nam;
+    LV2_URID ir_file, amp_nam, dr_nam, cab_nam, amp2_nam, ir2_file;
     LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner;
     LV2_URID midi_MidiEvent;
     LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
@@ -521,6 +525,7 @@ struct HexForge {
     NamModel*         ampNam = nullptr;   // worker-loaded neural captures
     NamModel*         drNam  = nullptr;
     NamModel*         cabNam = nullptr;
+    NamModel*         amp2Nam = nullptr;  // Amp 2 (Rig B) neural capture (v39)
 
     // model-switch caches
     int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0, lastNailMode = 2;
@@ -561,6 +566,8 @@ struct HexForge {
 
     // file-load state
     char irPath[kPathMax]     = {0};
+    char ir2Path[kPathMax]    = {0};    // Cab 2 user IR override (v39)
+    char amp2NamPath[kPathMax]= {0};    // Amp 2 NAM capture (v39)
     char ampNamPath[kPathMax] = {0};
     char drNamPath[kPathMax]  = {0};
     char cabNamPath[kPathMax] = {0};
@@ -586,7 +593,7 @@ struct HexForge {
     float swWatchPrev[64] = {};
     AmpBlockExtended* pendAmp = nullptr;   // worker-built amp awaiting the zero point
     int   pendAmpModel = -1;
-    NamModel* pendNam[3] = {};             // worker-built NAM models awaiting swap
+    NamModel* pendNam[4] = {};             // worker-built NAM models awaiting swap (0 amp, 1 drive, 2 cab, 3 amp2)
 
     // Output doubler (fake double-track): loose-timing tap, three slow wander phases.
     std::vector<float> dblBuf;
@@ -668,6 +675,8 @@ static void mapURIs(HexForge* p) {
     p->uris.amp_nam       = m->map(m->handle, HEXFORGE_AMPNAM);
     p->uris.dr_nam        = m->map(m->handle, HEXFORGE_DRNAM);
     p->uris.cab_nam       = m->map(m->handle, HEXFORGE_CABNAM);
+    p->uris.amp2_nam      = m->map(m->handle, HEXFORGE_AMP2NAM);
+    p->uris.ir2_file      = m->map(m->handle, HEXFORGE_IR2_URI);
     p->uris.ps_name       = m->map(m->handle, HEXFORGE_URI "#ps_name");
     p->uris.ps_index      = m->map(m->handle, HEXFORGE_URI "#ps_index");
     p->uris.ps_apply      = m->map(m->handle, HEXFORGE_URI "#ps_apply");
@@ -850,8 +859,8 @@ static_assert(HF_GT2_POS == HF_RB_CAB2ON + 1 && HF_GT2_BYPASS == HF_GT2_POS + 7
               && HF_DL2_POS == HF_MD2_POS + 12 && HF_RV2_POS == HF_DL2_POS + 17
               && HF_WH2_POS == HF_RV2_POS + 12 && HF_OC2_POS == HF_WH2_POS + 9
               && HF_EQ2_POS == HF_OC2_POS + 8 && HF_EQ2_BYPASS == HF_EQ2_POS + 10
-              && HF_EQ2_BYPASS == HF_SW_A - 1,
-              "v38: the ten X2 clone families (107 ports) end the param range");
+              && HF_RB_NAM_GAIN == HF_EQ2_BYPASS + 1 && HF_RB_NAM_VOL == HF_SW_A - 1,
+              "v38 X2 clone families, then the v39 Amp 2 NAM trims end the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -995,6 +1004,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     };
     const bool x2Gap = (srcVer < 38);
     const int x2At = HF_GT2_POS, x2End = HF_GT2_POS + 107;
+    // v39 appended the Amp 2 NAM Gain/Level trims; default 0 dB each.
+    const bool rnGap = (srcVer < 39);
+    const int rnAt = HF_RB_NAM_GAIN, rnEnd = HF_RB_NAM_GAIN + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -1034,6 +1046,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (c2Gap && i == c2At)                     vals[i] = 0.0f;              // Cab 2 out of the chain
         else if (x2Gap && i >= x2At && i < x2End)        vals[i] = x2def[i - x2At];   // X2 clones parked
         else if (x2Gap && i >= HF_CPU_GT2 && i <= HF_CPU_EQ2) vals[i] = 0.0f;         // X2 meters (outputs)
+        else if (rnGap && i >= rnAt && i < rnEnd)        vals[i] = 0.0f;              // Amp 2 NAM trims 0 dB
         else                                             vals[i] = old[o++];
     }
 }
@@ -1046,13 +1059,14 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(38); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(39); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
         putBytes(pr.name, sizeof(pr.name));
         putBytes(pr.vals, sizeof(pr.vals));
         putPath(pr.irPath); putPath(pr.ampNamPath); putPath(pr.drNamPath); putPath(pr.cabNamPath);
+        putPath(pr.amp2NamPath); putPath(pr.ir2Path);   // v39
     }
     putU32(static_cast<uint32_t>(p->curBank));
     putU32(static_cast<uint32_t>(p->curSlot));
@@ -1066,9 +1080,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 38) return false;
+    if (ver < 2 || ver > 39) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 38);  // ...X2 clone families (v38)
+    const bool needMigrate  = (ver < 39);  // ...Amp 2 NAM trims (v39)
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -1082,8 +1096,10 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         if (needMigrate) migratePorts(vals, ver);   // insert voicing/boost + Seraph ports (defaults)
         if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);
         if (ver < 10) vals[HF_OUT_MONO] = 1.0f;   // pre-v10 saves default to MONO
-        char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
+        char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax],a2[kPathMax],i2[kPathMax];
         getPath(ir); getPath(an); getPath(dn); getPath(cn);
+        a2[0] = i2[0] = '\0';
+        if (ver >= 39) { getPath(a2); getPath(i2); }   // v39: Amp 2 NAM + Cab 2 IR
         if (b<kBanks && s<kSlots) {
             Preset& pr = p->presets[b][s];
             // Don't let an empty backup slot wipe a factory-seeded preset: this is how
@@ -1097,6 +1113,8 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
             std::strncpy(pr.ampNamPath,an,kPathMax-1); pr.ampNamPath[kPathMax-1]='\0';
             std::strncpy(pr.drNamPath,dn,kPathMax-1);  pr.drNamPath[kPathMax-1]='\0';
             std::strncpy(pr.cabNamPath,cn,kPathMax-1); pr.cabNamPath[kPathMax-1]='\0';
+            std::strncpy(pr.amp2NamPath,a2,kPathMax-1); pr.amp2NamPath[kPathMax-1]='\0';
+            std::strncpy(pr.ir2Path,i2,kPathMax-1);     pr.ir2Path[kPathMax-1]='\0';
         }
     }
     uint32_t cb=0, cs=0; getU32(cb); getU32(cs);   // (saved cursor read for byte alignment, then discarded)
@@ -1151,12 +1169,19 @@ static void psRecall(HexForge* p, int bank, int slot) {
         schedPath(p, p->ampNamPath, pr.ampNamPath, W_NAM_LOAD, 0);
         schedPath(p, p->drNamPath,  pr.drNamPath,  W_NAM_LOAD, 1);
         schedPath(p, p->cabNamPath, pr.cabNamPath, W_NAM_LOAD, 2);
+        schedPath(p, p->amp2NamPath, pr.amp2NamPath, W_NAM_LOAD, 3);
+        if (std::strcmp(p->ir2Path, pr.ir2Path) != 0) {   // Cab 2 IR: user file or back to the rb_cab built-in
+            std::strncpy(p->ir2Path, pr.ir2Path, kPathMax-1); p->ir2Path[kPathMax-1]='\0';
+            p->lastCab2Model = -1;                        // forces the run() logic to (re)load next block
+        }
         if (p->notify) {   // best-effort UI sync; headless recall still changes sound
             emitApply(p);
             writeFileToNotify(p, p->uris.ir_file, p->irPath);
             writeFileToNotify(p, p->uris.amp_nam, p->ampNamPath);
             writeFileToNotify(p, p->uris.dr_nam,  p->drNamPath);
             writeFileToNotify(p, p->uris.cab_nam, p->cabNamPath);
+            writeFileToNotify(p, p->uris.amp2_nam, p->amp2NamPath);
+            writeFileToNotify(p, p->uris.ir2_file, p->ir2Path);
         }
     }
     emitIndex(p);
@@ -1166,6 +1191,8 @@ static void psSave(HexForge* p) {
     Preset& pr = p->presets[p->curBank][p->curSlot];
     for (int i = 0; i < HF_N_PORTS; ++i) if (isParamPort(i)) pr.vals[i] = p->eff[i];
     std::strncpy(pr.irPath,     p->irPath,     kPathMax - 1); pr.irPath[kPathMax - 1] = '\0';
+    std::strncpy(pr.ir2Path,    p->ir2Path,    kPathMax - 1); pr.ir2Path[kPathMax - 1] = '\0';
+    std::strncpy(pr.amp2NamPath, p->amp2NamPath, kPathMax - 1); pr.amp2NamPath[kPathMax - 1] = '\0';
     std::strncpy(pr.ampNamPath, p->ampNamPath, kPathMax - 1); pr.ampNamPath[kPathMax - 1] = '\0';
     std::strncpy(pr.drNamPath,  p->drNamPath,  kPathMax - 1); pr.drNamPath[kPathMax - 1] = '\0';
     std::strncpy(pr.cabNamPath, p->cabNamPath, kPathMax - 1); pr.cabNamPath[kPathMax - 1] = '\0';
@@ -1253,7 +1280,7 @@ static void seedFactoryPresets(HexForge* p) {
         pr.vals[HF_IT_LOAD]        = kSeedLoad[s];
         pr.vals[HF_RV_DENSITY]     = 1.0f;   // dense tank everywhere (user 2026-07-23)
         pr.vals[HF_CAB_ROOMDENSE]  = 1.0f;   // dense cab room everywhere (user 2026-07-23)
-        pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
+        pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = pr.amp2NamPath[0] = pr.ir2Path[0] = '\0';
     }
     // Band/song presets (generated in the current layout).
     for (int i = 0; i < kFactoryExtraCount; ++i) {
@@ -1270,7 +1297,7 @@ static void seedFactoryPresets(HexForge* p) {
         // rig B silent everywhere because rb_master inherited a stale zero).
         // Migrate the row like any old store blob.
         migratePorts(pr.vals, kFactoryTableVer);
-        pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = '\0';
+        pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0] = pr.amp2NamPath[0] = pr.ir2Path[0] = '\0';
         if (fp.cabIr && fp.cabIr[0]) { std::strncpy(pr.irPath, fp.cabIr, kPathMax-1); pr.irPath[kPathMax-1]='\0'; }
     }
     // 2026-07-13 (rev 27): packed the collection so no populated bank before the last has blank slots (user
@@ -1495,8 +1522,12 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     if (msg->type == W_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
-        if (msg->namSlot == 1) {   // Rig B cab: built-ins only
-            p->cab2.setIR(CabModels::generate(msg->path[0] ? msg->path : "@factory", p->rate));
+        if (msg->namSlot == 1) {   // Rig B cab: built-in sentinel OR a user .wav (v39)
+            if (msg->path[0] == '@')
+                p->cab2.setIR(CabModels::generate(msg->path, p->rate));
+            else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
+                p->cab2.setIR(L, R.empty()?nullptr:&R);
+            else p->cab2.setIR(CabModels::generate("@factory", p->rate));
             return LV2_WORKER_SUCCESS;
         }
         if (msg->path[0] == '@')                                          // built-in synthetic cab
@@ -1626,8 +1657,8 @@ static void hfApplySwitch(HexForge* p) {
         if (old) { WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
                    p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm); }
     }
-    for (int sl = 0; sl < 3; ++sl) if (p->pendNam[sl]) {
-        NamModel** slot = (sl == 0) ? &p->ampNam : (sl == 1) ? &p->drNam : &p->cabNam;
+    for (int sl = 0; sl < 4; ++sl) if (p->pendNam[sl]) {
+        NamModel** slot = (sl == 0) ? &p->ampNam : (sl == 1) ? &p->drNam : (sl == 2) ? &p->cabNam : &p->amp2Nam;
         NamModel* old = *slot;
         *slot = p->pendNam[sl]; p->pendNam[sl] = nullptr;
         WorkMsg fm; fm.type = W_NAM_FREE; fm.nam = old;
@@ -1695,6 +1726,20 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 else if (which == u.amp_nam) { dst = p->ampNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 0; }
                 else if (which == u.dr_nam)  { dst = p->drNamPath;  msg.type = W_NAM_LOAD; msg.namSlot = 1; }
                 else if (which == u.cab_nam) { dst = p->cabNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 2; }
+                else if (which == u.amp2_nam){ dst = p->amp2NamPath; msg.type = W_NAM_LOAD; msg.namSlot = 3; }
+                else if (which == u.ir2_file){
+                    // Cab 2 user IR: "@builtin" (or empty) = defer to the rb_cab
+                    // dropdown -- clear the override and let run() regenerate the
+                    // sentinel; a real path loads on the Cab 2 slot.
+                    const char* e2 = (std::strcmp(path, "@builtin") == 0) ? "" : path;
+                    std::strncpy(p->ir2Path, e2, kPathMax-1); p->ir2Path[kPathMax-1]='\0';
+                    if (e2[0]) {
+                        WorkMsg m2; m2.type = W_CAB_IR; m2.namSlot = 1;
+                        std::strncpy(m2.path, e2, kPathMax-1); m2.path[kPathMax-1]='\0';
+                        p->schedule->schedule_work(p->schedule->handle, sizeof(m2), &m2);
+                    } else p->lastCab2Model = -1;   // re-sentinel from rb_cab next block
+                    continue;
+                }
                 if (dst) {
                     // "Factory Cab" sentinel → clear IR to the built-in default.
                     const char* eff = (dst == p->irPath && std::strcmp(path, kFactoryIR) == 0) ? "" : path;
@@ -1707,6 +1752,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 writeFileToNotify(p, u.amp_nam, p->ampNamPath);
                 writeFileToNotify(p, u.dr_nam, p->drNamPath);
                 writeFileToNotify(p, u.cab_nam, p->cabNamPath);
+                writeFileToNotify(p, u.amp2_nam, p->amp2NamPath);
+                writeFileToNotify(p, u.ir2_file, p->ir2Path);
                 forgeStringSet(p, u.ps_name, p->presets[p->curBank][p->curSlot].name);
                 emitIndex(p);
                 emitApply(p);   // sync knobs to the active preset's effective values
@@ -1922,25 +1969,34 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     }
     if (rbOn) {
         int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kMt15Idx);
-        if (rbModel == kAmpNamIdx) rbModel = 1;   // no NAM on the B side
+        const bool rbNamSel = (rbModel == kAmpNamIdx);   // Neural on the B side (v39)
         const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
         // amp2Requested guards the build-in-flight window: without it, !p->amp2
         // stays true until the crossfade swap lands and this scheduled a fresh
         // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
-        if ((rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) && !p->amp2Requested) {
+        if (!rbNamSel && (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) && !p->amp2Requested) {
             WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=rbModel; msg.eco=rbEco; msg.namSlot=1;
             if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
                 { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
         }
         const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
-        if (rbCab != p->lastCab2Model && rbCab < 6) {
+        const bool ir2User = (p->ir2Path[0] != '\0');   // user IR overrides the built-in (v39)
+        if (ir2User && p->lastCab2Model != -2) {
+            // recall/patch installed a user IR; mark the sentinel cache invalid so a
+            // later clear re-generates. -2 = "user IR active".
+            WorkMsg m2; m2.type = W_CAB_IR; m2.namSlot = 1;
+            std::strncpy(m2.path, p->ir2Path, kPathMax-1); m2.path[kPathMax-1]='\0';
+            if (p->schedule->schedule_work(p->schedule->handle, sizeof(m2), &m2) == LV2_WORKER_SUCCESS)
+                p->lastCab2Model = -2;
+        }
+        if (!ir2User && rbCab != p->lastCab2Model && rbCab < 6) {
             static const char* kRbCabIr[6] = { "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom" };
             WorkMsg msg; msg.type=W_CAB_IR; msg.namSlot=1;
             std::snprintf(msg.path, sizeof(msg.path), "%s", kRbCabIr[rbCab]);
             if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
                 p->lastCab2Model = rbCab;
         }
-        if (rbCab >= 6) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
+        if (!ir2User && rbCab >= 6) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
         if (p->amp2) {
             AmpBlockExtended* a2 = p->amp2;
             const int rbM = p->lastAmp2Model;
@@ -2431,17 +2487,29 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         // Rig B: run amp2 -> pa2 -> cab2 on the tapped buffer and mix into L/R.
         // Called after the main CAB (or after the AMP when no cab is active).
         auto rigBMix = [&](void) {
-            if (!p->rigBHeld || !p->amp2) return;
+            const bool rbNamRun = (clampi(*p->ports[HF_RB_AMP], 0, kMt15Idx) == kAmpNamIdx)
+                                  && p->amp2Nam && p->amp2Nam->isLoaded();
+            if (!p->rigBHeld || (!rbNamRun && !p->amp2)) return;
             p->rigBHeld = false;
             const bool cab2In = *p->ports[HF_RB_CAB2ON] > 0.5f;
             const double rbT0 = CpuClk::now();
             float* io1[1] = { p->rigBBuf };
+            if (rbNamRun) {
+                // Neural Amp 2 (v39): mono capture + Gain/Level trims, no power amp
+                // (the capture carries its own) -- mirrors the A-side NAM path.
+                const float ig = std::pow(10.0f, *p->ports[HF_RB_NAM_GAIN] / 20.0f);
+                const float og = std::pow(10.0f, *p->ports[HF_RB_NAM_VOL]  / 20.0f);
+                for (int i=0;i<len;++i) p->rigBBuf[i] *= ig;
+                p->amp2Nam->processBuffer(p->rigBBuf, p->monoOut, len);
+                for (int i=0;i<len;++i) p->rigBBuf[i] = p->monoOut[i] * og;
+            } else {
             p->amp2->process(io1, io1, len, 1);
             p->pa2.process(io1, io1, len, 1);
             p->amp2->setExternalSag(p->pa2.getSagEnvNorm());
             const int rbAlgo = (p->lastAmp2Model < 0) ? 1 : ((p->lastAmp2Model == 5) ? 1 : p->lastAmp2Model);
             const float mk2 = kAmpMakeup[rbAlgo];
             if (mk2 != 1.0f) for (int i=0;i<len;++i) p->rigBBuf[i] *= mk2;
+            }
             // Cab 2 only when it has been brought into the chain; otherwise rig B
             // joins BEFORE Cab 1 and shares it (incl. sharing its bypass -- the
             // real-poweramp rig works naturally).
@@ -2494,7 +2562,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     break;
                 case B_AMP: {
                     // Rig B tap: the parallel rig feeds from the main amp's input.
-                    if (*p->ports[HF_RB_ENABLE] > 0.5f && p->amp2) {
+                    if (*p->ports[HF_RB_ENABLE] > 0.5f
+                        && (p->amp2 || (p->amp2Nam && p->amp2Nam->isLoaded()))) {
                         if (!stereo) for (int i=0;i<len;++i) p->rigBBuf[i] = L[i];
                         else         for (int i=0;i<len;++i) p->rigBBuf[i] = 0.5f*(L[i]+R[i]);
                         p->rigBHeld = true;
@@ -2764,7 +2833,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
 static void hf_cleanup(LV2_Handle h) {
     auto* p = static_cast<HexForge*>(h);
     delete p->amp;
-    delete p->ampNam; delete p->drNam; delete p->cabNam;
+    delete p->ampNam; delete p->drNam; delete p->cabNam; delete p->amp2Nam;
     delete p;
 }
 
@@ -2785,6 +2854,8 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
     saveOne(p->uris.amp_nam, p->ampNamPath);
     saveOne(p->uris.dr_nam,  p->drNamPath);
     saveOne(p->uris.cab_nam, p->cabNamPath);
+    saveOne(p->uris.amp2_nam, p->amp2NamPath);
+    saveOne(p->uris.ir2_file, p->ir2Path);
 
     // ── Preset store: one self-describing Chunk holding all 8×4 presets ──
     std::vector<uint8_t> blob;
@@ -2797,7 +2868,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(38);                 // version (38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(39);                 // version (39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -2805,6 +2876,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putBytes(pr.name, sizeof(pr.name));
         putBytes(pr.vals, sizeof(pr.vals));
         putPath(pr.irPath); putPath(pr.ampNamPath); putPath(pr.drNamPath); putPath(pr.cabNamPath);
+        putPath(pr.amp2NamPath); putPath(pr.ir2Path);   // v39
     }
     putU32(static_cast<uint32_t>(p->curBank));
     putU32(static_cast<uint32_t>(p->curSlot));
@@ -2851,6 +2923,18 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
     restoreNam(p->uris.amp_nam, &p->ampNam, p->ampNamPath);
     restoreNam(p->uris.dr_nam,  &p->drNam,  p->drNamPath);
     restoreNam(p->uris.cab_nam, &p->cabNam, p->cabNamPath);
+    restoreNam(p->uris.amp2_nam, &p->amp2Nam, p->amp2NamPath);
+    {   // Cab 2 user IR: restore the override path; run() schedules the load
+        size_t size=0; uint32_t type=0, vflags=0;
+        const void* v = retrieve(handle, p->uris.ir2_file, &size, &type, &vflags);
+        if (v && type == p->uris.atom_Path) {
+            char* path = const_cast<char*>(static_cast<const char*>(v));
+            if (mapPath) path = mapPath->absolute_path(mapPath->handle, path);
+            std::strncpy(p->ir2Path, path, kPathMax-1); p->ir2Path[kPathMax-1]='\0';
+            p->lastCab2Model = -1;   // (re)load on the first enabled block
+            if (mapPath && path != v) free(path);
+        }
+    }
 
     // ── Preset store ──
     const void* bv = retrieve(handle, p->uris.preset_blob, &size, &type, &vflags);
@@ -2867,9 +2951,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 38) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 39) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 38);     // ...X2 clone families (v38)
+        const bool needMigrate  = (ver < 39);     // ...Amp 2 NAM trims (v39)
         getU32(np);
         if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -2883,8 +2967,10 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             if (needMigrate) migratePorts(vals, ver);                 // insert voicing/boost + Seraph ports
             if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);  // 0..1 -> dB
             if (ver < 10) vals[HF_OUT_MONO] = 1.0f;   // pre-v10 saves default to MONO
-            char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax];
+            char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax],a2[kPathMax],i2[kPathMax];
             getPath(ir); getPath(an); getPath(dn); getPath(cn);
+            a2[0] = i2[0] = '\0';
+            if (ver >= 39) { getPath(a2); getPath(i2); }   // v39: Amp 2 NAM + Cab 2 IR
             if (b<kBanks && s<kSlots) {     // ignore extras if a future build grows the grid
                 Preset& pr = p->presets[b][s];
                 if (used == 0 && pr.used) continue;   // keep factory-seeded preset in an empty restored slot
@@ -2895,6 +2981,8 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
                 std::strncpy(pr.ampNamPath,an,kPathMax-1); pr.ampNamPath[kPathMax-1]='\0';
                 std::strncpy(pr.drNamPath,dn,kPathMax-1);  pr.drNamPath[kPathMax-1]='\0';
                 std::strncpy(pr.cabNamPath,cn,kPathMax-1); pr.cabNamPath[kPathMax-1]='\0';
+            std::strncpy(pr.amp2NamPath,a2,kPathMax-1); pr.amp2NamPath[kPathMax-1]='\0';
+            std::strncpy(pr.ir2Path,i2,kPathMax-1);     pr.ir2Path[kPathMax-1]='\0';
             }
         }
         uint32_t cb=0, cs=0; getU32(cb); getU32(cs);   // (saved cursor read for byte alignment, then discarded)
