@@ -473,6 +473,7 @@ struct HexForge {
     CabinetBlock      cab2;                           // Rig B cab (built-ins only)
     int    lastAmp2Model = -1;
     bool   lastAmp2Eco   = false;
+    bool   amp2Requested = false;       // W_AMP_LOAD(B) in flight -- DO NOT re-schedule (allocation storm)
     int    lastCab2Model = -1;
     bool   rigBHeld      = false;                     // rigBBuf holds this chunk's amp-input tap
     float  rigBBuf[1024] = {};                        // kMaxBlock; mono B-path scratch
@@ -1511,6 +1512,7 @@ static void hfApplySwitch(HexForge* p) {
         AmpBlockExtended* old = p->amp2;
         p->amp2 = p->pendAmp2; p->pendAmp2 = nullptr;
         p->lastAmp2Model = p->pendAmp2Model;
+        p->amp2Requested = false;
         if (old) { WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
                    p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm); }
     }
@@ -1799,14 +1801,26 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     }
     // ── Rig B (dual amp/cab, 2026-07-30): schedule builds + set params ──────
     const bool rbOn = *p->ports[HF_RB_ENABLE] > 0.5f;
+    if (!rbOn && p->amp2 && !p->amp2Requested && !p->pendAmp2) {
+        // Rig B disabled: release the second amp (it is only processed while
+        // enabled, so a direct handoff to the free worker is safe) -- a player
+        // who parked Rig B should get the RAM back.
+        WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->amp2;
+        if (p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm) == LV2_WORKER_SUCCESS) {
+            p->amp2 = nullptr; p->lastAmp2Model = -1;
+        }
+    }
     if (rbOn) {
         int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kMt15Idx);
         if (rbModel == kAmpNamIdx) rbModel = 1;   // no NAM on the B side
         const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
-        if (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) {
+        // amp2Requested guards the build-in-flight window: without it, !p->amp2
+        // stays true until the crossfade swap lands and this scheduled a fresh
+        // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
+        if ((rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) && !p->amp2Requested) {
             WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=rbModel; msg.eco=rbEco; msg.namSlot=1;
             if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
-                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; }
+                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
         }
         const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
         if (rbCab != p->lastCab2Model && rbCab < 6) {
