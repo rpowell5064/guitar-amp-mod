@@ -2214,6 +2214,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         auto rigBMix = [&](void) {
             if (!p->rigBHeld || !p->amp2) return;
             p->rigBHeld = false;
+            const bool cab2In = *p->ports[HF_RB_CAB2ON] > 0.5f;
             const double rbT0 = CpuClk::now();
             float* io1[1] = { p->rigBBuf };
             p->amp2->process(io1, io1, len, 1);
@@ -2222,7 +2223,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             const int rbAlgo = (p->lastAmp2Model < 0) ? 1 : ((p->lastAmp2Model == 5) ? 1 : p->lastAmp2Model);
             const float mk2 = kAmpMakeup[rbAlgo];
             if (mk2 != 1.0f) for (int i=0;i<len;++i) p->rigBBuf[i] *= mk2;
-            p->cab2.process(io1, io1, len, 1);
+            // Cab 2 only when it has been brought into the chain; otherwise rig B
+            // joins BEFORE Cab 1 and shares it (incl. sharing its bypass -- the
+            // real-poweramp rig works naturally).
+            if (cab2In) p->cab2.process(io1, io1, len, 1);
             const float blend = *p->ports[HF_RB_BLEND];
             float g = std::pow(10.0f, *p->ports[HF_RB_LEVEL] / 20.0f) * blend;
             if (*p->ports[HF_RB_POL] > 0.5f) g = -g;
@@ -2339,7 +2343,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                                if (stereo) p->eq.processCh(R, len, 1); break;
             }
             p->cpuAcc[id] += CpuClk::now() - blkT0;
-            if (id == B_CAB) rigBMix();   // dual rig joins after the main cab
+            if (id == B_CAB && *p->ports[HF_RB_CAB2ON] > 0.5f) rigBMix();       // Cab 2 present: join after Cab 1
+            if (id == B_AMP && !(*p->ports[HF_RB_CAB2ON] > 0.5f)) rigBMix();     // no Cab 2: join before Cab 1 (shared)
         }
         rigBMix();   // no active cab in the chain: join after the last block
         p->cpuAcc[B_COUNT] += CpuClk::now() - chunkT0;
