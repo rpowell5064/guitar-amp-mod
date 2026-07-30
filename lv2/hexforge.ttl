@@ -80,7 +80,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 148 ;
+    lv2:microVersion 149 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -1556,472 +1556,430 @@
         ] , [
             lv2:index 1 ; lv2:symbol "out_level" ; lv2:name "Output Level"
         ] , [
-            lv2:index 2 ; lv2:symbol "clip" ; lv2:name "Clip"
+            lv2:index 2 ; lv2:symbol "it_enable" ; lv2:name "Input Trim Enable"
         ] , [
-            lv2:index 3 ; lv2:symbol "it_enable" ; lv2:name "Input Trim Enable"
+            lv2:index 3 ; lv2:symbol "it_gain" ; lv2:name "IT Gain"
         ] , [
-            lv2:index 4 ; lv2:symbol "it_gain" ; lv2:name "IT Gain"
+            lv2:index 4 ; lv2:symbol "it_phase" ; lv2:name "IT Phase"
         ] , [
-            lv2:index 5 ; lv2:symbol "it_phase" ; lv2:name "IT Phase"
+            lv2:index 5 ; lv2:symbol "it_hum" ; lv2:name "IT Hum Filter"
         ] , [
-            lv2:index 6 ; lv2:symbol "it_hum" ; lv2:name "IT Hum Filter"
+            lv2:index 6 ; lv2:symbol "it_humbk" ; lv2:name "IT Humbucker"
         ] , [
-            lv2:index 7 ; lv2:symbol "it_humbk" ; lv2:name "IT Humbucker"
+            lv2:index 7 ; lv2:symbol "it_hbamt" ; lv2:name "IT HB Amount"
         ] , [
-            lv2:index 8 ; lv2:symbol "it_hbamt" ; lv2:name "IT HB Amount"
+            lv2:index 8 ; lv2:symbol "it_hbmodel" ; lv2:name "IT HB Model"
         ] , [
-            lv2:index 9 ; lv2:symbol "it_hbmodel" ; lv2:name "IT HB Model"
+            lv2:index 9 ; lv2:symbol "it_boost" ; lv2:name "IT Boost"
         ] , [
-            lv2:index 10 ; lv2:symbol "it_boost" ; lv2:name "IT Boost"
+            lv2:index 10 ; lv2:symbol "it_boostamt" ; lv2:name "IT Boost Amt"
         ] , [
-            lv2:index 11 ; lv2:symbol "it_boostamt" ; lv2:name "IT Boost Amt"
+            lv2:index 11 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position"
         ] , [
-            lv2:index 12 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position"
+            lv2:index 12 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable"
         ] , [
-            lv2:index 13 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable"
+            lv2:index 13 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold"
         ] , [
-            lv2:index 14 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold"
+            lv2:index 14 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack"
         ] , [
-            lv2:index 15 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack"
+            lv2:index 15 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold"
         ] , [
-            lv2:index 16 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold"
+            lv2:index 16 ; lv2:symbol "gt_release" ; lv2:name "Gate Release"
         ] , [
-            lv2:index 17 ; lv2:symbol "gt_release" ; lv2:name "Gate Release"
+            lv2:index 17 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis"
         ] , [
-            lv2:index 18 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis"
+            lv2:index 18 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position"
         ] , [
-            lv2:index 19 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position"
+            lv2:index 19 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable"
         ] , [
-            lv2:index 20 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable"
+            lv2:index 20 ; lv2:symbol "cp_type" ; lv2:name "Comp Type"
         ] , [
-            lv2:index 21 ; lv2:symbol "cp_type" ; lv2:name "Comp Type"
+            lv2:index 21 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold"
         ] , [
-            lv2:index 22 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold"
+            lv2:index 22 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio"
         ] , [
-            lv2:index 23 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio"
+            lv2:index 23 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack"
         ] , [
-            lv2:index 24 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack"
+            lv2:index 24 ; lv2:symbol "cp_release" ; lv2:name "Comp Release"
         ] , [
-            lv2:index 25 ; lv2:symbol "cp_release" ; lv2:name "Comp Release"
+            lv2:index 25 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee"
         ] , [
-            lv2:index 26 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee"
+            lv2:index 26 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup"
         ] , [
-            lv2:index 27 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup"
+            lv2:index 27 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position"
         ] , [
-            lv2:index 28 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position"
+            lv2:index 28 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable"
         ] , [
-            lv2:index 29 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable"
+            lv2:index 29 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal"
         ] , [
-            lv2:index 30 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal"
+            lv2:index 30 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant"
         ] , [
-            lv2:index 31 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant"
+            lv2:index 31 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain"
         ] , [
-            lv2:index 32 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain"
+            lv2:index 32 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone"
         ] , [
-            lv2:index 33 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone"
+            lv2:index 33 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume"
         ] , [
-            lv2:index 34 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume"
+            lv2:index 34 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias"
         ] , [
-            lv2:index 35 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias"
+            lv2:index 35 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim"
         ] , [
-            lv2:index 36 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim"
+            lv2:index 36 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp"
         ] , [
-            lv2:index 37 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp"
+            lv2:index 37 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position"
         ] , [
-            lv2:index 38 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position"
+            lv2:index 38 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable"
         ] , [
-            lv2:index 39 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable"
+            lv2:index 39 ; lv2:symbol "dr_model" ; lv2:name "Drive Model"
         ] , [
-            lv2:index 40 ; lv2:symbol "dr_model" ; lv2:name "Drive Model"
+            lv2:index 40 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive"
         ] , [
-            lv2:index 41 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive"
+            lv2:index 41 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone"
         ] , [
-            lv2:index 42 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone"
+            lv2:index 42 ; lv2:symbol "dr_level" ; lv2:name "Drive Level"
         ] , [
-            lv2:index 43 ; lv2:symbol "dr_level" ; lv2:name "Drive Level"
+            lv2:index 43 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix"
         ] , [
-            lv2:index 44 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix"
+            lv2:index 44 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave"
         ] , [
-            lv2:index 45 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave"
+            lv2:index 45 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position"
         ] , [
-            lv2:index 46 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position"
+            lv2:index 46 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable"
         ] , [
-            lv2:index 47 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable"
+            lv2:index 47 ; lv2:symbol "amp_model" ; lv2:name "Amp Model"
         ] , [
-            lv2:index 48 ; lv2:symbol "amp_model" ; lv2:name "Amp Model"
+            lv2:index 48 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain"
         ] , [
-            lv2:index 49 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain"
+            lv2:index 49 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass"
         ] , [
-            lv2:index 50 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass"
+            lv2:index 50 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid"
         ] , [
-            lv2:index 51 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid"
+            lv2:index 51 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble"
         ] , [
-            lv2:index 52 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble"
+            lv2:index 52 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence"
         ] , [
-            lv2:index 53 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence"
+            lv2:index 53 ; lv2:symbol "amp_master" ; lv2:name "Amp Master"
         ] , [
-            lv2:index 54 ; lv2:symbol "amp_master" ; lv2:name "Amp Master"
+            lv2:index 54 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag"
         ] , [
-            lv2:index 55 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag"
+            lv2:index 55 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel"
         ] , [
-            lv2:index 56 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel"
+            lv2:index 56 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance"
         ] , [
-            lv2:index 57 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance"
+            lv2:index 57 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol"
         ] , [
-            lv2:index 58 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol"
+            lv2:index 58 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link"
         ] , [
-            lv2:index 59 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link"
+            lv2:index 59 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass"
         ] , [
-            lv2:index 60 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass"
+            lv2:index 60 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube"
         ] , [
-            lv2:index 61 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube"
+            lv2:index 61 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence"
         ] , [
-            lv2:index 62 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence"
+            lv2:index 62 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth"
         ] , [
-            lv2:index 63 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth"
+            lv2:index 63 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag"
         ] , [
-            lv2:index 64 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag"
+            lv2:index 64 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master"
         ] , [
-            lv2:index 65 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master"
+            lv2:index 65 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB"
         ] , [
-            lv2:index 66 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB"
+            lv2:index 66 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance"
         ] , [
-            lv2:index 67 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance"
+            lv2:index 67 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel"
         ] , [
-            lv2:index 68 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel"
+            lv2:index 68 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto"
         ] , [
-            lv2:index 69 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto"
+            lv2:index 69 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass"
         ] , [
-            lv2:index 70 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass"
+            lv2:index 70 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid"
         ] , [
-            lv2:index 71 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid"
+            lv2:index 71 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble"
         ] , [
-            lv2:index 72 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble"
+            lv2:index 72 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I"
         ] , [
-            lv2:index 73 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I"
+            lv2:index 73 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II"
         ] , [
-            lv2:index 74 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II"
+            lv2:index 74 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position"
         ] , [
-            lv2:index 75 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position"
+            lv2:index 75 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable"
         ] , [
-            lv2:index 76 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable"
+            lv2:index 76 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut"
         ] , [
-            lv2:index 77 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut"
+            lv2:index 77 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut"
         ] , [
-            lv2:index 78 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut"
+            lv2:index 78 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix"
         ] , [
-            lv2:index 79 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix"
+            lv2:index 79 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position"
         ] , [
-            lv2:index 80 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position"
+            lv2:index 80 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable"
         ] , [
-            lv2:index 81 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable"
+            lv2:index 81 ; lv2:symbol "md_type" ; lv2:name "Modulation Type"
         ] , [
-            lv2:index 82 ; lv2:symbol "md_type" ; lv2:name "Modulation Type"
+            lv2:index 82 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate"
         ] , [
-            lv2:index 83 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate"
+            lv2:index 83 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth"
         ] , [
-            lv2:index 84 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth"
+            lv2:index 84 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix"
         ] , [
-            lv2:index 85 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix"
+            lv2:index 85 ; lv2:symbol "md_width" ; lv2:name "Modulation Width"
         ] , [
-            lv2:index 86 ; lv2:symbol "md_width" ; lv2:name "Modulation Width"
+            lv2:index 86 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position"
         ] , [
-            lv2:index 87 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position"
+            lv2:index 87 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable"
         ] , [
-            lv2:index 88 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable"
+            lv2:index 88 ; lv2:symbol "dl_type" ; lv2:name "Delay Type"
         ] , [
-            lv2:index 89 ; lv2:symbol "dl_type" ; lv2:name "Delay Type"
+            lv2:index 89 ; lv2:symbol "dl_time" ; lv2:name "Delay Time"
         ] , [
-            lv2:index 90 ; lv2:symbol "dl_time" ; lv2:name "Delay Time"
+            lv2:index 90 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback"
         ] , [
-            lv2:index 91 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback"
+            lv2:index 91 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix"
         ] , [
-            lv2:index 92 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix"
+            lv2:index 92 ; lv2:symbol "dl_width" ; lv2:name "Delay Width"
         ] , [
-            lv2:index 93 ; lv2:symbol "dl_width" ; lv2:name "Delay Width"
+            lv2:index 93 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow"
         ] , [
-            lv2:index 94 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow"
+            lv2:index 94 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter"
         ] , [
-            lv2:index 95 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter"
+            lv2:index 95 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads"
         ] , [
-            lv2:index 96 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads"
+            lv2:index 96 ; lv2:symbol "dl_pattern" ; lv2:name "Delay Pattern"
         ] , [
-            lv2:index 97 ; lv2:symbol "dl_pattern" ; lv2:name "Delay Pattern"
+            lv2:index 97 ; lv2:symbol "dl_ducking" ; lv2:name "Delay Ducking"
         ] , [
-            lv2:index 98 ; lv2:symbol "dl_ducking" ; lv2:name "Delay Ducking"
+            lv2:index 98 ; lv2:symbol "dl_moddepth" ; lv2:name "Delay Mod Depth"
         ] , [
-            lv2:index 99 ; lv2:symbol "dl_moddepth" ; lv2:name "Delay Mod Depth"
+            lv2:index 99 ; lv2:symbol "dl_modrate" ; lv2:name "Delay Mod Rate"
         ] , [
-            lv2:index 100 ; lv2:symbol "dl_modrate" ; lv2:name "Delay Mod Rate"
+            lv2:index 100 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position"
         ] , [
-            lv2:index 101 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position"
+            lv2:index 101 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable"
         ] , [
-            lv2:index 102 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable"
+            lv2:index 102 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay"
         ] , [
-            lv2:index 103 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay"
+            lv2:index 103 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay"
         ] , [
-            lv2:index 104 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay"
+            lv2:index 104 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping"
         ] , [
-            lv2:index 105 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping"
+            lv2:index 105 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth"
         ] , [
-            lv2:index 106 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth"
+            lv2:index 106 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate"
         ] , [
-            lv2:index 107 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate"
+            lv2:index 107 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix"
         ] , [
-            lv2:index 108 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix"
+            lv2:index 108 ; lv2:symbol "wh_pos" ; lv2:name "Wah Position"
         ] , [
-            lv2:index 109 ; lv2:symbol "wh_pos" ; lv2:name "Wah Position"
+            lv2:index 109 ; lv2:symbol "wh_enable" ; lv2:name "Wah Enable"
         ] , [
-            lv2:index 110 ; lv2:symbol "wh_enable" ; lv2:name "Wah Enable"
+            lv2:index 110 ; lv2:symbol "wh_type" ; lv2:name "Wah Mode"
         ] , [
-            lv2:index 111 ; lv2:symbol "wh_type" ; lv2:name "Wah Mode"
+            lv2:index 111 ; lv2:symbol "wh_freq" ; lv2:name "Wah Freq"
         ] , [
-            lv2:index 112 ; lv2:symbol "wh_freq" ; lv2:name "Wah Freq"
+            lv2:index 112 ; lv2:symbol "wh_depth" ; lv2:name "Wah Range"
         ] , [
-            lv2:index 113 ; lv2:symbol "wh_depth" ; lv2:name "Wah Range"
+            lv2:index 113 ; lv2:symbol "wh_sens" ; lv2:name "Wah Sens"
         ] , [
-            lv2:index 114 ; lv2:symbol "wh_sens" ; lv2:name "Wah Sens"
+            lv2:index 114 ; lv2:symbol "wh_q" ; lv2:name "Wah Resonance"
         ] , [
-            lv2:index 115 ; lv2:symbol "wh_q" ; lv2:name "Wah Resonance"
+            lv2:index 115 ; lv2:symbol "wh_mix" ; lv2:name "Wah Mix"
         ] , [
-            lv2:index 116 ; lv2:symbol "wh_mix" ; lv2:name "Wah Mix"
+            lv2:index 116 ; lv2:symbol "oc_pos" ; lv2:name "Octave Position"
         ] , [
-            lv2:index 117 ; lv2:symbol "oc_pos" ; lv2:name "Octave Position"
+            lv2:index 117 ; lv2:symbol "oc_enable" ; lv2:name "Octave Enable"
         ] , [
-            lv2:index 118 ; lv2:symbol "oc_enable" ; lv2:name "Octave Enable"
+            lv2:index 118 ; lv2:symbol "oc_up" ; lv2:name "Octave Octave Up"
         ] , [
-            lv2:index 119 ; lv2:symbol "oc_up" ; lv2:name "Octave Octave Up"
+            lv2:index 119 ; lv2:symbol "oc_down" ; lv2:name "Octave Sub Octave"
         ] , [
-            lv2:index 120 ; lv2:symbol "oc_down" ; lv2:name "Octave Sub Octave"
+            lv2:index 120 ; lv2:symbol "oc_dry" ; lv2:name "Octave Dry"
         ] , [
-            lv2:index 121 ; lv2:symbol "oc_dry" ; lv2:name "Octave Dry"
+            lv2:index 121 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan"
         ] , [
-            lv2:index 122 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan"
+            lv2:index 122 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat"
         ] , [
-            lv2:index 123 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat"
+            lv2:index 123 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45"
         ] , [
-            lv2:index 124 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45"
+            lv2:index 124 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat"
         ] , [
-            lv2:index 125 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat"
+            lv2:index 125 ; lv2:symbol "gt_bypass" ; lv2:name "Gate Bypass"
         ] , [
-            lv2:index 126 ; lv2:symbol "gt_bypass" ; lv2:name "Gate Bypass"
+            lv2:index 126 ; lv2:symbol "cp_bypass" ; lv2:name "Comp Bypass"
         ] , [
-            lv2:index 127 ; lv2:symbol "cp_bypass" ; lv2:name "Comp Bypass"
+            lv2:index 127 ; lv2:symbol "fz_bypass" ; lv2:name "Fuzz Bypass"
         ] , [
-            lv2:index 128 ; lv2:symbol "fz_bypass" ; lv2:name "Fuzz Bypass"
+            lv2:index 128 ; lv2:symbol "dr_bypass" ; lv2:name "Drive Bypass"
         ] , [
-            lv2:index 129 ; lv2:symbol "dr_bypass" ; lv2:name "Drive Bypass"
+            lv2:index 129 ; lv2:symbol "amp_bypass" ; lv2:name "Amp Bypass"
         ] , [
-            lv2:index 130 ; lv2:symbol "amp_bypass" ; lv2:name "Amp Bypass"
+            lv2:index 130 ; lv2:symbol "cab_bypass" ; lv2:name "Cabinet Bypass"
         ] , [
-            lv2:index 131 ; lv2:symbol "cab_bypass" ; lv2:name "Cabinet Bypass"
+            lv2:index 131 ; lv2:symbol "md_bypass" ; lv2:name "Modulation Bypass"
         ] , [
-            lv2:index 132 ; lv2:symbol "md_bypass" ; lv2:name "Modulation Bypass"
+            lv2:index 132 ; lv2:symbol "dl_bypass" ; lv2:name "Delay Bypass"
         ] , [
-            lv2:index 133 ; lv2:symbol "dl_bypass" ; lv2:name "Delay Bypass"
+            lv2:index 133 ; lv2:symbol "rv_bypass" ; lv2:name "Reverb Bypass"
         ] , [
-            lv2:index 134 ; lv2:symbol "rv_bypass" ; lv2:name "Reverb Bypass"
+            lv2:index 134 ; lv2:symbol "wh_bypass" ; lv2:name "Wah Bypass"
         ] , [
-            lv2:index 135 ; lv2:symbol "wh_bypass" ; lv2:name "Wah Bypass"
+            lv2:index 135 ; lv2:symbol "oc_bypass" ; lv2:name "Octave Bypass"
         ] , [
-            lv2:index 136 ; lv2:symbol "oc_bypass" ; lv2:name "Octave Bypass"
+            lv2:index 136 ; lv2:symbol "nail_pos" ; lv2:name "Nail Position"
         ] , [
-            lv2:index 137 ; lv2:symbol "nail_pos" ; lv2:name "Nail Position"
+            lv2:index 137 ; lv2:symbol "nail_enable" ; lv2:name "Nail Enable"
         ] , [
-            lv2:index 138 ; lv2:symbol "nail_enable" ; lv2:name "Nail Enable"
+            lv2:index 138 ; lv2:symbol "nail_mode" ; lv2:name "Nail Mode"
         ] , [
-            lv2:index 139 ; lv2:symbol "nail_mode" ; lv2:name "Nail Mode"
+            lv2:index 139 ; lv2:symbol "nail_drive" ; lv2:name "Nail Drive"
         ] , [
-            lv2:index 140 ; lv2:symbol "nail_drive" ; lv2:name "Nail Drive"
+            lv2:index 140 ; lv2:symbol "nail_tone" ; lv2:name "Nail Tone"
         ] , [
-            lv2:index 141 ; lv2:symbol "nail_tone" ; lv2:name "Nail Tone"
+            lv2:index 141 ; lv2:symbol "nail_texture" ; lv2:name "Nail Texture"
         ] , [
-            lv2:index 142 ; lv2:symbol "nail_texture" ; lv2:name "Nail Texture"
+            lv2:index 142 ; lv2:symbol "nail_level" ; lv2:name "Nail Level"
         ] , [
-            lv2:index 143 ; lv2:symbol "nail_level" ; lv2:name "Nail Level"
+            lv2:index 143 ; lv2:symbol "nail_bypass" ; lv2:name "Nail Bypass"
         ] , [
-            lv2:index 144 ; lv2:symbol "nail_bypass" ; lv2:name "Nail Bypass"
+            lv2:index 144 ; lv2:symbol "dl_sync" ; lv2:name "Delay Clock Sync"
         ] , [
-            lv2:index 145 ; lv2:symbol "dl_sync" ; lv2:name "Delay Clock Sync"
+            lv2:index 145 ; lv2:symbol "dl_div" ; lv2:name "Delay Division"
         ] , [
-            lv2:index 146 ; lv2:symbol "dl_div" ; lv2:name "Delay Division"
+            lv2:index 146 ; lv2:symbol "md_sync" ; lv2:name "Mod Clock Sync"
         ] , [
-            lv2:index 147 ; lv2:symbol "md_sync" ; lv2:name "Mod Clock Sync"
+            lv2:index 147 ; lv2:symbol "md_div" ; lv2:name "Mod Division"
         ] , [
-            lv2:index 148 ; lv2:symbol "md_div" ; lv2:name "Mod Division"
+            lv2:index 148 ; lv2:symbol "oc_micro" ; lv2:name "Octave Microtonal"
         ] , [
-            lv2:index 149 ; lv2:symbol "oc_micro" ; lv2:name "Octave Microtonal"
+            lv2:index 149 ; lv2:symbol "oc_interval" ; lv2:name "Octave Interval"
         ] , [
-            lv2:index 150 ; lv2:symbol "oc_interval" ; lv2:name "Octave Interval"
+            lv2:index 150 ; lv2:symbol "amp_mv_mode" ; lv2:name "Amp Mesa Mode"
         ] , [
-            lv2:index 151 ; lv2:symbol "amp_mv_mode" ; lv2:name "Amp Mesa Mode"
+            lv2:index 151 ; lv2:symbol "amp_mv_geq0" ; lv2:name "Amp EQ 80"
         ] , [
-            lv2:index 152 ; lv2:symbol "amp_mv_geq0" ; lv2:name "Amp EQ 80"
+            lv2:index 152 ; lv2:symbol "amp_mv_geq1" ; lv2:name "Amp EQ 240"
         ] , [
-            lv2:index 153 ; lv2:symbol "amp_mv_geq1" ; lv2:name "Amp EQ 240"
+            lv2:index 153 ; lv2:symbol "amp_mv_geq2" ; lv2:name "Amp EQ 750"
         ] , [
-            lv2:index 154 ; lv2:symbol "amp_mv_geq2" ; lv2:name "Amp EQ 750"
+            lv2:index 154 ; lv2:symbol "amp_mv_geq3" ; lv2:name "Amp EQ 2.2k"
         ] , [
-            lv2:index 155 ; lv2:symbol "amp_mv_geq3" ; lv2:name "Amp EQ 2.2k"
+            lv2:index 155 ; lv2:symbol "amp_mv_geq4" ; lv2:name "Amp EQ 6.6k"
         ] , [
-            lv2:index 156 ; lv2:symbol "amp_mv_geq4" ; lv2:name "Amp EQ 6.6k"
+            lv2:index 156 ; lv2:symbol "amp_mv_eqpreset" ; lv2:name "Amp EQ Preset"
         ] , [
-            lv2:index 157 ; lv2:symbol "amp_mv_eqpreset" ; lv2:name "Amp EQ Preset"
+            lv2:index 157 ; lv2:symbol "md_offset" ; lv2:name "Mod Center Delay"
         ] , [
-            lv2:index 158 ; lv2:symbol "md_offset" ; lv2:name "Mod Center Delay"
+            lv2:index 158 ; lv2:symbol "amp_nam_gain" ; lv2:name "Amp NAM Gain"
         ] , [
-            lv2:index 159 ; lv2:symbol "amp_nam_gain" ; lv2:name "Amp NAM Gain"
+            lv2:index 159 ; lv2:symbol "amp_nam_vol" ; lv2:name "Amp NAM Level"
         ] , [
-            lv2:index 160 ; lv2:symbol "amp_nam_vol" ; lv2:name "Amp NAM Level"
+            lv2:index 160 ; lv2:symbol "dr_nam_gain" ; lv2:name "Drive NAM Gain"
         ] , [
-            lv2:index 161 ; lv2:symbol "dr_nam_gain" ; lv2:name "Drive NAM Gain"
+            lv2:index 161 ; lv2:symbol "dr_nam_vol" ; lv2:name "Drive NAM Level"
         ] , [
-            lv2:index 162 ; lv2:symbol "dr_nam_vol" ; lv2:name "Drive NAM Level"
+            lv2:index 162 ; lv2:symbol "cab_nam_gain" ; lv2:name "Cab NAM Gain"
         ] , [
-            lv2:index 163 ; lv2:symbol "cab_nam_gain" ; lv2:name "Cab NAM Gain"
+            lv2:index 163 ; lv2:symbol "cab_nam_vol" ; lv2:name "Cab NAM Level"
         ] , [
-            lv2:index 164 ; lv2:symbol "cab_nam_vol" ; lv2:name "Cab NAM Level"
+            lv2:index 164 ; lv2:symbol "amp_pl_vol2" ; lv2:name "Amp Vol II"
         ] , [
-            lv2:index 165 ; lv2:symbol "amp_pl_vol2" ; lv2:name "Amp Vol II"
+            lv2:index 165 ; lv2:symbol "cab_micpos" ; lv2:name "Cab Mic Position"
         ] , [
-            lv2:index 166 ; lv2:symbol "cab_micpos" ; lv2:name "Cab Mic Position"
+            lv2:index 166 ; lv2:symbol "cab_micdist" ; lv2:name "Cab Mic Distance"
         ] , [
-            lv2:index 167 ; lv2:symbol "cab_micdist" ; lv2:name "Cab Mic Distance"
+            lv2:index 167 ; lv2:symbol "cab_roomon" ; lv2:name "Cab Room"
         ] , [
-            lv2:index 168 ; lv2:symbol "cab_roomon" ; lv2:name "Cab Room"
+            lv2:index 168 ; lv2:symbol "cab_roommix" ; lv2:name "Cab Room Mix"
         ] , [
-            lv2:index 169 ; lv2:symbol "cab_roommix" ; lv2:name "Cab Room Mix"
+            lv2:index 169 ; lv2:symbol "cab_roomamt" ; lv2:name "Cab Room Amount"
         ] , [
-            lv2:index 170 ; lv2:symbol "cab_roomamt" ; lv2:name "Cab Room Amount"
+            lv2:index 170 ; lv2:symbol "amp_rc_mode" ; lv2:name "Amp Recto Mode"
         ] , [
-            lv2:index 171 ; lv2:symbol "amp_rc_mode" ; lv2:name "Amp Recto Mode"
+            lv2:index 171 ; lv2:symbol "amp_rc_variac" ; lv2:name "Amp Recto Variac"
         ] , [
-            lv2:index 172 ; lv2:symbol "amp_rc_variac" ; lv2:name "Amp Recto Variac"
+            lv2:index 172 ; lv2:symbol "amp_rc_rect" ; lv2:name "Amp Recto Rectifier"
         ] , [
-            lv2:index 173 ; lv2:symbol "amp_rc_rect" ; lv2:name "Amp Recto Rectifier"
+            lv2:index 173 ; lv2:symbol "amp_mt_mode" ; lv2:name "Amp MT Channel"
         ] , [
-            lv2:index 174 ; lv2:symbol "amp_mt_mode" ; lv2:name "Amp MT Channel"
+            lv2:index 174 ; lv2:symbol "amp_mt_bright" ; lv2:name "Amp MT Bright"
         ] , [
-            lv2:index 175 ; lv2:symbol "amp_mt_bright" ; lv2:name "Amp MT Bright"
+            lv2:index 175 ; lv2:symbol "cab_voice" ; lv2:name "Cab Voice"
         ] , [
-            lv2:index 176 ; lv2:symbol "cab_voice" ; lv2:name "Cab Voice"
+            lv2:index 176 ; lv2:symbol "out_doubler" ; lv2:name "Output Doubler"
         ] , [
-            lv2:index 177 ; lv2:symbol "out_doubler" ; lv2:name "Output Doubler"
+            lv2:index 177 ; lv2:symbol "eq_pos" ; lv2:name "EQ Position"
         ] , [
-            lv2:index 178 ; lv2:symbol "eq_pos" ; lv2:name "EQ Position"
+            lv2:index 178 ; lv2:symbol "eq_enable" ; lv2:name "EQ Enable"
         ] , [
-            lv2:index 179 ; lv2:symbol "eq_enable" ; lv2:name "EQ Enable"
+            lv2:index 179 ; lv2:symbol "eq_preset" ; lv2:name "EQ Preset"
         ] , [
-            lv2:index 180 ; lv2:symbol "eq_preset" ; lv2:name "EQ Preset"
+            lv2:index 180 ; lv2:symbol "eq_100" ; lv2:name "EQ 100 Hz"
         ] , [
-            lv2:index 181 ; lv2:symbol "eq_100" ; lv2:name "EQ 100 Hz"
+            lv2:index 181 ; lv2:symbol "eq_200" ; lv2:name "EQ 200 Hz"
         ] , [
-            lv2:index 182 ; lv2:symbol "eq_200" ; lv2:name "EQ 200 Hz"
+            lv2:index 182 ; lv2:symbol "eq_400" ; lv2:name "EQ 400 Hz"
         ] , [
-            lv2:index 183 ; lv2:symbol "eq_400" ; lv2:name "EQ 400 Hz"
+            lv2:index 183 ; lv2:symbol "eq_800" ; lv2:name "EQ 800 Hz"
         ] , [
-            lv2:index 184 ; lv2:symbol "eq_800" ; lv2:name "EQ 800 Hz"
+            lv2:index 184 ; lv2:symbol "eq_1k6" ; lv2:name "EQ 1.6 kHz"
         ] , [
-            lv2:index 185 ; lv2:symbol "eq_1k6" ; lv2:name "EQ 1.6 kHz"
+            lv2:index 185 ; lv2:symbol "eq_3k2" ; lv2:name "EQ 3.2 kHz"
         ] , [
-            lv2:index 186 ; lv2:symbol "eq_3k2" ; lv2:name "EQ 3.2 kHz"
+            lv2:index 186 ; lv2:symbol "eq_level" ; lv2:name "EQ Level"
         ] , [
-            lv2:index 187 ; lv2:symbol "eq_level" ; lv2:name "EQ Level"
+            lv2:index 187 ; lv2:symbol "eq_bypass" ; lv2:name "EQ Bypass"
         ] , [
-            lv2:index 188 ; lv2:symbol "eq_bypass" ; lv2:name "EQ Bypass"
+            lv2:index 188 ; lv2:symbol "it_load" ; lv2:name "IT Pickup Load"
         ] , [
-            lv2:index 189 ; lv2:symbol "it_load" ; lv2:name "IT Pickup Load"
+            lv2:index 189 ; lv2:symbol "amp_pamp_coupl" ; lv2:name "Amp Speaker Coupling"
         ] , [
-            lv2:index 190 ; lv2:symbol "amp_pamp_coupl" ; lv2:name "Amp Speaker Coupling"
+            lv2:index 190 ; lv2:symbol "rv_density" ; lv2:name "Reverb Density"
         ] , [
-            lv2:index 191 ; lv2:symbol "rv_density" ; lv2:name "Reverb Density"
+            lv2:index 191 ; lv2:symbol "rv_type" ; lv2:name "Reverb Type"
         ] , [
-            lv2:index 192 ; lv2:symbol "rv_type" ; lv2:name "Reverb Type"
+            lv2:index 192 ; lv2:symbol "cab_roomdense" ; lv2:name "Cab Room Density"
         ] , [
-            lv2:index 193 ; lv2:symbol "cab_roomdense" ; lv2:name "Cab Room Density"
+            lv2:index 193 ; lv2:symbol "rv_bloom" ; lv2:name "Reverb Bloom"
         ] , [
-            lv2:index 194 ; lv2:symbol "rv_bloom" ; lv2:name "Reverb Bloom"
+            lv2:index 194 ; lv2:symbol "cab_spkdrive" ; lv2:name "Cab Speaker Drive"
         ] , [
-            lv2:index 195 ; lv2:symbol "cab_spkdrive" ; lv2:name "Cab Speaker Drive"
+            lv2:index 195 ; lv2:symbol "md_shape" ; lv2:name "Tremolo Shape"
         ] , [
-            lv2:index 196 ; lv2:symbol "md_shape" ; lv2:name "Tremolo Shape"
+            lv2:index 196 ; lv2:symbol "fz_gvol" ; lv2:name "Guitar Vol"
         ] , [
-            lv2:index 197 ; lv2:symbol "fz_gvol" ; lv2:name "Guitar Vol"
+            lv2:index 197 ; lv2:symbol "quality" ; lv2:name "Amp Eco (2x OS)"
         ] , [
-            lv2:index 198 ; lv2:symbol "quality" ; lv2:name "Amp Eco (2x OS)"
+            lv2:index 198 ; lv2:symbol "dr_eco" ; lv2:name "Drive Eco (2x OS)"
         ] , [
-            lv2:index 199 ; lv2:symbol "dr_eco" ; lv2:name "Drive Eco (2x OS)"
+            lv2:index 199 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
         ] , [
-            lv2:index 200 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+            lv2:index 200 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
         ] , [
-            lv2:index 201 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+            lv2:index 201 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
         ] , [
-            lv2:index 202 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+            lv2:index 202 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
         ] , [
-            lv2:index 203 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+            lv2:index 203 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
         ] , [
-            lv2:index 204 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+            lv2:index 204 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
         ] , [
-            lv2:index 205 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+            lv2:index 205 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
         ] , [
-            lv2:index 206 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+            lv2:index 206 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
         ] , [
-            lv2:index 207 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+            lv2:index 207 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
         ] , [
-            lv2:index 208 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+            lv2:index 208 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
         ] , [
-            lv2:index 209 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+            lv2:index 209 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
         ] , [
-            lv2:index 210 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+            lv2:index 210 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
         ] , [
-            lv2:index 211 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+            lv2:index 211 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ] , [
-            lv2:index 212 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank"
+            lv2:index 212 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
         ] , [
-            lv2:index 213 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot"
+            lv2:index 213 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
         ] , [
-            lv2:index 214 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
-        ] , [
-            lv2:index 215 ; lv2:symbol "in_meter" ; lv2:name "Input Level"
-        ] , [
-            lv2:index 216 ; lv2:symbol "out_meter" ; lv2:name "Output Level"
-        ] , [
-            lv2:index 217 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
-        ] , [
-            lv2:index 218 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
-        ] , [
-            lv2:index 219 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
-        ] , [
-            lv2:index 220 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note"
-        ] , [
-            lv2:index 221 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents"
-        ] , [
-            lv2:index 222 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate"
-        ] , [
-            lv2:index 223 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp"
-        ] , [
-            lv2:index 224 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz"
-        ] , [
-            lv2:index 225 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive"
-        ] , [
-            lv2:index 226 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp"
-        ] , [
-            lv2:index 227 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab"
-        ] , [
-            lv2:index 228 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod"
-        ] , [
-            lv2:index 229 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay"
-        ] , [
-            lv2:index 230 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb"
-        ] , [
-            lv2:index 231 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah"
-        ] , [
-            lv2:index 232 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave"
-        ] , [
-            lv2:index 233 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail"
-        ] , [
-            lv2:index 234 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ"
-        ] , [
-            lv2:index 235 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total"
+            lv2:index 214 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
         ]
     ] .
