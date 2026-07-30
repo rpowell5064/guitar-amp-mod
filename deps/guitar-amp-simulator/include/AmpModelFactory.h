@@ -36,7 +36,7 @@ public:
 
     // Returns the model wrapped in a 4× OversamplingWrapper ready to be
     // inserted directly into the signal chain as an AudioBlock.
-    static std::unique_ptr<OversamplingWrapper> createWithOversampling(ModelID id);
+    static std::unique_ptr<OversamplingWrapper> createWithOversampling(ModelID id, bool eco = false);
 
     // ── Metadata (no allocation) ──────────────────────────────────────────────
 

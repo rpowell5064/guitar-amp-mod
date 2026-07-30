@@ -959,3 +959,15 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cab-left .hf-agroups { display: flex; flex-direction: column; gap: 8px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cab-right { display: flex; align-items: stretch; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cab-right .hf-micpad { margin: 0; }
+
+/* ── Per-block CPU badges + output-bar total (2026-07-30) ───────────────────── */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cpu-badge {
+  position: absolute; top: 2px; right: 3px;
+  font-size: 8px; line-height: 1; letter-spacing: 0.02em;
+  color: rgba(126, 231, 255, 0.75); pointer-events: none;
+  font-family: inherit; text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cpu-total {
+  font-size: 10px; letter-spacing: 0.04em; white-space: nowrap;
+  color: rgba(126, 231, 255, 0.8); align-self: center;
+}

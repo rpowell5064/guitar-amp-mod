@@ -35,7 +35,7 @@ static LV2_Worker_Status sched_work(LV2_Worker_Schedule_Handle,uint32_t size,con
 
 static double now_us(){ timespec t; clock_gettime(CLOCK_MONOTONIC,&t); return t.tv_sec*1e6 + t.tv_nsec/1e3; }
 
-int main(){
+int main(int argc, char** argv){
     const char* SO="/home/pistomp/guitar-amp-mod/build/guitaramp_hexforge.so";
     const char* BUNDLE="/home/pistomp/.lv2/guitaramp-suite.lv2/";
     const char* URI="https://rpowell5064.github.io/guitaramp-suite/hexforge";
@@ -68,6 +68,11 @@ int main(){
     inSeq(ctl);inSeq(midi);outSeq(notify);
 
     // Worst-case: every block enabled + driven.
+    // argv[1] == "eco" benches Engine Quality Eco (2x amp OS). NOTE: set AFTER
+    // the first runs (below) so the change-watch fires and the deferred amp swap
+    // actually lands -- pre-setting the port before run #1 never triggers the
+    // swap (the ps_goto lesson, port-init edition).
+    const bool wantEco = (argc > 1 && std::string(argv[1]) == "eco");
     val[HF_BYPASS]=0; val[HF_OUT_AUTO]=1; val[HF_OUT_LEVEL]=-18; val[HF_PS_GOTO]=-1;
     val[HF_IT_ENABLE]=1; val[HF_IT_HUM]=1; val[HF_IT_HUMBK]=1; val[HF_IT_BOOST]=1;
     int ens[]={HF_GT_ENABLE,HF_CP_ENABLE,HF_FZ_ENABLE,HF_DR_ENABLE,HF_AMP_ENABLE,HF_CAB_ENABLE,HF_MD_ENABLE,HF_DL_ENABLE,HF_RV_ENABLE,HF_WH_ENABLE,HF_OC_ENABLE};
@@ -96,6 +101,8 @@ int main(){
                            "Vox","Backline","Plexi","CaliV","Recto","Tremont"};
     printf("amp model        mean_us   max_us   load@64  load@96  load@128\n");
     size_t pos=0;
+    for(int s=0;s<20;++s) runBlock(pos);            // prime the watch state at Standard
+    if(wantEco){ val[HF_QUALITY]=1.0f; for(int s=0;s<200;++s) runBlock(pos); }  // change-event -> ramp -> swap
     for(int m=0;m<14;++m){
         if(m==5) continue;                          // NAM = user file, skip
         val[HF_AMP_MODEL]=(float)m;

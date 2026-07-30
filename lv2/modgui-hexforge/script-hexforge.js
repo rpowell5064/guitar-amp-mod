@@ -840,6 +840,22 @@ function (event, funcs) {
             icon.data('hf_micdist', parseFloat(event.value)); micPadUpdate(icon);
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
+        } else if (s.indexOf('cpu_') === 0) {
+            // Per-block CPU meters (2026-07-30): badge on each chain node + the
+            // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
+            var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
+                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq' };
+            var ck = s.substring(4);
+            var pct = parseFloat(event.value);
+            if (ck === 'total') {
+                icon.find('[rata-role=cputotal]').text('CPU ' + (pct < 0.05 ? '--' : pct.toFixed(pct < 9.95 ? 1 : 0)) + '%');
+            } else if (CPU_MAP[ck]) {
+                var nd = nodeOf(icon, CPU_MAP[ck]);
+                var badge = nd.find('.hf-cpu-badge');
+                if (!badge.length) badge = $('<span class="hf-cpu-badge"></span>').appendTo(nd);
+                if (pct < 0.05) badge.text('').addClass('mod-hidden');
+                else badge.text(pct.toFixed(pct < 9.95 ? 1 : 0) + '%').removeClass('mod-hidden');
+            }
         } else if (s === 'clip') {
             icon.find('.hf-clip').toggleClass('hf-clip-on', event.value > 0.5);
         } else if (s === 'tuner_on') {

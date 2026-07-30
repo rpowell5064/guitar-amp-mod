@@ -348,7 +348,7 @@ static const int kSwWatch[] = {
     HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE, HF_RV_DENSITY,
     HF_RV_TYPE, HF_CAB_ROOMDENSE, HF_CAB_SPKDRIVE, HF_MD_SHAPE,
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
-    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE,
+    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
 static_assert(kSwWatchN <= 24, "grow swWatchPrev[]");
@@ -364,6 +364,7 @@ struct WorkMsg {
     AmpBlockExtended* amp = nullptr;   // AMP_LOAD reply / AMP_FREE target
     NamModel*         nam = nullptr;   // NAM_LOAD reply / NAM_FREE target
     int               modelIdx = 0;
+    bool              eco      = false;   // AMP_LOAD: build with 2x oversampling (Engine Quality)
     int               namSlot  = 0;    // 0=amp 1=drive 2=cab
     char              path[kPathMax] = {0};   // CAB_IR / NAM_LOAD
 };
@@ -504,6 +505,7 @@ struct HexForge {
     float  cmdPrev[7] = {0,0,0,0,0,0,0}; // bank_up/dn, save, move_up/dn, backup, restore edge state
     double cpuAcc[B_COUNT + 1] = {};    // per-block + [B_COUNT]=whole-chunk seconds (CPU meters)
     long   cpuSamps   = 0;              // samples since last meter publish
+    bool   lastEco    = false;          // last Engine Quality the amp was built with
     int    lastGoto   = -1;             // last ps_goto target serviced
     float  meterIn = 0.0f, meterOut = 0.0f;  // smoothed peak level meters (-> in_meter/out_meter)
     float  meterSentIn = -1.0f, meterSentOut = -1.0f;  // last values pushed to UI (deadband)
@@ -791,8 +793,9 @@ static_assert(HF_CAB_SPKDRIVE == HF_RV_BLOOM + 1,
 static_assert(HF_MD_SHAPE == HF_CAB_SPKDRIVE + 1,
               "v29 port must be contiguous");
 //   * Fuzz Guitar Vol (roadmap #45) — 1 port, added v30, last before the commands.
-static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_FZ_GVOL == HF_SW_A - 1,
-              "v30 port must be contiguous, right before the commands");
+static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_QUALITY == HF_FZ_GVOL + 1
+              && HF_QUALITY == HF_SW_A - 1,
+              "v30 gvol then v32 quality must be contiguous, right before the commands");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -888,6 +891,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // (2026-07-30). Outputs are meaningless in blobs; zero-fill.
     const bool cpuGap = (srcVer < 31);
     const int cpuAt = HF_CPU_GT, cpuEnd = HF_CPU_GT + 14;
+    // v32 appended Engine Quality (Eco oversampling switch); default 0 = Standard.
+    const bool qGap = (srcVer < 32);
+    const int qAt = HF_QUALITY;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -916,7 +922,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (spkGap && i == spkAt)                   vals[i] = 0.0f;             // speaker drive Off
         else if (shpGap && i == shpAt)                   vals[i] = 0.0f;             // tremolo shape Bias
         else if (gvGap2 && i == gvAt2)                   vals[i] = 1.0f;             // fuzz guitar vol FULL
-        else if (cpuGap && i >= cpuAt && i < cpuEnd)     vals[i] = 0.0f;             // CPU meters (outputs)
+        else if (cpuGap && i >= cpuAt && i < cpuEnd)     vals[i] = 0.0f;
+        else if (qGap && i == qAt)                       vals[i] = 0.0f;             // quality Standard             // CPU meters (outputs)
         else                                             vals[i] = old[o++];
     }
 }
@@ -925,7 +932,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(31); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(32); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1357,6 +1364,7 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
+    na->setEco(msg->eco);   // Engine Quality: must precede setAmpModel (wrapper built there)
     na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kMt15Idx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
@@ -1711,10 +1719,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kMt15Idx);
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
     const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx);
-    if (ampIsAlgo && ampModel != p->lastAmpModel) {   // rebuild only for algo models
-        WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel;
+    const bool ecoQ = *p->ports[HF_QUALITY] > 0.5f;
+    if (ampIsAlgo && (ampModel != p->lastAmpModel || ecoQ != p->lastEco)) {   // rebuild for algo models (model or Engine Quality change)
+        WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel; msg.eco=ecoQ;
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
-            p->lastAmpModel = ampModel;
+            { p->lastAmpModel = ampModel; p->lastEco = ecoQ; }
     }
     AmpBlockExtended* amp = p->amp;
     amp->setBypass(false);
@@ -2257,7 +2266,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(31);                 // version (31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(32);                 // version (32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];

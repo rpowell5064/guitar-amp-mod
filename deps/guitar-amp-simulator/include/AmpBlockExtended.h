@@ -76,7 +76,7 @@ public:
         }
 
         if (isExtended) {
-            extModel_ = AmpModelFactory::createWithOversampling(fid);
+            extModel_ = AmpModelFactory::createWithOversampling(fid, eco_);
             extModel_->prepare(sampleRate, maxBlockSize, numChannels);
             recommendedTube_ = AmpModelFactory::recommendedTubeType(fid);
             AmpBlock::setAmpModel(AmpModel::NeuralCustom);
@@ -117,5 +117,11 @@ public:
 
 private:
     std::unique_ptr<OversamplingWrapper> extModel_;
+    bool eco_ = false;   // Engine Quality: 2x amp oversampling when true (set BEFORE setAmpModel)
+
+public:
+    void setEco(bool e) noexcept { eco_ = e; }
+
+private:
     int recommendedTube_ = -1;
 };
