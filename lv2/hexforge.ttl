@@ -80,7 +80,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 142 ;
+    lv2:microVersion 143 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -1467,11 +1467,67 @@
         lv2:index 225 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
         lv2:default 0.0 ; lv2:minimum -50.0 ; lv2:maximum 50.0
     ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 226 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 227 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 228 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 229 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 230 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 231 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 232 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 233 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 234 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 235 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 236 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 237 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 238 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 239 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 226 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 240 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -1924,5 +1980,33 @@
             lv2:index 218 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note"
         ] , [
             lv2:index 219 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents"
+        ] , [
+            lv2:index 220 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate"
+        ] , [
+            lv2:index 221 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp"
+        ] , [
+            lv2:index 222 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz"
+        ] , [
+            lv2:index 223 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive"
+        ] , [
+            lv2:index 224 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp"
+        ] , [
+            lv2:index 225 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab"
+        ] , [
+            lv2:index 226 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod"
+        ] , [
+            lv2:index 227 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay"
+        ] , [
+            lv2:index 228 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb"
+        ] , [
+            lv2:index 229 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah"
+        ] , [
+            lv2:index 230 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave"
+        ] , [
+            lv2:index 231 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail"
+        ] , [
+            lv2:index 232 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ"
+        ] , [
+            lv2:index 233 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total"
         ]
     ] .

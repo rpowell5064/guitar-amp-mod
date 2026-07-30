@@ -503,6 +503,15 @@ ctrl.append(mkport("TUNER_MUTE",  "tuner_mute",  "Tuner Mute",  "t", 0, 1, 0, No
 ctrl.append(mkport("TUNER_NOTE",  "tuner_note",  "Tuner Note",  "i", -1, 11, -1, None, "Note",  out=True))
 ctrl.append(mkport("TUNER_CENTS", "tuner_cents", "Tuner Cents", "f", -50, 50, 0, None, "Cents", out=True))
 
+# Per-block CPU meters (2026-07-30, user request): % of the audio budget each
+# chain block consumed, updated ~2x/sec. Output-only diagnostics; values are
+# never meaningful in presets (migratePorts zero-fills them for old blobs).
+for _sym, _nm in [("GT","Gate"),("CP","Comp"),("FZ","Fuzz"),("DR","Drive"),("AMP","Amp"),
+                  ("CAB","Cab"),("MD","Mod"),("DL","Delay"),("RV","Reverb"),("WH","Wah"),
+                  ("OC","Octave"),("NAIL","Nail"),("EQ","EQ")]:
+    ctrl.append(mkport("CPU_" + _sym, "cpu_" + _sym.lower(), "CPU " + _nm, "f", 0, 100, 0, None, out=True))
+ctrl.append(mkport("CPU_TOTAL", "cpu_total", "CPU Total", "f", 0, 100, 0, None, out=True))
+
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
 # ── Fixed leading ports (audio + atom) ────────────────────────────────────────
@@ -626,7 +635,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 142 ;")   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 143 ;")   # 143: per-block CPU meters (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")

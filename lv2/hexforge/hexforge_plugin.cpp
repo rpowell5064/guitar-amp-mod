@@ -24,6 +24,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
 #include <lv2/time/time.h>
+#include <ctime>
 #include "hexforge_ports.h"
 #include "hexforge_factory_presets.h"   // band/song factory presets (Banks 2..6), generated
 
@@ -501,6 +502,8 @@ struct HexForge {
     bool   pendingRecall = false;       // apply restored active preset on first run
     float  swPrev[4]  = {0,0,0,0};      // sw_a..sw_d edge state
     float  cmdPrev[7] = {0,0,0,0,0,0,0}; // bank_up/dn, save, move_up/dn, backup, restore edge state
+    double cpuAcc[B_COUNT + 1] = {};    // per-block + [B_COUNT]=whole-chunk seconds (CPU meters)
+    long   cpuSamps   = 0;              // samples since last meter publish
     int    lastGoto   = -1;             // last ps_goto target serviced
     float  meterIn = 0.0f, meterOut = 0.0f;  // smoothed peak level meters (-> in_meter/out_meter)
     float  meterSentIn = -1.0f, meterSentOut = -1.0f;  // last values pushed to UI (deadband)
@@ -881,6 +884,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v30 appended Fuzz Guitar Vol (roadmap #45); default 1.0 (full = bit-identical).
     const bool gvGap2 = (srcVer < 30);
     const int gvAt2 = HF_FZ_GVOL;
+    // v31 inserted 14 CPU-meter OUTPUT ports [HF_CPU_GT..HF_CPU_TOTAL] before HF_MIDI_IN
+    // (2026-07-30). Outputs are meaningless in blobs; zero-fill.
+    const bool cpuGap = (srcVer < 31);
+    const int cpuAt = HF_CPU_GT, cpuEnd = HF_CPU_GT + 14;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -909,6 +916,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (spkGap && i == spkAt)                   vals[i] = 0.0f;             // speaker drive Off
         else if (shpGap && i == shpAt)                   vals[i] = 0.0f;             // tremolo shape Bias
         else if (gvGap2 && i == gvAt2)                   vals[i] = 1.0f;             // fuzz guitar vol FULL
+        else if (cpuGap && i >= cpuAt && i < cpuEnd)     vals[i] = 0.0f;             // CPU meters (outputs)
         else                                             vals[i] = old[o++];
     }
 }
@@ -917,7 +925,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(30); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(31); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1953,9 +1961,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             }
         }
 
+        struct CpuClk { static double now() {
+            timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
+            return double(ts.tv_sec) + 1e-9 * double(ts.tv_nsec); } };
+        const double chunkT0 = CpuClk::now();
         for (int oi=0; oi<B_COUNT; ++oi) {
             const int id = order[oi];
             if (!enabled[id]) continue;
+            const double blkT0 = CpuClk::now();
             switch (id) {
                 case B_GATE: {
                     // Keyed gate (2026-07-29 idle-whine fix): detector on the RAW
@@ -2050,6 +2063,21 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 case B_EQ:     p->eq.processCh(L, len, 0);
                                if (stereo) p->eq.processCh(R, len, 1); break;
             }
+            p->cpuAcc[id] += CpuClk::now() - blkT0;
+        }
+        p->cpuAcc[B_COUNT] += CpuClk::now() - chunkT0;
+        p->cpuSamps += len;
+        if (p->cpuSamps >= 24000) {   // publish ~2x/sec: % of the audio-time budget
+            const double budget = double(p->cpuSamps) / p->rate;
+            for (int b = 0; b < B_COUNT; ++b) {
+                if (p->hostPorts[HF_CPU_GT + b])
+                    *p->hostPorts[HF_CPU_GT + b] = float(100.0 * p->cpuAcc[b] / budget);
+                p->cpuAcc[b] = 0.0;
+            }
+            if (p->hostPorts[HF_CPU_TOTAL])
+                *p->hostPorts[HF_CPU_TOTAL] = float(100.0 * p->cpuAcc[B_COUNT] / budget);
+            p->cpuAcc[B_COUNT] = 0.0;
+            p->cpuSamps = 0;
         }
         // If nothing ever spread to stereo, R already mirrors L (mono blocks wrote both;
         // if the whole chain was empty, copy L→R for a mono-correct output).
@@ -2229,7 +2257,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(30);                 // version (30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(31);                 // version (31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
