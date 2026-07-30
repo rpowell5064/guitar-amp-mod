@@ -147,13 +147,7 @@ function (event, funcs) {
     function resort(icon) {
         var nodes = icon.find('.hf-nodes');
         nodes.append(nodeOf(icon, 'it'));
-        chainOrder(icon).forEach(function (b) {
-            // amp/cab live inside a .hf-node-stack wrapper (Rig B sub-tile):
-            // move the wrapper, not the bare node, or the sub-tile is orphaned.
-            var nd = nodeOf(icon, b);
-            var stack = nd.parent('.hf-node-stack');
-            nodes.append(stack.length ? stack : nd);
-        });
+        chainOrder(icon).forEach(function (b) { nodes.append(nodeOf(icon, b)); });
     }
     // Move `moveB` to visual slot `want` among the chain blocks; renumber everything.
     function moveToSlot(icon, fns, moveB, want) {
@@ -168,6 +162,7 @@ function (event, funcs) {
         if (!b || !nodeOf(icon, b).length) b = inChain(icon, 'amp') ? 'amp' : 'it';
         icon.data('hf_sel', b);
         icon.find('.hf-node').removeClass('hf-sel');
+        icon.find('.hf-subnode').removeClass('hf-sel');
         nodeOf(icon, b).addClass('hf-sel');
         icon.find('.hf-detail-panel').removeClass('hf-sel');
         panelOf(icon, b).addClass('hf-sel');
@@ -286,24 +281,26 @@ function (event, funcs) {
     }
 
     // ── Amp faceplate: per-model skin class (hf-face-mN) + big parody badge ──
-    function applyAmpFace(icon, m) {
-        var face = panelOf(icon, 'amp').find('.hf-amp-face');
+    // Parameterized by panel block ('amp' | 'amp2') — Amp 2 carries the full
+    // faceplate/tab UI (2026-07-30), so both scopes share this machinery.
+    function applyAmpFace(icon, blk, m) {
+        var face = panelOf(icon, blk).find('.hf-amp-face');
         if (!face.length) return;
         var el = face[0];
         el.className = el.className.replace(/\bhf-face-m\d+\b/g, '').replace(/\s+/g, ' ').replace(/\s+$/, '');
         el.className += ' hf-face-m' + m;
         face.find('[rata-role=amp-badge]').text((NV.amp && NV.amp[m]) || '');
     }
-    // ── Amp detail TABS (Amp / Voicing / Power Amp): show one panel at a time ──
-    function setAmpTab(icon, name) {
-        var p = panelOf(icon, 'amp');
+    // ── Amp detail TABS (Amp / Voicing / Power Amp / Neural-or-Blend) ──
+    function setAmpTab(icon, blk, name) {
+        var p = panelOf(icon, blk);
         p.find('[rata-role=atab]').each(function () {
             this.classList.toggle('hf-atab-on', this.getAttribute('data-tab') === name);
         });
         p.find('[rata-role=apanel]').each(function () {
             this.classList.toggle('hf-atab-on', this.getAttribute('data-tab') === name);
         });
-        icon.data('hf_amp_tab', name);
+        icon.data(blk === 'amp2' ? 'hf_rb_tab' : 'hf_amp_tab', name);
     }
     // Write the amp model port + refresh (mod-ui doesn't reliably echo set_port_value as a change event).
     function setAmpModel(icon, m) {
@@ -316,11 +313,15 @@ function (event, funcs) {
     // Geometry (viewBox 140x84): X 28..122 = distance, Y centre 42 ± 28 = position across the
     // cone. Position is acoustically SYMMETRIC, so the marker keeps whichever SIDE of the cap
     // the user dragged to (hf_micside) instead of snapping above centre — no "jump" at the cap.
-    function micPadUpdate(icon) {
-        var pad = icon.find('[rata-role=micpad]'); if (!pad.length) return;
-        var pos  = parseFloat(icon.data('hf_micpos'))  || 0;
-        var dist = parseFloat(icon.data('hf_micdist')) || 0;
-        var side = icon.data('hf_micside') === -1 ? -1 : 1;
+    // Parameterized by panel block ('cab' | 'cab2'): Cab 2 has its own pad + data keys.
+    function micPadUpdate(icon, blk) {
+        blk = blk || 'cab';
+        var K = blk === 'cab2' ? { pos: 'hf_rb_micpos', dist: 'hf_rb_micdist', side: 'hf_rb_micside' }
+                               : { pos: 'hf_micpos', dist: 'hf_micdist', side: 'hf_micside' };
+        var pad = panelOf(icon, blk).find('[rata-role=micpad]'); if (!pad.length) return;
+        var pos  = parseFloat(icon.data(K.pos))  || 0;
+        var dist = parseFloat(icon.data(K.dist)) || 0;
+        var side = icon.data(K.side) === -1 ? -1 : 1;
         var x = 28 + dist * 94, y = 63 - side * pos * 42;   // viewBox 140x126: centre 63, travel ±42
         pad.find('[rata-role=micdot]').attr('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
         var pn = pos < 0.12 ? 'CAP EDGE' : pos < 0.5 ? 'CONE' : pos < 0.85 ? 'CONE EDGE' : 'SURROUND';
@@ -352,14 +353,41 @@ function (event, funcs) {
         p.find('[rata-role=atab][data-tab=nam]').removeClass('hf-atab-gone');   // Neural tab is ALWAYS available (it's the mode switch)
         // Keep the active tab in sync with the mode: entering/leaving NAM (model 5) flips the tab.
         var cur = icon.data('hf_amp_tab') || 'amp';
-        if (m === 5 && cur !== 'nam') { setAmpTab(icon, 'nam'); cur = 'nam'; }
-        else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp'); cur = 'amp'; }
+        if (m === 5 && cur !== 'nam') { setAmpTab(icon, 'amp', 'nam'); cur = 'nam'; }
+        else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp', 'amp'); cur = 'amp'; }
         var ok = { amp: true, voice: showVoice, power: showPower, nam: true };
-        if (!ok[cur]) setAmpTab(icon, 'amp');
+        if (!ok[cur]) setAmpTab(icon, 'amp', 'amp');
         p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 5 ? 'Output' : 'Gain')));
         setModelVal(icon, 'amp', m);
-        applyAmpFace(icon, m);
+        applyAmpFace(icon, 'amp', m);
         applyMesa(icon);
+    }
+    // Amp 2 (Rig B): the same full-UI logic against the c-rb-* scope. No NAM on B
+    // (the enum has no model 5), so no Neural tab and no mode switcheroo; the 4th
+    // tab is Blend (always available).
+    function applyRbAmp(icon) {
+        var m = icon.data('hf_rb_m'); if (m == null) m = 1;
+        var a = icon.data('hf_rb_auto'); if (a == null) a = true;
+        show(icon, 'amp2', '.c-rb-sunn', m === 3);
+        show(icon, 'amp2', '.c-rb-chan', m === 2 || m === 4);
+        show(icon, 'amp2', '.c-rb-be',   m === 6);
+        show(icon, 'amp2', '.c-rb-mesa', m === 11);
+        show(icon, 'amp2', '.c-rb-recto', m === 12);
+        show(icon, 'amp2', '.c-rb-mt15', m === 13);
+        show(icon, 'amp2', '.c-rb-reso', m === 2);
+        show(icon, 'amp2', '.c-rb-plexi', m === 10);
+        show(icon, 'amp2', '.c-rb-pa',   m !== 3);
+        show(icon, 'amp2', '.c-rb-paman', m !== 3 && !a);
+        var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13);
+        var showPower = (m !== 3);
+        var p = panelOf(icon, 'amp2');
+        p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
+        p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);
+        var cur = icon.data('hf_rb_tab') || 'amp';
+        var ok = { amp: true, voice: showVoice, power: showPower, blend: true };
+        if (!ok[cur]) setAmpTab(icon, 'amp2', 'amp');
+        p.find('[rata-role=lbl-rb_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : 'Gain'));
+        applyAmpFace(icon, 'amp2', m);
     }
     // Cali V (Mesa Mark V) is now DROPDOWNS (Mode + EQ Preset), handled natively by MOD; applyMesa is a
     // no-op kept for its callers. Selecting an EQ preset LOADS its curve into the 5 faders + resets to
@@ -372,11 +400,12 @@ function (event, funcs) {
         4: [0.41667, 0.58333, 0.70833, 0.625, 0.45833],
         5: [0.45833, 0.41667, 0.41667, 0.625, 0.75]
     };
-    function loadEqPreset(icon, e) {
+    function loadEqPreset(icon, e, pfx) {
+        pfx = pfx || 'amp_mv_';   // Amp 2's Cali V GEQ uses rb_mv_
         var pv = HF_EQ_PRESETS[parseInt(e, 10)];
         if (!pv || !funcs || typeof funcs.set_port_value !== 'function') return;
-        for (var i = 0; i < 5; i++) funcs.set_port_value('amp_mv_geq' + i, pv[i]);
-        funcs.set_port_value('amp_mv_eqpreset', 0);
+        for (var i = 0; i < 5; i++) funcs.set_port_value(pfx + 'geq' + i, pv[i]);
+        funcs.set_port_value(pfx + 'eqpreset', 0);
     }
     function applyFuzz(icon) {
         var p = icon.data('hf_fz_p'); if (p == null) p = 0;
@@ -564,6 +593,8 @@ function (event, funcs) {
                 nodeOf(icon, sym.replace(/_pos$/, '')).attr('data-pos', val); sawPos = true;
             } else if (/_bypass$/.test(sym)) {
                 nodeOf(icon, sym.replace(/_bypass$/, '')).toggleClass('hf-byp', val > 0.5);
+            } else if (sym === 'rb_enable') {   // Amp 2 In-Chain: strip lighting, NOT chain membership
+                icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(val > 0.5));
             } else if (/_enable$/.test(sym)) {
                 var b = sym.replace(/_enable$/, '');
                 if (b === 'it') nodeOf(icon, 'it').toggleClass('hf-byp', !(val > 0.5));
@@ -575,6 +606,11 @@ function (event, funcs) {
             } else if (sym === 'amp_model')        icon.data('hf_amp_m', parseInt(val, 10));
             else if (sym === 'cab_micpos')         icon.data('hf_micpos', val);    // mod-ui doesn't echo set_port_value → sync the pad by hand
             else if (sym === 'cab_micdist')        icon.data('hf_micdist', val);
+            else if (sym === 'rb_amp')             icon.data('hf_rb_m', parseInt(val, 10));
+            else if (sym === 'rb_cabmicpos')       icon.data('hf_rb_micpos', val);
+            else if (sym === 'rb_cabmicdist')      icon.data('hf_rb_micdist', val);
+            else if (sym === 'rb_pamp_auto')       icon.data('hf_rb_auto', val > 0.5);
+            else if (sym === 'rb_cab2on')          icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(val > 0.5));
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
             else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
@@ -588,9 +624,9 @@ function (event, funcs) {
         });
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
-        micPadUpdate(icon);
+        micPadUpdate(icon, 'cab'); micPadUpdate(icon, 'cab2');
         eqScope(icon);
-        applyAmp(icon); applyFuzz(icon); applyDelay(icon);
+        applyAmp(icon); applyRbAmp(icon); applyFuzz(icon); applyDelay(icon);
         if (drm != null) applyDrive(icon, drm);
         selectNode(icon, icon.data('hf_sel'));   // keep selection valid + refresh the panel
     }
@@ -618,6 +654,19 @@ function (event, funcs) {
                 });
             });
         });
+        // Amp 2 / Cab 2 REMOVE buttons: zero the In-Chain port, unlight the strip,
+        // fall back to the parent block's panel.
+        icon.find('[rata-role=rbremove]').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var port = el.getAttribute('data-port');
+                if (funcs && typeof funcs.set_port_value === 'function') funcs.set_port_value(port, 0);
+                var t = port === 'rb_enable' ? 'amp2' : 'cab2';
+                icon.find('[data-target=' + t + ']').addClass('hf-subnode-off');
+                selectNode(icon, t === 'amp2' ? 'amp' : 'cab');
+            });
+        });
         // Docked Amp 2 / Cab 2 sub-tiles open their standalone panels.
         icon.find('[rata-role=subnode]').each(function () {
             var el = this;
@@ -632,30 +681,34 @@ function (event, funcs) {
                 icon.data('hf_sel', t);
             });
         });
-        // Amp detail tabs: wire clicks (ignore tabs hidden for the current model).
-        // The Neural tab doubles as the internal⇄Neural MODE SWITCH: clicking it puts the amp on the
-        // NAM slot (model 5) and remembers the last internal model; clicking an internal tab restores it.
-        panelOf(icon, 'amp').find('[rata-role=atab]').each(function () {
-            var el = this;
-            el.addEventListener('click', function (e) {
-                e.stopPropagation();
-                if (el.classList.contains('hf-atab-gone')) return;
-                var t = el.getAttribute('data-tab');
-                var cur = icon.data('hf_amp_m'); if (cur == null) cur = 1;
-                if (t === 'nam') {
-                    if (cur !== 5) { icon.data('hf_amp_last_internal', cur); setAmpModel(icon, 5); }
-                    setAmpTab(icon, 'nam');
-                } else {
-                    if (cur === 5) {
-                        var li = icon.data('hf_amp_last_internal');
-                        if (li == null || li === 5) li = 1;
-                        setAmpModel(icon, li);
+        // Amp detail tabs: wire clicks (ignore tabs hidden for the current model) — for
+        // BOTH amp panels. On Amp 1 the Neural tab doubles as the internal⇄Neural MODE
+        // SWITCH: clicking it puts the amp on the NAM slot (model 5) and remembers the
+        // last internal model; clicking an internal tab restores it. Amp 2 has no NAM.
+        ['amp', 'amp2'].forEach(function (blk) {
+            panelOf(icon, blk).find('[rata-role=atab]').each(function () {
+                var el = this;
+                el.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    if (el.classList.contains('hf-atab-gone')) return;
+                    var t = el.getAttribute('data-tab');
+                    if (blk === 'amp2') { setAmpTab(icon, 'amp2', t); return; }
+                    var cur = icon.data('hf_amp_m'); if (cur == null) cur = 1;
+                    if (t === 'nam') {
+                        if (cur !== 5) { icon.data('hf_amp_last_internal', cur); setAmpModel(icon, 5); }
+                        setAmpTab(icon, 'amp', 'nam');
+                    } else {
+                        if (cur === 5) {
+                            var li = icon.data('hf_amp_last_internal');
+                            if (li == null || li === 5) li = 1;
+                            setAmpModel(icon, li);
+                        }
+                        setAmpTab(icon, 'amp', t);
                     }
-                    setAmpTab(icon, t);
-                }
+                });
             });
+            setAmpTab(icon, blk, 'amp');
         });
-        setAmpTab(icon, 'amp');
         // Drive MODE toggle (Internal / Neural): Neural puts the drive on the NAM slot (model 3) and
         // remembers the last internal model; Internal restores it. Mirrors the standalone drive switch.
         panelOf(icon, 'dr').find('[rata-role=drmodebtn]').each(function () {
@@ -689,6 +742,12 @@ function (event, funcs) {
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
         if ('amp_mv_mode' in map)   icon.data('hf_mv', parseInt(map.amp_mv_mode, 10));
         if ('amp_mv_eqpreset' in map) icon.data('hf_mveq', parseInt(map.amp_mv_eqpreset, 10));
+        // Amp 2 / Cab 2 (Rig B): model + PA-auto state, strip lighting from the In-Chain ports.
+        if ('rb_amp' in map)        icon.data('hf_rb_m', parseInt(map.rb_amp, 10));
+        if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
+        icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
+        icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(map.rb_cab2on > 0.5));
+        applyRbAmp(icon);
         applyAmp(icon); applyFuzz(icon); applyDelay(icon);
         var drm = parseInt(map.dr_model || 0, 10);
         applyDrive(icon, drm);
@@ -776,18 +835,24 @@ function (event, funcs) {
         if ('ps_bank' in map) icon.data('ps_bank', parseInt(map.ps_bank, 10));
         if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));
         psBankLabel(icon); psRenderList(icon, funcs);
-        // ── Cab mic pad: drag the mic across the cone (Pos) / away from the grille (Dist) ──
-        (function () {
-            var svg = icon.find('[rata-role=micsvg]')[0]; if (!svg) return;
-            if ('cab_micpos'  in map) icon.data('hf_micpos',  parseFloat(map.cab_micpos));
-            if ('cab_micdist' in map) icon.data('hf_micdist', parseFloat(map.cab_micdist));
+        // ── Cab mic pads: drag the mic across the cone (Pos) / away from the grille
+        // (Dist). One pad per cab panel — Cabinet 1 (cab_micpos/micdist) and Cab 2
+        // (rb_cabmicpos/rb_cabmicdist), each with its own data keys.
+        [{ blk: 'cab',  posSym: 'cab_micpos',    distSym: 'cab_micdist',
+           posKey: 'hf_micpos',    distKey: 'hf_micdist',    sideKey: 'hf_micside' },
+         { blk: 'cab2', posSym: 'rb_cabmicpos',  distSym: 'rb_cabmicdist',
+           posKey: 'hf_rb_micpos', distKey: 'hf_rb_micdist', sideKey: 'hf_rb_micside' }
+        ].forEach(function (mp) {
+            var svg = panelOf(icon, mp.blk).find('[rata-role=micsvg]')[0]; if (!svg) return;
+            if (mp.posSym  in map) icon.data(mp.posKey,  parseFloat(map[mp.posSym]));
+            if (mp.distSym in map) icon.data(mp.distKey, parseFloat(map[mp.distSym]));
             function write(pos, dist) {
-                icon.data('hf_micpos', pos); icon.data('hf_micdist', dist);
+                icon.data(mp.posKey, pos); icon.data(mp.distKey, dist);
                 if (funcs && typeof funcs.set_port_value === 'function') {
-                    funcs.set_port_value('cab_micpos',  pos);
-                    funcs.set_port_value('cab_micdist', dist);
+                    funcs.set_port_value(mp.posSym,  pos);
+                    funcs.set_port_value(mp.distSym, dist);
                 }
-                micPadUpdate(icon);
+                micPadUpdate(icon, mp.blk);
             }
             function apply(e) {
                 var r = svg.getBoundingClientRect();
@@ -796,7 +861,7 @@ function (event, funcs) {
                 var off  = 63 - vy;                                        // signed: + above cap, - below
                 var dist = Math.max(0, Math.min(1, (vx - 28) / 94));
                 var pos  = Math.max(0, Math.min(1, Math.abs(off) / 42));
-                icon.data('hf_micside', off < 0 ? -1 : 1);                 // marker follows the pointer's side
+                icon.data(mp.sideKey, off < 0 ? -1 : 1);                   // marker follows the pointer's side
                 if (pos < 0.05) pos = 0;                                   // gentle snap onto the cap axis
                 write(pos, dist);
             }
@@ -810,11 +875,11 @@ function (event, funcs) {
             svg.addEventListener('pointerup',     function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
             svg.addEventListener('pointercancel', function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
             svg.addEventListener('dblclick', function (e) {                // double-click = back to the voiced spot
-                icon.data('hf_micside', 1); write(0, 0);
+                icon.data(mp.sideKey, 1); write(0, 0);
                 e.preventDefault(); e.stopPropagation();
             });
-            micPadUpdate(icon);
-        })();
+            micPadUpdate(icon, mp.blk);
+        });
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
         if (s) syncSel(icon, s, event.value);   // dropdown labels track every change
@@ -825,7 +890,10 @@ function (event, funcs) {
             else nodeOf(icon, b).attr('data-pos', want);
         } else if (s && /_bypass$/.test(s)) {
             nodeOf(icon, s.replace(/_bypass$/, '')).toggleClass('hf-byp', event.value > 0.5);
-        } else if (s && /_enable$/.test(s)) {
+        } else if (s && /_enable$/.test(s) && s !== 'rb_enable') {
+            // rb_enable is NOT a chain-membership port — it's Amp 2's In-Chain switch,
+            // handled below (this generic branch used to swallow it, so the Amp 2
+            // strip never lit — the 2026-07-30 lighting bug).
             var eb = s.replace(/_enable$/, '');
             if (eb === 'it') { nodeOf(icon, 'it').toggleClass('hf-byp', !(event.value > 0.5)); }
             else {
@@ -855,19 +923,21 @@ function (event, funcs) {
         } else if (s === 'dl_type') {
             icon.data('hf_dl_t', parseInt(event.value, 10)); applyDelay(icon);
         } else if (s === 'cab_micpos') {
-            icon.data('hf_micpos', parseFloat(event.value)); micPadUpdate(icon);
+            icon.data('hf_micpos', parseFloat(event.value)); micPadUpdate(icon, 'cab');
         } else if (s === 'cab_micdist') {
-            icon.data('hf_micdist', parseFloat(event.value)); micPadUpdate(icon);
+            icon.data('hf_micdist', parseFloat(event.value)); micPadUpdate(icon, 'cab');
+        } else if (s === 'rb_cabmicpos') {
+            icon.data('hf_rb_micpos', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
+        } else if (s === 'rb_cabmicdist') {
+            icon.data('hf_rb_micdist', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
         } else if (s === 'rb_amp') {
-            var rm = parseInt(event.value, 10);
-            show(icon, 'amp2', '.c-rb-brite',  rm === 3);
-            show(icon, 'amp2', '.c-rb-beardo', rm === 6);
-            show(icon, 'amp2', '.c-rb-mesa',   rm === 11);
-            show(icon, 'amp2', '.c-rb-recto',  rm === 12);
-            show(icon, 'amp2', '.c-rb-mt15',   rm === 13);
-            show(icon, 'amp2', '.c-rb-plexi',  rm === 10);
+            icon.data('hf_rb_m', parseInt(event.value, 10)); applyRbAmp(icon);
+        } else if (s === 'rb_pamp_auto') {
+            icon.data('hf_rb_auto', event.value > 0.5); applyRbAmp(icon);
+        } else if (s === 'rb_mv_eqpreset') {
+            if (event.value > 0) loadEqPreset(icon, event.value, 'rb_mv_');
         } else if (s === 'rb_enable') {
             icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(event.value > 0.5));
         } else if (s === 'rb_cab2on') {

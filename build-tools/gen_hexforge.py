@@ -717,7 +717,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 159 ;")   # 159: Amp 2 / Cab 2 standalone panels from docked sub-tiles, no tabs (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 160 ;")   # 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -877,6 +877,15 @@ COND = {
     "dl_pattern":"c-dl-seraph", "dl_ducking":"c-dl-seraph",
     "dl_moddepth":"c-dl-seraph", "dl_modrate":"c-dl-seraph",
 }
+
+# Rig B (Amp 2): every A-side conditional class gets a c-rb-* scoped twin so the
+# full-parity Amp 2 panel reuses the exact same show/hide machinery (applyAmpP in
+# script-hexforge.js drives both scopes independently).
+_RB_SYMS = {c["sym"] for c in ctrl}
+for _k in [k for k in COND if k.startswith("amp_")]:
+    _rbsym = "rb_" + _k[4:]
+    if _rbsym in _RB_SYMS:
+        COND[_rbsym] = COND[_k].replace("c-amp-", "c-rb-")
 
 def render_ctrl(c):
     sym, nm, k = c["sym"], c["short"], c["kind"]
@@ -1048,15 +1057,15 @@ def node(pfx, title, accent):
         binds.append('<div mod-role="input-control-port" mod-port-symbol="%s_enable" mod-widget="switch"></div>' % pfx)
     out.append('<div class="hf-node-bind">' + "".join(binds) + '</div>')
     out.append('</div>')
-    # Docked Amp 2 / Cab 2 sub-tiles (2026-07-30 final design): always visible
-    # under Amp 1 / Cabinet 1, click opens the standalone amp2/cab2 panel; the
-    # JS dims them while their enable port is off (they read as "add me").
+    # Docked Amp 2 / Cab 2 strips (2026-07-30 final): rendered INSIDE the parent
+    # tile as a bottom strip, so every DOM mover (resort, palette add/remove,
+    # drag) carries them automatically -- no wrapper, no orphaning, no layout
+    # side effects. Click opens the standalone amp2/cab2 panel.
     if pfx in ("amp", "cab"):
         tgt = "amp2" if pfx == "amp" else "cab2"
-        sub = ('<div class="hf-subnode hf-subnode-off" rata-role="subnode" data-target="%s" role="button" tabindex="0" '
-               'title="%s — click to open">%s</div>'
-               % (tgt, "Amp 2" if pfx == "amp" else "Cab 2", "AMP 2" if pfx == "amp" else "CAB 2"))
-        return '<div class="hf-node-stack" data-stack="%s">%s%s</div>' % (pfx, "".join(out), sub)
+        out.insert(-1, ('<div class="hf-subnode hf-subnode-off" rata-role="subnode" data-target="%s" role="button" tabindex="0" '
+                        'title="%s — click to open">%s</div>'
+                        % (tgt, "Amp 2" if pfx == "amp" else "Cab 2", "AMP 2" if pfx == "amp" else "CAB 2")))
     return "".join(out)
 
 # ── Amp faceplate: realistic per-model panel with grouped knob sections ───────
@@ -1073,128 +1082,127 @@ def node(pfx, title, accent):
 SCREWS4 = ('<div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>'
            '<div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>')
 
-def amp_body():
-    # Top row: just the amp MODEL selector. The NAM file picker + Gain/Level live in the NEURAL tab,
-    # whose tab doubles as the internal<->Neural mode switch (mirrors the standalone amp).
-    selrow = '<div class="hf-dselects clearfix">%s</div>' % render_ctrl(CTRL_BY_SYM["amp_model"])
-    nam_panel = ('<div class="hf-pa-face hf-nam-face"><div class="hf-pa-title">Neural (NAM)</div>'
-                 '<div class="hf-mv-group">' + nam_picker(0, "AmpNam", "")
-                 + '<div class="hf-onerow">' + render_ctrl(CTRL_BY_SYM["amp_nam_gain"])
-                 + render_ctrl(CTRL_BY_SYM["amp_nam_vol"]) + '</div></div></div>')
+def amp_body(ns="amp"):
+    # Parameterized (2026-07-30): renders BOTH the main Amp panel (ns="amp") and the
+    # full-parity Amp 2 / Rig B panel (ns="rb"). One builder = the two UIs can never
+    # drift. Differences: Amp 2 swaps the Neural tab for a Blend tab (no NAM on B),
+    # renders rb_eco instead of the global `quality` Eco, and prepends the
+    # "Amp 2 In Chain" switch to the selector row. Conditional classes are c-amp-*
+    # on A and c-rb-* on B (COND carries both; applyAmpP drives each scope).
+    rb = (ns == "rb")
+    def S(suf):
+        if not rb:
+            return "amp_" + suf
+        return "rb_amp" if suf == "model" else "rb_" + suf
+    def CC(cls):
+        return cls.replace("c-amp-", "c-rb-") if rb else cls
     def rc(sufs):
-        return "".join(render_ctrl(CTRL_BY_SYM["amp_" + s]) for s in sufs if ("amp_" + s) in CTRL_BY_SYM)
+        return "".join(render_ctrl(CTRL_BY_SYM[S(s)]) for s in sufs if S(s) in CTRL_BY_SYM)
     def onerow(sufs):   # all controls in ONE centered row (.hf-onerow), no sub-group boxes
         return '<div class="hf-onerow">%s</div>' % rc(sufs)
-    # Front-panel faceplate: preamp + tone in ONE centered row (channel/resonance ride their COND class).
+    # Top row: the amp MODEL selector (B also gets its In-Chain switch). The NAM file
+    # picker + Gain/Level live in the NEURAL tab (A only).
+    selrow = ('<div class="hf-dselects clearfix">%s%s</div>'
+              % (render_ctrl(CTRL_BY_SYM["rb_enable"]) if rb else "", render_ctrl(CTRL_BY_SYM[S("model")])))
+    nam_panel = ""
+    if not rb:
+        nam_panel = ('<div class="hf-pa-face hf-nam-face"><div class="hf-pa-title">Neural (NAM)</div>'
+                     '<div class="hf-mv-group">' + nam_picker(0, "AmpNam", "")
+                     + '<div class="hf-onerow">' + render_ctrl(CTRL_BY_SYM["amp_nam_gain"])
+                     + render_ctrl(CTRL_BY_SYM["amp_nam_vol"]) + '</div></div></div>')
+    # Front-panel faceplate: preamp + tone in ONE centered row (channel/resonance/pl_vol2
+    # ride their COND class in both scopes).
     face = ('<div class="hf-amp-face hf-face-m1">'
             '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
             '<div class="hf-amp-plate">' + SCREWS4 +
             '<div class="hf-amp-badge" rata-role="amp-badge">Crunchy McCrunchFace</div>'
             + onerow(["gain", "pl_vol2", "master", "sag", "channel", "resonance", "bass", "mid", "treble", "presence"])
             + '</div></div>')
-    # Power Amp — ONE centered row of controls (switches + knobs). The c-amp-paman items
+    # Power Amp - ONE centered row of controls (switches + knobs). The paman items
     # (Tube + the valve-stage knobs) hide when PA Auto is on, leaving a clean short row.
-    pa = ('<div class="hf-pa-face c-amp-pa"><div class="hf-pa-title">Power Amp</div>'
+    pa = ('<div class="hf-pa-face ' + CC("c-amp-pa") + '"><div class="hf-pa-title">Power Amp</div>'
           + onerow(["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence", "pamp_depth",
                     "pamp_sag", "pamp_master", "pamp_nfb", "pamp_resonance", "pamp_coupl", "pamp_airfeel"])
-          # Amp Eco (global `quality` port, no amp_ prefix -> hand-placed): lives in
-          # the effect's own panel per the user's 2026-07-30 UX direction.
-          + '<div class="hf-onerow">' + render_ctrl(CTRL_BY_SYM["quality"]) + '</div>'
+          # Eco (2x OS): A uses the global `quality` port, B its own rb_eco.
+          + '<div class="hf-onerow">' + render_ctrl(CTRL_BY_SYM["rb_eco" if rb else "quality"]) + '</div>'
           + '</div>')
-    # Brite Channel (Sunn) + Beardo BE — each its own chassis, one centered row.
+    # Per-model voicing chassis - each its own face, one centered row.
     def chassis(gcls, gtitle, sufs):
-        return ('<div class="hf-pa-face %s"><div class="hf-pa-title">%s</div>%s</div>') % (gcls, gtitle, onerow(sufs))
+        return ('<div class="hf-pa-face %s"><div class="hf-pa-title">%s</div>%s</div>') % (CC(gcls), gtitle, onerow(sufs))
     brite = chassis("c-amp-sunn", "Brite Channel",
                     ["sunn_vol2", "sunn_bass2", "sunn_mid2", "sunn_treble2", "sunn_bright1", "sunn_bright2", "sunn_link"])
     beardo = chassis("c-amp-be", "Beardo BE", ["fr_channel", "fr_fat", "fr_c45", "fr_sat"])
-    # Cali V (Mesa Mark V): TWO-TIER segmented selector over the single amp_mv_mode port (0..8).
-    # A Channel row (Clean/Crunch/Lead) + a Mode row (3 channel-specific labels). Nothing to drop
-    # down, so nothing clips. The hidden mod-enumerated bind keeps preset/MIDI writes echoing to the
-    # JS change handler; the visible buttons write amp_mv_mode = channel*3 + submode (script-hexforge.js).
+    # Cali V (Mesa Mark V): Mode + EQ Preset dropdowns over the 5-band graphic-EQ faders.
     def mesa_body():
-        # Cali V: DROPDOWNS (Mode + EQ Preset) like the standalone amp, over the graphic-EQ faders.
         def eqslider(suf, freq):
-            sym = "amp_" + suf; c = CTRL_BY_SYM[sym]
+            sym = S(suf); c = CTRL_BY_SYM[sym]
             return ('<div class="hf-eqslider" title="%s"><div class="hf-eqslider-fader" mod-role="input-control-port" mod-port-symbol="%s"></div>'
                     '<span class="hf-eqslider-t">%s</span><span class="hf-eqslider-v" mod-role="input-control-value" mod-port-symbol="%s"></span></div>') % (c["name"], sym, freq, sym)
         geq = ('<div class="hf-mv-geqlbl">Graphic EQ</div><div class="hf-eqrow">'
-               + "".join(eqslider(s, f) for s, f in [("mv_geq0","80"),("mv_geq1","240"),("mv_geq2","750"),("mv_geq3","2.2k"),("mv_geq4","6.6k")])
+               + "".join(eqslider(sf, f) for sf, f in [("mv_geq0","80"),("mv_geq1","240"),("mv_geq2","750"),("mv_geq3","2.2k"),("mv_geq4","6.6k")])
                + '</div>')
-        return ('<div class="hf-pa-face c-amp-mesa"><div class="hf-pa-title">Cali V</div>'
+        return ('<div class="hf-pa-face ' + CC("c-amp-mesa") + '"><div class="hf-pa-title">Cali V</div>'
                 + '<div class="hf-mv-group">'
                 + '<div class="hf-mv-selrow">'
-                + render_ctrl(CTRL_BY_SYM["amp_mv_mode"])
-                + render_ctrl(CTRL_BY_SYM["amp_mv_eqpreset"])
+                + render_ctrl(CTRL_BY_SYM[S("mv_mode")])
+                + render_ctrl(CTRL_BY_SYM[S("mv_eqpreset")])
                 + '</div>'
                 + '<div class="hf-mv-geqwrap">' + geq + '</div>'
                 + '</div>'
                 + '</div>')
     mesa = mesa_body()
-    # Diamond Plate (Mesa Dual Rectifier): Mode + Variac + Rectifier dropdowns, one row —
-    # the Cali V dropdown treatment exactly (no extra chrome).
-    recto = ('<div class="hf-pa-face c-amp-recto"><div class="hf-pa-title">Diamond Plate</div>'
+    # Diamond Plate (Mesa Dual Rectifier): Mode + Variac + Rectifier dropdowns, one row.
+    recto = ('<div class="hf-pa-face ' + CC("c-amp-recto") + '"><div class="hf-pa-title">Diamond Plate</div>'
              + '<div class="hf-mv-group"><div class="hf-mv-selrow">'
-             + render_ctrl(CTRL_BY_SYM["amp_rc_mode"])
-             + render_ctrl(CTRL_BY_SYM["amp_rc_variac"])
-             + render_ctrl(CTRL_BY_SYM["amp_rc_rect"])
+             + render_ctrl(CTRL_BY_SYM[S("rc_mode")])
+             + render_ctrl(CTRL_BY_SYM[S("rc_variac")])
+             + render_ctrl(CTRL_BY_SYM[S("rc_rect")])
              + '</div></div></div>')
     # Tremont 15 (PRS MT15): Channel + Bright dropdowns, one row.
-    mt15 = ('<div class="hf-pa-face c-amp-mt15"><div class="hf-pa-title">Tremont 15</div>'
+    mt15 = ('<div class="hf-pa-face ' + CC("c-amp-mt15") + '"><div class="hf-pa-title">Tremont 15</div>'
             + '<div class="hf-mv-group"><div class="hf-mv-selrow">'
-            + render_ctrl(CTRL_BY_SYM["amp_mt_mode"])
-            + render_ctrl(CTRL_BY_SYM["amp_mt_bright"])
+            + render_ctrl(CTRL_BY_SYM[S("mt_mode")])
+            + render_ctrl(CTRL_BY_SYM[S("mt_bright")])
             + '</div></div></div>')
-    # Fold the stacked chassis into TABS (Amp / Voicing / Power Amp) — only one panel shows at
-    # a time, so the amp detail is no longer a giant vertical stack (mirrors the standalone Amp
-    # pedal). script-hexforge.js wires the tab clicks and hides tabs that don't apply to the
-    # current model (applyAmp): Voicing only for Sunn/Beardo/Cali V; Power Amp hidden for Sunn/NAM.
-    # Rig B (dual amp/cab, 2026-07-30): lives INSIDE the Amp panel per the user's
-    # UX direction -- it is part of the first amp/cab, not a chain block. Three
-    # chassis rows: B amp, B cab (incl. No Cab for real-poweramp rigs), blend.
-    def rbrow(sufs):
-        return '<div class="hf-onerow">' + ''.join(render_ctrl(CTRL_BY_SYM['rb_' + sf]) for sf in sufs) + '</div>'
-    def rbface(title, sufs, cls=""):
-        return ('<div class="hf-pa-face%s"><div class="hf-pa-title">%s</div>%s</div>'
-                % ((" " + cls) if cls else "", title, rbrow(sufs)))
-    # Full A-side parity (2026-07-30 redesign): core + per-model voicing chassis
-    # (shown/hidden by applyRb in the JS, mirroring applyAmp) + the PA section +
-    # blend. The Rig B CAB controls live in the CABINET panel's Rig B tab.
-    global RIGB_AMP_PANEL
-    RIGB_AMP_PANEL = (rbface("Amp 2",
-                         ["enable", "amp", "gain", "bass", "mid", "treble", "presence",
-                          "master", "sag", "channel", "resonance", "eco"])
-                  + rbface("Brite Channel", ["sunn_vol2", "sunn_link", "sunn_bass2", "sunn_mid2",
-                                             "sunn_treble2", "sunn_bright1", "sunn_bright2"], "c-rb-brite")
-                  + rbface("Beardo BE", ["fr_channel", "fr_fat", "fr_c45", "fr_sat"], "c-rb-beardo")
-                  + rbface("Cali V", ["mv_mode", "mv_geq0", "mv_geq1", "mv_geq2", "mv_geq3",
-                                      "mv_geq4", "mv_eqpreset"], "c-rb-mesa")
-                  + rbface("Diamond Plate", ["rc_mode", "rc_variac", "rc_rect"], "c-rb-recto")
-                  + rbface("Tremont 15", ["mt_mode", "mt_bright"], "c-rb-mt15")
-                  + rbface("Plexiglass", ["pl_vol2"], "c-rb-plexi")
-                  + rbface("Power Amp", ["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence",
-                                         "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb",
-                                         "pamp_resonance", "pamp_coupl", "pamp_airfeel"])
-                  + rbface("Blend with Amp 1", ["blend", "level", "pol"]))
-    # The CABINET panel's Rig B tab content (referenced by the cab panel builder).
-    global RIGB_CAB_PANEL
-    RIGB_CAB_PANEL = (rbface("Cab 2",
-                             ["cab2on", "cab", "lowcut", "highcut", "cabmix", "cabvoice", "cabspkdrive"])
-                      + rbface("Mic & Room",
-                               ["cabmicpos", "cabmicdist", "cabroomon", "cabroommix",
-                                "cabroomamt", "cabroomdense"]))
+    # Blend chassis (B only): how Amp 2 mixes back in after Cab 1 / Cab 2.
+    blend_panel = ""
+    if rb:
+        blend_panel = ('<div class="hf-pa-face"><div class="hf-pa-title">Blend with Amp 1</div>'
+                       + onerow(["blend", "level", "pol"]) + '</div>')
+    # Tabs (Amp / Voicing / Power Amp / Neural-or-Blend) - one panel at a time.
+    # script-hexforge.js wires clicks + hides tabs that don't apply to the model (applyAmpP).
+    last_tab = ('<div class="hf-atab" rata-role="atab" data-tab="blend" role="tab" tabindex="0" aria-selected="false">Blend</div>' if rb
+                else '<div class="hf-atab" rata-role="atab" data-tab="nam" role="tab" tabindex="0" aria-selected="false">Neural</div>')
     tabs = ('<div class="hf-atabs" rata-role="atabs" role="tablist" aria-label="Amp sections">'
             '<div class="hf-atab hf-atab-on" rata-role="atab" data-tab="amp" role="tab" tabindex="0" aria-selected="true">Amp</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="voice" role="tab" tabindex="0" aria-selected="false">Voicing</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="power" role="tab" tabindex="0" aria-selected="false">Power Amp</div>'
-            '<div class="hf-atab" rata-role="atab" data-tab="nam" role="tab" tabindex="0" aria-selected="false">Neural</div>'
-            '</div>')
+            + last_tab + '</div>')
+    last_panel = (('<div class="hf-atabpanel" rata-role="apanel" data-tab="blend" role="tabpanel" aria-label="Blend">' + blend_panel + '</div>') if rb
+                  else ('<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'))
     panels = ('<div class="hf-atabpanels">'
               '<div class="hf-atabpanel hf-atab-on" rata-role="apanel" data-tab="amp" role="tabpanel" aria-label="Amp">' + face + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + mt15 + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="power" role="tabpanel" aria-label="Power Amp">' + pa + '</div>'
-              '<div class="hf-atabpanel" rata-role="apanel" data-tab="nam" role="tabpanel" aria-label="Neural">' + nam_panel + '</div>'
-              '</div>')
+              + last_panel + '</div>')
     return selrow + tabs + panels
+
+def cab2_body():
+    # Cab 2 (Rig B): the full Cabinet treatment - In-Chain switch + built-in cab
+    # selector up top, then the same two-column layout as Cabinet 1 (CABINET over
+    # ROOM on the left, the draggable mic pad on the right). Symbols map
+    # cab_X -> rb_cabX except lowcut/highcut (rb_lowcut/rb_highcut, pre-parity).
+    def agroup(title, syms):
+        return ('<div class="hf-agroup"><span class="hf-agroup-title">%s</span>'
+                '<div class="hf-agroup-body">%s</div></div>'
+                % (title, "".join(render_ctrl(CTRL_BY_SYM[sy]) for sy in syms)))
+    selrow = ('<div class="hf-dselects clearfix">%s%s</div>'
+              % (render_ctrl(CTRL_BY_SYM["rb_cab2on"]), render_ctrl(CTRL_BY_SYM["rb_cab"])))
+    groups = (agroup("CABINET", ["rb_cabvoice", "rb_lowcut", "rb_highcut", "rb_cabmix", "rb_cabspkdrive"])
+              + agroup("ROOM", ["rb_cabroomon", "rb_cabroommix", "rb_cabroomamt", "rb_cabroomdense"]))
+    pad = MICPAD % (render_ctrl(CTRL_BY_SYM["rb_cabmicpos"]), render_ctrl(CTRL_BY_SYM["rb_cabmicdist"]))
+    caba = '<div class="hf-cab-cols"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
+    return SCREWS + selrow + caba
 
 # ── Shared "module plate" design for EVERY block ──────────────────────────────
 # The amp has its tube bay + control plate; every other block gets the SAME premium
@@ -1408,15 +1416,21 @@ def emit_icon():
     nodes  = "".join(node(t[0], t[1], t[2]) for t in TILES)
     panels = "\n      ".join(panel(*t) for t in TILES)
     # Amp 2 / Cab 2: standalone detail panels (2026-07-30 final design), opened
-    # from the docked sub-tiles under Amp 1 / Cabinet 1 -- NOT tabs.
-    def rb_detail(blk, title, body):
+    # from the docked strips inside the Amp 1 / Cabinet 1 tiles -- NOT tabs. They
+    # carry the FULL amp/cab interfaces (amp_body("rb") / cab2_body()). The head
+    # REMOVE button zeroes the block's In-Chain port (rb_enable / rb_cab2on).
+    def rb_detail(blk, title, body, port, plate):
         acc = "#f0a835"
-        return ('<div class="hf-detail-panel hf-detail-lock" data-block="' + blk + '" style="--acc:' + acc
-                + ';--encl1:' + darken(acc, 0.42) + ';--encl2:' + darken(acc, 0.24) + '">'
-                + '<div class="hf-dhead"><span class="hf-dname" role="heading" aria-level="2">' + title + '</span></div>'
-                + '<div class="hf-dbody"><div class="hf-plate">' + body + '</div></div></div>')
-    panels += "\n      " + rb_detail("amp2", "Amp 2", RIGB_AMP_PANEL)
-    panels += "\n      " + rb_detail("cab2", "Cab 2", RIGB_CAB_PANEL)
+        style = "--acc:" + acc
+        if plate:
+            style += ";--encl1:" + darken(acc, 0.42) + ";--encl2:" + darken(acc, 0.24)
+        return ('<div class="hf-detail-panel hf-detail-lock" data-block="' + blk + '" style="' + style + '">'
+                + '<div class="hf-dhead"><span class="hf-dname" role="heading" aria-level="2">' + title + '</span>'
+                + '<button type="button" class="hf-dremove" rata-role="rbremove" data-port="' + port
+                + '" aria-label="Remove ' + title + ' from the chain" title="Take ' + title + ' out of the chain">REMOVE ✕</button></div>'
+                + '<div class="hf-dbody">' + ('<div class="hf-plate">' + body + '</div>' if plate else body) + '</div></div>')
+    panels += "\n      " + rb_detail("amp2", "Amp 2", amp_body("rb"), "rb_enable", False)
+    panels += "\n      " + rb_detail("cab2", "Cab 2", cab2_body(), "rb_cab2on", True)
     chain = (
         '  <div class="hf-chain" role="group" aria-label="Signal chain">\n'
         '    <span class="hf-end hf-in" aria-hidden="true">IN</span>\n'
