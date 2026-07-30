@@ -975,3 +975,4 @@
   margin-left: 12px; font-size: 10px; letter-spacing: 0.05em;
   color: rgba(126, 231, 255, 0.7); align-self: center;
 }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node[data-block="rb"] { order: 99; }

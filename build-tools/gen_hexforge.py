@@ -482,6 +482,35 @@ ctrl.append(mkport("DR2_OCTAVE", "dr2_octave", "Drive B Octave", "t", 0, 1, 0, N
 ctrl.append(mkport("DR2_ECO",    "dr2_eco",    "Drive B Eco (2x OS)", "t", 0, 1, 0, None, "Eco"))
 ctrl.append(mkport("DR2_BYPASS", "dr2_bypass", "Drive B Bypass", "t", 0, 1, 0, None, "Bypass", hidden=True))
 
+# ── RIG B: dual amp/cab parallel rig (2026-07-30, user request, phase 2) ──────
+# The signal splits at the main AMP's input: rig B runs its own amp -> built-in
+# cab, then mixes back in after the main CAB (blend + level trim + polarity flip
+# for cab comb control). Core amp params only (per-amp extras like the Cali V
+# GEQ run at their defaults on B); no NAM, no user IR on the B side (one neural
+# slot / one file-picker per instance). Uniform rb_ prefix = one tile/panel
+# family. Migrated v35.
+RB = [
+    ("amp",     "Amp",      "e", 0, 13, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12),("Tremont 15",13)]),
+    ("gain",    "Gain",     "f", 0, 1, 0.5, None),
+    ("bass",    "Bass",     "f", 0, 1, 0.5, None),
+    ("mid",     "Mid",      "f", 0, 1, 0.5, None),
+    ("treble",  "Treble",   "f", 0, 1, 0.5, None),
+    ("presence","Presence", "f", 0, 1, 0.5, None),
+    ("master",  "Master",   "f", 0, 1, 0.7, None),
+    ("sag",     "Sag",      "f", 0, 1, 0.3, None),
+    ("channel", "Channel",  "t", 0, 1, 0, None),
+    ("eco",     "Eco (2x OS)", "t", 0, 1, 0, None),
+    ("cab",     "Cab",      "e", 0, 5, 0, [("Factory V30",0),("Vox 2x12",1),("American OB",2),("Greenback",3),("Hiwatt",4),("Doom",5)]),
+    ("lowcut",  "Cab Low Cut",  "hz", 20, 500, 80, None),
+    ("highcut", "Cab High Cut", "hz", 2000, 20000, 16000, None),
+    ("blend",   "Blend A/B", "f", 0, 1, 0.5, None),
+    ("level",   "B Level",  "db", -12, 12, 0, None),
+    ("pol",     "B Invert", "t", 0, 1, 0, None),
+]
+ctrl.append(mkport("RB_ENABLE", "rb_enable", "Rig B Enable", "t", 0, 1, 0, None, "Rig B"))
+for _suf, _nm, _k, _mn, _mx, _df, _sc in RB:
+    ctrl.append(mkport("RB_" + _suf.upper(), "rb_" + _suf, "Rig B " + _nm, _k, _mn, _mx, _df, _sc, _nm))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -540,6 +569,7 @@ for _sym, _nm in [("GT","Gate"),("CP","Comp"),("FZ","Fuzz"),("DR","Drive"),("AMP
     ctrl.append(mkport("CPU_" + _sym, "cpu_" + _sym.lower(), "CPU " + _nm, "f", 0, 100, 0, None, out=True))
 ctrl.append(mkport("CPU_TOTAL", "cpu_total", "CPU Total", "f", 0, 100, 0, None, out=True))
 ctrl.append(mkport("CPU_DR2", "cpu_dr2", "CPU Drive B", "f", 0, 100, 0, None, out=True))
+ctrl.append(mkport("CPU_RIGB", "cpu_rigb", "CPU Rig B", "f", 0, 100, 0, None, out=True))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -664,7 +694,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 152 ;")   # 152: Drive B joins the JS BLOCKS ordering list (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 153 ;")   # 153: RIG B dual amp/cab (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -747,7 +777,7 @@ def emit_ttl():
     return "\n".join(L)
 
 # ── Emit the modgui icon HTML (10 logo-free tiles) ────────────────────────────
-TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"dr2":DR,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL,"eq":EQBLK}
+TABLES = {"it":IT,"gt":GT,"cp":CP,"fz":FZ,"dr":DR,"dr2":DR,"rb":RB,"amp":AMP,"cab":CAB,"md":MD,"dl":DL,"rv":RV,"wh":WAH,"oc":OCTAVE,"nail":NAIL,"eq":EQBLK}
 # (prefix, tile title, accent, key-param suffixes shown always; rest go to "More")
 TILES = [
     # Accents match each standalone pedal's brand color (its .hx-title / border-top)
@@ -758,6 +788,7 @@ TILES = [
     ("fz",  "Fuzz",       "#ff4d9e", ["pedal","mode","sustain","tone","volume"]),             # fuzz
     ("dr",  "Drive",      "#eb5046", ["model","drive","tone","level"]),                       # drive
     ("dr2", "Drive B",    "#eb7a46", ["model","drive","tone","level"]),                       # drive B (multi-instance)
+    ("rb",  "Rig B",      "#f0a835", ["amp","gain","cab","blend"]),                           # dual amp/cab rig
     ("nail","Nail",       "#d0343a", ["mode","drive","tone","texture","level"]),              # nail (industrial)
     ("amp", "Amp",        "#ff963c", ["model","gain","bass","mid","treble","presence","master"]),  # amp
     ("cab", "Cabinet",    "#56aaff", ["lowcut","highcut","mix"]),                             # cab
@@ -949,6 +980,7 @@ ICON = {
     "fz":  '<svg viewBox="0 0 24 24"><path d="M3 12h3l2-7 3 14 2-10 2 6 2-3h4"/></svg>',
     "dr":  '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/></svg>',
     "dr2": '<svg viewBox="0 0 24 24"><path d="M2 12h2c1.5-8 4.5-8 6 0s4.5 8 6 0h2"/><text x="19" y="22" font-size="9" fill="currentColor" stroke="none">2</text></svg>',
+    "rb":  '<svg viewBox="0 0 24 24"><rect x="2" y="5" width="9" height="14" rx="2"/><rect x="13" y="5" width="9" height="14" rx="2"/></svg>',
     "nail":'<svg viewBox="0 0 24 24"><path d="M6 5h12"/><path d="M9 5l1.4 9L12 20l1.6-6L15 5"/></svg>',
     "amp": '<svg viewBox="0 0 24 24"><path d="M7 16V9a5 5 0 0110 0v7z"/><path d="M12 6.5v6.5"/><path d="M9.6 12.6q2.4 2 4.8 0"/><path d="M9 16v2.6M12 16v3.4M15 16v2.6"/></svg>',
     "cab": '<svg viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="18" rx="2"/><circle cx="12" cy="14" r="4"/><circle cx="12" cy="7" r="1.4"/></svg>',
@@ -971,7 +1003,7 @@ NODE_VAL_SYM = {"it": "it_gain", "gt": "gt_thresh", "cp": "cp_thresh",
 # kept); drag to reorder. Removed blocks live in the "+ Add" palette. Input Trim is
 # locked first (no remove/reorder); its dot toggles it_enable (it has no bypass port).
 def node(pfx, title, accent):
-    locked = (pfx == "it")
+    locked = (pfx in ("it", "rb"))   # locked: no slot/drag (IT = fixed head; Rig B = parallel split, not a serial slot)
     posattr = "" if locked else ' data-pos="%d"' % CTRL_BY_SYM[pfx + "_pos"]["df"]
     drag    = "" if locked else ' draggable="true"'
     cls     = "hf-node hf-node-lock" if locked else "hf-node"
@@ -1132,6 +1164,9 @@ BLOCK_GROUPS = {
             ("PERFORMANCE", None, ["eco"])],
     "dr2": [("DRIVE B", None, ["model", "drive", "tone", "level", "mix", "octave"]),
             ("PERFORMANCE", None, ["eco"])],
+    "rb":  [("RIG B AMP", None, ["amp", "gain", "bass", "mid", "treble", "presence", "master", "sag", "channel", "eco"]),
+            ("RIG B CAB", None, ["cab", "lowcut", "highcut"]),
+            ("BLEND", None, ["blend", "level", "pol"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"])],
     "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
             ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # mic placement renders as the MICPAD widget (below), not knobs
@@ -1205,7 +1240,7 @@ def eq_body():
 
 # ── Detail panel (the selected block's full controls, shown at the bottom) ─────
 def panel(pfx, title, accent, keys):
-    locked = (pfx == "it")
+    locked = (pfx in ("it", "rb"))   # locked: no slot/drag (IT = fixed head; Rig B = parallel split, not a serial slot)
     table = TABLES[pfx]
     head = ['<div class="hf-dhead">']
     head.append('<span class="hf-dname" role="heading" aria-level="2">%s</span>' % title)
