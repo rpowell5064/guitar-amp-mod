@@ -1713,3 +1713,41 @@ Also shipped this round (all still valid): raw-keyed gate detector
 lesson: mod-ui restores saved port values (gt_thresh -45 found in
 Hex_Forge.pedalboard) over presets on load -- remember it when a
 preset "ignores" its stored values after reboot.
+
+### Chime Thirty whine -- ROOT CAUSE FOUND AND KILLED (round 4, final)
+
+User's decisive report: "extremely high pitched -- all I have to do is
+land on a preset with the dirty 30 and it goes off even without
+anything plugged in." That is a SELF-OSCILLATION, and with the repro
+harness recall finally fixed (PS_BANK_UP pulses; ps_goto in the LV2
+stub was being overwritten by the deferred Bank1/A initial recall),
+pure silence + landing on Regal Sustain reproduced it exactly:
+**5749 Hz pure tone at -21.2 dBFS**.
+
+It was the PA NFB LOOP: with flux OT off (this morning's row split) and
+paDrive 0.45 (this evening's chime re-fit -- the oscillation margin was
+probed at 0.3 but never re-probed after the raise), the one-sample-
+delay NFB loop at nfb 0.82 oscillates in the full plugin context. The
+0.82 was inherited from the shared Fender row when Vox split off. Fix:
+**row 9 nfb 0.82 -> 0.05** -- also the physically correct topology (a
+real AC30 has NO global negative feedback; it's a defining trait of the
+amp). Verified: repro now -422 dBFS on silence; capture metrics barely
+moved (parity -16.1 exact, THD 20.8/31.2 same straddle, bloom +0.88,
+FR shifts <= 1 dB).
+
+Post-mortem of the false trails (all four earlier "fixes" were real
+latent bugs, but none were THE whine): chimePk noise concentration
+(real, re-fit kept), raw-keyed gate (real latch bug, kept), Vox DNR
+(real gap vs other amps, kept), gate thresholds -44 (kept). The
+5749 Hz tone WAS seen hours earlier and dismissed as a harness
+artifact because it "wasn't in the live recording" -- but that
+recording was the stock Clean preset (broken recall), not a Vox
+preset. LESSON: when a tone reproduces under silence with every block
+bypassed, believe the tone, not the assumption about which preset is
+active -- VERIFY the active preset's identity (eff amp_model) before
+dismissing anything.
+
+RULE FOR FLUX-OFF AMPS (now 2 incidents): after ANY paDrive change on
+a flux-off row, re-run the silence-input oscillation probe IN THE FULL
+PLUGIN CONTEXT (whine_repro pattern), not just the isolated PA probe --
+the loop margin depends on the whole in-loop filter chain.

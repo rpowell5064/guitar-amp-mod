@@ -495,7 +495,14 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // been acting as a hidden PA-sag exciter, un-compressing the whole
         // measurement -- drive re-raised to put THD@110 back astride the
         // capture (27.3/36.5 vs 24.2/26.1) with the re-trimmed model EQ.
-        case 9: return { 0.58f,  0.10f,  0.08f,  0.82f,  0.50f,  0.15f,  0.0f, 0.45f, 1.07f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
+        // nfb 0.82 -> 0.05 (same day, THE ACTUAL WHINE FIX): with flux OT off
+        // and paDrive 0.45, the NFB loop SELF-OSCILLATES at 5749 Hz (-21 dBFS!)
+        // in the full plugin context -- reproduced with PURE SILENCE input on
+        // preset recall ("goes off just landing on the preset, nothing plugged
+        // in"). The 0.82 was inherited from the shared Fender row; a real AC30
+        // has NO global negative feedback at all, so near-zero is also the
+        // physically correct topology. Re-measured vs capture after.
+        case 9: return { 0.58f,  0.10f,  0.08f,  0.05f,  0.50f,  0.15f,  0.0f, 0.45f, 1.07f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }
