@@ -840,7 +840,7 @@ function (event, funcs) {
             icon.data('hf_micdist', parseFloat(event.value)); micPadUpdate(icon);
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
-        } else if (s.indexOf('cpu_') === 0) {
+        } else if (s && s.indexOf('cpu_') === 0) {
             // Per-block CPU meters (2026-07-30): badge on each chain node + the
             // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',

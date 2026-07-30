@@ -457,8 +457,7 @@ ctrl.append(mkport("FZ_GVOL", "fz_gvol", "Guitar Vol", "f", 0.05, 1, 1, None, "G
 # Engine quality (2026-07-30, user request): Standard = full 4x amp oversampling;
 # Eco halves the amp's oversampling to 2x (~the biggest single CPU lever) for
 # large chains on weaker CPUs. Default Standard = bit-identical; migrated v32.
-ctrl.append(mkport("QUALITY", "quality", "Engine Quality", "i", 0, 1, 0,
-                   [("Standard", 0), ("Eco", 1)]))
+ctrl.append(mkport("QUALITY", "quality", "Eco Mode", "t", 0, 1, 0, None, "Eco"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -641,7 +640,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 144 ;")   # 144: CPU badges + Engine Quality switch (2026-07-30). 143: per-block CPU meters   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 145 ;")   # 145: JS crash guard + compact Eco toggle (2026-07-30). 143: per-block CPU meters   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
