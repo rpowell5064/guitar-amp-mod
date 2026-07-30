@@ -274,7 +274,6 @@ enum HexForgePort {
     HF_RB_CABROOMDENSE,
     HF_RB_CABVOICE,
     HF_RB_CABSPKDRIVE,
-    HF_RB_CAB2ON,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -316,7 +315,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 318, "port count drift");
+static_assert(HF_N_PORTS == 317, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -365,11 +364,11 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "rb_pamp_bypass", "rb_pamp_auto", "rb_pamp_tube", "rb_pamp_presence", "rb_pamp_depth", "rb_pamp_sag",
     "rb_pamp_master", "rb_pamp_nfb", "rb_pamp_resonance", "rb_pamp_coupl", "rb_pamp_airfeel", "rb_cabmix",
     "rb_cabmicpos", "rb_cabmicdist", "rb_cabroomon", "rb_cabroommix", "rb_cabroomamt", "rb_cabroomdense",
-    "rb_cabvoice", "rb_cabspkdrive", "rb_cab2on", "sw_a", "sw_b", "sw_c",
-    "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up", "ps_move_dn",
-    "ps_backup", "ps_restore", "ps_goto", "ps_bank", "ps_slot", "out_auto",
-    "in_meter", "out_meter", "out_mono", "tuner_on", "tuner_mute", "tuner_note",
-    "tuner_cents", "cpu_gt", "cpu_cp", "cpu_fz", "cpu_dr", "cpu_amp",
-    "cpu_cab", "cpu_md", "cpu_dl", "cpu_rv", "cpu_wh", "cpu_oc",
-    "cpu_nail", "cpu_eq", "cpu_total", "cpu_dr2", "cpu_rigb", "midi_in",
+    "rb_cabvoice", "rb_cabspkdrive", "sw_a", "sw_b", "sw_c", "sw_d",
+    "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up", "ps_move_dn", "ps_backup",
+    "ps_restore", "ps_goto", "ps_bank", "ps_slot", "out_auto", "in_meter",
+    "out_meter", "out_mono", "tuner_on", "tuner_mute", "tuner_note", "tuner_cents",
+    "cpu_gt", "cpu_cp", "cpu_fz", "cpu_dr", "cpu_amp", "cpu_cab",
+    "cpu_md", "cpu_dl", "cpu_rv", "cpu_wh", "cpu_oc", "cpu_nail",
+    "cpu_eq", "cpu_total", "cpu_dr2", "cpu_rigb", "midi_in",
 };

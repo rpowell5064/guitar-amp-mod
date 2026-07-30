@@ -348,7 +348,8 @@ static const int kSwWatch[] = {
     HF_AMP_MODEL, HF_DR_MODEL, HF_DL_TYPE, HF_MD_TYPE, HF_FZ_PEDAL, HF_FZ_MODE, HF_RV_DENSITY,
     HF_RV_TYPE, HF_CAB_ROOMDENSE, HF_CAB_SPKDRIVE, HF_MD_SHAPE,
     HF_NAIL_MODE, HF_CP_TYPE, HF_WH_TYPE, HF_AMP_MV_MODE, HF_AMP_RC_MODE,
-    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY, HF_DR_ECO, HF_DR2_MODEL, HF_DR2_ECO,
+    HF_AMP_MT_MODE, HF_AMP_FR_CHANNEL, HF_AMP_CHANNEL, HF_CAB_VOICE, HF_QUALITY, HF_DR_ECO, HF_DR2_MODEL, HF_DR2_ECO, HF_RB_ENABLE, HF_RB_AMP, HF_RB_CAB, HF_RB_ECO,
+    HF_RB_MV_MODE, HF_RB_RC_MODE, HF_RB_MT_MODE, HF_RB_FR_CHANNEL, HF_RB_CABVOICE, HF_RB_CABROOMDENSE, HF_RB_CABSPKDRIVE,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
 static_assert(kSwWatchN <= 40, "grow swWatchPrev[]");
@@ -466,6 +467,18 @@ struct HexForge {
     OverdriveBlock    drive2;           // Drive B (first multi-instance block, 2026-07-30)
     int               lastDrive2Model = -1;
     AmpBlockExtended* amp = nullptr;                  // swapped on model change
+    AmpBlockExtended* amp2 = nullptr;                 // Rig B amp (2026-07-30 dual rig)
+    AmpBlockExtended* pendAmp2 = nullptr;
+    int               pendAmp2Model = -1;
+    PowerAmpProcessor pa2;                            // Rig B power amp
+    CabinetBlock      cab2;                           // Rig B cab (built-ins only)
+    int    lastAmp2Model = -1;
+    bool   lastAmp2Eco   = false;
+    bool   amp2Requested = false;       // W_AMP_LOAD(B) in flight -- DO NOT re-schedule (allocation storm)
+    int    lastCab2Model = -1;
+    bool   rigBHeld      = false;                     // rigBBuf holds this chunk's amp-input tap
+    float  rigBBuf[1024] = {};                        // kMaxBlock; mono B-path scratch
+    double cpuRigB       = 0.0;                       // Rig B CPU meter accumulator
     PowerAmpProcessor pa;
     CabinetBlock      cab;
     ModulationBlock   modfx;
@@ -799,9 +812,8 @@ static_assert(HF_FZ_GVOL == HF_MD_SHAPE + 1 && HF_QUALITY == HF_FZ_GVOL + 1
               && HF_DR_ECO == HF_QUALITY + 1 && HF_DR2_POS == HF_DR_ECO + 1
               && HF_DR2_BYPASS == HF_DR2_POS + 9 && HF_RB_ENABLE == HF_DR2_BYPASS + 1
               && HF_RB_POL == HF_RB_ENABLE + 16 && HF_RB_RESONANCE == HF_RB_POL + 1
-              && HF_RB_CABSPKDRIVE == HF_RB_RESONANCE + 44 && HF_RB_CAB2ON == HF_RB_CABSPKDRIVE + 1
-              && HF_RB_CAB2ON == HF_SW_A - 1,
-              "params end: Drive B, Rig B families, then cab2-presence");
+              && HF_RB_CABSPKDRIVE == HF_RB_RESONANCE + 44 && HF_RB_CABSPKDRIVE == HF_SW_A - 1,
+              "params end: Drive B, Rig B core, then the 45-port Rig B parity family");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -922,9 +934,6 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
                                      1,0,0,1,0.12f,0.35f,0,0,0};
     const bool rb2Gap = (srcVer < 36);
     const int rb2At = HF_RB_RESONANCE, rb2End = HF_RB_RESONANCE + 45;
-    // v37 appended Cab 2 presence; default 0 = rig B routes through Cab 1.
-    const bool c2Gap = (srcVer < 37);
-    const int c2At = HF_RB_CAB2ON;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -960,8 +969,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (dr2Gap && i == HF_CPU_DR2)              vals[i] = 0.0f;              // Drive B meter
         else if (rbGap && i >= rbAt && i < rbEnd)        vals[i] = rbdef[i - rbAt];   // Rig B off
         else if (rbGap && i == HF_CPU_RIGB)              vals[i] = 0.0f;              // Rig B meter
-        else if (rb2Gap && i >= rb2At && i < rb2End)     vals[i] = rb2def[i - rb2At]; // Rig B parity
-        else if (c2Gap && i == c2At)                     vals[i] = 0.0f;              // Cab 2 not in chain             // CPU meters (outputs)
+        else if (rb2Gap && i >= rb2At && i < rb2End)     vals[i] = rb2def[i - rb2At]; // Rig B parity             // CPU meters (outputs)
         else                                             vals[i] = old[o++];
     }
 }
@@ -974,7 +982,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(37); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(36); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1343,6 +1351,8 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->fuzzMuff->setParameter("era", 2.0f);
     p->drive.prepare(rate, kMaxBlock, 1);
     p->drive2.prepare(rate, kMaxBlock, 1);
+    p->pa2.prepare(rate, kMaxBlock, 1);
+    p->cab2.prepare(rate, kMaxBlock, 1);
     p->drive.setType(kDriveMap[0]);
     // Nail — industrial distortion (oversampled, like the fuzzes)
     p->nail = std::make_unique<OversamplingWrapper>(std::make_unique<NailDistortion>());
@@ -1396,6 +1406,10 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
     if (msg->type == W_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
+        if (msg->namSlot == 1) {   // Rig B cab: built-ins only
+            p->cab2.setIR(CabModels::generate(msg->path[0] ? msg->path : "@factory", p->rate));
+            return LV2_WORKER_SUCCESS;
+        }
         if (msg->path[0] == '@')                                          // built-in synthetic cab
             p->cab.setIR(CabModels::generate(msg->path, p->rate));
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
@@ -1442,6 +1456,16 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type != W_AMP_LOAD) return LV2_WORKER_SUCCESS;
+    if (msg->namSlot == 1) {   // Rig B amp reply
+        if (p->pendAmp2) {
+            WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp2;
+            p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+        }
+        p->pendAmp2 = msg->amp;
+        p->pendAmp2Model = msg->modelIdx;
+        if (p->swFadeState == 0 || p->swFadeState == 2) p->swFadeState = 1;
+        return LV2_WORKER_SUCCESS;
+    }
     if (p->pendAmp) {
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp;
         p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
@@ -1504,6 +1528,14 @@ static void hfApplySwitch(HexForge* p) {
         p->lastAmpModel = p->pendAmpModel;
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
         p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+    }
+    if (p->pendAmp2) {
+        AmpBlockExtended* old = p->amp2;
+        p->amp2 = p->pendAmp2; p->pendAmp2 = nullptr;
+        p->lastAmp2Model = p->pendAmp2Model;
+        p->amp2Requested = false;
+        if (old) { WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
+                   p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm); }
     }
     for (int sl = 0; sl < 3; ++sl) if (p->pendNam[sl]) {
         NamModel** slot = (sl == 0) ? &p->ampNam : (sl == 1) ? &p->drNam : &p->cabNam;
@@ -1788,6 +1820,146 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
             { p->lastAmpModel = ampModel; p->lastEco = ecoQ; }
     }
+    // ── Rig B (dual amp/cab, 2026-07-30): schedule builds + set params ──────
+    const bool rbOn = *p->ports[HF_RB_ENABLE] > 0.5f;
+    if (!rbOn && p->amp2 && !p->amp2Requested && !p->pendAmp2) {
+        // Rig B disabled: release the second amp (it is only processed while
+        // enabled, so a direct handoff to the free worker is safe) -- a player
+        // who parked Rig B should get the RAM back.
+        WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->amp2;
+        if (p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm) == LV2_WORKER_SUCCESS) {
+            p->amp2 = nullptr; p->lastAmp2Model = -1;
+        }
+    }
+    if (rbOn) {
+        int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kMt15Idx);
+        if (rbModel == kAmpNamIdx) rbModel = 1;   // no NAM on the B side
+        const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
+        // amp2Requested guards the build-in-flight window: without it, !p->amp2
+        // stays true until the crossfade swap lands and this scheduled a fresh
+        // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
+        if ((rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) && !p->amp2Requested) {
+            WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=rbModel; msg.eco=rbEco; msg.namSlot=1;
+            if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
+                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
+        }
+        const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
+        if (rbCab != p->lastCab2Model && rbCab < 6) {
+            static const char* kRbCabIr[6] = { "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom" };
+            WorkMsg msg; msg.type=W_CAB_IR; msg.namSlot=1;
+            std::snprintf(msg.path, sizeof(msg.path), "%s", kRbCabIr[rbCab]);
+            if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
+                p->lastCab2Model = rbCab;
+        }
+        if (rbCab >= 6) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
+        if (p->amp2) {
+            AmpBlockExtended* a2 = p->amp2;
+            const int rbM = p->lastAmp2Model;
+            a2->setBypass(false);
+            // Full A-side parity (2026-07-30 redesign): every model family gets
+            // its complete control set on the B side too.
+            if (rbM == kSunnIdx) {
+                a2->setParameter("vol1",         *p->ports[HF_RB_GAIN]);
+                a2->setParameter("vol2",         *p->ports[HF_RB_SUNN_VOL2]);
+                a2->setParameter("channel_link", *p->ports[HF_RB_SUNN_LINK]);
+                a2->setParameter("bass1",        *p->ports[HF_RB_BASS]);
+                a2->setParameter("mid1",         *p->ports[HF_RB_MID]);
+                a2->setParameter("treble1",      *p->ports[HF_RB_TREBLE]);
+                a2->setParameter("bass2",        *p->ports[HF_RB_SUNN_BASS2]);
+                a2->setParameter("mid2",         *p->ports[HF_RB_SUNN_MID2]);
+                a2->setParameter("treble2",      *p->ports[HF_RB_SUNN_TREBLE2]);
+                a2->setParameter("bright1",      *p->ports[HF_RB_SUNN_BRIGHT1]);
+                a2->setParameter("bright2",      *p->ports[HF_RB_SUNN_BRIGHT2]);
+            } else {
+                a2->setParameter("gain",   *p->ports[HF_RB_GAIN]);
+                a2->setParameter("bass",   *p->ports[HF_RB_BASS]);
+                a2->setParameter("mid",    *p->ports[HF_RB_MID]);
+                a2->setParameter("treble", *p->ports[HF_RB_TREBLE]);
+            }
+            a2->setParameter("presence",  *p->ports[HF_RB_PRESENCE]);
+            a2->setParameter("master",    *p->ports[HF_RB_MASTER]);
+            a2->setParameter("sag",       *p->ports[HF_RB_SAG]);
+            a2->setParameter("channel",   *p->ports[HF_RB_CHANNEL]);
+            a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
+            if (rbM == kFriedmanIdx) {
+                a2->setParameter("channel", *p->ports[HF_RB_FR_CHANNEL]);
+                a2->setParameter("fat",     *p->ports[HF_RB_FR_FAT]);
+                a2->setParameter("c45",     *p->ports[HF_RB_FR_C45]);
+                a2->setParameter("sat",     *p->ports[HF_RB_FR_SAT]);
+            }
+            if (rbM == 10) a2->setParameter("vol2", *p->ports[HF_RB_PL_VOL2]);
+            if (rbM == kMesaIdx) {
+                a2->setParameter("mode", *p->ports[HF_RB_MV_MODE]);
+                a2->setParameter("geq0", *p->ports[HF_RB_MV_GEQ0]);
+                a2->setParameter("geq1", *p->ports[HF_RB_MV_GEQ1]);
+                a2->setParameter("geq2", *p->ports[HF_RB_MV_GEQ2]);
+                a2->setParameter("geq3", *p->ports[HF_RB_MV_GEQ3]);
+                a2->setParameter("geq4", *p->ports[HF_RB_MV_GEQ4]);
+                a2->setParameter("eqpreset", *p->ports[HF_RB_MV_EQPRESET]);
+            }
+            if (rbM == kRectoIdx) {
+                a2->setParameter("mode",   *p->ports[HF_RB_RC_MODE]);
+                a2->setParameter("variac", *p->ports[HF_RB_RC_VARIAC]);
+                a2->setParameter("rect",   *p->ports[HF_RB_RC_RECT]);
+            }
+            if (rbM == kMt15Idx) {
+                a2->setParameter("mode",   *p->ports[HF_RB_MT_MODE]);
+                a2->setParameter("bright", *p->ports[HF_RB_MT_BRIGHT]);
+            }
+            const int rbAlgo = (rbM < 0) ? 1 : ((rbM == 5) ? 1 : rbM);
+            const float rbRcMode = *p->ports[HF_RB_RC_MODE];
+            const bool rbRectoModern = (rbM == kRectoIdx) &&
+                ((rbRcMode > 3.5f && rbRcMode < 4.5f) || rbRcMode > 6.5f);
+            if (*p->ports[HF_RB_PAMP_AUTO] > 0.5f) {
+                const auto d2 = PowerAmpProcessor::getDefaultsForModel(kCanonical[rbAlgo]);
+                p->pa2.setParameter("master",   d2.master);
+                p->pa2.setParameter("presence", d2.presence);
+                p->pa2.setParameter("depth",    d2.depth);
+                p->pa2.setParameter("nfb",      rbRectoModern ? 0.05f : d2.nfb);
+                p->pa2.setParameter("sag",      d2.sag);
+                { const int t2 = p->amp2->getRecommendedTubeType();
+                  if (t2 >= 0) p->pa2.setTubeType(static_cast<TubeType>(t2)); }
+            } else {
+                p->pa2.setParameter("presence", *p->ports[HF_RB_PAMP_PRESENCE]);
+                p->pa2.setParameter("depth",    *p->ports[HF_RB_PAMP_DEPTH]);
+                p->pa2.setParameter("sag",      *p->ports[HF_RB_PAMP_SAG]);
+                p->pa2.setParameter("master",   *p->ports[HF_RB_PAMP_MASTER]);
+                p->pa2.setParameter("nfb",      *p->ports[HF_RB_PAMP_NFB]);
+                p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 3)));
+            }
+            p->pa2.setParameter("resonance", *p->ports[HF_RB_PAMP_RESONANCE]);
+            p->pa2.setParameter("airFeel",   *p->ports[HF_RB_PAMP_AIRFEEL]);
+            p->pa2.setParameter("coupling",  *p->ports[HF_RB_PAMP_COUPL]);
+            {   // per-amp voicing rows stay authoritative for the deep internals
+                const auto d2 = PowerAmpProcessor::getDefaultsForModel(kCanonical[rbAlgo]);
+                p->pa2.setParameter("bloomvca", d2.bloomVca);
+                p->pa2.setParameter("duty",     d2.duty);
+                p->pa2.setParameter("padrive",  d2.paDrive);
+                p->pa2.setParameter("pamakeup", d2.paMakeup);
+                p->pa2.setParameter("ripplesag",d2.rippleSagCoupling);
+                p->pa2.setParameter("ltptail",  d2.ltpTail);
+                p->pa2.setParameter("fluxOT",   d2.fluxOT ? 1.0f : 0.0f);
+            }
+            p->pa2.setBypass((*p->ports[HF_RB_PAMP_BYPASS] > 0.5f) || rbM == kSunnIdx);
+            // Full cab parity
+            p->cab2.setParameter("lowCutHz",  *p->ports[HF_RB_LOWCUT]);
+            p->cab2.setParameter("highCutHz", *p->ports[HF_RB_HIGHCUT]);
+            p->cab2.setParameter("mix",       *p->ports[HF_RB_CABMIX]);
+            p->cab2.setParameter("micpos",    *p->ports[HF_RB_CABMICPOS]);
+            p->cab2.setParameter("micdist",   *p->ports[HF_RB_CABMICDIST]);
+            p->cab2.setParameter("roomon",    *p->ports[HF_RB_CABROOMON]);
+            p->cab2.setParameter("roommix",   *p->ports[HF_RB_CABROOMMIX]);
+            p->cab2.setParameter("roomamt",   *p->ports[HF_RB_CABROOMAMT]);
+            p->cab2.setParameter("roomdense", *p->ports[HF_RB_CABROOMDENSE]);
+            p->cab2.setParameter("voice",     *p->ports[HF_RB_CABVOICE]);
+            { const int spk = clampi(*p->ports[HF_RB_CABSPKDRIVE], 0, 2);
+              p->cab2.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
+              p->cab2.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f)); }
+            // No Cab (Direct): the player may run rig A into a real power amp +
+            // physical cab -- rig B then skips speaker sim too.
+            p->cab2.setBypass(clampi(*p->ports[HF_RB_CAB], 0, 6) >= 6);
+        }
+    }
     AmpBlockExtended* amp = p->amp;
     amp->setBypass(false);
     if (ampModel == kSunnIdx) {
@@ -2037,6 +2209,30 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
             return double(ts.tv_sec) + 1e-9 * double(ts.tv_nsec); } };
         const double chunkT0 = CpuClk::now();
+        // Rig B: run amp2 -> pa2 -> cab2 on the tapped buffer and mix into L/R.
+        // Called after the main CAB (or after the AMP when no cab is active).
+        auto rigBMix = [&](void) {
+            if (!p->rigBHeld || !p->amp2) return;
+            p->rigBHeld = false;
+            const double rbT0 = CpuClk::now();
+            float* io1[1] = { p->rigBBuf };
+            p->amp2->process(io1, io1, len, 1);
+            p->pa2.process(io1, io1, len, 1);
+            p->amp2->setExternalSag(p->pa2.getSagEnvNorm());
+            const int rbAlgo = (p->lastAmp2Model < 0) ? 1 : ((p->lastAmp2Model == 5) ? 1 : p->lastAmp2Model);
+            const float mk2 = kAmpMakeup[rbAlgo];
+            if (mk2 != 1.0f) for (int i=0;i<len;++i) p->rigBBuf[i] *= mk2;
+            p->cab2.process(io1, io1, len, 1);
+            const float blend = *p->ports[HF_RB_BLEND];
+            float g = std::pow(10.0f, *p->ports[HF_RB_LEVEL] / 20.0f) * blend;
+            if (*p->ports[HF_RB_POL] > 0.5f) g = -g;
+            const float ga = 1.0f - blend;
+            for (int i=0;i<len;++i) {
+                L[i] = ga * L[i] + g * p->rigBBuf[i];
+                R[i] = ga * R[i] + g * p->rigBBuf[i];
+            }
+            p->cpuRigB += CpuClk::now() - rbT0;
+        };
         for (int oi=0; oi<B_COUNT; ++oi) {
             const int id = order[oi];
             if (!enabled[id]) continue;
@@ -2070,6 +2266,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     } else runMono(p->drive, L, R, len, p->mono, stereo);
                     break;
                 case B_AMP: {
+                    // Rig B tap: the parallel rig feeds from the main amp's input.
+                    if (*p->ports[HF_RB_ENABLE] > 0.5f && p->amp2) {
+                        if (!stereo) for (int i=0;i<len;++i) p->rigBBuf[i] = L[i];
+                        else         for (int i=0;i<len;++i) p->rigBBuf[i] = 0.5f*(L[i]+R[i]);
+                        p->rigBHeld = true;
+                    }
                     if (!stereo) for (int i=0;i<len;++i) R[i]=L[i];
                     // NOTE: the amp gets the RAW input (as it did before 2026-07-03 and as the
                     // standalone Amp plugin still does). The old `kAmpInputCeil` tanh "input ceiling"
@@ -2137,7 +2339,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                                if (stereo) p->eq.processCh(R, len, 1); break;
             }
             p->cpuAcc[id] += CpuClk::now() - blkT0;
+            if (id == B_CAB) rigBMix();   // dual rig joins after the main cab
         }
+        rigBMix();   // no active cab in the chain: join after the last block
         p->cpuAcc[B_COUNT] += CpuClk::now() - chunkT0;
         p->cpuSamps += len;
         if (p->cpuSamps >= 24000) {   // publish ~2x/sec: % of the audio-time budget
@@ -2158,6 +2362,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (p->hostPorts[HF_CPU_TOTAL])
                 *p->hostPorts[HF_CPU_TOTAL] = float(100.0 * p->cpuAcc[B_COUNT] / budget);
             p->cpuAcc[B_COUNT] = 0.0;
+            if (p->hostPorts[HF_CPU_RIGB])
+                *p->hostPorts[HF_CPU_RIGB] = float(100.0 * p->cpuRigB / budget);
+            p->cpuRigB = 0.0;
             p->cpuSamps = 0;
         }
         // If nothing ever spread to stereo, R already mirrors L (mono blocks wrote both;
@@ -2338,7 +2545,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(37);                 // version (37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(36);                 // version (36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];

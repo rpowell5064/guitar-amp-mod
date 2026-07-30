@@ -147,7 +147,13 @@ function (event, funcs) {
     function resort(icon) {
         var nodes = icon.find('.hf-nodes');
         nodes.append(nodeOf(icon, 'it'));
-        chainOrder(icon).forEach(function (b) { nodes.append(nodeOf(icon, b)); });
+        chainOrder(icon).forEach(function (b) {
+            // amp/cab live inside a .hf-node-stack wrapper (Rig B sub-tile):
+            // move the wrapper, not the bare node, or the sub-tile is orphaned.
+            var nd = nodeOf(icon, b);
+            var stack = nd.parent('.hf-node-stack');
+            nodes.append(stack.length ? stack : nd);
+        });
     }
     // Move `moveB` to visual slot `want` among the chain blocks; renumber everything.
     function moveToSlot(icon, fns, moveB, want) {
@@ -612,6 +618,32 @@ function (event, funcs) {
                 });
             });
         });
+        // Cab detail tabs (Rig B lives behind the second tab).
+        panelOf(icon, 'cab').find('[rata-role=cabtab]').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var t = el.getAttribute('data-tab');
+                var pn = panelOf(icon, 'cab');
+                pn.find('[rata-role=cabtab]').removeClass('hf-atab-on').attr('aria-selected', 'false');
+                el.classList.add('hf-atab-on'); el.setAttribute('aria-selected', 'true');
+                pn.find('[rata-role=cabpanel]').removeClass('hf-atab-on');
+                pn.find('[rata-role=cabpanel][data-tab="' + t + '"]').addClass('hf-atab-on');
+            });
+        });
+        // Stacked sub-tiles: AMP 2 / CAB 2 open their parent panel on the Rig B tab.
+        icon.find('[rata-role=subnode]').each(function () {
+            var el = this;
+            el.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var parent = el.getAttribute('data-parent');
+                nodeOf(icon, parent).trigger('click');   // open the parent panel
+                var pn = panelOf(icon, parent);
+                setTimeout(function () {
+                    pn.find('[rata-role=' + (parent === 'amp' ? 'atab' : 'cabtab') + '][data-tab=rigb]').trigger('click');
+                }, 0);
+            });
+        });
         // Amp detail tabs: wire clicks (ignore tabs hidden for the current model).
         // The Neural tab doubles as the internal⇄Neural MODE SWITCH: clicking it puts the amp on the
         // NAM slot (model 5) and remembers the last internal model; clicking an internal tab restores it.
@@ -840,11 +872,21 @@ function (event, funcs) {
             icon.data('hf_micdist', parseFloat(event.value)); micPadUpdate(icon);
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
+        } else if (s === 'rb_amp') {
+            var rm = parseInt(event.value, 10);
+            show(icon, 'amp', '.c-rb-brite',  rm === 3);
+            show(icon, 'amp', '.c-rb-beardo', rm === 6);
+            show(icon, 'amp', '.c-rb-mesa',   rm === 11);
+            show(icon, 'amp', '.c-rb-recto',  rm === 12);
+            show(icon, 'amp', '.c-rb-mt15',   rm === 13);
+            show(icon, 'amp', '.c-rb-plexi',  rm === 10);
+        } else if (s === 'rb_enable') {
+            icon.find('[rata-role=subnode]').toggleClass('mod-hidden', !(event.value > 0.5));
         } else if (s && s.indexOf('cpu_') === 0) {
             // Per-block CPU meters (2026-07-30): badge on each chain node + the
             // output-bar total. Symbols cpu_gt..cpu_eq map to the node prefixes.
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
-                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2' };
+                            md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2', rigb:'rb' };
             var ck = s.substring(4);
             var pct = parseFloat(event.value);
             if (ck === 'total') {
