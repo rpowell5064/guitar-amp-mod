@@ -976,3 +976,13 @@
   color: rgba(126, 231, 255, 0.7); align-self: center;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node[data-block="rb"] { order: 99; }
+
+/* ── Rig B stacked sub-tiles + cab tabs (2026-07-30 redesign) ───────────────── */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node-stack { display: flex; flex-direction: column; gap: 3px; flex: 1 1 0; min-width: 84px; max-width: 200px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node-stack > .hf-node { max-width: none; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode {
+  font-size: 9px; letter-spacing: 0.08em; text-align: center; cursor: pointer;
+  padding: 3px 0; border-radius: 6px; color: rgba(240,168,53,0.9);
+  border: 1px dashed rgba(240,168,53,0.45); background: rgba(240,168,53,0.08);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode:hover { background: rgba(240,168,53,0.18); }

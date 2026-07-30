@@ -511,6 +511,26 @@ ctrl.append(mkport("RB_ENABLE", "rb_enable", "Rig B Enable", "t", 0, 1, 0, None,
 for _suf, _nm, _k, _mn, _mx, _df, _sc in RB:
     ctrl.append(mkport("RB_" + _suf.upper(), "rb_" + _suf, "Rig B " + _nm, _k, _mn, _mx, _df, _sc, _nm))
 
+# ── Rig B FULL parity (2026-07-30 redesign): clone the remaining amp family, the
+# whole PA section and the cab extras from the A-side definitions so ranges,
+# defaults and scale points can never drift. Migrated v36.
+_RB_AMP_EXTRA = ["resonance", "sunn_vol2", "sunn_link", "sunn_bass2", "sunn_mid2", "sunn_treble2",
+                 "sunn_bright1", "sunn_bright2", "fr_channel", "fr_fat", "fr_c45", "fr_sat",
+                 "mv_mode", "mv_geq0", "mv_geq1", "mv_geq2", "mv_geq3", "mv_geq4", "mv_eqpreset",
+                 "rc_mode", "rc_variac", "rc_rect", "mt_mode", "mt_bright", "pl_vol2",
+                 "pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence", "pamp_depth",
+                 "pamp_sag", "pamp_master", "pamp_nfb", "pamp_resonance", "pamp_coupl", "pamp_airfeel"]
+_RB_CAB_EXTRA = ["mix", "micpos", "micdist", "roomon", "roommix", "roomamt", "roomdense", "voice", "spkdrive"]
+_CTRL_TMP = {c["sym"]: c for c in ctrl}
+for _suf in _RB_AMP_EXTRA:
+    _c = _CTRL_TMP["amp_" + _suf]
+    ctrl.append(mkport("RB_" + _suf.upper(), "rb_" + _suf, "Rig B " + _c["name"].replace("Amp ", ""),
+                       _c["kind"], _c["mn"], _c["mx"], _c["df"], _c["scale"], _c["short"]))
+for _suf in _RB_CAB_EXTRA:
+    _c = _CTRL_TMP["cab_" + _suf]
+    ctrl.append(mkport("RB_CAB" + _suf.upper(), "rb_cab" + _suf, "Rig B " + _c["name"].replace("Cab ", ""),
+                       _c["kind"], _c["mn"], _c["mx"], _c["df"], _c["scale"], _c["short"]))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -694,7 +714,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 154 ;")   # 154: Rig B moved into the Amp panel + No Cab option (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 156 ;")   # 156: Rig B redesign complete: full tabs, cab tabs, stacked sub-tiles (2026-07-30)   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1025,6 +1045,15 @@ def node(pfx, title, accent):
         binds.append('<div mod-role="input-control-port" mod-port-symbol="%s_enable" mod-widget="switch"></div>' % pfx)
     out.append('<div class="hf-node-bind">' + "".join(binds) + '</div>')
     out.append('</div>')
+    # Stacked Rig B sub-tiles (2026-07-30 redesign): AMP 2 under the Amp tile,
+    # CAB 2 under the Cabinet tile; shown while rb_enable is on, click opens the
+    # parent panel on its Rig B tab. Wrapped so tile + subtile move as one flex
+    # item when the chain is reordered.
+    if pfx in ("amp", "cab"):
+        sub = ('<div class="hf-subnode mod-hidden" rata-role="subnode" data-parent="%s" role="button" tabindex="0" '
+               'title="Rig B — opens the %s panel Rig B tab">%s 2</div>'
+               % (pfx, "Amp" if pfx == "amp" else "Cabinet", "AMP" if pfx == "amp" else "CAB"))
+        return '<div class="hf-node-stack" data-stack="%s">%s%s</div>' % (pfx, "".join(out), sub)
     return "".join(out)
 
 # ── Amp faceplate: realistic per-model panel with grouped knob sections ───────
@@ -1121,12 +1150,34 @@ def amp_body():
     # chassis rows: B amp, B cab (incl. No Cab for real-poweramp rigs), blend.
     def rbrow(sufs):
         return '<div class="hf-onerow">' + ''.join(render_ctrl(CTRL_BY_SYM['rb_' + sf]) for sf in sufs) + '</div>'
-    rigb_panel = ('<div class="hf-pa-face"><div class="hf-pa-title">Rig B — Second Amp</div>'
-                  + rbrow(["enable", "amp", "gain", "bass", "mid", "treble", "presence", "master", "sag", "channel", "eco"])
-                  + '</div>'
-                  '<div class="hf-pa-face"><div class="hf-pa-title">Rig B — Cab &amp; Blend</div>'
-                  + rbrow(["cab", "lowcut", "highcut", "blend", "level", "pol"])
-                  + '</div>')
+    def rbface(title, sufs, cls=""):
+        return ('<div class="hf-pa-face%s"><div class="hf-pa-title">%s</div>%s</div>'
+                % ((" " + cls) if cls else "", title, rbrow(sufs)))
+    # Full A-side parity (2026-07-30 redesign): core + per-model voicing chassis
+    # (shown/hidden by applyRb in the JS, mirroring applyAmp) + the PA section +
+    # blend. The Rig B CAB controls live in the CABINET panel's Rig B tab.
+    rigb_panel = (rbface("Rig B — Second Amp",
+                         ["enable", "amp", "gain", "bass", "mid", "treble", "presence",
+                          "master", "sag", "channel", "resonance", "eco"])
+                  + rbface("Brite Channel", ["sunn_vol2", "sunn_link", "sunn_bass2", "sunn_mid2",
+                                             "sunn_treble2", "sunn_bright1", "sunn_bright2"], "c-rb-brite")
+                  + rbface("Beardo BE", ["fr_channel", "fr_fat", "fr_c45", "fr_sat"], "c-rb-beardo")
+                  + rbface("Cali V", ["mv_mode", "mv_geq0", "mv_geq1", "mv_geq2", "mv_geq3",
+                                      "mv_geq4", "mv_eqpreset"], "c-rb-mesa")
+                  + rbface("Diamond Plate", ["rc_mode", "rc_variac", "rc_rect"], "c-rb-recto")
+                  + rbface("Tremont 15", ["mt_mode", "mt_bright"], "c-rb-mt15")
+                  + rbface("Plexiglass", ["pl_vol2"], "c-rb-plexi")
+                  + rbface("Power Amp", ["pamp_bypass", "pamp_auto", "pamp_tube", "pamp_presence",
+                                         "pamp_depth", "pamp_sag", "pamp_master", "pamp_nfb",
+                                         "pamp_resonance", "pamp_coupl", "pamp_airfeel"])
+                  + rbface("Blend", ["blend", "level", "pol"]))
+    # The CABINET panel's Rig B tab content (referenced by the cab panel builder).
+    global RIGB_CAB_PANEL
+    RIGB_CAB_PANEL = (rbface("Rig B — Second Cab",
+                             ["cab", "lowcut", "highcut", "cabmix", "cabvoice", "cabspkdrive"])
+                      + rbface("Rig B — Mic & Room",
+                               ["cabmicpos", "cabmicdist", "cabroomon", "cabroommix",
+                                "cabroomamt", "cabroomdense"]))
     tabs = ('<div class="hf-atabs" rata-role="atabs" role="tablist" aria-label="Amp sections">'
             '<div class="hf-atab hf-atab-on" rata-role="atab" data-tab="amp" role="tab" tabindex="0" aria-selected="true">Amp</div>'
             '<div class="hf-atab" rata-role="atab" data-tab="voice" role="tab" tabindex="0" aria-selected="false">Voicing</div>'
@@ -1289,7 +1340,17 @@ def panel(pfx, title, accent, keys):
             # the mic drag pad on the RIGHT — no more pad sprawling across the bottom.
             groups = render_agroups(pfx, BLOCK_GROUPS[pfx], all_sufs)
             pad = MICPAD % (render_ctrl(CTRL_BY_SYM["cab_micpos"]), render_ctrl(CTRL_BY_SYM["cab_micdist"]))
-            inner += '<div class="hf-cab-cols"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
+            caba = '<div class="hf-cab-cols"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
+            # Rig B cab tab (2026-07-30 redesign): the CABINET panel hosts the B
+            # cab's full interface behind a tab, mirroring the Amp panel's tabs.
+            inner += ('<div class="hf-atabs" rata-role="cabtabs" role="tablist" aria-label="Cab sections">'
+                      '<div class="hf-atab hf-atab-on" rata-role="cabtab" data-tab="caba" role="tab" tabindex="0" aria-selected="true">Cabinet</div>'
+                      '<div class="hf-atab" rata-role="cabtab" data-tab="rigb" role="tab" tabindex="0" aria-selected="false">Rig B</div>'
+                      '</div>'
+                      '<div class="hf-atabpanels">'
+                      '<div class="hf-atabpanel hf-atab-on" rata-role="cabpanel" data-tab="caba" role="tabpanel" aria-label="Cabinet">' + caba + '</div>'
+                      '<div class="hf-atabpanel" rata-role="cabpanel" data-tab="rigb" role="tabpanel" aria-label="Rig B cab">' + RIGB_CAB_PANEL + '</div>'
+                      '</div>')
         else:
             inner += render_agroups(pfx, BLOCK_GROUPS.get(pfx, [(title.upper(), None, all_sufs)]), all_sufs)
         body = '<div class="hf-plate">%s</div>' % inner
