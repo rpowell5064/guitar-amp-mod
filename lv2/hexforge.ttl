@@ -80,7 +80,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 156 ;
+    lv2:microVersion 158 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -1450,12 +1450,12 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 216 ; lv2:symbol "rb_enable" ; lv2:name "Rig B Enable" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 217 ; lv2:symbol "rb_amp" ; lv2:name "Rig B Amp" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 13 ;
         lv2:scalePoint [ rdfs:label "Clean Meanie" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Crunchy McCrunchFace" ; rdf:value 1 ] ;
@@ -1473,45 +1473,52 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 218 ; lv2:symbol "rb_gain" ; lv2:name "Rig B Gain" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 219 ; lv2:symbol "rb_bass" ; lv2:name "Rig B Bass" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 220 ; lv2:symbol "rb_mid" ; lv2:name "Rig B Mid" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 221 ; lv2:symbol "rb_treble" ; lv2:name "Rig B Treble" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 222 ; lv2:symbol "rb_presence" ; lv2:name "Rig B Presence" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 223 ; lv2:symbol "rb_master" ; lv2:name "Rig B Master" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 224 ; lv2:symbol "rb_sag" ; lv2:name "Rig B Sag" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 225 ; lv2:symbol "rb_channel" ; lv2:name "Rig B Channel" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 226 ; lv2:symbol "rb_eco" ; lv2:name "Rig B Eco (2x OS)" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 227 ; lv2:symbol "rb_cab" ; lv2:name "Rig B Cab" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 6 ;
         lv2:scalePoint [ rdfs:label "Factory V30" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Vox 2x12" ; rdf:value 1 ] ;
@@ -1524,38 +1531,44 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 228 ; lv2:symbol "rb_lowcut" ; lv2:name "Rig B Cab Low Cut" ;
         units:unit units:hz ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 229 ; lv2:symbol "rb_highcut" ; lv2:name "Rig B Cab High Cut" ;
         units:unit units:hz ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 230 ; lv2:symbol "rb_blend" ; lv2:name "Rig B Blend A/B" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 231 ; lv2:symbol "rb_level" ; lv2:name "Rig B B Level" ;
         units:unit units:db ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 232 ; lv2:symbol "rb_pol" ; lv2:name "Rig B B Invert" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 233 ; lv2:symbol "rb_resonance" ; lv2:name "Rig B Resonance" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 234 ; lv2:symbol "rb_sunn_vol2" ; lv2:name "Rig B Brite Vol" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 235 ; lv2:symbol "rb_sunn_link" ; lv2:name "Rig B Ch Link" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Independent" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Parallel" ; rdf:value 1 ] ;
@@ -1563,29 +1576,32 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 236 ; lv2:symbol "rb_sunn_bass2" ; lv2:name "Rig B Brite Bass" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 237 ; lv2:symbol "rb_sunn_mid2" ; lv2:name "Rig B Brite Mid" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 238 ; lv2:symbol "rb_sunn_treble2" ; lv2:name "Rig B Brite Treble" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 239 ; lv2:symbol "rb_sunn_bright1" ; lv2:name "Rig B Bright I" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 240 ; lv2:symbol "rb_sunn_bright2" ; lv2:name "Rig B Bright II" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 241 ; lv2:symbol "rb_fr_channel" ; lv2:name "Rig B BE Chan" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "BE" ; rdf:value 1 ] ;
@@ -1593,22 +1609,22 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 242 ; lv2:symbol "rb_fr_fat" ; lv2:name "Rig B Fat" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 243 ; lv2:symbol "rb_fr_c45" ; lv2:name "Rig B C45" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 244 ; lv2:symbol "rb_fr_sat" ; lv2:name "Rig B Sat" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 245 ; lv2:symbol "rb_mv_mode" ; lv2:name "Rig B Mesa Mode" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 6 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Fat" ; rdf:value 1 ] ;
@@ -1622,27 +1638,32 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 246 ; lv2:symbol "rb_mv_geq0" ; lv2:name "Rig B EQ 80" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 247 ; lv2:symbol "rb_mv_geq1" ; lv2:name "Rig B EQ 240" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 248 ; lv2:symbol "rb_mv_geq2" ; lv2:name "Rig B EQ 750" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 249 ; lv2:symbol "rb_mv_geq3" ; lv2:name "Rig B EQ 2.2k" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 250 ; lv2:symbol "rb_mv_geq4" ; lv2:name "Rig B EQ 6.6k" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 251 ; lv2:symbol "rb_mv_eqpreset" ; lv2:name "Rig B EQ Preset" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Custom" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Flat" ; rdf:value 1 ] ;
@@ -1653,7 +1674,7 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 252 ; lv2:symbol "rb_rc_mode" ; lv2:name "Rig B Recto Mode" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 7 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "CH1 Clean" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "CH1 Pushed" ; rdf:value 1 ] ;
@@ -1666,21 +1687,21 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 253 ; lv2:symbol "rb_rc_variac" ; lv2:name "Rig B Recto Variac" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Bold" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Spongy" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 254 ; lv2:symbol "rb_rc_rect" ; lv2:name "Rig B Recto Rectifier" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Silicon" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Tube" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 255 ; lv2:symbol "rb_mt_mode" ; lv2:name "Rig B MT Channel" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Crunch" ; rdf:value 1 ] ;
@@ -1688,28 +1709,29 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 256 ; lv2:symbol "rb_mt_bright" ; lv2:name "Rig B MT Bright" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "On" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 257 ; lv2:symbol "rb_pl_vol2" ; lv2:name "Rig B Vol II" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 258 ; lv2:symbol "rb_pamp_bypass" ; lv2:name "Rig B PA Bypass" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 259 ; lv2:symbol "rb_pamp_auto" ; lv2:name "Rig B PA Auto" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 260 ; lv2:symbol "rb_pamp_tube" ; lv2:name "Rig B Power Tube" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "EL34" ; rdf:value 1 ] ;
@@ -1718,260 +1740,277 @@
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 261 ; lv2:symbol "rb_pamp_presence" ; lv2:name "Rig B PA Presence" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 262 ; lv2:symbol "rb_pamp_depth" ; lv2:name "Rig B PA Depth" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.18 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 263 ; lv2:symbol "rb_pamp_sag" ; lv2:name "Rig B PA Sag" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.33 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 264 ; lv2:symbol "rb_pamp_master" ; lv2:name "Rig B PA Master" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.62 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 265 ; lv2:symbol "rb_pamp_nfb" ; lv2:name "Rig B PA NFB" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.42 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 266 ; lv2:symbol "rb_pamp_resonance" ; lv2:name "Rig B PA Resonance" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 267 ; lv2:symbol "rb_pamp_coupl" ; lv2:name "Rig B Speaker Coupling" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 268 ; lv2:symbol "rb_pamp_airfeel" ; lv2:name "Rig B Air Feel" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 269 ; lv2:symbol "rb_cabmix" ; lv2:name "Rig B Cabinet Mix" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 270 ; lv2:symbol "rb_cabmicpos" ; lv2:name "Rig B Mic Position" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 271 ; lv2:symbol "rb_cabmicdist" ; lv2:name "Rig B Mic Distance" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 272 ; lv2:symbol "rb_cabroomon" ; lv2:name "Rig B Room" ;
-        lv2:portProperty lv2:toggled ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 273 ; lv2:symbol "rb_cabroommix" ; lv2:name "Rig B Room Mix" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.12 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 274 ; lv2:symbol "rb_cabroomamt" ; lv2:name "Rig B Room Amount" ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 275 ; lv2:symbol "rb_cabroomdense" ; lv2:name "Rig B Room Density" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Dense" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 276 ; lv2:symbol "rb_cabvoice" ; lv2:name "Rig B Voice" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Room" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Studio" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 277 ; lv2:symbol "rb_cabspkdrive" ; lv2:name "Rig B Speaker Drive" ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Subtle" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Full" ; rdf:value 2 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 278 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:index 278 ; lv2:symbol "rb_cab2on" ; lv2:name "Cab 2 In Chain" ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 279 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 279 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:index 280 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 280 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:index 281 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 281 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:index 282 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 282 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        lv2:index 283 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 283 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        lv2:index 284 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 284 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        lv2:index 285 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 285 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        lv2:index 286 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 286 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        lv2:index 287 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 287 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
+        lv2:index 288 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 288 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
+        lv2:index 289 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 289 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        lv2:index 290 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 127
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 290 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        lv2:index 291 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 31
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 291 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        lv2:index 292 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 292 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        lv2:index 293 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 293 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
+        lv2:index 294 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 294 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
+        lv2:index 295 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 295 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
+        lv2:index 296 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 296 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
+        lv2:index 297 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 297 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
+        lv2:index 298 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 298 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
+        lv2:index 299 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
         lv2:portProperty lv2:integer ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 11
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 299 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
+        lv2:index 300 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
         lv2:default 0.0 ; lv2:minimum -50.0 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 300 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
+        lv2:index 301 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 301 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
+        lv2:index 302 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 302 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
+        lv2:index 303 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 303 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
+        lv2:index 304 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 304 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
+        lv2:index 305 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 305 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
+        lv2:index 306 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 306 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
+        lv2:index 307 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 307 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
+        lv2:index 308 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 308 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
+        lv2:index 309 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 309 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
+        lv2:index 310 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 310 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
+        lv2:index 311 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 311 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
+        lv2:index 312 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 312 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
+        lv2:index 313 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 313 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
+        lv2:index 314 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 314 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive B" ;
+        lv2:index 315 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive B" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 315 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
+        lv2:index 316 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 316 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 317 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -2528,36 +2567,38 @@
         ] , [
             lv2:index 270 ; lv2:symbol "rb_cabspkdrive" ; lv2:name "Rig B Speaker Drive"
         ] , [
-            lv2:index 271 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+            lv2:index 271 ; lv2:symbol "rb_cab2on" ; lv2:name "Cab 2 In Chain"
         ] , [
-            lv2:index 272 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+            lv2:index 272 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
         ] , [
-            lv2:index 273 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+            lv2:index 273 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
         ] , [
-            lv2:index 274 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+            lv2:index 274 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
         ] , [
-            lv2:index 275 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+            lv2:index 275 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
         ] , [
-            lv2:index 276 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+            lv2:index 276 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
         ] , [
-            lv2:index 277 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+            lv2:index 277 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
         ] , [
-            lv2:index 278 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+            lv2:index 278 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
         ] , [
-            lv2:index 279 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+            lv2:index 279 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
         ] , [
-            lv2:index 280 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+            lv2:index 280 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
         ] , [
-            lv2:index 281 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+            lv2:index 281 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
         ] , [
-            lv2:index 282 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+            lv2:index 282 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
         ] , [
-            lv2:index 283 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
+            lv2:index 283 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
         ] , [
-            lv2:index 284 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
+            lv2:index 284 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ] , [
-            lv2:index 285 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
+            lv2:index 285 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
         ] , [
-            lv2:index 286 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
+            lv2:index 286 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
+        ] , [
+            lv2:index 287 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
         ]
     ] .
