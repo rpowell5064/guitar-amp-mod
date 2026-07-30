@@ -747,7 +747,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 161 ;")   # 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 162 ;")   # 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1109,9 +1109,14 @@ def node(pfx, title, accent):
     # side effects. Click opens the standalone amp2/cab2 panel.
     if pfx in ("amp", "cab"):
         tgt = "amp2" if pfx == "amp" else "cab2"
+        tip = ("Blend a SECOND AMP in parallel with Amp 1 — click to open"
+               if pfx == "amp" else "Give Amp 2 its own cabinet — click to open")
+        # The "+" glyph shows only while the block is OUT of the chain (CSS), so the
+        # idle strip reads as an add-me action (like the + ADD palette button), not
+        # a disabled label; engaged flips to a gold-filled active-tab look.
         out.insert(-1, ('<div class="hf-subnode hf-subnode-off" rata-role="subnode" data-target="%s" role="button" tabindex="0" '
-                        'title="%s — click to open">%s</div>'
-                        % (tgt, "Amp 2" if pfx == "amp" else "Cab 2", "AMP 2" if pfx == "amp" else "CAB 2")))
+                        'title="%s"><span class="hf-subnode-plus" aria-hidden="true">+ </span>%s</div>'
+                        % (tgt, tip, "AMP 2" if pfx == "amp" else "CAB 2")))
     return "".join(out)
 
 # ── Amp faceplate: realistic per-model panel with grouped knob sections ───────

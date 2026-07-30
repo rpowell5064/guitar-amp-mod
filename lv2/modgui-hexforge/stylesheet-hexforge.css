@@ -981,20 +981,33 @@
    tile — still absolutely positioned INSIDE the tile's DOM so every move (drag,
    palette, resort) carries them, but rendered fully below the tile box (top:
    100% + gap). .hf-nodes grows to 146px to give the stack room. ─────────────── */
+/* ENGAGED = gold-filled with dark text (the active-tab design language: filled
+   means on). OUT of chain = dark chip with a "+ " prefix, styled like the + ADD
+   button so it reads as an action, never as a disabled label. */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode {
   position: absolute; top: calc(100% + 5px); left: 2px; right: 2px; z-index: 3;
-  font-size: 12px; font-weight: 600; letter-spacing: 0.14em; text-align: center; cursor: pointer;
-  padding: 6px 0; border-radius: 8px; color: rgba(240,168,53,0.98);
-  background-color: #171410;
-  background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.4));
-  border: 1px solid rgba(240,168,53,0.55); border-top: 2px solid rgba(240,168,53,0.85);
-  box-shadow: 0 0 8px rgba(240,168,53,0.25), 0 3px 8px rgba(0,0,0,0.5);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-align: center; cursor: pointer;
+  padding: 6px 0; border-radius: 8px; color: #1a1208;
+  background-color: #f0a835;
+  background-image: linear-gradient(180deg, rgba(255,255,255,.25), rgba(0,0,0,.12));
+  border: 1px solid rgba(240,168,53,0.9);
+  box-shadow: 0 0 10px rgba(240,168,53,0.45), 0 3px 8px rgba(0,0,0,0.5);
+  transition: box-shadow .12s, transform .12s, background-color .12s, color .12s;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-palette .hf-subnode { display: none; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode .hf-subnode-plus { display: none; font-weight: 700; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-subnode-off .hf-subnode-plus { display: inline; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-subnode-off {
-  color: rgba(240,168,53,0.4); border-style: dashed; border-top-width: 1px;
-  border-color: rgba(240,168,53,0.3); background-color: #12151c; background-image: none;
-  box-shadow: 0 3px 8px rgba(0,0,0,0.4);
+  color: rgba(240,168,53,0.85); background-color: #171410;
+  background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.4));
+  border: 1px solid rgba(240,168,53,0.5);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.45);
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode:hover { background: rgba(240,168,53,0.22); }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-sel { outline: 1px solid rgba(240,168,53,0.9); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode:hover {
+  transform: translateY(-1px); box-shadow: 0 0 12px rgba(240,168,53,0.55), 0 4px 9px rgba(0,0,0,0.5);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-subnode-off:hover {
+  background-color: #241c10; border-color: rgba(240,168,53,0.85);
+  box-shadow: 0 0 9px rgba(240,168,53,0.3), 0 4px 9px rgba(0,0,0,0.5);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-sel { outline: 2px solid rgba(255,214,130,0.95); outline-offset: 1px; }
