@@ -43,6 +43,11 @@ private:
     float presence_ = 0.6f;   // plexis are bright/present
     float master_   = 0.7f;   // "master" here drives the PI → power-amp crunch
     float sag_      = 0.28f;  // solid-state rectifier but EL34 power-stage sag under crank
+    // Variac (2026-07-30, user: "open up van halen 1984 sounds"): the EVH brown-
+    // sound trick -- the 1959 run at ~90 V. Lower B+ = earlier/softer stage
+    // saturation, deeper slower supply sag, slightly darker top. 0 = stock
+    // wall voltage, BIT-IDENTICAL. Continuous 0..1 (the port ships a toggle).
+    float variac_   = 0.0f;
 
     LinearSmoother gainSmooth_, masterSmooth_, vol2Smooth_;
 
@@ -58,6 +63,7 @@ private:
         BiquadFilter       interPIHPF;  // PI input tighten
         TriodeComponent    stagePI;     // phase-inverter driver (master-controlled)
         BiquadFilter       presenceF;   // presence high shelf
+        BiquadFilter       variacSh;    // browner top under variac (-1.5 dB @3.5k, Recto-spongy value)
         BiquadFilter       airLP;       // air LP (open — plexis are bright up top)
         BiquadFilter       bodyShelf;   // restore low-mid body after clipping
 

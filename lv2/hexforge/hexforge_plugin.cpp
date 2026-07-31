@@ -369,6 +369,8 @@ static const int kSwWatch[] = {
     HF_RV2_DENSITY, HF_RV2_TYPE, HF_NAIL2_MODE, HF_CP2_TYPE, HF_WH2_TYPE,
     // v40: fuzz/nail Eco rebuild at the mute zero point
     HF_FZ_ECO, HF_NAIL_ECO, HF_FZ2_ECO, HF_NAIL2_ECO,
+    // v41: Plexi Variac (drive/sag topology step)
+    HF_AMP_PL_VARIAC, HF_RB_PL_VARIAC,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
 static_assert(kSwWatchN <= 64, "grow swWatchPrev[]");
@@ -874,8 +876,11 @@ static_assert(HF_GT2_POS == HF_RB_CAB2ON + 1 && HF_GT2_BYPASS == HF_GT2_POS + 7
 //   * v40 quick wins: fuzz/nail Eco x4 + Drive 2 NAM trims end the param range.
 static_assert(HF_FZ_ECO == HF_RB_NAM_VOL + 1 && HF_NAIL_ECO == HF_FZ_ECO + 1
               && HF_FZ2_ECO == HF_NAIL_ECO + 1 && HF_NAIL2_ECO == HF_FZ2_ECO + 1
-              && HF_DR2_NAM_GAIN == HF_NAIL2_ECO + 1 && HF_DR2_NAM_VOL == HF_SW_A - 1,
-              "v40: eco x4 + Drive 2 NAM trims end the param range");
+              && HF_DR2_NAM_GAIN == HF_NAIL2_ECO + 1 && HF_DR2_NAM_VOL == HF_DR2_NAM_GAIN + 1,
+              "v40: eco x4 + Drive 2 NAM trims");
+//   * v41: Plexi Variac (brown sound), both amps, end the param range.
+static_assert(HF_AMP_PL_VARIAC == HF_DR2_NAM_VOL + 1 && HF_RB_PL_VARIAC == HF_SW_A - 1,
+              "v41: the Plexi Variac pair ends the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -1025,6 +1030,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v40 appended fuzz/nail Eco x4 + Drive 2 NAM trims; all default 0.
     const bool qwGap = (srcVer < 40);
     const int qwAt = HF_FZ_ECO, qwEnd = HF_FZ_ECO + 6;
+    // v41 appended the Plexi Variac pair; default 0 (stock wall voltage).
+    const bool vrGap = (srcVer < 41);
+    const int vrAt = HF_AMP_PL_VARIAC, vrEnd = HF_AMP_PL_VARIAC + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -1066,6 +1074,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (x2Gap && i >= HF_CPU_GT2 && i <= HF_CPU_EQ2) vals[i] = 0.0f;         // X2 meters (outputs)
         else if (rnGap && i >= rnAt && i < rnEnd)        vals[i] = 0.0f;              // Amp 2 NAM trims 0 dB
         else if (qwGap && i >= qwAt && i < qwEnd)        vals[i] = 0.0f;              // v40 eco/trims
+        else if (vrGap && i >= vrAt && i < vrEnd)        vals[i] = 0.0f;              // v41 variac stock
         else                                             vals[i] = old[o++];
     }
 }
@@ -1078,7 +1087,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(40); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(41); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1100,9 +1109,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 40) return false;
+    if (ver < 2 || ver > 41) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 40);  // ...v40 eco + Drive 2 NAM
+    const bool needMigrate  = (ver < 41);  // ...v41 Plexi Variac
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -2385,7 +2394,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 a2->setParameter("c45",     *p->ports[HF_RB_FR_C45]);
                 a2->setParameter("sat",     *p->ports[HF_RB_FR_SAT]);
             }
-            if (rbM == 10) a2->setParameter("vol2", *p->ports[HF_RB_PL_VOL2]);
+            if (rbM == 10) {
+                a2->setParameter("vol2",   *p->ports[HF_RB_PL_VOL2]);
+                a2->setParameter("variac", *p->ports[HF_RB_PL_VARIAC]);   // brown sound (v41)
+            }
             if (rbM == kMesaIdx) {
                 a2->setParameter("mode", *p->ports[HF_RB_MV_MODE]);
                 a2->setParameter("geq0", *p->ports[HF_RB_MV_GEQ0]);
@@ -2492,7 +2504,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("sat",     *p->ports[HF_AMP_FR_SAT]);
     }
     // Plexiglass (Marshall 1959): Vol II — the jumpered Normal-channel volume (0 = pre-Vol-II voicing).
-    if (ampModel == 10) amp->setParameter("vol2", *p->ports[HF_AMP_PL_VOL2]);
+    if (ampModel == 10) {
+        amp->setParameter("vol2",   *p->ports[HF_AMP_PL_VOL2]);
+        amp->setParameter("variac", *p->ports[HF_AMP_PL_VARIAC]);   // brown sound (v41)
+    }
     // Cali V (Mesa Mark V): 9-mode selector (0..8) + 5-band graphic EQ (each 0..1, 0.5 = flat).
     if (ampModel == kMesaIdx) {
         amp->setParameter("mode", *p->ports[HF_AMP_MV_MODE]);
@@ -3233,7 +3248,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(40);                 // version (40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(41);                 // version (41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -3318,9 +3333,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 40) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 41) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 40);     // ...v40 eco + Drive 2 NAM
+        const bool needMigrate  = (ver < 41);     // ...v41 Plexi Variac
         getU32(np);
         if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision

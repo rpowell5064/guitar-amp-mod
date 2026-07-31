@@ -39,6 +39,7 @@ void MarshallPlexi1959::prepare(double oversampledSampleRate, int /*maxBlockSize
 
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
         c.sagEnv = 0.0f;
+        c.variacSh.setCoeffs(Filters::highshelf(3500.0, -1.5, oversampledFs_));   // browner variac top
     }
     recalcFilters();
     reset();
@@ -80,6 +81,11 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     const float v2 = vol2Smooth_.getCurrentValue();
 
     x = c.inputHPF.process(x);
+    // Variac scalers (0 = stock, bit-identical): lower B+ reaches the triode
+    // knees sooner (drive up) at reduced swing (output down, ~level-neutral),
+    // and the supply sags deeper/looser under load.
+    const float vd = 1.0f + variac_ * 0.22f;   // earlier saturation
+    const float vo = 1.0f - variac_ * 0.15f;   // reduced swing
     // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
     // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
     // the clean range the real amp has (drives alone cannot clean a railed cascade).
@@ -93,20 +99,20 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
 
     // Stage 1 — LOW gain (plexi breaks up at the power amp, not V1/V2 — keeps preamp even
     // harmonics down; the push-pull power stage supplies the odd/high-order crunch)
-    x = c.stage1.process(x * (1.25f + gEff * 4.0f)) * 0.92f * kCouple12;
+    x = c.stage1.process(x * (1.25f + gEff * 4.0f) * vd) * 0.92f * vo * kCouple12;
 
     // Channel II (Normal) — the 1959's second volume, jumpered in (2026-07-14). A parallel V1
     // half with NO bright cap and darker coupling, blended by Vol II and summed at the V2 grid
     // (mixing resistors). v2 = 0 -> bit-identical to the pre-Vol-II voicing.
     if (v2 > 0.001f) {
         float n = c.normLP.process(xin);
-        n = c.stage1b.process(n * (1.25f + v2 * 4.0f)) * 0.92f * kCouple12;
+        n = c.stage1b.process(n * (1.25f + v2 * 4.0f) * vd) * 0.92f * vo * kCouple12;
         x += n * (v2 * kNormalMix);
     }
     x = c.inter12HPF.process(x);
 
     // Stage 2 — shared-cathode; low-moderate gain
-    x = c.stage2.process(x * (1.5f + gEff * 4.5f)) * 0.85f;
+    x = c.stage2.process(x * (1.5f + gEff * 4.5f) * vd) * 0.85f * vo;
     x *= kPreToneGain;
 
     // Marshall tone stack
@@ -114,7 +120,7 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
 
     // Phase-inverter driver → CRANK the shared EL34 power amp (the plexi's crunch source)
     x = c.interPIHPF.process(x);
-    x = c.stagePI.process(x * (3.2f + m * 4.0f)) * (0.80f * m);
+    x = c.stagePI.process(x * (3.2f + m * 4.0f) * vd) * (0.80f * m * vo);
 
     x = c.presenceF.process(x);
     x = c.airLP.process(x);
@@ -124,8 +130,14 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     const float sagAttack = 1.0f - c.sagDecay;
     const float level = std::abs(x);
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * level;
-    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.28f);   // floored (see VoxAC30Model 2026-07-25 note)
+    const float sagCoup = 0.28f * (1.0f + variac_ * 0.65f);   // variac: deeper, spongier supply sag
+    const float sag = std::fmax(variac_ > 0.001f ? 0.30f : 0.35f,
+                                1.0f - sag_ * c.sagEnv * sagCoup);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
+    if (variac_ > 0.001f) {   // browner top: crossfade toward the -1.5 dB @3.5k shelf
+        const float b = c.variacSh.process(x);
+        x += variac_ * (b - x);
+    }
 
     return softLimit(x);
 }
@@ -135,6 +147,7 @@ void MarshallPlexi1959::setParameter(const std::string& id, float value) noexcep
     else if (id == "vol2")     { vol2_   = value; vol2Smooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
+    else if (id == "variac")   { variac_ = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value); }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
@@ -150,6 +163,7 @@ float MarshallPlexi1959::getParameter(const std::string& id) const noexcept {
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "variac")   return variac_;
     return 0.0f;
 }
 
