@@ -1,6 +1,6 @@
 function (event, funcs) {
     // Center Delay pushes the modulation centre out, so it only applies to the delay-line
-    // types: 0 Lush-2 (chorus), 3 Flanger, 6 Nevermind Chorus (Small Clone), 7 Seasick Vibe.
+    // types: 0 Lush-2 (chorus), 3 Flanger, 6 Nevermind Chorus (Small Clone), 7 Seasick Vibe, 8 Script Phaser.
     // The phase/amplitude types (Uni-Verse, Phaser, Tremolo, Rotary) have no delay line.
     function update_type(icon, value) {
         var t = parseInt(value, 10);

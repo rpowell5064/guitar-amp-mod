@@ -11,6 +11,7 @@ enum class ModulationType {
     Rotary     = 5,
     SmallClone = 6,
     SeasickVibe = 7,   // SmallClone engine, seasick mode: deep sweep + dry/wet crossfade
+    ScriptPhaser = 8,  // script-era Phase 90: 4-stage, sine LFO, NO feedback
 };
 
 class ModulationFactory {

@@ -2929,7 +2929,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     }
     // Modfx
     p->modfx.setBypass(false);
-    const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 6);
+    const int modfxType = clampi(*p->ports[HF_MD_TYPE], 0, 8);   // was stuck at 6: Seasick Vibe (7) silently ran as Nevermind Chorus
     if (modfxType != p->lastModfxType) { p->lastModfxType = modfxType; p->modfx.setType(ModulationFactory::fromIndex(modfxType)); }
     // Mod clock sync: lock the LFO to host BPM x division (0 => free-run from the Rate knob).
     if (*p->ports[HF_MD_SYNC] > 0.5f) {
@@ -3053,7 +3053,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     }
     if (*p->ports[HF_MD2_ENABLE] > 0.5f) {
         p->modfx2.setBypass(false);
-        const int modfx2Type = clampi(*p->ports[HF_MD2_TYPE], 0, 6);
+        const int modfx2Type = clampi(*p->ports[HF_MD2_TYPE], 0, 8);
         if (modfx2Type != p->lastModfx2Type) { p->lastModfx2Type = modfx2Type; p->modfx2.setType(ModulationFactory::fromIndex(modfx2Type)); }
         if (*p->ports[HF_MD2_SYNC] > 0.5f) {
             const int mv2 = clampi(*p->ports[HF_MD2_DIV], 0, 7);

@@ -6,6 +6,7 @@
 #include "TremoloEffect.h"
 #include "RotaryEffect.h"
 #include "SmallClone.h"
+#include "ScriptPhaser.h"
 
 std::unique_ptr<ModulationEffect> ModulationFactory::create(ModulationType type) {
     switch (type) {
@@ -21,6 +22,7 @@ std::unique_ptr<ModulationEffect> ModulationFactory::create(ModulationType type)
             m->setParameter("seasick", 1.0f);
             return m;
         }
+        case ModulationType::ScriptPhaser: return std::make_unique<ScriptPhaser>();
     }
     return std::make_unique<CE2Chorus>();
 }
@@ -34,6 +36,7 @@ ModulationType ModulationFactory::fromIndex(int idx) noexcept {
         case 5:  return ModulationType::Rotary;
         case 6:  return ModulationType::SmallClone;
         case 7:  return ModulationType::SeasickVibe;
+        case 8:  return ModulationType::ScriptPhaser;
         default: return ModulationType::CE2_Chorus;
     }
 }
