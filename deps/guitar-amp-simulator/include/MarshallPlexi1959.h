@@ -43,10 +43,23 @@ private:
     float presence_ = 0.6f;   // plexis are bright/present
     float master_   = 0.7f;   // "master" here drives the PI → power-amp crunch
     float sag_      = 0.28f;  // solid-state rectifier but EL34 power-stage sag under crank
-    // Variac (2026-07-30, user: "open up van halen 1984 sounds"): the EVH brown-
-    // sound trick -- the 1959 run at ~90 V. Lower B+ = earlier/softer stage
-    // saturation, deeper slower supply sag, slightly darker top. 0 = stock
-    // wall voltage, BIT-IDENTICAL. Continuous 0..1 (the port ships a toggle).
+    // Variac v2 (2026-07-31 physics audit; v1 2026-07-30): the EVH brown-sound
+    // trick -- the 1959 run off a variac at 89 V instead of 120 V. Continuous
+    // 0..1 (the port ships a toggle): v maps to mains V = 120 - 31*v, so
+    //   s(v) = V/120 = 1 - 0.258333*v   (s = 0.741667 at v = 1 = 89 V).
+    // Every supply node (B+, screens, preamp A/B/C) rides the same PT, so ONE
+    // scale is exact. Per nonlinear stage the equivalent transform is
+    //   y = s * f(gm * x / s)
+    // which moves the clip knee to s*knee (earlier by 1/s = 1.348 = 2.6 dB),
+    // caps swing at s, and keeps the interior s*(1/s) pairs cancelling so
+    // clean gain scales as gm^3 = s and clipped ceiling as the final s:
+    // total swing prop. to s, power prop. to s^2 (-5.2 dB at 89 V). gm loss uses the
+    // triode space-charge law gm prop. to Ip^(1/3) -> s^(1/3) = 0.904941 (a linear
+    // gm*s would be 3x too strong). Sag coupling grows as the FRACTIONAL
+    // droop R*I/V ~ s^-1.5 (0.28 -> 0.438), plus a 15 ms fast supply-RC
+    // component (0.35 blend) so the squish grabs on pick attack. Heater/
+    // emission loss stays the behavioral -1.5 dB @3.5k shelf crossfade.
+    // 0 = stock wall voltage, BIT-IDENTICAL (all factors exactly 1).
     float variac_   = 0.0f;
 
     LinearSmoother gainSmooth_, masterSmooth_, vol2Smooth_;
@@ -67,8 +80,10 @@ private:
         BiquadFilter       airLP;       // air LP (open — plexis are bright up top)
         BiquadFilter       bodyShelf;   // restore low-mid body after clipping
 
-        float sagEnv   = 0.0f;
-        float sagDecay = 0.0f;
+        float sagEnv    = 0.0f;
+        float sagDecay  = 0.0f;
+        float sagEnvF   = 0.0f;   // fast supply-RC sag node (tau = 15 ms), variac-blended
+        float sagDecayF = 0.0f;
     };
     std::array<ChannelState, kMaxCh> ch_;
 
@@ -76,6 +91,15 @@ private:
     static constexpr float kPreToneGain = 0.80f;
     static constexpr float kCouple12    = 0.62f;
     static constexpr float kNormalMix   = 0.9f;   // Vol II contribution at full (jumpered blend weight)
+
+    // Variac state: 20 ms glide on the (rare) toggle + per-sample cached
+    // factors, advanced ONCE per sample index in advanceSmoothing() so both
+    // channels see identical values. All exactly 1.0f (and 0.28f) at v = 0.
+    float vSm_      = 0.0f;      // smoothed variac position
+    float vSmA_     = 0.0f;      // 1 - exp(-1/(0.020 * oversampledFs))
+    float vInGm_    = 1.0f;      // input factor  = (1/s) * s^(1/3) = 1.220153 @ 89 V
+    float vSwing_   = 1.0f;      // output factor = s               = 0.741667 @ 89 V
+    float vSagCoup_ = 0.28f;     // 0.28 * s^-1.5                   = 0.438    @ 89 V
 
     static float softLimit(float x) noexcept;
     void recalcFilters() noexcept;

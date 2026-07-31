@@ -37,10 +37,12 @@ void MarshallPlexi1959::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.interPIHPF.setCoeffs(Filters::highpass1pole(45.0, oversampledFs_));
         c.stagePI.prepare(oversampledFs_, TriodeComponent::kMarshallV4);
 
-        c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
-        c.sagEnv = 0.0f;
+        c.sagDecay  = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
+        c.sagDecayF = std::exp(-1.0f / (float)(oversampledFs_ * 0.015));  // 15 ms supply RC
+        c.sagEnv = 0.0f; c.sagEnvF = 0.0f;
         c.variacSh.setCoeffs(Filters::highshelf(3500.0, -1.5, oversampledFs_));   // browner variac top
     }
+    vSmA_ = 1.0f - std::exp(-1.0f / (float)(oversampledFs_ * 0.020));   // 20 ms variac glide
     recalcFilters();
     reset();
 }
@@ -63,14 +65,29 @@ void MarshallPlexi1959::reset() noexcept {
         c.normLP.reset(); c.inter12HPF.reset();
         c.stage2.reset(); c.tonestack.reset(); c.interPIHPF.reset(); c.stagePI.reset();
         c.presenceF.reset(); c.airLP.reset(); c.bodyShelf.reset();
-        c.sagEnv = 0.0f;
+        c.sagEnv = 0.0f; c.sagEnvF = 0.0f;
     }
+    vSm_ = variac_;
+    vInGm_ = 1.0f; vSwing_ = 1.0f; vSagCoup_ = 0.28f;
 }
 
 void MarshallPlexi1959::advanceSmoothing() noexcept {
     gainSmooth_.getNextValue();
     masterSmooth_.getNextValue();
     vol2Smooth_.getNextValue();
+    // Variac factors, once per sample index (both channels see the same values).
+    vSm_ += vSmA_ * (variac_ - vSm_);
+    if (vSm_ < 1.0e-6f) {
+        // Exact stock path: multiply-by-1.0f is the identity, so v = 0 stays
+        // BIT-IDENTICAL to the pre-variac voicing (and skips cbrt/sqrt).
+        vInGm_ = 1.0f; vSwing_ = 1.0f; vSagCoup_ = 0.28f;
+    } else {
+        const float sMain = 1.0f - 0.258333f * vSm_;          // 120 V -> 89 V at v = 1
+        const float gmF   = std::cbrt(sMain);                 // gm ~ Ip^(1/3)
+        vInGm_    = gmF / sMain;                              // 1.220153 @ 89 V
+        vSwing_   = sMain;                                    // 0.741667 @ 89 V
+        vSagCoup_ = 0.28f / (sMain * std::sqrt(sMain));       // 0.438    @ 89 V
+    }
 }
 
 float MarshallPlexi1959::processSample(float x, int channel) noexcept {
@@ -81,11 +98,12 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     const float v2 = vol2Smooth_.getCurrentValue();
 
     x = c.inputHPF.process(x);
-    // Variac scalers (0 = stock, bit-identical): lower B+ reaches the triode
-    // knees sooner (drive up) at reduced swing (output down, ~level-neutral),
-    // and the supply sags deeper/looser under load.
-    const float vd = 1.0f + variac_ * 0.22f;   // earlier saturation
-    const float vo = 1.0f - variac_ * 0.15f;   // reduced swing
+    // Variac v2 (see header): per-stage y = vSwing * f(vInGm * x) is the
+    // knee-scaling equivalent transform with the space-charge gm loss folded
+    // into the input side. Factors cached in advanceSmoothing(); all exactly
+    // 1.0f at v = 0 (bit-identical stock path).
+    const float vd = vInGm_;
+    const float vo = vSwing_;
     // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
     // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
     // the clean range the real amp has (drives alone cannot clean a railed cascade).
@@ -129,14 +147,18 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     // Power-supply sag (EL34 under crank)
     const float sagAttack = 1.0f - c.sagDecay;
     const float level = std::abs(x);
-    c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * level;
-    const float sagCoup = 0.28f * (1.0f + variac_ * 0.65f);   // variac: deeper, spongier supply sag
+    c.sagEnv  = c.sagDecay  * c.sagEnv  + sagAttack * level;             // 250 ms bloom
+    c.sagEnvF = c.sagDecayF * c.sagEnvF + (1.0f - c.sagDecayF) * level;  // 15 ms supply RC
+    // Variac blends 35% of the fast node in: the squish grabs on pick attack
+    // (spec: SagNode ~ B+ - R*I(t), tau 10-40 ms) while the musical 250 ms
+    // bloom the presets were tuned on stays dominant. v = 0: slow env only.
+    const float sagEnvEff = c.sagEnv + vSm_ * 0.35f * (c.sagEnvF - c.sagEnv);
     const float sag = std::fmax(variac_ > 0.001f ? 0.30f : 0.35f,
-                                1.0f - sag_ * c.sagEnv * sagCoup);   // floored (see VoxAC30Model 2026-07-25 note)
+                                1.0f - sag_ * sagEnvEff * vSagCoup_);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
-    if (variac_ > 0.001f) {   // browner top: crossfade toward the -1.5 dB @3.5k shelf
+    if (variac_ > 0.001f || vSm_ > 1.0e-6f) {   // browner top: heater/emission proxy
         const float b = c.variacSh.process(x);
-        x += variac_ * (b - x);
+        x += vSm_ * (b - x);
     }
 
     return softLimit(x);
