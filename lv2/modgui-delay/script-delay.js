@@ -8,6 +8,8 @@ function (event, funcs) {
         icon.find('[rata-role=tapegroup]').toggleClass('mod-hidden', t !== 1 && t !== 2);
         icon.find('[rata-role=echogroup]').toggleClass('mod-hidden', t !== 2);
         icon.find('[rata-role=seraphgroup]').toggleClass('mod-hidden', t !== 3);
+        // EP-3 (4): Age replaces Wow/Flutter (its transport wear is internal, scaled by Age).
+        icon.find('[rata-role=ep3group]').toggleClass('mod-hidden', t !== 4);
     }
 
     if (event.type == 'start') {

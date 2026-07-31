@@ -23,6 +23,7 @@ enum DelayPorts {
     P_DUCK    = 14,   // Seraph: dynamic ducking amount
     P_MODDEP  = 15,   // Seraph: modulation depth
     P_MODRATE = 16,   // Seraph: modulation rate
+    P_AGE     = 17,   // EP-3: worn-transport / oxide age (ignored by others)
     P_N_PORTS
 };
 
@@ -73,6 +74,7 @@ static void delay_run(LV2_Handle h, uint32_t n) {
     p->dsp.setParameter("ducking",      *p->ports[P_DUCK]);      // Seraph
     p->dsp.setParameter("modDepth",     *p->ports[P_MODDEP]);    // Seraph
     p->dsp.setParameter("modRate",      *p->ports[P_MODRATE]);   // Seraph
+    p->dsp.setParameter("age",          *p->ports[P_AGE]);        // EP-3
 
     int prog = static_cast<int>(*p->ports[P_HEADS] + 0.5f);
     prog = (prog < 0) ? 0 : (prog > 11) ? 11 : prog;

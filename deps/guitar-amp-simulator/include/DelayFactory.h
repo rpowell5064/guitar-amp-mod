@@ -4,10 +4,11 @@
 #include <string>
 
 enum class DelayType {
-    Digital = 0,
-    Tape    = 1,
-    Echorec = 2,
-    Seraph  = 3   // Keeley Halo-style dual delay
+    Digital  = 0,
+    Tape     = 1,
+    Echorec  = 2,
+    Seraph   = 3,  // Keeley Halo-style dual delay
+    Echoplex = 4   // EP-3 tape echo w/ internal JFET preamp + Age
 };
 
 class DelayFactory {

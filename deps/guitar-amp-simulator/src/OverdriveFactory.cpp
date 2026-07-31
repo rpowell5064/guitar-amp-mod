@@ -7,6 +7,7 @@
 #include "KlonCentaur.h"
 #include "SuperOverdriveSD1.h"
 #include "DOD250.h"
+#include "EchoplexPreamp.h"
 
 std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
     switch (type) {
@@ -19,6 +20,7 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
         case OverdriveType::Klon:            return std::make_unique<KlonCentaur>();
         case OverdriveType::SuperOverdriveSD1: return std::make_unique<SuperOverdriveSD1>();
         case OverdriveType::DOD250:          return std::make_unique<DOD250>();
+        case OverdriveType::EchoplexPreamp:  return std::make_unique<EchoplexPreamp>();
         default:                             return std::make_unique<TubeScreamer808>();
     }
 }
@@ -46,6 +48,7 @@ const char* OverdriveFactory::modelName(OverdriveType type) noexcept {
         case OverdriveType::Klon:            return "Klon Centaur";
         case OverdriveType::SuperOverdriveSD1: return "Boss SD-1";
         case OverdriveType::DOD250:          return "DOD 250";
+        case OverdriveType::EchoplexPreamp:  return "Echoplex EP-3 Preamp";
         default:                             return "Unknown";
     }
 }
@@ -61,6 +64,7 @@ OverdriveType OverdriveFactory::fromIndex(int index) noexcept {
         case 6:  return OverdriveType::Klon;
         case 7:  return OverdriveType::SuperOverdriveSD1;
         case 8:  return OverdriveType::DOD250;
+        case 9:  return OverdriveType::EchoplexPreamp;
         default: return OverdriveType::TubeScreamer808;
     }
 }

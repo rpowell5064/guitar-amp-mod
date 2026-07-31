@@ -78,7 +78,7 @@ FZ = [
     ("getemp",    "Ge Temp",    "f", 0, 1, 0.4, None),
 ]
 DR = [
-    ("model",  "Model",  "e", 0, 7, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]),
+    ("model",  "Model",  "e", 0, 8, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7),("Echo Primer",8)]),
     ("drive",  "Drive",  "f", 0, 1, 0.5, None),
     ("tone",   "Tone",   "f", 0, 1, 0.5, None),
     ("level",  "Level",  "f", 0, 1, 0.5, None),
@@ -127,7 +127,7 @@ MD = [
     ("width", "Width", "f", 0, 1, 0.5, None),
 ]
 DL = [
-    ("type",    "Type",     "e", 0, 3, 0, [("Digital",0),("Tape",1),("Echo Wreck",2),("Seraph",3)]),
+    ("type",    "Type",     "e", 0, 4, 0, [("Digital",0),("Tape",1),("Echo Wreck",2),("Seraph",3),("EP-3 Echo",4)]),
     ("time",    "Time",     "ms", 1, 2000, 250, None),
     ("feedback","Feedback", "f", 0, 0.98, 0.4, None),
     ("mix",     "Mix",      "f", 0, 1, 0.15, None),
@@ -469,7 +469,7 @@ ctrl.append(mkport("DR_ECO", "dr_eco", "Drive Eco (2x OS)", "t", 0, 1, 0, None, 
 # doubling). Same params as Drive A minus the NAM model (one neural slot per
 # suite instance -- keeps worker/memory budget flat; values match OverdriveType
 # so the enums stay aligned). Default: disabled, parked at slot 14. Migrated v34.
-_DR2_SCALE = [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7)]
+_DR2_SCALE = [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7),("Echo Primer",8)]
 _dr2_posscale = [(str(k), k) for k in range(1, 25)]
 ctrl.append(mkport("DR2_POS",    "dr2_pos",    "Drive 2 Position", "e", 1, 24, 14, _dr2_posscale, "Slot", hidden=True))
 ctrl.append(mkport("DR2_ENABLE", "dr2_enable", "Drive 2 Enable",   "t", 0, 1, 0, None, "On"))
@@ -589,6 +589,14 @@ for _suf in ("nam_gain", "nam_vol"):
 # Amp 2 gets its parity twin. Migrated v41.
 ctrl.append(mkport("AMP_PL_VARIAC", "amp_pl_variac", "Amp Variac (Brown)", "t", 0, 1, 0, None, "Variac"))
 ctrl.append(mkport("RB_PL_VARIAC",  "rb_pl_variac",  "Rig B Variac (Brown)", "t", 0, 1, 0, None, "Variac"))
+
+# ── EP-3 Echo Age (2026-07-31, user: "build it"): the Echoplex delay type's
+# one new control, both delay instances. Age = repro LP 6k->2.5k + circulating
+# hiss -90->-60 dB + transport wear (wow/flutter are INTERNAL to the EP-3,
+# scaled by Age -- the dl_wow/dl_flutter ports are Tape/Echorec's). The type
+# itself is dl_type 4 (maxima bumped above, no new port). Migrated v42.
+ctrl.append(mkport("DL_AGE",  "dl_age",  "Delay EP-3 Age",   "f", 0, 1, 0.35, None, "Age"))
+ctrl.append(mkport("DL2_AGE", "dl2_age", "Delay 2 EP-3 Age", "f", 0, 1, 0.35, None, "Age"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -787,7 +795,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 168 ;")   # 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 169 ;")   # 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -963,6 +971,8 @@ COND = {
     "dl_wow":"c-dl-tape", "dl_flutter":"c-dl-tape", "dl_heads":"c-dl-heads",
     "dl_pattern":"c-dl-seraph", "dl_ducking":"c-dl-seraph",
     "dl_moddepth":"c-dl-seraph", "dl_modrate":"c-dl-seraph",
+    # delay — Age for EP-3 Echo(4) only
+    "dl_age":"c-dl-ep3",
 }
 
 # Rig B (Amp 2): every A-side conditional class gets a c-rb-* scoped twin so the
@@ -1367,6 +1377,7 @@ BLOCK_GROUPS = {
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
             ("CLOCK SYNC", None, ["sync", "div"]),
             ("CHARACTER", "c-dl-tape", ["wow", "flutter", "heads"]),
+            ("EP-3 TAPE", "c-dl-ep3", ["age"]),
             ("SERAPH DUAL", "c-dl-seraph", ["pattern", "ducking", "moddepth", "modrate"])],
     "rv":  [("REVERB", None, ["type", "predelay", "decay", "damping", "mix", "density"]),
             ("MODULATION", None, ["moddepth", "modrate"])],

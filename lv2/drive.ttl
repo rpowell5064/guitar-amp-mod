@@ -30,7 +30,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 37 ;   # 37: faster NAM inference (fast-tanh activations in the shared engine)
+    lv2:microVersion 38 ;   # 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
@@ -46,7 +46,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 7 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
@@ -54,7 +54,8 @@
         lv2:scalePoint [ rdfs:label "Grunge DS"       ; rdf:value 4 ] ;
         lv2:scalePoint [ rdfs:label "Gilded Horse"    ; rdf:value 5 ] ;
         lv2:scalePoint [ rdfs:label "Super Nova"      ; rdf:value 6 ] ;
-        lv2:scalePoint [ rdfs:label "Preamp 250"      ; rdf:value 7 ]
+        lv2:scalePoint [ rdfs:label "Preamp 250"      ; rdf:value 7 ] ;
+        lv2:scalePoint [ rdfs:label "Echo Primer"     ; rdf:value 8 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;

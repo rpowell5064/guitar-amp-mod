@@ -84,7 +84,7 @@ static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
 static constexpr int kDrDs1Idx  = 4;   // drive model slot = Grunge DS (DS-1)
 static constexpr int kDrKlonIdx = 5;   // drive model slot = Gilded Horse (Klon)
 static constexpr int kDrSd1Idx  = 6;   // drive model slot = Super Nova (Boss SD-1)
-static constexpr int kDrMax     = 7;   // highest dr_model index (7 = Preamp 250 / DOD 250)
+static constexpr int kDrMax     = 8;   // highest dr_model index (8 = Echo Primer / EP-3)
 
 // pi-Stomp footswitches emit CC 60..63 (one per switch). A received CC in this
 // range is one switch "press" → preset recall / bank combo. Change here if the
@@ -165,10 +165,11 @@ static const float kAmpMakeup[14] = { 5.20f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1
 // upstream blocks are handled by preset gain-staging, not by distorting every amp's front end.
 
 // Indexed by dr_model port: 0/1/2/4/5 = algorithmic, 3 = NAM (special-cased, entry unused).
-static const OverdriveType kDriveMap[8] = {
+static const OverdriveType kDriveMap[9] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
     OverdriveType::ProcoRAT /* [3]=NAM placeholder, never used */, OverdriveType::DS1,
     OverdriveType::Klon, OverdriveType::SuperOverdriveSD1, OverdriveType::DOD250,
+    OverdriveType::EchoplexPreamp,   // 8 = Echo Primer (EP-3 JFET, v42)
 };
 
 // Binson Echorec rotary program -> playback-head bitmask (mirrors delay plugin).
@@ -879,8 +880,11 @@ static_assert(HF_FZ_ECO == HF_RB_NAM_VOL + 1 && HF_NAIL_ECO == HF_FZ_ECO + 1
               && HF_DR2_NAM_GAIN == HF_NAIL2_ECO + 1 && HF_DR2_NAM_VOL == HF_DR2_NAM_GAIN + 1,
               "v40: eco x4 + Drive 2 NAM trims");
 //   * v41: Plexi Variac (brown sound), both amps, end the param range.
-static_assert(HF_AMP_PL_VARIAC == HF_DR2_NAM_VOL + 1 && HF_RB_PL_VARIAC == HF_SW_A - 1,
-              "v41: the Plexi Variac pair ends the param range");
+static_assert(HF_AMP_PL_VARIAC == HF_DR2_NAM_VOL + 1 && HF_RB_PL_VARIAC == HF_AMP_PL_VARIAC + 1,
+              "v41: the Plexi Variac pair");
+//   * v42: EP-3 Echo Age, both delay instances, end the param range.
+static_assert(HF_DL_AGE == HF_RB_PL_VARIAC + 1 && HF_DL2_AGE == HF_SW_A - 1,
+              "v42: the EP-3 Age pair ends the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -1033,6 +1037,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v41 appended the Plexi Variac pair; default 0 (stock wall voltage).
     const bool vrGap = (srcVer < 41);
     const int vrAt = HF_AMP_PL_VARIAC, vrEnd = HF_AMP_PL_VARIAC + 2;
+    // v42 appended the EP-3 Echo Age pair; default 0.35 (NON-zero -- a lightly
+    // played deck, matching the port default so the knob recalls where it sits).
+    const bool agGap = (srcVer < 42);
+    const int agAt = HF_DL_AGE, agEnd = HF_DL_AGE + 2;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -1075,6 +1083,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (rnGap && i >= rnAt && i < rnEnd)        vals[i] = 0.0f;              // Amp 2 NAM trims 0 dB
         else if (qwGap && i >= qwAt && i < qwEnd)        vals[i] = 0.0f;              // v40 eco/trims
         else if (vrGap && i >= vrAt && i < vrEnd)        vals[i] = 0.0f;              // v41 variac stock
+        else if (agGap && i >= agAt && i < agEnd)        vals[i] = 0.35f;             // v42 EP-3 age
         else                                             vals[i] = old[o++];
     }
 }
@@ -1087,7 +1096,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(41); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(42); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -1109,9 +1118,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 41) return false;
+    if (ver < 2 || ver > 42) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 41);  // ...v41 Plexi Variac
+    const bool needMigrate  = (ver < 42);  // ...v42 EP-3 Age
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -2850,7 +2859,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->modfx.setParameter("stereoWidth", monoOut ? 0.0f : *p->ports[HF_MD_WIDTH]);
     // Delay
     p->delay.setBypass(false);
-    const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 3);
+    const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 4);
     if (delayType != p->lastDelayType) { p->lastDelayType = delayType; p->delay.setType(DelayFactory::fromIndex(delayType)); }
     // Delay clock sync: delay time = host BPM x division (else the manual Time knob).
     float dlMs = *p->ports[HF_DL_TIME];
@@ -2870,6 +2879,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->delay.setParameter("ducking",  *p->ports[HF_DL_DUCKING]);    // Seraph
     p->delay.setParameter("modDepth", *p->ports[HF_DL_MODDEPTH]);   // Seraph
     p->delay.setParameter("modRate",  *p->ports[HF_DL_MODRATE]);    // Seraph
+    p->delay.setParameter("age",      *p->ports[HF_DL_AGE]);        // EP-3 (v42)
     // Reverb
     p->reverb.setBypass(false);
     p->reverb.setParameter("preDelayMs", *p->ports[HF_RV_PREDELAY]);
@@ -2966,7 +2976,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     }
     if (*p->ports[HF_DL2_ENABLE] > 0.5f) {
         p->delay2.setBypass(false);
-        const int delay2Type = clampi(*p->ports[HF_DL2_TYPE], 0, 3);
+        const int delay2Type = clampi(*p->ports[HF_DL2_TYPE], 0, 4);
         if (delay2Type != p->lastDelay2Type) { p->lastDelay2Type = delay2Type; p->delay2.setType(DelayFactory::fromIndex(delay2Type)); }
         float dl2Ms = *p->ports[HF_DL2_TIME];
         if (*p->ports[HF_DL2_SYNC] > 0.5f) {
@@ -2986,6 +2996,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         p->delay2.setParameter("ducking",  *p->ports[HF_DL2_DUCKING]);
         p->delay2.setParameter("modDepth", *p->ports[HF_DL2_MODDEPTH]);
         p->delay2.setParameter("modRate",  *p->ports[HF_DL2_MODRATE]);
+        p->delay2.setParameter("age",      *p->ports[HF_DL2_AGE]);   // EP-3 (v42)
     }
     if (*p->ports[HF_RV2_ENABLE] > 0.5f) {
         p->reverb2.setBypass(false);
@@ -3480,7 +3491,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(41);                 // version (41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(42);                 // version (42: + EP-3 Age pair; 41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -3565,9 +3576,9 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 41) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 42) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 41);     // ...v41 Plexi Variac
+        const bool needMigrate  = (ver < 42);     // ...v42 EP-3 Age
         getU32(np);
         if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision

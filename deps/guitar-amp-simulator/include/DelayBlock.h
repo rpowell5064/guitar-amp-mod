@@ -55,6 +55,8 @@ private:
     float pDucking_      =   0.0f;   // Seraph
     float pModDepth_     =   0.0f;   // Seraph
     float pModRate_      =   0.3f;   // Seraph
+    float pAge_          =   0.35f;  // Echoplex EP-3
+    float pPregain_      =   0.545f; // Echoplex EP-3 (~6 dB JFET push)
 
     void applyStoredParams(DelayBase& m) const noexcept;
 };

@@ -8,7 +8,7 @@
     <div class="hx-header">
         <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
         <div class="hx-title">DELAY</div>
-        <div class="hx-tag">digital · tape · drum echo</div>
+        <div class="hx-tag">digital · tape · drum echo · EP-3</div>
     </div>
 
     <!-- Hex-Forge-style control plate: grouped fieldsets on a brushed enclosure with corner screws -->
@@ -61,6 +61,14 @@
                 <div class="hf-agroup-body">
                     {{#controls.5}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
                     {{#controls.6}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
+                </div>
+            </div>
+
+            <!-- EP-3 TAPE: age (13) — shown for EP-3 Echo only -->
+            <div rata-role="ep3group" class="hf-agroup mod-hidden">
+                <span class="hf-agroup-title">EP-3 Tape</span>
+                <div class="hf-agroup-body">
+                    {{#controls.13}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.13}}
                 </div>
             </div>
 

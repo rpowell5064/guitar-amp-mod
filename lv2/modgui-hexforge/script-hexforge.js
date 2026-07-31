@@ -18,10 +18,10 @@ function (event, funcs) {
     // the HTML instead; these are the ones we can't (enumerated → would show a number).
     var NV = {
         amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15'],
-        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250'],
+        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250','Echo Primer'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus','Seasick Vibe'],
-        dl:  ['Digital','Tape','Echo Wreck','Seraph'],
+        dl:  ['Digital','Tape','Echo Wreck','Seraph','EP-3 Echo'],
         eq:  ['Manual','Clean Sparkle','De-Mud','Classic Rock','Metal Rhythm','Lead Cut','Cocked Wah']
     };
     NV.dr2 = NV.dr; NV.fz2 = NV.fz; NV.md2 = NV.md; NV.dl2 = NV.dl; NV.eq2 = NV.eq;
@@ -461,6 +461,7 @@ function (event, funcs) {
         show(icon, blk, '.c-dl-tape', t === 1 || t === 2);
         show(icon, blk, '.c-dl-heads', t === 2);
         show(icon, blk, '.c-dl-seraph', t === 3);
+        show(icon, blk, '.c-dl-ep3', t === 4);
         setModelVal(icon, blk, t);
     }
     function applyDelay(icon) { applyDelayP(icon, 'dl', 'hf_dl_t'); applyDelayP(icon, 'dl2', 'hf_dl2_t'); }

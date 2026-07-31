@@ -89,6 +89,8 @@ void DelayBlock::setParameter(const std::string& id, float v) {
     else if (id == "ducking")      pDucking_      = v;
     else if (id == "modDepth")     pModDepth_     = v;
     else if (id == "modRate")      pModRate_      = v;
+    else if (id == "age")          pAge_          = v;
+    else if (id == "pregain")      pPregain_      = v;
 
     if (model_)    model_->setParameter(id, v);
     if (oldModel_) oldModel_->setParameter(id, v);  // keep old model in sync during fade
@@ -112,6 +114,8 @@ float DelayBlock::getParameter(const std::string& id) const {
     if (id == "ducking")      return pDucking_;
     if (id == "modDepth")     return pModDepth_;
     if (id == "modRate")      return pModRate_;
+    if (id == "age")          return pAge_;
+    if (id == "pregain")      return pPregain_;
     return 0.0f;
 }
 
@@ -132,4 +136,6 @@ void DelayBlock::applyStoredParams(DelayBase& m) const noexcept {
     m.setParameter("ducking",      pDucking_);
     m.setParameter("modDepth",     pModDepth_);
     m.setParameter("modRate",      pModRate_);
+    m.setParameter("age",          pAge_);
+    m.setParameter("pregain",      pPregain_);
 }

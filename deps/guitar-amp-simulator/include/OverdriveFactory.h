@@ -14,7 +14,8 @@ enum class OverdriveType {
     DS1             = 5,
     Klon            = 6,
     SuperOverdriveSD1 = 7,
-    DOD250          = 8
+    DOD250          = 8,
+    EchoplexPreamp  = 9
 };
 
 class OverdriveFactory {
