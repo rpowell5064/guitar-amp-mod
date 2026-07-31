@@ -79,6 +79,7 @@ enum AmpPorts {
     P_MT_MODE, P_MT_BRIGHT,                                    // Tremont 15 (PRS MT15): Clean/Crunch/Lead + bright switch
     P_PAMP_COUPL,                                              // speaker-impedance coupling (2026-07-23, additive, default 0)
     P_PL_VARIAC,                                               // Plexiglass Variac (brown sound, v46, default 0 = stock)
+    P_JCM_SIR34,                                               // Crunchy (JCM800) SIR #34 mod (v47, default 0 = stock)
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
 };
@@ -359,6 +360,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         amp->setParameter("vol2",   *p->ctrl[P_PL_VOL2]);
         amp->setParameter("variac", *p->ctrl[P_PL_VARIAC]);   // brown sound (v46)
     }
+    // Crunchy (JCM800): the SIR #34 rental-fleet hot-rod mod (v47).
+    if (modelIdx == 1) amp->setParameter("sir34", *p->ctrl[P_JCM_SIR34]);
     // Cali V (Mesa Mark V) — 9-mode channel switcher + 5-band graphic EQ. Setters
     // guard on change internally, so pushing every block is cheap.
     if (modelIdx == kMesaIdx) {

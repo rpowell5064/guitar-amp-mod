@@ -598,6 +598,13 @@ ctrl.append(mkport("RB_PL_VARIAC",  "rb_pl_variac",  "Rig B Variac (Brown)", "t"
 ctrl.append(mkport("DL_AGE",  "dl_age",  "Delay EP-3 Age",   "f", 0, 1, 0.35, None, "Age"))
 ctrl.append(mkport("DL2_AGE", "dl2_age", "Delay 2 EP-3 Age", "f", 0, 1, 0.35, None, "Age"))
 
+# ── SIR #34 mod (2026-07-31, user request): the S.I.R. rental-fleet hot-rod on
+# the JCM800 (cold-biased extra stage + recathoded stage 2 + the "#34 bite"
+# EQ + NFB tightening). Toggle, default 0 = stock/bit-identical; Amp 2 twin.
+# Migrated v43.
+ctrl.append(mkport("AMP_SIR34", "amp_sir34", "Amp SIR #34 Mod",   "t", 0, 1, 0, None, "#34 Mod"))
+ctrl.append(mkport("RB_SIR34",  "rb_sir34",  "Rig B SIR #34 Mod", "t", 0, 1, 0, None, "#34 Mod"))
+
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
 # These are left visible/addressable (NOT hidden) so the four physical
@@ -795,7 +802,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 169 ;")   # 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 170 ;")   # 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -925,6 +932,7 @@ COND = {
     "amp_fr_c45":"c-amp-be", "amp_fr_sat":"c-amp-be",
     # Plexiglass (model 10): the 1959's second (Normal-channel) volume — jumpered blend
     "amp_pl_vol2":"c-amp-plexi", "amp_pl_variac":"c-amp-plexi",
+    "amp_sir34":"c-amp-jcm",
     # Cali V / Mesa Mark V (model 11): 9-mode selector + 5-band graphic EQ
     "amp_mv_mode":"c-amp-mesa",
     "amp_mv_geq0":"c-amp-mesa", "amp_mv_geq1":"c-amp-mesa", "amp_mv_geq2":"c-amp-mesa",
@@ -1228,7 +1236,7 @@ def amp_body(ns="amp"):
             '<div class="hf-amp-tubes"><div class="hf-amp-grille"></div></div>'
             '<div class="hf-amp-plate">' + SCREWS4 +
             '<div class="hf-amp-badge" rata-role="amp-badge">Crunchy McCrunchFace</div>'
-            + onerow(["gain", "pl_vol2", "pl_variac", "master", "sag", "channel", "resonance", "bass", "mid", "treble", "presence"])
+            + onerow(["gain", "pl_vol2", "pl_variac", "sir34", "master", "sag", "channel", "resonance", "bass", "mid", "treble", "presence"])
             + '</div></div>')
     # Power Amp - ONE centered row of controls (switches + knobs). The paman items
     # (Tube + the valve-stage knobs) hide when PA Auto is on, leaving a clean short row.

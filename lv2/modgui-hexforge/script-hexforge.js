@@ -367,6 +367,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-mt15', m === 13);
         show(icon, 'amp', '.c-amp-reso', m === 2);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
+        show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
@@ -402,6 +403,7 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-mt15', m === 13);
         show(icon, 'amp2', '.c-rb-reso', m === 2);
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
+        show(icon, 'amp2', '.c-rb-jcm', m === 1);
         show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5);
         show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && !a);
         var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13);

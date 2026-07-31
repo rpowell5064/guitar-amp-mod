@@ -7,8 +7,11 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
 
     gainSmooth_.reset(oversampledFs_,   0.020);
     masterSmooth_.reset(oversampledFs_, 0.020);
+    sir34Smooth_.reset(oversampledFs_,  0.020);
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
+    sir34Smooth_.setCurrentAndTargetValue(sir34_);
+    sirDcR_ = 1.0f - 2.0f * 3.14159265f * 22.0f / static_cast<float>(oversampledFs_);
 
     for (auto& c : ch_) {
         // Pre-gain bass tightening: raised so the low end isn't over-clipped by the
@@ -58,6 +61,10 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
         c.sagEnv = 0.0f;
         c.dnr.prepare(oversampledFs_);
+        // SIR #34 filters (constant coefficients; inert until the blend opens)
+        c.sirShelf.setCoeffs(Filters::highshelf(3500.0, 3.0, oversampledFs_));
+        c.sirPeak.setCoeffs(Filters::peaking(1600.0, 2.0, 0.7, oversampledFs_));
+        c.sirNfbLo.setCoeffs(Filters::lowshelf(120.0, -1.5, oversampledFs_));
     }
     recalcFilters();
     reset();
@@ -108,12 +115,16 @@ void JCM800Model::reset() noexcept {
         c.bassRestore.reset();
         c.sagEnv = 0.0f;
         c.dnr.reset();
+        c.sirShelf.reset(); c.sirPeak.reset(); c.sirNfbLo.reset();
+        c.sirDcX1 = 0.0f; c.sirDcY1 = 0.0f;
     }
+    sir34Smooth_.setCurrentAndTargetValue(sir34_);
 }
 
 void JCM800Model::advanceSmoothing() noexcept {
     gainSmooth_.getNextValue();
     masterSmooth_.getNextValue();
+    sir34Smooth_.getNextValue();
 }
 
 void JCM800Model::setExternalSag(float paSagEnv) noexcept {
@@ -155,6 +166,17 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     x = c.stage1.process(x * (1.5f + gEff * 5.0f)) * 0.90f * kCouple12;
     x = c.inter12HPF.process(x);
 
+    // SIR #34 cold-biased extra stage (between stages 1 and 2; see header).
+    const float sb = sir34Smooth_.getCurrentValue();
+    if (sb > 1.0e-6f) {
+        float v = x * kSirG;
+        v = v < -1.5f ? -1.5f : (v > 1.5f ? 1.5f : v);
+        v = v + kSirK1 * v * v + kSirK2 * v * v * v;
+        const float dcy = v - c.sirDcX1 + sirDcR_ * c.sirDcY1;   // strip rectified DC
+        c.sirDcX1 = v; c.sirDcY1 = dcy;
+        x += sb * (dcy * kSirMakeup - x);
+    }
+
     // Stage 2 (no bypass cap, even harmonics)
     // Fuzzy-when-driven fix, part 1 (2026-07-28): drive CAPPED at 1.6, well
     // below kMarshallV2's duty-collapse window (documented in the 2026-07-23
@@ -175,7 +197,10 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     // (stage 3 keeps its own full gain-scaled drive -- the knob still sweeps).
     const float d2raw = 2.2f + gEff * 5.5f;
     const float d2    = d2raw > 1.4f ? 1.4f : d2raw;
-    x = c.stage2.process(x * d2) * 0.80f * kCouple23;
+    // #34 recathoded stage 2: y = k*f(gm*x/k) blended by sb (1.0 at stock).
+    const float sirIn  = 1.0f + sb * (kSirGm / kSirKnee - 1.0f);   // ×0.88235 at full
+    const float sirOut = 1.0f + sb * (kSirKnee - 1.0f);            // ×0.85    at full
+    x = c.stage2.process(x * d2 * sirIn) * 0.80f * sirOut * kCouple23;
     x = c.inter23HPF.process(x);
     x = c.inter23LP.process(x);
 
@@ -185,6 +210,12 @@ float JCM800Model::processSample(float x, int channel) noexcept {
 
     // Tonestack
     x = c.tonestack.process(x);
+
+    // #34 bright-cap bite + NFB-tightening proxy (post-tonestack, pre-PI).
+    if (sb > 1.0e-6f) {
+        const float e = c.sirShelf.process(c.sirPeak.process(c.sirNfbLo.process(x)));
+        x += sb * (e - x);
+    }
 
     // Stage 4 PI driver (master-controlled)
     x = c.inter34HPF.process(x);
@@ -220,6 +251,8 @@ void JCM800Model::setParameter(const std::string& id, float value) noexcept {
     // schematic-verified JCM800 2203 values (YehSmithToneStack::kMarshallJCM800).
     // Default off (0) = bit-identical to the existing heuristic path.
     else if (id == "exactts")  { for (auto& c : ch_) c.tonestack.setExact(value > 0.5f); }
+    else if (id == "sir34")    { sir34_ = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
+                                 sir34Smooth_.setTargetValue(sir34_); }
 }
 
 float JCM800Model::getParameter(const std::string& id) const noexcept {
@@ -231,6 +264,7 @@ float JCM800Model::getParameter(const std::string& id) const noexcept {
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
     if (id == "exactts")  return 0.0f;   // write-only pilot toggle
+    if (id == "sir34")    return sir34_;
     return 0.0f;
 }
 

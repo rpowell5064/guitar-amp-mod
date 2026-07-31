@@ -57,6 +57,27 @@ private:
     float presence_ = 0.55f; // slight presence boost above flat — classic rock starting point
     float master_   = 0.62f;
     float sag_      = 0.22f; // solid-state rectifier with large caps — very stiff B+ supply
+    // SIR #34 mod (2026-07-31, user request): the S.I.R. rental-fleet hot-rod
+    // (Jose-style). ON adds, between stages 1 and 2:
+    //   - a COLD-BIASED extra clipper: y = poly(G*x), G = 10^(12/20) = 3.9811
+    //     into the knee, poly = v + 0.18 v^2 + 0.065 v^3 (asymmetric — the
+    //     even term is the cold-bias signature), domain clamped ±1.5, 22 Hz
+    //     DC blocker (the v^2 term rectifies), then ×0.50119 (−6 dB) makeup.
+    //     NET +6 dB small-signal into stage 2 — DELIBERATE deviation from a
+    //     naked +12 dB: stage 2's drive is capped at 1.4 to stay out of
+    //     kMarshallV2's measured duty-collapse window (h2 sputter, 2026-07-30
+    //     evens session). The ±1.5 clamp bounds the cold stage's output at
+    //     2.124×makeup = 1.07 into stage 2 at large signal, so the window is
+    //     unreachable; small-signal the mod nets ~+3.5 dB after the
+    //     recathode's gm loss — hot-rod, not polite.
+    //   - recathoded stage 2: y = k*f(gm*x/k), gm 0.75, knee k 0.85
+    //     (equivalent-transform, same pattern as the Plexi variac).
+    //   - bright-cap/filter changes post-tonestack: +3 dB high shelf @3.5k,
+    //     +2 dB peak @1.6k Q 0.7 (the "#34 bite").
+    //   - NFB change proxy: −1.5 dB low shelf @120 Hz (more feedback =
+    //     tighter LF; the upper-mid aggression is the 1.6k peak).
+    // Blend smoothed 20 ms; 0 = stock, BIT-IDENTICAL (branch skipped).
+    float sir34_    = 0.0f;
 
     // Item #22 pilot (2026-07-28): swept ±0.3/0.8/1.5 against nam_compare's
     // attack/bloom section. BOTH signs made the model STIFFER (bloom -0.41 ->
@@ -72,7 +93,7 @@ private:
     // reviving this on any other amp; default 0.0 keeps it fully inert.
     static constexpr float kSagBiasCoupling = 0.0f;
 
-    LinearSmoother gainSmooth_, masterSmooth_;
+    LinearSmoother gainSmooth_, masterSmooth_, sir34Smooth_;
 
     struct ChannelState {
         BiquadFilter     inputHPF;     // sub-bass cut @ 60 Hz
@@ -95,6 +116,11 @@ private:
         BiquadFilter     bodyShelf;    // low-shelf @ ~180 Hz
         BiquadFilter     bassRestore;  // low-shelf @ 90 Hz +4 dB -- LF fundamental restore (fuzzy-fix part 2, 2026-07-28; see .cpp for the PA-collapse constraint that bounds it)
         DnrRolloff       dnr;          // decay darkener (engaged when gain > 0.4)
+        // SIR #34 mod state (inert at sir34 = 0)
+        BiquadFilter     sirShelf;     // +3 dB @ 3.5 kHz (bright-cap change)
+        BiquadFilter     sirPeak;      // +2 dB @ 1.6 kHz Q 0.7 (the bite)
+        BiquadFilter     sirNfbLo;     // −1.5 dB @ 120 Hz (NFB-tightening proxy)
+        float            sirDcX1 = 0.0f, sirDcY1 = 0.0f;   // cold-stage DC blocker
 
         float sagEnv   = 0.0f;
         float sagDecay = 0.0f;
@@ -102,6 +128,17 @@ private:
     std::array<ChannelState, kMaxCh> ch_;
 
     static constexpr float kPreToneGain = 0.75f;
+    static constexpr float kSirG      = 3.98107f;   // +12 dB into the cold knee
+    static constexpr float kSirK1     = 0.18f;      // cold-bias 2nd-order term
+    static constexpr float kSirK2     = 0.065f;     // cold-bias 3rd-order term
+    static constexpr float kSirMakeup = 0.501187f;  // −6 dB (net +6 dB into stage 2:
+                                                    // clean gain rises ~+3.5 dB after the
+                                                    // recathode loss; the ±1.5 clamp caps the
+                                                    // stage-2 drive at 1.07 large-signal, so
+                                                    // the duty-collapse window is unreachable)
+    static constexpr float kSirGm     = 0.75f;      // recathoded stage-2 gm
+    static constexpr float kSirKnee   = 0.85f;      // recathoded stage-2 knee
+    float sirDcR_ = 0.99928f;                       // 1 − 2π·22/fs (set in prepare)
     static constexpr float kCouple12    = 0.55f;
     static constexpr float kCouple23    = 0.50f;
 

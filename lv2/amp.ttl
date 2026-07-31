@@ -31,7 +31,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 46 ;
+    lv2:microVersion 47 ;   # 47: SIR #34 mod toggle on the JCM800 (jcm_sir34)
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
@@ -294,19 +294,24 @@
         lv2:portProperty lv2:integer, lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 53 ; lv2:symbol "jcm_sir34" ; lv2:name "SIR #34 Mod" ;
+        lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 53 ; lv2:symbol "control" ; lv2:name "Control"
+        lv2:index 54 ; lv2:symbol "control" ; lv2:name "Control"
     ] , [
         a lv2:OutputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 54 ; lv2:symbol "notify" ; lv2:name "Notify"
+        lv2:index 55 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] , [
         # ── Cali V (Mesa Mark V) controls (used only when Model = Cali V) ──
         # 9 modes across 3 channels + a 5-band graphic EQ (geq 0.5 = flat, ±12 dB).
@@ -470,5 +475,7 @@
             lv2:index 46 ; lv2:symbol "mt_bright"      ; lv2:name "MT Bright"
         ] , [
             lv2:index 47 ; lv2:symbol "pl_variac"      ; lv2:name "Variac (Brown)"
+        ] , [
+            lv2:index 48 ; lv2:symbol "jcm_sir34"      ; lv2:name "SIR #34 Mod"
         ]
     ] .
