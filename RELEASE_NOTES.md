@@ -1,5 +1,28 @@
 # Hex Chain Release Notes
 
+## v1.15.0 — 2026-08-01
+
+The vintage-voltage update: a brown-sound variac, a tube-tape echo and its JFET preamp, a studio hot-rod amp mod, a script-era phaser, a new classic-rock/metal preset bank, and a power-amp fix that finally lets three amps sound the way their captures do.
+
+### New
+
+- **Variac (brown)** on the Plexiglass amp (main rig and Rig B): a toggle that drops the amp's effective wall voltage, reaching the power tubes' saturation knee earlier and softer, with deeper, spongier supply sag and a browner top — the classic dropped-voltage trick. Every stage scales from one physically-derived voltage ratio; off is bit-identical to the stock voicing.
+- **Vintage Echo** (Delay) and **Echo Primer** (Drive): a new valve-warm tube-tape echo delay with its own JFET record-preamp front end and an **Age** control that runs from serviced-machine clean to thrashed, dark and hissy (with circulating tape hiss and wow/flutter that grow as the machine ages). The same JFET preamp is also a standalone Drive voicing — a subtle front-end that fattens and pushes whatever amp follows it.
+- **SIR #34 mod** on the Crunchy amp: a toggle that adds a cold-biased extra gain stage, a recathoded second stage and a bright-cap / feedback voicing shift — the studio-rental hot-rod bite. Off is stock.
+- **Script Phaser** modulation type: a smooth, feedback-free four-stage script-era phaser — a pure sine sweep and soft, musical notches, warmer and rounder than the resonant block-voiced Phaser.
+
+### Presets
+
+- **New bank: classic rock & metal** — a bone-dry deep-scooped high-gain thrash rhythm, a variac'd brown-sound rig with a script phaser out front and tape echo behind, an at-the-edge non-master crunch that lives on your pick hand, and a modded-British-head lead that flips to a clean cascading intro-delay voice.
+- The stock **Clean / Crunch / Rhythm / Lead** and several band rigs carry fresh player-tuned dial-ins captured from the device — including the Crunch preset running the new SIR #34 mod.
+
+### Fixed
+
+- **Modulation type selector in Hex Forge**: the type list was capped one option short, so selecting the deepest modulation voice silently ran the analog chorus instead. Every modulation type now selects correctly.
+- **Power-amp drive on the main rig** (Gainzilla, Tangerang and Chime Thirty): the per-amp power-amp drive that tames these three to their real captures was only reaching the parallel Rig B, so on the main rig they ran over-saturated — a fizzy high-gain lead with a clipped attack swell, a harsh jangle amp on hard picking. It's now applied everywhere: the high-gain amp gets its bloom and swell back, all three sit where their captures put them. Preset loudness is unchanged.
+
+---
+
 ## v1.14.0 — 2026-07-25
 
 The ambient update: a third reverb machine, a graphic EQ block, two new amps, two new preset banks, and a deep round of feel/stability fixes.

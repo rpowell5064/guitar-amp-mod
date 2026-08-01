@@ -127,7 +127,7 @@ MD = [
     ("width", "Width", "f", 0, 1, 0.5, None),
 ]
 DL = [
-    ("type",    "Type",     "e", 0, 4, 0, [("Digital",0),("Tape",1),("Echo Wreck",2),("Seraph",3),("EP-3 Echo",4)]),
+    ("type",    "Type",     "e", 0, 4, 0, [("Digital",0),("Tape",1),("Echo Wreck",2),("Seraph",3),("Vintage Echo",4)]),
     ("time",    "Time",     "ms", 1, 2000, 250, None),
     ("feedback","Feedback", "f", 0, 0.98, 0.4, None),
     ("mix",     "Mix",      "f", 0, 1, 0.15, None),
@@ -595,8 +595,8 @@ ctrl.append(mkport("RB_PL_VARIAC",  "rb_pl_variac",  "Rig B Variac (Brown)", "t"
 # hiss -90->-60 dB + transport wear (wow/flutter are INTERNAL to the EP-3,
 # scaled by Age -- the dl_wow/dl_flutter ports are Tape/Echorec's). The type
 # itself is dl_type 4 (maxima bumped above, no new port). Migrated v42.
-ctrl.append(mkport("DL_AGE",  "dl_age",  "Delay EP-3 Age",   "f", 0, 1, 0.35, None, "Age"))
-ctrl.append(mkport("DL2_AGE", "dl2_age", "Delay 2 EP-3 Age", "f", 0, 1, 0.35, None, "Age"))
+ctrl.append(mkport("DL_AGE",  "dl_age",  "Delay Vintage Age",   "f", 0, 1, 0.35, None, "Age"))
+ctrl.append(mkport("DL2_AGE", "dl2_age", "Delay 2 Vintage Age", "f", 0, 1, 0.35, None, "Age"))
 
 # ── SIR #34 mod (2026-07-31, user request): the S.I.R. rental-fleet hot-rod on
 # the JCM800 (cold-biased extra stage + recathoded stage 2 + the "#34 bite"

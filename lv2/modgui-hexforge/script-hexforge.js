@@ -21,7 +21,7 @@ function (event, funcs) {
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250','Echo Primer'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus','Seasick Vibe','Script Phaser'],
-        dl:  ['Digital','Tape','Echo Wreck','Seraph','EP-3 Echo'],
+        dl:  ['Digital','Tape','Echo Wreck','Seraph','Vintage Echo'],
         eq:  ['Manual','Clean Sparkle','De-Mud','Classic Rock','Metal Rhythm','Lead Cut','Cocked Wah']
     };
     NV.dr2 = NV.dr; NV.fz2 = NV.fz; NV.md2 = NV.md; NV.dl2 = NV.dl; NV.eq2 = NV.eq;

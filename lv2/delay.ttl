@@ -41,7 +41,7 @@
         lv2:scalePoint [ rdfs:label "Tape"    ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Echo Wreck" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "Seraph" ; rdf:value 3 ] ;
-        lv2:scalePoint [ rdfs:label "EP-3 Echo" ; rdf:value 4 ]
+        lv2:scalePoint [ rdfs:label "Vintage Echo" ; rdf:value 4 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "time_ms" ; lv2:name "Time" ;
