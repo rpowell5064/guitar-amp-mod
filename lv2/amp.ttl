@@ -31,7 +31,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 49 ;   # 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
+    lv2:microVersion 50 ;   # 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
