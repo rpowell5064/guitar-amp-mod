@@ -26,7 +26,12 @@
 // (+19.7 dB bloom — the sag detector tracks the RAW PA input, so paDrive does
 // not shield it). ~2.7x the knob authority of the original fix.
 static inline float kBassKnobToStack(float v) noexcept {
-    return 0.5f + (v - 0.5f) * 0.4f;
+    // 2026-08-02: 0.40 -> 0.25. User "cranked bass on Red still stutters" -- measured
+    // bass 1.0 sent THD@1k to 158% (runaway) + dropped output. 0.40 healthy at MAX in
+    // isolation but Red's 4-stage cascade + the kRedDrive nudge push the shared PA's
+    // level-tracking sag detector into stutter; 0.25 keeps bass authority while holding
+    // the absolute level the PA sees below the runaway knee.
+    return 0.5f + (v - 0.5f) * 0.25f;
 }
 
 void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
@@ -64,8 +69,9 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         c.tonestack.setTreble(treble_);
         c.tonestack.setPresence(presence_);
 
-        c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.22));
-        c.sagEnv = 0.0f;
+        c.sagDecay  = std::exp(-1.0f / (float)(oversampledFs_ * 0.22));
+        c.sagDecayF = std::exp(-1.0f / (float)(oversampledFs_ * 0.012));   // 12 ms fast node
+        c.sagEnv = 0.0f; c.sagEnvF = 0.0f;
         c.dnr.prepare(oversampledFs_);
     }
     recalcFilters();
@@ -159,7 +165,7 @@ void EVH5150Model::reset() noexcept {
         c.presencePk.reset();
         c.topShelf.reset();
         c.airLP.reset();
-        c.sagEnv = 0.0f;
+        c.sagEnv = 0.0f; c.sagEnvF = 0.0f;
         c.dnr.reset();
     }
 }
@@ -188,6 +194,8 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     const float gEff = g < 0.35f ? 0.35f : g;
     const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
     x *= gk * gk * gk;
+    // Per-channel preamp drive trim (see header): lift Blue toward its capture, nudge Red.
+    x *= (redChannel_ ? kRedDrive : kBlueDrive);
 
     // Stage 1: hot bias, significant asymmetry. 2026-07-27: drive spans softened
     // (~30%) so the 4-stage cascade doesn't square up to the harsh/fizzy near-square
@@ -205,11 +213,16 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     x = c.inter34HPF.process(x);
     x = c.inter34LP.process(x);
 
-    // Stage 4: Red channel only (lead). Blue skips stage 4 for lower gain.
+    // Stage 4: Red = full lead drive. Blue used to SKIP stage 4 (master only), which
+    // capped Blue's THD ceiling ~15-20 pts under Red and ~11 pts under its own 96% Blue
+    // capture (the terminal softLimit sets the ceiling, so input drive alone can't raise
+    // it — see 2026-08-02 measurement). Blue now runs a GENTLER 4th stage (~half Red's
+    // drive) so it saturates like the real Blue crunch channel: adds a late nonlinearity
+    // that lifts the ceiling + harmonic density without reaching Red's near-square 103%.
     if (redChannel_)
         x = c.stage4.process(x * (3.0f + gEff * 6.0f)) * (0.72f * m);
     else
-        x *= 0.72f * m;  // Blue: master volume only, no additional triode stage
+        x = c.stage4.process(x * (1.05f + gEff * 2.2f)) * (0.72f * m * kBlueMakeup);  // Blue: full 4th stage, but fed softly (kBlueDrive) for a gradual sweep
 
     x *= kPreToneGain;
 
@@ -232,10 +245,14 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // Air rolloff (presence moved POST-limiter where it can be heard)
     x = c.airLP.process(x);
 
-    // 6L6 supply sag: tight, fast (solid-state rectifier feel).
-    const float sagAttack = 1.0f - c.sagDecay;
-    c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(sagSrc);
-    const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.18f);   // floored (see VoxAC30Model 2026-07-25 note)
+    // 6L6 supply sag: tight, fast (solid-state rectifier feel). Slow bloom node + a
+    // 12 ms fast node blended in -- the fast node squishes/recovers on pick attack so
+    // the supply BREATHES (fixes the "Red feels dead / stiff supply" read, 2026-08-02).
+    const float lvl = std::abs(sagSrc);
+    c.sagEnv  = c.sagDecay  * c.sagEnv  + (1.0f - c.sagDecay)  * lvl;
+    c.sagEnvF = c.sagDecayF * c.sagEnvF + (1.0f - c.sagDecayF) * lvl;
+    const float sagEnvEff = c.sagEnv + kSagFastMix * (c.sagEnvF - c.sagEnv);
+    const float sag = std::fmax(0.35f, 1.0f - sag_ * sagEnvEff * kSagDepth);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
     // Post-limiter: tone-knob deviations from noon + presence (noon = all identity,

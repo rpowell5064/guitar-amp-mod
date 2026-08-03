@@ -43,23 +43,22 @@ private:
     float presence_ = 0.6f;   // plexis are bright/present
     float master_   = 0.7f;   // "master" here drives the PI → power-amp crunch
     float sag_      = 0.28f;  // solid-state rectifier but EL34 power-stage sag under crank
-    // Variac v2 (2026-07-31 physics audit; v1 2026-07-30): the EVH brown-sound
-    // trick -- the 1959 run off a variac at 89 V instead of 120 V. Continuous
-    // 0..1 (the port ships a toggle): v maps to mains V = 120 - 31*v, so
-    //   s(v) = V/120 = 1 - 0.258333*v   (s = 0.741667 at v = 1 = 89 V).
-    // Every supply node (B+, screens, preamp A/B/C) rides the same PT, so ONE
-    // scale is exact. Per nonlinear stage the equivalent transform is
-    //   y = s * f(gm * x / s)
-    // which moves the clip knee to s*knee (earlier by 1/s = 1.348 = 2.6 dB),
-    // caps swing at s, and keeps the interior s*(1/s) pairs cancelling so
-    // clean gain scales as gm^3 = s and clipped ceiling as the final s:
-    // total swing prop. to s, power prop. to s^2 (-5.2 dB at 89 V). gm loss uses the
-    // triode space-charge law gm prop. to Ip^(1/3) -> s^(1/3) = 0.904941 (a linear
-    // gm*s would be 3x too strong). Sag coupling grows as the FRACTIONAL
-    // droop R*I/V ~ s^-1.5 (0.28 -> 0.438), plus a 15 ms fast supply-RC
-    // component (0.35 blend) so the squish grabs on pick attack. Heater/
-    // emission loss stays the behavioral -1.5 dB @3.5k shelf crossfade.
-    // 0 = stock wall voltage, BIT-IDENTICAL (all factors exactly 1).
+    // Variac v3 -- OVERVOLT (2026-08-02, user + real 1959HW "SLAMMIN" variac
+    // captures, 120..196 V DIMED, Marshall 1959HW Plexi Variac [Hyper Accuracy]).
+    // v1/v2 modeled the folklore LOWERED-voltage brown sound (120->89 V). The
+    // user's reference pack instead sweeps voltage UP, and the measured "magic"
+    // peak is ~170 V: LOUDEST (-19.6 dB), MOST saturated (THD@1k 290% vs 142%
+    // at 120 V) and TIGHTEST lows (THD@110 14.8% vs 24.5%) -- both above and
+    // below 170 V fall off. So the knob now RAISES voltage 120 V -> ~170 V:
+    //   s(v) = 1 + (kVariacMaxS-1)*v          (s = 1.4167 at v = 1 = 170 V).
+    // Fit to the captures (not the textbook headroom result -- at DIMED settings
+    // the higher B+ drives the whole amp harder = MORE saturation, not cleaner):
+    //   input drive  ~ s^kVariacDriveExp   (harder into every stage = saturation)
+    //   output swing ~ s^kVariacSwingExp   (louder, ~+1.6 dB net at max)
+    //   sag coupling  = 0.28 * s^-1.5       (s>1 STIFFENS the supply = tighter lows)
+    // plus a mild bright shelf (overvolt is more aggressive up top, not browner).
+    // 0 = stock wall voltage, BIT-IDENTICAL (all factors exactly 1). ONLY Brown
+    // Sound '84 uses the variac, so every other Plexi preset is untouched.
     float variac_   = 0.0f;
 
     LinearSmoother gainSmooth_, masterSmooth_, vol2Smooth_;
@@ -91,6 +90,14 @@ private:
     static constexpr float kPreToneGain = 0.80f;
     static constexpr float kCouple12    = 0.62f;
     static constexpr float kNormalMix   = 0.9f;   // Vol II contribution at full (jumpered blend weight)
+
+    // Variac overvolt fit (see variac_ doc). v=0 is bit-identical; tuned so
+    // variac 1.0 slams toward the ~170 V capture (much higher THD + a bit
+    // louder + tighter lows). nam_compare --model plexi --variac 0/1 vs the
+    // 120 V / 170 V captures.
+    static constexpr float kVariacMaxS     = 1.4167f;  // 170 V / 120 V
+    static constexpr float kVariacDriveExp = 1.60f;    // input drive  ~ s^exp (saturation)
+    static constexpr float kVariacSwingExp = 0.18f;    // output swing ~ s^exp (~+1.6 dB net over 3 stages)
 
     // Variac state: 20 ms glide on the (rare) toggle + per-sample cached
     // factors, advanced ONCE per sample index in advanceSmoothing() so both
