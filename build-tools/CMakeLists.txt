@@ -17,6 +17,8 @@ add_executable(amp_knobcheck "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_knobcheck
 target_link_libraries(amp_knobcheck PRIVATE GuitarAmpSim)
 add_executable(amp_noise "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_noise.cpp")
 target_link_libraries(amp_noise PRIVATE GuitarAmpSim)
+add_executable(evh_hiss "${CMAKE_CURRENT_SOURCE_DIR}/../tools/evh_hiss.cpp")
+target_link_libraries(evh_hiss PRIVATE GuitarAmpSim)
 add_executable(fidelity_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/fidelity_check.cpp")
 target_link_libraries(fidelity_check PRIVATE GuitarAmpSim)
 add_executable(pa_flux_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/pa_flux_probe.cpp")

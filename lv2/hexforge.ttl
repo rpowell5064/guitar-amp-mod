@@ -99,7 +99,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 174 ;
+    lv2:microVersion 175 ;   # 175: v1.16 -- Plexi variac overvolt + Gainzilla amp overhaul (Blue 4th stage, Red sag, bass stutter, hiss tame); preset retuning (Brown Sound '84, Berlin Wall Pulse drive, djent song reworks, Solar Monolith drone, Regal tuning)
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;

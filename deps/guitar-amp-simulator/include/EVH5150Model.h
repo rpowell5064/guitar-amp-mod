@@ -86,8 +86,10 @@ private:
         BiquadFilter     airLP;        // 12 kHz LP
         DnrRolloff       dnr;          // decay darkener (engaged on the Red channel)
 
-        float sagEnv   = 0.0f;
-        float sagDecay = 0.0f;
+        float sagEnv    = 0.0f;
+        float sagDecay  = 0.0f;
+        float sagEnvF   = 0.0f;   // fast supply-RC sag node (12 ms) for the lively touch
+        float sagDecayF = 0.0f;
     };
     std::array<ChannelState, kMaxCh> ch_;
 
@@ -95,6 +97,29 @@ private:
     static constexpr float kCouple12    = 0.55f;
     static constexpr float kCouple23    = 0.50f;
     static constexpr float kCouple34    = 0.48f;
+
+    // Per-channel preamp drive trim (2026-08-02, user: "gain seems low on Blue; the
+    // 5150 doesn't have as much gain as I remember"). Blue is 3-stage (skips stage 4)
+    // and measured ~15-20 pts of THD below Red AND ~11 pts below its OWN Blue capture
+    // (96% THD@1k) across the playable knob range — plus ~12 dB quieter at low gain.
+    // Lift Blue toward its capture; give Red only a small aggression nudge (already
+    // ~103% THD / near-square, and its attack swell is fragile). Applied as an input
+    // drive multiplier so it cascades like real preamp gain. 1.0 = bit-identical.
+    // Blue channel gain (2026-08-02, user "Blue goes too far"): Blue runs the full 4th
+    // stage (monotonic, no dips/cancellation) but kBlueDrive < 1 feeds stages 1-3
+    // softer, so its gain knob saturates more GRADUALLY and the ceiling drops off Red's
+    // ~100% onto the Blue capture instead of railing early. kBlueMakeup holds Blue's
+    // level up (it was ~12 dB quieter than Red at low gain before the 4th stage).
+    static constexpr float kBlueDrive  = 0.92f;
+    static constexpr float kRedDrive   = 1.08f;
+    static constexpr float kBlueMakeup = 1.18f;
+
+    // Supply-sag liveliness (2026-08-02, user "Red feels dead in feel"): the model read
+    // ~no sag vs the captures' fast recovery (Red tau63 3 ms) -- a stiff supply feels
+    // dead. Add a FAST sag node (12 ms) blended with the slow one so the supply squishes
+    // then recovers on pick attack (the touch/breathe). Depth raised from the old 0.18.
+    static constexpr float kSagDepth   = 0.30f;
+    static constexpr float kSagFastMix = 0.45f;   // 0 = old slow-only sag
 
     static float softLimit(float x) noexcept;
     void recalcFilters() noexcept;

@@ -1,5 +1,29 @@
 # Hex Chain Release Notes
 
+## v1.16.0 — 2026-08-03
+
+The high-voltage update: the variac now runs the other way, the modern high-gain amp gets a full overhaul, and a round of player-tuned preset reworks.
+
+### Changed
+
+- **Variac now overvolts** (Plexiglass amp): the variac has been re-modeled to *raise* the effective wall voltage toward the "magic" setting instead of dropping it — as you turn it up it gets louder, more saturated and tighter in the low end, tuned against a real variac'd-Plexi capture set. Off is still bit-identical to the stock voicing. Note: this reverses the previous dropped-voltage direction, so any rig using the variac will read more aggressive than before.
+- **Gainzilla (modern high-gain amp) overhaul:**
+  - **Rhythm channel** gained its missing fourth gain stage — it was short on gain and about 12 dB quieter than the lead channel; it now has proper drive on tap and matches the lead channel's level, while still sitting a step below it.
+  - **Lead channel** gained a fast, dynamic supply-sag node so it breathes and responds to pick attack instead of feeling stiff.
+  - Fixed a **cranked-bass stutter** — with the bass maxed, the amp could run away into a stuttering over-saturation and drop level.
+  - Tamed the amplified high-frequency **hiss** on the high-gain rhythm presets.
+
+### Presets
+
+- Player-tuned reworks around the new amps and effects: the **brown-sound '84** rig rebuilt on the overvolt variac; a British-clean "Wall" lead moved off a poorly-matched drive onto a snarling rodent-style distortion; the modern **djent** rhythm presets voiced to specific prog-metal songs plus a groove-metal chug; a new **drone/doom monolith** (a wall of dropped, dark, octave-tinged saturation with a blooming ambient wash) replacing the old doom preset; and the treble-boosted **chime-amp** lead/rhythm pair re-tuned for the current jangle-amp voicing.
+
+### Fixed
+
+- The **Modulation** plugin's PatchStorage listing was missing its description — it now publishes.
+- Removed a duplicate author credit from the Amp listing description.
+
+---
+
 ## v1.15.0 — 2026-08-01
 
 The vintage-voltage update: a brown-sound variac, a tube-tape echo and its JFET preamp, a studio hot-rod amp mod, a script-era phaser, a new classic-rock/metal preset bank, and a power-amp fix that finally lets three amps sound the way their captures do.

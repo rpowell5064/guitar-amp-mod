@@ -40,7 +40,7 @@ void MarshallPlexi1959::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.sagDecay  = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
         c.sagDecayF = std::exp(-1.0f / (float)(oversampledFs_ * 0.015));  // 15 ms supply RC
         c.sagEnv = 0.0f; c.sagEnvF = 0.0f;
-        c.variacSh.setCoeffs(Filters::highshelf(3500.0, -1.5, oversampledFs_));   // browner variac top
+        c.variacSh.setCoeffs(Filters::highshelf(3500.0, 0.8, oversampledFs_));   // mild overvolt bite (kept gentle -- user: brown sound must stay smooth, not fizzy)
     }
     vSmA_ = 1.0f - std::exp(-1.0f / (float)(oversampledFs_ * 0.020));   // 20 ms variac glide
     recalcFilters();
@@ -82,11 +82,13 @@ void MarshallPlexi1959::advanceSmoothing() noexcept {
         // BIT-IDENTICAL to the pre-variac voicing (and skips cbrt/sqrt).
         vInGm_ = 1.0f; vSwing_ = 1.0f; vSagCoup_ = 0.28f;
     } else {
-        const float sMain = 1.0f - 0.258333f * vSm_;          // 120 V -> 89 V at v = 1
-        const float gmF   = std::cbrt(sMain);                 // gm ~ Ip^(1/3)
-        vInGm_    = gmF / sMain;                              // 1.220153 @ 89 V
-        vSwing_   = sMain;                                    // 0.741667 @ 89 V
-        vSagCoup_ = 0.28f / (sMain * std::sqrt(sMain));       // 0.438    @ 89 V
+        // OVERVOLT (v3): s = 1 .. 1.4167 (120 .. 170 V). Higher B+ at DIMED
+        // settings drives every stage harder (MORE saturation) and stiffens
+        // the supply (LESS sag = tighter lows) -- fit to the captures.
+        const float s = 1.0f + (kVariacMaxS - 1.0f) * vSm_;   // 1 -> 1.4167
+        vInGm_    = std::pow(s, kVariacDriveExp);              // 1 -> ~1.75 (drive up)
+        vSwing_   = std::pow(s, kVariacSwingExp);              // 1 -> ~1.064 (level up ~+1.6 dB x3)
+        vSagCoup_ = 0.28f / (s * std::sqrt(s));               // 1 -> ~0.166 (stiffer = tighter)
     }
 }
 
@@ -153,15 +155,18 @@ float MarshallPlexi1959::processSample(float x, int channel) noexcept {
     // (spec: SagNode ~ B+ - R*I(t), tau 10-40 ms) while the musical 250 ms
     // bloom the presets were tuned on stays dominant. v = 0: slow env only.
     const float sagEnvEff = c.sagEnv + vSm_ * 0.35f * (c.sagEnvF - c.sagEnv);
-    const float sag = std::fmax(variac_ > 0.001f ? 0.30f : 0.35f,
+    const float sag = std::fmax(variac_ > 0.001f ? 0.40f : 0.35f,   // overvolt = stiffer supply = higher floor (tighter)
                                 1.0f - sag_ * sagEnvEff * vSagCoup_);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
-    if (variac_ > 0.001f || vSm_ > 1.0e-6f) {   // browner top: heater/emission proxy
+    if (variac_ > 0.001f || vSm_ > 1.0e-6f) {   // brighter/more aggressive overvolt top
         const float b = c.variacSh.process(x);
         x += vSm_ * (b - x);
     }
 
-    return softLimit(x);
+    // Overvolt is genuinely LOUDER (capture: +1.6 dB @170 V), but the terminal
+    // limiter eats most of the added swing -- restore it as a clean post-clip
+    // makeup scaled by the variac position. vSm_ = 0 -> *1.0 = bit-identical.
+    return softLimit(x) * (1.0f + vSm_ * 0.20f);
 }
 
 void MarshallPlexi1959::setParameter(const std::string& id, float value) noexcept {
