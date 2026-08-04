@@ -375,7 +375,7 @@ static void runFFModel(const ModelSpec& /*m*/, const Knobs& k, double sr,
 static bool g_bypassPA = false;
 // PA promotion sweep overrides (2026-07-26): tune padrive/pamakeup/duty from the CLI
 // without rebuilding. <0 = use the amp's AmpDefaults value.
-static float g_paDrive = -1.0f, g_paMakeup = -1.0f, g_paDuty = -1.0f, g_paNfb = -1.0f;
+static float g_paDrive = -1.0f, g_paMakeup = -1.0f, g_paDuty = -1.0f, g_paNfb = -1.0f, g_paEven = -1.0f, g_paXover = -1.0f;
 static float g_paRippleSag = -1.0f;  // item #27 sweep override, <0 = use the amp's AmpDefaults value
 static float g_paLtpTail   = -1.0f;  // item #29 sweep override, <0 = use the amp's AmpDefaults value
 static float g_paFluxShear = -1.0f;  // PA project: OT flux shear sweep, <0 = built-in default
@@ -447,6 +447,8 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("sag", g_paSag >= 0.0f ? g_paSag : d.sag);
     pa.setParameter("bloomvca", g_paBloom >= 0.0f ? g_paBloom : d.bloomVca);
     pa.setParameter("duty",     g_paDuty   >= 0.0f ? g_paDuty   : d.duty);
+    pa.setParameter("evengen",  g_paEven   >= 0.0f ? g_paEven   : d.evenDepth);
+    if (g_paXover >= 0.0f) pa.setParameter("xover", g_paXover);   // crossover pilot (not in AmpDefaults yet)
     pa.setParameter("padrive",  g_paDrive  >= 0.0f ? g_paDrive  : d.paDrive);
     pa.setParameter("pamakeup", g_paMakeup >= 0.0f ? g_paMakeup : d.paMakeup);
     pa.setParameter("ripplesag",g_paRippleSag >= 0.0f ? g_paRippleSag : d.rippleSagCoupling);
@@ -779,6 +781,8 @@ int main(int argc, char** argv) {
     if (const char* s = argVal(argc, argv, "--padrive"))  g_paDrive  = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--pamakeup")) g_paMakeup = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paduty"))   g_paDuty   = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--paeven"))   g_paEven   = float(std::atof(s));
+    if (const char* s = argVal(argc, argv, "--paxover"))  g_paXover  = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--panfb"))    g_paNfb    = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paripplesag")) g_paRippleSag = float(std::atof(s));
     if (const char* s = argVal(argc, argv, "--paltptail"))   g_paLtpTail   = float(std::atof(s));

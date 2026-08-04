@@ -51,7 +51,10 @@ void FriedmanBEDeluxe::prepare(double oversampledSampleRate, int /*maxBlockSize*
 
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * 0.25));
         c.sagEnv = 0.0f;
-        c.dnr.prepare(oversampledFs_);
+        // 2026-08-04 (user: "high-end hiss when you stop playing" after the more-gain
+        // pass): darker corner (4 kHz) + higher darken thresholds (-40/-50 dBFS) so the
+        // ~-45 dBFS rig floor darkens on decay instead of sitting at d_~0.84 (bright).
+        c.dnr.prepare(oversampledFs_, 4000.0, 0.01f, 0.00316f);
     }
     recalcFilters();
     reset();
@@ -139,28 +142,37 @@ float FriedmanBEDeluxe::processSample(float x, int channel) noexcept {
         // slammed (nam_compare vs the Noon preamp captures showed 2-3x too much THD).
         const float satMul = sat_ ? 1.4f : 1.0f;
         if (channel_ == CH_HBE) {
-            x = c.boostStage.process(x * (1.2f + gEff * 1.2f) * satMul) * 0.85f * kCoupB;
+            x = c.boostStage.process(x * (1.5f + gEff * 2.2f) * satMul) * 0.85f * kCoupB;   // 2026-08-03: bigger boost so HBE clearly steps up over BE (was ~equal)
             x = c.boostHPF.process(x);
         }
-        x = c.stage1.process(x * (1.0f + gEff * 4.5f) * satMul) * 0.90f * kCouple12;
+        x = c.stage1.process(x * (1.4f + gEff * 5.8f) * satMul) * 0.90f * kCouple12;   // 2026-08-03: gain up (model ran ~10 pts under the capture's flat 53% THD at normal playing = "low on gain")
         x = c.inter12HPF.process(x);
         // Stage 2 (kMarshallV2) drive is CAPPED below its duty-collapse window
         // (2026-07-23 audit: 94-135% THD = fundamental cancellation at drive ~3.6-4.7);
         // the dial's remaining travel reroutes into stage 3 (Recto backDrive pattern).
         const float d2raw = (1.6f + gEff * 5.0f) * satMul;
-        const float d2cap = channel_ == CH_HBE ? 2.4f : 3.2f;   // HBE's boost stage feeds
-                                                                // stage 2 hotter — same
-                                                                // window, lower drive cap
+        const float d2cap = channel_ == CH_HBE ? 2.9f : 3.2f;   // HBE cap raised 2.4->2.9
+                                                                // (the stage-2 clamp now
+                                                                // prevents collapse) so HBE
+                                                                // keeps more gain
         const float d2    = d2raw > d2cap ? d2cap : d2raw;
         const float d3mul = 1.0f + 0.30f * (d2raw - d2);
-        x = c.stage2.process(x * d2) * 0.80f * kCouple23;
+        // Soft-clamp stage 2's INPUT out of the kMarshallV2 duty-collapse window
+        // (2026-08-03): capping the drive multiplier alone doesn't stop it on hard
+        // transients because stage 1's OUTPUT already swings large -> the triode's
+        // fundamental-cancellation notch spikes THD to >100% ("HBE hollows out on hard
+        // hits"). Clamping the absolute stage-2 input keeps the saturation FLAT like the
+        // BE-100 captures (~53% at every level) instead of collapsing.
+        constexpr float kS2Clamp = 3.7f;   // 2026-08-04: raised 3.2->3.7 for more gain (user "more gain") -- verified still no collapse
+        const float s2in = x * d2;
+        x = c.stage2.process(kS2Clamp * std::tanh(s2in / kS2Clamp)) * 0.80f * kCouple23;
         x = c.inter23HPF.process(x);
         x = c.inter23LP.process(x);
-        x = c.stage3.process(x * (1.8f + gEff * 4.5f) * d3mul) * 0.82f;
+        x = c.stage3.process(x * (2.3f + gEff * 5.6f) * d3mul) * 0.82f;   // 2026-08-03: gain up with stage1 (stage2 left capped to avoid its duty-collapse window)
         x *= kPreToneGain;
         x = c.tonestack.process(x);
         x = c.inter34HPF.process(x);
-        x = c.stage4.process(x * 3.0f) * (0.78f * m);
+        x = c.stage4.process(x * 4.6f) * (0.78f * m);   // 2026-08-04: post-clamp gain up more ("more gain") toward the capture's flat ~53% THD
         x = c.bodyShelf.process(x);   // scoop the 200 Hz low-mid hump
         x = c.presencePk.process(x);  // Friedman upper-mid bite @ ~2 kHz
         x = c.presenceF.process(x);

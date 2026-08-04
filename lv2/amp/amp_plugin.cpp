@@ -413,6 +413,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).bloomVca);
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).duty);
+    p->pa.setParameter("evengen",  PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).evenDepth);
     p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).rippleSagCoupling);
     p->pa.setParameter("ltptail",  PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).ltpTail);
     p->pa.setParameter("fluxOT",   PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).fluxOT ? 1.0f : 0.0f);

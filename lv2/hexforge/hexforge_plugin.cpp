@@ -3102,6 +3102,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 const auto d2 = PowerAmpProcessor::getDefaultsForModel(kCanonical[rbAlgo]);
                 p->pa2.setParameter("bloomvca", d2.bloomVca);
                 p->pa2.setParameter("duty",     d2.duty);
+                p->pa2.setParameter("evengen",  d2.evenDepth);
                 p->pa2.setParameter("padrive",  d2.paDrive);
                 p->pa2.setParameter("pamakeup", d2.paMakeup);
                 p->pa2.setParameter("ripplesag",d2.rippleSagCoupling);
@@ -3214,6 +3215,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).bloomVca);
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).duty);
+    p->pa.setParameter("evengen",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).evenDepth);
     p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).rippleSagCoupling);
     p->pa.setParameter("ltptail",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).ltpTail);
     p->pa.setParameter("fluxOT",   PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).fluxOT ? 1.0f : 0.0f);

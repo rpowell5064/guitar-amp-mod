@@ -1,5 +1,19 @@
 # Hex Chain Release Notes
 
+## v1.17.0 — 2026-08-04
+
+The power-tube warmth update: even-order saturation on the power amp, and a hot-rod head that finally behaves.
+
+### Changed
+
+- **Even-harmonic power-amp warmth.** Several amps now generate the 2nd/4th-order even content of a real driven push-pull output — a rounder, warmer, more "tube" character on power-amp breakup instead of the odd-order digital edge, tuned against real amp captures. Two mechanisms, applied per amp only where they measurably match the capture: push-pull **duty asymmetry** on the tighter lunchbox / rectifier / chime-class amps, and a **post-distortion even generator** on the boutique hot-rod and British lead-crunch heads. Loudness-neutral — no preset levels shift.
+- **Beardo BE (hot-rod head) re-voice** — three fixes:
+  - **HBE channel** no longer hollows out or drops on hard hits (a preamp stage was saturating into fundamental-cancellation); it now stays solid and clearly steps up over the BE channel.
+  - **Consistent gain** — the amp used to clean up when you played softly; it now saturates evenly whether you dig in or play gently, matching the real amp's flat saturation.
+  - **Tamed the high-end hiss** on the note decay — the decay noise-conditioning is darker and keyed to the amplified noise floor, so hiss fades into the tail instead of hanging on top of it.
+
+---
+
 ## v1.16.0 — 2026-08-03
 
 The high-voltage update: the variac now runs the other way, the modern high-gain amp gets a full overhaul, and a round of player-tuned preset reworks.

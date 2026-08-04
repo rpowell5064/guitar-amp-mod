@@ -31,7 +31,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 51 ;   # 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
+    lv2:microVersion 52 ;   # 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading

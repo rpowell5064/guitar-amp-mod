@@ -367,6 +367,7 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "airFeel")  { airFeelOn = v > 0.5f; }
     else if (id == "xover")    { xoverDepth_ = c01; }       // class-AB crossover (Phase-2)
     else if (id == "duty")     { duty_ = c01; }             // push-pull duty asymmetry (even harmonics)
+    else if (id == "evengen")  { evenGen_ = c01; }          // post-distortion even-harmonic exciter
     else if (id == "padrive")  { paDrive_  = std::clamp(v, 0.25f, 8.0f); }  // PA distortion drive
     else if (id == "pamakeup") { paMakeup_ = std::clamp(v, 0.1f,  4.0f); }  // PA level restore
     else if (id == "fluxOT")   { fluxOT_   = v > 0.5f; }    // flux-domain OT saturation (Phase-2)
@@ -395,6 +396,7 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "airFeel")  return airFeelOn ? 1.0f : 0.0f;
     if (id == "xover")    return xoverDepth_;
     if (id == "duty")     return duty_;
+    if (id == "evengen")  return evenGen_;
     if (id == "padrive")  return paDrive_;
     if (id == "pamakeup") return paMakeup_;
     if (id == "fluxOT")   return fluxOT_ ? 1.0f : 0.0f;
@@ -461,21 +463,21 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // keeps the shaper in its curved region; ltpTail 3.0 turns the LTP
         // grid-bias envelope ripple into the h2 generator (hits the dimed
         // capture's h2 at BOTH 111/223 Hz); paMakeup restores loudness parity.
-        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 0.4f, 1.75f, 0.022f, 3.0f }; // Orange Rockerverb 100 MKII
+        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 0.4f, 1.60f, 0.022f, 3.0f, true, 0.40f }; // Orange Rockerverb 100 MKII [2026-08-04: paMakeup 1.75->1.60 to cancel the even-exciter's +0.8 dB -> loudness-neutral, no preset re-level needed] [2026-08-03: duty NO-OP (dimed preamp swamps PA evens) -> post-distortion even exciter 0.40 instead; h2 matched + h4/h6 doubled (partial -- extreme h4/h6~20 still wants PA-first-class re-arch); +0.9 dB -> re-level presets]
         // NOTE (2026-07-26): duty 0.45 was tried here for the dimed capture's even-rich
         // profile (h2 17/h4 13/h6 11%) and measured NO effect — the PA contributes so
         // little distortion vs the preamp (35% THD) that PA evens dilute to ~nothing.
         // The evens gap needs the PA driven as a first-class distortion contributor
         // (gain-staging re-architecture + full preset re-level) — supervised project.
         // rippleSagCoupling 0.018 (item #27 rollout): EL34, moderate sag (0.35).
-        case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f,  0.0f, 1.0f, 1.0f, 0.018f }; // Friedman BE-Deluxe (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
+        case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f,  0.0f, 2.5f, 1.0f, 0.018f, 0.0f, true, 0.30f }; // Friedman BE-Deluxe [2026-08-04 "more gain": paDrive 1.0->2.5 flattens the saturation curve (soft playing 40->44% THD = more consistently driven) at stable level. THD CEILING ~48% (both preamp softLimit + PA waveshaper are smooth clips); the capture's flat 53% needs power-amp CROSSOVER = the bigger project] (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
         // rippleSagCoupling 0.010 (item #27 rollout): TIGHT supply (bloom only 4 dB
         // vs the capture) -> proportionally less ripple depth than JCM800/Rockerverb.
-        case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f,  0.0f, 1.0f, 1.0f, 0.010f }; // Mesa Dual Rectifier (Diamond Plate) — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
+        case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f,  0.15f, 1.0f, 1.0f, 0.010f }; // Mesa Dual Rectifier (Diamond Plate) [2026-08-03 duty 0.15: PA distorts here, evens rise toward capture] — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
         // rippleSagCoupling 0.006 (item #27 rollout): tightest/most percussive amp in
         // the suite (sag 0.15) -> smallest ripple depth, so it doesn't fight the
         // deliberately tight/snappy character.
-        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f,  0.0f, 1.0f, 1.0f, 0.006f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
+        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f,  0.30f, 1.0f, 1.0f, 0.006f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
         // Vox AC30 split off the shared clean row 0 (2026-07-29, LF-THD round 2):
         // same voicing fields as row 0, but paDrive 0.3 + fluxOT OFF -- the
         // shared PA's railed shaper + flux-OT grind were the "second re-clipper"
@@ -502,7 +504,7 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // in"). The 0.82 was inherited from the shared Fender row; a real AC30
         // has NO global negative feedback at all, so near-zero is also the
         // physically correct topology. Re-measured vs capture after.
-        case 9: return { 0.58f,  0.10f,  0.08f,  0.05f,  0.50f,  0.15f,  0.0f, 0.45f, 1.07f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
+        case 9: return { 0.58f,  0.10f,  0.08f,  0.05f,  0.50f,  0.15f,  0.12f, 0.45f, 1.07f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }
@@ -661,6 +663,15 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             // NFB feedback tap: the fully-processed output (post transformer +
             // speaker coupling) is what closes the loop for the NEXT sample.
             nfbPrev[ch] = y;
+            // Post-distortion even-harmonic exciter (see AmpDefaults.evenDepth): |y| is
+            // rich in h2/h4/h6; adding a DC-blocked copy restores the even-order warmth
+            // of a heavily driven push-pull output. AFTER the NFB tap, so it colors the
+            // output without feeding the loop. evenGen_ = 0 -> bit-identical.
+            if (evenGen_ > 0.0f) {
+                const float ar = std::fabs(y);
+                rectLp_[ch] += 0.001f * (ar - rectLp_[ch]);   // slow mean -> DC removal
+                y += evenGen_ * (ar - rectLp_[ch]);
+            }
             out[ch][i]  = y;
         }
 

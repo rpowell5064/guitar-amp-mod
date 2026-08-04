@@ -20,17 +20,25 @@ public:
     // high-gain amps' amplified HISS; the Vox's exposed idle noise is HUM
     // PARTIALS at 2-4 kHz (2026-07-29 Chime Thirty whine), which need a
     // deeper corner to actually darken.
-    void prepare(double fs, double cornerHz = 6000.0) noexcept {
+    // openLin/closeLin: the raw-input envelope levels (linear) for full-bright / full-
+    // dark. Defaults = -44 / -54 dBFS (the shared high-gain setting). An amp whose extra
+    // gain pushes the amplified rig-noise hiss above these can pass HIGHER thresholds so
+    // the decay darkens sooner (e.g. Friedman post-2026-08-04 "more gain": the -45 dBFS
+    // rig floor sat at d_~0.84 = still bright).
+    void prepare(double fs, double cornerHz = 6000.0,
+                 float openLin = 0.00631f, float closeLin = 0.002f) noexcept {
         att_ = 1.0f - std::exp(-1.0f / static_cast<float>(fs * 0.0005));   // 0.5 ms: attacks stay bright
         rel_ = 1.0f - std::exp(-1.0f / static_cast<float>(fs * 0.100));    // 100 ms: darken smoothly
         lp_.setCoeffs(Filters::lowpass(cornerHz, 0.707, fs));
+        openLin_ = openLin; closeLin_ = closeLin;
+        invRange_ = 1.0f / (openLin_ - closeLin_);
         reset();
     }
     void reset() noexcept { lp_.reset(); env_ = 0.0f; d_ = 1.0f; }
     void track(float rawIn) noexcept {
         const float lvl = std::fabs(rawIn);
         env_ += (lvl > env_ ? att_ : rel_) * (lvl - env_);
-        const float t = (env_ - kCloseLin) * kInvRange;
+        const float t = (env_ - closeLin_) * invRange_;
         d_ = t < 0.0f ? 0.0f : (t > 1.0f ? 1.0f : t);
     }
     float process(float y, bool engaged) noexcept {
@@ -38,9 +46,7 @@ public:
         return engaged ? lp + d_ * (y - lp) : y;
     }
 private:
-    static constexpr float kOpenLin  = 0.00631f;  // -44 dBFS input: at/above = full bright
-    static constexpr float kCloseLin = 0.002f;    // -54 dBFS input: at/below = full dark
-    static constexpr float kInvRange = 1.0f / (kOpenLin - kCloseLin);
     BiquadFilter lp_;
     float att_ = 0.01f, rel_ = 0.001f, env_ = 0.0f, d_ = 1.0f;
+    float openLin_ = 0.00631f, closeLin_ = 0.002f, invRange_ = 1.0f / (0.00631f - 0.002f);
 };

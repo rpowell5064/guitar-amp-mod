@@ -84,6 +84,15 @@ public:
         // the slow LF dynamics that ARE the 5150's feel. Default true keeps
         // every other amp bit-identical.
         bool fluxOT = true;
+        // Post-distortion even-harmonic exciter (2026-08-03): a DC-blocked full-wave-
+        // rectified term added at the PA OUTPUT restores h2/h4/h6 even-order warmth that
+        // the shared in-loop `duty` can't (duty is diluted when the PREAMP does most of
+        // the distorting — measured no-op on Rockerverb/Friedman). |y| is rich in evens;
+        // adding a DC-free copy colors the final signal regardless of where the
+        // distortion originated. 0 = bit-identical. Per-amp; only the even-deficient,
+        // preamp-dominated amps get a non-zero value. NOTE: raises output level (adds
+        // harmonic energy) -> re-level affected presets after tuning.
+        float evenDepth = 0.0f;
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -223,6 +232,8 @@ private:
     // Presence knob sets the cutoff: higher presence → higher cutoff → more open HF.
     std::array<BiquadFilter, kMaxCh> nfbHP;
     float nfbPrev[kMaxCh] = {};
+    float evenGen_        = 0.0f;    // even-harmonic exciter depth (AmpDefaults.evenDepth)
+    float rectLp_[kMaxCh] = {};      // slow mean of |y| for the exciter's DC removal
 
     // ── Output transformer model ───────────────────────────────────────────────
     std::array<BiquadFilter, kMaxCh> xfmrHP; // LF resonant pole pair
