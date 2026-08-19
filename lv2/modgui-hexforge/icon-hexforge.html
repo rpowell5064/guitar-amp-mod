@@ -91,7 +91,42 @@
     <div class="hf-tuner-mute" title="Mute output while tuning"><div class="hf-sw" title="Mute"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="tuner_mute" mod-widget="switch"></div><span class="hf-sw-t">Mute</span></div></div>
     <button type="button" class="hf-tunerclose" rata-role="tunerclose" aria-label="Close tuner" title="Close tuner">✕</button>
   </div>
+  <div class="hf-cal mod-hidden" rata-role="cal" role="dialog" aria-label="Auto-calibration">
+    <div class="hf-cal-head">
+      <span class="hf-cal-title">AUTO-CALIBRATE</span>
+      <span class="hf-cal-sub">match the rig to your guitar &amp; room</span>
+      <button type="button" class="hf-calclose" rata-role="calclose" aria-label="Close calibration" title="Close">✕</button>
+    </div>
+    <div class="hf-cal-rows" role="list">
+      <div class="hf-cal-row" rata-role="calrow1" role="listitem">
+        <span class="hf-cal-num" aria-hidden="true">1</span>
+        <span class="hf-cal-inst">Hands off the guitar &mdash; noise floor <em>(output muted, 5 s)</em></span>
+        <span class="hf-cal-meas" rata-role="calmeas1" role="status">&ndash;</span>
+        <button type="button" class="hf-cal-run" data-phase="1" aria-label="Run noise-floor measurement">RUN</button>
+      </div>
+      <div class="hf-cal-row" rata-role="calrow2" role="listitem">
+        <span class="hf-cal-num" aria-hidden="true">2</span>
+        <span class="hf-cal-inst">Rest your hands on the strings <em>(output muted, 5 s)</em></span>
+        <span class="hf-cal-meas" rata-role="calmeas2" role="status">&ndash;</span>
+        <button type="button" class="hf-cal-run" data-phase="2" aria-label="Run hands-on measurement">RUN</button>
+      </div>
+      <div class="hf-cal-row" rata-role="calrow3" role="listitem">
+        <span class="hf-cal-num" aria-hidden="true">3</span>
+        <span class="hf-cal-inst">Play as hard as you ever will <em>(audio live, 6 s)</em></span>
+        <span class="hf-cal-meas" rata-role="calmeas3" role="status">&ndash;</span>
+        <button type="button" class="hf-cal-run" data-phase="3" aria-label="Run playing-level measurement">RUN</button>
+      </div>
+    </div>
+    <div class="hf-cal-bar" role="progressbar" aria-label="Measurement progress"><div class="hf-cal-fill" rata-role="calbar"></div></div>
+    <div class="hf-cal-status" rata-role="calstatus" role="status" aria-live="polite">run all three steps to get a recommendation</div>
+    <div class="hf-cal-foot">
+      <span class="hf-cal-rec" rata-role="calrec" role="status">&ndash;</span>
+      <button type="button" class="hf-cal-apply" rata-role="calapply" disabled aria-label="Apply calibration">APPLY</button>
+      <button type="button" class="hf-cal-reset" rata-role="calreset" aria-label="Reset calibration to zero" title="Zero the calibration offsets">RESET</button>
+    </div>
+  </div>
   <button type="button" class="hf-tunerbtn hf-tuner-corner" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg><span class="hf-tuner-corner-lab">TUNER</span></button>
+  <button type="button" class="hf-calbtn hf-cal-corner" rata-role="calbtn" aria-label="Auto-calibration" aria-pressed="false" title="Auto-calibrate — match the rig to your guitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4 L5 20 M12 4 L12 20 M19 4 L19 20"/><circle cx="5" cy="9" r="2.2" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="7" r="2.2" fill="currentColor" stroke="none"/></svg><span class="hf-cal-corner-lab">CALIBRATE</span></button>
   <div class="mod-pedal-input">
     {{#effect.ports.audio.input}}
     <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>

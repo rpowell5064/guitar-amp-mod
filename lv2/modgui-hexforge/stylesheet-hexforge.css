@@ -41,7 +41,7 @@
 /* ── UNIFIED TOOLBAR: brand (left) · preset recall (centre) · master output + latency (right) ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar {
     flex: 0 0 auto; position: relative; height: 60px; z-index: 40;
-    display: flex; flex-wrap: nowrap; align-items: center; gap: 18px; padding: 0 16px; box-sizing: border-box;
+    display: flex; flex-wrap: nowrap; align-items: center; gap: 14px; padding: 0 16px; box-sizing: border-box;
     background-color: rgba(8,9,13,.6);
     background-image: var(--hex), linear-gradient(180deg, rgba(120,90,255,.12), rgba(0,0,0,.22));
     background-repeat: repeat, no-repeat; background-position: center top; background-size: var(--hexsz), 100% 100%;
@@ -50,7 +50,14 @@
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-brand { flex: 0 0 auto; display: flex; align-items: center; gap: 9px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-presets { flex: 1 1 auto; position: relative; display: flex; align-items: center; gap: 8px; min-width: 0; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-out { flex: 0 0 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 12px; white-space: nowrap; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-out { flex: 0 0 auto; display: flex; flex-wrap: nowrap; align-items: center; gap: 9px; white-space: nowrap; }
+/* Group dividers: separate the output METER · output OPTIONS · MASTER/power clusters so
+   the dense right toolbar parses at a glance (and the power switch reads as master, not a
+   fourth toggle). Decorative, aria-hidden; subtle violet hairline fading top/bottom. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out-div {
+    flex: 0 0 auto; width: 1px; height: 24px; margin: 0 2px; border-radius: 1px;
+    background: linear-gradient(180deg, rgba(140,110,255,0) 0%, rgba(150,120,255,.34) 50%, rgba(140,110,255,0) 100%);
+}
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-out .hf-meter-h { flex: 0 0 84px; min-width: 84px; width: 84px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-bar-out .hf-meter { height: 13px; margin: 0; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hx-brand {
@@ -1030,3 +1037,92 @@
   box-shadow: 0 0 9px rgba(240,168,53,0.3), 0 4px 9px rgba(0,0,0,0.5);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-subnode.hf-sel { outline: 2px solid rgba(255,214,130,0.95); outline-offset: 1px; }
+
+/* ── Auto-calibration wizard ── flow panel like the tuner strip: opening grows the
+   pedal instead of covering controls; mod-hidden takes zero space. Cyan accent. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-calbtn {
+    display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.04);
+    color: #c2cad8; cursor: pointer; transition: color .12s, border-color .12s, background .12s, box-shadow .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-calbtn svg { width: 18px; height: 18px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-calbtn:hover { color: #cfd6e4; border-color: rgba(255,255,255,.28); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-calbtn.hf-on {
+    color: #19e0ff; border-color: rgba(25,224,255,.6); background: rgba(25,224,255,.10);
+    box-shadow: 0 0 12px rgba(25,224,255,.35), inset 0 0 8px rgba(25,224,255,.15);
+}
+/* Left of the tuner button in the bottom-right corner strip. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-corner {
+    position: absolute; right: 152px; bottom: 11px; width: auto; height: 30px;
+    padding: 0 10px; gap: 6px; z-index: 40;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-corner-lab {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal {
+    flex: 0 0 auto; position: relative; z-index: 50;
+    display: flex; flex-direction: column; gap: 8px; padding: 12px 44px 14px; box-sizing: border-box;
+    background-color: #0a0c11;
+    background-image: var(--hex), linear-gradient(180deg, rgba(20,22,30,.98), rgba(6,7,11,1));
+    background-repeat: repeat, no-repeat; background-size: var(--hexsz), 100% 100%;
+    border: 1px solid rgba(25,224,255,.5); border-radius: 12px;
+    box-shadow: 0 -6px 30px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.06);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-head { display: flex; align-items: baseline; gap: 10px; padding-right: 40px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-title { font-size: 15px; font-weight: 800; letter-spacing: 1.6px; color: #eaf2ff; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-sub { font-size: 11px; font-weight: 600; letter-spacing: .4px; color: #7d8698; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-calclose {
+    position: absolute; top: 9px; right: 12px; width: 26px; height: 26px; padding: 0; line-height: 1;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: rgba(255,255,255,.05);
+    color: #9aa2b0; font-size: 14px; cursor: pointer; transition: color .12s, border-color .12s, background .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-calclose:hover { color: #fff; border-color: rgba(255,90,120,.6); background: rgba(255,90,120,.14); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-rows { display: flex; flex-direction: column; gap: 6px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-row {
+    display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 8px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+    transition: border-color .12s, background .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-row.hf-cal-live { border-color: rgba(25,224,255,.6); background: rgba(25,224,255,.07); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-num {
+    flex: 0 0 auto; width: 20px; height: 20px; border-radius: 50%; display: inline-flex;
+    align-items: center; justify-content: center; font-size: 11px; font-weight: 800;
+    color: #0a0c11; background: #19e0ff;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-inst { flex: 1; font-size: 12px; font-weight: 600; color: #c2cad8; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-inst em { font-style: normal; font-weight: 500; color: #7d8698; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-meas {
+    min-width: 132px; text-align: right; font-size: 12px; font-weight: 700; color: #19e0ff;
+    font-variant-numeric: tabular-nums;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-run {
+    height: 26px; padding: 0 14px; font-size: 11px; font-weight: 800; letter-spacing: 1px;
+    color: #eef2f7; background: #2b303b; border: 1px solid #565d6c; border-radius: 7px; cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-run:hover { background: #363c49; border-color: #19e0ff; color: #fff; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-bar {
+    height: 6px; border-radius: 3px; overflow: hidden;
+    background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.08);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #19e0ff, #ff2bd6);
+    transition: width .2s linear;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-status { font-size: 11px; font-weight: 600; letter-spacing: .4px; color: #7d8698; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-foot {
+    display: flex; align-items: center; gap: 8px; padding-top: 8px;
+    border-top: 1px solid rgba(255,255,255,.10);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-rec { flex: 1; font-size: 12px; font-weight: 700; color: #eaf2ff; font-variant-numeric: tabular-nums; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-apply, .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-reset {
+    height: 28px; padding: 0 16px; font-size: 11px; font-weight: 800; letter-spacing: 1px;
+    color: #eef2f7; background: #2b303b; border: 1px solid #565d6c; border-radius: 7px; cursor: pointer;
+    transition: background .12s, border-color .12s, color .12s, box-shadow .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-apply:not(:disabled) {
+    color: #0a0c11; background: #19e0ff; border-color: rgba(25,224,255,.8);
+    box-shadow: 0 0 12px rgba(25,224,255,.35);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-apply:disabled { opacity: .38; cursor: default; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-reset:hover { background: #363c49; border-color: #19e0ff; color: #fff; }

@@ -672,6 +672,20 @@ for _pfx, _ttl in X2_CLONES:
 # and Cab 2 separately. Pure tail append (outputs only -- no blob impact).
 ctrl.append(mkport("CPU_CAB2", "cpu_cab2", "CPU Cab 2", "f", 0, 100, 0, None, out=True))
 
+# ── Auto-calibration wizard (2026-08-19): GLOBAL tail ports (≥ HF_SW_A → never
+# preset-captured; pure tail append like cpu_cab2 = no blob impact). cal_cmd is
+# UI-pulsed (ps_goto pattern): 0 idle / 1-3 start phase N / 9 abort. cal_state
+# (0 idle / 1-3 running / 4 done / 5 error) + cal_progress stream to the modgui;
+# the measured/recommended bundle rides the "#cal" atom string (meters pattern).
+# The offset pair IS the calibration: applied additively at run() to the Input
+# Trim gain and every gate threshold, so all presets stay hand-tuned and the
+# correction survives preset switching. Host-persisted like out_auto/out_mono.
+ctrl.append(mkport("CAL_CMD", "cal_cmd", "Calibrate Command", "i", 0, 9, 0, None, "Cal", hidden=True))
+ctrl.append(mkport("CAL_TRIM_OFFS",  "cal_trim_offs",  "Cal Trim Offset",  "db", -12, 12, 0, None, "CalTrim"))
+ctrl.append(mkport("CAL_FLOOR_OFFS", "cal_floor_offs", "Cal Floor Offset", "db", -20, 20, 0, None, "CalFloor"))
+ctrl.append(mkport("CAL_STATE",    "cal_state",    "Cal State",    "i", 0, 5, 0, None, "CalSt",  out=True))
+ctrl.append(mkport("CAL_PROGRESS", "cal_progress", "Cal Progress", "f", 0, 1, 0, None, "CalPct", out=True))
+
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
 # ── Fixed leading ports (audio + atom) ────────────────────────────────────────
@@ -802,7 +816,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 174 ;")   # 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 175 ;")   # 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1609,6 +1623,44 @@ def emit_icon():
         '    <div class="hf-tuner-mute" title="Mute output while tuning">' + render_ctrl(CTRL_BY_SYM["tuner_mute"]) + '</div>\n'
         '    <button type="button" class="hf-tunerclose" rata-role="tunerclose" aria-label="Close tuner" title="Close tuner">✕</button>\n'
         '  </div>\n')
+    # Auto-calibration overlay — one panel, three measurement rows (matching the DSP's
+    # per-phase cal_cmd protocol so any step can be redone), progress bar, then the
+    # recommendation + APPLY (writes the global cal_*_offs layer) / RESET (zeroes it).
+    # Values stream in over the #cal notify string; wired in script-hexforge.js.
+    cal = ('  <div class="hf-cal mod-hidden" rata-role="cal" role="dialog" aria-label="Auto-calibration">\n'
+        '    <div class="hf-cal-head">\n'
+        '      <span class="hf-cal-title">AUTO-CALIBRATE</span>\n'
+        '      <span class="hf-cal-sub">match the rig to your guitar &amp; room</span>\n'
+        '      <button type="button" class="hf-calclose" rata-role="calclose" aria-label="Close calibration" title="Close">✕</button>\n'
+        '    </div>\n'
+        '    <div class="hf-cal-rows" role="list">\n'
+        '      <div class="hf-cal-row" rata-role="calrow1" role="listitem">\n'
+        '        <span class="hf-cal-num" aria-hidden="true">1</span>\n'
+        '        <span class="hf-cal-inst">Hands off the guitar &mdash; noise floor <em>(output muted, 5 s)</em></span>\n'
+        '        <span class="hf-cal-meas" rata-role="calmeas1" role="status">&ndash;</span>\n'
+        '        <button type="button" class="hf-cal-run" data-phase="1" aria-label="Run noise-floor measurement">RUN</button>\n'
+        '      </div>\n'
+        '      <div class="hf-cal-row" rata-role="calrow2" role="listitem">\n'
+        '        <span class="hf-cal-num" aria-hidden="true">2</span>\n'
+        '        <span class="hf-cal-inst">Rest your hands on the strings <em>(output muted, 5 s)</em></span>\n'
+        '        <span class="hf-cal-meas" rata-role="calmeas2" role="status">&ndash;</span>\n'
+        '        <button type="button" class="hf-cal-run" data-phase="2" aria-label="Run hands-on measurement">RUN</button>\n'
+        '      </div>\n'
+        '      <div class="hf-cal-row" rata-role="calrow3" role="listitem">\n'
+        '        <span class="hf-cal-num" aria-hidden="true">3</span>\n'
+        '        <span class="hf-cal-inst">Play as hard as you ever will <em>(audio live, 6 s)</em></span>\n'
+        '        <span class="hf-cal-meas" rata-role="calmeas3" role="status">&ndash;</span>\n'
+        '        <button type="button" class="hf-cal-run" data-phase="3" aria-label="Run playing-level measurement">RUN</button>\n'
+        '      </div>\n'
+        '    </div>\n'
+        '    <div class="hf-cal-bar" role="progressbar" aria-label="Measurement progress"><div class="hf-cal-fill" rata-role="calbar"></div></div>\n'
+        '    <div class="hf-cal-status" rata-role="calstatus" role="status" aria-live="polite">run all three steps to get a recommendation</div>\n'
+        '    <div class="hf-cal-foot">\n'
+        '      <span class="hf-cal-rec" rata-role="calrec" role="status">&ndash;</span>\n'
+        '      <button type="button" class="hf-cal-apply" rata-role="calapply" disabled aria-label="Apply calibration">APPLY</button>\n'
+        '      <button type="button" class="hf-cal-reset" rata-role="calreset" aria-label="Reset calibration to zero" title="Zero the calibration offsets">RESET</button>\n'
+        '    </div>\n'
+        '  </div>\n')
     return ('<div class="mod-pedal mod-pedal-guitaramp-hexforge{{{cns}}} ">\n'
         '  <div mod-role="drag-handle" class="mod-drag-handle"></div>\n'
         # UNIFIED TOOLBAR — brand (left) · preset recall (centre) · master output + latency (right).
@@ -1660,12 +1712,16 @@ def emit_icon():
         '      <div class="mod-powerswitch" mod-role="bypass" role="switch" aria-label="Global bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '    </div>\n'
         '  </div>\n'
-        + chain + detail + tuner +
+        + chain + detail + tuner + cal +
         # Tuner button lives bottom-right (user 2026-07-23): the toolbar ran out of
         # room once the doubler switch joined the output group.
         '  <button type="button" class="hf-tunerbtn hf-tuner-corner" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg>'
         '<span class="hf-tuner-corner-lab">TUNER</span></button>\n'
+        # Calibrate button sits left of the tuner button (same corner-strip family).
+        '  <button type="button" class="hf-calbtn hf-cal-corner" rata-role="calbtn" aria-label="Auto-calibration" aria-pressed="false" title="Auto-calibrate — match the rig to your guitar">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4 L5 20 M12 4 L12 20 M19 4 L19 20"/><circle cx="5" cy="9" r="2.2" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="7" r="2.2" fill="currentColor" stroke="none"/></svg>'
+        '<span class="hf-cal-corner-lab">CALIBRATE</span></button>\n'
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'
         '    <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>\n'

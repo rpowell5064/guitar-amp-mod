@@ -38,3 +38,10 @@ target_link_libraries(pa_node_dump PRIVATE GuitarAmpSim)
 
 add_executable(vox_idle_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/vox_idle_probe.cpp")
 target_link_libraries(vox_idle_probe PRIVATE GuitarAmpSim)
+
+# Auto-calibration measurement check (header-only DSP: synth reference-rig +
+# real-capture modes; asserts the wizard reproduces the hand-tuned rig).
+add_executable(cal_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cal_check.cpp")
+target_include_directories(cal_check PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include")

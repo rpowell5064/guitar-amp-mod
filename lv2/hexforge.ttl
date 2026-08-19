@@ -99,7 +99,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 176 ;   # 176: v1.17 -- even-harmonic power-amp warmth (duty + post-distortion even exciter, loudness-neutral) + Beardo BE re-voice (HBE collapse fix, flat gain, decay hiss). 175: v1.16 -- Plexi variac overvolt + Gainzilla amp overhaul (Blue 4th stage, Red sag, bass stutter, hiss tame); preset retuning (Brown Sound '84, Berlin Wall Pulse drive, djent song reworks, Solar Monolith drone, Regal tuning)
+    lv2:microVersion 175 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -3065,11 +3065,35 @@
         lv2:index 448 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 449 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command" ;
+        lv2:portProperty lv2:integer, pprops:notOnGUI ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 450 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 451 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 452 ; lv2:symbol "cal_state" ; lv2:name "Cal State" ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 453 ; lv2:symbol "cal_progress" ; lv2:name "Cal Progress" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 449 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 454 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -3082,7 +3106,7 @@
         modgui:brand "Hex Chain" ;
         modgui:label "Hex Forge" ;
         modgui:model "mod-pedal-guitaramp-hexforge" ;
-        modgui:monitoredOutputs [ lv2:symbol "clip" ] , [ lv2:symbol "ps_bank" ] , [ lv2:symbol "ps_slot" ] , [ lv2:symbol "in_meter" ] , [ lv2:symbol "out_meter" ] , [ lv2:symbol "tuner_note" ] , [ lv2:symbol "tuner_cents" ] , [ lv2:symbol "cpu_gt" ] , [ lv2:symbol "cpu_cp" ] , [ lv2:symbol "cpu_fz" ] , [ lv2:symbol "cpu_dr" ] , [ lv2:symbol "cpu_amp" ] , [ lv2:symbol "cpu_cab" ] , [ lv2:symbol "cpu_md" ] , [ lv2:symbol "cpu_dl" ] , [ lv2:symbol "cpu_rv" ] , [ lv2:symbol "cpu_wh" ] , [ lv2:symbol "cpu_oc" ] , [ lv2:symbol "cpu_nail" ] , [ lv2:symbol "cpu_eq" ] , [ lv2:symbol "cpu_total" ] , [ lv2:symbol "cpu_dr2" ] , [ lv2:symbol "cpu_rigb" ] , [ lv2:symbol "cpu_gt2" ] , [ lv2:symbol "cpu_cp2" ] , [ lv2:symbol "cpu_fz2" ] , [ lv2:symbol "cpu_nail2" ] , [ lv2:symbol "cpu_md2" ] , [ lv2:symbol "cpu_dl2" ] , [ lv2:symbol "cpu_rv2" ] , [ lv2:symbol "cpu_wh2" ] , [ lv2:symbol "cpu_oc2" ] , [ lv2:symbol "cpu_eq2" ] , [ lv2:symbol "cpu_cab2" ] ;
+        modgui:monitoredOutputs [ lv2:symbol "clip" ] , [ lv2:symbol "ps_bank" ] , [ lv2:symbol "ps_slot" ] , [ lv2:symbol "in_meter" ] , [ lv2:symbol "out_meter" ] , [ lv2:symbol "tuner_note" ] , [ lv2:symbol "tuner_cents" ] , [ lv2:symbol "cpu_gt" ] , [ lv2:symbol "cpu_cp" ] , [ lv2:symbol "cpu_fz" ] , [ lv2:symbol "cpu_dr" ] , [ lv2:symbol "cpu_amp" ] , [ lv2:symbol "cpu_cab" ] , [ lv2:symbol "cpu_md" ] , [ lv2:symbol "cpu_dl" ] , [ lv2:symbol "cpu_rv" ] , [ lv2:symbol "cpu_wh" ] , [ lv2:symbol "cpu_oc" ] , [ lv2:symbol "cpu_nail" ] , [ lv2:symbol "cpu_eq" ] , [ lv2:symbol "cpu_total" ] , [ lv2:symbol "cpu_dr2" ] , [ lv2:symbol "cpu_rigb" ] , [ lv2:symbol "cpu_gt2" ] , [ lv2:symbol "cpu_cp2" ] , [ lv2:symbol "cpu_fz2" ] , [ lv2:symbol "cpu_nail2" ] , [ lv2:symbol "cpu_md2" ] , [ lv2:symbol "cpu_dl2" ] , [ lv2:symbol "cpu_rv2" ] , [ lv2:symbol "cpu_wh2" ] , [ lv2:symbol "cpu_oc2" ] , [ lv2:symbol "cpu_eq2" ] , [ lv2:symbol "cpu_cab2" ] , [ lv2:symbol "cal_state" ] , [ lv2:symbol "cal_progress" ] ;
         modgui:port [
             lv2:index 0 ; lv2:symbol "bypass" ; lv2:name "Bypass"
         ] , [
@@ -3901,5 +3925,11 @@
             lv2:index 407 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
         ] , [
             lv2:index 408 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
+        ] , [
+            lv2:index 409 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command"
+        ] , [
+            lv2:index 410 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset"
+        ] , [
+            lv2:index 411 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset"
         ]
     ] .

@@ -570,6 +570,63 @@ function (event, funcs) {
         fns.set_port_value(sym, 1);
         setTimeout(function () { fns.set_port_value(sym, 0); }, 40);
     }
+    // ── Auto-calibration wizard ── cal_cmd is pulsed (1-3 run phase, 9 abort); the
+    // DSP streams state/measurements over the #cal notify string (see calRender).
+    function calPulse(fns, v) {
+        if (!fns || typeof fns.set_port_value !== 'function') return;
+        fns.set_port_value('cal_cmd', v);
+        setTimeout(function () { fns.set_port_value('cal_cmd', 0); }, 40);
+    }
+    var CAL_ERR = { 1: 'signal detected — step 1 needs the guitar untouched',
+                    2: 'too quiet — play harder and rerun step 3',
+                    3: 'input clipping — lower your hardware gain, then recalibrate',
+                    4: 'no input signal — check the connection' };
+    function calSgn(v) { return (v >= 0 ? '+' : '') + v.toFixed(1); }
+    // Renders the whole wizard from icon.data: 'hf_cal' = last #cal payload,
+    // 'hf_cal_offs' = the currently applied offset ports (the calibration layer).
+    function calRender(icon) {
+        var st   = icon.data('hf_cal') || null;
+        var offs = icon.data('hf_cal_offs') || { trim: 0, floor: 0 };
+        var db = function (v) { return (v > -119) ? v.toFixed(1) + ' dB' : '–'; };
+        if (st) {
+            icon.find('[rata-role=calmeas1]').text(st.floorDb > -119
+                ? db(st.floorDb) + ' · ' + Math.round(st.humFrac * 100) + '% hum' : '–');
+            icon.find('[rata-role=calmeas2]').text(db(st.touchDb));
+            icon.find('[rata-role=calmeas3]').text(db(st.playDb));
+        }
+        var running = !!(st && st.state >= 1 && st.state <= 3);
+        var bar = icon.find('[rata-role=calbar]')[0];
+        if (bar) bar.style.width = (running ? Math.round(st.prog * 100) : 0) + '%';
+        for (var i = 1; i <= 3; ++i)
+            icon.find('[rata-role=calrow' + i + ']').toggleClass('hf-cal-live', running && st.state === i);
+        var applied = !!icon.data('hf_cal_applied');
+        var status;
+        if (running) status = ['', 'measuring the noise floor — don’t touch the guitar',
+                               'measuring — keep your hands resting on the strings',
+                               'measuring — play as hard as you ever will'][st.state];
+        else if (st && st.state === 5) status = CAL_ERR[st.err] || 'measurement error — rerun the steps';
+        else if (st && st.state === 4 && applied)
+            // A near-zero recommendation means this rig already matches the factory
+            // tuning — that's the success case, so say it instead of looking inert.
+            status = (Math.abs(st.recTrim) < 0.05 && Math.abs(st.recFloor) < 0.05)
+                ? 'applied ✓ — this rig already matches the factory tuning, no correction needed'
+                : 'applied ✓ — trim ' + calSgn(st.recTrim) + ' dB · gate ' + calSgn(st.recFloor) + ' dB now active';
+        else if (st && st.state === 4) status = 'ready — APPLY sets the calibration below';
+        else if (offs.trim || offs.floor) status = 'active calibration: trim ' + calSgn(offs.trim) +
+                                                   ' dB · gate ' + calSgn(offs.floor) + ' dB';
+        else status = 'run all three steps to get a recommendation';
+        icon.find('[rata-role=calstatus]').text(status);
+        var rec = icon.find('[rata-role=calrec]');
+        var ap  = icon.find('[rata-role=calapply]')[0];
+        if (st && st.state === 4) {
+            rec.text('trim ' + calSgn(st.recTrim) + ' dB · gate ' + calSgn(st.recFloor) +
+                     ' dB · hum filter ' + (st.humFrac > 0.5 ? 'ON' : 'off'));
+            if (ap) { ap.disabled = applied; ap.textContent = applied ? 'APPLIED ✓' : 'APPLY'; }
+        } else {
+            rec.text('–');
+            if (ap) { ap.disabled = true; ap.textContent = 'APPLY'; }
+        }
+    }
     function psGoto(fns, flat) {
         if (!fns || typeof fns.set_port_value !== 'function') return;
         fns.set_port_value('ps_goto', flat);
@@ -918,6 +975,44 @@ function (event, funcs) {
         wire('.hf-tunerclose', function () { tunerShow(false); });
         if ('tuner_on' in map) { var _to = map.tuner_on > 0.5; icon.data('hf_tuner_on', _to);
             icon.find('[rata-role=tuner]').toggleClass('mod-hidden', !_to); icon.find('[rata-role=tunerbtn]').toggleClass('hf-on', _to); }
+        // ── Auto-calibration wizard: sliders icon opens/closes; closing aborts any
+        // running measurement (which also unmutes). RUN pulses that phase; APPLY
+        // writes the global offset layer; RESET zeroes it. DOM updated right here
+        // (no change echo), same reason as tunerShow above.
+        function calShow(on) {
+            icon.data('hf_cal_open', on);
+            icon.find('[rata-role=cal]').toggleClass('mod-hidden', !on);
+            icon.find('[rata-role=calbtn]').toggleClass('hf-on', on);
+            if (!on) calPulse(funcs, 9);
+        }
+        wire('.hf-calbtn',   function () { calShow(!icon.data('hf_cal_open')); });
+        wire('.hf-calclose', function () { calShow(false); });
+        icon.find('.hf-cal-run').each(function () { var el = this;
+            el.addEventListener('click', function (e) { e.stopPropagation();
+                icon.data('hf_cal_applied', false);   // new measurement invalidates the applied state
+                calPulse(funcs, parseInt(el.getAttribute('data-phase'), 10)); }); });
+        wire('.hf-cal-apply', function () {
+            var st = icon.data('hf_cal');
+            if (!st || st.state !== 4 || !funcs || !funcs.set_port_value) return;
+            funcs.set_port_value('cal_trim_offs', st.recTrim);
+            funcs.set_port_value('cal_floor_offs', st.recFloor);
+            icon.data('hf_cal_offs', { trim: st.recTrim, floor: st.recFloor });
+            icon.data('hf_cal_applied', true);
+            calRender(icon);
+        });
+        wire('.hf-cal-reset', function () {
+            if (funcs && funcs.set_port_value) {
+                funcs.set_port_value('cal_trim_offs', 0);
+                funcs.set_port_value('cal_floor_offs', 0);
+            }
+            icon.data('hf_cal_offs', { trim: 0, floor: 0 });
+            icon.data('hf_cal_applied', false);
+            calRender(icon);
+        });
+        icon.data('hf_cal_offs', {
+            trim:  ('cal_trim_offs'  in map) ? parseFloat(map.cal_trim_offs)  : 0,
+            floor: ('cal_floor_offs' in map) ? parseFloat(map.cal_floor_offs) : 0 });
+        calRender(icon);
         wire('.hf-ps-toggle', function () { icon.find('[rata-role=psmenu]').toggleClass('hf-ps-open'); });
         icon.find('.hf-ps-slot').each(function () { var el = this;
             el.addEventListener('click', function (e) { e.stopPropagation();
@@ -1158,6 +1253,22 @@ function (event, funcs) {
         } else if (event.uri && event.uri.indexOf('#tuner') >= 0) {
             var tv = ('' + event.value).split('|');
             if (tv.length >= 2) { tunerNote(icon, parseInt(tv[0], 10)); tunerCents(icon, parseFloat(tv[1])); }
+        } else if (s === 'cal_trim_offs' || s === 'cal_floor_offs') {
+            var co = icon.data('hf_cal_offs') || { trim: 0, floor: 0 };
+            if (s === 'cal_trim_offs') co.trim = event.value; else co.floor = event.value;
+            icon.data('hf_cal_offs', co);
+            calRender(icon);
+        } else if (event.uri && event.uri.indexOf('#cal') >= 0) {
+            // state|progress|floorDb|humFrac|touchDb|play10msDb|recTrim|recFloor|err
+            var cv = ('' + event.value).split('|');
+            if (cv.length >= 9) {
+                icon.data('hf_cal', { state: parseInt(cv[0], 10), prog: parseFloat(cv[1]),
+                    floorDb: parseFloat(cv[2]), humFrac: parseFloat(cv[3]),
+                    touchDb: parseFloat(cv[4]), playDb: parseFloat(cv[5]),
+                    recTrim: parseFloat(cv[6]), recFloor: parseFloat(cv[7]),
+                    err: parseInt(cv[8], 10) });
+                calRender(icon);
+            }
         }
     }
 }

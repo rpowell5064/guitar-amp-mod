@@ -31,6 +31,7 @@
 #include "BiquadFilter.h"
 #include "PickupVoicer.h"
 #include "HumNotchComb.h"
+#include "CalMeasure.h"
 #include "PickupLoadSim.h"
 #include "IrResample.h"
 #include "AdaaSoftClip.h"
@@ -398,7 +399,7 @@ struct URIs {
     LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
     LV2_URID ir_file, amp_nam, dr_nam, cab_nam, amp2_nam, ir2_file, dr2_nam;
-    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner;
+    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner, cal;
     LV2_URID midi_MidiEvent;
     LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
 };
@@ -569,6 +570,19 @@ struct HexForge {
     float  meterIn = 0.0f, meterOut = 0.0f;  // smoothed peak level meters (-> in_meter/out_meter)
     float  meterSentIn = -1.0f, meterSentOut = -1.0f;  // last values pushed to UI (deadband)
     uint32_t meterFrames = 0;                // throttle for the #meters notify (UI)
+    // ── Auto-calibration wizard (tail ports, see gen_hexforge.py) ──
+    int        calState = 0;                 // mirrors cal_state: 0 idle/1-3 phase/4 done/5 error
+    uint32_t   calSamplesLeft = 0, calSamplesTotal = 0;   // phase countdown (sample-counted)
+    float      calCmdPrev = 0.0f;            // cal_cmd edge detect
+    CalMeasure calMeas;                      // shared measurement core (lv2/common/CalMeasure.h)
+    CalPhaseStats calPh[3];                  // hands-off / hands-on / play-hard results
+    bool       calPhDone[3] = {false,false,false};
+    CalRecommend  calRec{};
+    int        calNotifyTicks = 0;           // keep pushing #cal briefly after completion
+    // Applied offset layer, slewed toward the cal_trim_offs/cal_floor_offs ports
+    // (~10 dB/s) so an Apply never clicks; snapped to the ports on the first run.
+    float      calTrimOffsSm = 0.0f, calFloorOffsSm = 0.0f;
+    bool       calOffsInit = false;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -698,6 +712,7 @@ static void mapURIs(HexForge* p) {
     p->uris.preset_blob   = m->map(m->handle, HEXFORGE_URI "#preset_blob");
     p->uris.meters        = m->map(m->handle, HEXFORGE_URI "#meters");
     p->uris.tuner         = m->map(m->handle, HEXFORGE_URI "#tuner");
+    p->uris.cal           = m->map(m->handle, HEXFORGE_URI "#cal");
     p->uris.midi_MidiEvent= m->map(m->handle, LV2_MIDI_MidiEvent_URI);
     p->uris.time_Position = m->map(m->handle, LV2_TIME__Position);
     p->uris.time_bpm      = m->map(m->handle, LV2_TIME__beatsPerMinute);
@@ -2872,9 +2887,67 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (p->ports[HF_TUNER_CENTS]) *p->ports[HF_TUNER_CENTS] = 0.0f;
     }
 
+    // ── Auto-calibration wizard ── measures the RAW input (same tap as the tuner,
+    // pre-Input-Trim: the domain every gate threshold was floor-complianced in).
+    // cal_cmd is UI-pulsed: 1-3 start that phase, 9 aborts. Results/recommendation
+    // ride the #cal notify string; Apply writes the cal_*_offs ports (below).
+    {
+        const float cv = p->ports[HF_CAL_CMD] ? *p->ports[HF_CAL_CMD] : 0.0f;
+        if (cv != p->calCmdPrev) {
+            p->calCmdPrev = cv;
+            const int cmd = (int)(cv + 0.5f);
+            if (cmd >= 1 && cmd <= 3) {
+                p->calMeas.begin(p->rate);
+                p->calState = cmd;
+                p->calSamplesTotal = p->calSamplesLeft =
+                    (uint32_t)(p->rate * (cmd == 3 ? 6.0 : 5.0));
+            } else if (cmd == 9) {
+                p->calState = 0;
+                p->calSamplesLeft = 0;
+            }
+        }
+        if (p->calState >= 1 && p->calState <= 3 && inL && inR) {
+            const uint32_t len = n < p->calSamplesLeft ? n : p->calSamplesLeft;
+            for (uint32_t i = 0; i < len; ++i)
+                p->calMeas.feed(0.5f * (inL[i] + inR[i]));
+            p->calSamplesLeft -= len;
+            if (p->calSamplesLeft == 0) {
+                const int ph = p->calState - 1;
+                p->calPh[ph] = p->calMeas.finish();
+                p->calPhDone[ph] = true;
+                if (p->calPhDone[0] && p->calPhDone[1] && p->calPhDone[2]) {
+                    p->calRec = calRecommend(p->calPh[0], p->calPh[1], p->calPh[2]);
+                    p->calState = p->calRec.error ? 5 : 4;
+                } else {
+                    p->calState = 0;
+                }
+                p->calNotifyTicks = 70;   // ~5 s of #cal re-pushes at the 14 Hz throttle
+            }
+        }
+        if (p->ports[HF_CAL_STATE])    *p->ports[HF_CAL_STATE] = (float)p->calState;
+        if (p->ports[HF_CAL_PROGRESS]) *p->ports[HF_CAL_PROGRESS] =
+            (p->calSamplesTotal && p->calState >= 1 && p->calState <= 3)
+                ? 1.0f - (float)p->calSamplesLeft / (float)p->calSamplesTotal : 0.0f;
+        // Slew the applied offset layer toward the ports (~10 dB/s, click-free Apply).
+        const float trimTgt  = p->ports[HF_CAL_TRIM_OFFS]  ? *p->ports[HF_CAL_TRIM_OFFS]  : 0.0f;
+        const float floorTgt = p->ports[HF_CAL_FLOOR_OFFS] ? *p->ports[HF_CAL_FLOOR_OFFS] : 0.0f;
+        if (!p->calOffsInit) { p->calOffsInit = true; p->calTrimOffsSm = trimTgt; p->calFloorOffsSm = floorTgt; }
+        const float step = 10.0f * (float)n / (float)p->rate;
+        auto slew = [step](float cur, float tgt) {
+            const float d = tgt - cur;
+            return (std::fabs(d) <= step) ? tgt : cur + (d > 0.0f ? step : -step);
+        };
+        p->calTrimOffsSm  = slew(p->calTrimOffsSm,  trimTgt);
+        p->calFloorOffsSm = slew(p->calFloorOffsSm, floorTgt);
+    }
+    // Mute while measuring the floors (phases 1-2: idle noise through a cranked
+    // preset is the very thing being measured); phase 3 passes audio — the player
+    // must hear the rig to genuinely play their hardest.
+    const bool calMute = (p->calState == 1 || p->calState == 2);
+
     // ── Global bypass: unity passthrough (or silence while tuning-muted) ──
     if (*p->ports[HF_BYPASS] > 0.5f) {
-        if (tunerMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
+        if (tunerMute || calMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
         else {
             if (outL != inL) std::memcpy(outL, inL, sizeof(float)*n);
             if (outR != inR) std::memcpy(outR, inR, sizeof(float)*n);
@@ -2888,7 +2961,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // Input trim
     const bool  itEnabled = (*p->ports[HF_IT_ENABLE] > 0.5f);
     p->trimLoad.set(*p->ports[HF_IT_LOAD]);
-    const float itGain    = std::pow(10.0f, *p->ports[HF_IT_GAIN]/20.0f)
+    const float itGain    = std::pow(10.0f, (*p->ports[HF_IT_GAIN] + p->calTrimOffsSm)/20.0f)
                             * ((*p->ports[HF_IT_PHASE] > 0.5f) ? -1.0f : 1.0f);
     const bool  itHum     = *p->ports[HF_IT_HUM] > 0.5f;
     const bool  itHB      = *p->ports[HF_IT_HUMBK] > 0.5f;
@@ -2898,7 +2971,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (itBoost) p->trimBoost.prepare(p->rate, *p->ports[HF_IT_BOOSTAMT]);
     // Gate
     p->gate.setBypass(false);
-    p->gate.setParameter("threshold",  *p->ports[HF_GT_THRESH]);
+    p->gate.setParameter("threshold",
+        std::clamp(*p->ports[HF_GT_THRESH] + p->calFloorOffsSm, -80.0f, 0.0f));
     p->gate.setParameter("attack",     *p->ports[HF_GT_ATTACK]);
     p->gate.setParameter("hold",       *p->ports[HF_GT_HOLD]);
     p->gate.setParameter("release",    *p->ports[HF_GT_RELEASE]);
@@ -3335,7 +3409,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     int fz2Pedal = 0;
     if (*p->ports[HF_GT2_ENABLE] > 0.5f) {
         p->gate2.setBypass(false);
-        p->gate2.setParameter("threshold",  *p->ports[HF_GT2_THRESH]);
+        p->gate2.setParameter("threshold",
+            std::clamp(*p->ports[HF_GT2_THRESH] + p->calFloorOffsSm, -80.0f, 0.0f));
         p->gate2.setParameter("attack",     *p->ports[HF_GT2_ATTACK]);
         p->gate2.setParameter("hold",       *p->ports[HF_GT2_HOLD]);
         p->gate2.setParameter("release",    *p->ports[HF_GT2_RELEASE]);
@@ -3825,8 +3900,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         }
     }
 
-    // Silence the output while tuning (mute engaged) — the tuner still reads the dry input.
-    if (tunerMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
+    // Silence the output while tuning (mute engaged) or measuring the calibration
+    // floors — both engines still read the dry input upstream of the chain.
+    if (tunerMute || calMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
 
     // ── Clip indicator: latch for ~250 ms whenever the output hits full scale ──
     float peak = 0.0f;
@@ -3872,6 +3948,22 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (tunerOn) {
             char tbuf[24]; std::snprintf(tbuf, sizeof(tbuf), "%d|%.1f", p->tuner.note, p->tuner.cents);
             forgeStringSet(p, p->uris.tuner, tbuf);
+        }
+        // Calibration wizard: state|progress|floorDb|humFrac|touchDb|play10msDb|
+        // recTrim|recFloor|err — pushed while running + ~5 s after completion so a
+        // mid-run page reload resyncs (output ports alone don't reach the modgui).
+        const bool calRunning = (p->calState >= 1 && p->calState <= 3);
+        if (calRunning || p->calNotifyTicks > 0) {
+            if (!calRunning) --p->calNotifyTicks;
+            const float prog = (p->calSamplesTotal && p->calState >= 1 && p->calState <= 3)
+                ? 1.0f - (float)p->calSamplesLeft / (float)p->calSamplesTotal : 0.0f;
+            char cbuf[112];
+            std::snprintf(cbuf, sizeof(cbuf), "%d|%.2f|%.1f|%.2f|%.1f|%.1f|%.1f|%.1f|%d",
+                          p->calState, prog,
+                          p->calPh[0].peakDb, p->calPh[0].humFrac,
+                          p->calPh[1].peakDb, p->calPh[2].rms10msMaxDb,
+                          p->calRec.trimOffsDb, p->calRec.floorOffsDb, p->calRec.error);
+            forgeStringSet(p, p->uris.cal, cbuf);
         }
     }
 
