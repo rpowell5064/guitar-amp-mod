@@ -841,7 +841,9 @@ int main(int argc, char** argv) {
 
     // ── Spectral excitation: a real DI if given, else pink noise ─────────────
     std::vector<float> exc;
+    bool realDi = false;
     if (const char* inFile = argVal(argc, argv, "--in")) {
+        realDi = true;
         double fsr = 0;
         if (!readWav(inFile, exc, fsr)) {
             std::fprintf(stderr, "failed to read WAV: %s\n", inFile);
@@ -897,6 +899,102 @@ int main(int argc, char** argv) {
     std::printf("  model out RMS : %.1f dBFS (gain %+.1f dB)\n", dbfs(modR), dbfs(modR) - dbfs(inR));
     std::printf("  -> makeup to match NAM: x%.2f (%+.1f dB)\n",
                 modR > 1e-9 ? namR / modR : 1.0, dbfs(namR) - dbfs(modR));
+
+    // ── Time-domain ESR on the real clip (2026-08-19) ────────────────────────
+    // Only meaningful with a real DI: both systems rendered the SAME performance,
+    // so the residual IS the audible difference, weighted by what the player
+    // actually plays. Level-matched with the least-squares gain (kModelMakeup
+    // handles static level in the plugin) and alignment-searched ±256 samples
+    // (OS-wrapper vs NAM receptive-field delays differ by a few samples).
+    // Calibration: <1% ≈ indistinguishable, 1-5% close, >10% audibly different.
+    if (realDi && namM.size() > size_t(sr)) {
+        const int maxLag = 256;
+        const size_t n = std::min(namM.size(), modM.size());
+        // Pass 1: find the lag on a 4 s window by maximising |correlation|.
+        const size_t w0 = 0, w1 = std::min(n - maxLag, size_t(sr * 4.0));
+        int bestLag = 0; double bestC = -1.0;
+        for (int lag = -maxLag; lag <= maxLag; ++lag) {
+            double c = 0.0;
+            for (size_t i = w0 + maxLag; i < w1; i += 2)
+                c += double(namM[i]) * modM[i + lag];
+            if (std::abs(c) > bestC) { bestC = std::abs(c); bestLag = lag; }
+        }
+        // Pass 2: least-squares gain + full ESR at the best lag, plus the worst
+        // 1 s window so a localized mismatch (attacks, sag) can't hide in a
+        // long average.
+        double xy = 0.0, xx = 0.0;
+        for (size_t i = maxLag; i + maxLag < n; ++i) {
+            xy += double(namM[i]) * modM[i + bestLag];
+            xx += double(modM[i + bestLag]) * modM[i + bestLag];
+        }
+        const double g = xx > 1e-12 ? xy / xx : 1.0;
+        const size_t win = size_t(sr);
+        // Silence floor: skip windows whose reference RMS is under -60 dBFS
+        // (the gaps between takes) — a near-zero denominator says nothing.
+        const double wDenFloor = double(win) * 1e-6;
+        double num = 0.0, den = 0.0, worst = 0.0, wNum = 0.0, wDen = 0.0;
+        size_t wCnt = 0, worstAt = 0, at = 0;
+        for (size_t i = maxLag; i + maxLag < n; ++i) {
+            const double d = double(namM[i]) - g * modM[i + bestLag];
+            num += d * d; den += double(namM[i]) * namM[i];
+            wNum += d * d; wDen += double(namM[i]) * namM[i];
+            if (++wCnt >= win) {
+                if (wDen > wDenFloor && wNum / wDen > worst) { worst = wNum / wDen; worstAt = at; }
+                wNum = wDen = 0.0; wCnt = 0; at = i;
+            }
+        }
+        const double esr = den > 0 ? num / den : 1.0;
+        // NOTE ON READING waveESR: raw waveform ESR punishes PHASE and clip-shape
+        // differences ears barely register, and grows with nonlinearity — a dimed
+        // model can read 80%+ while sounding close. Use it RELATIVELY (before/after
+        // a DSP change, era selection), never as an absolute pass/fail.
+        std::printf("\n── time-domain ESR on the clip (level-matched, lag %+d, LS gain x%.2f) ──\n",
+                    bestLag, g);
+        std::printf("  waveESR: %.2f%% (%.1f dB)   worst 1 s window: %.2f%% at %.1f s\n",
+                    100.0 * esr, 10.0 * std::log10(std::max(esr, 1e-12)),
+                    100.0 * worst, double(worstAt) / sr);
+
+        // ── Spectrogram-magnitude ESR (phase-blind — the perceptual one) ──────
+        // |STFT| frames (2048/50% Hann), least-squares global magnitude gain,
+        // energy-weighted residual. Ignores phase entirely, so it measures the
+        // part of the difference that survives into tone: spectral shape over
+        // time. Calibration on this rig: <2% very close, 2-8% noticeable
+        // character difference, >15% clearly different voicing.
+        {
+            constexpr int NW = 2048, HOP = 1024;
+            std::vector<double> hann(NW);
+            for (int i = 0; i < NW; ++i) hann[i] = 0.5 - 0.5 * std::cos(2.0 * M_PI * i / (NW - 1));
+            double sNM = 0.0, sMM = 0.0;                 // for LS magnitude gain
+            std::vector<double> magN, magM;              // accumulated per-frame mags
+            magN.reserve((n / HOP + 1) * (NW / 2));
+            magM.reserve((n / HOP + 1) * (NW / 2));
+            std::vector<std::complex<double>> bufN(NW), bufM(NW);
+            for (size_t off = maxLag; off + NW + maxLag < n; off += HOP) {
+                for (int i = 0; i < NW; ++i) {
+                    bufN[i] = std::complex<double>(namM[off + i] * hann[i], 0.0);
+                    bufM[i] = std::complex<double>(modM[off + i + bestLag] * hann[i], 0.0);
+                }
+                fft(bufN); fft(bufM);
+                for (int b = 1; b < NW / 2; ++b) {       // skip DC
+                    const double aN = std::abs(bufN[b]), aM = std::abs(bufM[b]);
+                    magN.push_back(aN); magM.push_back(aM);
+                    sNM += aN * aM; sMM += aM * aM;
+                }
+            }
+            const double gm = sMM > 1e-18 ? sNM / sMM : 1.0;
+            double sn = 0.0, sd = 0.0;
+            for (size_t i = 0; i < magN.size(); ++i) {
+                const double d = magN[i] - gm * magM[i];
+                sn += d * d; sd += magN[i] * magN[i];
+            }
+            const double sesr = sd > 0 ? sn / sd : 1.0;
+            std::printf("  specESR: %.2f%% (%.1f dB, mag gain x%.2f)%s\n",
+                        100.0 * sesr, 10.0 * std::log10(std::max(sesr, 1e-12)), gm,
+                        sesr < 0.02 ? "   (very close)" :
+                        sesr > 0.15 ? "   <- clearly different voicing" :
+                        sesr > 0.08 ? "   <- noticeable difference" : "");
+        }
+    }
 
     // ── THD vs drive, at two probe frequencies ───────────────────────────────
     // ~110 Hz exposes LF tightness/clipping (also reflects how each stage rolls
