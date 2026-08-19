@@ -51,20 +51,28 @@ private:
     static constexpr int kHop  = 64;         // partition/hop size (= device JACK period)
     static constexpr int kFft  = 2 * kHop;   // 128-point FFTs
     static constexpr int kBins = kHop + 1;   // half-spectrum bins 0..64
+    // Row stride for the spectra arrays: kBins padded to a multiple of 4 so the
+    // per-partition MAC pass is an exact number of 4-lane vector iterations (no
+    // scalar remainder). Bins kBins..kStride-1 are zero forever (zero-filled at
+    // setIR/reset, never written) so they contribute exact zeros to the sums.
+    static constexpr int kStride = 68;
 
     using Cx = std::complex<float>;
 
     int irLen_  = 0;
     int nTail_  = 0;                          // number of tail partitions
 
-    float head_[kHop]   = {};                 // taps 0..P-1 (direct FIR)
+    float headRev_[kHop] = {};                // taps 0..P-1 stored REVERSED (headRev_[kHop-1-i]
+                                              // = ir[i]) so the per-sample FIR is a forward
+                                              // contiguous dot product over the history
     float hist_[kFft]   = {};                 // last 2P input samples (linear, shifted per call)
     float tail_[kHop]   = {};                 // tail contribution for the CURRENT hop
     int   hopFill_ = 0;                       // samples consumed of the current hop
 
-    // Tail spectra + FDL, SoA half-spectrum layout [part * kBins + bin].
-    std::vector<float> Hre_, Him_;            // nTail_ * kBins
-    std::vector<float> Xre_, Xim_;            // FDL ring: nTail_ * kBins
+    // Tail spectra + FDL, SoA half-spectrum layout [part * kStride + bin];
+    // only bins 0..kBins-1 carry content, the padding lanes stay zero.
+    std::vector<float> Hre_, Him_;            // nTail_ * kStride
+    std::vector<float> Xre_, Xim_;            // FDL ring: nTail_ * kStride
     int fdlPos_ = 0;                          // slot holding the most recent hop's spectrum
 
     Cx  fftBuf_[kFft];                        // FFT workspace

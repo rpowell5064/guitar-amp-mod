@@ -343,8 +343,13 @@ stays LUT+adds. Then:
 50. **ADAA on triode LUTs / pedal waveshapers** → drop those stages to 2× OS at
     equal alias floor; saves an estimated 30-50% of preamp cost. Not a fidelity
     item; needs amp_alias + nam_compare re-verify (bit-exactness lost).
-51. **NEON-vectorize fft128/MAC pass** (~3-4×) in the already-shipped partitioned
-    convolver; Gardner non-uniform partitioning only if ≥0.5 s user IRs matter.
+51. ~~**NEON-vectorize fft128/MAC pass**~~ **DONE 2026-08-19** — tail complex-MAC +
+    head FIR NEON-intrinsified (kBins 65 → kStride 68 padded rows kill the scalar
+    remainder; head taps stored reversed for a forward contiguous dot; scalar
+    fallback kept for amd64/MSVC). Measured on the Pi (conv_check, per channel):
+    irLen 2048: 190→270× RT (1.42×), 24000: 33→74× (2.25×), 96000: 8.8→17.6× (2.0×).
+    A 1 s user IR now ~2× cheaper. fft128 itself left scalar (~2% of worst case —
+    deliberate). Gardner non-uniform partitioning still only if ≥0.5 s IRs matter.
 
 ## Explicitly NOT worth it (researched and rejected)
 - Higher oversampling / steeper AA anywhere (measured done).
