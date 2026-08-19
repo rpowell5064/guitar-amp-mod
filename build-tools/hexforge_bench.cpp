@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cstdint>
+#include <cstdlib>
 #include <cmath>
 #include <ctime>
 #include <string>
@@ -40,7 +41,12 @@ int main(int argc, char** argv){
     const char* BUNDLE="/home/pistomp/.lv2/guitaramp-suite.lv2/";
     const char* URI="https://rpowell5064.github.io/guitaramp-suite/hexforge";
     const char* DI="/home/pistomp/di.f32";
-    const double RATE=48000.0; const uint32_t NF=64;
+    const double RATE=48000.0;
+    // Any all-digits argv = the JACK period to bench (default 64); "eco" still
+    // selects Engine Quality Eco. e.g. `hexforge_bench 32` or `hexforge_bench eco 16`.
+    uint32_t NF=64;
+    for(int a=1;a<argc;++a){ char* e=nullptr; long v=strtol(argv[a],&e,10);
+        if(e&&*e=='\0'&&v>=16&&v<=1024) NF=(uint32_t)v; }
 
     FILE* fd=fopen(DI,"rb"); std::vector<float> di;
     if(fd){ fseek(fd,0,SEEK_END); long sz=ftell(fd); fseek(fd,0,SEEK_SET); di.resize(sz/4); fread(di.data(),4,di.size(),fd); fclose(fd);}
@@ -72,7 +78,8 @@ int main(int argc, char** argv){
     // the first runs (below) so the change-watch fires and the deferred amp swap
     // actually lands -- pre-setting the port before run #1 never triggers the
     // swap (the ps_goto lesson, port-init edition).
-    const bool wantEco = (argc > 1 && std::string(argv[1]) == "eco");
+    bool wantEco=false;
+    for(int a=1;a<argc;++a) if(std::string(argv[a])=="eco") wantEco=true;
     val[HF_BYPASS]=0; val[HF_OUT_AUTO]=1; val[HF_OUT_LEVEL]=-18; val[HF_PS_GOTO]=-1;
     val[HF_IT_ENABLE]=1; val[HF_IT_HUM]=1; val[HF_IT_HUMBK]=1; val[HF_IT_BOOST]=1;
     int ens[]={HF_GT_ENABLE,HF_CP_ENABLE,HF_FZ_ENABLE,HF_DR_ENABLE,HF_AMP_ENABLE,HF_CAB_ENABLE,HF_MD_ENABLE,HF_DL_ENABLE,HF_RV_ENABLE,HF_WH_ENABLE,HF_OC_ENABLE};
@@ -99,7 +106,8 @@ int main(int argc, char** argv){
 
     const char* names[14]={"Fender","JCM800","EVH5150","Sunn","Rockerverb","NAM(skip)","Friedman","Hiwatt",
                            "Vox","Backline","Plexi","CaliV","Recto","Tremont"};
-    printf("amp model        mean_us   max_us   load@64  load@96  load@128\n");
+    printf("bench period: %u frames (deadline %.0f us)\n", NF, NF/RATE*1e6);
+    printf("amp model        mean_us   max_us   load@NF  max@NF  load@128\n");
     size_t pos=0;
     for(int s=0;s<20;++s) runBlock(pos);            // prime the watch state at Standard
     if(wantEco){ val[HF_QUALITY]=1.0f; for(int s=0;s<200;++s) runBlock(pos); }  // change-event -> ramp -> swap
@@ -110,9 +118,9 @@ int main(int argc, char** argv){
         double sum=0,mx=0; const int N=2000;
         for(int s=0;s<N;++s){ double t0=now_us(); runBlock(pos); double dt=now_us()-t0; sum+=dt; if(dt>mx)mx=dt; }
         double mean=sum/N;
-        double d64=NF/RATE*1e6, d96=96/RATE*1e6, d128=128/RATE*1e6;
+        double dNF=NF/RATE*1e6, d128=128/RATE*1e6;
         printf("%-14s %9.1f %8.1f  %6.0f%% %7.0f%% %7.0f%%\n", names[m], mean, mx,
-               100*mean/d64, 100*mean/d96, 100*mean/d128);
+               100*mean/dNF, 100*mx/dNF, 100*mean/d128);
     }
     if(d->deactivate)d->deactivate(inst);
     if(d->cleanup)d->cleanup(inst);
