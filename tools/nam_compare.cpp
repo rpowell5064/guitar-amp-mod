@@ -252,6 +252,7 @@ struct Knobs {
     float bright = 0.0f;                        // MT15: clean/crunch bright switch
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
     float gvol = 1.0f;   // #45: guitar volume-pot position (1 = full = bit-identical)
+    float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -267,6 +268,8 @@ static void runDriveModel(const ModelSpec& m, const Knobs& k, double sr,
     od.setParameter("level",  k.level);
     od.setParameter("mix",    1.0f);
     od.setParameter("octave", 0.0f);
+    if (k.gmin    > 0.0f) od.setParameter("gmin",    k.gmin);     // SD-1 fit params
+    if (k.posrail > 0.0f) od.setParameter("posrail", k.posrail);
     out.assign(in.size(), 0.0f);
     std::vector<float> scratch(BLK);
     for (size_t off = 0; off < in.size(); off += BLK) {
@@ -812,6 +815,7 @@ int main(int argc, char** argv) {
     knob("--bright", k.bright);  // MT15 bright switch
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
     knob("--gvol", k.gvol);   // #45 guitar volume-pot (Tone Bender)
+    knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit
 
     // Load the reference capture.
     NamModel nam;

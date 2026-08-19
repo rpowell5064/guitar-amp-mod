@@ -88,6 +88,65 @@ Skipped (captures no longer on the Pi): Tone Bender "Page HG", Fuzz Factory
 5. The [est]-knob rows (recto 47 %!, fender-hot, plexi, markv, muff knobs) are
    NOT evidence of model problems until rerun with the real capture knobs.
 
+## Round 2 (same day): acting on the findings ("do them all")
+
+### Knob-fit reruns of the [est] rows (sweeps in Pi /tmp/namfit)
+- **Plexi** 16.1-17.5 % and **Mark V** 19.7-20.2 % flat across all knob grids →
+  knob-insensitive, healthy band, CLEARED (matches their pink-noise-era verdicts).
+- **Fender HOT** improves monotonically toward gain 0.9 (30.4 %) — capture is
+  near-dimed; the residual is the PA-compression gap (see protocol below).
+- **Recto vs CH3 Modern: genuine outlier.** Gain-insensitive (46-49 %) AND
+  mode-insensitive (best mode 6 = 42.0 %, worst mode 0 = 73 %). No knob rescues
+  it → needs its own investigation session (suspects: capture chain content,
+  or the model's CH3 voicing itself). Do not re-voice from this data alone.
+- **Muff era map, settled by full cross-check:** civilwar → era 3 (17.4 %),
+  blackrussian → era 4 (19.2 %), **bluebeard → era 0** (21.1 % — NOT era 1;
+  the Ram's-Head-clone assumption was wrong, it fits Triangle voicing),
+  **cherub → NO era** (40-52 % against all six) — an unrepresented voicing
+  (likely op-amp/IC-era Muff); a 7th era would be a new feature, not a retune.
+
+### SD-1 rework — SHIPPED (pending user A/B)
+Root cause was structural, found via the clip THD ladders: the old per-half
+`tanh(g·x)/tanh(g)` normalisation (a) divided away the op-amp's linear gain
+below clipping = the −11 dB low-drive loudness gap, and (b) put a slope kink at
+the zero crossing = constant ~8 % spurious h2 at ALL low levels (capture: 0.4 %
+growing with level). Rework (`SuperOverdriveSD1`): correct feedback-diode clamp
+(full gain below threshold both halves; asymmetry in the CLAMP rails, 2-diode
+positive = kPosRail× the 1-diode negative) + output coupling-cap DC block.
+Constants fit on the user-DI harness (12+9-point grid): kGainMin 6.5,
+kPosRail 1.4, kOutScale 0.32. Results: d1 specESR 13.1→**2.6 %**, d7
+15.1→**6.8 %**, d1/d7 level spread 9.8→1.8 dB, spurious h2 gone. Known
+residual: tanh knee softer than the real diode (driven upper harmonics run
+low) — revisit only with ears. Deployed to guitaramp_drive + hexforge.
+**Affected preset: Desert Robot (SD-1 drive 0.65) — needs the user's A/B;
+expect fuller low-drive, no low-level fizz, ~+2 dB at high drive.**
+
+### EVH exploration — knobs CANNOT close it (voicing session required)
+The clip gap is linear (dark tilt >800 Hz worsening to −10.5 dB @8k, missing
++12.6 dB 125 Hz hump, +4 dB excess sub-50 Hz; harmonics/THD match). Presence ×
+resonance grid at corrected All-Sixes knobs: presence 0.8 narrows worstFR
+8.9→5.6 dB but RAISES specESR 29.9→33.2 % (the added HF mismatches in fine
+structure); resonance is a no-op on the 125 Hz hump. Conclusion: needs voicing
+filters (post-stage low-mid hump + HF tilt), which history says must be done
+with ears in the loop (the 2026-07 post-EQ brightening was reverted for fizz).
+This is the supervised-session item; the target curve is now quantified (the
+FR table in /tmp/namrerun/evh-red-sixes.log).
+
+### Fender PA-compression live A/B protocol (prepared, needs the user)
+The gap is real (clean +4.8 dB makeup, HOT residual 30 % at gain 0.9; the
+known NAM −16 dB vs model −6 dB PA level-compression), and the 2026-07-31
+offline fit was REVERTED for artifacts (bitcrush on Fender, click on Vox) —
+ears-first is mandatory. Plan (next session, ~1-2 h):
+1. Add two hidden ZERO-MIGRATION tail ports (the cal_offs/cpu_cab2 pattern —
+   no blob bump): `dbg_pacomp` (compression strength, default 0 = bit-identical)
+   + `dbg_paknee`, plumbed to the PowerAmpProcessor **Fender-gated only** (the
+   Vox click came from the shared PA — gating prevents it by construction).
+2. User plays Fender clean + HOT presets and sweeps dbg_pacomp live in MOD
+   advanced settings until the touch compression feels right or artifacts
+   appear (watchlist from rev-99: bitcrush on fast transients, click on push).
+3. Bake the ears-approved value into AmpDefaults (Fender rows), re-level the
+   affected presets, delete the debug ports.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds

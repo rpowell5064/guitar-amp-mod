@@ -24,6 +24,7 @@ void SuperOverdriveSD1::reset() noexcept {
         c.inputHP.reset();
         c.outputLP.reset();
         c.toneLP.reset();
+        c.dcBlock.reset();
     }
     driveSmooth_.setCurrentAndTargetValue(drive_);
     levelSmooth_.setCurrentAndTargetValue(level_);
@@ -45,12 +46,15 @@ float SuperOverdriveSD1::processSample(float x, int ch) noexcept {
     // Input RC cap → mid-hump bass cut, always in series when engaged.
     const float conditioned = s.inputHP.process(x);
 
-    // Variable op-amp gain (drive pot). EXPONENTIAL taper so low drive stays near-clean
-    // (real SD-1 is ~1-3% THD at Drive 1) and high drive saturates hard.
-    const float gain = kGainMin * std::pow((float)(kGainMax / kGainMin), driveCur_);
+    // Variable op-amp gain (drive pot), EXPONENTIAL taper. gmin_ is fit to the
+    // sd1_d1 capture: the real pedal's minimum feedback gain is well above
+    // unity, which is where the old model's 11 dB low-drive level gap lived.
+    const float gain = gmin_ * std::pow(kGainMax / gmin_, driveCur_);
     float wet = asymClip(conditioned, gain);
 
-    // Post-clip LP + tone LP (1 kHz dark → 10 kHz bright).
+    // Output coupling cap: the asymmetric rails generate DC that the real
+    // pedal's cap blocks. Then post-clip LP + tone LP (1 kHz dark → 10 kHz).
+    wet = s.dcBlock.process(wet);
     wet = s.outputLP.process(wet);
     wet = s.toneLP.process(wet);
 
@@ -60,18 +64,17 @@ float SuperOverdriveSD1::processSample(float x, int ch) noexcept {
     return dryGain * conditioned + wetGain * wet;
 }
 
-float SuperOverdriveSD1::asymClip(float x, float gain) noexcept {
-    // Positive half: 2-diode stack (softer, higher threshold = gain·kPosRatio).
-    // Negative half: 1-diode      (harder, lower threshold  = full gain).
-    // tanh(g·x)/tanh(g) normalises to ±1 at the rail for all drive values.
-    if (x >= 0.0f) {
-        const float g2 = gain * kPosRatio;
-        const float n  = std::tanh(g2);
-        return n > 1e-6f ? std::tanh(g2 * x) / n : x;
-    } else {
-        const float n = std::tanh(gain);
-        return n > 1e-6f ? std::tanh(gain * x) / n : x;
-    }
+float SuperOverdriveSD1::asymClip(float x, float gain) const noexcept {
+    // Feedback-diode clamp (2026-08-19 rework, fit to nam_refs/sd1): below
+    // threshold BOTH halves see the full op-amp gain — the old per-half
+    // tanh(g·x)/tanh(g) normalisation put a slope kink at the zero crossing
+    // that generated a constant ~8% h2 at ALL low levels (capture: 0.4%
+    // growing with level) AND divided away the linear gain (the -11 dB
+    // low-drive loudness gap). Asymmetry belongs in the CLAMP rails: the
+    // 2-diode positive half clamps at posRail_×, the 1-diode negative at 1.
+    const float driven = gain * x;
+    if (driven >= 0.0f) return posRail_ * std::tanh(driven / posRail_);
+    return std::tanh(driven);
 }
 
 void SuperOverdriveSD1::setParameter(const std::string& id, float v) noexcept {
@@ -80,6 +83,9 @@ void SuperOverdriveSD1::setParameter(const std::string& id, float v) noexcept {
     else if (id == "tone")  { tone_  = c; recalcFilters(); }
     else if (id == "level") { level_ = c; levelSmooth_.setTargetValue(c); }
     else if (id == "mix")   { mix_   = c; mixSmooth_.setTargetValue(c); }
+    // Capture-fit tuning params (nam_compare harness; not user-facing).
+    else if (id == "gmin")    { if (v > 0.0f) gmin_    = v; }
+    else if (id == "posrail") { if (v > 0.0f) posRail_ = v; }
 }
 
 float SuperOverdriveSD1::getParameter(const std::string& id) const noexcept {
@@ -96,6 +102,7 @@ void SuperOverdriveSD1::recalcFilters() noexcept {
 
     const auto hpC = Filters::highpass1pole(kInHPfc, fs);
     const auto lpC = Filters::lowpass1pole(kOutLPfc, fs);
+    const auto dcC = Filters::highpass1pole(20.0, fs);   // output coupling cap
 
     // Tone LP: log sweep 1 kHz (tone=0) → 10 kHz (tone=1).
     const double toneLPHz = kToneBase * std::pow(10.0, static_cast<double>(tone_));
@@ -105,5 +112,6 @@ void SuperOverdriveSD1::recalcFilters() noexcept {
         c.inputHP.setCoeffs(hpC);
         c.outputLP.setCoeffs(lpC);
         c.toneLP.setCoeffs(toneC);
+        c.dcBlock.setCoeffs(dcC);
     }
 }

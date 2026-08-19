@@ -34,12 +34,17 @@ public:
 private:
     // ── Circuit-inspired constants (dial to the captures) ─────────────────────
     static constexpr double kInHPfc   = 720.0;   // input mid-hump bass cut
-    static constexpr float  kGainMin  =  1.0f;   // op-amp gain at drive=0 (SD-1 near-clean at low drive)
+    // kGainMin/kPosRail/kOutScale fit 2026-08-19 against nam_refs/sd1 d1+d7 with
+    // the user-DI specESR harness (grid in /tmp/sd1fit, DI-REMEASURE-NOTES.md):
+    // d1 13.1%→2.6%, d7 15.1%→6.8%, the 9.8 dB d1/d7 level spread → 1.8 dB.
+    // Known residual: the tanh clamp is softer than the real diode knee (driven
+    // upper harmonics run low) — revisit only with ears in the loop.
+    static constexpr float  kGainMin  =  6.5f;   // op-amp gain at drive=0 (real SD-1 min feedback gain)
     static constexpr float  kGainMax  = 80.0f;   // op-amp gain at drive=1 (EXPONENTIAL taper between)
     static constexpr double kOutLPfc  = 2600.0;  // post-clip LP — SD-1 rolls the top off hard (dark)
     static constexpr double kToneBase = 650.0;   // tone LP = kToneBase·10^tone (dark voicing)
-    static constexpr float  kPosRatio = 0.40f;   // positive-half gain ratio (2-diode); LOW = more asymmetric = more h2
-    static constexpr float  kOutScale = 0.38f;   // output level calibration to the capture
+    static constexpr float  kPosRail  = 1.40f;   // 2-diode positive clamp rail (1-diode negative = 1)
+    static constexpr float  kOutScale = 0.32f;   // output level calibration (centers d1/d7 makeup ±0.9 dB)
 
     double oversampledFs_ = 0.0;
 
@@ -51,16 +56,23 @@ private:
     LinearSmoother driveSmooth_, levelSmooth_, mixSmooth_;
     float driveCur_ = 0.5f, levelCur_ = 0.5f, mixCur_ = 1.0f;
 
+    // Capture-fit tuning params (runtime-settable for the nam_compare harness;
+    // ids "gmin" / "posrail"; defaults = the shipped constants).
+    float gmin_    = kGainMin;
+    float posRail_ = kPosRail;
+
     struct ChannelState {
         BiquadFilter inputHP;   // mid-hump bass cut (always in series)
         BiquadFilter outputLP;  // post-clip LP
         BiquadFilter toneLP;    // 1 kHz–10 kHz log sweep
+        BiquadFilter dcBlock;   // output coupling cap (asymmetric rails make DC)
     };
     std::array<ChannelState, kMaxCh> ch_;
 
     void recalcFilters() noexcept;
 
-    // Asymmetric diode clip: positive half softer (2-diode, gain·kPosRatio),
-    // negative half harder (1-diode, full gain). Normalised to ±1 at the rail.
-    static float asymClip(float x, float gain) noexcept;
+    // Feedback-diode clamp: below threshold BOTH halves see the full op-amp
+    // gain (diodes off — no zero-crossing kink), asymmetry lives in the CLAMP
+    // rails: 2-diode positive ≈ posRail_× the 1-diode negative (= 1).
+    float asymClip(float x, float gain) const noexcept;
 };
