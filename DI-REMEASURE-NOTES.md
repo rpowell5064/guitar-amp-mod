@@ -147,6 +147,15 @@ ears-first is mandatory. Plan (next session, ~1-2 h):
 3. Bake the ears-approved value into AmpDefaults (Fender rows), re-level the
    affected presets, delete the debug ports.
 
+## Round 4 (same day): EVH fit BAKED at the user's ear-chosen blend
+
+User swept the live `dbg_evhfit` knob (LAB strip, mv178) and saved at
+**0.8875**. Baked permanently (mv179 / amp micro 53) as
+`lv2/common/EvhCaptureFit.h`: the 5 post-PA biquads at that blend plus a
+−3.2 dB makeup so the change is loudness-neutral — every EVH preset keeps its
+measured parity, no kFactoryRev bump, both plugins. The tuning-lab dbg_* ports
+and LAB strip retired the same day (tail removal = no blob impact).
+
 ## Round 3 (same day): the high-gain techniques pass ("do them all", commit 898ed8f)
 
 - **Recto capture forensics: NO cab baked in** (8 kHz only −4.9 dB below
@@ -172,6 +181,11 @@ ears-first is mandatory. Plan (next session, ~1-2 h):
   `nam_compare --evhfit` mirrors the exact filters.
 - **PA lab now UNIVERSAL** (mv177): dbg_pacomp −1..1 (−1 = stock) /
   dbg_parel 0..300 ms (0 = stock) apply to whichever amp is selected.
+  **RETIRED at mv179 unused** — and rightly so: the PA-compression frontier
+  was already CLOSED by the user's own 2026-08-04 abandonment (third
+  attempt; "output-VCA compression eats pick attack"). The lab was an
+  accidental fourth brush (memory-hook summary misled; full file re-read
+  late). Do not reopen; see pa-compression-fender memory.
 - **DynamicBias preamp rollout REJECTED before coding**: items #21/#22 piloted
   bias-offset into the triode LUTs twice, net-negative both times (LUT gain
   peaks AT bias; any offset deadens). Surviving variant (envelope-modulated PA
