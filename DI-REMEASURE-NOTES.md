@@ -212,6 +212,38 @@ question, until a trusted CH3 capture exists; dynamic duty measured a no-op
   peaks AT bias; any offset deadens). Surviving variant (envelope-modulated PA
   duty) deferred — no measured need after the clean feel survey.
 
+## Recto re-capture: trusted replacement SOURCED (2026-08-20, not yet downloaded)
+
+The ch3_modern.nam outlier (47 % specESR, gain/mode-insensitive, +10-17 dB
+self-generated LF <125 Hz, THD@1k 180 % vs 46 %) needs replacing before any
+Recto voicing work. Candidate found on TONE3000 that meets every trust bar:
+
+**northern_fox "Mesa Dual Rectifier 3ch 6L6 - Modern Red/Orange/Green"**
+<https://www.tone3000.com/tones/mesa-dual-rectifier-3ch-6l6-modern-redorangegreen-4717>
+- Mid-2000s 3-channel Solo 6L6 = the EXACT variant the Diamond Plate models.
+- Full head -> Suhr Reactive Load -> interface. NO cab, NO boost (the OD808 /
+  Dirty Trees boosted files are separate -- exclude, per the old TS-9 rule).
+- Documented knobs: EQ all noon, master 2.5-2.7, **SS/Bold** = our default
+  rc_rect=Silicon / rc_variac=Bold. Calibrated 12.2 dBu. ESR 0.005-0.015.
+- **Gain ladders G1-G10 per channel** (Red=CH3 Modern->mode 7, Orange=CH2
+  Modern->mode 4, Green=CH1 Clean->mode 0, G1-G8) -- 28 files; lets us fit the
+  gain-knob taper properly instead of single-point [est] knobs.
+- License T3K: free to use, **do NOT redistribute the .nam files** (keep in
+  Pi ~/dl_caps or local nam_refs; never in a release tarball or public repo).
+
+Cross-check source if wanted: honkkis "Dual Rectifier 6L6 Modern Red 96kHz HD"
+<https://www.tone3000.com/tones/mesa-dual-rectifier-6l6-modern-red-96khz-hd-5470>.
+Rejected: deathblossomaudio Multiwatt packs (SD-1 + Mesa 4x12 baked in);
+"2025" pack is preamp-only w/ undocumented knobs (possible preamp-chasm
+diagnostic later, not a reference).
+
+Plan when downloaded (needs TONE3000 login -- user): Red G1-G10 + Orange +
+Green A2-Full files -> Pi ~/dl_caps/recto3ch/; nam_compare --model recto,
+mode 7, EQ noon, gain grid vs the G-ladder (calibrate knob<->G mapping from
+the clean end); verdict FIRST (if model fits this set ~20 % like its peers,
+old capture confirmed contaminated -> retire it; only if a real gap remains
+does a Recto voicing session open).
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
