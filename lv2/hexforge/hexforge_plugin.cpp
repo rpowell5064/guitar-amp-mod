@@ -583,6 +583,10 @@ struct HexForge {
     // (~10 dB/s) so an Apply never clicks; snapped to the ports on the first run.
     float      calTrimOffsSm = 0.0f, calFloorOffsSm = 0.0f;
     bool       calOffsInit = false;
+    // ── EVH correction-EQ lab (dbg_evhfit, TEMPORARY): 5 harness-fit biquads
+    // post-PA, EVH model only; coeffs recomputed when the blend changes.
+    BiquadFilter evhFit[2][5];
+    float        evhFitLast = -1.0f;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -3299,18 +3303,32 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // capture-tuned voicing. 1.0/1.0 for every other model = bit-identical.
     p->pa.setParameter("padrive",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paDrive);
     p->pa.setParameter("pamakeup", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paMakeup);
-    // ── PA-compression LAB (2026-08-19, TEMPORARY): Fender-only live overrides
-    // for the bloom VCA depth/release, swept by ear from MOD advanced settings
-    // (DI-REMEASURE-NOTES protocol). Port defaults (0.15 / 13 ms) = the stock
-    // Fender row = bit-identical. Gated on the MODEL, not the defaults row, so
-    // Backline (shared row 0) and every other amp keep stock values — the
-    // rev-99 Vox-click class of bug is impossible by construction.
-    if (kAmpMap[ampAlgo] == AmpModel::FenderDeluxe) {
-        p->pa.setParameter("bloomvca",   p->ports[HF_DBG_PACOMP] ? *p->ports[HF_DBG_PACOMP] : 0.15f);
-        p->pa.setParameter("bloomrelms", p->ports[HF_DBG_PAREL]  ? *p->ports[HF_DBG_PAREL]  : 13.0f);
-    } else {
-        p->pa.setParameter("bloomrelms", 13.0f);   // restore stock τ after a Fender sweep
+    // ── PA-compression LAB (2026-08-19, TEMPORARY): live overrides for the
+    // bloom VCA depth/release on the CURRENTLY SELECTED amp, swept by ear from
+    // MOD advanced settings (DI-REMEASURE-NOTES protocol). Sentinels (comp < 0,
+    // release <= 0) = the amp's stock values = bit-identical; the override only
+    // exists while the user is actively sweeping, so no other amp is affected.
+    {
+        const float labComp = p->ports[HF_DBG_PACOMP] ? *p->ports[HF_DBG_PACOMP] : -1.0f;
+        const float labRel  = p->ports[HF_DBG_PAREL]  ? *p->ports[HF_DBG_PAREL]  : 0.0f;
+        if (labComp >= 0.0f) p->pa.setParameter("bloomvca", labComp);   // else: stock from line above
+        p->pa.setParameter("bloomrelms", labRel > 0.5f ? labRel : 13.0f);
     }
+    // EVH correction-EQ lab: rebuild the 5 fit biquads when the blend moves
+    // (dB gains scale linearly with it; 0 = branch skipped = bit-identical).
+    const float evhFitBlend = p->ports[HF_DBG_EVHFIT] ? *p->ports[HF_DBG_EVHFIT] : 0.0f;
+    if (evhFitBlend != p->evhFitLast) {
+        p->evhFitLast = evhFitBlend;
+        const float b = evhFitBlend;
+        for (int c = 0; c < 2; ++c) {
+            p->evhFit[c][0].setCoeffs(Filters::lowshelf (  55.0, -5.0 * b, p->rate));
+            p->evhFit[c][1].setCoeffs(Filters::peaking  ( 130.0,  6.5 * b, 1.1, p->rate));
+            p->evhFit[c][2].setCoeffs(Filters::peaking  (1200.0,  2.5 * b, 0.8, p->rate));
+            p->evhFit[c][3].setCoeffs(Filters::highshelf(2400.0,  4.5 * b, p->rate));
+            p->evhFit[c][4].setCoeffs(Filters::highshelf(7500.0,  5.5 * b, p->rate));
+        }
+    }
+    const bool evhFitOn = evhFitBlend > 0.001f && kAmpMap[ampAlgo] == AmpModel::EVH5150III;
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);
@@ -3725,6 +3743,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         amp->process(io1, io1, len, 1);
                         p->pa.process(io1, io1, len, 1);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
+                        if (evhFitOn) for (int i=0;i<len;++i)
+                            for (auto& f : p->evhFit[0]) L[i]=f.process(L[i]);
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
                     } else {
@@ -3732,6 +3752,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         amp->process(io, io, len, 2);
                         p->pa.process(io, io, len, 2);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
+                        if (evhFitOn) for (int i=0;i<len;++i) {
+                            for (auto& f : p->evhFit[0]) L[i]=f.process(L[i]);
+                            for (auto& f : p->evhFit[1]) R[i]=f.process(R[i]);
+                        }
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
                     }
                     // NOTE: the amp's output is mono-identical when its input was — do NOT

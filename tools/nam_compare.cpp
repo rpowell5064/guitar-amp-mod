@@ -254,6 +254,7 @@ struct Knobs {
     float gvol = 1.0f;   // #45: guitar volume-pot position (1 = full = bit-identical)
     float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
     float pablrel = -1.0f;                 // bloom-VCA release ms (-1 = stock 13)
+    float evhfit  = 0.0f;                  // EVH correction-EQ blend (0 = off)
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -472,6 +473,22 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     // --nopa also bypasses it, to A/B the preamp alone vs a preamp-only capture.
     pa.setBypass(m.sunn || g_bypassPA);
 
+    // EVH correction-EQ candidate (2026-08-19, --evhfit 0..1): a 5-filter fit of
+    // the measured clip-FR delta vs the Red All-Sixes capture (model too dark
+    // >800 Hz, missing 125 Hz hump, excess sub-50). dB gains scale linearly with
+    // the blend so the live port can sweep it. Post-PA, pre-cab — mirrors where
+    // the hexforge lab port applies it.
+    BiquadFilter evhFit[5];
+    const bool useEvhFit = (k.evhfit > 0.0f);
+    if (useEvhFit) {
+        const float b = k.evhfit;
+        evhFit[0].setCoeffs(Filters::lowshelf (  55.0, -5.0 * b, sr));
+        evhFit[1].setCoeffs(Filters::peaking  ( 130.0,  6.5 * b, 1.1, sr));
+        evhFit[2].setCoeffs(Filters::peaking  (1200.0,  2.5 * b, 0.8, sr));
+        evhFit[3].setCoeffs(Filters::highshelf(2400.0,  4.5 * b, sr));
+        evhFit[4].setCoeffs(Filters::highshelf(7500.0,  5.5 * b, sr));
+    }
+
     out.assign(in.size(), 0.0f);
     std::vector<float> scratch(BLK);
     for (size_t off = 0; off < in.size(); off += BLK) {
@@ -481,6 +498,9 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
         amp.process(&p, &p, len, 1);
         pa.process(&p, &p, len, 1);
         amp.setExternalSag(pa.getSagEnvNorm()); // item #22, 2026-07-28 — mirrors the plugins
+        if (useEvhFit)
+            for (int i = 0; i < len; ++i)
+                for (auto& f : evhFit) p[i] = f.process(p[i]);
         std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
     }
 }
@@ -819,6 +839,7 @@ int main(int argc, char** argv) {
     knob("--gvol", k.gvol);   // #45 guitar volume-pot (Tone Bender)
     knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit
     knob("--pablrel", k.pablrel);   // bloom-VCA release ms (PA-compression lab)
+    knob("--evhfit", k.evhfit);     // EVH correction-EQ blend candidate
 
     // Load the reference capture.
     NamModel nam;
