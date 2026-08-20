@@ -199,6 +199,11 @@ private:
     // limiter; this clean output-side VCA delivers the recoverable compression and
     // pick "bloom" the real power amp shows. Depth is per-amp (getDefaultsForModel).
     float bloomVcaDepth     = 0.0f;
+    // Release τ runtime-settable ("bloomrelms", 5..300 ms; default 13 = the JCM800
+    // capture match). The 13 ms release modulates WITHIN a low-E cycle at high
+    // depth (the rev-99 "bitcrush" mechanism) — slower release trades bloom speed
+    // for smoothness; the Fender PA-compression lab sweeps it live.
+    float bloomVcaRelMs     = 13.0f;
     float bloomVcaEnv[kMaxCh] = {};
     // Dual-corner asymmetric coupling (duty mechanism, derived offline in
     // tools/evens_harness): the + and − halves of the squared PA output are high-

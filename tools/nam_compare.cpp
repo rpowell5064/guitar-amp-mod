@@ -253,6 +253,7 @@ struct Knobs {
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
     float gvol = 1.0f;   // #45: guitar volume-pot position (1 = full = bit-identical)
     float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
+    float pablrel = -1.0f;                 // bloom-VCA release ms (-1 = stock 13)
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -449,6 +450,7 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("nfb", g_paNfb >= 0.0f ? g_paNfb : (rectoModern ? 0.05f : d.nfb));
     pa.setParameter("sag", g_paSag >= 0.0f ? g_paSag : d.sag);
     pa.setParameter("bloomvca", g_paBloom >= 0.0f ? g_paBloom : d.bloomVca);
+    if (k.pablrel > 0.0f) pa.setParameter("bloomrelms", k.pablrel);
     pa.setParameter("duty",     g_paDuty   >= 0.0f ? g_paDuty   : d.duty);
     pa.setParameter("evengen",  g_paEven   >= 0.0f ? g_paEven   : d.evenDepth);
     if (g_paXover >= 0.0f) pa.setParameter("xover", g_paXover);   // crossover pilot (not in AmpDefaults yet)
@@ -816,6 +818,7 @@ int main(int argc, char** argv) {
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
     knob("--gvol", k.gvol);   // #45 guitar volume-pot (Tone Bender)
     knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit
+    knob("--pablrel", k.pablrel);   // bloom-VCA release ms (PA-compression lab)
 
     // Load the reference capture.
     NamModel nam;

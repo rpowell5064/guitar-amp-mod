@@ -3299,6 +3299,18 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // capture-tuned voicing. 1.0/1.0 for every other model = bit-identical.
     p->pa.setParameter("padrive",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paDrive);
     p->pa.setParameter("pamakeup", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paMakeup);
+    // ── PA-compression LAB (2026-08-19, TEMPORARY): Fender-only live overrides
+    // for the bloom VCA depth/release, swept by ear from MOD advanced settings
+    // (DI-REMEASURE-NOTES protocol). Port defaults (0.15 / 13 ms) = the stock
+    // Fender row = bit-identical. Gated on the MODEL, not the defaults row, so
+    // Backline (shared row 0) and every other amp keep stock values — the
+    // rev-99 Vox-click class of bug is impossible by construction.
+    if (kAmpMap[ampAlgo] == AmpModel::FenderDeluxe) {
+        p->pa.setParameter("bloomvca",   p->ports[HF_DBG_PACOMP] ? *p->ports[HF_DBG_PACOMP] : 0.15f);
+        p->pa.setParameter("bloomrelms", p->ports[HF_DBG_PAREL]  ? *p->ports[HF_DBG_PAREL]  : 13.0f);
+    } else {
+        p->pa.setParameter("bloomrelms", 13.0f);   // restore stock τ after a Fender sweep
+    }
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);

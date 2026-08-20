@@ -686,6 +686,14 @@ ctrl.append(mkport("CAL_FLOOR_OFFS", "cal_floor_offs", "Cal Floor Offset", "db",
 ctrl.append(mkport("CAL_STATE",    "cal_state",    "Cal State",    "i", 0, 5, 0, None, "CalSt",  out=True))
 ctrl.append(mkport("CAL_PROGRESS", "cal_progress", "Cal Progress", "f", 0, 1, 0, None, "CalPct", out=True))
 
+# ── PA-compression LAB (2026-08-19, TEMPORARY — remove after the Fender bake).
+# Fender-GATED live-sweep overrides for the PA bloom VCA, tuned by ear from
+# MOD's advanced settings per the DI-REMEASURE-NOTES protocol. Defaults = the
+# stock Fender values (depth 0.15 / release 13 ms) = bit-identical. Pure tail
+# append (≥ HF_SW_A → never preset-captured, no blob impact, cal-port pattern).
+ctrl.append(mkport("DBG_PACOMP", "dbg_pacomp", "PA Lab Comp (Fender)",    "f",  0, 1,   0.15, None, "PAComp"))
+ctrl.append(mkport("DBG_PAREL",  "dbg_parel",  "PA Lab Release (Fender)", "ms", 5, 300, 13,   None, "PARel"))
+
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
 # ── Fixed leading ports (audio + atom) ────────────────────────────────────────
@@ -816,7 +824,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 175 ;")   # 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 176 ;")   # 176: PA-compression LAB ports (dbg_pacomp/dbg_parel, Fender-gated, TEMPORARY). 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")

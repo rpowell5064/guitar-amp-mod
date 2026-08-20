@@ -287,7 +287,7 @@ void PowerAmpProcessor::recalcFilters() {
     bloomVcaAttCoef = static_cast<float>(std::exp(-1.0 / (0.0025 * sr)));
     cplAtt = 1.0f - static_cast<float>(std::exp(-1.0 / (0.015 * sr)));   // coupling env: 15 ms up
     cplRel = 1.0f - static_cast<float>(std::exp(-1.0 / (0.250 * sr)));   // 250 ms down
-    bloomVcaRelCoef = static_cast<float>(std::exp(-1.0 / (0.0130 * sr)));
+    bloomVcaRelCoef = static_cast<float>(std::exp(-1.0 / (bloomVcaRelMs * 0.001 * sr)));
 
     // Early reflection tap lengths in samples (1.7ms / 4.1ms / 8.3ms).
     erTap[0] = std::min(static_cast<int>(0.0017 * sr), kERBufLen - 1);
@@ -360,6 +360,11 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "depth")    { depth     = c01; needFilters = true; }
     else if (id == "sag")      { sagAmount = c01; }
     else if (id == "bloomvca") { bloomVcaDepth = c01; }
+    else if (id == "bloomrelms") {
+        bloomVcaRelMs = std::clamp(v, 5.0f, 300.0f);
+        if (sampleRate > 0.0)
+            bloomVcaRelCoef = static_cast<float>(std::exp(-1.0 / (bloomVcaRelMs * 0.001 * sampleRate)));
+    }
     else if (id == "master")   { masterVol = c01; }
     else if (id == "nfb")      { nfbAmount = c01; needFilters = true; }
     else if (id == "resonance"){ resonance = c01; needFilters = true; }
