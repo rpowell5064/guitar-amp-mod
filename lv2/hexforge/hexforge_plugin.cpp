@@ -587,6 +587,9 @@ struct HexForge {
     // ── EVH capture-fit voicing (BAKED 2026-08-19, blend 0.8875 chosen by ear
     // on the live lab; loudness-neutral). See lv2/common/EvhCaptureFit.h.
     EvhCaptureFit evhFit[2];
+    // ── HG round 2 LAB (dbg_hgfit, TEMPORARY): change-detect state.
+    float hgFitLast = -1.0f;
+    int   hgFitLastAmp = -1;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -3307,6 +3310,33 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->pa.setParameter("pamakeup", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paMakeup);
     // EVH capture-fit voicing (baked): applied post-PA in the amp block below.
     const bool evhFitOn = kAmpMap[ampAlgo] == AmpModel::EVH5150III;
+    // ── HG round 2 LAB (dbg_hgfit, TEMPORARY): blend stock → the offline-fit
+    // candidate for the CURRENT amp. Runs AFTER the AmpDefaults pushes above so
+    // blend 0 (or any other amp) = the stock values those lines just set.
+    {
+        const float b = p->ports[HF_DBG_HGFIT] ? *p->ports[HF_DBG_HGFIT] : 0.0f;
+        if (b != p->hgFitLast || ampAlgo != p->hgFitLastAmp) {
+            p->hgFitLast = b; p->hgFitLastAmp = ampAlgo;
+            // Neutralize all round-2 levers first (covers amp switches mid-sweep;
+            // padrive/pamakeup are re-stocked every run by the defaults block above).
+            p->pa.setParameter("pakneecurve",  0.0f);
+            p->pa.setParameter("shapertilt",   0.0f);
+            p->pa.setParameter("shapertiltlo", 0.0f);
+        }
+        if (b > 0.001f) {
+            if (kAmpMap[ampAlgo] == AmpModel::MarshallJCM800) {
+                // Candidate: padrive 2.0, knee 0.5 (specESR 23.3→21.5), −0.5 dB neutralizer.
+                p->pa.setParameter("padrive",     1.0f + b * 1.0f);
+                p->pa.setParameter("pamakeup",    1.0f - b * 0.056f);
+                p->pa.setParameter("pakneecurve", b * 0.5f);
+            } else if (kAmpMap[ampAlgo] == AmpModel::PRSMT15) {
+                // Candidate: tilt 4 / tiltlo 9.5 (specESR 21.8→20.0), +0.2 dB neutralizer.
+                p->pa.setParameter("shapertilt",   b * 4.0f);
+                p->pa.setParameter("shapertiltlo", b * 9.5f);
+                p->pa.setParameter("pamakeup",     1.0f + b * 0.023f);
+            }
+        }
+    }
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);
