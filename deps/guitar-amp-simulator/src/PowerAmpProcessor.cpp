@@ -378,7 +378,9 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "pakneecurve") { kneeCurve_ = c01; }
     else if (id == "padutydyn")   { padutyDyn_ = std::clamp(v, 0.0f, 2.0f); }
     else if (id == "shapertilt") {
-        shaperTiltDb_ = std::clamp(v, -12.0f, 12.0f);
+        const float nv = std::clamp(v, -12.0f, 12.0f);
+        if (nv == shaperTiltDb_) return;   // hosts push per-run: skip the biquad recompute
+        shaperTiltDb_ = nv;
         if (sampleRate > 0.0) {
             const auto pre  = Filters::highshelf(700.0,  shaperTiltDb_, sampleRate);
             const auto post = Filters::highshelf(700.0, -shaperTiltDb_, sampleRate);
@@ -386,7 +388,9 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
         }
     }
     else if (id == "shapertiltlo") {
-        shaperTiltLoDb_ = std::clamp(v, 0.0f, 15.0f);
+        const float nv = std::clamp(v, 0.0f, 15.0f);
+        if (nv == shaperTiltLoDb_) return;
+        shaperTiltLoDb_ = nv;
         if (sampleRate > 0.0) {
             const auto pre  = Filters::lowshelf(150.0, -shaperTiltLoDb_, sampleRate);
             const auto post = Filters::lowshelf(150.0,  shaperTiltLoDb_, sampleRate);
@@ -475,7 +479,12 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // ltpTail 0.15 (item #29 pilot, 2026-07-28): JCM800 is one of the three amps
         // PhaseInverter.cpp documents as genuinely LTP-topology (kMarshall_LTP) --
         // the natural pilot for the dynamic tail-coupling mechanism.
-        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f, 0.15f }; // Marshall JCM800 2203
+        // HG round 2 bake (2026-08-20, user ears at blend 0.72 on the live lab):
+        // paDrive 1.72 + kneeCurve 0.36 (specESR 23.3->~21.7 on the user-DI
+        // harness); paMakeup 0.96 = measured loudness neutralizer. Plexi + MarkV
+        // used to BORROW this row -- they now live on frozen row 10 (old values)
+        // so this bake is JCM800-only.
+        case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.72f, 0.96f, 0.02f, 0.15f, true, 0.0f, 0.36f }; // Marshall JCM800 2203
         // rippleSagCoupling 0.012 (item #27 rollout, 2026-07-28): EVH already has its
         // OWN internal sag/bloom (bloomVca=0 above to avoid double-counting that), so
         // kept modest here too -- the PA-level ripple is meant to layer a subtle mains
@@ -519,7 +528,10 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // rippleSagCoupling 0.006 (item #27 rollout): tightest/most percussive amp in
         // the suite (sag 0.15) -> smallest ripple depth, so it doesn't fight the
         // deliberately tight/snappy character.
-        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f,  0.30f, 1.0f, 1.0f, 0.006f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
+        // HG round 2 bake (2026-08-20, user ears at blend 0.72): shaperTilt
+        // 2.88 / tiltLo 6.84 (specESR 21.8->~20.3); paMakeup 1.017 = measured
+        // loudness neutralizer. Row is EXCLUSIVE to MT15 (kCanonical).
+        case 8: return { 0.55f,  0.50f,  0.45f,  0.60f,  0.15f,  0.05f,  0.30f, 1.0f, 1.017f, 0.006f, 0.0f, true, 0.0f, 0.0f, 2.88f, 6.84f }; // PRS MT15 (Tremont 15) — STRONG NFB / tight damping, minimal sag (percussive recovery); 6L6 pair on the real amp
         // Vox AC30 split off the shared clean row 0 (2026-07-29, LF-THD round 2):
         // same voicing fields as row 0, but paDrive 0.3 + fluxOT OFF -- the
         // shared PA's railed shaper + flux-OT grind were the "second re-clipper"
@@ -547,6 +559,10 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // has NO global negative feedback at all, so near-zero is also the
         // physically correct topology. Re-measured vs capture after.
         case 9: return { 0.58f,  0.10f,  0.08f,  0.05f,  0.50f,  0.15f,  0.12f, 0.45f, 1.07f, 0.0f, 0.0f, false }; // Vox AC30 Top Boost
+        // Frozen copy of the PRE-bake row 1 (2026-08-20 row split): Plexi and
+        // Mark V borrowed JCM800's row; the JCM800 HG-round-2 bake must not
+        // re-voice them. kCanonical maps them here in both plugins + nam_compare.
+        case 10: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f, 0.15f }; // Plexi / Mark V (frozen old-JCM800 values)
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }

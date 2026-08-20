@@ -691,11 +691,9 @@ ctrl.append(mkport("CAL_PROGRESS", "cal_progress", "Cal Progress", "f", 0, 1, 0,
 # 0.8875 — see lv2/common/EvhCaptureFit.h. Tail ports are never preset-captured,
 # so their removal needs no blob migration; saved pedalboards simply drop the
 # unknown symbols on load.)
-# ── HG round 2 LAB (2026-08-20, TEMPORARY — remove after the bakes): one blend
-# knob morphing stock → the offline-fit candidate for the CURRENT amp.
-# Candidates this round: JCM800 {padrive 2.0, knee 0.5} and Tremont 15
-# {tilt 4, tiltlo 9.5}; inert on every other amp. Pure tail append.
-ctrl.append(mkport("DBG_HGFIT", "dbg_hgfit", "HG Fit Blend", "f", 0, 1, 0, None, "HGFit"))
+# (The 2026-08-20 dbg_hgfit HG-round-2 LAB port lived here between mv180 and
+# mv181; retired after the user approved the JCM800 + Tremont 15 candidates at
+# blend 0.72 — baked into AmpDefaults rows 1/8 + the Plexi/MarkV row-10 split.)
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -827,7 +825,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 180 ;")   # 180: HG round 2 LAB (dbg_hgfit blend: JCM800 padrive/knee + Tremont tilt candidates, TEMPORARY). 179: EVH capture-fit BAKED (0.8875, loudness-neutral); lab retired. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB ports. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 181 ;")   # 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1729,12 +1727,6 @@ def emit_icon():
         '  <button type="button" class="hf-tunerbtn hf-tuner-corner" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg>'
         '<span class="hf-tuner-corner-lab">TUNER</span></button>\n'
-        # ── LAB strip (TEMPORARY, HG round 2): one blend knob, bottom-left; this
-        # mod-ui build has no generic-port view so lab ports need on-panel widgets.
-        '  <div class="hf-lab" role="group" aria-label="Tuning lab (temporary)">'
-        '<span class="hf-lab-t">LAB</span>'
-        + render_ctrl(CTRL_BY_SYM["dbg_hgfit"])
-        + '</div>\n'
         # Calibrate button sits left of the tuner button (same corner-strip family).
         '  <button type="button" class="hf-calbtn hf-cal-corner" rata-role="calbtn" aria-label="Auto-calibration" aria-pressed="false" title="Auto-calibrate — match the rig to your guitar">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4 L5 20 M12 4 L12 20 M19 4 L19 20"/><circle cx="5" cy="9" r="2.2" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="7" r="2.2" fill="currentColor" stroke="none"/></svg>'

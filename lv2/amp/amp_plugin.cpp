@@ -49,7 +49,7 @@ static const AmpModel kModelMap[14] = {
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
     AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
 };
-static const int kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 1, 1, 7, 8 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [9] Backline → clean PA; [8] Vox → its own EL84 case 9; [10] Plexi, [11] Mesa → JCM800 EL34 PA; [12] Recto → its own 6L6 case)
+static const int kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [9] Backline → clean PA; [8] Vox → its own EL84 case 9; [10] Plexi, [11] Mesa → JCM800 EL34 PA; [12] Recto → its own 6L6 case)
 static constexpr int kSunnIdx     = 3;     // Sunn's LV2 model index
 static constexpr int kNamIdx      = 5;     // NAM slot
 static constexpr int kFriedmanIdx = 6;     // Beardo BE
@@ -426,6 +426,11 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     // over-driven. 1.0/1.0 for every other model = bit-identical.
     p->pa.setParameter("padrive",  PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).paDrive);
     p->pa.setParameter("pamakeup", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).paMakeup);
+    // HG round 2 per-amp bakes (2026-08-20): knee/tilt from AmpDefaults (tilt
+    // setters early-out on unchanged values, so per-run pushes are cheap).
+    p->pa.setParameter("pakneecurve",  PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).kneeCurve);
+    p->pa.setParameter("shapertilt",   PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).shaperTiltDb);
+    p->pa.setParameter("shapertiltlo", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).shaperTiltLoDb);
     if (desiredTube != p->lastTube) { p->lastTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
 
     const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);

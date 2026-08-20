@@ -144,7 +144,7 @@ static const AmpModel kAmpMap[14] = {
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
     AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
 };
-static const int   kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 1, 1, 7, 8 }; // PowerAmp default lookup ([8] Vox -> its own EL84 case 9, 2026-07-29) ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa → JCM800 EL34 PA)
+static const int   kCanonical[14] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8 }; // PowerAmp default lookup ([8] Vox -> its own EL84 case 9) ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa -> FROZEN row 10 since the 2026-08-20 JCM800 HG-round-2 bake re-voiced row 1)
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;
@@ -587,9 +587,6 @@ struct HexForge {
     // ── EVH capture-fit voicing (BAKED 2026-08-19, blend 0.8875 chosen by ear
     // on the live lab; loudness-neutral). See lv2/common/EvhCaptureFit.h.
     EvhCaptureFit evhFit[2];
-    // ── HG round 2 LAB (dbg_hgfit, TEMPORARY): change-detect state.
-    float hgFitLast = -1.0f;
-    int   hgFitLastAmp = -1;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -3308,35 +3305,16 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // capture-tuned voicing. 1.0/1.0 for every other model = bit-identical.
     p->pa.setParameter("padrive",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paDrive);
     p->pa.setParameter("pamakeup", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).paMakeup);
+    // HG round 2 per-amp bakes (2026-08-20): knee/tilt from AmpDefaults (the
+    // tilt setters early-out on unchanged values, so per-run pushes are cheap).
+    p->pa.setParameter("pakneecurve",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).kneeCurve);
+    p->pa.setParameter("shapertilt",   PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).shaperTiltDb);
+    p->pa.setParameter("shapertiltlo", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).shaperTiltLoDb);
     // EVH capture-fit voicing (baked): applied post-PA in the amp block below.
     const bool evhFitOn = kAmpMap[ampAlgo] == AmpModel::EVH5150III;
-    // ── HG round 2 LAB (dbg_hgfit, TEMPORARY): blend stock → the offline-fit
-    // candidate for the CURRENT amp. Runs AFTER the AmpDefaults pushes above so
-    // blend 0 (or any other amp) = the stock values those lines just set.
-    {
-        const float b = p->ports[HF_DBG_HGFIT] ? *p->ports[HF_DBG_HGFIT] : 0.0f;
-        if (b != p->hgFitLast || ampAlgo != p->hgFitLastAmp) {
-            p->hgFitLast = b; p->hgFitLastAmp = ampAlgo;
-            // Neutralize all round-2 levers first (covers amp switches mid-sweep;
-            // padrive/pamakeup are re-stocked every run by the defaults block above).
-            p->pa.setParameter("pakneecurve",  0.0f);
-            p->pa.setParameter("shapertilt",   0.0f);
-            p->pa.setParameter("shapertiltlo", 0.0f);
-        }
-        if (b > 0.001f) {
-            if (kAmpMap[ampAlgo] == AmpModel::MarshallJCM800) {
-                // Candidate: padrive 2.0, knee 0.5 (specESR 23.3→21.5), −0.5 dB neutralizer.
-                p->pa.setParameter("padrive",     1.0f + b * 1.0f);
-                p->pa.setParameter("pamakeup",    1.0f - b * 0.056f);
-                p->pa.setParameter("pakneecurve", b * 0.5f);
-            } else if (kAmpMap[ampAlgo] == AmpModel::PRSMT15) {
-                // Candidate: tilt 4 / tiltlo 9.5 (specESR 21.8→20.0), +0.2 dB neutralizer.
-                p->pa.setParameter("shapertilt",   b * 4.0f);
-                p->pa.setParameter("shapertiltlo", b * 9.5f);
-                p->pa.setParameter("pamakeup",     1.0f + b * 0.023f);
-            }
-        }
-    }
+    // (The 2026-08-20 dbg_hgfit LAB lived here; retired at mv181 after the user
+    // approved both candidates at blend 0.72 — values baked into AmpDefaults
+    // rows 1/8 with the Plexi/MarkV row-10 split.)
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);
