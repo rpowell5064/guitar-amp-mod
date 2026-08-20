@@ -18,6 +18,7 @@
 #include "PowerAmpProcessor.h"
 #include "NoiseGateBlock.h"
 #include "HumNotchComb.h"
+#include "EvhCaptureFit.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -117,6 +118,7 @@ struct AmpPlugin {
     HumNotchComb      inComb[2];       // 60 Hz hum comb, also pre-gain (the user's measured idle floor is
                                        // 89% mains-hum harmonics; ~15 dB off it puts the floor under the
                                        // gate's close threshold). Engaged with the gate; always fed (warm state).
+    EvhCaptureFit     evhFit[2];       // EVH capture-fit voicing (baked 2026-08-19), post-PA, model 2 only
     NamModel*         nam = nullptr;   // swapped in by the worker on file load
 
     float* ctrl[P_N_PORTS] = {};
@@ -183,6 +185,8 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->pa.prepare(rate, kMaxBlock, 2);
     p->inGate.prepare(rate, kMaxBlock, 2);
     p->inComb[0].prepare(rate);
+    p->evhFit[0].prepare(rate);
+    p->evhFit[1].prepare(rate);
     p->inComb[1].prepare(rate);
     // Tuned for a fast, transparent noise-floor gate: quick open, long smooth tail so sustain rings out.
     p->inGate.setParameter("attack",     2.0f);
@@ -466,6 +470,12 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         float* outs[2] = { outL + off, outR + off };
         amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);
+        // EVH capture-fit voicing (baked 2026-08-19; loudness-neutral, model 2 only).
+        if (modelIdx == 2)
+            for (int i = 0; i < len; ++i) {
+                outs[0][i] = p->evhFit[0].process(outs[0][i]);
+                outs[1][i] = p->evhFit[1].process(outs[1][i]);
+            }
         // Feed the power amp's own supply-sag envelope back to the preamp for
         // the NEXT block (2026-07-28, item #22) -- one block stale, negligible
         // given sag's ~10-350 ms time constants. Default per-amp coupling is 0
