@@ -156,6 +156,27 @@ User swept the live `dbg_evhfit` knob (LAB strip, mv178) and saved at
 measured parity, no kFactoryRev bump, both plugins. The tuning-lab dbg_* ports
 and LAB strip retired the same day (tail removal = no blob impact).
 
+## Round 5 (2026-08-20): HG round 2 verified post-bake
+
+User approved both LAB candidates at blend 0.72; baked (mv181/amp54) with the
+Plexi/MarkV row-10 split. Fleet re-run, all gates green:
+
+| amp | round 1 | round 5 | verdict |
+|---|---|---|---|
+| JCM800 | 23.26 % | **21.77 %** | baked (padrive 1.72 + knee 0.36, neutral +0.2 dB) |
+| Tremont 15 | 21.80 % | **20.43 %** | baked (tilt 2.88/6.84, neutral +1.0 dB) |
+| Plexi | 17.55 % | 17.55 % EXACT | row-10 freeze verified |
+| Mark V | 19.99 % | 19.99 % EXACT | row-10 freeze verified |
+| EVH r/b, Fender, Recto, Rockerverb, SD-1, TS808 | — | all EXACT | fleet bit-identical |
+
+HG round 2 conclusions: knee+drive works on the JCM800 class; tilt works on the
+tight-NFB MT15 class; tilt is NOT a universal THD@1k fix (falsified on
+EVH/Rockerverb — matching the THD number with the wrong distortion color makes
+the spectral match worse); the Recto is a capture-content question, not a model
+question, until a trusted CH3 capture exists; dynamic duty measured a no-op
+(code inert at 0). Remaining known gaps: EVH nonlinear fine structure
+(supervised capture session), Recto re-capture, cherub 7th-era Muff (feature).
+
 ## Round 3 (same day): the high-gain techniques pass ("do them all", commit 898ed8f)
 
 - **Recto capture forensics: NO cab baked in** (8 kHz only −4.9 dB below
