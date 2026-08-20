@@ -96,6 +96,17 @@ private:
     float  satClip_ = 1.0f, satClipInv_ = 1.0f;  // per-mode limiter drive (resolved in rebuild)
     float  sagDepth_ = 0.10f;                    // per (rect, variac) sag depth (× sag knob)
 
+    // ── Capture-fit levers (2026-08-19 HG round 2; SD-1 gmin/posrail precedent:
+    // runtime-settable for the nam_compare harness, neutral defaults = bit-
+    // identical, ids stay after any bake). See DI-REMEASURE-NOTES.md.
+    float  fitSat_  = 1.0f;   // × ModeCfg satDrive          [0.75, 1.25]
+    float  fitCasc_ = 1.0f;   // × every stage's gBase        [0.9, 1.6]  (THD@1k lever)
+    float  fitBack_ = 1.0f;   // × backDrive on stages ≥ 2    [1.0, 1.5]
+    float  fitThp_  = 0.0f;   // tightHP corner override Hz   (0 = use ModeCfg)
+    float  fitGhostIm_ = 0.0f; // ghost-note IM depth          [0, 0.5] (0 = branch skipped)
+    float  ghostStep_  = 0.0f; // 2π·120 / oversampledFs_ (set in prepare)
+    float  tightHpEff_ = 0.0f; // effective tightHP corner (ModeCfg or override; set in recalcFilters)
+
     LinearSmoother gainSmooth_, masterSmooth_;
     float dnrAtt_ = 0.0f, dnrRel_ = 0.0f;   // DNR envelope attack/release coeffs (computed in prepare)
 
@@ -109,6 +120,7 @@ private:
         TriodeComponent stagePI;
         ToneStackComponent tonestack;
         float sagEnv = 0.0f, sagDecay = 0.0f;
+        float ghostPh = 0.0f;   // ghost-note IM ripple phase (fit_ghostim)
         // Dynamic HF rolloff (DNR) — same design as the Mark V's: keyed on the INPUT envelope,
         // blends toward a 6 kHz LP as the note decays so the hiss tail dies with the note.
         BiquadFilter    dnrLP;

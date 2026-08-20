@@ -93,6 +93,14 @@ public:
         // preamp-dominated amps get a non-zero value. NOTE: raises output level (adds
         // harmonic energy) -> re-level affected presets after tuning.
         float evenDepth = 0.0f;
+        // ── HG round 2 (2026-08-19), all 0 = bit-identical ──
+        float kneeCurve     = 0.0f;   // waveshaper knee hardening (h5/h6, THD@1k)
+        float shaperTiltDb  = 0.0f;   // highshelf 700 Hz into shaper + exact inverse after
+        float shaperTiltLoDb= 0.0f;   // lowshelf 150 Hz pair (LF honesty under tilt)
+        float dutyDyn       = 0.0f;   // envelope-scaled duty offset (dynamic blocking)
+        // ⚠️ POSITIONAL-INIT TRAP: rows use positional aggregate initializers.
+        // ONLY append new fields HERE at the END; any row that sets a late field
+        // must spell out every field before it (incl. fluxOT/evenDepth) explicitly.
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -161,6 +169,13 @@ private:
     float    ltpAtt_ = 0.0f, ltpRel_ = 0.0f;
     float    ltpAttMs_ = 2.0f, ltpRelMs_ = 8.0f;   // LTP env time constants (evens desk-loop)
     float    screenScale_ = 1.0f, biasScale_ = 1.0f; // waveshaper asymmetry scales (evens desk-loop)
+    // ── HG round 2 levers (2026-08-19), all neutral-default = bit-identical ──
+    float    kneeCurve_ = 0.0f;      // "pakneecurve": waveshaper knee hardening [0,1]
+    float    padutyDyn_ = 0.0f;      // "padutydyn": envelope-scaled duty offset [0,2]
+    // shaperTilt revived from ef8a7e8 (tilt ONLY — that commit's compression
+    // pieces stay dead per the closed pa-compression frontier).
+    float    shaperTiltDb_ = 0.0f, shaperTiltLoDb_ = 0.0f;
+    std::array<BiquadFilter, kMaxCh> tiltPre_, tiltPost_, tiltLoPre_, tiltLoPost_;
     void     prepareLtp() noexcept;
 
     // ── Per-tube model constants ───────────────────────────────────────────────
@@ -287,5 +302,6 @@ private:
     // computed per-sample from the stateful envelope in process() and passed
     // in here since this function itself holds no state.
     static float tubeWaveshaper(float x, const TubeParams& p, float xover,
-                                float duty = 0.0f, float ltpBias = 0.0f) noexcept;
+                                float duty = 0.0f, float ltpBias = 0.0f,
+                                float knee = 0.0f) noexcept;
 };

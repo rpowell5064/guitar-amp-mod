@@ -255,6 +255,10 @@ struct Knobs {
     float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
     float pablrel = -1.0f;                 // bloom-VCA release ms (-1 = stock 13)
     float evhfit  = 0.0f;                  // EVH correction-EQ blend (0 = off)
+    // HG round 2 levers (all neutral = model default)
+    float rectosat = -1.0f, rectocasc = -1.0f, rectoback = -1.0f;   // Recto fit_* scales
+    float rectothp = -1.0f, rectoghost = -1.0f;
+    float paknee = -1.0f, patilt = 0.0f, patiltlo = 0.0f, padutydyn = -1.0f;
 };
 
 // ── Run a drive pedal (OverdriveBlock) exactly like the LV2 drive plugin ──────
@@ -437,6 +441,12 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     amp.setParameter("mode", k.mode); // Mesa Mark V mode 0..8 / Recto mode 0..7 (ignored by other models)
     amp.setParameter("variac", k.variac);  // Recto power-section switches (ignored by other models)
     amp.setParameter("rect", k.rect);
+    // Recto capture-fit levers (HG round 2; only sent when the flag is present)
+    if (k.rectosat   >= 0.0f) amp.setParameter("fit_satdrive",  k.rectosat);
+    if (k.rectocasc  >= 0.0f) amp.setParameter("fit_cascdrive", k.rectocasc);
+    if (k.rectoback  >= 0.0f) amp.setParameter("fit_backdrive", k.rectoback);
+    if (k.rectothp   >= 0.0f) amp.setParameter("fit_tighthp",   k.rectothp);
+    if (k.rectoghost >= 0.0f) amp.setParameter("fit_ghostim",   k.rectoghost);
     amp.setParameter("bright", k.bright);  // MT15 bright switch (ignored by other models)
 
     PowerAmpProcessor pa;
@@ -452,6 +462,11 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("sag", g_paSag >= 0.0f ? g_paSag : d.sag);
     pa.setParameter("bloomvca", g_paBloom >= 0.0f ? g_paBloom : d.bloomVca);
     if (k.pablrel > 0.0f) pa.setParameter("bloomrelms", k.pablrel);
+    // HG round 2 PA levers (neutral when flags absent)
+    if (k.paknee    >= 0.0f) pa.setParameter("pakneecurve", k.paknee);
+    if (k.patilt    != 0.0f) pa.setParameter("shapertilt",   k.patilt);
+    if (k.patiltlo  != 0.0f) pa.setParameter("shapertiltlo", k.patiltlo);
+    if (k.padutydyn >= 0.0f) pa.setParameter("padutydyn",    k.padutydyn);
     pa.setParameter("duty",     g_paDuty   >= 0.0f ? g_paDuty   : d.duty);
     pa.setParameter("evengen",  g_paEven   >= 0.0f ? g_paEven   : d.evenDepth);
     if (g_paXover >= 0.0f) pa.setParameter("xover", g_paXover);   // crossover pilot (not in AmpDefaults yet)
@@ -840,6 +855,12 @@ int main(int argc, char** argv) {
     knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit
     knob("--pablrel", k.pablrel);   // bloom-VCA release ms (PA-compression lab)
     knob("--evhfit", k.evhfit);     // EVH correction-EQ blend candidate
+    // HG round 2 sweepable levers
+    knob("--rectosat", k.rectosat);   knob("--rectocasc", k.rectocasc);
+    knob("--rectoback", k.rectoback); knob("--rectothp", k.rectothp);
+    knob("--rectoghost", k.rectoghost);
+    knob("--pakneecurve", k.paknee);  knob("--patilt", k.patilt);
+    knob("--patiltlo", k.patiltlo);   knob("--padutydyn", k.padutydyn);
 
     // Load the reference capture.
     NamModel nam;

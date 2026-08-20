@@ -110,7 +110,7 @@ void PowerAmpProcessor::prepareLtp() noexcept {
 }
 
 float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xover,
-                                        float duty, float ltpBias) noexcept {
+                                        float duty, float ltpBias, float knee) noexcept {
     // Shift input to the cathode bias operating point.
     // A positive biasShift displaces the load-line intersection upward,
     // making positive-half-cycle clipping occur earlier than negative.
@@ -127,6 +127,18 @@ float PowerAmpProcessor::tubeWaveshaper(float x, const TubeParams& p, float xove
 
     // Primary soft saturation via hyperbolic tangent.
     float y = std::tanh(p.driveScale * xs);
+
+    // Knee curvature (HG round 2, "pakneecurve"): blend toward an n=4 algebraic
+    // hard-knee clip. Both terms share slope p.driveScale at 0 (no small-signal
+    // gain change for ANY knee) and the same ±1 rails (no level jump) — only the
+    // KNEE region hardens, restoring the upper-harmonic density (h5/h6, THD@1k)
+    // real power stages show but pure tanh can't. knee 0 = bit-identical.
+    if (knee > 0.0f) {
+        const float u  = p.driveScale * xs;
+        const float u2 = u * u;
+        const float yh = u / std::sqrt(std::sqrt(1.0f + u2 * u2));
+        y += knee * (yh - y);
+    }
 
     // Screen grid compression: the screen draws extra current on positive swings,
     // pulling down the plate voltage faster — creates harder positive-peak rolloff.
@@ -320,6 +332,8 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         cplShelf[c].reset(); cplEnv[c] = 0.0f;
         presEQ[c].reset(); depthEQ[c].reset();
         bloomLP[c].reset();
+        tiltPre_[c].reset(); tiltPost_[c].reset();
+        tiltLoPre_[c].reset(); tiltLoPost_[c].reset();
         nfbPrev[c]      = 0.0f;
         xfmrSatState[c] = 0.0f;
         fluxState[c]    = 0.0f;
@@ -360,6 +374,25 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "depth")    { depth     = c01; needFilters = true; }
     else if (id == "sag")      { sagAmount = c01; }
     else if (id == "bloomvca") { bloomVcaDepth = c01; }
+    // ── HG round 2 levers (all neutral-default = bit-identical) ──
+    else if (id == "pakneecurve") { kneeCurve_ = c01; }
+    else if (id == "padutydyn")   { padutyDyn_ = std::clamp(v, 0.0f, 2.0f); }
+    else if (id == "shapertilt") {
+        shaperTiltDb_ = std::clamp(v, -12.0f, 12.0f);
+        if (sampleRate > 0.0) {
+            const auto pre  = Filters::highshelf(700.0,  shaperTiltDb_, sampleRate);
+            const auto post = Filters::highshelf(700.0, -shaperTiltDb_, sampleRate);
+            for (int c = 0; c < 2; ++c) { tiltPre_[c].setCoeffs(pre); tiltPost_[c].setCoeffs(post); }
+        }
+    }
+    else if (id == "shapertiltlo") {
+        shaperTiltLoDb_ = std::clamp(v, 0.0f, 15.0f);
+        if (sampleRate > 0.0) {
+            const auto pre  = Filters::lowshelf(150.0, -shaperTiltLoDb_, sampleRate);
+            const auto post = Filters::lowshelf(150.0,  shaperTiltLoDb_, sampleRate);
+            for (int c = 0; c < 2; ++c) { tiltLoPre_[c].setCoeffs(pre); tiltLoPost_[c].setCoeffs(post); }
+        }
+    }
     else if (id == "bloomrelms") {
         bloomVcaRelMs = std::clamp(v, 5.0f, 300.0f);
         if (sampleRate > 0.0)
@@ -394,6 +427,10 @@ float PowerAmpProcessor::getParameter(const std::string& id) const {
     if (id == "depth")    return depth;
     if (id == "sag")      return sagAmount;
     if (id == "bloomvca") return bloomVcaDepth;
+    if (id == "pakneecurve")  return kneeCurve_;
+    if (id == "padutydyn")    return padutyDyn_;
+    if (id == "shapertilt")   return shaperTiltDb_;
+    if (id == "shapertiltlo") return shaperTiltLoDb_;
     if (id == "master")   return masterVol;
     if (id == "nfb")      return nfbAmount;
     if (id == "resonance")return resonance;
@@ -582,16 +619,24 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             // NFB: subtract a HP-filtered portion of the PREVIOUS sample's fully-
             // processed output from this sample's drive, before the nonlinearity.
             const float fb    = nfbHP[ch].process(nfbPrev[ch]) * nfbScale;
-            const float drive = in[ch][i] * sagGain[i] - fb;
+            float drive = in[ch][i] * sagGain[i] - fb;
+            // Shaper tilt (revived from ef8a7e8, tilt ONLY — the compression
+            // pieces of that commit stay dead): drive the mids/HF harder into
+            // the nonlinearity, LF relatively less; exact inverse after Step 3.
+            if (shaperTiltDb_   != 0.0f) drive = tiltPre_[ch].process(drive);
+            if (shaperTiltLoDb_ != 0.0f) drive = tiltLoPre_[ch].process(drive);
 
             // LTP tail coupling (item #29): fast envelope of the drive signal,
             // a proxy for "how hard both grids are swinging together" absent a
             // literal two-path PI split. Bias grows colder (more negative) as
             // the envelope rises — the shared tail resistor's common-mode
             // voltage pulling both grids down together under heavier drive.
+            // padutyDyn_ (HG round 2): a POSITIVE envelope-scaled offset on the
+            // same node — duty asymmetry that follows the pick attack (the
+            // surviving blocking-distortion variant; tanh-arg, not triode-LUT).
             const float driveAbs = std::fabs(drive);
             ltpEnv[ch] += (driveAbs > ltpEnv[ch] ? ltpAtt_ : ltpRel_) * (driveAbs - ltpEnv[ch]);
-            const float ltpBias = -ltpTail_ * 0.15f * ltpEnv[ch];
+            const float ltpBias = (padutyDyn_ - ltpTail_) * 0.15f * ltpEnv[ch];
 
             // Step 1: 2× upsample (zero-insertion + AA LP), one native sample at
             // a time — same math as before, just no longer a separate whole-
@@ -600,8 +645,8 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             float osB = 2.0f * upAA[ch].process(0.0f);
 
             // Step 2: tube waveshaper at 2× oversampled rate.
-            osA = tubeWaveshaper(paDrive_ * osA, tp, xoverDepth_, duty_, ltpBias) * paMakeup_;
-            osB = tubeWaveshaper(paDrive_ * osB, tp, xoverDepth_, duty_, ltpBias) * paMakeup_;
+            osA = tubeWaveshaper(paDrive_ * osA, tp, xoverDepth_, duty_, ltpBias, kneeCurve_) * paMakeup_;
+            osB = tubeWaveshaper(paDrive_ * osB, tp, xoverDepth_, duty_, ltpBias, kneeCurve_) * paMakeup_;
             // Dual-corner asymmetric coupling (duty mechanism) — unchanged math,
             // now applied inline to this sample's two OS sub-samples in the same
             // relative order (osA then osB) as the old whole-block pass.
@@ -623,6 +668,8 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             const float s0 = downAA[ch].process(osA);
             /*discard*/      downAA[ch].process(osB);
             float y = s0;
+            if (shaperTiltDb_   != 0.0f) y = tiltPost_[ch].process(y);   // exact inverse tilt
+            if (shaperTiltLoDb_ != 0.0f) y = tiltLoPost_[ch].process(y);
 
             // Step 5: output transformer model.
             // HP models LF rolloff / resonance from primary inductance.

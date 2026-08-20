@@ -2,6 +2,10 @@
 #include <cmath>
 #include <algorithm>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 using TC = TriodeComponent;
 
 // ── Dynamic HF rolloff (DNR) tuning — identical constants to the Mark V ──────
@@ -94,6 +98,7 @@ void MesaDualRectifier::prepare(double oversampledSampleRate, int /*maxBlockSize
     masterSmooth_.setCurrentAndTargetValue(master_);
     dnrAtt_ = 1.0f - std::exp(-1.0f / (float)(oversampledFs_ * kDnrAttackMs  * 0.001));
     dnrRel_ = 1.0f - std::exp(-1.0f / (float)(oversampledFs_ * kDnrReleaseMs * 0.001));
+    ghostStep_ = (float)(2.0 * M_PI * 120.0 / oversampledFs_);   // rectified-mains B+ ripple
     rebuild();
     reset();
 }
@@ -122,8 +127,9 @@ void MesaDualRectifier::rebuild() noexcept {
         c.tonestack.setTreble(treble_); c.tonestack.setPresence(presence_);
         c.sagDecay = std::exp(-1.0f / (float)(oversampledFs_ * sagTau));
     }
-    // Limiter drive: per-mode saturation, plus the spongy variac's lowered clip ceiling.
-    satClip_    = m.satDrive * (variac_ ? kSpongyClip : 1.0f);
+    // Limiter drive: per-mode saturation (× the capture-fit scale), plus the
+    // spongy variac's lowered clip ceiling. Unity small-signal either way.
+    satClip_    = m.satDrive * fitSat_ * (variac_ ? kSpongyClip : 1.0f);
     satClipInv_ = 1.0f / satClip_;
     recalcFilters();
 }
@@ -136,8 +142,10 @@ void MesaDualRectifier::recalcFilters() noexcept {
         c.inHP.setCoeffs(Filters::highpass1pole(m.inHPfc, oversampledFs_));
         c.brightSh.setCoeffs(Filters::highshelf(m.brightFc, m.brightDb, oversampledFs_));
         c.interHP.setCoeffs(Filters::highpass1pole(m.interHPfc, oversampledFs_));
-        if (m.tightHPfc > 0.0f)
-            c.tightHP.setCoeffs(Filters::highpass1pole(m.tightHPfc, oversampledFs_));
+        // tightHP corner: capture-fit override wins when set (fit_tighthp), else ModeCfg.
+        tightHpEff_ = fitThp_ > 0.0f ? fitThp_ : m.tightHPfc;
+        if (tightHpEff_ > 0.0f)
+            c.tightHP.setCoeffs(Filters::highpass1pole(tightHpEff_, oversampledFs_));
         c.interLP.setCoeffs(Filters::lowpass1pole(m.interLPfc, oversampledFs_));
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_)); // Recto bite
@@ -181,7 +189,7 @@ void MesaDualRectifier::reset() noexcept {
         c.bodySh.reset(); c.subSh.reset(); c.postPk.reset(); c.lowMidPk.reset(); c.modernAir.reset(); c.lowNotch.reset();
         c.lowKeepLP.reset(); c.airLP.reset(); c.dcBlk.reset();
         for (auto& s : c.stage) s.reset();
-        c.stagePI.reset(); c.tonestack.reset(); c.sagEnv = 0.0f;
+        c.stagePI.reset(); c.tonestack.reset(); c.sagEnv = 0.0f; c.ghostPh = 0.0f;
         c.dnrLP.reset(); c.dnrEnv = 0.0f; c.dnrD = 1.0f;
     }
 }
@@ -227,12 +235,13 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
 
     x *= pot;
     for (int i = 0; i < m.nStages; ++i) {
-        x = c.stage[i].process(x * m.gBase[i] * (i >= 2 ? backDrive : 1.0f)) * 0.82f;
-        if (i == 0) x = c.interHP.process(x);                       // tighten bass early
-        if (i == 1) x = c.interLP.process(x);                       // limit fizz mid-cascade
-        if (i == 2 && m.tightHPfc > 0.0f) x = c.tightHP.process(x); // the chug lever: strip lows
-    }                                                               // AFTER the first clips (chew),
-                                                                    // BEFORE the final ones (tight)
+        x = c.stage[i].process(x * m.gBase[i] * fitCasc_
+                               * (i >= 2 ? backDrive * fitBack_ : 1.0f)) * 0.82f;
+        if (i == 0) x = c.interHP.process(x);                        // tighten bass early
+        if (i == 1) x = c.interLP.process(x);                        // limit fizz mid-cascade
+        if (i == 2 && tightHpEff_ > 0.0f) x = c.tightHP.process(x);  // the chug lever: strip lows
+    }                                                                // AFTER the first clips (chew),
+                                                                     // BEFORE the final ones (tight)
     x *= m.preTone;
     x = c.tonestack.process(x);   // Recto stack is ALWAYS post-cascade
 
@@ -246,6 +255,19 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     const float sagAttack = 1.0f - c.sagDecay;
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
     x *= std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * sagDepth_);   // floored (see VoxAC30Model 2026-07-25 note); Spongy variac keeps its brown-out inside the -9 dB bound
+
+    // Ghost-note IM (fit_ghostim, 2026-08-19): rectified-mains B+ ripple riding
+    // the model's OWN sag envelope, applied BEFORE the clip so softLimit
+    // intermodulates it into the sub-125 Hz difference tones the CH3 Modern
+    // capture generates on guitar input (+10-17 dB, DI-REMEASURE-NOTES). 120 Hz
+    // full-wave ripple + 0.35× 60 Hz imbalance term. Env-gated: idle = silent.
+    if (fitGhostIm_ > 0.0f) {
+        const float e   = std::min(1.0f, 2.0f * c.sagEnv);
+        const float rip = std::sin(c.ghostPh) + 0.35f * std::sin(0.5f * c.ghostPh);
+        x *= 1.0f + fitGhostIm_ * e * rip;
+        c.ghostPh += ghostStep_;
+        if (c.ghostPh > 2.0f * (float)M_PI) c.ghostPh -= 4.0f * (float)M_PI;
+    }
 
     // Per-mode clip drive (unity small-signal gain: the clip point moves, not the level).
     x = softLimit(x * satClip_) * satClipInv_ * m.makeup;
@@ -304,6 +326,20 @@ void MesaDualRectifier::setParameter(const std::string& id, float value) noexcep
         if (e != exactTS_) { exactTS_ = e; rebuild(); }
         return;
     }
+    // ── Capture-fit levers (2026-08-19 HG round 2; neutral = bit-identical) ──
+    if (id == "fit_satdrive") {
+        fitSat_ = std::clamp(value, 0.75f, 1.25f);
+        const auto& m = kModes[mode_];
+        satClip_    = m.satDrive * fitSat_ * (variac_ ? kSpongyClip : 1.0f);
+        satClipInv_ = 1.0f / satClip_;
+        return;
+    }
+    if (id == "fit_cascdrive") { fitCasc_ = std::clamp(value, 0.9f, 1.6f);  return; }
+    if (id == "fit_backdrive") { fitBack_ = std::clamp(value, 1.0f, 1.5f);  return; }
+    if (id == "fit_tighthp")   { fitThp_  = value <= 0.0f ? 0.0f : std::clamp(value, 80.0f, 320.0f);
+                                 recalcFilters(); return; }
+    if (id == "fit_ghostim")   { fitGhostIm_ = std::clamp(value, 0.0f, 0.5f); return; }
+
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
