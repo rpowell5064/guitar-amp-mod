@@ -974,6 +974,11 @@ function (event, funcs) {
             if (funcs && funcs.set_port_value) funcs.set_port_value('tuner_on', on ? 1 : 0);
         }
         wire('.hf-tunerbtn',   function () { tunerShow(!icon.data('hf_tuner_on')); });
+        // ADVANCED popout: gear toggles; button lights while open (palette pattern).
+        wire('.hf-advbtn', function () {
+            var open = icon.find('.hf-adv').toggleClass('hf-open').hasClass('hf-open');
+            icon.find('.hf-advbtn').toggleClass('hf-on', open).attr('aria-pressed', open ? 'true' : 'false');
+        });
         wire('.hf-tunerclose', function () { tunerShow(false); });
         if ('tuner_on' in map) { var _to = map.tuner_on > 0.5; icon.data('hf_tuner_on', _to);
             icon.find('[rata-role=tuner]').toggleClass('mod-hidden', !_to); icon.find('[rata-role=tunerbtn]').toggleClass('hf-on', _to); }

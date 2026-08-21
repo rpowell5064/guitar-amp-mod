@@ -1129,20 +1129,60 @@
 
 
 
-/* ── Output Voice switch (PERMANENT) ── bottom-left corner, quiet member of the
-   corner-strip family (TUNER/CALIBRATE): flips the global FRFR room voice. */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice {
-    position: absolute; left: 44px; bottom: 6px; z-index: 40;
-    display: inline-flex; align-items: center; gap: 8px; padding: 3px 10px;
-    background: rgba(25, 224, 255, .05); border: 1px solid rgba(25, 224, 255, .30);
-    border-radius: 9px;
+/* ── Toolbar variants (2026-08-21): tuner back in the top bar; ADV gear beside it ── */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-bar {
+    position: static; width: auto; height: 26px; padding: 0 8px; gap: 5px;
 }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-tuner-corner-lab {
+    font-size: 10px; font-weight: 700; letter-spacing: 1.2px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-advbtn {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: auto; height: 26px; padding: 0 8px; gap: 5px;
+    border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(255,255,255,.04);
+    color: #c2cad8; cursor: pointer; transition: color .12s, border-color .12s, background .12s, box-shadow .12s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-advbtn svg { width: 16px; height: 16px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-advbtn:hover { color: #cfd6e4; border-color: rgba(255,255,255,.28); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-advbtn.hf-on {
+    color: #19e0ff; border-color: rgba(25,224,255,.6); background: rgba(25,224,255,.10);
+    box-shadow: 0 0 12px rgba(25,224,255,.35), inset 0 0 8px rgba(25,224,255,.15);
+}
+
+/* ── ADVANCED popout ── drops below the toolbar, top-right; palette-style toggle. ── */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv {
+    display: none; position: absolute; top: 52px; right: 24px; z-index: 60;
+    flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px 14px;
+    background-color: #0b0d12;
+    background-image: linear-gradient(180deg, rgba(22,24,32,.98), rgba(8,9,13,1));
+    border: 1px solid rgba(25,224,255,.28); border-radius: 11px;
+    box-shadow: 0 14px 38px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv.hf-open { display: flex; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv-t {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.8px; color: #19e0ff;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv-row {
+    display: inline-flex; align-items: center; gap: 12px; min-height: 30px;
+}
+/* switches + knobs read inline in rows, matching the old toolbar treatment */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw { display: inline-flex; align-items: center; gap: 5px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-img { margin: 0; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-t { display: inline; margin: 0; color: #c9b8ff; font-size: 9px; }
+/* FRFR voice row: keeps the .hf-ov-on knob-reveal logic; cyan label chip */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice-t {
     font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #19e0ff;
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-sw { transform: scale(.85); margin: -2px -4px; }
-/* voice knobs: tucked away unless the voice is ON (script stamps .hf-ov-on) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob { display: none; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice.hf-ov-on .hf-knob {
-    display: inline-block; transform: scale(.82); margin: -4px -6px;
+    display: inline-flex; align-items: center; gap: 5px; width: auto; height: auto;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice.hf-ov-on .hf-knob-img {
+    background-size: auto 26px; height: 26px; width: 26px; flex: 0 0 26px; margin: 0;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob-t { display: inline; font-size: 9px; color: #d7dbe2; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob-v { display: inline; font-size: 10px; color: #c9b8ff; margin-left: 4px; }
+/* Calibrate launcher inside the popout: the corner button, un-cornered */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-adv {
+    position: static; width: auto; height: 30px; padding: 0 10px; gap: 6px;
 }

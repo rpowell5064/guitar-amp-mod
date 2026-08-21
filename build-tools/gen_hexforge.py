@@ -846,7 +846,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 189 ;")   # 189: FRFR voice levers promoted to PERMANENT user knobs (fv_locut/prox/pres/fizz, defaults = the in-room reference bake; knobs show only while OUT is on). 188: FRFR voice BAKED at the user's in-room values (locut 100.75 / prox 1.815 / pres 3.225 / fizz 2.70), dbg_fv_* knobs retired, out_voice switch permanent (OUT corner strip). 187: Output Voice FRFR global layer (out_voice PERMANENT + 4 TEMPORARY dbg_fv_* LAB knobs for the FRFR-10 ears session; presets untouched, off = bit-identical). 186: tube-correctness audit — Fender 6V6 (new TubeType), EVH 6L6, Sunn KT88(inert); manual Power Tube dropdown gains 6V6. 185: Fender PA lab retired — user swept it by ear and chose STOCK 0.15/13 ms; nothing baked, PA-compression frontier closed with an ears verdict. 184: Fender PA-compression LAB RESTORED by user request (TEMPORARY). 183: Recto CH3-Modern capture-fit BAKED at user blend 1.0 (RectoCaptureFit.h + mode-7 satDrive 1.84/tightHP 200; loudness-parity makeup), lab retired. 182: Recto voicing LAB (TEMPORARY). 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 190 ;")   # 190: ADVANCED popout (Auto-Limit/Mono/Doubler/FRFR voice/Calibrate off the toolbar; ADV gear toggles), tuner button back in the toolbar. 189: FRFR voice levers promoted to PERMANENT user knobs (fv_locut/prox/pres/fizz, defaults = the in-room reference bake; knobs show only while OUT is on). 188: FRFR voice BAKED at the user's in-room values (locut 100.75 / prox 1.815 / pres 3.225 / fizz 2.70), dbg_fv_* knobs retired, out_voice switch permanent (OUT corner strip). 187: Output Voice FRFR global layer (out_voice PERMANENT + 4 TEMPORARY dbg_fv_* LAB knobs for the FRFR-10 ears session; presets untouched, off = bit-identical). 186: tube-correctness audit — Fender 6V6 (new TubeType), EVH 6L6, Sunn KT88(inert); manual Power Tube dropdown gains 6V6. 185: Fender PA lab retired — user swept it by ear and chose STOCK 0.15/13 ms; nothing baked, PA-compression frontier closed with an ears verdict. 184: Fender PA-compression LAB RESTORED by user request (TEMPORARY). 183: Recto CH3-Modern capture-fit BAKED at user blend 1.0 (RectoCaptureFit.h + mode-7 satDrive 1.84/tightHP 200; loudness-parity makeup), lab retired. 182: Recto voicing LAB (TEMPORARY). 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1735,37 +1735,47 @@ def emit_icon():
         '      <div class="hf-meter hf-meter-h" role="meter" aria-label="Output level meter" title="Output level"><div class="hf-meter-fill" rata-role="ometer"></div></div>\n'
         '      <span class="hf-clip" rata-role="clip" role="status" aria-live="assertive" aria-label="Output clipping indicator">CLIP</span>\n'
         '      <span class="hf-clipval mod-hidden" mod-role="input-control-value" mod-port-symbol="clip"></span>\n'
-        '      ' + render_ctrl(CTRL_BY_SYM["out_auto"]) + '\n'
-        '      ' + render_ctrl(CTRL_BY_SYM["out_mono"]) + '\n'
-        '      ' + render_ctrl(CTRL_BY_SYM["out_doubler"]) + '\n'
         '      ' + render_ctrl(CTRL_BY_SYM["out_level"]) + '\n'
+        # Tuner button back in the toolbar (2026-08-21, user request): the room
+        # returned once Auto/Mono/Doubler moved into the ADVANCED popout below.
+        '      <button type="button" class="hf-tunerbtn hf-tuner-bar" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg>'
+        '<span class="hf-tuner-corner-lab">TUNER</span></button>\n'
+        # ADVANCED popout button: gathers the rarely-touched output options
+        # (Auto-Limit / Mono / Doubler / FRFR voice / Calibrate) off the toolbar.
+        '      <button type="button" class="hf-advbtn" rata-role="advbtn" aria-label="Advanced output options" aria-pressed="false" title="Advanced — output options, FRFR voice, calibration">'
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5 L12 5.5 M12 18.5 L12 21.5 M2.5 12 L5.5 12 M18.5 12 L21.5 12 M5.3 5.3 L7.4 7.4 M16.6 16.6 L18.7 18.7 M18.7 5.3 L16.6 7.4 M7.4 16.6 L5.3 18.7"/></svg>'
+        '<span class="hf-tuner-corner-lab">ADV</span></button>\n'
         '      <div class="mod-powerswitch" mod-role="bypass" role="switch" aria-label="Global bypass" title="Global bypass · latency &lt;1 ms"><div class="mod-powerswitch-image" mod-role="bypass-light"></div></div>\n'
         '    </div>\n'
         '  </div>\n'
         + chain + detail + tuner + cal +
-        # Tuner button lives bottom-right (user 2026-07-23): the toolbar ran out of
-        # room once the doubler switch joined the output group.
-        '  <button type="button" class="hf-tunerbtn hf-tuner-corner" rata-role="tunerbtn" aria-label="Strobe tuner" aria-pressed="false" title="Strobe tuner — click to open / close">'
-        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3 L8 10 Q8 13.5 12 13.5 Q16 13.5 16 10 L16 3"/><path d="M12 13.5 L12 21"/></svg>'
-        '<span class="hf-tuner-corner-lab">TUNER</span></button>\n'
-        # ── Output Voice switch (PERMANENT, corner-strip family): flips the
-        # global FRFR-10 room voice (baked 2026-08-21 from the user's in-room
-        # session). Bottom-left, quiet solid styling — not a lab.
-        '  <div class="hf-outvoice" role="group" aria-label="Output voice: FRFR room" '
+        # ── ADVANCED popout (2026-08-21): the toolbar's set-and-forget output
+        # options in one panel, toggled by the ADV gear. Rows: output switches ·
+        # FRFR voice (the .hf-outvoice group keeps its .hf-ov-on knob logic) ·
+        # the Calibrate launcher (rata-role unchanged — wizard wiring untouched).
+        '  <div class="hf-adv" role="group" aria-label="Advanced output options">\n'
+        '    <span class="hf-adv-t">ADVANCED</span>\n'
+        '    <div class="hf-adv-row" role="group" aria-label="Output options">'
+        + render_ctrl(CTRL_BY_SYM["out_auto"])
+        + render_ctrl(CTRL_BY_SYM["out_mono"])
+        + render_ctrl(CTRL_BY_SYM["out_doubler"])
+        + '</div>\n'
+        '    <div class="hf-adv-row hf-outvoice" role="group" aria-label="Output voice: FRFR room" '
         'title="Output voice — ON for the FRFR speaker in the room, OFF for headphones/studio">'
-        '<span class="hf-outvoice-t">OUT</span>'
+        '<span class="hf-outvoice-t">FRFR</span>'
         + render_ctrl(CTRL_BY_SYM["out_voice"])
-        # voice knobs: visible only while the switch is ON (script toggles
-        # .hf-ov-on on the strip); defaults = the user's in-room reference bake.
         + render_ctrl(CTRL_BY_SYM["fv_locut"])
         + render_ctrl(CTRL_BY_SYM["fv_prox"])
         + render_ctrl(CTRL_BY_SYM["fv_pres"])
         + render_ctrl(CTRL_BY_SYM["fv_fizz"])
         + '</div>\n'
-        # Calibrate button sits left of the tuner button (same corner-strip family).
-        '  <button type="button" class="hf-calbtn hf-cal-corner" rata-role="calbtn" aria-label="Auto-calibration" aria-pressed="false" title="Auto-calibrate — match the rig to your guitar">'
+        '    <div class="hf-adv-row">'
+        '<button type="button" class="hf-calbtn hf-cal-adv" rata-role="calbtn" aria-label="Auto-calibration" aria-pressed="false" title="Auto-calibrate — match the rig to your guitar">'
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4 L5 20 M12 4 L12 20 M19 4 L19 20"/><circle cx="5" cy="9" r="2.2" fill="currentColor" stroke="none"/><circle cx="12" cy="15" r="2.2" fill="currentColor" stroke="none"/><circle cx="19" cy="7" r="2.2" fill="currentColor" stroke="none"/></svg>'
-        '<span class="hf-cal-corner-lab">CALIBRATE</span></button>\n'
+        '<span class="hf-cal-corner-lab">CALIBRATE</span></button>'
+        '</div>\n'
+        '  </div>\n'
         '  <div class="mod-pedal-input">\n'
         '    {{#effect.ports.audio.input}}\n'
         '    <div class="mod-input mod-input-disconnected" title="{{name}}" mod-role="input-audio-port" mod-port-symbol="{{symbol}}"><div class="mod-pedal-input-image"></div></div>\n'
