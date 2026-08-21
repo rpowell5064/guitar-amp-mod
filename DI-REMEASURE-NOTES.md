@@ -378,6 +378,28 @@ user). Defaults = the in-room reference bake above; the knobs appear in the
 OUT strip only while the voice is ON (script stamps .hf-ov-on). Still tail
 ports: global, never preset-captured, saved with the pedalboard.
 
+## Round 10 (2026-08-21): TS-808 gain floor + the cab sentinel-mangling discovery
+
+**Green Man gain-floor fix (user: "the pedal should boost even with drive at
+zero"):** the real 808's feedback network (51k + drive·500k over 4.7k) holds a
+×11.85 (+21.5 dB) mid-band floor at drive 0 — the old law (1+34·d) collapsed
+to unity there, so the classic drive-0/level-up boost did NOTHING. New law
+`11.85 + 24.6·d²` crosses the old value EXACTLY at d=0.5 (ts808-od5t2 capture
+verifies bit-true, 6.26 %). 22 factory presets carry the Green Man, mostly at
+low drive (Flatliner + Duality Crush at 0.00 — they'd been getting nothing);
+9 presets' measured RMS deltas ≥0.5 dB re-leveled into out_level (rev 109).
+
+**Cab sentinel-mangling bug (found via the re-level verification, 2-day-old
+LIVE regression):** mod-ui materializes atom:Path pedalboard saves into
+`<pedalboard>/effect-N/@sentinel` + a broken self-symlink — the worker's
+`path[0]=='@'` check missed the absolute form, so EVERY non-@factory
+synthetic-cab preset silently played the factory V30 since the Aug 19
+pedalboard save. Fixed via basename sentinel recovery (`cabSentinel()`).
+Post-fix the affected presets return to their rev-108 parity-measured
+loudness on their CORRECT cabs. Process lessons baked into memory: snapshot
+the .dat + store-diff (fresh-seed fake-HOME) BEFORE any kFactoryRev reseed;
+frev-108 store preserved at Pi ~/hexforge-presets-frev108-SAVED.dat.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
