@@ -3316,6 +3316,21 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->pa.setParameter("pakneecurve",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).kneeCurve);
     p->pa.setParameter("shapertilt",   PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).shaperTiltDb);
     p->pa.setParameter("shapertiltlo", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).shaperTiltLoDb);
+    // ── PA-compression LAB, RESTORED BY USER REQUEST (2026-08-20, TEMPORARY):
+    // the mv176 Fender-only live overrides for the bloom VCA depth/release,
+    // retired unused at mv179 before the user ever swept it. ⚠️ Frontier
+    // otherwise CLOSED 2026-08-04 (see pa-compression-fender memory) — this is
+    // an ears-only session; nothing bakes without the user. Port defaults
+    // (0.15 / 13 ms) = the stock Fender row = bit-identical. Gated on the
+    // MODEL, not the defaults row, so Backline (shared row 0) and every other
+    // amp keep stock values — the rev-99 Vox-click class of bug is impossible
+    // by construction.
+    if (kAmpMap[ampAlgo] == AmpModel::FenderDeluxe) {
+        p->pa.setParameter("bloomvca",   p->ports[HF_DBG_PACOMP] ? *p->ports[HF_DBG_PACOMP] : 0.15f);
+        p->pa.setParameter("bloomrelms", p->ports[HF_DBG_PAREL]  ? *p->ports[HF_DBG_PAREL]  : 13.0f);
+    } else {
+        p->pa.setParameter("bloomrelms", 13.0f);   // restore stock τ after a Fender sweep
+    }
     // EVH capture-fit voicing (baked): applied post-PA in the amp block below.
     const bool evhFitOn = kAmpMap[ampAlgo] == AmpModel::EVH5150III;
     // (The 2026-08-20 dbg_hgfit LAB lived here; retired at mv181 after the user
