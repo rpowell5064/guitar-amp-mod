@@ -396,6 +396,7 @@ enum HexForgePort {
     HF_DL2_AGE,
     HF_AMP_SIR34,
     HF_RB_SIR34,
+    HF_RB_LOCUT,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -458,7 +459,7 @@ enum HexForgePort {
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 460, "port count drift");
+static_assert(HF_N_PORTS == 461, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -527,15 +528,15 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "eq2_100", "eq2_200", "eq2_400", "eq2_800", "eq2_1k6", "eq2_3k2",
     "eq2_level", "eq2_bypass", "rb_nam_gain", "rb_nam_vol", "fz_eco", "nail_eco",
     "fz2_eco", "nail2_eco", "dr2_nam_gain", "dr2_nam_vol", "amp_pl_variac", "rb_pl_variac",
-    "dl_age", "dl2_age", "amp_sir34", "rb_sir34", "sw_a", "sw_b",
-    "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save", "ps_move_up",
-    "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank", "ps_slot",
-    "out_auto", "in_meter", "out_meter", "out_mono", "tuner_on", "tuner_mute",
-    "tuner_note", "tuner_cents", "cpu_gt", "cpu_cp", "cpu_fz", "cpu_dr",
-    "cpu_amp", "cpu_cab", "cpu_md", "cpu_dl", "cpu_rv", "cpu_wh",
-    "cpu_oc", "cpu_nail", "cpu_eq", "cpu_total", "cpu_dr2", "cpu_rigb",
-    "cpu_gt2", "cpu_cp2", "cpu_fz2", "cpu_nail2", "cpu_md2", "cpu_dl2",
-    "cpu_rv2", "cpu_wh2", "cpu_oc2", "cpu_eq2", "cpu_cab2", "cal_cmd",
-    "cal_trim_offs", "cal_floor_offs", "cal_state", "cal_progress", "out_voice", "fv_locut",
-    "fv_prox", "fv_pres", "fv_fizz", "midi_in",
+    "dl_age", "dl2_age", "amp_sir34", "rb_sir34", "rb_locut", "sw_a",
+    "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save",
+    "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank",
+    "ps_slot", "out_auto", "in_meter", "out_meter", "out_mono", "tuner_on",
+    "tuner_mute", "tuner_note", "tuner_cents", "cpu_gt", "cpu_cp", "cpu_fz",
+    "cpu_dr", "cpu_amp", "cpu_cab", "cpu_md", "cpu_dl", "cpu_rv",
+    "cpu_wh", "cpu_oc", "cpu_nail", "cpu_eq", "cpu_total", "cpu_dr2",
+    "cpu_rigb", "cpu_gt2", "cpu_cp2", "cpu_fz2", "cpu_nail2", "cpu_md2",
+    "cpu_dl2", "cpu_rv2", "cpu_wh2", "cpu_oc2", "cpu_eq2", "cpu_cab2",
+    "cal_cmd", "cal_trim_offs", "cal_floor_offs", "cal_state", "cal_progress", "out_voice",
+    "fv_locut", "fv_prox", "fv_pres", "fv_fizz", "midi_in",
 };

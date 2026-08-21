@@ -400,6 +400,27 @@ loudness on their CORRECT cabs. Process lessons baked into memory: snapshot
 the .dat + store-diff (fresh-seed fake-HOME) BEFORE any kFactoryRev reseed;
 frev-108 store preserved at Pi ~/hexforge-presets-frev108-SAVED.dat.
 
+## Round 11 (2026-08-21): the dual-rig woosh — monoRoom + rb_locut (blob v44)
+
+User: multi-amp summing "sounds weird in mono; the Periphery presets get a
+wooshing sound... some from an eq at the end." Findings, in falsification
+order (build-tools/woosh2.cpp = the per-band flutter probe):
+1. The A+B rig sum is mono-identical by construction — NOT the mono issue.
+2. Rig-B 6V6-sag hypothesis FALSIFIED (delta std 0.14 dB, rbwoosh probe).
+3. **Cab room dual decorrelated banks** = the mono-collapse woosh (only L≠R
+   source in those chains; broadband chugs sweep the folded comb like a
+   flanger) → **monoRoom** (mv193): one bank when out_mono is on.
+4. Residual: **the inverted-polarity rig-B clean layer's dynamics pump the
+   cancellation depth in the low-mids** (rigB-off collapses loFlutter
+   0.440→0.358; DNR/gate/spkdrive/EQ all measured innocent — the end EQ only
+   AMPLIFIES the fluttering band, it's static) → **rb_locut** (v44 port, HP
+   on the blend layer, 0=off): 150 Hz baked on Flatliner/Prayer (rev 110/111
+   + measured parity restore), recovers ~half the flutter gap; knob live in
+   the Amp 2 Blend tab up to 400 Hz.
+Port-append lessons re-confirmed: gap-var name collision (blGap already =
+bloom), and the SAME-REV reseed trap (seed edits after a deploy at the same
+kFactoryRev silently don't reach the device — bump again).
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
