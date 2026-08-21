@@ -739,6 +739,7 @@ function (event, funcs) {
             else if (sym === 'rb_pamp_auto')       icon.data('hf_rb_auto', val > 0.5);
             else if (sym === 'rb_cab2on')          icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(val > 0.5));
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
+            else if (sym === 'out_voice')          icon.find('.hf-outvoice').toggleClass('hf-ov-on', val > 0.5);   // FRFR knobs show only while ON
             else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
@@ -909,6 +910,7 @@ function (event, funcs) {
         if ('rb_cab' in map)        icon.data('hf_rb_cab', parseInt(map.rb_cab, 10));
         setIr2Label(icon);
         if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
+        icon.find('.hf-outvoice').toggleClass('hf-ov-on', map.out_voice > 0.5);   // seed FRFR knob visibility
         icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
         icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(map.rb_cab2on > 0.5));
         applyRbAmp(icon);

@@ -372,6 +372,12 @@ now permanent in the bottom-left "OUT" corner strip (solid cyan, not lab
 styling). Off-parity re-verified −12.96. The user's saved pedalboard keeps
 out_voice=1; dropped dbg symbols are discarded harmlessly on load.
 
+**mv189 (same day): the four levers promoted to PERMANENT user knobs**
+(fv_locut/fv_prox/fv_pres/fv_fizz — user request: adjustable per speaker/
+user). Defaults = the in-room reference bake above; the knobs appear in the
+OUT strip only while the voice is ON (script stamps .hf-ov-on). Still tail
+ports: global, never preset-captured, saved with the pedalboard.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds

@@ -1141,3 +1141,8 @@
     font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #19e0ff;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-sw { transform: scale(.85); margin: -2px -4px; }
+/* voice knobs: tucked away unless the voice is ON (script stamps .hf-ov-on) */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob { display: none; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice.hf-ov-on .hf-knob {
+    display: inline-block; transform: scale(.82); margin: -4px -6px;
+}

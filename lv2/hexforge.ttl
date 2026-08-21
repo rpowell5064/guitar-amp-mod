@@ -99,7 +99,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 188 ;
+    lv2:microVersion 189 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -3096,11 +3096,31 @@
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 455 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut" ;
+        units:unit units:hz ;
+        lv2:default 100.75 ; lv2:minimum 40.0 ; lv2:maximum 140.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 456 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip" ;
+        units:unit units:db ;
+        lv2:default 1.815 ; lv2:minimum 0.0 ; lv2:maximum 6.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 457 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip" ;
+        units:unit units:db ;
+        lv2:default 3.225 ; lv2:minimum 0.0 ; lv2:maximum 6.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 458 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt" ;
+        units:unit units:db ;
+        lv2:default 2.7 ; lv2:minimum 0.0 ; lv2:maximum 6.0
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 455 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 459 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -3940,5 +3960,13 @@
             lv2:index 411 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset"
         ] , [
             lv2:index 412 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR"
+        ] , [
+            lv2:index 413 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut"
+        ] , [
+            lv2:index 414 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip"
+        ] , [
+            lv2:index 415 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip"
+        ] , [
+            lv2:index 416 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt"
         ]
     ] .

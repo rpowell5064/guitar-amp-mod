@@ -707,10 +707,14 @@ ctrl.append(mkport("CAL_PROGRESS", "cal_progress", "Cal Progress", "f", 0, 1, 0,
 # doubler + airFeel are auto-muted (mono speaker / the real room supplies the
 # reflections).
 ctrl.append(mkport("OUT_VOICE", "out_voice", "Output Voice FRFR", "t", 0, 1, 0, None, "FRFR"))
-# (The dbg_fv_* FRFR-voice LAB knobs lived here for mv187 only; BAKED at the
-# user's in-room values 2026-08-21 — locut 100.75 Hz / prox 1.815 dB /
-# pres 3.225 dB / fizz 2.70 dB, constants in hexforge_plugin.cpp — and
-# retired. out_voice above is the PERMANENT switch.)
+# FRFR voice levers — PERMANENT user knobs (mv189; briefly baked constants at
+# mv188, promoted the same day: any user/speaker can re-tune). DEFAULTS are the
+# reference bake from the user's 2026-08-21 FRFR-10 in-room session. Tail
+# ports: global layer, never preset-captured, saved with the pedalboard.
+ctrl.append(mkport("FV_LOCUT", "fv_locut", "FRFR Low Cut",   "hz", 40, 140, 100.75, None, "LoCut"))
+ctrl.append(mkport("FV_PROX",  "fv_prox",  "FRFR Prox Dip",  "db", 0,  6,   1.815,  None, "Prox"))
+ctrl.append(mkport("FV_PRES",  "fv_pres",  "FRFR Pres Dip",  "db", 0,  6,   3.225,  None, "Pres"))
+ctrl.append(mkport("FV_FIZZ",  "fv_fizz",  "FRFR Fizz Tilt", "db", 0,  6,   2.70,   None, "Fizz"))
 
 CTRL_BY_SYM = {c["sym"]: c for c in ctrl}
 
@@ -842,7 +846,7 @@ def emit_ttl():
     L.append('    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;')
     L.append("                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;")
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 188 ;")   # 188: FRFR voice BAKED at the user's in-room values (locut 100.75 / prox 1.815 / pres 3.225 / fizz 2.70), dbg_fv_* knobs retired, out_voice switch permanent (OUT corner strip). 187: Output Voice FRFR global layer (out_voice PERMANENT + 4 TEMPORARY dbg_fv_* LAB knobs for the FRFR-10 ears session; presets untouched, off = bit-identical). 186: tube-correctness audit — Fender 6V6 (new TubeType), EVH 6L6, Sunn KT88(inert); manual Power Tube dropdown gains 6V6. 185: Fender PA lab retired — user swept it by ear and chose STOCK 0.15/13 ms; nothing baked, PA-compression frontier closed with an ears verdict. 184: Fender PA-compression LAB RESTORED by user request (TEMPORARY). 183: Recto CH3-Modern capture-fit BAKED at user blend 1.0 (RectoCaptureFit.h + mode-7 satDrive 1.84/tightHP 200; loudness-parity makeup), lab retired. 182: Recto voicing LAB (TEMPORARY). 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 189 ;")   # 189: FRFR voice levers promoted to PERMANENT user knobs (fv_locut/prox/pres/fizz, defaults = the in-room reference bake; knobs show only while OUT is on). 188: FRFR voice BAKED at the user's in-room values (locut 100.75 / prox 1.815 / pres 3.225 / fizz 2.70), dbg_fv_* knobs retired, out_voice switch permanent (OUT corner strip). 187: Output Voice FRFR global layer (out_voice PERMANENT + 4 TEMPORARY dbg_fv_* LAB knobs for the FRFR-10 ears session; presets untouched, off = bit-identical). 186: tube-correctness audit — Fender 6V6 (new TubeType), EVH 6L6, Sunn KT88(inert); manual Power Tube dropdown gains 6V6. 185: Fender PA lab retired — user swept it by ear and chose STOCK 0.15/13 ms; nothing baked, PA-compression frontier closed with an ears verdict. 184: Fender PA-compression LAB RESTORED by user request (TEMPORARY). 183: Recto CH3-Modern capture-fit BAKED at user blend 1.0 (RectoCaptureFit.h + mode-7 satDrive 1.84/tightHP 200; loudness-parity makeup), lab retired. 182: Recto voicing LAB (TEMPORARY). 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1751,6 +1755,12 @@ def emit_icon():
         'title="Output voice — ON for the FRFR speaker in the room, OFF for headphones/studio">'
         '<span class="hf-outvoice-t">OUT</span>'
         + render_ctrl(CTRL_BY_SYM["out_voice"])
+        # voice knobs: visible only while the switch is ON (script toggles
+        # .hf-ov-on on the strip); defaults = the user's in-room reference bake.
+        + render_ctrl(CTRL_BY_SYM["fv_locut"])
+        + render_ctrl(CTRL_BY_SYM["fv_prox"])
+        + render_ctrl(CTRL_BY_SYM["fv_pres"])
+        + render_ctrl(CTRL_BY_SYM["fv_fizz"])
         + '</div>\n'
         # Calibrate button sits left of the tuner button (same corner-strip family).
         '  <button type="button" class="hf-calbtn hf-cal-corner" rata-role="calbtn" aria-label="Auto-calibration" aria-pressed="false" title="Auto-calibrate — match the rig to your guitar">'
