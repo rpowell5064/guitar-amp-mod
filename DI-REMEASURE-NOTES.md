@@ -351,6 +351,19 @@ but the user's ears rule. (2) EVH — subtle warm shift. (3) Dark Side Air +
 Streets Chime — their rig-B Fender layer inherited the 6V6 (net ~+0.2-0.7 dB
 after makeup); if a blend reads wrong, the layer trim is the lever.
 
+## Output Voice: FRFR layer (2026-08-21, mv187) — LAB session pending
+
+User plays a Fender FRFR-10 in the room; everything was voiced on headphones
+(= the close-mic IR perspective). New GLOBAL layer (auto-cal pattern, tail
+ports, presets untouched, off = bit-identical, verified −12.96 parity):
+`out_voice` (PERMANENT toggle) + 4 TEMPORARY dbg_fv_* LAB knobs. ON =
+de-close-mic EQ post-mono-sum pre-Output (low cut 40-140 Hz def 85 · prox dip
+160 Hz 0-6 dB def 2.5 · presence dip 4 kHz def 2.5 · fizz tilt 8 kHz def 2.5)
++ doubler AUTO-MUTED (mono speaker combs the two takes) + airFeel AUTO-OFF
+both rigs (the real room supplies the reflections). Ears session on the
+FRFR-10 next: tune the 4 knobs in the room, then bake constants + retire the
+knobs + give the switch a permanent UI home.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds

@@ -597,6 +597,10 @@ struct HexForge {
     // ── Recto CH3-Modern capture-fit voicing (BAKED 2026-08-20, user blend 1.0
     // from the live lab; loudness-neutral). See lv2/common/RectoCaptureFit.h.
     RectoCaptureFit rectoFit[2];
+    // ── Output Voice: FRFR de-close-mic EQ (2026-08-21). Coeffs re-fit only
+    // when a LAB knob moves (change-detect); filter state carries.
+    BiquadFilter fvHP[2], fvProx[2], fvPres[2], fvFizz[2];
+    float fvLastCut = -1.0f, fvLastProx = -1.0f, fvLastPres = -1.0f, fvLastFizz = -1.0f;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -2719,6 +2723,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     DenormalGuard denormalGuard;
     auto* p = static_cast<HexForge*>(h);
     const URIs& u = p->uris;
+    // ── Output Voice: FRFR (2026-08-21, global layer — auto-cal pattern, never
+    // preset-captured). OFF = Headphones/Studio = bit-identical. ON = the
+    // FRFR-10 room voice: de-close-mic EQ post-mono-sum (below), plus the
+    // doubler and airFeel are auto-muted (mono speaker; the real room supplies
+    // the reflections a close-mic IR lacks).
+    const bool fvOn = p->ports[HF_OUT_VOICE] && *p->ports[HF_OUT_VOICE] > 0.5f;
 
     // ── Prime the preset override layer (once, after all ports are connected) ──
     // Param ports are redirected to read eff[]; everything else reads the host
@@ -3188,7 +3198,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 4)));   // 4 = 6V6 (2026-08-21)
             }
             p->pa2.setParameter("resonance", *p->ports[HF_RB_PAMP_RESONANCE]);
-            p->pa2.setParameter("airFeel",   *p->ports[HF_RB_PAMP_AIRFEEL]);
+            p->pa2.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_RB_PAMP_AIRFEEL]);   // FRFR voice: air off
             p->pa2.setParameter("coupling",  *p->ports[HF_RB_PAMP_COUPL]);
             {   // per-amp voicing rows stay authoritative for the deep internals
                 const auto d2 = PowerAmpProcessor::getDefaultsForModel(kCanonical[rbAlgo]);
@@ -3292,7 +3302,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("depth", d.depth);   p->pa.setParameter("nfb", rectoModern ? 0.05f : d.nfb);
         p->pa.setParameter("sag", d.sag);
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
-        p->pa.setParameter("airFeel",   *p->ports[HF_AMP_PAMP_AIRFEEL]);
+        p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
         desiredTube = kAmpTube[ampAlgo];
     } else {
         p->pa.setParameter("presence",  *p->ports[HF_AMP_PAMP_PRESENCE]);
@@ -3301,7 +3311,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("master",    *p->ports[HF_AMP_PAMP_MASTER]);
         p->pa.setParameter("nfb",       *p->ports[HF_AMP_PAMP_NFB]);
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
-        p->pa.setParameter("airFeel",   *p->ports[HF_AMP_PAMP_AIRFEEL]);
+        p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
         desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 4);   // 4 = 6V6 (2026-08-21)
     }
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
@@ -3871,7 +3881,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // lag, so pitch deviation drifts through ZERO (peaks ±4-9 cents, mean 0) and the
     // wander is NON-periodic (three incommensurate slow sines ≈ human sloppiness,
     // dominant periods 4-21 s — far below any chorus LFO). Deterministic, no RNG.
-    if (p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()) {
+    if (p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()
+        && !fvOn) {   // FRFR voice: doubler auto-muted (one mono speaker would comb the two takes)
         const int len = (int)p->dblBuf.size();
         const bool monoRig = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
         constexpr double kTwoPi = 6.283185307179586;
@@ -3919,6 +3930,32 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // Our width is pan/decorrelation (never anti-phase), so the sum can't null. ──
     if (p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f)
         for (uint32_t i = 0; i < n; ++i) { const float mo = 0.5f*(outL[i]+outR[i]); outL[i]=mo; outR[i]=mo; }
+
+    // ── Output Voice: FRFR de-close-mic EQ (2026-08-21) — post-mono-sum, pre-
+    // Output. The IRs are close-mic recordings; through a flat speaker in a
+    // real room that perspective reads boxy/hyped. Four levers (LAB knobs for
+    // the FRFR-10 ears session, bake + retire after): steep low cut (10" + the
+    // floor-coupling boost), 160 Hz proximity tame, ~4 kHz close-mic presence
+    // dip, 8 kHz fizz tilt (a horn tweeter reproduces IR fizz too faithfully).
+    if (fvOn) {
+        const float cut  = p->ports[HF_DBG_FV_LOCUT] ? *p->ports[HF_DBG_FV_LOCUT] : 85.0f;
+        const float prox = p->ports[HF_DBG_FV_PROX]  ? *p->ports[HF_DBG_FV_PROX]  : 2.5f;
+        const float pres = p->ports[HF_DBG_FV_PRES]  ? *p->ports[HF_DBG_FV_PRES]  : 2.5f;
+        const float fizz = p->ports[HF_DBG_FV_FIZZ]  ? *p->ports[HF_DBG_FV_FIZZ]  : 2.5f;
+        if (cut != p->fvLastCut || prox != p->fvLastProx || pres != p->fvLastPres || fizz != p->fvLastFizz) {
+            p->fvLastCut = cut; p->fvLastProx = prox; p->fvLastPres = pres; p->fvLastFizz = fizz;
+            for (int c = 0; c < 2; ++c) {
+                p->fvHP[c].setCoeffs(Filters::highpass(cut, 0.707, p->rate));
+                p->fvProx[c].setCoeffs(Filters::peaking(160.0, -prox, 1.0, p->rate));
+                p->fvPres[c].setCoeffs(Filters::peaking(4000.0, -pres, 1.2, p->rate));
+                p->fvFizz[c].setCoeffs(Filters::highshelf(8000.0, -fizz, p->rate));
+            }
+        }
+        for (uint32_t i = 0; i < n; ++i) {
+            outL[i] = p->fvFizz[0].process(p->fvPres[0].process(p->fvProx[0].process(p->fvHP[0].process(outL[i]))));
+            outR[i] = p->fvFizz[1].process(p->fvPres[1].process(p->fvProx[1].process(p->fvHP[1].process(outR[i]))));
+        }
+    }
 
     // ── Master output level (the "Output" stage — last in the chain) ──
     // The knob is in dB (0 dB = unity, up to +12 dB boost); convert to a linear

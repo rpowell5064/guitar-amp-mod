@@ -1128,3 +1128,18 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-reset:hover { background: #363c49; border-color: #19e0ff; color: #fff; }
 
 
+
+/* ── LAB strip (FRFR Output Voice — knobs TEMPORARY, switch permanent until it
+   gets a proper home at bake time) ── bottom-left corner, mirrors the
+   corner-button family; stock widgets with readouts. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab {
+    position: absolute; left: 44px; bottom: 6px; z-index: 40;
+    display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px;
+    background: rgba(255, 43, 214, .06); border: 1px dashed rgba(255, 43, 214, .5);
+    border-radius: 9px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab-t {
+    font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #ff2bd6;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab .hf-knob { transform: scale(.82); margin: -4px -6px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab .hf-sw { transform: scale(.85); margin: -2px -4px; }
