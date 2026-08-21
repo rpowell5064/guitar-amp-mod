@@ -307,6 +307,16 @@ Residual at blend 1.0 (~30 %): nonlinear fine structure (same class as EVH's
 linearly. CH2 Modern (orange, 30-42 %) shares the signature but is UNFIT —
 candidate follow-up after the CH3 verdict.
 
+## Round 8 (2026-08-20): Fender PA lab — EARS VERDICT: STOCK, frontier closed
+
+The user requested the mv176 bloom-VCA lab back (restored mv184, the one
+retired unused at mv179), swept dbg_pacomp/dbg_parel on the live rig, and
+chose **0.15 / 13 ms — exactly stock**. Nothing baked; lab retired at mv185.
+The PA-compression frontier is now closed by DIRECT LISTENING, not just the
+2026-08-04 abandonment: even the mildest variant (existing bloom VCA, no new
+compressor) didn't beat stock on ears despite the offline specESR favoring
+depth. Final word on the Fender +13.7 dB compression gap: the model keeps it.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
