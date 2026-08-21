@@ -244,6 +244,42 @@ the clean end); verdict FIRST (if model fits this set ~20 % like its peers,
 old capture confirmed contaminated -> retire it; only if a real gap remains
 does a Recto voicing session open).
 
+## Round 6 (2026-08-20): trusted Recto ladder — the model IS the outlier (verdict reversed)
+
+Ran the full northern_fox 3ch 6L6 set (28 caps, ESR 0.0007-0.017, 12.2 dBu,
+SS/Bold, EQ noon, gain ladders) on the Pi: 308 runs, 11-point model-gain grid
+per capture, measuring binary rebuilt from the bake-aligned nam_compare.cpp.
+Results CSV + per-run logs: Pi /tmp/recto3ch/. Captures: ~/dl_caps/recto3ch/
+(T3K license — NEVER redistribute; MANIFEST.txt maps slugs to original names).
+
+| channel | mapped mode | best-fit specESR | shape |
+|---|---|---|---|
+| Green CH1 | 0 (G1-G5) / 1 Pushed (G6-G9) | **19-27 %** | healthy peer band |
+| Orange CH2 Modern | 4 | 30-42 % | worsens with gain, rails at model gain 1.0 from G6 |
+| Red CH3 Modern | 7 | 31-48 % | same; G5+ sits at 43-48 % ≈ the old capture's 47 % |
+
+**The round-2/3 "capture-content question" conclusion is FALSIFIED.** The old
+ch3_modern.nam is corroborated, not contaminated:
+- The "+10-17 dB LF the capture generates" is REAL AMP BEHAVIOR — trusted red
+  G5 shows the same 80/125 Hz mountain (+11.6/+17.5 dB vs model +2.9/+7.2).
+  Ghost-note IM / rectifier pumping is a genuine Recto trait the model lacks.
+- The preamp harmonic chasm is CONFIRMED: THD@1k 134-136 % flat across levels
+  vs model ~65 % on a 0.005-ESR capture. (Caveat to the old rule "THD>100 %
+  flat = capture artifact" — that rule was learned on unverified caps; a
+  low-ESR capture faithfully reproducing it means it's the amp.)
+- Also measured: 110 Hz model OVER-saturated at low drive (24 % vs 14 %);
+  FR model dark 3-8 kHz by 2-4 dB and bright 800-1.2k by ~2-3 dB; specESR
+  insensitive to model gain 0.4-1.0 = wrong distortion COLOR, not amount.
+
+**Next: a CH2/CH3-Modern voicing session is now justified** (was blocked on
+capture trust). The HG-round-2 fit levers are already deployed default-neutral
+(fit_satdrive/fit_cascdrive/fit_backdrive/fit_tighthp/fit_ghostim + nam_compare
+--recto* flags) — optimizer-sweep them against the trusted red ladder, targets
+in priority order: 1k harmonic chasm, 80-125 Hz LF generation (fit_ghostim),
+low-drive 110 Hz over-saturation, 3-8 kHz darkness. Per the DSP-change
+workflow: research the real CH3 Modern circuit (cold-clipper / bias-shift
+structure) before fitting, and nothing bakes without ears.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
