@@ -505,7 +505,11 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
         evhFit[4].setCoeffs(Filters::highshelf(7500.0,  5.5 * b, sr));
     }
 
-    // Recto correction-EQ candidate (2026-08-20, --rectofit 0..1): 5-filter fit of
+    // Recto correction-EQ (2026-08-20, --rectofit 0..1): BAKED in the plugins at
+    // blend 1.0 (RectoCaptureFit.h, +1.023 parity makeup NOT mirrored here, same
+    // convention as --evhfit). The nonlinear winner (satDrive 1.84 / tightHP 200)
+    // is baked in the model's mode-7 row, so pass --rectofit 1.0 to measure what
+    // the live rig plays on CH3 Modern. Original fit note: 5-filter fit of
     // the clip-FR delta vs the TRUSTED northern_fox red ladder (winner config
     // rectosat 1.15 / rectothp 200): model dark 80-125 Hz (-7/-9 dB, the amp's
     // generated LF the ghost-IM lever couldn't buy), bright 200 Hz (+2.8) and

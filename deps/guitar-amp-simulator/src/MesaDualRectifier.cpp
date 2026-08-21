@@ -84,10 +84,16 @@ const MesaDualRectifier::ModeCfg MesaDualRectifier::kModes[MesaDualRectifier::kN
   { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {1.1f,1.3f,1.4f,1.4f,1.3f}, {0,0,0,0,0}, TSt::Recto,
     45.0f, 80.0f, 0.0f, 9800.0f, 740.0f, 2.5f, 3400.0f, 9.0f, 2700.0f, 5.5f, 0.6f,
     1.7f, 2.1f, 0.099f, 0.68f, 1.5f, 175.0f, 9.0f, 7.5f, 3000.0f, 3.0f, 0.5f, 0.0f, false },
-  // 7 CH3 Modern — THE Recto: maximum gain, NFB out, tightest lows
+  // 7 CH3 Modern — THE Recto: maximum gain, NFB out, tightest lows.
+  // 2026-08-20 trusted-ladder bake (northern_fox red G1-G10, user blend 1.0):
+  // tightHP 280->200 (looser chug corner fit better) and satDrive 1.6->1.84
+  // (earlier power clip; the fit_satdrive 1.15x winner folded in — the old
+  // "satDrive <= 1.6" heuristic yields to the measured fit). The linear half
+  // of the bake (5 post-PA biquads + parity makeup) is RectoCaptureFit.h in
+  // the plugins, mode 7 only. See DI-REMEASURE-NOTES rounds 6-7.
   { 5, {ST_MV1,ST_MV3,ST_EV1,ST_EV2,ST_EV3}, {0.7f,1.2f,1.3f,1.8f,1.7f}, {0,0,0,0,0}, TSt::Recto,
-    120.0f, 260.0f, 280.0f, 12000.0f, 820.0f, 4.0f, 4300.0f, 11.0f, 3200.0f, 6.5f, 0.7f,
-    1.8f, 2.2f, 0.094f, 0.68f, 1.6f, 130.0f, 2.0f, 5.5f, 3000.0f, 7.5f, 0.35f, 2.4f, true },
+    120.0f, 260.0f, 200.0f, 12000.0f, 820.0f, 4.0f, 4300.0f, 11.0f, 3200.0f, 6.5f, 0.7f,
+    1.8f, 2.2f, 0.094f, 0.68f, 1.84f, 130.0f, 2.0f, 5.5f, 3000.0f, 7.5f, 0.35f, 2.4f, true },
 };
 
 void MesaDualRectifier::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {

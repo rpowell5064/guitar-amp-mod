@@ -19,6 +19,7 @@
 #include "NoiseGateBlock.h"
 #include "HumNotchComb.h"
 #include "EvhCaptureFit.h"
+#include "RectoCaptureFit.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -119,6 +120,7 @@ struct AmpPlugin {
                                        // 89% mains-hum harmonics; ~15 dB off it puts the floor under the
                                        // gate's close threshold). Engaged with the gate; always fed (warm state).
     EvhCaptureFit     evhFit[2];       // EVH capture-fit voicing (baked 2026-08-19), post-PA, model 2 only
+    RectoCaptureFit   rectoFit[2];     // Recto CH3-Modern capture-fit (baked 2026-08-20), post-PA, model 12 mode 7 only
     NamModel*         nam = nullptr;   // swapped in by the worker on file load
 
     float* ctrl[P_N_PORTS] = {};
@@ -187,6 +189,8 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->inComb[0].prepare(rate);
     p->evhFit[0].prepare(rate);
     p->evhFit[1].prepare(rate);
+    p->rectoFit[0].prepare(rate);
+    p->rectoFit[1].prepare(rate);
     p->inComb[1].prepare(rate);
     // Tuned for a fast, transparent noise-floor gate: quick open, long smooth tail so sustain rings out.
     p->inGate.setParameter("attack",     2.0f);
@@ -480,6 +484,14 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             for (int i = 0; i < len; ++i) {
                 outs[0][i] = p->evhFit[0].process(outs[0][i]);
                 outs[1][i] = p->evhFit[1].process(outs[1][i]);
+            }
+        // Recto CH3-Modern capture-fit (baked 2026-08-20 at the user's blend 1.0;
+        // loudness-neutral, model 12 mode 7 only — the nonlinear half is baked in
+        // the model's ModeCfg row). See lv2/common/RectoCaptureFit.h.
+        if (modelIdx == kRectoIdx && *p->ctrl[P_RC_MODE] > 6.5f)
+            for (int i = 0; i < len; ++i) {
+                outs[0][i] = p->rectoFit[0].process(outs[0][i]);
+                outs[1][i] = p->rectoFit[1].process(outs[1][i]);
             }
         // Feed the power amp's own supply-sag envelope back to the preamp for
         // the NEXT block (2026-07-28, item #22) -- one block stale, negligible
