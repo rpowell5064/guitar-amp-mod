@@ -63,18 +63,22 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
 }
 
 int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
+    // 2026-08-21 tube-correctness audit (mirrors the plugins' kAmpTube/kModelTube):
+    // Fender→6V6 (real AB763 = 6V6GT, new TubeType 4), EVH→6L6 (real 5150III),
+    // Sunn→KT88 (≈6550, first-gen Model T; inert where the PA is bypassed),
+    // MarkV→6L6 (Simul-Class is 6L6-dominant; was EL34, disagreeing with rig A).
     switch (id) {
-        case ModelID::SunnModelT:          return 0;  // 6L6GC
+        case ModelID::SunnModelT:          return 3;  // KT88 ≈ 6550
         case ModelID::OrangeRockerverb50:  return 1;  // EL34
         case ModelID::MarshallJCM800:      return 1;  // EL34
-        case ModelID::FenderDeluxe:        return 0;  // 6L6GC / 6V6
-        case ModelID::EVH5150:             return 1;  // EL34
+        case ModelID::FenderDeluxe:        return 4;  // 6V6 (AB763)
+        case ModelID::EVH5150:             return 0;  // 6L6GC
         case ModelID::FriedmanBEDeluxe:    return 1;  // EL34
         case ModelID::HiwattDR103:         return 1;  // EL34
         case ModelID::VoxAC30:             return 2;  // EL84
-        case ModelID::PeaveyBackstage:     return 0;  // solid-state (no power tube)
+        case ModelID::PeaveyBackstage:     return 0;  // solid-state (no power tube; PA run neutral)
         case ModelID::MarshallPlexi1959:   return 1;  // EL34
-        case ModelID::MesaMarkV:           return 1;  // EL34/6L6 Simul-Class
+        case ModelID::MesaMarkV:           return 0;  // 6L6GC (Simul-Class, 6L6-dominant)
         case ModelID::MesaDualRectifier:   return 0;  // 6L6GC
         case ModelID::PRSMT15:             return 0;  // 6L6GC (PRS ships 6L6GC despite the EL84-tight feel)
         default:                           return 1;

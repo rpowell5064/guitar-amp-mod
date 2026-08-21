@@ -317,6 +317,40 @@ The PA-compression frontier is now closed by DIRECT LISTENING, not just the
 compressor) didn't beat stock on ears despite the offline specESR favoring
 depth. Final word on the Fender +13.7 dB compression gap: the model keeps it.
 
+## Round 9 (2026-08-21, overnight): tube-correctness audit — DEPLOYED
+
+User directive: every amp on its real power tube; implement missing types.
+Audit found THREE defects: the **Fender Deluxe had run a 6L6GC power section
+its entire life** (real AB763 = 6V6GT + GZ34), the **EVH 5150III ran EL34**
+(real = 6L6), and **nam_compare measured the Mark V with EL34 while the rig
+plays 6L6** (rig was right). Also: Sunn set to KT88≈6550 (inert, PA
+force-bypassed), Backline documented as deliberately-nominal (solid-state).
+All other assignments verified correct against the real hardware.
+
+Implemented `Tube_6V6` (TubeType 4) in PowerAmpProcessor: driveScale 3.2 /
+biasShift .03 / sagDepth .50 (GZ34) / xfmrHP 45 Hz (small Deluxe OT), plus
+the manual Power Tube dropdown entry + ALL FOUR clamp ceilings (both rigs,
+both plugins — the stale-clamp bug class). Factory recommendedTubeType table
+aligned (rig B inherits; no freeze exists post-rev-99-revert).
+
+**Fleet verify (27 captures, /tmp/namrerun_pre_tube vs /tmp/namrerun): the
+correct tubes IMPROVE every affected amp, nothing else moved:**
+fender-clean 13.12→11.04, fender-hot 35.57→31.86, evh-blue 27.11→26.56,
+evh-red 30.17→29.78, markv 19.99→19.57 (harness-only); all 22 other rows
+bit-identical. No compensating retune needed.
+
+Loudness: Fender rose +0.54 dB at the hf_amplevel noon anchor →
+kAmpMakeup/kModelMakeup[0] 5.20→4.89 restores −13.0 dBFS clean parity EXACT
+(re-measured −12.96). EVH +0.1 dB = left alone. Gates on the final build:
+hf_selftest OK, preset floors all ≤ −54.3, whine_repro silent on all 8
+presets (worst −69.7), 14 URIs enumerate, mv186/amp56 live.
+
+**Morning A/B flags:** (1) Fender Deluxe feel — correct 6V6 = earlier
+breakup, more sag "breathe", tighter lows; measured closer to the captures
+but the user's ears rule. (2) EVH — subtle warm shift. (3) Dark Side Air +
+Streets Chime — their rig-B Fender layer inherited the 6V6 (net ~+0.2-0.7 dB
+after makeup); if a blend reads wrong, the layer trim is the lever.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds

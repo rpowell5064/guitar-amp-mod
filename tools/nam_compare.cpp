@@ -187,18 +187,18 @@ struct ModelSpec { AmpModel model; int idx; int tube; bool sunn; const char* lab
 
 static bool resolveModel(std::string name, ModelSpec& out) {
     for (auto& c : name) c = char(std::tolower((unsigned char)c));
-    if (name == "fender")     { out = {AmpModel::FenderDeluxe,       0, 0, false, "Fender Deluxe"}; return true; }
+    if (name == "fender")     { out = {AmpModel::FenderDeluxe,       0, 4, false, "Fender Deluxe"}; return true; }   // 6V6 (2026-08-21 tube audit)
     if (name == "marshall")   { out = {AmpModel::MarshallJCM800,     1, 1, false, "Marshall JCM800"}; return true; }
     if (name == "plexi" || name == "superlead" || name == "plexiglass" || name == "1959")
                               { out = {AmpModel::MarshallPlexi,      10, 1, false, "Marshall Plexi 1959"}; return true; }   // frozen row 10 (2026-08-20 row split)
     if (name == "markv" || name == "mesa" || name == "mkv" || name == "boogie")
-                              { out = {AmpModel::MesaMarkV,          10, 1, false, "Mesa Mark V"}; return true; }           // frozen row 10 (2026-08-20 row split)
+                              { out = {AmpModel::MesaMarkV,          10, 0, false, "Mesa Mark V"}; return true; }           // frozen row 10 (2026-08-20 row split); tube 0=6L6 — was EL34, a HARNESS-ONLY mismatch vs the rig's kAmpTube (2026-08-21 audit)
     if (name == "recto" || name == "dualrec" || name == "rectifier" || name == "diamondplate")
                               { out = {AmpModel::MesaDualRectifier,   7, 0, false, "Mesa Dual Rectifier (Diamond Plate)"}; return true; }
     if (name == "mt15" || name == "tremont" || name == "tremont15" || name == "prs")
                               { out = {AmpModel::PRSMT15,             8, 0, false, "PRS MT15 (Tremont 15)"}; return true; }
-    if (name == "evh")        { out = {AmpModel::EVH5150III,         2, 1, false, "EVH 5150 III"}; return true; }
-    if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 0, true,  "Sunn Model T"}; return true; }
+    if (name == "evh")        { out = {AmpModel::EVH5150III,         2, 0, false, "EVH 5150 III"}; return true; }   // 6L6 — real 5150III; was EL34 (2026-08-21 tube audit)
+    if (name == "sunn")       { out = {AmpModel::SunnModelT,         4, 3, true,  "Sunn Model T"}; return true; }   // KT88≈6550 (inert: PA bypassed for Sunn)
     if (name == "rockerverb" || name == "orange")
                               { out = {AmpModel::OrangeRockerverb50, 5, 1, false, "Orange Rockerverb 50"}; return true; }
     if (name == "friedman" || name == "beardo" || name == "be")

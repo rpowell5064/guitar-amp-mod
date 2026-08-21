@@ -155,12 +155,18 @@ static constexpr int kPlexiIdx    = 10;   // Plexiglass (Marshall 1959 Super Lea
 static constexpr int kMesaIdx     = 11;   // Cali V (Mesa Mark V)
 static constexpr int kRectoIdx    = 12;   // Diamond Plate (Mesa Dual Rectifier)
 static constexpr int kMt15Idx     = 13;   // Tremont 15 (PRS MT15)
-static const int   kAmpTube[14]   = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0 }; // …/EL34/EL34/6L6-EL34 Simul
+// 2026-08-21 tube-correctness audit: Fender 6L6→6V6 (real AB763 = 6V6GT, new
+// TubeType), EVH EL34→6L6 (real 5150III = 6L6GC), Sunn 6L6→KT88 (real Model T
+// = 6550-class; inert — its PA is force-bypassed, the model has its own power
+// section). Backline stays nominal 6L6 (solid-state; PA deliberately neutral,
+// capture-tuned through it). The rest verified correct: JCM800/Plexi/Hiwatt/
+// Rockerverb/Friedman EL34, Vox EL84, MarkV/Recto/MT15 6L6.
+static const int   kAmpTube[14]   = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0 };
 // Amp-level PARITY calibration (2026-07-09, build-tools/hexforge_amplevel measured @noon, cab on):
 // distorted amps → -16 dBFS RMS, clean amps (Fender/Hiwatt/Vox/Backline) → -13 dBFS (+3 dB perceptual
 // boost so cleans FEEL as loud as the denser distorted models). Re-leveled after the amp re-voicings
 // left Hiwatt -24 / CaliV -23 / Friedman -21.5 / Plexi -19 several dB quiet. makeup is linear post-amp gain.
-static const float kAmpMakeup[14] = { 5.20f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f }; // [0] Fender bumped 3.78->5.20 (2026-07-28): item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM (nam_compare loudness: old x1.38, new x1.90) -- restores the loudness the FR re-voice didn't otherwise preserve; [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
+static const float kAmpMakeup[14] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f }; // [0] Fender 5.20->4.89 (2026-08-21 tube audit): the correct 6V6 runs +0.54 dB hotter at the hf_amplevel noon anchor; x0.94 restores the -13 dBFS clean parity exactly. Previously bumped 3.78->5.20 (2026-07-28): item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM (nam_compare loudness: old x1.38, new x1.90) -- restores the loudness the FR re-voice didn't otherwise preserve; [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
 // (REMOVED 2026-07-11) The `kAmpInputCeil = A*tanh(x/A)` "input ceiling" on the amp block was added
 // 2026-07-03 and CHANGED THE AMP CHARACTER: being a nonlinearity at any A, it pre-distorted the amp
 // input, and the high-gain front-ends amplified that into a fuzzy/dark (high A) or woolly (low A)
@@ -3179,7 +3185,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 p->pa2.setParameter("sag",      *p->ports[HF_RB_PAMP_SAG]);
                 p->pa2.setParameter("master",   *p->ports[HF_RB_PAMP_MASTER]);
                 p->pa2.setParameter("nfb",      *p->ports[HF_RB_PAMP_NFB]);
-                p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 3)));
+                p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 4)));   // 4 = 6V6 (2026-08-21)
             }
             p->pa2.setParameter("resonance", *p->ports[HF_RB_PAMP_RESONANCE]);
             p->pa2.setParameter("airFeel",   *p->ports[HF_RB_PAMP_AIRFEEL]);
@@ -3296,7 +3302,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("nfb",       *p->ports[HF_AMP_PAMP_NFB]);
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
         p->pa.setParameter("airFeel",   *p->ports[HF_AMP_PAMP_AIRFEEL]);
-        desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 3);
+        desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 4);   // 4 = 6V6 (2026-08-21)
     }
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).bloomVca);

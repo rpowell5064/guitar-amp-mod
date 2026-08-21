@@ -60,11 +60,15 @@ static constexpr int kMt15Idx     = 13;    // Tremont 15 (PRS MT15)
 static constexpr int kMaxModel    = 13;    // highest selectable model index (Tremont 15)
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
-static const int kModelTube[14] = { 0, 1, 1, 0, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0 };  // [6] Friedman EL34; [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state; [10] Plexi EL34; [11] Mesa EL34/6L6; [12] Recto 6L6
+// 2026-08-21 tube-correctness audit (mirrors hexforge kAmpTube): Fender→6V6(4),
+// EVH→6L6(0), Sunn→KT88(3, inert — PA force-bypassed). [6] Friedman EL34;
+// [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state (nominal, PA neutral);
+// [10] Plexi EL34; [11] Mesa 6L6 (Simul-Class, 6L6-dominant); [12] Recto 6L6
+static const int kModelTube[14] = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0 };
 // Synced to hexforge kAmpMakeup for cross-plugin PARITY (2026-07-09): identical amp+power-amp DSP,
 // so the same makeup levels the standalone Amp (into a cab) exactly like Hex Forge. Distorted amps
 // -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
-static const float kModelMakeup[14] = { 5.20f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f };  // [0] Fender bumped 3.78->5.20 (2026-07-28): the item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM than the old heuristic path (nam_compare loudness: old needed x1.38, new needs x1.90) -- this restores the SAME loudness parity the re-voice's own FR-matching work didn't otherwise change; [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
+static const float kModelMakeup[14] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f };  // [0] Fender 5.20->4.89 (2026-08-21 tube audit, mirrors hexforge kAmpMakeup): correct 6V6 runs +0.54 dB hotter at the noon anchor. Previously bumped 3.78->5.20 (2026-07-28): the item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM than the old heuristic path (nam_compare loudness: old needed x1.38, new needs x1.90) -- this restores the SAME loudness parity the re-voice's own FR-matching work didn't otherwise change; [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -416,7 +420,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("nfb",       *p->ctrl[P_PA_NFB]);
         p->pa.setParameter("resonance", *p->ctrl[P_PA_RESON]);
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
-        desiredTube = clampIdx(*p->ctrl[P_PA_TUBE], 0, 3);
+        desiredTube = clampIdx(*p->ctrl[P_PA_TUBE], 0, 4);   // 4 = 6V6 (2026-08-21)
     }
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).bloomVca);

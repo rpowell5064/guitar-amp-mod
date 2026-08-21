@@ -44,7 +44,7 @@ public:
     static const char* getModelName(ModelID id) noexcept;
 
     // Suggested TubeType index for the downstream PowerAmpProcessor.
-    // Matches TubeType enum: 0=6L6GC, 1=EL34, 2=EL84, 3=KT88.
+    // Matches TubeType enum: 0=6L6GC, 1=EL34, 2=EL84, 3=KT88, 4=6V6.
     static int recommendedTubeType(ModelID id) noexcept;
 
     // Null-terminated array of all model name strings; length == kNumModels.

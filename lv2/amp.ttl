@@ -31,7 +31,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 55 ;   # 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
+    lv2:microVersion 56 ;   # 56: tube-correctness audit — Fender 6V6 (new TubeType 4, real AB763), EVH 6L6 (real 5150III), Sunn KT88 (inert, PA bypassed); Power Tube enum gains 6V6. 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
@@ -136,11 +136,12 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 18 ; lv2:symbol "pamp_tube" ; lv2:name "Power Tube" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "EL34"  ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "EL84"  ; rdf:value 2 ] ;
-        lv2:scalePoint [ rdfs:label "KT88"  ; rdf:value 3 ]
+        lv2:scalePoint [ rdfs:label "KT88"  ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "6V6"   ; rdf:value 4 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 19 ; lv2:symbol "pamp_presence" ; lv2:name "PA Presence" ;

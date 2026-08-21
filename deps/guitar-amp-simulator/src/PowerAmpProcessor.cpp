@@ -100,6 +100,33 @@ const PowerAmpProcessor::TubeParams PowerAmpProcessor::kKT88 = {
     /* spkrLPHz   */ 7500.0f
 };
 
+// 6V6 — the Fender Deluxe's actual power tube (2026-08-21 correctness audit;
+// the Deluxe had run 6L6GC since the PA existed). AB763: 6V6GT pair run HOT
+// (~415 V plate — Fender famously over-spec'd them) + GZ34 tube rectifier +
+// modest OT. Character between 6L6 and EL84: earlier breakup than a 6L6
+// (driveScale up), warmer even-order asymmetry (biasShift up), real
+// rectifier sag (deeper/faster than the 6L6's silicon-era numbers, shy of
+// the AC30's cathode-biased extreme), and the small Deluxe OT rolls low end
+// off earliest of the set. USA mains per the k6L6GC ripple convention.
+const PowerAmpProcessor::TubeParams PowerAmpProcessor::k6V6 = {
+    /* driveScale  */ 3.2f,
+    /* biasShift   */ 0.030f,
+    /* dcOffset    */ 0.0f,   // computed in recalcTubeParams
+    /* screenComp  */ 0.14f,
+    /* cathodeComp */ 0.22f,
+    /* outputGain  */ 0.92f,
+    /* sagDepth    */ 0.50f,  // GZ34 tube rectifier "breathe"
+    /* sagAttackMs */ 7.0f,
+    /* sagRelMs    */ 150.0f,
+    /* rippleHz    */ 60.0f,  // USA mains (same convention as k6L6GC)
+    /* xfmrHPHz   */ 45.0f,  // small Deluxe OT — earliest LF rolloff of the set
+    /* xfmrHPQ    */ 0.70f,
+    /* xfmrLPHz   */ 19000.0f,
+    /* spkrResHz  */ 100.0f,
+    /* spkrResQ   */ 1.3f,
+    /* spkrLPHz   */ 6000.0f   // NOTE: spkrPeak/spkrLP are currently never applied.
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tube waveshaper — static, no state, safe to call at oversampled rate
 // ─────────────────────────────────────────────────────────────────────────────
@@ -171,6 +198,7 @@ void PowerAmpProcessor::recalcTubeParams() noexcept {
     case TubeType::Tube_EL34:  tp = kEL34;  break;
     case TubeType::Tube_EL84:  tp = kEL84;  break;
     case TubeType::Tube_KT88:  tp = kKT88;  break;
+    case TubeType::Tube_6V6:   tp = k6V6;   break;
     }
     // Evens desk-loop (phase 2): scale the waveshaper's two intrinsic asymmetry
     // levers. Both are inert on a railed input (two-level theorem), but with the

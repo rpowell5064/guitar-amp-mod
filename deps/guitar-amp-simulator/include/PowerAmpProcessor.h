@@ -9,7 +9,10 @@ enum class TubeType {
     Tube_6L6GC = 0,
     Tube_EL34  = 1,
     Tube_EL84  = 2,
-    Tube_KT88  = 3
+    Tube_KT88  = 3,
+    Tube_6V6   = 4    // 2026-08-21 tube-correctness audit: the Fender Deluxe
+                      // (AB763, 6V6GT + GZ34 tube rectifier) had been running
+                      // 6L6GC since the PA existed — see k6V6 in the .cpp.
 };
 
 // Power amp stage: power tube transfer function, dynamic sag, output transformer,
@@ -202,6 +205,7 @@ private:
     static const TubeParams kEL34;
     static const TubeParams kEL84;
     static const TubeParams kKT88;
+    static const TubeParams k6V6;
     TubeParams tp{};
 
     // ── Sag (mono envelope, applied before oversampling) ─────────────────────
