@@ -351,7 +351,7 @@ but the user's ears rule. (2) EVH — subtle warm shift. (3) Dark Side Air +
 Streets Chime — their rig-B Fender layer inherited the 6V6 (net ~+0.2-0.7 dB
 after makeup); if a blend reads wrong, the layer trim is the lever.
 
-## Output Voice: FRFR layer (2026-08-21, mv187) — LAB session pending
+## Output Voice: FRFR layer (2026-08-21, mv187→188 BAKED)
 
 User plays a Fender FRFR-10 in the room; everything was voiced on headphones
 (= the close-mic IR perspective). New GLOBAL layer (auto-cal pattern, tail
@@ -363,6 +363,14 @@ de-close-mic EQ post-mono-sum pre-Output (low cut 40-140 Hz def 85 · prox dip
 both rigs (the real room supplies the reflections). Ears session on the
 FRFR-10 next: tune the 4 knobs in the room, then bake constants + retire the
 knobs + give the switch a permanent UI home.
+
+**BAKED same day (mv188):** user tuned in the room and saved — locut
+**100.75 Hz** / prox **1.815 dB** / pres **3.225 dB** / fizz **2.70 dB**
+(close to the estimates; presence dip deepest, prox lighter than guessed).
+Constants fixed at instantiate; dbg_fv_* retired (tail removal); out_voice
+now permanent in the bottom-left "OUT" corner strip (solid cyan, not lab
+styling). Off-parity re-verified −12.96. The user's saved pedalboard keeps
+out_voice=1; dropped dbg symbols are discarded harmlessly on load.
 
 ## Reproduce
 

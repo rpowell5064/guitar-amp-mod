@@ -597,10 +597,11 @@ struct HexForge {
     // ── Recto CH3-Modern capture-fit voicing (BAKED 2026-08-20, user blend 1.0
     // from the live lab; loudness-neutral). See lv2/common/RectoCaptureFit.h.
     RectoCaptureFit rectoFit[2];
-    // ── Output Voice: FRFR de-close-mic EQ (2026-08-21). Coeffs re-fit only
-    // when a LAB knob moves (change-detect); filter state carries.
+    // ── Output Voice: FRFR de-close-mic EQ — BAKED 2026-08-21 at the user's
+    // in-room values from the LAB session on the Fender FRFR-10 (locut 100.75
+    // Hz / prox 1.815 dB / pres 3.225 dB / fizz 2.70 dB). Coeffs set once in
+    // instantiate; out_voice is the permanent global switch.
     BiquadFilter fvHP[2], fvProx[2], fvPres[2], fvFizz[2];
-    float fvLastCut = -1.0f, fvLastProx = -1.0f, fvLastPres = -1.0f, fvLastFizz = -1.0f;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -2444,6 +2445,13 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->evhFit[1].prepare(rate);
     p->rectoFit[0].prepare(rate);
     p->rectoFit[1].prepare(rate);
+    // FRFR voice EQ — user's in-room bake (2026-08-21), fixed coefficients.
+    for (int c = 0; c < 2; ++c) {
+        p->fvHP[c].setCoeffs(Filters::highpass(100.75, 0.707, rate));
+        p->fvProx[c].setCoeffs(Filters::peaking(160.0, -1.815, 1.0, rate));
+        p->fvPres[c].setCoeffs(Filters::peaking(4000.0, -3.225, 1.2, rate));
+        p->fvFizz[c].setCoeffs(Filters::highshelf(8000.0, -2.70, rate));
+    }
     p->trimVoice.reset();   // coeffs are set lazily in run() from the live HB Amount port
     p->trimBoost.reset();
     p->gate.prepare(rate, kMaxBlock, 1);
@@ -3938,19 +3946,6 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // floor-coupling boost), 160 Hz proximity tame, ~4 kHz close-mic presence
     // dip, 8 kHz fizz tilt (a horn tweeter reproduces IR fizz too faithfully).
     if (fvOn) {
-        const float cut  = p->ports[HF_DBG_FV_LOCUT] ? *p->ports[HF_DBG_FV_LOCUT] : 85.0f;
-        const float prox = p->ports[HF_DBG_FV_PROX]  ? *p->ports[HF_DBG_FV_PROX]  : 2.5f;
-        const float pres = p->ports[HF_DBG_FV_PRES]  ? *p->ports[HF_DBG_FV_PRES]  : 2.5f;
-        const float fizz = p->ports[HF_DBG_FV_FIZZ]  ? *p->ports[HF_DBG_FV_FIZZ]  : 2.5f;
-        if (cut != p->fvLastCut || prox != p->fvLastProx || pres != p->fvLastPres || fizz != p->fvLastFizz) {
-            p->fvLastCut = cut; p->fvLastProx = prox; p->fvLastPres = pres; p->fvLastFizz = fizz;
-            for (int c = 0; c < 2; ++c) {
-                p->fvHP[c].setCoeffs(Filters::highpass(cut, 0.707, p->rate));
-                p->fvProx[c].setCoeffs(Filters::peaking(160.0, -prox, 1.0, p->rate));
-                p->fvPres[c].setCoeffs(Filters::peaking(4000.0, -pres, 1.2, p->rate));
-                p->fvFizz[c].setCoeffs(Filters::highshelf(8000.0, -fizz, p->rate));
-            }
-        }
         for (uint32_t i = 0; i < n; ++i) {
             outL[i] = p->fvFizz[0].process(p->fvPres[0].process(p->fvProx[0].process(p->fvHP[0].process(outL[i]))));
             outR[i] = p->fvFizz[1].process(p->fvPres[1].process(p->fvProx[1].process(p->fvHP[1].process(outR[i]))));
