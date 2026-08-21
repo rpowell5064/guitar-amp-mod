@@ -190,9 +190,9 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     if (name == "fender")     { out = {AmpModel::FenderDeluxe,       0, 0, false, "Fender Deluxe"}; return true; }
     if (name == "marshall")   { out = {AmpModel::MarshallJCM800,     1, 1, false, "Marshall JCM800"}; return true; }
     if (name == "plexi" || name == "superlead" || name == "plexiglass" || name == "1959")
-                              { out = {AmpModel::MarshallPlexi,       1, 1, false, "Marshall Plexi 1959"}; return true; }
+                              { out = {AmpModel::MarshallPlexi,      10, 1, false, "Marshall Plexi 1959"}; return true; }   // frozen row 10 (2026-08-20 row split)
     if (name == "markv" || name == "mesa" || name == "mkv" || name == "boogie")
-                              { out = {AmpModel::MesaMarkV,           1, 1, false, "Mesa Mark V"}; return true; }
+                              { out = {AmpModel::MesaMarkV,          10, 1, false, "Mesa Mark V"}; return true; }           // frozen row 10 (2026-08-20 row split)
     if (name == "recto" || name == "dualrec" || name == "rectifier" || name == "diamondplate")
                               { out = {AmpModel::MesaDualRectifier,   7, 0, false, "Mesa Dual Rectifier (Diamond Plate)"}; return true; }
     if (name == "mt15" || name == "tremont" || name == "tremont15" || name == "prs")
@@ -255,6 +255,7 @@ struct Knobs {
     float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
     float pablrel = -1.0f;                 // bloom-VCA release ms (-1 = stock 13)
     float evhfit  = 0.0f;                  // EVH correction-EQ blend (0 = off)
+    float rectofit = 0.0f;                 // Recto CH2/CH3-Modern correction-EQ blend (0 = off)
     // HG round 2 levers (all neutral = model default)
     float rectosat = -1.0f, rectocasc = -1.0f, rectoback = -1.0f;   // Recto fit_* scales
     float rectothp = -1.0f, rectoghost = -1.0f;
@@ -462,11 +463,11 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     pa.setParameter("sag", g_paSag >= 0.0f ? g_paSag : d.sag);
     pa.setParameter("bloomvca", g_paBloom >= 0.0f ? g_paBloom : d.bloomVca);
     if (k.pablrel > 0.0f) pa.setParameter("bloomrelms", k.pablrel);
-    // HG round 2 PA levers (neutral when flags absent)
-    if (k.paknee    >= 0.0f) pa.setParameter("pakneecurve", k.paknee);
-    if (k.patilt    != 0.0f) pa.setParameter("shapertilt",   k.patilt);
-    if (k.patiltlo  != 0.0f) pa.setParameter("shapertiltlo", k.patiltlo);
-    if (k.padutydyn >= 0.0f) pa.setParameter("padutydyn",    k.padutydyn);
+    // HG round 2 PA levers: per-amp baked defaults, flag-overridable
+    pa.setParameter("pakneecurve",  k.paknee    >= 0.0f ? k.paknee    : d.kneeCurve);
+    pa.setParameter("shapertilt",   k.patilt    != 0.0f ? k.patilt    : d.shaperTiltDb);
+    pa.setParameter("shapertiltlo", k.patiltlo  != 0.0f ? k.patiltlo  : d.shaperTiltLoDb);
+    pa.setParameter("padutydyn",    k.padutydyn >= 0.0f ? k.padutydyn : d.dutyDyn);
     pa.setParameter("duty",     g_paDuty   >= 0.0f ? g_paDuty   : d.duty);
     pa.setParameter("evengen",  g_paEven   >= 0.0f ? g_paEven   : d.evenDepth);
     if (g_paXover >= 0.0f) pa.setParameter("xover", g_paXover);   // crossover pilot (not in AmpDefaults yet)
@@ -504,6 +505,22 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
         evhFit[4].setCoeffs(Filters::highshelf(7500.0,  5.5 * b, sr));
     }
 
+    // Recto correction-EQ candidate (2026-08-20, --rectofit 0..1): 5-filter fit of
+    // the clip-FR delta vs the TRUSTED northern_fox red ladder (winner config
+    // rectosat 1.15 / rectothp 200): model dark 80-125 Hz (-7/-9 dB, the amp's
+    // generated LF the ghost-IM lever couldn't buy), bright 200 Hz (+2.8) and
+    // 800-1.2k (+1.8/+2.7), dark 3-8 kHz (-2/-4). Post-PA, pre-cab, blend-scaled.
+    BiquadFilter rectoFit[5];
+    const bool useRectoFit = (k.rectofit > 0.0f);
+    if (useRectoFit) {
+        const float b = k.rectofit;
+        rectoFit[0].setCoeffs(Filters::peaking  ( 100.0,  8.0 * b, 1.0, sr));
+        rectoFit[1].setCoeffs(Filters::peaking  ( 210.0, -2.8 * b, 1.4, sr));
+        rectoFit[2].setCoeffs(Filters::peaking  (1000.0, -2.4 * b, 0.8, sr));
+        rectoFit[3].setCoeffs(Filters::highshelf(2600.0,  2.0 * b, sr));
+        rectoFit[4].setCoeffs(Filters::highshelf(6500.0,  2.2 * b, sr));
+    }
+
     out.assign(in.size(), 0.0f);
     std::vector<float> scratch(BLK);
     for (size_t off = 0; off < in.size(); off += BLK) {
@@ -516,6 +533,9 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
         if (useEvhFit)
             for (int i = 0; i < len; ++i)
                 for (auto& f : evhFit) p[i] = f.process(p[i]);
+        if (useRectoFit)
+            for (int i = 0; i < len; ++i)
+                for (auto& f : rectoFit) p[i] = f.process(p[i]);
         std::memcpy(out.data() + off, scratch.data(), size_t(len) * sizeof(float));
     }
 }
@@ -855,6 +875,7 @@ int main(int argc, char** argv) {
     knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit
     knob("--pablrel", k.pablrel);   // bloom-VCA release ms (PA-compression lab)
     knob("--evhfit", k.evhfit);     // EVH correction-EQ blend candidate
+    knob("--rectofit", k.rectofit); // Recto correction-EQ blend candidate
     // HG round 2 sweepable levers
     knob("--rectosat", k.rectosat);   knob("--rectocasc", k.rectocasc);
     knob("--rectoback", k.rectoback); knob("--rectothp", k.rectothp);

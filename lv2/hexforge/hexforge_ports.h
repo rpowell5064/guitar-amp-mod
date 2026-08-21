@@ -450,10 +450,11 @@ enum HexForgePort {
     HF_CAL_FLOOR_OFFS,
     HF_CAL_STATE,
     HF_CAL_PROGRESS,
+    HF_DBG_RECTOFIT,
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 455, "port count drift");
+static_assert(HF_N_PORTS == 456, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -531,5 +532,5 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "cpu_oc", "cpu_nail", "cpu_eq", "cpu_total", "cpu_dr2", "cpu_rigb",
     "cpu_gt2", "cpu_cp2", "cpu_fz2", "cpu_nail2", "cpu_md2", "cpu_dl2",
     "cpu_rv2", "cpu_wh2", "cpu_oc2", "cpu_eq2", "cpu_cab2", "cal_cmd",
-    "cal_trim_offs", "cal_floor_offs", "cal_state", "cal_progress", "midi_in",
+    "cal_trim_offs", "cal_floor_offs", "cal_state", "cal_progress", "dbg_rectofit", "midi_in",
 };

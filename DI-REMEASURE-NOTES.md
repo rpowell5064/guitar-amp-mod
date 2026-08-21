@@ -280,6 +280,33 @@ low-drive 110 Hz over-saturation, 3-8 kHz darkness. Per the DSP-change
 workflow: research the real CH3 Modern circuit (cold-clipper / bias-shift
 structure) before fitting, and nothing bakes without ears.
 
+## Round 7 (2026-08-20): Recto voicing session — fit done, LAB deployed (mv182)
+
+Phase 1 (nonlinear levers, red_g05 @ gain 0.7, Pi /tmp/rectofit/sweep.csv):
+near-exhausted. Best {rectosat 1.15, rectothp 200} = 41.3 % vs 43.5 % stock;
+casc/back drives best at STOCK (raising them worsens — consistent with the
+110 Hz low-drive over-saturation); **fit_ghostim is a specESR no-op at every
+depth** (42.49→42.5x) — the ripple-IM mechanism as coded doesn't buy fit.
+
+Phase 2 (`--rectofit` correction-EQ blend, 5 biquads off the winner's clip-FR
+delta: peak 100 +8.0 Q1.0 · peak 210 −2.8 Q1.4 · peak 1k −2.4 Q0.8 · hishelf
+2.6k +2.0 · hishelf 6.5k +2.2, ×blend): **monotonic, big** — red_g03 41.1→30.3,
+g05 43.5→30.9, g08 49.0→35.8 at blend 1.0. EQ adds +0.7 dB RMS at b=1
+(neutralizer ×(1−0.077b) in the LAB). Confirms the EVH lesson again: the
+"harmonic chasm" was mostly LINEAR voicing.
+
+**LAB deployed (mv182, TEMPORARY dbg_rectofit tail port, zero blob impact):**
+blend 0 = bit-identical stock; blend b = fit_satdrive 1+0.15b + fit_tighthp
+280→200 + the 5 biquads post-PA + neutralizer. **CH3 Modern (mode 7) ONLY** —
+the measured mode; inert on every other amp/mode. Bake path when the user
+picks a blend: RectoCaptureFit.h (EvhCaptureFit pattern) + fold sat/thp into
+ModeCfg row 7, retire the port (tail removal, migrate test untouched).
+
+Residual at blend 1.0 (~30 %): nonlinear fine structure (same class as EVH's
+27 %) + the 80-125 Hz generated-LF mechanism the EQ only approximates
+linearly. CH2 Modern (orange, 30-42 %) shares the signature but is UNFIT —
+candidate follow-up after the CH3 verdict.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds

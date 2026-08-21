@@ -587,6 +587,12 @@ struct HexForge {
     // ── EVH capture-fit voicing (BAKED 2026-08-19, blend 0.8875 chosen by ear
     // on the live lab; loudness-neutral). See lv2/common/EvhCaptureFit.h.
     EvhCaptureFit evhFit[2];
+    // ── Recto voicing LAB (dbg_rectofit, TEMPORARY 2026-08-20): blendable
+    // trusted-ladder fit, CH3 Modern only. Coeffs re-fit on knob/amp/mode
+    // change only; biquad state carries through blend moves (stable).
+    BiquadFilter rectoFitEq[2][5];
+    float rectoFitLastB = -1.0f, rectoFitLastMode = -1.0f, rectoFitGain = 1.0f;
+    int   rectoFitLastAmp = -1;
     // Double-tap bank nav: double-tap A = bank down, D = bank up.
     int64_t sampleClock = 0;            // running sample counter
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
@@ -3315,6 +3321,34 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // (The 2026-08-20 dbg_hgfit LAB lived here; retired at mv181 after the user
     // approved both candidates at blend 0.72 — values baked into AmpDefaults
     // rows 1/8 with the Plexi/MarkV row-10 split.)
+    // ── Recto voicing LAB (dbg_rectofit, TEMPORARY 2026-08-20): blend stock →
+    // the fit vs the TRUSTED northern_fox red ladder (specESR 43.5→30.9 on
+    // red_g05 at blend 1.0; monotonic across G3/G5/G8). CH3 Modern (mode 7)
+    // ONLY — the measured mode; other modes/amps stay stock at any knob value.
+    // Components at blend b: fit_satdrive 1+0.15b, fit_tighthp 280→200 Hz,
+    // 5 post-PA biquads (from the clip-FR delta), ×(1−0.077b) neutralizer
+    // (the EQ adds +0.7 dB RMS on the reference DI at b=1).
+    {
+        const float b7 = p->ports[HF_DBG_RECTOFIT] ? *p->ports[HF_DBG_RECTOFIT] : 0.0f;
+        if (b7 != p->rectoFitLastB || ampModel != p->rectoFitLastAmp || rcMode != p->rectoFitLastMode) {
+            p->rectoFitLastB = b7; p->rectoFitLastAmp = ampModel; p->rectoFitLastMode = rcMode;
+            const float b = (ampModel == kRectoIdx && rcMode > 6.5f) ? b7 : 0.0f;
+            if (ampModel == kRectoIdx) {
+                amp->setParameter("fit_satdrive", 1.0f + 0.15f * b);
+                amp->setParameter("fit_tighthp",  b > 0.001f ? 280.0f - 80.0f * b : 0.0f);
+            }
+            for (int c = 0; c < 2; ++c) {
+                p->rectoFitEq[c][0].setCoeffs(Filters::peaking  ( 100.0,  8.0 * b, 1.0, p->rate));
+                p->rectoFitEq[c][1].setCoeffs(Filters::peaking  ( 210.0, -2.8 * b, 1.4, p->rate));
+                p->rectoFitEq[c][2].setCoeffs(Filters::peaking  (1000.0, -2.4 * b, 0.8, p->rate));
+                p->rectoFitEq[c][3].setCoeffs(Filters::highshelf(2600.0,  2.0 * b, p->rate));
+                p->rectoFitEq[c][4].setCoeffs(Filters::highshelf(6500.0,  2.2 * b, p->rate));
+            }
+            p->rectoFitGain = 1.0f - 0.077f * b;
+        }
+    }
+    const bool rectoFitOn = (ampModel == kRectoIdx) && rcMode > 6.5f &&
+                            p->ports[HF_DBG_RECTOFIT] && *p->ports[HF_DBG_RECTOFIT] > 0.001f;
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);
@@ -3730,6 +3764,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         p->pa.process(io1, io1, len, 1);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
                         if (evhFitOn) for (int i=0;i<len;++i) L[i]=p->evhFit[0].process(L[i]);
+                        if (rectoFitOn) for (int i=0;i<len;++i) {
+                            float v = L[i];
+                            for (auto& f : p->rectoFitEq[0]) v = f.process(v);
+                            L[i] = p->rectoFitGain * v;
+                        }
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
                     } else {
@@ -3740,6 +3779,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         if (evhFitOn) for (int i=0;i<len;++i) {
                             L[i]=p->evhFit[0].process(L[i]);
                             R[i]=p->evhFit[1].process(R[i]);
+                        }
+                        if (rectoFitOn) for (int i=0;i<len;++i) {
+                            float vl = L[i], vr = R[i];
+                            for (auto& f : p->rectoFitEq[0]) vl = f.process(vl);
+                            for (auto& f : p->rectoFitEq[1]) vr = f.process(vr);
+                            L[i] = p->rectoFitGain * vl; R[i] = p->rectoFitGain * vr;
                         }
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
                     }
