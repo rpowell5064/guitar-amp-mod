@@ -5,10 +5,20 @@
 // ── TS-808 voicing constants (tuned to Ibanez TS808 Japan-reissue NAM captures
 //    via tools/nam_compare, 2026-07-08) ────────────────────────────────────
 namespace {
-    // Pre-clip gain of the boosted (highpassed) band: 1 (drive=0) .. 1+span.
-    // Real 808 gain is huge (~100×) but the diodes bound the swing; what we
-    // need for the touch/THD-vs-input curve to match is a moderate span.
-    constexpr float kGainSpan = 34.0f;
+    // Pre-clip gain of the boosted (highpassed) band.
+    // 2026-08-21 GAIN-FLOOR FIX (user: "the TS should push even with drive at
+    // zero — drive off / level up is the classic boost setting"): the real 808
+    // feedback network is Rf = 51k + drive·500k over Ri = 4.7k, so the op-amp
+    // holds a ×11.85 (+21.5 dB) mid-band floor even at drive 0 — the old law
+    // (1 + 34·d) collapsed to UNITY there and the boost trick did nothing.
+    // New law: gain = kGainFloor + kGainSpan·d² — crosses the old law's value
+    // EXACTLY at d = 0.5 (18.0, the capture-tuned anchor: ts808-od5t2 verifies
+    // bit-true) and reaches 36.45 at dimed (vs old 35, +0.35 dB — inaudible,
+    // well past the diode rail). Real gain is still ~100×; like kGainSpan
+    // before it, the floor is scaled to the fitted touch/THD curve (11.85 =
+    // the real 51k/4.7k ratio happens to sit right in the fitted family).
+    constexpr float kGainFloor = 11.85f;
+    constexpr float kGainSpan  = 24.6f;
     // Diode rail (soft-clip threshold).  Bounds output amplitude so loudness
     // stays ~constant across the Drive knob, like the real pedal.
     constexpr float kClip     = 0.55f;
@@ -63,7 +73,7 @@ float TubeScreamer808::processSample(float x, int ch) noexcept {
     // amplified and driven into the diodes.  That is the real "mid-hump": full
     // lows + boosted, clipped mids/treble — NOT a bass-cut of the whole signal.
     const float hp   = s.inputHP.process(x);
-    const float gain = 1.0f + kGainSpan * driveCur_;
+    const float gain = kGainFloor + kGainSpan * driveCur_ * driveCur_;
 
     // Symmetric soft clip: anti-parallel 1N4148 pair in the feedback loop →
     // odd-harmonic (TS-808 signature, not the asymmetric MXR/DS-1 kind).
