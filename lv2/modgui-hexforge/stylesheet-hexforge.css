@@ -1149,39 +1149,41 @@
     box-shadow: 0 0 12px rgba(25,224,255,.35), inset 0 0 8px rgba(25,224,255,.15);
 }
 
-/* ── ADVANCED popout ── drops below the toolbar, top-right; palette-style toggle. ── */
+/* ── ADVANCED popout ── drops below the toolbar, top-right; palette-style toggle.
+   Sized generously (2026-08-21 user feedback): rows wrap, knobs always visible. ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv {
     display: none; position: absolute; top: 52px; right: 24px; z-index: 60;
-    flex-direction: column; align-items: flex-start; gap: 10px; padding: 12px 16px 14px;
+    min-width: 460px; max-width: 640px; box-sizing: border-box;
+    flex-direction: column; align-items: flex-start; gap: 14px; padding: 16px 22px 18px;
     background-color: #0b0d12;
     background-image: linear-gradient(180deg, rgba(22,24,32,.98), rgba(8,9,13,1));
-    border: 1px solid rgba(25,224,255,.28); border-radius: 11px;
+    border: 1px solid rgba(25,224,255,.28); border-radius: 12px;
     box-shadow: 0 14px 38px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv.hf-open { display: flex; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv-t {
-    font-size: 10px; font-weight: 800; letter-spacing: 1.8px; color: #19e0ff;
+    font-size: 11px; font-weight: 800; letter-spacing: 2px; color: #19e0ff;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv-row {
-    display: inline-flex; align-items: center; gap: 12px; min-height: 30px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px;
+    min-height: 34px; width: 100%; padding: 8px 12px; box-sizing: border-box;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 9px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv-lab {
+    flex: 0 0 46px; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #19e0ff;
 }
 /* switches + knobs read inline in rows, matching the old toolbar treatment */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw { display: inline-flex; align-items: center; gap: 5px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw { display: inline-flex; align-items: center; gap: 6px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-img { margin: 0; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-t { display: inline; margin: 0; color: #c9b8ff; font-size: 9px; }
-/* FRFR voice row: keeps the .hf-ov-on knob-reveal logic; cyan label chip */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice-t {
-    font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #19e0ff;
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-t { display: inline; margin: 0; color: #c9b8ff; font-size: 10px; white-space: nowrap; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-knob {
+    display: inline-flex; align-items: center; gap: 6px; width: auto; height: auto;
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob { display: none; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice.hf-ov-on .hf-knob {
-    display: inline-flex; align-items: center; gap: 5px; width: auto; height: auto;
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-knob-img {
+    background-size: auto 30px; height: 30px; width: 30px; flex: 0 0 30px; margin: 0;
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice.hf-ov-on .hf-knob-img {
-    background-size: auto 26px; height: 26px; width: 26px; flex: 0 0 26px; margin: 0;
-}
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob-t { display: inline; font-size: 9px; color: #d7dbe2; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-outvoice .hf-knob-v { display: inline; font-size: 10px; color: #c9b8ff; margin-left: 4px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-knob-t { display: inline; font-size: 10px; color: #d7dbe2; white-space: nowrap; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-knob-v { display: inline; font-size: 10px; color: #c9b8ff; margin-left: 4px; }
 /* Calibrate launcher inside the popout: the corner button, un-cornered */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-cal-adv {
     position: static; width: auto; height: 30px; padding: 0 10px; gap: 6px;
