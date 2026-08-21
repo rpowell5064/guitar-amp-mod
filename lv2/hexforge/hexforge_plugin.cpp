@@ -3265,6 +3265,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             p->cab2.setParameter("roomamt",   *p->ports[HF_RB_CABROOMAMT]);
             p->cab2.setParameter("roomdense", *p->ports[HF_RB_CABROOMDENSE]);
             p->cab2.setParameter("voice",     *p->ports[HF_RB_CABVOICE]);
+            p->cab2.setParameter("monoroom",  (p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f) ? 1.0f : 0.0f);
             { const int spk = clampi(*p->ports[HF_RB_CABSPKDRIVE], 0, 2);
               p->cab2.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
               p->cab2.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f)); }
@@ -3404,6 +3405,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     p->cab.setParameter("roommix",   *p->ports[HF_CAB_ROOMMIX]);
     p->cab.setParameter("roomamt",   *p->ports[HF_CAB_ROOMAMT]);
     p->cab.setParameter("voice",     *p->ports[HF_CAB_VOICE]);   // Room / Studio (recorded chain)
+    // monoRoom (2026-08-21): with the output mono-summed, the cab room's two
+    // decorrelated banks fold into a doubled static comb — flanger-like woosh
+    // on broadband playing (Periphery presets, one-speaker rig). One bank when
+    // mono; bit-identical when the sum is off.
+    const bool monoSum = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
+    p->cab.setParameter("monoroom", monoSum ? 1.0f : 0.0f);
     p->pa.setParameter("coupling",   *p->ports[HF_AMP_PAMP_COUPL]);   // speaker-impedance coupling (v24)
     p->reverb.setParameter("density", *p->ports[HF_RV_DENSITY]);      // classic / dense tank (v25)
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)

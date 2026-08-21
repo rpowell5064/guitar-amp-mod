@@ -400,8 +400,17 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
             const float dry = dryBuf_[i] * (1.0f - mix_);
             if (roomOn_) {
-                L[i] = dry + (w + roomMix_ * roomTick(room_[0], w)) * mix_;
-                R[i] = dry + (w + roomMix_ * roomTick(room_[1], w)) * mix_;
+                // monoRoom (2026-08-21): when the host's output is a MONO sum,
+                // summing the two DECORRELATED room banks turns their detuned
+                // comb sets into a doubled static comb — broadband playing
+                // (djent chugs) sweeps through it as a flanger-like "woosh"
+                // (user-reported on the Periphery presets through one speaker).
+                // One bank for both channels = identical room, no inter-bank
+                // comb; bit-identical whenever the host doesn't set monoroom.
+                const float rm = roomTick(room_[0], w);
+                const float rmR = monoRoom_ ? rm : roomTick(room_[1], w);
+                L[i] = dry + (w + roomMix_ * rm)  * mix_;
+                R[i] = dry + (w + roomMix_ * rmR) * mix_;
             } else { const float y = dry + w * mix_; L[i] = y; R[i] = y; }
         }
     } else if (roomOn_) {
@@ -409,8 +418,10 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             float w = e.lowCut.process(L[i]);
             w = e.highCut.process(w);
             const float dry = dryBuf_[i] * (1.0f - mix_);
-            L[i] = dry + (w + roomMix_ * roomTick(room_[0], w)) * mix_;
-            R[i] = dry + (w + roomMix_ * roomTick(room_[1], w)) * mix_;
+            const float rm = roomTick(room_[0], w);              // monoRoom: see mic path above
+            const float rmR = monoRoom_ ? rm : roomTick(room_[1], w);
+            L[i] = dry + (w + roomMix_ * rm)  * mix_;
+            R[i] = dry + (w + roomMix_ * rmR) * mix_;
         }
     } else {
         for (int i = 0; i < numSamples; ++i) {
@@ -429,6 +440,7 @@ void CabinetBlock::setParameter(const std::string& id, float v) {
     else if (id == "micpos")    { micPos_  = std::clamp(v, 0.0f, 1.0f); rebuildEQ(); }
     else if (id == "micdist")   { micDist_ = std::clamp(v, 0.0f, 1.0f); rebuildEQ(); }
     else if (id == "roomon")    { roomOn_  = v > 0.5f; }
+    else if (id == "monoroom")  { monoRoom_ = v > 0.5f; }   // host mono-sum hint (2026-08-21)
     else if (id == "roommix")   { roomMix_ = std::clamp(v, 0.0f, 1.0f); }
     else if (id == "roomamt")   { const float a = std::clamp(v, 0.0f, 1.0f);
                                   if (a != roomAmt_) { roomAmt_ = a; rebuildRoom(); } }

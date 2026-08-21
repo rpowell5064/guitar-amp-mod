@@ -62,6 +62,11 @@ private:
     // live room). Preset-savable like every other cab param.
     bool  roomOn_   = false;
     float roomMix_  = 0.15f;
+    // monoRoom (2026-08-21): host sets "monoroom" 1 when its output is a mono
+    // sum — both channels then share room bank 0 (summing the two decorrelated
+    // banks reads as a flanger-like woosh on broadband playing). Default 0 =
+    // bit-identical stereo behaviour.
+    bool  monoRoom_ = false;
     float roomAmt_  = 0.35f;
     // Room Density (2026-07-23, opt-in like the reverb's): 0 = the classic 4-comb/
     // 1-allpass room every preset was voiced on (bit-identical), 1 = 6 combs +
