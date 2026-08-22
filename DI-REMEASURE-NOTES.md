@@ -440,6 +440,22 @@ kFactoryRev silently don't reach the device — bump again).
   (bank-0 at the round-10 pre-fix table, 30/31 at their round-11 state).
   The pedal keeps the correct boost law for live dialing.
 
+## Round 13 (2026-08-22): the blanket Lead Cut EQ retired (rev 116/117)
+
+User: Periphery loses its EQs + a little gain; every EQ preset except NIN
+"looked at again"; Ghost leads sound bad; Queen too. EQ audit (store dump):
+**11 lead presets carried the IDENTICAL rev-64/65 stock "Lead Cut" curve**
+(-1/0/+1/+3/+4/+5 rising treble, blanket-applied, never ear-tuned per
+preset) — including both Ghost leads and both Queen presets, exactly the
+named complaints. Its treble boost fights the FRFR voice + the corrected
+amps. DROPPED from all 11 + the Periphery pair's custom curves (user) +
+Periphery amp gain 0.62→0.56. Kept: the NIN bank (user-excluded), I Saw a
+Deer / Frayed Justice / Sister's Singer (user-authored on-device curves),
+and the nu-metal de-boom curves (documented per-preset intents — flag if
+wanted gone too). Measured parity trims land all 54 presets within ±0.2 dB
+of the rev-115 state (biggest removals: Spectrum Lead +4.3, Regal
+Sustain/Hazy Solo +3.7).
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
