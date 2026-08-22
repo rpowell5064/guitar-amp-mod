@@ -1152,8 +1152,10 @@
 /* ── ADVANCED popout ── drops below the toolbar, top-right; palette-style toggle.
    Sized generously (2026-08-21 user feedback): rows wrap, knobs always visible. ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv {
-    display: none; position: absolute; top: 52px; right: 24px; z-index: 60;
-    min-width: 460px; max-width: 640px; box-sizing: border-box;
+    /* FLOW strip (2026-08-22): sits directly under the toolbar and pushes the
+       chain down when open (tuner-strip pattern) — never covers controls. */
+    display: none; position: relative; z-index: 60;
+    margin: 0 24px 10px; width: auto; box-sizing: border-box;
     flex-direction: column; align-items: flex-start; gap: 14px; padding: 16px 22px 18px;
     background-color: #0b0d12;
     background-image: linear-gradient(180deg, rgba(22,24,32,.98), rgba(8,9,13,1));
@@ -1173,7 +1175,12 @@
     flex: 0 0 46px; font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #19e0ff;
 }
 /* switches + knobs read inline in rows, matching the old toolbar treatment */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw { display: inline-flex; align-items: center; gap: 6px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw {
+    display: inline-flex; align-items: center; gap: 6px;
+    width: auto; height: auto; margin: 0;   /* base .hf-sw is a fixed 58x40 block:
+       the long labels (Doubler) overflowed ONTO the toggle and blocked clicks */
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-t { margin-top: 0; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-img { margin: 0; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-sw-t { display: inline; margin: 0; color: #c9b8ff; font-size: 10px; white-space: nowrap; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-adv .hf-knob {
@@ -1189,15 +1196,3 @@
     position: static; width: auto; height: 30px; padding: 0 10px; gap: 6px;
 }
 
-/* ── LAB strip (TEMPORARY — removed with the dbg_* tuning ports) ── bottom-left
-   corner, mirrors the corner-button family; stock knob widget with readout. */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab {
-    position: absolute; left: 44px; bottom: 6px; z-index: 40;
-    display: inline-flex; align-items: center; gap: 10px; padding: 4px 12px;
-    background: rgba(255, 43, 214, .06); border: 1px dashed rgba(255, 43, 214, .5);
-    border-radius: 9px;
-}
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab-t {
-    font-size: 10px; font-weight: 800; letter-spacing: 1.6px; color: #ff2bd6;
-}
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-lab .hf-knob { transform: scale(.82); margin: -4px -6px; }

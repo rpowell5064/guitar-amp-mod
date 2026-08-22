@@ -3479,7 +3479,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // the 2026-08-19 bake.
     const bool evhFitOn = kAmpMap[ampAlgo] == AmpModel::EVH5150III;
     if (evhFitOn) {
-        const float eb = p->ports[HF_DBG_EVHFIT] ? *p->ports[HF_DBG_EVHFIT] : 0.8875f;
+        // (The 2026-08-22 dbg_evhfit lab was CANCELED unused — the blend stays
+        // fixed at the 2026-08-19 ear-chosen bake; the blendable machinery is
+        // kept dormant for the next lab session.)
+        const float eb = 0.8875f;
         if (eb != p->evhLabLast) {
             p->evhLabLast = eb;
             for (int c = 0; c < 2; ++c) {
