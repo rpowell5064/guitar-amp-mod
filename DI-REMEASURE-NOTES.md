@@ -421,6 +421,25 @@ Port-append lessons re-confirmed: gap-var name collision (blGap already =
 bloom), and the SAME-REV reseed trap (seed edits after a deploy at the same
 kFactoryRev silently don't reach the device — bump again).
 
+## Round 12 (2026-08-22): EVH lab back + Green Man push restore (rev 115)
+
+- **dbg_evhfit LAB restored** (mv195, user request): blendable again for a
+  re-tune on the changed rig (6L6 since mv186, FRFR monitoring). Default
+  0.8875 = the bake = bit-identical at rest; makeup bake-anchored. Bake +
+  retire after the session. Harness gotcha logged: hf_amplevel rides the
+  store's saved cursor; LV2-stub harnesses read tail-port ZEROS, not TTL
+  defaults — live parity is by-construction, not harness-visible.
+- **Green Man push restore** (user: "the TS is pushing too hard in the
+  volume section"): the gain-floor fix was pedal-correct (max boost +5.7 dB
+  RMS, unity ≈ level 0.6 — real-TS-like) but presets DIALED around the old
+  near-unity pedal now over-pushed their amps ~+10 dB. Both level laws are
+  linear in the knob → dr_level × per-drive factor (~0.54 near drive 0,
+  ~0.8 at drive .2) restores each preset's ORIGINAL amp push exactly.
+  Applied to the 9 affected presets; rev-109's out_level deltas dropped;
+  measured parity trims land every one EXACTLY on its as-dialed loudness
+  (bank-0 at the round-10 pre-fix table, 30/31 at their round-11 state).
+  The pedal keeps the correct boost law for live dialing.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
