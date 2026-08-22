@@ -8,6 +8,7 @@
 #include "SuperOverdriveSD1.h"
 #include "DOD250.h"
 #include "EchoplexPreamp.h"
+#include "TubeDriver.h"
 
 std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
     switch (type) {
@@ -21,6 +22,7 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
         case OverdriveType::SuperOverdriveSD1: return std::make_unique<SuperOverdriveSD1>();
         case OverdriveType::DOD250:          return std::make_unique<DOD250>();
         case OverdriveType::EchoplexPreamp:  return std::make_unique<EchoplexPreamp>();
+        case OverdriveType::TubeDriver:      return std::make_unique<TubeDriver>();
         default:                             return std::make_unique<TubeScreamer808>();
     }
 }
@@ -49,6 +51,7 @@ const char* OverdriveFactory::modelName(OverdriveType type) noexcept {
         case OverdriveType::SuperOverdriveSD1: return "Boss SD-1";
         case OverdriveType::DOD250:          return "DOD 250";
         case OverdriveType::EchoplexPreamp:  return "Echoplex EP-3 Preamp";
+        case OverdriveType::TubeDriver:      return "Butler Tube Driver";
         default:                             return "Unknown";
     }
 }
@@ -65,6 +68,7 @@ OverdriveType OverdriveFactory::fromIndex(int index) noexcept {
         case 7:  return OverdriveType::SuperOverdriveSD1;
         case 8:  return OverdriveType::DOD250;
         case 9:  return OverdriveType::EchoplexPreamp;
+        case 10: return OverdriveType::TubeDriver;
         default: return OverdriveType::TubeScreamer808;
     }
 }

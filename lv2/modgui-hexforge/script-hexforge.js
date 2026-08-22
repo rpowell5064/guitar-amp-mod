@@ -739,6 +739,7 @@ function (event, funcs) {
             else if (sym === 'rb_pamp_auto')       icon.data('hf_rb_auto', val > 0.5);
             else if (sym === 'rb_cab2on')          icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(val > 0.5));
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
+            else if (sym === 'out_voice')          icon.find('.hf-outvoice').toggleClass('hf-ov-on', val > 0.5);   // FRFR knobs show only while ON
             else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
             else if (sym === 'fz_pedal')           icon.data('hf_fz_p', parseInt(val, 10));
@@ -909,6 +910,7 @@ function (event, funcs) {
         if ('rb_cab' in map)        icon.data('hf_rb_cab', parseInt(map.rb_cab, 10));
         setIr2Label(icon);
         if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
+        if ('out_voice' in map) icon.find('.hf-outvoice').toggleClass('hf-ov-on', map.out_voice > 0.5);   // seed FRFR knob visibility
         icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
         icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(map.rb_cab2on > 0.5));
         applyRbAmp(icon);
@@ -976,6 +978,7 @@ function (event, funcs) {
         wire('.hf-advbtn', function () {
             var open = icon.find('.hf-adv').toggleClass('hf-open').hasClass('hf-open');
             icon.find('.hf-advbtn').toggleClass('hf-on', open).attr('aria-pressed', open ? 'true' : 'false');
+            if (open) icon.find('[rata-role=psmenu]').removeClass('hf-ps-open');   // never both open
         });
         wire('.hf-tunerclose', function () { tunerShow(false); });
         if ('tuner_on' in map) { var _to = map.tuner_on > 0.5; icon.data('hf_tuner_on', _to);
@@ -1018,7 +1021,13 @@ function (event, funcs) {
             trim:  ('cal_trim_offs'  in map) ? parseFloat(map.cal_trim_offs)  : 0,
             floor: ('cal_floor_offs' in map) ? parseFloat(map.cal_floor_offs) : 0 });
         calRender(icon);
-        wire('.hf-ps-toggle', function () { icon.find('[rata-role=psmenu]').toggleClass('hf-ps-open'); });
+        wire('.hf-ps-toggle', function () {
+            var open = icon.find('[rata-role=psmenu]').toggleClass('hf-ps-open').hasClass('hf-ps-open');
+            if (open) {   // never both open: presets close the ADVANCED panel
+                icon.find('.hf-adv').removeClass('hf-open');
+                icon.find('.hf-advbtn').removeClass('hf-on').attr('aria-pressed', 'false');
+            }
+        });
         icon.find('.hf-ps-slot').each(function () { var el = this;
             el.addEventListener('click', function (e) { e.stopPropagation();
                 psPulse(funcs, SW[parseInt(el.getAttribute('data-slot'), 10)]); }); });

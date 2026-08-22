@@ -25,7 +25,7 @@ static constexpr int kPathMax  = 1024;
 static constexpr int kMaxBlock = 512;
 
 // LV2 model indices: 0=Green Man(TS808), 1=New Dawn(LifePedal), 2=Dear Rodent Boy(RAT)
-static const OverdriveType kModelMap[9] = {
+static const OverdriveType kModelMap[10] = {
     OverdriveType::TubeScreamer808,     // 0 = Green Man
     OverdriveType::LifePedal,           // 1 = New Dawn
     OverdriveType::ProcoRAT,            // 2 = Dear Rodent Boy
@@ -35,9 +35,10 @@ static const OverdriveType kModelMap[9] = {
     OverdriveType::SuperOverdriveSD1,   // 6 = Super Nova (Boss SD-1)
     OverdriveType::DOD250,              // 7 = Preamp 250 (DOD Overdrive Preamp 250)
     OverdriveType::EchoplexPreamp,      // 8 = Echo Primer (Echoplex EP-3 JFET preamp)
+    OverdriveType::TubeDriver,          // 9 = Tube Chauffeur (Butler Tube Driver)
 };
 static constexpr int kNamIdx   = 3;   // Neural (NAM) slot
-static constexpr int kMaxModel = 8;   // highest selectable model index (Echo Primer)
+static constexpr int kMaxModel = 9;   // highest selectable model index (Echo Primer)
 
 enum DrivePorts {
     P_IN = 0, P_OUT, P_MODEL, P_DRIVE, P_TONE, P_LEVEL, P_MIX, P_OCTAVE, P_BYPASS,

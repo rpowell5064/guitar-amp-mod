@@ -30,7 +30,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 39 ;   # 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:microVersion 40 ;   # 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
@@ -46,7 +46,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 8 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
@@ -55,7 +55,8 @@
         lv2:scalePoint [ rdfs:label "Gilded Horse"    ; rdf:value 5 ] ;
         lv2:scalePoint [ rdfs:label "Super Nova"      ; rdf:value 6 ] ;
         lv2:scalePoint [ rdfs:label "Preamp 250"      ; rdf:value 7 ] ;
-        lv2:scalePoint [ rdfs:label "Echo Primer"     ; rdf:value 8 ]
+        lv2:scalePoint [ rdfs:label "Echo Primer"     ; rdf:value 8 ] ;
+        lv2:scalePoint [ rdfs:label "Tube Chauffeur"  ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;

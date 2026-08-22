@@ -99,7 +99,7 @@
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 196 ;
+    lv2:microVersion 198 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -445,7 +445,7 @@
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 46 ; lv2:symbol "dr_model" ; lv2:name "Drive Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 8 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9 ;
         lv2:scalePoint [ rdfs:label "Green Man" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
@@ -454,7 +454,8 @@
         lv2:scalePoint [ rdfs:label "Gilded Horse" ; rdf:value 5 ] ;
         lv2:scalePoint [ rdfs:label "Super Nova" ; rdf:value 6 ] ;
         lv2:scalePoint [ rdfs:label "Preamp 250" ; rdf:value 7 ] ;
-        lv2:scalePoint [ rdfs:label "Echo Primer" ; rdf:value 8 ]
+        lv2:scalePoint [ rdfs:label "Echo Primer" ; rdf:value 8 ] ;
+        lv2:scalePoint [ rdfs:label "Tube Chauffeur" ; rdf:value 9 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 47 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive" ;

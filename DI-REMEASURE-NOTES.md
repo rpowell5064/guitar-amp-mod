@@ -456,6 +456,28 @@ wanted gone too). Measured parity trims land all 54 presets within ±0.2 dB
 of the rev-115 state (biggest removals: Spectrum Lead +4.3, Regal
 Sustain/Hazy Solo +3.7).
 
+## Round 14 (2026-08-22): Tube Chauffeur + Gilmour/QOTSA restages + UI pass
+
+- **NEW drive model 9: "Tube Chauffeur"** (BK Butler Tube Driver — Gilmour's
+  Pulse/Division Bell staple): starved-12AX7 asymmetric soft clip (late +half
+  / early −half = even-order warmth), FULL lows (no TS hump), treble-tilt
+  Tone, gain FLOOR ×2.2 (the gain-floor lesson applied from day one — drive-0
+  clean boost works). Wired: both plugins (drive micro 40, hexforge mv197),
+  dropdowns, kDrMax/kMaxModel ceilings, nam_compare (--model tubedriver). No
+  captures yet — voiced by circuit design; capture-tune later if found.
+- **Numb Sustain rebuilt** ("sounds messy") to the documented Pulse rig: Muff
+  sustain .75→.62 → Tube Chauffeur (drive .35, the singing smoother) →
+  Hiwatt; the mess was TWO simultaneous delays + rotary + verb — dl2 (rack
+  delay) DROPPED, main delay to Gilmour's ~480 ms fb .38 mix .22, rotary
+  .30→.22, verb .22→.12.
+- **Desert Robot eased** ("too much gain — we added gain to the Backline"):
+  root cause = its drive is the SD-1, whose round-2 level-law rework restored
+  real op-amp gain into a preset dialed around the old quieter law. Drive
+  .65→.52, level .72→.58 (rev 118; drift trims rev 119).
+- **UI (mv198, user)**: Calibrate back in the bottom-right corner; FRFR knobs
+  visible only while the voice is ON (dispatcher + start-map seeded);
+  ADVANCED panel and the preset menu are mutually exclusive.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
