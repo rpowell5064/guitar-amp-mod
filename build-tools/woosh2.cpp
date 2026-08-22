@@ -103,10 +103,10 @@ int main(int argc,char** argv){
 
     recall(PRESET); measure("stock");
     recall(PRESET); setP(HF_RB_BLEND,0.001f);     settle(100); measure("rigB-off");
-    recall(PRESET); setP(HF_RB_LOCUT,150.0f);     settle(100); measure("locut-150");
-    recall(PRESET); setP(HF_RB_LOCUT,220.0f);     settle(100); measure("locut-220");
-    recall(PRESET); setP(HF_RB_LOCUT,300.0f);     settle(100); measure("locut-300");
     recall(PRESET); setP(HF_RB_LOCUT,400.0f);     settle(100); measure("locut-400");
+    recall(PRESET); setP(HF_RB_POL,0.0f);         settle(100); measure("pol-normal");
+    recall(PRESET); setP(HF_RB_POL,0.0f); setP(HF_RB_LOCUT,400.0f); settle(100); measure("pol+locut400");
+    recall(PRESET); setP(HF_RB_BLEND,0.10f);      settle(100); measure("blend-.10");
     if(d->deactivate)d->deactivate(inst);
     d->cleanup(inst);
     return 0;
