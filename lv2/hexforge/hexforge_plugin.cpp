@@ -593,9 +593,13 @@ struct HexForge {
     // (~10 dB/s) so an Apply never clicks; snapped to the ports on the first run.
     float      calTrimOffsSm = 0.0f, calFloorOffsSm = 0.0f;
     bool       calOffsInit = false;
-    // ── EVH capture-fit voicing (BAKED 2026-08-19, blend 0.8875 chosen by ear
-    // on the live lab; loudness-neutral). See lv2/common/EvhCaptureFit.h.
-    EvhCaptureFit evhFit[2];
+    // ── EVH capture-fit voicing — LAB-BLENDABLE again (2026-08-22, user
+    // request: re-tune session on the 6L6/FRFR rig). Same 5 filters as the
+    // 2026-08-19 bake (EvhCaptureFit.h), dB scaled by the dbg_evhfit port;
+    // default 0.8875 = the baked blend = today's sound. Makeup is anchored to
+    // the bake (0.6918 at 0.8875), log-linear in blend.
+    BiquadFilter evhLab[2][5];
+    float evhLabLast = -1.0f, evhLabGain = 1.0f;
     // ── Recto CH3-Modern capture-fit voicing (BAKED 2026-08-20, user blend 1.0
     // from the live lab; loudness-neutral). See lv2/common/RectoCaptureFit.h.
     RectoCaptureFit rectoFit[2];
@@ -2497,8 +2501,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     p->rate = rate;
     p->trimHum.prepare(rate);
     p->trimLoad.prepare(rate);
-    p->evhFit[0].prepare(rate);
-    p->evhFit[1].prepare(rate);
+    // (EVH lab EQ coeffs are set in run() from dbg_evhfit on first use / knob move.)
     p->rectoFit[0].prepare(rate);
     p->rectoFit[1].prepare(rate);
     // (FRFR voice EQ coeffs are set in run() from the fv_* knobs on first
@@ -3410,8 +3413,24 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     // (depth 0.15 / release 13 ms) — nothing baked; the PA-compression
     // frontier is now closed WITH an ears verdict, not just by abandonment.
     // See pa-compression-fender memory.)
-    // EVH capture-fit voicing (baked): applied post-PA in the amp block below.
+    // EVH capture-fit voicing: applied post-PA in the amp block below. LAB-
+    // blendable (2026-08-22): dbg_evhfit scales the fit dB; default 0.8875 =
+    // the 2026-08-19 bake.
     const bool evhFitOn = kAmpMap[ampAlgo] == AmpModel::EVH5150III;
+    if (evhFitOn) {
+        const float eb = p->ports[HF_DBG_EVHFIT] ? *p->ports[HF_DBG_EVHFIT] : 0.8875f;
+        if (eb != p->evhLabLast) {
+            p->evhLabLast = eb;
+            for (int c = 0; c < 2; ++c) {
+                p->evhLab[c][0].setCoeffs(Filters::lowshelf (  55.0, -5.0 * eb, p->rate));
+                p->evhLab[c][1].setCoeffs(Filters::peaking  ( 130.0,  6.5 * eb, 1.1, p->rate));
+                p->evhLab[c][2].setCoeffs(Filters::peaking  (1200.0,  2.5 * eb, 0.8, p->rate));
+                p->evhLab[c][3].setCoeffs(Filters::highshelf(2400.0,  4.5 * eb, p->rate));
+                p->evhLab[c][4].setCoeffs(Filters::highshelf(7500.0,  5.5 * eb, p->rate));
+            }
+            p->evhLabGain = std::pow(0.6918f, eb / 0.8875f);   // bake-anchored neutralizer
+        }
+    }
     // (The 2026-08-20 dbg_hgfit LAB lived here; retired at mv181 after the user
     // approved both candidates at blend 0.72 — values baked into AmpDefaults
     // rows 1/8 with the Plexi/MarkV row-10 split.)
@@ -3850,7 +3869,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         amp->process(io1, io1, len, 1);
                         p->pa.process(io1, io1, len, 1);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
-                        if (evhFitOn) for (int i=0;i<len;++i) L[i]=p->evhFit[0].process(L[i]);
+                        if (evhFitOn) for (int i=0;i<len;++i) {
+                            float v = L[i];
+                            for (auto& f : p->evhLab[0]) v = f.process(v);
+                            L[i] = p->evhLabGain * v;
+                        }
                         if (rectoFitOn) for (int i=0;i<len;++i) L[i]=p->rectoFit[0].process(L[i]);
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
@@ -3860,8 +3883,10 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         p->pa.process(io, io, len, 2);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
                         if (evhFitOn) for (int i=0;i<len;++i) {
-                            L[i]=p->evhFit[0].process(L[i]);
-                            R[i]=p->evhFit[1].process(R[i]);
+                            float vl = L[i], vr = R[i];
+                            for (auto& f : p->evhLab[0]) vl = f.process(vl);
+                            for (auto& f : p->evhLab[1]) vr = f.process(vr);
+                            L[i] = p->evhLabGain * vl; R[i] = p->evhLabGain * vr;
                         }
                         if (rectoFitOn) for (int i=0;i<len;++i) {
                             L[i]=p->rectoFit[0].process(L[i]);
