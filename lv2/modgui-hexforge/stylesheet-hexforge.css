@@ -1245,8 +1245,9 @@
     margin-left: -12px;            /* cancel the row gap while closed */
     padding: 0; border-width: 0; opacity: 0; overflow: hidden;
     display: flex; align-items: center; justify-content: center;
-    font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase;
+    font-size: 10px; font-weight: 800; letter-spacing: 1.2px; text-transform: uppercase;
     color: var(--acc, #19e0ff); text-align: center; line-height: 1.25;
+    text-shadow: 0 0 8px rgba(0, 0, 0, .8);
     background: transparent;
     background-image: none;
     border: 0 dashed var(--acc, rgba(25, 224, 255, .6));
@@ -1256,7 +1257,16 @@
     transition: width .16s ease, margin-left .16s ease, opacity .16s ease, border-width .16s ease;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ghosty.hf-open {
-    width: 92px; margin-left: 0; opacity: .55; border-width: 1.5px;
+    width: 92px; margin-left: 0; opacity: 1; border-width: 2px;
+    /* accent-tinted fill + a slow breathing glow: the landing slot must be
+       unmissable at a glance (2026-08-22 user feedback) */
+    background: rgba(25, 224, 255, .10);
+    background: color-mix(in srgb, var(--acc, #19e0ff) 13%, transparent);
+    animation: hf-ghost-pulse 1.1s ease-in-out infinite;
+}
+@keyframes hf-ghost-pulse {
+    0%, 100% { box-shadow: 0 0 6px  rgba(25, 224, 255, .25), inset 0 0 10px rgba(25, 224, 255, .10); }
+    50%      { box-shadow: 0 0 18px rgba(25, 224, 255, .60), inset 0 0 16px rgba(25, 224, 255, .22); }
 }
 /* the dragged tile leaves the row entirely — the ghost IS the block now */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node.hf-lift {
