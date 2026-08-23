@@ -148,6 +148,7 @@ private:
         // Post-mix
         BiquadFilter     postMixHP;   // 55 Hz sub-bass cut after channel sum
         BiquadFilter     airLP;       // 16 kHz air rolloff
+        BiquadFilter     evenDC;      // DC block for the preamp even-exciter (2026-08-22 re-voice)
         // Output voicing correction, tuned to the real Model T NAM capture (nam_compare):
         // the model honked at ~1 kHz and lacked presence at 3-5 kHz vs the reference,
         // which read as a boxy/fuzzy rather than open amp voice.

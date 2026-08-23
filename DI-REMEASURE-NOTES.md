@@ -478,6 +478,27 @@ Sustain/Hazy Solo +3.7).
   visible only while the voice is ON (dispatcher + start-map seeded);
   ADVANCED panel and the preset menu are mutually exclusive.
 
+## Round 15 (2026-08-22): Sunn Model T re-voice (the pending A/B, user-triggered)
+
+User: "the sunn amp is lacking its harmonic overtones and sounds woofy" —
+plus their Solar Monolith re-dial (baked verbatim rev 121, rig B off,
+brighter/hotter) was visibly fighting exactly that. nam_compare vs the
+Model T capture confirmed both, precisely:
+- EVENS COLLAPSED: h2 4.4 vs 13.3 %, h4 3.4 vs 14.1, h6 2.2 vs 12.7 (the
+  model's cascaded inverting stages symmetrise; the code even documented the
+  problem unfinished). FIX: the proven post-distortion even exciter
+  (2026-08-03 family), injected PRE-power-amp (push-pull cancels evens made
+  after it), depth 0.17 → h2/h4/h6 land 13-16/13/10.
+- TOP OCTAVE −4/−6/−10/−15.5 dB dark at 2k/3.1k/5k/8k (the "woofy"): the
+  3 kHz airLP pole overshot the capture's own rolloff → 16 kHz (near-inert),
+  xfmr hfRoll 12k→16k, voicePres slot = highshelf 2200 +4.2 → FR within
+  ±1.2 dB 80 Hz–8 kHz (worst 50 Hz −1.7).
+- Low-level THD: kInputDrive 22→32 (capture is ~37-46 % flat at ALL levels;
+  model was 8-13 % at −24 dBFS).
+Loudness-neutral (+0.4 RMS path): all 55 presets within ±0.4, no trims.
+Solar Monolith note: the user dialed it ON the dark model — their
+fight-the-darkness EQ may now read bright; re-dial + re-bake on request.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds

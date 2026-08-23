@@ -167,15 +167,18 @@ void SunnModelT::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
         // briteCapShelf coefficients are set by updateBriteCapCoeffs() below
 
         // Post-mix
-        s.postMixHP.setCoeffs(Filters::highpass1pole(55.0, oversampledFs));  // real Model T is fat in the lows (nam_compare: model was too dark there)
-        // The real Model T rolls its treble off progressively above ~500 Hz (nam_compare:
-        // NAM is -2.7 dB @2k, -6 @5k). With the NFB now correctly on the power amp only
-        // (it no longer cuts highs at the input), this air rolloff restores that voice.
-        s.airLP.setCoeffs(Filters::lowpass1pole(3000.0, oversampledFs));
+        s.postMixHP.setCoeffs(Filters::highpass1pole(42.0, oversampledFs));   // round 3: 50 Hz was -2.1 dark  // real Model T is fat in the lows (nam_compare: model was too dark there)
+        // The real Model T rolls treble progressively, but the 3 kHz pole here
+        // OVERSHOT it badly on the user-DI clip FR (2026-08-22 re-voice: model was
+        // -4/-6/-10/-15.5 dB darker than the capture at 2k/3.1k/5k/8k — the user's
+        // "woofy"). The capture's own rolloff (-8.5 @2k rel 500) comes from the
+        // tone stack + transformer already; the air pole now just trims the top.
+        s.airLP.setCoeffs(Filters::lowpass1pole(16000.0, oversampledFs));   // round 2: near-inert — the tone stack + xfmr supply the voice
+        s.evenDC.setCoeffs(Filters::highpass(12.0, 0.707, oversampledFs));
         // 1 kHz honk trim (still needed); the +3.8 kHz presence boost is gone — the
         // power-amp NFB topology now gives natural presence, so boosting over-brightened.
         s.voiceCut.setCoeffs(Filters::peaking(1000.0, -1.6, 0.9, oversampledFs));
-        s.voicePres.setCoeffs(Filters::peaking(3800.0,  0.0, 0.7, oversampledFs));
+        s.voicePres.setCoeffs(Filters::highshelf(2200.0, 4.2, oversampledFs));   // round 3 (2026-08-22): the residual -2.2..-4.9 dB treble ladder after the airLP/xfmr opens — the PA/tone-stack rolloff runs steeper than the capture
 
         // Cathodyne PI
         s.v3pi.prepare(oversampledFs, TriodeComponent::kSunn_S4);
@@ -188,7 +191,7 @@ void SunnModelT::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
         // source of the metallic/chirping character. Removed entirely here.
         OutputTransformerModel::Params xfmrParams;
         xfmrParams.lfRollHz  = 22.0;
-        xfmrParams.hfRollHz  = 12000.0;
+        xfmrParams.hfRollHz  = 16000.0;   // round 2 (2026-08-22): 12k stacked with the air pole = -7.8 dB @8k residual
         xfmrParams.resPeakHz = 10000.0;
         xfmrParams.resPeakDb = 0.0;    // no resonance peak — smooth transformer rolloff
         xfmrParams.resPeakQ  = 0.6;
@@ -223,6 +226,7 @@ void SunnModelT::reset() noexcept {
         s.briteCapShelf.reset();
         s.postMixHP.reset();
         s.airLP.reset();
+        s.evenDC.reset();
         s.v3pi.reset();
         s.powerAmp.reset();
         s.xfmr.reset();
@@ -249,7 +253,7 @@ void SunnModelT::advanceSmoothing() noexcept {
 // the reference sits at ~37-41% THD across ALL input levels (consistently saturated),
 // so the preamp needs heavy gain to clip even on quiet input — the saturation must
 // come from the cascaded triodes (thick crunch), not from slamming the power amp.
-static constexpr float kInputDrive = 22.0f;
+static constexpr float kInputDrive = 32.0f;   // 22->32 (2026-08-22): the capture is ~37-46% THD even at -24 dBFS in; 22 measured 8-13% there
 
 // Drive into the 6550 power amp. Kept LOW on purpose: a real Model T at 4.5 breaks
 // up in its single-ended preamp (asymmetric, even-rich, fast harmonic rolloff). The
@@ -258,6 +262,9 @@ static constexpr float kInputDrive = 22.0f;
 // profile vs the real amp). So the power amp here only adds gentle compression/touch;
 // the crunch comes from the preamp.
 static constexpr float kPowerDrive = 6.0f;
+
+// Preamp even-exciter depth (2026-08-22 re-voice; fit to the capture's h2/h4/h6).
+static constexpr float kEvenDepth = 0.17f;   // round 2: h2 17.0 vs capture 13.3 at 0.20
 
 // Output trim. The modeled power stage pins near full-scale (~+12 dB hotter than
 // the real Model T capture), which made the output safety-limiter clip every peak
@@ -355,6 +362,14 @@ float SunnModelT::processSample(float x, int ch) noexcept {
 
     prePI = s.postMixHP.process(prePI);
     prePI *= masterSmooth_.getCurrentValue();
+
+    // ── Single-ended preamp asymmetry (2026-08-22 re-voice): the real Model T
+    // clips one grid polarity harder → h2/h4/h6 at 13-17% of the fundamental;
+    // our cascaded inverting stages nearly symmetrise (evens were 3-6%, the
+    // user's "lacking harmonic overtones"). The proven post-distortion even
+    // exciter (2026-08-03 family): a DC-blocked |x| term, injected PRE-power-
+    // amp because the push-pull PA cancels evens generated after it.
+    prePI += kEvenDepth * s.evenDC.process(std::fabs(prePI));
 
     // ── Global negative feedback ────────────────────────────────────────────────
     // Wraps the POWER AMP ONLY (output-transformer tap → phase-inverter input), as in
