@@ -390,10 +390,25 @@ function (event, funcs) {
                 dragFromPal = !!(nd.parentNode && nd.parentNode.className.indexOf('hf-palette') >= 0);
                 dragB = b; lastIdx = -1; nd.classList.add('hf-drag');
                 if (e.dataTransfer) { e.dataTransfer.effectAllowed = dragFromPal ? 'copy' : 'move'; try { e.dataTransfer.setData('text/plain', b); } catch (x) {} }
+                // Dress the ghost as THIS block (accent stripe + name) and, for a
+                // chain drag, seed it at the source slot then collapse the source
+                // out of the row (post-snapshot: the browser has already taken the
+                // drag image) — the dashed outline visually BECOMES the block, so
+                // no doubled tile sits beside the ghost.
+                var g = ghostEl(icon);
+                var nameEl = nd.querySelector('.hf-node-name');
+                g.textContent = nameEl ? nameEl.textContent : (b || '').toUpperCase();
+                try { g.style.setProperty('--acc', getComputedStyle(nd).getPropertyValue('--acc')); } catch (x2) {}
+                if (!dragFromPal) {
+                    nd.parentNode.insertBefore(g, nd);
+                    g.classList.add('hf-open');
+                    setTimeout(function () { nd.classList.add('hf-lift'); }, 0);
+                }
                 e.stopPropagation();
             });
             nd.addEventListener('dragend',  function (e) {
-                nd.classList.remove('hf-drag'); dragB = null; dragFromPal = false;
+                nd.classList.remove('hf-drag'); nd.classList.remove('hf-lift');
+                dragB = null; dragFromPal = false;
                 removeGhost(icon);
                 icon.find('.hf-palette').removeClass('hf-dropok');
                 e.stopPropagation();
