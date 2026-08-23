@@ -226,9 +226,23 @@ function (event, funcs) {
     function placeGhost(icon, e, skipB) {
         var tile = tileFromEvent(icon, e);
         if (!tile) {
-            // over the container itself (past the last tile): ghost to the end
-            if (e.target && e.target.classList && e.target.classList.contains('hf-nodes'))
-                ghostMoveTo(icon, e.target, null);
+            // Not over a tile: the ghost is pointer-events:none, so hovering the
+            // ghost ITSELF lands here too — that is the dead zone, keep it put.
+            // (The old code moved the ghost to the end from here = the bounce
+            // and the dropped-at-the-end bug.)
+            var g0 = icon.find('.hf-nodes .hf-ghost')[0];
+            if (g0 && g0.parentNode) {
+                var gr = g0.getBoundingClientRect();
+                if (e.clientX >= gr.left - 16 && e.clientX <= gr.right + 16) return;
+            }
+            // gaps between tiles: keep the current slot; only a cursor clearly
+            // PAST the last real tile sends the ghost to the end.
+            var last = null;
+            icon.find('.hf-nodes .hf-node').each(function () {
+                if (this.getAttribute('data-block')) last = this;
+            });
+            if (last && e.clientX > last.getBoundingClientRect().right + 6)
+                ghostMoveTo(icon, last.parentNode, null);
             return;
         }
         var b = tile.getAttribute('data-block');
@@ -1100,6 +1114,21 @@ function (event, funcs) {
         }
         wire('.hf-tunerbtn',   function () { tunerShow(!icon.data('hf_tuner_on')); });
         // ADVANCED popout: gear toggles; button lights while open (palette pattern).
+        // FRFR voice knobs reveal (2026-08-22 fix): mod-ui stamps .on/.off on the
+        // switch image but does not reliably echo widget-initiated port changes
+        // to our dispatcher — observe the class directly (also seeds the
+        // initial state, replacing the fragile start-map path).
+        (function () {
+            var ov = icon.find('.hf-adv .hf-outvoice .hf-sw-img')[0];
+            if (!ov) return;
+            var sync = function () {
+                icon.find('.hf-outvoice').toggleClass('hf-ov-on', ov.classList.contains('on'));
+            };
+            if (window.MutationObserver)
+                new MutationObserver(sync).observe(ov, { attributes: true, attributeFilter: ['class'] });
+            icon.find('.hf-adv .hf-outvoice .hf-sw-img').on('click', function () { setTimeout(sync, 50); });
+            sync(); setTimeout(sync, 500);   // initial stamp may arrive after load
+        })();
         wire('.hf-advbtn', function () {
             var open = icon.find('.hf-adv').toggleClass('hf-open').hasClass('hf-open');
             icon.find('.hf-advbtn').toggleClass('hf-on', open).attr('aria-pressed', open ? 'true' : 'false');
