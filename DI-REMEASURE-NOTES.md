@@ -499,6 +499,31 @@ Loudness-neutral (+0.4 RMS path): all 55 presets within ±0.4, no trims.
 Solar Monolith note: the user dialed it ON the dark model — their
 fight-the-darkness EQ may now read bright; re-dial + re-bake on request.
 
+## Round 16 (2026-08-22): pre-release full bug audit — ALL CLEAR, 1 latent fix
+
+User: "the next release needs to be perfect." Three-pass audit:
+**A. Static cross-tables:** kCanonical PA rows IDENTICAL in both plugins and
+matching every nam_compare model row (Fender/Hiwatt/Backline 0, JCM 1, EVH 2,
+NAM 3, Sunn 4, RV 5, BE 6, Recto 7, MT15 8, Vox 9, Plexi/MarkV frozen 10).
+All four tube sources agree. Drive maps consistent through model 9. Every
+clampi/clampIdx ceiling matches its table (amp 13, drive 9, tube 4, md 8,
+dl 4, fz 3, rb_cab 6, spkdrive 2, pos 24).
+**B. Preset auditor** (fresh seed vs TTL min/max + paths + chain positions):
+all 55 presets' PARAM values in range and device refs valid; the 201 raw
+flags were inert tail-region storage (fv_*/out_mono/ps_* ≥ HF_SW_A — never
+recalled; out_mono confirmed index 418 > SW_A 401, correctly GLOBAL). One
+real latent bug FOUND+FIXED: the chain-order selection sort was NOT the
+stable (pos, id) tie-break its comment claimed — a swap could flip two
+equal-position blocks (e.g. dual delays) when a smaller-pos block sat after
+them. All factory presets verified unaffected (Streets Chime's dl/dl2 tie
+resolves identically); now a true total order. Stale kCanonical comment in
+amp_plugin corrected.
+**C. Gates:** migrate test PASSED (461), all 3 TTLs rdflib-parse, 14 URIs,
+selftest OK, 55-preset parity stable, whine probe silent, CPU worst Recto
+20 %/55 % max @64 (in envelope). Ambient-preset "silence floors" (−34)
+proven REVERB TAILS by a per-second silence-trajectory probe (new tool
+~/silencetraj): monotonic −5 dB/s decay to numerical zero, zero self-noise.
+
 ## Reproduce
 
 Pi: `bash ~/nam_rerun.sh` (repo copy: `build-tools/nam_rerun.sh`) — rebuilds
