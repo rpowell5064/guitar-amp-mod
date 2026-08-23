@@ -181,44 +181,63 @@ function (event, funcs) {
         resort(icon);
     }
 
-    // Insert-position preview (2026-08-22, user request; v2 = GHOST TILE): a
-    // dashed block-shaped placeholder sits IN the row exactly where the block
-    // will land — the row parts to make room, dock-style. Stability: the ghost
-    // is placed AT the cursor, so the pointer ends up over the ghost (a no-op
-    // dead zone); the slot only changes when the cursor crosses onto a real
-    // tile, which prevents the classic insert/remove oscillation.
+    // Insert-position preview (2026-08-22; v3 = SMOOTH GHOST): a dashed
+    // block-shaped placeholder that ANIMATES its width open/closed, so the row
+    // parts smoothly instead of snapping (flex reflow itself cannot be
+    // transitioned — animating the ghost's own width drives the neighbours
+    // continuously). Moving slots leaves a collapsing clone at the old spot.
+    // Stability: the ghost lands AT the cursor (dead zone), so the slot only
+    // changes when the pointer crosses onto a real tile.
     function ghostEl(icon) {
         var el = icon.find('.hf-nodes .hf-ghost');
         if (!el.length) {
-            icon.find('.hf-nodes').append('<div class="hf-node hf-ghost" aria-hidden="true"></div>');
+            icon.find('.hf-nodes').append('<div class="hf-node hf-ghosty hf-ghost" aria-hidden="true"></div>');
             el = icon.find('.hf-nodes .hf-ghost');
         }
         return el[0];
     }
     function removeGhost(icon) {
-        var el = icon.find('.hf-nodes .hf-ghost');
-        if (el.length && el[0].parentNode) el[0].parentNode.removeChild(el[0]);
+        icon.find('.hf-nodes .hf-ghosty').each(function () {
+            if (this.parentNode) this.parentNode.removeChild(this);
+        });
+    }
+    function ghostMoveTo(icon, parent, refNode) {
+        var g = ghostEl(icon);
+        if (g === refNode || g.nextSibling === refNode) return;   // already there
+        if (g.parentNode && g.classList.contains('hf-open')) {
+            // leave a collapsing clone at the old slot (visual only: no .hf-ghost)
+            var c = g.cloneNode(false);
+            c.classList.remove('hf-ghost');
+            g.parentNode.insertBefore(c, g);
+            var kill = function () { if (c.parentNode) c.parentNode.removeChild(c); };
+            c.addEventListener('transitionend', kill);
+            setTimeout(kill, 350);
+            requestAnimationFrame(function () { c.classList.remove('hf-open'); });
+        }
+        g.classList.remove('hf-open');
+        parent.insertBefore(g, refNode);
+        requestAnimationFrame(function () { g.classList.add('hf-open'); });
     }
     function tileFromEvent(icon, e) {
         var t = e.target;
         while (t && !(t.classList && t.classList.contains('hf-node'))) t = t.parentNode;
-        return (t && t.classList && !t.classList.contains('hf-ghost')) ? t : null;
+        return (t && t.getAttribute && t.getAttribute('data-block')) ? t : null;
     }
     function placeGhost(icon, e, skipB) {
         var tile = tileFromEvent(icon, e);
         if (!tile) {
             // over the container itself (past the last tile): ghost to the end
             if (e.target && e.target.classList && e.target.classList.contains('hf-nodes'))
-                e.target.appendChild(ghostEl(icon));
+                ghostMoveTo(icon, e.target, null);
             return;
         }
         var b = tile.getAttribute('data-block');
         if (b === skipB) return;                       // over the dragged tile: no-op
-        var g = ghostEl(icon), parent = tile.parentNode;
-        if (b === 'it') { parent.insertBefore(g, tile.nextSibling); return; }   // never before Input Trim
+        var parent = tile.parentNode;
+        if (b === 'it') { ghostMoveTo(icon, parent, tile.nextSibling); return; }   // never before Input Trim
         var r = tile.getBoundingClientRect();
-        if (e.clientX < r.left + r.width / 2) parent.insertBefore(g, tile);
-        else parent.insertBefore(g, tile.nextSibling);
+        if (e.clientX < r.left + r.width / 2) ghostMoveTo(icon, parent, tile);
+        else ghostMoveTo(icon, parent, tile.nextSibling);
     }
     // The ghost's landing index among chain blocks (excluding 'it' and the drag).
     function ghostIndex(icon, skipB) {
@@ -226,8 +245,7 @@ function (event, funcs) {
         icon.find('.hf-nodes').children().each(function () {
             if (found) return;
             if (this.classList.contains('hf-ghost')) { found = true; return; }
-            if (!this.classList.contains('hf-node')) return;
-            var b = this.getAttribute('data-block');
+            var b = this.getAttribute && this.getAttribute('data-block');
             if (b && b !== 'it' && b !== skipB) idx++;
         });
         return found ? idx : 999;

@@ -1204,15 +1204,21 @@
 /* ── Drag-and-drop insertion preview (2026-08-22, v2: GHOST TILE) ── a dashed
    block-shaped placeholder sits in the row where the block will land; the row
    parts to make room. Dragged tile dims; palette highlights for drop-to-remove. */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ghost {
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ghosty {
     pointer-events: none;
+    flex: 0 0 auto; width: 0; min-width: 0; max-width: none;
+    margin-left: -12px;            /* cancel the row gap while closed */
+    padding: 0; border-width: 0; opacity: 0; overflow: hidden;
     background: rgba(25, 224, 255, .05);
     background-image: none;
-    border: 2px dashed rgba(25, 224, 255, .6);
-    border-top: 2px dashed rgba(25, 224, 255, .6);
+    border: 0 dashed rgba(25, 224, 255, .6);
     border-radius: 10px;
     box-shadow: inset 0 0 18px rgba(25, 224, 255, .12);
     cursor: default;
+    transition: width .16s ease, margin-left .16s ease, opacity .16s ease, border-width .16s ease;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-ghosty.hf-open {
+    width: 92px; margin-left: 0; opacity: 1; border-width: 2px;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node.hf-drag { opacity: .35; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-palette.hf-dropok {
