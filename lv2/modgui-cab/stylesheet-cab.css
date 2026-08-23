@@ -23,7 +23,7 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-header { position:absolute; top:8px; left:24px; right:24px; z-index:5; pointer-events:none; border-bottom:1px solid rgba(86,170,255,.28); padding-bottom:8px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-brand { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:800; letter-spacing:3px; line-height:1; text-transform:uppercase; background:linear-gradient(90deg,#19e0ff 0%,#ff2bd6 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-mark { display:inline-block; width:9px; height:10px; margin-right:7px; vertical-align:-1px; background:linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
-.mod-pedal-guitaramp-cab{{{cns}}} .hx-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:20px; font-weight:800; letter-spacing:2px; line-height:1; margin-top:7px; text-transform:uppercase; color:#56aaff; text-shadow:0 0 16px rgba(86,170,255,.45); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hx-title { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:26px; font-weight:800; letter-spacing:2px; line-height:1; margin-top:7px; text-transform:uppercase; color:#56aaff; text-shadow:0 0 16px rgba(86,170,255,.45); }
 .mod-pedal-guitaramp-cab{{{cns}}} .hx-tag { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-pedal-input,
 .mod-pedal-guitaramp-cab{{{cns}}} .mod-pedal-output { top:150px; }

@@ -11,13 +11,31 @@
     a lv2:Plugin, lv2:ModulatorPlugin ;
     rdfs:label "Hex Chain — Modulation" ;
     doap:name  "Hex Chain Modulation" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Nine modulations in one block: two choruses, vibe, seasick tape-warble, two phasers, flanger, tremolo, rotary.
+
+A modulation block with NINE voicings:
+
+- Lush-2 — warm bucket-brigade-style analog chorus
+- Uni-Verse — throbbing photocell swirl for your inner '69
+- Phaser — classic four-stage swoosh, slow haze to fast ripple
+- Flanger — metallic jet sweep with feedback
+- Tremolo — amplitude pulse, gentle shimmer to hard square chop
+- Rotary — a spinning-speaker doppler swirl
+- Nevermind Chorus — the watery, seasick analog chorus that defined a certain 1991 intro
+- Seasick Vibe — a deep tape-warble that genuinely heaves in pitch: an extended sweep range, slow two-sine tape drift, and a true dry/wet crossfade so the queasiness comes through instead of averaging out
+- Script Phaser — a smooth, feedback-free four-stage script-era phaser: a pure sine sweep and soft, musical notches, warmer and rounder than the resonant block-voiced Phaser
+
+A Center Delay control (0–100 ms) shifts the delay line the chorus/flanger modulates around — from tight comb-filter shimmer to wide doubling. Level-safe wet/dry handling means engaging it never drops your volume. Light on CPU; runs on every target including 32-bit Pi.
+
+Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3).""" ;
     mod:label  "Modulation" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 34 ;   # 34: version bump to re-list on PatchStorage so the listing description publishes (was missing). 33: Script Phaser type 8 (script-era P90, no feedback)
+    lv2:microVersion 36 ;   # 34: version bump to re-list on PatchStorage so the listing description publishes (was missing). 33: Script Phaser type 8 (script-era P90, no feedback)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

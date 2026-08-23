@@ -10,13 +10,19 @@
     a lv2:Plugin, lv2:DistortionPlugin ;
     rdfs:label "Hex Chain — Nail" ;
     doap:name  "Hex Chain Nail" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Five-mode industrial distortion: fuzz, resonant filter, bitcrush, cab re-amp, ring-mod.
+
+An industrial distortion block with five distinct topologies — each its own circuit, not one voicing knob: Broke (crude digital hard-clip with sample-rate decimation + bit-reduction), Dahnward (scooped high-gain preamp into a sweepable resonant band-pass), Delicate (a swollen, gherkin-fat fuzz with a wide filter sweep), Con Molars (a bright clip re-amped through a fixed miked-speaker voicing) and Yo, Hey Adrian! (a high-sustain clip into a switchable ring modulator). Controls: Mode, Drive, Filter, Texture, Level, plus a Ring Mod toggle for the Yo, Hey Adrian! mode. Oversampled; works standalone or in the Hex Chain suite.
+
+Amp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a cranked British master-volume half-stack is the classic move. Free and open source (GPL-3).""" ;
     mod:label  "Nail" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 25 ;
+    lv2:microVersion 26 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

@@ -10,13 +10,21 @@
     a lv2:Plugin ;
     rdfs:label "Hex Chain — Octave" ;
     doap:name  "Hex Chain Octave" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Analog-style sub-octave + octave-up, plus a microtonal quarter-tone shimmer voice.
+
+An analog-voiced octaver: a flip-flop sub-octave plus a rectifier octave-up, blended with dry via Up, Sub and Dry controls. Monophonic tracking — clean and singing on single notes, gnarlier on chords.
+
+It also hides something no vintage octaver did: a pitch-tracked microtonal SHIMMER voice that shifts in quarter-tone (24-TET) intervals — quarter-steps up or down, neutral 2nds, 3rds and 6ths, or an octave-and-a-quarter — for shimmering, slightly-alien lead tones that sit between the notes on the fretboard. Light on CPU; runs on every target including 32-bit Pi.
+
+Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3).""" ;
     mod:label  "Octave" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 26 ;
+    lv2:microVersion 27 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

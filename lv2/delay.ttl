@@ -11,13 +11,27 @@
     a lv2:Plugin, lv2:DelayPlugin ;
     rdfs:label "Hex Chain — Delay" ;
     doap:name  "Hex Chain Delay" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Digital / tape / multi-head / dual-delay echoes.
+
+Five delay machines in one block:
+
+- Digital — clean, precise repeats
+- Tape — warm saturation with wow & flutter that breathes like the real mechanism
+- Echo Wreck — a multi-head drum echo with 12 head-combination patterns, from single slap to the full swirling all-heads wash
+- Seraph — an angelic dual delay with rhythmic patterns (unison, dotted-8th, triplet and more), ducking that gets out of the way while you play, and lush modulation on the repeats
+- Vintage Echo — a valve-warm tube-tape echo with its own JFET record-preamp front end and an Age control that runs from serviced-machine clean to thrashed, dark and hissy
+
+All modulated delay taps use smooth high-quality interpolation, so warble stays musical instead of gritty. Unity-gain mix — engaging it never drops your level.
+
+Free and open source (GPL-3).""" ;
     mod:label  "Delay" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 29 ;   # 29: EP-3 Echo type (JFET preamp + Age) + age port
+    lv2:microVersion 31 ;   # 29: EP-3 Echo type (JFET preamp + Age) + age port
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

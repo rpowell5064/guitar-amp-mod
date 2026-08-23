@@ -25,13 +25,37 @@
     a lv2:Plugin, lv2:AmplifierPlugin ;
     rdfs:label "Hex Chain — Amp" ;
     doap:name  "Hex Chain Amp" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Thirteen original guitar-amp voicings — sparkling clean to modern high-gain — each with a modeled power amp, plus a NAM loader.
+
+A whole wall of amps in one plugin — THIRTEEN original voicings, every name a wink and every circuit tuned against real-amp captures:
+
+- Clean Meanie — shimmering American blackface-era clean
+- Crunchy McCrunchFace — hot-rodded British master-volume crunch
+- Gainzilla — tight modern high-gain monster
+- Doom Daddy — a doom/fuzz grinder with two full channels (Normal + Brite)
+- Tangerang — thick, mid-forward British lead crunch
+- Beardo BE — boutique hot-rod head with Clean / BE / HBE channels
+- Hi-Volt — high-headroom, pedal-loving British clean
+- Chime Thirty — chimey class-A jangle machine
+- Backline Plus — the scrappy solid-state combo every rehearsal room owns
+- Plexiglass — vintage British sparkle with jumpered Vol I + Vol II channels, just like bridging the inputs on the classic four-hole heads
+- Cali V — a 9-mode, three-channel Californian switcher (Clean / Crunch / Lead) with its own 5-band graphic EQ
+- Diamond Plate — an 8-mode, three-channel chrome-plated Californian high-gain head (Raw / Vintage / Modern per channel) with Bold/Spongy variac and Silicon/Tube rectifier feel switches, tuned against real captures of a legendary high-gain American design
+- Tremont 15 — a tight, percussive lunchbox high-gain head (Clean / Crunch / Lead + bright switch) with a gain-riding bright cap on the crunch channel, tuned against real captures
+
+Every voicing feeds a modeled power-amp section — sag, presence, depth, resonance and selectable output-tube flavors — for real cab-pushing feel and touch dynamics rather than a flat distortion. A shared tone stack keeps switching between voicings fast on stage, a built-in mains-hum filter and decay-aware noise conditioning keep the high-gain modes quiet between notes, and everything is oversampled with steep anti-alias filtering so the top end stays clean.
+
+On 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures alongside the thirteen algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted. Works standalone or as part of the Hex Chain suite / Hex Forge.
+
+Free and open source (GPL-3).""" ;
     mod:label  "Amp" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 56 ;   # 56: tube-correctness audit — Fender 6V6 (new TubeType 4, real AB763), EVH 6L6 (real 5150III), Sunn KT88 (inert, PA bypassed); Power Tube enum gains 6V6. 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
+    lv2:microVersion 57 ;   # 56: tube-correctness audit — Fender 6V6 (new TubeType 4, real AB763), EVH 6L6 (real 5150III), Sunn KT88 (inert, PA bypassed); Power Tube enum gains 6V6. 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading

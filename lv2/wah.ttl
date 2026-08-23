@@ -10,13 +10,19 @@
     a lv2:Plugin, lv2:FilterPlugin ;
     rdfs:label "Hex Chain — Wah" ;
     doap:name  "Hex Chain Wah" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Auto-wah + fixed cocked-wah filter.
+
+A wah with two modes: Auto, an envelope filter that sweeps with your picking dynamics, and Fixed, a parked "cocked-wah" midrange honk — so it works as a saved preset with no expression pedal needed. Resonance and range controls shape the vowel. Light on CPU; runs on every target including 32-bit Pi.
+
+Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3).""" ;
     mod:label  "Wah" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 25 ;
+    lv2:microVersion 26 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

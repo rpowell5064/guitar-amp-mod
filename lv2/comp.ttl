@@ -11,13 +11,19 @@
     a lv2:Plugin, lv2:CompressorPlugin ;
     rdfs:label "Hex Chain — Compressor" ;
     doap:name  "Hex Chain Compressor" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Transparent guitar/bass compressor.
+
+A musical, low-CPU compressor for evening out picking dynamics and adding sustain — equally at home on guitar and bass, in front of a dirt pedal or across a clean signal. Runs on every target including 32-bit Pi.
+
+Free and open source (GPL-3).""" ;
     mod:label  "Compressor" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 30 ;
+    lv2:microVersion 31 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

@@ -1,16 +1,39 @@
 # Hex Chain Release Notes
 
-## v1.17.0 — 2026-08-04
+## v1.17.0 — 2026-08-23
 
-The power-tube warmth update: even-order saturation on the power amp, and a hot-rod head that finally behaves.
+The correct-tubes update: every amp re-measured against the player's own DI takes, the right power tubes in the right amps, a room-speaker voice, and a big chain-UI overhaul.
+
+### Added
+
+- **Auto-Calibrate wizard** — a guided three-phase input measurement (silence / hands-on / hard strums) that measures *your* guitar and interface, then applies a global input-trim and gate-floor offset so every preset's gates and levels sit right on your rig. Global layer: your presets are untouched.
+- **Output Voice (FRFR toggle)** — a one-switch room-speaker voice for FRFR cabs (tuned in-room on a Tone Master FRFR-10): de-close-mics the signal with low-cut, proximity, presence and fizz controls you can fine-tune, and auto-mutes the stereo doubler for single-speaker rigs. Headphones stay exactly as before when it's off.
+- **Tube Chauffeur** (drive model 10) — a Butler Tube Driver: starved-triode warm overdrive and clean boost, the classic Gilmour sustain staple. Boosts even with the gain floored.
+- **Green Man boost trick** — the TS-style overdrive now has the real circuit's gain floor, so the classic "drive at zero, level up" clean-push setting actually pushes, like the pedal it honors.
+- **Advanced panel** — Auto-Limit, Mono, Doubler, FRFR voice and Calibrate moved off the toolbar into a gear-button panel; the tuner button moved up top.
+- **Chain drag-and-drop overhaul** — dragging a block shows a live dashed landing slot that the row smoothly parts around; drag from the palette to place, drag out to remove. New jack-style IN/OUT end caps: the OUT jack LED is now the plugin on/off switch and the IN jack LED is a master mute.
 
 ### Changed
 
+- **Correct power tubes everywhere (measured improvement, not just trivia):** the Fender-family amp now runs 6V6 output tubes (it had been on 6L6 its whole life — a brand-new 6V6 model was built for it), and the modern high-gain head moved from EL34 to its real 6L6. Every capture fit improved with the correct glass. The Power Amp tube menu gains 6V6.
+- **DI re-measure + capture-anchored amp fits:** all NAM-checked amp models were re-measured against the player's own DI takes with new perceptual error metrics, then the outliers were re-voiced and A/B'd by ear before baking: the modern high-gain head, the British hot-rod crunch pair, and the rectifier head's modern channel (fit against a newly-sourced trusted capture ladder).
+- **Doom Daddy (Model T-style amp) re-voice** — the missing harmonic overtones are back: a preamp even-harmonic exciter, opened-up top end (air extended 3 kHz → 16 kHz), presence bite and a tighter low end. No more woof.
+- **Dual-amp presets on mono rigs** — fixed the "wooshing" comb-filter artifacts when running two amps into a mono output: the cab room collapses to a single bank in mono, and the second-rig blend gains a low-cut that kills the low-mid cancellation pump.
+- **Nine Inch Nails bank pass** — all four presets re-compensated after the amp re-voices moved them (the direct/no-cab industrial stab chain, the dark wall layer, the rectifier crunch and the fuzz-spit re-amp are back at their approved operating points).
+- **Lower latency** — the recommended JACK period drops to 32 frames (~2.3–2.6 ms round trip), verified xrun-free on the Pi 5.
+- **Cheaper cabs** — the IR convolver is NEON-vectorized on ARM; long IRs cost about half what they did.
 - **Even-harmonic power-amp warmth.** Several amps now generate the 2nd/4th-order even content of a real driven push-pull output — a rounder, warmer, more "tube" character on power-amp breakup instead of the odd-order digital edge, tuned against real amp captures. Two mechanisms, applied per amp only where they measurably match the capture: push-pull **duty asymmetry** on the tighter lunchbox / rectifier / chime-class amps, and a **post-distortion even generator** on the boutique hot-rod and British lead-crunch heads. Loudness-neutral — no preset levels shift.
 - **Beardo BE (hot-rod head) re-voice** — three fixes:
   - **HBE channel** no longer hollows out or drops on hard hits (a preamp stage was saturating into fundamental-cancellation); it now stays solid and clearly steps up over the BE channel.
   - **Consistent gain** — the amp used to clean up when you played softly; it now saturates evenly whether you dig in or play gently, matching the real amp's flat saturation.
   - **Tamed the high-end hiss** on the note decay — the decay noise-conditioning is darker and keyed to the amplified noise floor, so hiss fades into the tail instead of hanging on top of it.
+
+### Fixed
+
+- **PatchStorage listing descriptions** — the descriptions now live inside each plugin (plugin-level metadata), so re-listing a plugin publishes its real description instead of wiping it to "No description available." (This is what actually happened to the Modulation listing — the v1.16.0 re-list attempt couldn't work without this.) The Modulation copy also now credits all nine voicings.
+- **Chain reorder storm** — moving a block could send every open browser (phones included) into an endless flashing re-order loop that survived refresh; fixed on both sides (a stale slot ceiling on the EQ block widened, and the UI no longer echoes position writes back at the host).
+- **User cabs silently falling back to factory** — a pedalboard save could mangle the built-in synthetic-cab paths into broken links, silently swapping every non-factory cab to the default V30; cabs now load by name and survive saves.
+- **High-gain hum gates re-tuned to the measured rig floor** and a self-oscillating feedback squeal in the chime amp's negative-feedback loop eliminated.
 
 ---
 

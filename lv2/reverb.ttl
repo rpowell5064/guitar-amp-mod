@@ -11,13 +11,25 @@
     a lv2:Plugin, lv2:ReverbPlugin ;
     rdfs:label "Hex Chain — Reverb" ;
     doap:name  "Hex Chain Reverb" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Three reverb machines in one: modulated plate, three-spring tank, and a blooming cinematic ambient wash.
+
+Three reverb machines under one set of knobs:
+
+- PLATE — a smooth, gently modulated tank, from tight room to long lush wash, with a Density switch: Classic keeps the familiar four-comb voicing, Dense runs a bigger eight-comb / six-diffuser tank for a lusher, less metallic tail.
+- SPRING — a three-spring tank model with real drip and boing, the outboard-unit sound that surf and early rock records were soaked in.
+- AMBIENT — a modern blooming pad reverb: a long, heavily diffused tail whose density GROWS after you stop playing, driven by a dedicated BLOOM control that scales the smear, the late-tail regeneration, the slow evolving motion and the stereo width together. Attack-softening diffusion keeps picking gentle, the modulation is slow and non-pitchy (no chorus wobble), the low end stays clean in long tails, and the width is mono-safe. Play a chord, let go, and listen to it swell.
+
+Pre-delay, decay, damping, modulation and a unity-gain wet/dry blend — engaging it never drops your level. All three types are loudness-matched, so switching between them keeps your place in the mix. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind.
+
+Free and open source (GPL-3).""" ;
     mod:label  "Reverb" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 32 ;   # 32: Tank group widgets (Type/Density/Bloom). 31: Hex Ambient type + Bloom port + the type-port TTL nesting FIX
+    lv2:microVersion 33 ;   # 32: Tank group widgets (Type/Density/Bloom). 31: Hex Ambient type + Bloom port + the type-port TTL nesting FIX
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

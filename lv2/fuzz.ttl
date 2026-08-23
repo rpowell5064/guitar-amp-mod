@@ -10,13 +10,26 @@
     a lv2:Plugin, lv2:DistortionPlugin ;
     rdfs:label "Hex Chain — Fuzz" ;
     doap:name  "Hex Chain Fuzz" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Four fuzz pedals in one: multi-era sustain machine, germanium bender, octave-up fuzz, and a chaotic five-knob starve box.
+
+Four distinct fuzz circuits under one footswitch:
+
+- Italian Hero — the big π-shaped New York sustain machine, in SIX era voicings (Delta, Ovis, Gotham, Cold War, Red Bear, Boutique) that trace the circuit's history from creamy violin sustain to scooped wall-of-doom, each tuned against pedal-direct captures
+- I Know It — a component-accurate two-transistor germanium bender, all spitty mid-'60s British snarl
+- Octavius — the upper-octave fuzz that made psychedelic solos ring like broken bells
+- Fuzz Zachary — the gloriously unstable five-knob science experiment: bias starve, real compression bloom, and a Gate that takes it from tight and gated to self-oscillating squeal you can play
+
+Everything is oversampled for clean, defined high-gain without the aliasing fizz that plagues naive digital fuzz. Works standalone or in the Hex Chain suite.
+
+Free and open source (GPL-3).""" ;
     mod:label  "Fuzz" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 32 ;
+    lv2:microVersion 33 ;
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
