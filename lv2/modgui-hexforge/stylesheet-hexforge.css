@@ -1200,3 +1200,18 @@
     position: static; width: auto; height: 30px; padding: 0 10px; gap: 6px;
 }
 
+
+/* ── Drag-and-drop insertion preview (2026-08-22) ── the glowing bar marks the
+   exact landing slot while dragging; the dragged tile dims; the palette
+   highlights when a chain tile is dragged over it (drop = remove). */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dropind {
+    position: absolute; top: 8px; height: 112px; width: 4px; border-radius: 2px;
+    background: linear-gradient(180deg, #19e0ff 0%, #ff2bd6 100%);
+    box-shadow: 0 0 10px rgba(25, 224, 255, .8), 0 0 22px rgba(255, 43, 214, .45);
+    z-index: 30; pointer-events: none; display: none;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-dropind.hf-on { display: block; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node.hf-drag { opacity: .35; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-palette.hf-dropok {
+    outline: 1px dashed rgba(255, 90, 120, .65); outline-offset: -3px;
+}

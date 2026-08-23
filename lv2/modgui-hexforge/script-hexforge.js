@@ -181,6 +181,53 @@ function (event, funcs) {
         resort(icon);
     }
 
+    // Insert-position preview (2026-08-22, user request): a glowing bar shows
+    // exactly where a dragged block will land BEFORE it is dropped. The bar is
+    // absolutely positioned (no layout shift while dragging = no jitter).
+    function dropInd(icon) {
+        var nodes = icon.find('.hf-nodes');
+        var el = nodes.find('.hf-dropind');
+        if (!el.length) { nodes.append('<div class="hf-dropind"></div>'); el = nodes.find('.hf-dropind'); }
+        return el;
+    }
+    function eligibleNodes(icon, skipB) {
+        var arr = [];
+        icon.find('.hf-nodes .hf-node').each(function () {
+            var b = this.getAttribute('data-block');
+            if (b !== 'it' && b !== skipB) arr.push(this);
+        });
+        return arr;
+    }
+    function insertIndexAt(icon, clientX, skipB) {
+        var arr = eligibleNodes(icon, skipB), idx = 0;
+        for (var i = 0; i < arr.length; i++) {
+            var r = arr[i].getBoundingClientRect();
+            if (clientX > r.left + r.width / 2) idx = i + 1;
+        }
+        return idx;
+    }
+    function showDropInd(icon, idx, skipB) {
+        var arr = eligibleNodes(icon, skipB), left;
+        if (!arr.length) left = 40;
+        else if (idx < arr.length) left = arr[idx].offsetLeft - 8;
+        else left = arr[arr.length - 1].offsetLeft + arr[arr.length - 1].offsetWidth + 4;
+        dropInd(icon).addClass('hf-on').css('left', left + 'px');
+    }
+    function hideDropInd(icon) { dropInd(icon).removeClass('hf-on'); }
+    // Add from the palette directly INTO a chain position (drag-to-place).
+    function addBlockAt(icon, fns, b, idx) {
+        if (b === 'it' || !fns || inChain(icon, b)) return;
+        var chain = chainOrder(icon);
+        if (idx < 0 || idx > chain.length) idx = chain.length;
+        fns.set_port_value(b + '_enable', 1);
+        chain.splice(idx, 0, b);
+        icon.find('.hf-nodes').append(nodeOf(icon, b));
+        writePos(icon, fns, chain.concat(removedOrder(icon)));
+        resort(icon); renderPalette(icon);
+        icon.find('.hf-palette').removeClass('hf-open');
+        selectNode(icon, b);
+    }
+
     function selectNode(icon, b) {
         if (!b || !nodeOf(icon, b).length) b = inChain(icon, 'amp') ? 'amp' : 'it';
         icon.data('hf_sel', b);
@@ -229,7 +276,48 @@ function (event, funcs) {
     }
 
     function setupNodes(icon, fns) {
-        var dragB = null;
+        var dragB = null, dragFromPal = false, lastIdx = -1;
+        // Container-level drag handling: works in the GAPS between tiles and
+        // past the last tile, and drives the insertion-preview bar.
+        var nodesEl = icon.find('.hf-nodes')[0];
+        if (nodesEl) {
+            nodesEl.addEventListener('dragover', function (e) {
+                if (!dragB) return;
+                e.preventDefault();
+                if (e.dataTransfer) e.dataTransfer.dropEffect = dragFromPal ? 'copy' : 'move';
+                var idx = insertIndexAt(icon, e.clientX, dragFromPal ? null : dragB);
+                if (idx !== lastIdx) { lastIdx = idx; showDropInd(icon, idx, dragFromPal ? null : dragB); }
+            });
+            nodesEl.addEventListener('dragleave', function (e) {
+                if (e.target === nodesEl) { hideDropInd(icon); lastIdx = -1; }
+            });
+            nodesEl.addEventListener('drop', function (e) {
+                if (!dragB) return;
+                e.preventDefault(); e.stopPropagation();
+                var idx = insertIndexAt(icon, e.clientX, dragFromPal ? null : dragB);
+                if (dragFromPal) addBlockAt(icon, fns, dragB, idx);
+                else if (inChain(icon, dragB)) moveToSlot(icon, fns, dragB, idx + 1);
+                hideDropInd(icon); lastIdx = -1;
+            });
+        }
+        // Drag a chain block ONTO the palette = remove it (symmetric with adding).
+        var palEl = icon.find('.hf-palette')[0];
+        if (palEl) {
+            palEl.addEventListener('dragover', function (e) {
+                if (!dragB || dragFromPal) return;
+                e.preventDefault();
+                palEl.classList.add('hf-dropok');
+                if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+            });
+            palEl.addEventListener('dragleave', function () { palEl.classList.remove('hf-dropok'); });
+            palEl.addEventListener('drop', function (e) {
+                palEl.classList.remove('hf-dropok');
+                if (!dragB || dragFromPal) return;
+                e.preventDefault(); e.stopPropagation();
+                if (inChain(icon, dragB)) removeBlock(icon, fns, dragB);
+                hideDropInd(icon); lastIdx = -1;
+            });
+        }
         icon.find('.hf-node').each(function () {
             var nd = this, b = nd.getAttribute('data-block');
             // click node body = select; click the dot = bypass; a palette node = add
@@ -249,19 +337,20 @@ function (event, funcs) {
             if (b === 'it') return;
             nd.setAttribute('draggable', 'true');
             nd.addEventListener('dragstart', function (e) {
-                if (nd.parentNode && nd.parentNode.className.indexOf('hf-palette') >= 0) { e.preventDefault(); return; }
-                dragB = b; nd.classList.add('hf-drag');
-                if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', b); } catch (x) {} }
+                dragFromPal = !!(nd.parentNode && nd.parentNode.className.indexOf('hf-palette') >= 0);
+                dragB = b; lastIdx = -1; nd.classList.add('hf-drag');
+                if (e.dataTransfer) { e.dataTransfer.effectAllowed = dragFromPal ? 'copy' : 'move'; try { e.dataTransfer.setData('text/plain', b); } catch (x) {} }
                 e.stopPropagation();
             });
-            nd.addEventListener('dragend',  function (e) { nd.classList.remove('hf-drag'); dragB = null; e.stopPropagation(); });
-            nd.addEventListener('dragover', function (e) { e.preventDefault(); if (e.dataTransfer) e.dataTransfer.dropEffect = 'move'; });
-            nd.addEventListener('drop', function (e) {
-                e.preventDefault(); e.stopPropagation();
-                var targetB = nd.getAttribute('data-block');
-                if (!dragB || dragB === targetB || targetB === 'it' || !inChain(icon, dragB)) return;
-                moveToSlot(icon, fns, dragB, posOf(icon, targetB));
+            nd.addEventListener('dragend',  function (e) {
+                nd.classList.remove('hf-drag'); dragB = null; dragFromPal = false;
+                hideDropInd(icon); lastIdx = -1;
+                icon.find('.hf-palette').removeClass('hf-dropok');
+                e.stopPropagation();
             });
+            // per-node dragover/drop removed (2026-08-22): the .hf-nodes container
+            // handles both, so gaps and the strip's tail are valid targets and the
+            // preview bar shows the exact landing slot.
         });
         // REMOVE buttons in each detail panel
         icon.find('.hf-dremove').each(function () {
