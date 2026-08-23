@@ -87,15 +87,8 @@
 }
 
 /* GLOBAL POWER / BYPASS */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-powerswitch {
-    position: static; flex: 0 0 60px; height: 30px; width: 60px; margin: 0; cursor: pointer;
-}
-.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-powerswitch-image {
-    background-image: url(/resources/switches/powerswitch.png{{{ns}}});
-    background-position: 0 0; background-repeat: no-repeat; background-size: auto 30px; height: 30px; width: 60px;
-}
-.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-powerswitch-image.on  { background-position: -60px 0; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .mod-powerswitch-image.off { background-position: 0 0; }
+/* (2026-08-23) toolbar powerswitch retired — the OUT jack LED is the plugin
+   on/off now (.hf-led-out below). */
 
 /* ── OUTPUT strip (top of UI; applied LAST in the chain → feeds the device) ── */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-out {
@@ -293,16 +286,35 @@
     -webkit-background-clip: text; background-clip: text;
     -webkit-text-fill-color: transparent; color: transparent;
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end::before {
-    content: ""; width: 14px; height: 14px; border-radius: 50%;
-    border: 2px solid rgba(25, 224, 255, .75);
-    background: radial-gradient(circle, #19e0ff 0 3px, transparent 4px);
-    box-shadow: 0 0 8px rgba(25, 224, 255, .45);
+/* Jack LEDs are LIVE controls now (2026-08-23): IN = master mute (tuner_mute
+   switch widget — .on class means MUTED, so the lit look is the DEFAULT state),
+   OUT = plugin on/off (bypass-light child gets .on while engaged). Same
+   lit/dark + hover/pressed language as the tile toggle dots, same hit halo. */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end-led {
+    position: relative; width: 16px; height: 16px; border-radius: 50%; cursor: pointer;
+    border: 2px solid rgba(25, 224, 255, .8);
+    background: radial-gradient(circle, #19e0ff 0 4px, rgba(25,224,255,.28) 6px, transparent 7px);
+    box-shadow: 0 0 10px 1px rgba(25, 224, 255, .55), inset 0 0 2px rgba(255,255,255,.75);
+    transition: transform .1s, box-shadow .1s, background .1s, border-color .1s;
 }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end.hf-out2::before {
-    border-color: rgba(255, 43, 214, .75);
-    background: radial-gradient(circle, #ff2bd6 0 3px, transparent 4px);
-    box-shadow: 0 0 8px rgba(255, 43, 214, .45);
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end-led::after {
+    content: ""; position: absolute; inset: -9px; border-radius: 50%;   /* hit halo */
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end-led:hover  { transform: scale(1.25); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end-led:active { transform: scale(.92); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-led-in.on {
+    background: #2b313b; box-shadow: none; border-color: rgba(255,255,255,.25);
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-led-out {
+    border-color: rgba(255, 43, 214, .8); background: none; box-shadow: none;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end-ledcore {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: #2b313b; transition: background .1s, box-shadow .1s;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end-ledcore.on {
+    background: radial-gradient(circle, #ff2bd6 0 4px, rgba(255,43,214,.28) 6px, transparent 7px);
+    box-shadow: 0 0 10px 1px rgba(255, 43, 214, .55), inset 0 0 2px rgba(255,255,255,.75);
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-nodes {
     /* 160px tall with top-anchored tiles (2026-07-30): leaves a 42px band under the
@@ -452,15 +464,18 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-node-bind { display: none; }
 
 /* "+ ADD" palette of removed effects */
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-addwrap { flex: 0 0 auto; position: relative; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-addwrap {
+    flex: 0 0 auto; position: relative;
+    align-self: flex-start; margin-top: 39px;   /* same centreline as the end caps */
+}
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-add {
-    font-family: inherit; font-size: 12px; font-weight: 800; letter-spacing: .5px; white-space: nowrap;
+    font-family: inherit; font-size: 13px; font-weight: 800; letter-spacing: .5px; white-space: nowrap;
     color: #cfe9ff; background: rgba(0,0,0,.45); border: 1px dashed rgba(25,224,255,.6);
-    border-radius: 8px; padding: 9px 12px; cursor: pointer;
+    border-radius: 12px; height: 63px; box-sizing: border-box; padding: 0 14px; cursor: pointer;
 }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-add:hover { color: #fff; border-color: #19e0ff; background: rgba(25,224,255,.12); }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-palette {
-    display: none; position: absolute; top: 46px; right: 0; width: 380px;
+    display: none; position: absolute; top: 70px; right: 0; width: 380px;
     background: #0d1016; border: 1px solid rgba(25,224,255,.55); border-radius: 9px; padding: 9px; z-index: 80;
     box-shadow: 0 12px 30px rgba(0,0,0,.6); flex-wrap: wrap; gap: 8px;
 }

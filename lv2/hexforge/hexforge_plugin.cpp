@@ -3114,7 +3114,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
 
     // ── Strobe tuner: detect the dry input pitch when engaged; publish note + cents ──
     const bool tunerOn   = p->ports[HF_TUNER_ON]   && *p->ports[HF_TUNER_ON]   > 0.5f;
-    const bool tunerMute = tunerOn && p->ports[HF_TUNER_MUTE] && *p->ports[HF_TUNER_MUTE] > 0.5f;
+    // Mute is INDEPENDENT of the tuner since 2026-08-23: the IN jack LED in the
+    // modgui doubles as a master mute, so it must work with the tuner closed.
+    const bool tunerMute = p->ports[HF_TUNER_MUTE] && *p->ports[HF_TUNER_MUTE] > 0.5f;
     if (tunerOn) {
         for (uint32_t off = 0; off < n; off += kMaxBlock) {
             const int len = (int)((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
