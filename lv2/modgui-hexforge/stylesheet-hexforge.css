@@ -265,9 +265,10 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end {
     flex: 0 0 auto; align-self: flex-start;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
-    /* centred on the 108px TILES, not the 160px strip (align-self:center would
-       sit ~16px low): tile centre 54px - square half-height ~31px = 23px */
-    margin-top: 23px;
+    /* centred on the 108px TILES: the caps are .hf-chain children (172px tall,
+       .hf-nodes 160px centred inside +10px strip padding), so the tile centreline
+       is 6+10+54 = 70px from the chain top; 70 - square half-height ~31 = 39px */
+    margin-top: 39px;
     font-size: 13px; font-weight: 900; letter-spacing: 1.8px;
     background-color: #2e3a52; border: 1px solid rgba(160,190,255,.22);
     background-image: linear-gradient(180deg, rgba(255,255,255,.07), rgba(0,0,0,.18));
