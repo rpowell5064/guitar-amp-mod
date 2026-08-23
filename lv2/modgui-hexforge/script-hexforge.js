@@ -1287,10 +1287,14 @@ function (event, funcs) {
         var icon = event.icon, s = event.symbol;
         if (s) syncSel(icon, s, event.value);   // dropdown labels track every change
         if (s && /_pos$/.test(s)) {
-            var b = s.replace(/_pos$/, ''), want = parseInt(event.value, 10), cur = posOf(icon, b);
-            if (want === cur) { resort(icon); return; }
-            if (inChain(icon, b)) moveToSlot(icon, funcs, b, want);
-            else nodeOf(icon, b).attr('data-pos', want);
+            // NEVER write ports from a change echo (2026-08-23): a host-clamped
+            // write (eq_pos max was a stale 13 with 24 slots) echoed back a
+            // different value, moveToSlot() then rewrote ALL pos ports, which
+            // clamped again -> infinite rewrite storm, every open client
+            // flashing/reordering. Echoes and preset recalls only TRACK state:
+            // stamp the slot and re-flow the row (ties resolve canonically).
+            nodeOf(icon, s.replace(/_pos$/, '')).attr('data-pos', parseInt(event.value, 10));
+            resort(icon);
         } else if (s && /_bypass$/.test(s)) {
             nodeOf(icon, s.replace(/_bypass$/, '')).toggleClass('hf-byp', event.value > 0.5);
         } else if (s && /_enable$/.test(s) && s !== 'rb_enable') {
