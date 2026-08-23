@@ -402,11 +402,17 @@ function (event, funcs) {
                 if (!dragFromPal) {
                     nd.parentNode.insertBefore(g, nd);
                     g.classList.add('hf-open');
-                    setTimeout(function () { nd.classList.add('hf-lift'); }, 0);
+                    // guarded + cancellable: an instant dragend (grab without
+                    // moving) must never leave the tile lifted after cleanup
+                    nd._hfLiftTimer = setTimeout(function () {
+                        nd._hfLiftTimer = null;
+                        if (dragB === b) nd.classList.add('hf-lift');
+                    }, 0);
                 }
                 e.stopPropagation();
             });
             nd.addEventListener('dragend',  function (e) {
+                if (nd._hfLiftTimer) { clearTimeout(nd._hfLiftTimer); nd._hfLiftTimer = null; }
                 nd.classList.remove('hf-drag'); nd.classList.remove('hf-lift');
                 dragB = null; dragFromPal = false;
                 removeGhost(icon);
