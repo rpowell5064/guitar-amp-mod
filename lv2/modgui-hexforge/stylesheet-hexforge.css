@@ -263,9 +263,11 @@
    the loud gradient boxes — a small ringed dot on the signal line with a tiny
    label beneath. IN = cyan, OUT = magenta. */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-end {
-    flex: 0 0 auto; align-self: center;   /* middle of the block row */
+    flex: 0 0 auto; align-self: flex-start;
     display: flex; flex-direction: column; align-items: center; gap: 6px;
-    margin-top: 0;
+    /* centred on the 108px TILES, not the 160px strip (align-self:center would
+       sit ~16px low): tile centre 54px - square half-height ~31px = 23px */
+    margin-top: 23px;
     font-size: 13px; font-weight: 900; letter-spacing: 1.8px;
     background-color: #1a1e28; border: 1px solid rgba(255,255,255,.10);
     border-radius: 12px; padding: 12px 13px 10px; box-shadow: 0 2px 6px rgba(0,0,0,.35);
