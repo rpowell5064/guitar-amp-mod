@@ -181,39 +181,57 @@ function (event, funcs) {
         resort(icon);
     }
 
-    // Insert-position preview (2026-08-22, user request): a glowing bar shows
-    // exactly where a dragged block will land BEFORE it is dropped. The bar is
-    // absolutely positioned (no layout shift while dragging = no jitter).
-    function dropInd(icon) {
-        var nodes = icon.find('.hf-nodes');
-        var el = nodes.find('.hf-dropind');
-        if (!el.length) { nodes.append('<div class="hf-dropind"></div>'); el = nodes.find('.hf-dropind'); }
-        return el;
-    }
-    function eligibleNodes(icon, skipB) {
-        var arr = [];
-        icon.find('.hf-nodes .hf-node').each(function () {
-            var b = this.getAttribute('data-block');
-            if (b !== 'it' && b !== skipB) arr.push(this);
-        });
-        return arr;
-    }
-    function insertIndexAt(icon, clientX, skipB) {
-        var arr = eligibleNodes(icon, skipB), idx = 0;
-        for (var i = 0; i < arr.length; i++) {
-            var r = arr[i].getBoundingClientRect();
-            if (clientX > r.left + r.width / 2) idx = i + 1;
+    // Insert-position preview (2026-08-22, user request; v2 = GHOST TILE): a
+    // dashed block-shaped placeholder sits IN the row exactly where the block
+    // will land — the row parts to make room, dock-style. Stability: the ghost
+    // is placed AT the cursor, so the pointer ends up over the ghost (a no-op
+    // dead zone); the slot only changes when the cursor crosses onto a real
+    // tile, which prevents the classic insert/remove oscillation.
+    function ghostEl(icon) {
+        var el = icon.find('.hf-nodes .hf-ghost');
+        if (!el.length) {
+            icon.find('.hf-nodes').append('<div class="hf-node hf-ghost" aria-hidden="true"></div>');
+            el = icon.find('.hf-nodes .hf-ghost');
         }
-        return idx;
+        return el[0];
     }
-    function showDropInd(icon, idx, skipB) {
-        var arr = eligibleNodes(icon, skipB), left;
-        if (!arr.length) left = 40;
-        else if (idx < arr.length) left = arr[idx].offsetLeft - 8;
-        else left = arr[arr.length - 1].offsetLeft + arr[arr.length - 1].offsetWidth + 4;
-        dropInd(icon).addClass('hf-on').css('left', left + 'px');
+    function removeGhost(icon) {
+        var el = icon.find('.hf-nodes .hf-ghost');
+        if (el.length && el[0].parentNode) el[0].parentNode.removeChild(el[0]);
     }
-    function hideDropInd(icon) { dropInd(icon).removeClass('hf-on'); }
+    function tileFromEvent(icon, e) {
+        var t = e.target;
+        while (t && !(t.classList && t.classList.contains('hf-node'))) t = t.parentNode;
+        return (t && t.classList && !t.classList.contains('hf-ghost')) ? t : null;
+    }
+    function placeGhost(icon, e, skipB) {
+        var tile = tileFromEvent(icon, e);
+        if (!tile) {
+            // over the container itself (past the last tile): ghost to the end
+            if (e.target && e.target.classList && e.target.classList.contains('hf-nodes'))
+                e.target.appendChild(ghostEl(icon));
+            return;
+        }
+        var b = tile.getAttribute('data-block');
+        if (b === skipB) return;                       // over the dragged tile: no-op
+        var g = ghostEl(icon), parent = tile.parentNode;
+        if (b === 'it') { parent.insertBefore(g, tile.nextSibling); return; }   // never before Input Trim
+        var r = tile.getBoundingClientRect();
+        if (e.clientX < r.left + r.width / 2) parent.insertBefore(g, tile);
+        else parent.insertBefore(g, tile.nextSibling);
+    }
+    // The ghost's landing index among chain blocks (excluding 'it' and the drag).
+    function ghostIndex(icon, skipB) {
+        var idx = 0, found = false;
+        icon.find('.hf-nodes').children().each(function () {
+            if (found) return;
+            if (this.classList.contains('hf-ghost')) { found = true; return; }
+            if (!this.classList.contains('hf-node')) return;
+            var b = this.getAttribute('data-block');
+            if (b && b !== 'it' && b !== skipB) idx++;
+        });
+        return found ? idx : 999;
+    }
     // Add from the palette directly INTO a chain position (drag-to-place).
     function addBlockAt(icon, fns, b, idx) {
         if (b === 'it' || !fns || inChain(icon, b)) return;
@@ -285,19 +303,19 @@ function (event, funcs) {
                 if (!dragB) return;
                 e.preventDefault();
                 if (e.dataTransfer) e.dataTransfer.dropEffect = dragFromPal ? 'copy' : 'move';
-                var idx = insertIndexAt(icon, e.clientX, dragFromPal ? null : dragB);
-                if (idx !== lastIdx) { lastIdx = idx; showDropInd(icon, idx, dragFromPal ? null : dragB); }
+                placeGhost(icon, e, dragFromPal ? null : dragB);
             });
             nodesEl.addEventListener('dragleave', function (e) {
-                if (e.target === nodesEl) { hideDropInd(icon); lastIdx = -1; }
+                if (e.target === nodesEl) removeGhost(icon);
             });
             nodesEl.addEventListener('drop', function (e) {
                 if (!dragB) return;
                 e.preventDefault(); e.stopPropagation();
-                var idx = insertIndexAt(icon, e.clientX, dragFromPal ? null : dragB);
+                var idx = ghostIndex(icon, dragFromPal ? null : dragB);
+                removeGhost(icon);
+                if (idx === 999) idx = 99;                     // no ghost placed: append
                 if (dragFromPal) addBlockAt(icon, fns, dragB, idx);
                 else if (inChain(icon, dragB)) moveToSlot(icon, fns, dragB, idx + 1);
-                hideDropInd(icon); lastIdx = -1;
             });
         }
         // Drag a chain block ONTO the palette = remove it (symmetric with adding).
@@ -315,7 +333,7 @@ function (event, funcs) {
                 if (!dragB || dragFromPal) return;
                 e.preventDefault(); e.stopPropagation();
                 if (inChain(icon, dragB)) removeBlock(icon, fns, dragB);
-                hideDropInd(icon); lastIdx = -1;
+                removeGhost(icon);
             });
         }
         icon.find('.hf-node').each(function () {
@@ -344,7 +362,7 @@ function (event, funcs) {
             });
             nd.addEventListener('dragend',  function (e) {
                 nd.classList.remove('hf-drag'); dragB = null; dragFromPal = false;
-                hideDropInd(icon); lastIdx = -1;
+                removeGhost(icon);
                 icon.find('.hf-palette').removeClass('hf-dropok');
                 e.stopPropagation();
             });
