@@ -468,6 +468,26 @@ private:
         } else if (t == "started") {
             proc.uiAttached.store(true);
             proc.uiResync.store(true);
+            // Tell the page how much room the display offers; beyond it the
+            // bridge zooms the pedal down instead of growing a scrollbar.
+            if (auto* disp = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()) {
+                const auto area = disp->userArea;
+                pushBatch({ jsonObj({ { "t", "avail" },
+                                      { "w", area.getWidth() - 24 },
+                                      { "h", area.getHeight() - 90 } }) });
+            }
+        } else if (t == "size") {
+            // Auto-fit: the pedal grows when the tuner / cal wizard opens —
+            // follow it (clamped to the display) so no scrollbar appears.
+            const int w = (int) (double) v.getProperty("w", 1500);
+            const int h = (int) (double) v.getProperty("h", 900);
+            if (auto* disp = juce::Desktop::getInstance().getDisplays().getPrimaryDisplay()) {
+                const auto area = disp->userArea;
+                setSize(juce::jlimit(720, area.getWidth() - 16, w),
+                        juce::jlimit(420, area.getHeight() - 80, h));
+            } else {
+                setSize(w, h);
+            }
         } else if (t == "set") {
             proc.requestPortSet(v.getProperty("sym", {}).toString(),
                                 (float) (double) v.getProperty("val", 0.0));

@@ -28,9 +28,10 @@ var PORTS = window.HF_PORTS || {};
 var icon = null;
 var iconFn = null;
 var values = {};                 // sym -> current value
-var strips = [];                 // film-strip widgets: {el, sym, frames, ew}
+var strips = [];                 // film-strip widgets: {el, sym, frames}
 var switchEls = {};              // sym -> [el]
 var valueEls = {};               // sym -> [el] (readout spans)
+var bypassLights = [];           // mod-role=bypass-light elements (OUT jack LED)
 var started = false;
 
 function send(msg) {
@@ -70,7 +71,12 @@ function stripRender(st) {
     var norm = (cur(st.sym) - m.mn) / ((m.mx - m.mn) || 1);
     norm = Math.max(0, Math.min(1, norm));
     var idx = Math.round(norm * (st.frames - 1));
-    st.el.style.backgroundPosition = (-idx * st.ew) + 'px 0px';
+    // PERCENTAGE positioning: for an N-frame strip scaled to the element height,
+    // x = idx/(N-1)*100% lands each frame exactly, independent of the element's
+    // rendered pixel size — elements inside hidden panels measure 0px, which is
+    // what mis-stepped the sprites ("two half knobs") with pixel offsets.
+    var pct = st.frames > 1 ? (idx * 100 / (st.frames - 1)) : 0;
+    st.el.style.backgroundPosition = pct + '% 0px';
 }
 function renderSym(sym) {
     for (var i = 0; i < strips.length; ++i)
@@ -81,6 +87,8 @@ function renderSym(sym) {
         el.classList.toggle('off', !on);
     });
     (valueEls[sym] || []).forEach(function (el) { el.textContent = fmt(sym, cur(sym)); });
+    if (sym === 'bypass')   // OUT jack LED: lit while ENGAGED (bypass < 0.5)
+        bypassLights.forEach(function (l) { l.classList.toggle('on', cur('bypass') <= 0.5); });
 }
 function renderAll() { Object.keys(PORTS).forEach(renderSym); }
 
@@ -112,17 +120,20 @@ var funcs = {
 function wireStrip(el, sym) {
     var meta = PORTS[sym];
     if (!meta) return;
-    var st = { el: el, sym: sym, frames: 0, ew: 0 };
+    var st = { el: el, sym: sym, frames: 0 };
     strips.push(st);
-    var bg = getComputedStyle(el).backgroundImage;
-    var mUrl = /url\(["']?([^"')]+)/.exec(bg || '');
+    // Element size from COMPUTED style (explicit px in the stylesheet), not
+    // layout — knobs inside the not-yet-opened detail panels have no layout at
+    // boot. Frames share the element's CSS aspect (knob 40x40 → 128x128 frames
+    // in a 12928px strip = 101; eqfader 26x92 → 52x184 frames = 41).
+    var cs = getComputedStyle(el);
+    var ew = parseFloat(cs.width) || el.offsetWidth || 40;
+    var eh = parseFloat(cs.height) || el.offsetHeight || 40;
+    var mUrl = /url\(["']?([^"')]+)/.exec(cs.backgroundImage || '');
     if (mUrl) {
         var img = new Image();
         img.onload = function () {
-            var ew = el.offsetWidth || 40, eh = el.offsetHeight || 40;
-            var frameNatW = img.naturalHeight * (ew / eh);   // frames share the element's aspect
-            st.frames = Math.max(1, Math.round(img.naturalWidth / frameNatW));
-            st.ew = ew;
+            st.frames = Math.max(1, Math.round((img.naturalWidth * eh) / (img.naturalHeight * ew)));
             stripRender(st);
         };
         img.src = mUrl[1];
@@ -223,7 +234,48 @@ function wireWidgets(root) {
         var sym = el.getAttribute('mod-port-symbol');
         if (sym) (valueEls[sym] = valueEls[sym] || []).push(el);
     });
+    // mod-ui's bypass widget: the OUT jack LED. Click toggles the bypass port;
+    // the mod-role=bypass-light child carries .on while the plugin is engaged.
+    root.querySelectorAll('[mod-role=bypass]').forEach(function (el) {
+        var light = el.querySelector('[mod-role=bypass-light]');
+        if (light) bypassLights.push(light);
+        el.style.cursor = 'pointer';
+        el.addEventListener('click', function (e) {
+            userSet('bypass', cur('bypass') > 0.5 ? 0 : 1);
+            e.stopPropagation();
+        });
+    });
     document.addEventListener('click', closeLists);
+}
+
+// ── auto-fit: follow the pedal's size; zoom down when the display is short ────
+// Polled (4 Hz, one rect read): the tuner / cal wizard / panel switches all
+// change the pedal height. Size comes from the PEDAL ROOT rect — the
+// .mod-pedal is out of normal flow (mod-ui heritage), so the body collapses
+// to its padding and measures a useless constant 28px. When the natural size
+// exceeds the display area the editor granted us ('avail'), the page is CSS-
+// zoomed down so the whole pedal (tuner and all) fits with no scrollbar.
+var avail = { w: 8192, h: 8192 };
+var zoom = 1;
+var sizeReport = null;
+function watchSize() {
+    var root = icon[0];
+    var lastW = 0, lastH = 0;
+    sizeReport = function () {
+        var rr = root.getBoundingClientRect();          // already scaled by `zoom`
+        var nw = rr.width / zoom + 28, nh = rr.height / zoom + 28;   // natural size
+        var z = Math.min(1, avail.w / nw, avail.h / nh);
+        if (Math.abs(z - zoom) > 0.01) {
+            zoom = z;
+            document.body.style.zoom = zoom;
+        }
+        var w = Math.ceil(nw * zoom), h = Math.ceil(nh * zoom);
+        if (Math.abs(w - lastW) < 3 && Math.abs(h - lastH) < 3) return;
+        lastW = w; lastH = h;
+        send({ t: 'size', w: w, h: h });
+    };
+    setInterval(sizeReport, 250);
+    sizeReport();
 }
 
 // ── native → JS ───────────────────────────────────────────────────────────────
@@ -239,6 +291,7 @@ window.hfFromNative = function (m) {
             try { iconFn({ type: 'start', icon: icon, ports: portsArr, parameters: paramsArr, data: {} }, funcs); }
             catch (e) { console.error('icon start failed', e); }
             send({ t: 'started' });
+            watchSize();   // follow the pedal height (tuner / cal wizard growth)
         }
     } else if (m.t === 'port') {
         values[m.sym] = m.val;
@@ -246,6 +299,9 @@ window.hfFromNative = function (m) {
         fireChange(m.sym, m.val);
     } else if (m.t === 'param') {
         fireParam(m.uri, m.val);
+    } else if (m.t === 'avail') {
+        avail = { w: m.w || 8192, h: m.h || 8192 };
+        if (sizeReport) sizeReport();
     }
 };
 
