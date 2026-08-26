@@ -962,9 +962,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             }
         }
 
-        struct CpuClk { static double now() {
-            timespec ts; clock_gettime(CLOCK_MONOTONIC, &ts);
-            return double(ts.tv_sec) + 1e-9 * double(ts.tv_nsec); } };
+        struct CpuClk { static double now() { return hfplat::monotonicSeconds(); } };
         const double chunkT0 = CpuClk::now();
         // Rig B: run amp2 -> pa2 -> cab2 on the tapped buffer and mix into L/R.
         // Called after the main CAB (or after the AMP when no cab is active).

@@ -11,8 +11,7 @@
 // or the bundle is updated. Same self-describing layout as the State blob
 // (version 3) but with raw absolute file paths (no LV2 mapPath outside State).
 static std::string hfBackupDir() {
-    const char* home = std::getenv("HOME");
-    return (home && home[0]) ? std::string(home) + "/.config/hexchain" : std::string("/tmp");
+    return hfplat::configDir();
 }
 // Reconstruct an old positional value array (the npc old values sit at the start
 // of vals[], rest zero) onto the CURRENT (v7) port layout, inserting defaults for
@@ -416,13 +415,11 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
 // save/rename/move and on board save — light, user-triggered file I/O.
 static void hfWriteBackup(HexForge* p) {
     std::string dir = hfBackupDir();
-    const char* home = std::getenv("HOME");
-    if (home && home[0]) { std::string cfg = std::string(home) + "/.config"; ::mkdir(cfg.c_str(), 0755); }
-    ::mkdir(dir.c_str(), 0755);
+    hfplat::ensureConfigDir();
     const std::string path = dir + "/hexforge-presets.dat";
     const std::string tmp  = path + ".tmp";
     std::vector<uint8_t> blob; hfSerialize(p, blob);
-    FILE* f = std::fopen(tmp.c_str(), "wb");
+    FILE* f = hfplat::fopenBinary(tmp.c_str(), "wb");
     if (!f) return;
     std::fwrite(blob.data(), 1, blob.size(), f);
     std::fclose(f);
@@ -431,7 +428,7 @@ static void hfWriteBackup(HexForge* p) {
 // Load the store from the backup file into presets[]. Returns true on success.
 static bool hfLoadBackup(HexForge* p) {
     const std::string path = hfBackupDir() + "/hexforge-presets.dat";
-    FILE* f = std::fopen(path.c_str(), "rb");
+    FILE* f = hfplat::fopenBinary(path.c_str(), "rb");
     if (!f) return false;
     std::fseek(f, 0, SEEK_END); long sz = std::ftell(f); std::fseek(f, 0, SEEK_SET);
     if (sz <= 0) { std::fclose(f); return false; }

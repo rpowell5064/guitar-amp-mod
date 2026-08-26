@@ -70,8 +70,3 @@ target_include_directories(hexforge_golden PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
-if(MSVC)
-    # Unmodified monolith uses ::mkdir(path,mode) + clock_gettime; shim them in.
-    target_compile_options(hexforge_golden PRIVATE
-        /FI"${CMAKE_CURRENT_SOURCE_DIR}/msvc_posix_compat.h")
-endif()

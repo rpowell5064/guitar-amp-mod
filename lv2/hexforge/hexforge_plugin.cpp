@@ -72,7 +72,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cstdlib>
-#include <sys/stat.h>
+#include "engine/hf_platform.h"
 
 #define HEXFORGE_URI     "https://rpowell5064.github.io/guitaramp-suite/hexforge"
 #define HEXFORGE_IR_URI  HEXFORGE_URI "#irfile"
