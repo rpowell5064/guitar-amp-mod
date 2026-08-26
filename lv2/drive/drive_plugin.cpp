@@ -43,6 +43,10 @@ static constexpr int kMaxModel = 9;   // highest selectable model index (Echo Pr
 enum DrivePorts {
     P_IN = 0, P_OUT, P_MODEL, P_DRIVE, P_TONE, P_LEVEL, P_MIX, P_OCTAVE, P_BYPASS,
     P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the
+                               // atoms (mod-host breaks if control ports follow them)
+#endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
@@ -70,6 +74,9 @@ struct DrivePlugin {
     int  lastModel = -1;
     char namPath[kPathMax] = {0};
     float namIn[kMaxBlock], namOut[kMaxBlock];
+#ifdef HEXCHAIN_ANAGRAM
+    bool resetLatch = false;   // kx:Reset edge detect
+#endif
 
     LV2_Worker_Schedule* schedule = nullptr;
     LV2_URID_Map*        map      = nullptr;
@@ -145,9 +152,26 @@ static LV2_Worker_Status drive_work_response(LV2_Handle h, uint32_t, const void*
 }
 
 static void drive_run(LV2_Handle h, uint32_t n) {
+#ifndef HEXCHAIN_ANAGRAM
     DenormalGuard denormalGuard;   // flush denormals (NAM state can spike CPU in decay/silence)
+#endif  // KosmOS forbids touching global CPU registers (FTZ) — even scoped
     auto* p = static_cast<DrivePlugin*>(h);
     const URIs& u = p->uris;
+
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset trigger (rising edge): clear ALL state memory so a freshly
+    // paired dual-mono partner starts identical. prepare() is the full
+    // re-init; it allocates, but the host only fires Reset on preset/bank/
+    // pairing events (provisional — see anagram/ANAGRAM-NOTES.md).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->dsp.prepare(p->rate, kMaxBlock, 1);
+            p->lastModel = -1;   // re-apply model + params on the next block
+            if (p->nam) p->nam->reset(p->rate, kMaxBlock);
+        }
+    } else p->resetLatch = false;
+#endif
 
     const bool haveNotify = (p->notify != nullptr);
     LV2_Atom_Forge_Frame seqFrame;
@@ -181,7 +205,12 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     float*       out = p->ports[P_OUT];
     const int    model = clampi(*p->ports[P_MODEL], 0, kMaxModel);
 
-    if (*p->ports[P_BYPASS] > 0.5f) {
+    bool bypassed = *p->ports[P_BYPASS] > 0.5f;
+#ifdef HEXCHAIN_ANAGRAM
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#endif
+    if (bypassed) {
         if (out != in) std::memcpy(out, in, sizeof(float) * n);
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
         return;

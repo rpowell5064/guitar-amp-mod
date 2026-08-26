@@ -1,0 +1,119 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/fuzz#audiogroup>
+    a pg:MonoGroup, pg:Group ;
+    lv2:symbol "audio" ;
+    lv2:name "Audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/fuzz>
+    a lv2:Plugin, lv2:DistortionPlugin ;
+    dg:abbreviation "FZZ" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Fuzz" ;
+    doap:name  "Hex Chain Fuzz" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Four fuzz pedals in one: multi-era sustain machine, germanium bender, octave-up fuzz, and a chaotic five-knob starve box.
+
+Four distinct fuzz circuits under one footswitch:
+
+- Italian Hero — the big π-shaped New York sustain machine, in SIX era voicings (Delta, Ovis, Gotham, Cold War, Red Bear, Boutique) that trace the circuit's history from creamy violin sustain to scooped wall-of-doom, each tuned against pedal-direct captures
+- I Know It — a component-accurate two-transistor germanium bender, all spitty mid-'60s British snarl
+- Octavius — the upper-octave fuzz that made psychedelic solos ring like broken bells
+- Fuzz Zachary — the gloriously unstable five-knob science experiment: bias starve, real compression bloom, and a Gate that takes it from tight and gated to self-oscillating squeal you can play
+
+Everything is oversampled for clean, defined high-gain without the aliasing fizz that plagues naive digital fuzz. Works standalone or in the Hex Chain suite.
+
+Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 33 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#audiogroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#audiogroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "pedal" ; lv2:name "Pedal" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:scalePoint [ rdfs:label "Italian Hero"    ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "I Know It" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Octavius" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Fuzz Zachary" ; rdf:value 3 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "mode" ; lv2:name "Variant" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 5 ;
+        lv2:scalePoint [ rdfs:label "Delta"    ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Ovis"     ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Gotham"   ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Cold War" ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Red Bear" ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "Boutique" ; rdf:value 5 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "sustain" ; lv2:name "Sustain" ;
+        lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "tone" ; lv2:name "Tone" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "volume" ; lv2:name "Volume" ;
+        lv2:default 0.65 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "bias" ; lv2:name "Bias" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "inputtrim" ; lv2:name "Input Trim" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "getemp" ; lv2:name "Ge Temp" ;
+        lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "gvol" ; lv2:name "Guitar Vol" ;
+        lv2:default 1.0 ; lv2:minimum 0.05 ; lv2:maximum 1.0
+    
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 12 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 13 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

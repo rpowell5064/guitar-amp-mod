@@ -1,0 +1,152 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# NAM neural-model file parameter (used when Model = "Neural (NAM)").
+<https://rpowell5064.github.io/guitaramp-suite/drive#nammodel>
+    a lv2:Parameter ;
+    rdfs:label "NAM Model" ;
+    rdfs:range atom:Path ;
+    mod:fileTypes "nammodel,nam" .
+
+<https://rpowell5064.github.io/guitaramp-suite/drive#audiogroup>
+    a pg:MonoGroup, pg:Group ;
+    lv2:symbol "audio" ;
+    lv2:name "Audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/drive>
+    a lv2:Plugin, lv2:DistortionPlugin ;
+    dg:abbreviation "DRV" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Drive/Boost" ;
+    doap:name  "Hex Chain Drive" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Seven original overdrive, boost & distortion voicings + a NAM loader.
+
+Eight original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
+
+- Green Man — the mid-humped green legend that pushes an amp into song
+- New Dawn — smooth, singing overdrive for lead work
+- Dear Rodent Boy — snarling rodent-toothed distortion
+- Grunge DS — the bright orange distortion box that soundtracked the flannel decade
+- Gilded Horse — the mythical gold transparent overdrive/boost (yes, that one)
+- Super Nova — a smooth super-overdrive with a warm asymmetric clip
+- Preamp 250 — gritty '70s preamp-in-a-box distortion
+- Echo Primer — the tape-echo JFET front end that warmed up so many cranked rigs
+
+Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the eight algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
+
+Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 41 ;   # 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:requiredFeature urid:map , work:schedule ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:extensionData state:interface , work:interface ;
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/drive#nammodel> ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#audiogroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#audiogroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9 ;
+        lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Neural (NAM)"    ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Grunge DS"       ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "Gilded Horse"    ; rdf:value 5 ] ;
+        lv2:scalePoint [ rdfs:label "Super Nova"      ; rdf:value 6 ] ;
+        lv2:scalePoint [ rdfs:label "Preamp 250"      ; rdf:value 7 ] ;
+        lv2:scalePoint [ rdfs:label "Echo Primer"     ; rdf:value 8 ] ;
+        lv2:scalePoint [ rdfs:label "Tube Chauffeur"  ; rdf:value 9 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "tone" ; lv2:name "Tone" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "level" ; lv2:name "Level" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "octave" ; lv2:name "Octave" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Neural (NAM) input/output trims (used only when Model = Neural) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "nam_gain" ; lv2:name "NAM Gain" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "nam_vol" ; lv2:name "NAM Level" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 11 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 12 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 13 ; lv2:symbol "control" ; lv2:name "Control"
+    ] , [
+        a lv2:OutputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 14 ; lv2:symbol "notify" ; lv2:name "Notify"
+    ] .

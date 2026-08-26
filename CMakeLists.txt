@@ -26,6 +26,17 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 #   OFF (default)          → Pi 5 (Cortex-A76 + dot-product) when cross-compiling, or
 #                            the host's -march=native for an on-device/personal build.
 option(GUITARAMP_PORTABLE "Generic baseline build for redistribution" OFF)
+
+# ── Darkglass Anagram (KosmOS) target ────────────────────────────────────────
+# OFF (default) = the pi-Stomp/MOD build, byte-identical to before this option
+# existed. ON appends the KosmOS-required ports (lv2:enabled + kx:Reset) to the
+# Anagram-ported plugins (drive, fuzz) and disables DenormalGuard in them
+# (KosmOS forbids touching global CPU registers). Pair the resulting .so files
+# with the bundles from build-tools/gen_anagram.py (anagram/*.lv2/).
+option(HEXCHAIN_ANAGRAM "Build the Anagram-ported plugins for Darkglass KosmOS" OFF)
+if(HEXCHAIN_ANAGRAM)
+    add_compile_definitions(HEXCHAIN_ANAGRAM=1)
+endif()
 # Explicit arch profile, overriding auto-detection. REQUIRED when CMake can't infer
 # the real target ISA — e.g. an armv7 (arm32v7) container on an aarch64 host, where
 # CMAKE_SYSTEM_PROCESSOR reports the host's "aarch64" even though the compiler is

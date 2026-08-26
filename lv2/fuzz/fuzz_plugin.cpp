@@ -35,6 +35,10 @@ enum FuzzPorts {
     P_TEMP    = 9,   // Tone Bender — germanium temperature
     P_BYPASS  = 10,
     P_GVOL    = 11,  // Tone Bender — guitar volume-pot / source impedance (#45)
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED = 12,  // KosmOS: lv2:enabled (1 = on)
+    P_RESET   = 13,  // KosmOS: kx:Reset trigger
+#endif
     P_N_PORTS
 };
 
@@ -44,6 +48,10 @@ struct FuzzPlugin {
     std::unique_ptr<OversamplingWrapper> oc;   // Octavia (octave-up fuzz)
     std::unique_ptr<OversamplingWrapper> ff;   // Fizz Factory (ZVex-style chaos/gated octave)
     float* ports[P_N_PORTS] = {};
+#ifdef HEXCHAIN_ANAGRAM
+    double rate = 48000.0;     // kept for the kx:Reset re-prepare
+    bool resetLatch = false;
+#endif
 };
 
 static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
@@ -62,6 +70,9 @@ static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
     p->oc->prepare(rate, 512, 1);
     p->ff->prepare(rate, 512, 1);
     p->ih->setParameter("era", 2.0f);   // default Italian Hero variant: Gotham
+#ifdef HEXCHAIN_ANAGRAM
+    p->rate = rate;
+#endif
     return p;
 }
 
@@ -72,7 +83,27 @@ static void fuzz_connect_port(LV2_Handle h, uint32_t port, void* data) {
 static void fuzz_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<FuzzPlugin*>(h);
 
-    if (*p->ports[P_BYPASS] > 0.5f) {
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset trigger (rising edge): full state clear via re-prepare, so a
+    // freshly paired dual-mono partner starts identical (provisional — see
+    // anagram/ANAGRAM-NOTES.md; fires only on host preset/pairing events).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->ih->prepare(p->rate, 512, 1);
+            p->tb->prepare(p->rate, 512, 1);
+            p->oc->prepare(p->rate, 512, 1);
+            p->ff->prepare(p->rate, 512, 1);
+        }
+    } else p->resetLatch = false;
+#endif
+
+    bool bypassed = *p->ports[P_BYPASS] > 0.5f;
+#ifdef HEXCHAIN_ANAGRAM
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#endif
+    if (bypassed) {
         if (p->ports[P_OUT] != p->ports[P_IN])
             std::memcpy(p->ports[P_OUT], p->ports[P_IN], sizeof(float) * n);
         return;

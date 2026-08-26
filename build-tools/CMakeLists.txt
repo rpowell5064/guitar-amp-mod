@@ -75,6 +75,20 @@ target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
 # streaming equivalence across ragged block sizes.
 add_executable(hf_resampler_test "${CMAKE_CURRENT_SOURCE_DIR}/hf_resampler_test.cpp")
 
+# Anagram compile gates (M4): the drive + fuzz TUs must build in BOTH flag
+# states (default pi-Stomp AND -DHEXCHAIN_ANAGRAM=1) — object libs only, no
+# linking (each TU exports lv2_descriptor).
+foreach(mode default anagram)
+    add_library(anagram_check_${mode} OBJECT
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/drive/drive_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/fuzz/fuzz_plugin.cpp")
+    target_include_directories(anagram_check_${mode} PRIVATE
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+        ${HF_LV2_INCLUDE})
+    target_link_libraries(anagram_check_${mode} PRIVATE GuitarAmpSim)
+endforeach()
+target_compile_definitions(anagram_check_anagram PRIVATE HEXCHAIN_ANAGRAM=1)
+
 # Compile-time proof that the engine umbrella needs no LV2 headers (the JUCE
 # desktop processor's situation). Note: NO LV2 include dir on this target.
 add_executable(hexforge_engine_standalone
