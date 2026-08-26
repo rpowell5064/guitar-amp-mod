@@ -61,6 +61,22 @@ cross env doesn't set CMAKE_SYSTEM_PROCESSOR) and `$(which cmake) --build ...`
 (local.env aliases cmake). Device-ready bundles: `anagram/dist/*.lv2`
 (git-ignored — contains binaries).
 
+**UPDATE — NAM RESTORED (user call: the RK3582 has the power).** The GCC 9.4
+blocker was solved in NAM itself, not by removal: the slimmable wavenet
+already carries a C++11 fallback (atomic_* free functions on shared_ptr) that
+was gated on libc++ only; the FetchContent PATCH_COMMAND
+(`deps/guitar-amp-simulator/cmake/nam_atomic_fallback.cmake`) widens the gate
+to `!defined(__cpp_lib_atomic_shared_ptr)` — preprocessor-identical on
+GCC 12+/MSVC. The no-NAM carve paragraphs above are HISTORY (gen_anagram.py
+keeps `strip_nam` for genuinely NAM-less toolchains). Anagram drive ships
+full-fat (1.7 MB): **verified on aarch64 with the KosmOS-toolchain binary —
+an EVH 5150 .nam loads through the worker, WaveNet inference runs
+(out≠in, Δ 0.561), and dual-mono stays bitwise zero through it, kx:Reset
+resync included.** Darkglass CAVEATS.md confirms our design is the sanctioned
+one: atom:Path file parameters are exactly their Neural Loader pattern, the
+LV2 worker is the recommended off-RT mechanism, and plugins must not spawn
+unpinned RT threads (we spawn none).
+
 **Cross-binary runtime proof**: the mpb-built .so files pass the dual-mono
 test (bitwise zero, both phases) on the Pi 5 — rebuilt with
 `-Wl,-z,max-page-size=16384` ONLY for that test: the Pi 5 kernel uses 16 KB
