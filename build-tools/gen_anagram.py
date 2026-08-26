@@ -143,8 +143,12 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
 
 PLUGINS = [
     # (source ttl, plugin uri, abbrev, .so name, bundle dir, strip_nam)
+    # strip_nam stays available for toolchains that can't build NAM; the
+    # Anagram keeps NAM (KosmOS supports the Neural Loader atom:Path file
+    # pattern, and the submodule's nam_atomic_fallback patch makes NamCore
+    # build on its GCC 9.4 toolchain).
     ("lv2/drive.ttl", "https://rpowell5064.github.io/guitaramp-suite/drive",
-     "DRV", "guitaramp_drive.so", "hexchain-drive.lv2", True),
+     "DRV", "guitaramp_drive.so", "hexchain-drive.lv2", False),
     ("lv2/fuzz.ttl", "https://rpowell5064.github.io/guitaramp-suite/fuzz",
      "FZZ", "guitaramp_fuzz.so", "hexchain-fuzz.lv2", False),
 ]

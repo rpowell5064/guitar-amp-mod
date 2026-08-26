@@ -189,29 +189,12 @@ add_lv2_plugin(guitaramp_hexforge lv2/hexforge/hexforge_plugin.cpp)
 # --whole-archive is required: those registrations live in objects nothing
 # references by name otherwise. (On the 32-bit target NAM is hidden via the TTL
 # strip, not unlinked — see the NAM availability note above.)
-if(HEXCHAIN_ANAGRAM)
-    # The Anagram (mod-plugin-builder) toolchain is GCC 9.4; NAM's wavenet
-    # needs C++20 atomic<shared_ptr> ("std::atomic requires a trivially
-    # copyable type" in NAM/wavenet/slimmable.cpp). Cut NAM out entirely on
-    # this target — the 32-bit no-NAM precedent:
-    #   * clear GuitarAmpSim's NamCore link (own + PUBLIC propagation), so
-    #     NamCore is never built;
-    #   * swap NamModel.cpp (the only TU that includes NAM headers — the
-    #     public headers are clean pimpl interfaces) for no-op stubs: loads
-    #     always fail, every Neural path passes through.
-    # gen_anagram.py strips the Neural entries from the Anagram TTLs.
-    set_target_properties(GuitarAmpSim PROPERTIES
-        INTERFACE_LINK_LIBRARIES "" LINK_LIBRARIES "")
-    get_target_property(_gasSrc GuitarAmpSim SOURCES)
-    list(FILTER _gasSrc EXCLUDE REGEX "NamModel\\.cpp$")
-    set_target_properties(GuitarAmpSim PROPERTIES SOURCES "${_gasSrc}")
-    target_sources(GuitarAmpSim PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/lv2/common/AnagramNamStubs.cpp")
-else()
-    foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
-        target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-    endforeach()
-endif()
+# (The Anagram target keeps full NAM: its GCC 9.4 toolchain builds NamCore
+# via the submodule's feature-test patch — see the guitar-amp-simulator
+# FetchContent PATCH_COMMAND / cmake/nam_atomic_fallback.cmake.)
+foreach(_P guitaramp_amp guitaramp_drive guitaramp_cab guitaramp_hexforge)
+    target_link_libraries(${_P} PRIVATE $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
+endforeach()
 
 # ── Install into one LV2 bundle ───────────────────────────────────────────────
 # RELATIVE to the install prefix — so `cmake --install --prefix <dir>` works.
