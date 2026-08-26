@@ -5,6 +5,18 @@
 // NOT a standalone TU: #included by hexforge_plugin.cpp at the exact spot
 // this text was cut from. Do not add includes or include guards here.
 // ─────────────────────────────────────────────────────────────────────────────
+// mod-ui MATERIALIZES atom:Path values when a pedalboard is saved: a built-in
+// "@sentinel" cab becomes "<pedalboard>/effect-N/@sentinel" on restore, plus a
+// BROKEN self-referential symlink on disk. Found 2026-08-21: every preset with
+// a non-@factory synthetic cab had silently fallen back to the factory V30
+// since the pedalboard was last saved (the '@' prefix check missed the
+// absolute form, then the symlink failed to load). Recover the sentinel from
+// the BASENAME so any path shape mod-ui hands back resolves correctly.
+static const char* cabSentinel(const char* path) {
+    const char* base = std::strrchr(path, '/');
+    base = base ? base + 1 : path;
+    return base[0] == '@' ? base : nullptr;
+}
 // Off-RT work body, host-agnostic (Stage B3): the wrapper's worker adapter
 // hands in a respond callback that queues the reply back to the audio thread,
 // where hfWorkResponse() consumes it. Returns false only on allocation failure.

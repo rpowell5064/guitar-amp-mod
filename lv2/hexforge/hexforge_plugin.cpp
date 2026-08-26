@@ -25,54 +25,7 @@
 #include "lv2_util.h"
 #include <lv2/time/time.h>
 #include <ctime>
-#include "hexforge_ports.h"
-#include "hexforge_factory_presets.h"   // band/song factory presets (Banks 2..6), generated
-
-#include "BiquadFilter.h"
-#include "PickupVoicer.h"
-#include "HumNotchComb.h"
-#include "CalMeasure.h"
-#include "EvhCaptureFit.h"
-#include "RectoCaptureFit.h"
-#include "PickupLoadSim.h"
-#include "IrResample.h"
-#include "AdaaSoftClip.h"
-#include "NoiseGateBlock.h"
-#include "CompressorBlock.h"
-#include "OversamplingWrapper.h"
-#include "EHXBigMuff.h"
-#include "Octavia.h"
-#include "ToneBenderMkII.h"
-#include "ZVexFuzzFactory.h"
-#include "OverdriveBlock.h"
-#include "AmpBlockExtended.h"
-#include "PowerAmpProcessor.h"
-#include "CabinetBlock.h"
-#include "DefaultCabIR.h"
-#include "CabModels.h"
-#include "ModulationBlock.h"
-#include "ModulationFactory.h"
-#include "DelayBlock.h"
-#include "DelayFactory.h"
-#include "PlateReverbBlock.h"
-#include "WahBlock.h"
-#include "OctaveBlock.h"
-#include "NailDistortion.h"
-#include "NamModel.h"
-#include "DenormalGuard.h"
-
-#include <new>
-#include <cstring>
-#include <cstdint>
-#include <cstdio>
-#include <cmath>
-#include <memory>
-#include <vector>
-#include <string>
-#include <fstream>
-#include <algorithm>
-#include <cstdlib>
-#include "engine/hf_platform.h"
+#include "engine/hf_engine_all.h"   // the complete host-API-free engine (Stage B4)
 
 #define HEXFORGE_URI     "https://rpowell5064.github.io/guitaramp-suite/hexforge"
 #define HEXFORGE_IR_URI  HEXFORGE_URI "#irfile"
@@ -83,7 +36,6 @@
 #define HEXFORGE_IR2_URI HEXFORGE_URI "#ir2file"
 #define HEXFORGE_DR2NAM  HEXFORGE_URI "#dr2nam"
 #define LV2_MIDI_MidiEvent_URI "http://lv2plug.in/ns/ext/midi#MidiEvent"
-#include "engine/hf_types.inc"
 
 // ── LV2 instance (Stage B3): the wrapper's own state around the engine ────────
 // HexForge is now host-API-free; everything LV2 (atom sequences, URID map,
@@ -225,7 +177,6 @@ struct Lv2Host final : HfHostIface {
     void emitApply() override { ::emitApply(p); }
     void statusDump() override { hfWriteStatus(p); }
 };
-#include "engine/hf_presets.inc"
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
                                  const char*, const LV2_Feature* const* features) {
@@ -339,21 +290,6 @@ static void hf_connect_port(LV2_Handle h, uint32_t port, void* data) {
     }
 }
 
-// ── Worker ────────────────────────────────────────────────────────────────────
-// mod-ui MATERIALIZES atom:Path values when a pedalboard is saved: a built-in
-// "@sentinel" cab becomes "<pedalboard>/effect-N/@sentinel" on restore, plus a
-// BROKEN self-referential symlink on disk. Found 2026-08-21: every preset with
-// a non-@factory synthetic cab had silently fallen back to the factory V30
-// since the pedalboard was last saved (the '@' prefix check missed the
-// absolute form, then the symlink failed to load). Recover the sentinel from
-// the BASENAME so any path shape mod-ui hands back resolves correctly.
-static const char* cabSentinel(const char* path) {
-    const char* base = std::strrchr(path, '/');
-    base = base ? base + 1 : path;
-    return base[0] == '@' ? base : nullptr;
-}
-#include "engine/hf_worker.inc"
-
 // ── LV2 adapters for the engine worker (Stage B3) ─────────────────────────────
 static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
                                  LV2_Worker_Respond_Handle handle, uint32_t, const void* data) {
@@ -368,8 +304,6 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
     hfWorkResponse(static_cast<HexForgeLv2*>(h), data);
     return LV2_WORKER_SUCCESS;
 }
-
-#include "engine/hf_run_core.inc"
 
 // ── run(): LV2 event plumbing around the host-API-free engine (Stage B2) ──────
 // Order preserved exactly from the monolith: prime → atom control loop → engine

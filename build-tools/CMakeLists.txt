@@ -70,3 +70,12 @@ target_include_directories(hexforge_golden PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
+
+# Compile-time proof that the engine umbrella needs no LV2 headers (the JUCE
+# desktop processor's situation). Note: NO LV2 include dir on this target.
+add_executable(hexforge_engine_standalone
+    "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_engine_standalone.cpp")
+target_include_directories(hexforge_engine_standalone PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge/engine"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common")
+target_link_libraries(hexforge_engine_standalone PRIVATE GuitarAmpSim)
