@@ -15,7 +15,12 @@ FetchContent_Declare(NeuralAmpModelerCore
     # Not a tag tip, so GIT_SHALLOW must be FALSE to fetch an arbitrary SHA.
     GIT_TAG        d65cf2114e4a9e083292b235af1a24789d6fe128
     GIT_SHALLOW    FALSE
-    GIT_PROGRESS   TRUE)
+    GIT_PROGRESS   TRUE
+    # Widen the slimmable-wavenet atomic<shared_ptr> gate to a real feature
+    # test so pre-C++20 standard libraries (GCC 9.4 = the Darkglass Anagram
+    # toolchain) take NAM's existing atomic_* free-function fallback. No-op
+    # for GCC 12+/MSVC. See cmake/nam_atomic_fallback.cmake.
+    PATCH_COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/nam_atomic_fallback.cmake")
 # Populate sources only — do NOT run NAMCore's CMakeLists (it builds tools we don't need).
 FetchContent_GetProperties(NeuralAmpModelerCore)
 if(NOT neuralampmodelercore_POPULATED)
