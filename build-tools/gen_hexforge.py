@@ -1867,7 +1867,10 @@ def emit_juce_params():
     def esc(s):
         return str(s).replace("\\", "\\\\").replace('"', '\\"')
     def flt(v):
-        return ("%.9g" % float(v)) + "f"
+        s = "%.9g" % float(v)
+        if "." not in s and "e" not in s and "E" not in s:
+            s += ".0"    # "0f" is an invalid literal — force a decimal point
+        return s + "f"
     idx_by_sym = {c["sym"]: i for i, c in enumerate(ctrl)}
     p0, p1 = idx_by_sym["out_level"], idx_by_sym["sw_a"]
     def cls(i, c):

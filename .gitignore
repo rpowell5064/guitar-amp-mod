@@ -45,3 +45,4 @@ CLAUDE.local.md
 # The OUTPUT faceplate-*.png shipped in lv2/modgui-hexforge/ ARE committed.
 build-tools/materials/
 build-tools/tubehex_src.png
+desktop/out/
