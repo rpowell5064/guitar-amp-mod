@@ -332,6 +332,119 @@ static const char* cabSentinel(const char* path) {
 }
 #include "engine/hf_worker.inc"
 #include "engine/hf_run_core.inc"
+
+// ── run(): LV2 event plumbing around the host-API-free engine (Stage B2) ──────
+// Order preserved exactly from the monolith: prime → atom control loop → engine
+// (live-edit detect, command edges, MIDI-press replay, audio, notify pushes) →
+// close the notify sequence.
+static void hf_run(LV2_Handle h, uint32_t n) {
+    DenormalGuard denormalGuard;
+    auto* p = static_cast<HexForge*>(h);
+    const URIs& u = p->uris;
+    hfPrime(p);
+
+    // ── Atom: IR file set / get, + open notify sequence ──
+    const bool haveNotify = (p->notify != nullptr);
+    LV2_Atom_Forge_Frame seqFrame;
+    if (haveNotify) {
+        lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), p->notify->atom.size);
+        lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
+    }
+    if (p->control) {
+        LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
+            if (ev->body.type != u.atom_Object) continue;
+            const auto* obj = reinterpret_cast<const LV2_Atom_Object*>(&ev->body);
+            if (obj->body.otype == u.patch_Set) {
+                const LV2_Atom *prop=nullptr, *val=nullptr;
+                lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
+                if (!prop || prop->type!=u.atom_URID || !val) continue;
+                const LV2_URID which = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
+                // Rename the active preset (UI -> plugin, String value).
+                if (val->type == u.atom_String) {
+                    if (which == u.ps_name) {
+                        const char* s = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                        Preset& pr = p->presets[p->curBank][p->curSlot];
+                        std::strncpy(pr.name, s, sizeof(pr.name)-1); pr.name[sizeof(pr.name)-1]='\0';
+                        for (char* c=pr.name; *c; ++c) if (*c=='|') *c=' ';   // keep index delimiter clean
+                        pr.used = true;
+                        if (haveNotify) p->host->emitIndex();
+                        p->host->statusDump();
+                        hfWriteBackup(p);
+                    }
+                    continue;
+                }
+                if (val->type != u.atom_Path) continue;
+                const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                char* dst = nullptr; WorkMsg msg;
+                if      (which == u.ir_file) { dst = p->irPath;     msg.type = W_CAB_IR; }
+                else if (which == u.amp_nam) { dst = p->ampNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 0; }
+                else if (which == u.dr_nam)  { dst = p->drNamPath;  msg.type = W_NAM_LOAD; msg.namSlot = 1; }
+                else if (which == u.cab_nam) { dst = p->cabNamPath; msg.type = W_NAM_LOAD; msg.namSlot = 2; }
+                else if (which == u.amp2_nam){ dst = p->amp2NamPath; msg.type = W_NAM_LOAD; msg.namSlot = 3; }
+                else if (which == u.dr2_nam) { dst = p->dr2NamPath; msg.type = W_NAM_LOAD; msg.namSlot = 4; }
+                else if (which == u.ir2_file){
+                    // Cab 2 user IR: "@builtin" (or empty) = defer to the rb_cab
+                    // dropdown -- clear the override and let run() regenerate the
+                    // sentinel; a real path loads on the Cab 2 slot.
+                    const char* e2 = (std::strcmp(path, "@builtin") == 0) ? "" : path;
+                    std::strncpy(p->ir2Path, e2, kPathMax-1); p->ir2Path[kPathMax-1]='\0';
+                    if (std::strcmp(e2, "@nocab") == 0) { p->lastCab2Model = -2; continue; }   // bypassed below; nothing to load
+                    if (e2[0]) {
+                        WorkMsg m2; m2.type = W_CAB_IR; m2.namSlot = 1;
+                        std::strncpy(m2.path, e2, kPathMax-1); m2.path[kPathMax-1]='\0';
+                        p->worker->schedule(&m2, sizeof(m2));
+                    } else p->lastCab2Model = -1;   // re-sentinel from rb_cab next block
+                    continue;
+                }
+                if (dst) {
+                    // "Factory Cab" sentinel → clear IR to the built-in default.
+                    const char* eff = (dst == p->irPath && std::strcmp(path, kFactoryIR) == 0) ? "" : path;
+                    std::strncpy(dst, eff, kPathMax-1); dst[kPathMax-1]='\0';
+                    std::strncpy(msg.path, dst, kPathMax-1); msg.path[kPathMax-1]='\0';
+                    p->worker->schedule(&msg, sizeof(msg));
+                }
+            } else if (obj->body.otype == u.patch_Get && haveNotify) {
+                p->host->fileSet(HFP_IR_FILE, p->irPath);
+                p->host->fileSet(HFP_AMP_NAM, p->ampNamPath);
+                p->host->fileSet(HFP_DR_NAM, p->drNamPath);
+                p->host->fileSet(HFP_CAB_NAM, p->cabNamPath);
+                p->host->fileSet(HFP_AMP2_NAM, p->amp2NamPath);
+                p->host->fileSet(HFP_IR2_FILE, p->ir2Path);
+                p->host->fileSet(HFP_DR2_NAM, p->dr2NamPath);
+                p->host->stringSet(HFP_PS_NAME, p->presets[p->curBank][p->curSlot].name);
+                p->host->emitIndex();
+                p->host->emitApply();   // sync knobs to the active preset's effective values
+            } else if (obj->body.otype == u.time_Position) {
+                // Host tempo (tap-tempo / MIDI clock) → cache BPM for the synced Delay/Mod.
+                const LV2_Atom* bpmA = nullptr;
+                lv2_atom_object_get(obj, u.time_bpm, &bpmA, 0);
+                if (bpmA && bpmA->type == u.atom_Float) {
+                    const float b = reinterpret_cast<const LV2_Atom_Float*>(bpmA)->body;
+                    if (b >= 20.0f && b <= 400.0f) p->hostBpm = b;
+                }
+            }
+        }
+    }
+
+    // ── Footswitch MIDI (pi-Stomp CC 60..63): each CC message = one switch press,
+    // replayed inside the engine at the exact point the decode used to sit ──
+    int swPresses[16]; int nSw = 0;
+    if (p->midiIn) {
+        LV2_ATOM_SEQUENCE_FOREACH(p->midiIn, ev) {
+            if (ev->body.type != u.midi_MidiEvent || ev->body.size < 3) continue;
+            const uint8_t* m = static_cast<const uint8_t*>(LV2_ATOM_BODY_CONST(&ev->body));
+            if ((m[0] & 0xF0) != 0xB0) continue;            // Control Change, any channel
+            if (m[2] < 64) continue;                        // press-down only (ignore the release = value 0)
+            const int sw = static_cast<int>(m[1]) - kMidiBaseCC;
+            if (sw >= 0 && sw <= 3 && nSw < 16) swPresses[nSw++] = sw;
+        }
+    }
+
+    hfEngineRun(p, n, swPresses, nSw);
+
+    if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+}
+
 static void hf_cleanup(LV2_Handle h) {
     auto* p = static_cast<HexForge*>(h);
     delete p->amp;
