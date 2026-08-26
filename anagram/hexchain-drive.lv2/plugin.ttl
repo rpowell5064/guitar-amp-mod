@@ -16,12 +16,6 @@
 @prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
 
-# NAM neural-model file parameter (used when Model = "Neural (NAM)").
-<https://rpowell5064.github.io/guitaramp-suite/drive#nammodel>
-    a lv2:Parameter ;
-    rdfs:label "NAM Model" ;
-    rdfs:range atom:Path ;
-    mod:fileTypes "nammodel,nam" .
 
 <https://rpowell5064.github.io/guitaramp-suite/drive#audiogroup>
     a pg:MonoGroup, pg:Group ;
@@ -60,7 +54,6 @@ Free and open source (GPL-3).""" ;
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
-    patch:writable <https://rpowell5064.github.io/guitaramp-suite/drive#nammodel> ;
 
     lv2:port [
         a lv2:AudioPort, lv2:InputPort ;
@@ -80,7 +73,6 @@ Free and open source (GPL-3).""" ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
-        lv2:scalePoint [ rdfs:label "Neural (NAM)"    ; rdf:value 3 ] ;
         lv2:scalePoint [ rdfs:label "Grunge DS"       ; rdf:value 4 ] ;
         lv2:scalePoint [ rdfs:label "Gilded Horse"    ; rdf:value 5 ] ;
         lv2:scalePoint [ rdfs:label "Super Nova"      ; rdf:value 6 ] ;

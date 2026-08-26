@@ -39,17 +39,42 @@ M4 pre-work, done without hardware. The pilot pair is **Hex Chain Drive**
 | lv2:enabled ControlPort default 1 | ✓ |
 | 0 dBFS = 3.119 Vrms reference | n/a until device gain-staging check |
 
+## Cross-compile: DONE (2026-08-26)
+
+Toolchain: WSL2 Ubuntu 24.04 distro `mpb` (imported rootfs, root-less
+`builder` user — crosstool-NG refuses root), `/opt/mod-plugin-builder`,
+`./bootstrap.sh darkglass-anagram` per BUILDING-LINUX.md (no Docker needed —
+WSL *is* the Linux host). Gotchas hit: (a) buildroot rejects the default WSL
+PATH (Windows entries with spaces) — `/etc/wsl.conf [interop]
+appendWindowsPath=false`; (b) detached builds die with WSL idle-shutdown —
+launch via `setsid ... < /dev/null &`; (c) **the toolchain is GCC 9.4 and
+cannot build NAM's C++20 wavenet** (`std::atomic requires a trivially
+copyable type`, NAM/wavenet/slimmable.cpp) → the Anagram build cuts NAM out:
+root CMake clears GuitarAmpSim's NamCore link and swaps NamModel.cpp for
+`lv2/common/AnagramNamStubs.cpp` (public headers are clean pimpl — only that
+one TU touches NAM headers); gen_anagram.py strips the Neural scalePoint +
+file parameter from the drive TTL.
+
+Build: `source local.env darkglass-anagram`, then CMake with
+`-DHEXCHAIN_ANAGRAM=ON -DGUITARAMP_ARCH=armv8` (arch MUST be explicit — the
+cross env doesn't set CMAKE_SYSTEM_PROCESSOR) and `$(which cmake) --build ...`
+(local.env aliases cmake). Device-ready bundles: `anagram/dist/*.lv2`
+(git-ignored — contains binaries).
+
+**Cross-binary runtime proof**: the mpb-built .so files pass the dual-mono
+test (bitwise zero, both phases) on the Pi 5 — rebuilt with
+`-Wl,-z,max-page-size=16384` ONLY for that test: the Pi 5 kernel uses 16 KB
+pages and refuses the stock 4 KB-aligned link ("ELF load command
+address/offset not page-aligned"). The SHIPPED bundles keep the stock mpb
+link. If the Anagram ever runs a 16K-page kernel, revisit.
+
 ## Hardware-gated (next)
 
-1. **Cross-compile**: mod-plugin-builder via Docker — neither Docker nor a
-   WSL distro is installed on this machine yet (`wsl --install -d Ubuntu`
-   first, or use the aarch64 CI toolchain if the KosmOS glibc allows).
-2. **Pi 5 staging**: load the bundles + `-DHEXCHAIN_ANAGRAM=ON` .so under
-   mod-host; dual-mono test = two instances, identical input, diff must be
-   all-zero; pulse `reset` and re-verify.
-3. **On-device**: sideloading procedure (ask Darkglass), CPU headroom
-   (fuzz oversamples 4× — the `eco` 2× variant is the fallback), and the
-   NAM file-parameter picker contract on the LVGL auto-UI.
+1. **On-device**: enable Developer Mode, then per BUILDING-LINUX.md:
+   `scp -O -r anagram/dist/*.lv2 root@192.168.51.1:/root/.lv2/` and
+   `ssh root@192.168.51.1 "systemctl restart jack2 lvgl-app"` (USB network).
+2. CPU headroom check (fuzz oversamples 4× — the `eco` 2× variant is the
+   fallback) and the LVGL auto-UI pass (pages of 6, block images).
 
 ## Open questions for Darkglass (with the Marketplace/dev application)
 

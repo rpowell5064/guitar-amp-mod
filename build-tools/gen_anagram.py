@@ -49,9 +49,21 @@ def enabled_reset_blocks():
          "        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0"),
     ]
 
-def transform(src_path, plugin_uri, abbrev, so_name, group_frag):
+def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False):
     with open(src_path, "r", encoding="utf-8") as f:
         ttl = f.read()
+
+    if strip_nam:
+        # KosmOS target ships without NAM (GCC 9.4 toolchain can't build the
+        # C++20 wavenet; the .so stubs every load): drop the file parameter,
+        # its patch:writable, and the Neural scalePoint. The nam_gain/nam_vol
+        # ports stay (harmless, keeps indices aligned with the enum).
+        ttl, n1 = re.subn(r"# NAM neural-model file parameter[^\n]*\n"
+                          r"<[^>]*#nammodel>\n(?:[^\n]*\n)*?[^\n]*mod:fileTypes[^\n]*\n",
+                          "", ttl)
+        ttl, n2 = re.subn(r"\n\s*patch:writable <[^>]*#nammodel> ;", "", ttl)
+        ttl, n3 = re.subn(r"\n\s*lv2:scalePoint \[ rdfs:label \"Neural \(NAM\)\"[^\n]*", "", ttl)
+        assert (n1, n2, n3) == (1, 1, 1), f"{src_path}: NAM strip anchors moved {n1},{n2},{n3}"
 
     # 1. Cut the modgui section: from "modgui:gui [" through the final "] ."
     #    and close the plugin statement with " ." instead.
@@ -130,17 +142,17 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag):
     return ttl + "\n", manifest
 
 PLUGINS = [
-    # (source ttl, plugin uri, abbrev, .so name, bundle dir)
+    # (source ttl, plugin uri, abbrev, .so name, bundle dir, strip_nam)
     ("lv2/drive.ttl", "https://rpowell5064.github.io/guitaramp-suite/drive",
-     "DRV", "guitaramp_drive.so", "hexchain-drive.lv2"),
+     "DRV", "guitaramp_drive.so", "hexchain-drive.lv2", True),
     ("lv2/fuzz.ttl", "https://rpowell5064.github.io/guitaramp-suite/fuzz",
-     "FZZ", "guitaramp_fuzz.so", "hexchain-fuzz.lv2"),
+     "FZZ", "guitaramp_fuzz.so", "hexchain-fuzz.lv2", False),
 ]
 
 if __name__ == "__main__":
     ok = True
-    for src, uri, abbrev, so, bundle in PLUGINS:
-        ttl, manifest = transform(os.path.join(REPO, src), uri, abbrev, so, bundle)
+    for src, uri, abbrev, so, bundle, strip_nam in PLUGINS:
+        ttl, manifest = transform(os.path.join(REPO, src), uri, abbrev, so, bundle, strip_nam)
         bdir = os.path.join(REPO, "anagram", bundle)
         os.makedirs(bdir, exist_ok=True)
         with open(os.path.join(bdir, "plugin.ttl"), "w", newline="\n", encoding="utf-8") as f:
