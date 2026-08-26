@@ -45,3 +45,33 @@ add_executable(cal_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cal_check.cpp")
 target_include_directories(cal_check PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
     "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include")
+
+# ── Golden-render fingerprint harness (engine-extraction gate, M0) ────────────
+# Statically links the WHOLE plugin TU (no dlopen) so it runs on Windows too.
+# LV2 headers: system pkg-config where available, else fetched (header-only).
+find_package(PkgConfig QUIET)
+if(PkgConfig_FOUND)
+    pkg_check_modules(LV2 QUIET lv2)
+endif()
+if(LV2_FOUND)
+    set(HF_LV2_INCLUDE ${LV2_INCLUDE_DIRS})
+else()
+    include(FetchContent)
+    FetchContent_Declare(lv2headers
+        URL https://github.com/lv2/lv2/archive/refs/tags/v1.18.10.tar.gz)
+    FetchContent_MakeAvailable(lv2headers)
+    set(HF_LV2_INCLUDE "${lv2headers_SOURCE_DIR}/include")
+endif()
+add_executable(hexforge_golden
+    "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_golden.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge/hexforge_plugin.cpp")
+target_include_directories(hexforge_golden PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+    ${HF_LV2_INCLUDE})
+target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
+if(MSVC)
+    # Unmodified monolith uses ::mkdir(path,mode) + clock_gettime; shim them in.
+    target_compile_options(hexforge_golden PRIVATE
+        /FI"${CMAKE_CURRENT_SOURCE_DIR}/msvc_posix_compat.h")
+endif()
