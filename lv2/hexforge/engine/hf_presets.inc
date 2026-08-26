@@ -13,6 +13,28 @@
 static std::string hfBackupDir() {
     return hfplat::configDir();
 }
+// ── UI notification payload builders (M2: shared by the LV2 forge emitters and
+// the desktop webview bridge — one format, two hosts) ─────────────────────────
+// "bank|slot|name0|name1|...|name127" — drives the UI bank indicator + name list.
+static int hfIndexString(HexForge* p, char* buf, int cap) {
+    int o = std::snprintf(buf, cap, "%d|%d", p->curBank, p->curSlot);
+    for (int b = 0; b < kBanks; ++b)
+        for (int s = 0; s < kSlots; ++s) {
+            const Preset& pr = p->presets[b][s];
+            const char* nm = (pr.used && pr.name[0]) ? pr.name : "";
+            o += std::snprintf(buf + o, cap - o, "|%s", nm);
+            if (o >= cap - 40) { b = kBanks; break; }
+        }
+    return o;
+}
+// "sym=val;sym=val;..." for every param port — the UI replays it via set_port_value.
+static int hfApplyString(HexForge* p, char* buf, int cap) {
+    int o = 0; buf[0] = '\0';
+    for (int i = 0; i < HF_N_PORTS; ++i)
+        if (isParamPort(i) && o < cap - 40)
+            o += std::snprintf(buf + o, cap - o, "%s=%g;", HF_PORT_SYM[i], p->eff[i]);
+    return o;
+}
 // Reconstruct an old positional value array (the npc old values sit at the start
 // of vals[], rest zero) onto the CURRENT (v7) port layout, inserting defaults for
 // ports that didn't exist in `srcVer`. Two insertion regions, both mid-enum:

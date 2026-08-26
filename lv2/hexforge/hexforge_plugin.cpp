@@ -113,27 +113,19 @@ static void forgeStringSet(HexForgeLv2* p, LV2_URID prop, const char* s) {
     lv2_atom_forge_string(&p->forge, s, static_cast<uint32_t>(std::strlen(s)));
     lv2_atom_forge_pop(&p->forge, &frame);
 }
-// "bank|slot|name0|name1|...|name31" — drives the UI bank indicator + name list.
+// "bank|slot|name0|name1|...|name127" — payload built by the shared engine
+// helper (hfIndexString) so the desktop bridge emits the identical format.
 static void emitIndex(HexForgeLv2* p) {
     if (!p->notify) return;
-    char buf[6144]; int o = 0;   // 32 banks × 4 slots of names
-    o += std::snprintf(buf, sizeof(buf), "%d|%d", p->curBank, p->curSlot);
-    for (int b = 0; b < kBanks; ++b)
-        for (int s = 0; s < kSlots; ++s) {
-            const Preset& pr = p->presets[b][s];
-            const char* nm = (pr.used && pr.name[0]) ? pr.name : "";
-            o += std::snprintf(buf + o, sizeof(buf) - o, "|%s", nm);
-            if (o >= (int)sizeof(buf) - 40) { b = kBanks; break; }
-        }
+    char buf[6144];   // 32 banks × 4 slots of names
+    hfIndexString(p, buf, (int) sizeof(buf));
     forgeStringSet(p, p->uris.ps_index, buf);
 }
-// "sym=val;sym=val;..." for every param port — the UI replays it via set_port_value.
+// "sym=val;sym=val;..." — shared engine helper (hfApplyString).
 static void emitApply(HexForgeLv2* p) {
     if (!p->notify) return;
-    char buf[6144]; int o = 0; buf[0] = '\0';
-    for (int i = 0; i < HF_N_PORTS; ++i)
-        if (isParamPort(i) && o < (int)sizeof(buf) - 40)
-            o += std::snprintf(buf + o, sizeof(buf) - o, "%s=%g;", HF_PORT_SYM[i], p->eff[i]);
+    char buf[6144];
+    hfApplyString(p, buf, (int) sizeof(buf));
     forgeStringSet(p, p->uris.ps_apply, buf);
 }
 // Publish the active bank/slot/name to a status file the pi-Stomp LCD reads

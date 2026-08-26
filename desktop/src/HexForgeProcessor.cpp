@@ -34,6 +34,7 @@ HexForgeProcessor::HexForgeProcessor()
     for (int i = 0; i < kHfNumDesktopParams; ++i) {
         const HfDesktopParam& d = kHfDesktopParams[i];
         hostVals[(size_t) d.port] = d.df;
+        portBySym[d.id] = d.port;
         if (d.cls == HFD_PARAM || d.cls == HFD_SETTING)
             rows.push_back({ d.port, apvts.getRawParameterValue(d.id) });
     }
@@ -55,6 +56,7 @@ HexForgeProcessor::~HexForgeProcessor() {
 void HexForgeProcessor::destroyEngine() {
     if (!eng) return;
     worker.stop();
+    hostBridge.eng = nullptr;
     // Mirror hf_cleanup, plus the members it historically leaves to process
     // teardown (amp2 + pendings) — a desktop instance must free everything.
     delete eng->amp;
@@ -85,6 +87,7 @@ void HexForgeProcessor::rebuildEngine(double rate) {
         p->hostPorts[i] = &hostVals[(size_t) i];
     }
     eng = p;
+    hostBridge.eng = p;
     worker.start(eng);
     applyPendingState();
 }
@@ -127,12 +130,44 @@ void HexForgeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mid
                     case HFP_IR2_FILE:
                         std::strncpy(eng->ir2Path, c.path, kPathMax - 1);
                         eng->ir2Path[kPathMax - 1] = '\0';
-                        eng->lastCab2Model = -1;   // run() re-schedules from the new path
+                        // "@nocab" bypasses Cab 2 (LV2 atom-loop parity, -2 = user
+                        // override active); anything else re-loads next run().
+                        eng->lastCab2Model = (std::strcmp(c.path, "@nocab") == 0) ? -2 : -1;
                         break;
                 }
             }
             pendingPaths.clear();
         }
+    }
+
+    // 2b) UI preset rename (#ps_name patch) — LV2 atom-loop parity.
+    if (haveRename.exchange(false)) {
+        juce::String nm;
+        {
+            const juce::SpinLock::ScopedLockType l(renameLock);
+            nm = pendingRename;
+        }
+        Preset& pr = eng->presets[eng->curBank][eng->curSlot];
+        std::snprintf(pr.name, sizeof(pr.name), "%s", nm.toRawUTF8());
+        for (char* ch = pr.name; *ch; ++ch) if (*ch == '|') *ch = ' ';
+        pr.used = true;
+        if (eng->uiNotify) eng->host->emitIndex();
+        hfWriteBackup(eng);
+    }
+
+    // 2c) Editor (re)attached: replay the patch:Get response — current files,
+    // preset name, index list, knob snapshot — through the notify queue.
+    if (uiResync.exchange(false) && uiAttached.load()) {
+        eng->host->fileSet(HFP_IR_FILE, eng->irPath);
+        eng->host->fileSet(HFP_AMP_NAM, eng->ampNamPath);
+        eng->host->fileSet(HFP_DR_NAM, eng->drNamPath);
+        eng->host->fileSet(HFP_CAB_NAM, eng->cabNamPath);
+        eng->host->fileSet(HFP_AMP2_NAM, eng->amp2NamPath);
+        eng->host->fileSet(HFP_IR2_FILE, eng->ir2Path);
+        eng->host->fileSet(HFP_DR2_NAM, eng->dr2NamPath);
+        eng->host->stringSet(HFP_PS_NAME, eng->presets[eng->curBank][eng->curSlot].name);
+        eng->host->emitIndex();
+        eng->host->emitApply();
     }
 
     // 3) APVTS -> host port values (the engine's live-edit detect does the rest).
@@ -163,7 +198,7 @@ void HexForgeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mid
     setPort(HF_OUT_R, outR);
 
     hfPrime(eng);
-    eng->uiNotify = false;   // no notify channel yet (webview lands in M2)
+    eng->uiNotify = uiAttached.load(std::memory_order_relaxed);
     hfEngineRun(eng, (uint32_t) n, nullptr, 0);
 
     if (buffer.getNumChannels() == 1 && outR == monoScratch.data())
@@ -196,6 +231,42 @@ void HexForgeProcessor::requestFileLoad(int hfProp, const juce::String& path) {
     std::snprintf(c.path, sizeof(c.path), "%s", path.toRawUTF8());
     const juce::SpinLock::ScopedLockType l(pathLock);
     pendingPaths.push_back(c);
+}
+void HexForgeProcessor::requestPortSet(const juce::String& symbol, float value) {
+    if (auto* rp = apvts.getParameter(symbol)) {   // PARAM/SETTING → through the host
+        rp->setValueNotifyingHost(rp->convertTo0to1(value));
+        return;
+    }
+    auto it = portBySym.find(symbol);              // INTERNAL/COMMAND → straight in
+    if (it != portBySym.end()) hostVals[(size_t) it->second] = value;
+}
+int HexForgeProcessor::propForUri(const juce::String& uri) {
+    if (uri.endsWith("#irfile"))  return HFP_IR_FILE;
+    if (uri.endsWith("#ampnam"))  return HFP_AMP_NAM;
+    if (uri.endsWith("#drnam"))   return HFP_DR_NAM;
+    if (uri.endsWith("#cabnam"))  return HFP_CAB_NAM;
+    if (uri.endsWith("#amp2nam")) return HFP_AMP2_NAM;
+    if (uri.endsWith("#ir2file")) return HFP_IR2_FILE;
+    if (uri.endsWith("#dr2nam"))  return HFP_DR2_NAM;
+    return -1;
+}
+void HexForgeProcessor::requestParamSet(const juce::String& uri, const juce::String& value) {
+    const int prop = propForUri(uri);
+    if (prop < 0) {
+        if (uri.endsWith("#ps_name")) requestPresetRename(value);
+        return;
+    }
+    juce::String v = value;
+    if (prop == HFP_IR_FILE && v == "@factory") v = juce::String();   // clear to the built-in
+    if (prop == HFP_IR2_FILE && v == "@builtin") v = juce::String();  // defer to rb_cab
+    requestFileLoad(prop, v);
+}
+void HexForgeProcessor::requestPresetRename(const juce::String& name) {
+    {
+        const juce::SpinLock::ScopedLockType l(renameLock);
+        pendingRename = name;
+    }
+    haveRename.store(true);
 }
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -284,79 +355,174 @@ void HexForgeProcessor::syncApvtsFromEff() {
     }
 }
 
-// ── Editor: generic parameter panel + a minimal M1 tool strip ─────────────────
+// ── Editor: the device modgui in a webview (M2) ───────────────────────────────
+// The page is the pre-rendered Mustache icon + the device's unmodified
+// script-hexforge.js, driven by hexforge-desktop-bridge.js (the mod-ui shim).
+// Dev serving straight from the repo (HF_DESKTOP_RESOURCES_DIR / HF_MODGUI_DIR)
+// so UI edits are a browser-reload away; packaging embeds them later (M3).
 namespace {
-class M1Editor final : public juce::AudioProcessorEditor, private juce::Timer {
+static const char* kHfUriStr = "https://rpowell5064.github.io/guitaramp-suite/hexforge";
+
+juce::String mimeFor(const juce::String& ext) {
+    if (ext == ".html") return "text/html";
+    if (ext == ".css")  return "text/css";
+    if (ext == ".js")   return "text/javascript";
+    if (ext == ".png")  return "image/png";
+    if (ext == ".jpg" || ext == ".jpeg") return "image/jpeg";
+    if (ext == ".svg")  return "image/svg+xml";
+    return "application/octet-stream";
+}
+
+class WebEditor final : public juce::AudioProcessorEditor, private juce::Timer {
 public:
-    explicit M1Editor(HexForgeProcessor& p)
-        : juce::AudioProcessorEditor(p), proc(p), generic(p) {
-        addAndMakeVisible(presetBox);
-        addAndMakeVisible(loadNam);
-        addAndMakeVisible(loadIr);
-        addAndMakeVisible(rateNote);
-        addAndMakeVisible(generic);
-        refreshPresets();
-        presetBox.onChange = [this] {
-            const int id = presetBox.getSelectedId();
-            if (id > 0) proc.requestPreset(id - 1);
-        };
-        loadNam.setButtonText("Load Amp NAM...");
-        loadNam.onClick = [this] { pickFile(HFP_AMP_NAM, "*.nam"); };
-        loadIr.setButtonText("Load Cab IR...");
-        loadIr.onClick = [this] { pickFile(HFP_IR_FILE, "*.wav"); };
-        rateNote.setJustificationType(juce::Justification::centredLeft);
+    explicit WebEditor(HexForgeProcessor& p)
+        : juce::AudioProcessorEditor(p), proc(p),
+          resDir(HF_DESKTOP_RESOURCES_DIR), modguiDir(HF_MODGUI_DIR) {
+        auto opts =
+            juce::WebBrowserComponent::Options {}
+                .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
+                .withWinWebView2Options(
+                    juce::WebBrowserComponent::Options::WinWebView2 {}.withUserDataFolder(
+                        juce::File::getSpecialLocation(juce::File::tempDirectory)
+                            .getChildFile("HexForgeWebView2")))
+                .withNativeIntegrationEnabled()
+                .withResourceProvider([this](const auto& url) { return provide(url); })
+                .withEventListener("hfMsg", [this](const juce::var& v) { onMsg(v); });
+        web = std::make_unique<juce::WebBrowserComponent>(opts);
+        addAndMakeVisible(*web);
+        web->goToURL(juce::WebBrowserComponent::getResourceProviderRoot());
         setResizable(true, true);
-        setSize(760, 640);
-        startTimerHz(2);
+        setSize(1500, 900);   // pedal is 1440px wide + page padding
+        startTimerHz(30);
+        lastOut.assign((size_t) kHfNumDesktopParams, -1.0e9f);
     }
-    void resized() override {
-        auto r = getLocalBounds();
-        auto top = r.removeFromTop(34).reduced(4);
-        presetBox.setBounds(top.removeFromLeft(240));
-        loadNam.setBounds(top.removeFromLeft(140).reduced(2, 0));
-        loadIr.setBounds(top.removeFromLeft(140).reduced(2, 0));
-        rateNote.setBounds(top);
-        generic.setBounds(r);
-    }
+    ~WebEditor() override { proc.uiAttached.store(false); }
+    void resized() override { web->setBounds(getLocalBounds()); }
+
 private:
+    std::optional<juce::WebBrowserComponent::Resource> provide(const juce::String& url) {
+        juce::String path = url.startsWith("/") ? url.substring(1) : url;
+        if (path.contains("?")) path = path.upToFirstOccurrenceOf("?", false, false);
+        juce::File f;
+        if (path.isEmpty() || path == "index.html")
+            f = resDir.getChildFile("icon-hexforge-desktop.html");
+        else if (path.startsWith("resources/"))
+            f = modguiDir.getChildFile(path.substring(10));
+        else if (path.startsWith("modgui/"))
+            f = modguiDir.getChildFile(path.substring(7));
+        else
+            f = resDir.getChildFile(path);
+        if (!f.existsAsFile()) return std::nullopt;
+        juce::MemoryBlock mb;
+        if (!f.loadFileAsData(mb)) return std::nullopt;
+        const auto* b = static_cast<const std::byte*>(mb.getData());
+        return juce::WebBrowserComponent::Resource { std::vector<std::byte>(b, b + mb.getSize()),
+                                                     mimeFor(f.getFileExtension()) };
+    }
+
+    void pushBatch(const juce::StringArray& calls) {
+        if (calls.isEmpty()) return;
+        juce::String js;
+        for (const auto& c : calls) js << "window.hfFromNative(" << c << ");";
+        web->evaluateJavascript(js);
+    }
+    static juce::String jsonObj(std::initializer_list<std::pair<const char*, juce::var>> fields) {
+        auto* o = new juce::DynamicObject();
+        for (const auto& f : fields) o->setProperty(f.first, f.second);
+        return juce::JSON::toString(juce::var(o), true);
+    }
+
+    void sendInit() {
+        juce::Array<juce::var> ports;
+        auto* eng = proc.engine();
+        for (int i = 0; i < kHfNumDesktopParams; ++i) {
+            const HfDesktopParam& d = kHfDesktopParams[i];
+            if (d.cls == HFD_OUTPUT) continue;
+            const float v = (eng && isParamPort(d.port)) ? eng->eff[d.port]
+                                                         : proc.portValue(d.port);
+            juce::Array<juce::var> pair; pair.add(d.id); pair.add(v);
+            ports.add(juce::var(pair));
+        }
+        juce::Array<juce::var> params;
+        const char* frag[7] = { "#irfile", "#ir2file", "#ampnam", "#drnam",
+                                "#cabnam", "#amp2nam", "#dr2nam" };
+        const char* val[7] = {
+            eng ? eng->irPath : "",   eng ? eng->ir2Path : "",  eng ? eng->ampNamPath : "",
+            eng ? eng->drNamPath : "", eng ? eng->cabNamPath : "",
+            eng ? eng->amp2NamPath : "", eng ? eng->dr2NamPath : "",
+        };
+        for (int k = 0; k < 7; ++k) {
+            juce::Array<juce::var> pr;
+            pr.add(juce::String(kHfUriStr) + frag[k]);
+            pr.add(juce::String(juce::CharPointer_UTF8(val[k])));
+            params.add(juce::var(pr));
+        }
+        pushBatch({ jsonObj({ { "t", "init" }, { "ports", juce::var(ports) },
+                              { "parameters", juce::var(params) } }) });
+    }
+
+    void onMsg(const juce::var& v) {
+        const juce::String t = v.getProperty("t", {}).toString();
+        if (t == "ready") {
+            sendInit();
+        } else if (t == "started") {
+            proc.uiAttached.store(true);
+            proc.uiResync.store(true);
+        } else if (t == "set") {
+            proc.requestPortSet(v.getProperty("sym", {}).toString(),
+                                (float) (double) v.getProperty("val", 0.0));
+        } else if (t == "patch") {
+            proc.requestParamSet(v.getProperty("uri", {}).toString(),
+                                 v.getProperty("val", {}).toString());
+        } else if (t == "paramset") {
+            proc.requestParamSet(v.getProperty("uri", {}).toString(),
+                                 v.getProperty("val", {}).toString());
+        } else if (t == "browse") {
+            const juce::String uri = v.getProperty("uri", {}).toString();
+            const bool nam = uri.contains("nam");
+            chooser = std::make_unique<juce::FileChooser>(
+                nam ? "Select a NAM capture" : "Select an impulse response",
+                juce::File(), nam ? "*.nam" : "*.wav");
+            chooser->launchAsync(juce::FileBrowserComponent::openMode
+                                     | juce::FileBrowserComponent::canSelectFiles,
+                                 [this, uri](const juce::FileChooser& fc) {
+                                     const auto f = fc.getResult();
+                                     if (!f.existsAsFile()) return;
+                                     proc.requestParamSet(uri, f.getFullPathName());
+                                     pushBatch({ jsonObj({ { "t", "param" }, { "uri", uri },
+                                                           { "val", f.getFullPathName() } }) });
+                                 });
+        }
+    }
+
     void timerCallback() override {
-        const double sr = proc.engineRate();
-        rateNote.setText(sr > 0 && std::abs(sr - 48000.0) > 1.0
-                             ? juce::String("Note: presets are voiced at 48 kHz (host: ")
-                                   + juce::String(sr / 1000.0, 1) + " kHz)"
-                             : juce::String(),
-                         juce::dontSendNotification);
-        const int cur = proc.getCurrentProgram();
-        if (cur + 1 != presetBox.getSelectedId())
-            presetBox.setSelectedId(cur + 1, juce::dontSendNotification);
+        juce::StringArray calls;
+        // Engine notify strings (meters/tuner/cal/ps_*/file paths) → param events.
+        for (auto& e : proc.hostQueue().drain())
+            calls.add(jsonObj({ { "t", "param" }, { "uri", juce::String(kHfUriStr) + e.first },
+                                { "val", e.second } }));
+        // Monitored output ports (cpu badges, clip LED, bank/slot mirrors).
+        for (int i = 0; i < kHfNumDesktopParams; ++i) {
+            const HfDesktopParam& d = kHfDesktopParams[i];
+            if (d.cls != HFD_OUTPUT) continue;
+            const float v = proc.portValue(d.port);
+            if (std::abs(v - lastOut[(size_t) i]) < 0.004f) continue;
+            lastOut[(size_t) i] = v;
+            calls.add(jsonObj({ { "t", "port" }, { "sym", d.id }, { "val", v } }));
+        }
+        pushBatch(calls);
     }
-    void refreshPresets() {
-        presetBox.clear(juce::dontSendNotification);
-        for (int i = 0; i < proc.getNumPrograms(); ++i)
-            presetBox.addItem(proc.getProgramName(i), i + 1);
-        presetBox.setSelectedId(proc.getCurrentProgram() + 1, juce::dontSendNotification);
-    }
-    void pickFile(int prop, const juce::String& pattern) {
-        chooser = std::make_unique<juce::FileChooser>("Select file", juce::File(), pattern);
-        chooser->launchAsync(juce::FileBrowserComponent::openMode
-                                 | juce::FileBrowserComponent::canSelectFiles,
-                             [this, prop](const juce::FileChooser& fc) {
-                                 const auto f = fc.getResult();
-                                 if (f.existsAsFile())
-                                     proc.requestFileLoad(prop, f.getFullPathName());
-                             });
-    }
+
     HexForgeProcessor& proc;
-    juce::ComboBox presetBox;
-    juce::TextButton loadNam, loadIr;
-    juce::Label rateNote;
-    juce::GenericAudioProcessorEditor generic;
+    juce::File resDir, modguiDir;
+    std::unique_ptr<juce::WebBrowserComponent> web;
     std::unique_ptr<juce::FileChooser> chooser;
+    std::vector<float> lastOut;
 };
 } // namespace
 
 juce::AudioProcessorEditor* HexForgeProcessor::createEditor() {
-    return new M1Editor(*this);
+    return new WebEditor(*this);
 }
 
 // JUCE plugin entry point.

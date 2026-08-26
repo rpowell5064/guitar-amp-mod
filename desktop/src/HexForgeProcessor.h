@@ -86,25 +86,62 @@ private:
     std::array<WorkMsg, kRing> reqBuf {}, respBuf {};
 };
 
-// ── Host notifications: cached for the (future, M2) webview bridge ────────────
+// ── Host notifications → the webview bridge (M2) ─────────────────────────────
+// The engine pushes notification strings on the AUDIO thread; the editor's
+// timer drains them on the message thread and forwards them to the page as
+// mod-ui-style parameter 'change' events (keyed by URI fragment). Entries
+// coalesce by key — the icon script replays full snapshots, so latest wins.
 class DesktopHost final : public HfHostIface {
 public:
-    void stringSet(int prop, const char* s) override {
-        const juce::SpinLock::ScopedLockType l(lock);
-        latest[prop] = s;
+    HexForge* eng = nullptr;    // set by the processor after hfEngineInit
+
+    static const char* suffixFor(int prop) {
+        switch (prop) {
+            case HFP_PS_NAME:  return "#ps_name";
+            case HFP_METERS:   return "#meters";
+            case HFP_TUNER:    return "#tuner";
+            case HFP_CAL:      return "#cal";
+            case HFP_IR_FILE:  return "#irfile";
+            case HFP_AMP_NAM:  return "#ampnam";
+            case HFP_DR_NAM:   return "#drnam";
+            case HFP_CAB_NAM:  return "#cabnam";
+            case HFP_AMP2_NAM: return "#amp2nam";
+            case HFP_IR2_FILE: return "#ir2file";
+            case HFP_DR2_NAM:  return "#dr2nam";
+        }
+        return "";
     }
-    void fileSet(int, const char*) override {}
-    void emitIndex() override {}
-    void emitApply() override {}
-    void statusDump() override {}
-    juce::String get(int prop) const {
+    void push(const char* suffix, const char* s) {
         const juce::SpinLock::ScopedLockType l(lock);
-        auto it = latest.find(prop);
-        return it != latest.end() ? it->second : juce::String();
+        for (auto& e : queue)
+            if (e.first == suffix) { e.second = s; return; }
+        queue.emplace_back(suffix, s);
+    }
+    void stringSet(int prop, const char* s) override { push(suffixFor(prop), s); }
+    void fileSet(int prop, const char* path) override { push(suffixFor(prop), path); }
+    void emitIndex() override {
+        if (!eng) return;
+        char buf[6144];
+        hfIndexString(eng, buf, (int) sizeof(buf));
+        push("#ps_index", buf);
+    }
+    void emitApply() override {
+        if (!eng) return;
+        char buf[6144];
+        hfApplyString(eng, buf, (int) sizeof(buf));
+        push("#ps_apply", buf);
+    }
+    void statusDump() override {}
+    // Message thread: take everything queued.
+    std::vector<std::pair<juce::String, juce::String>> drain() {
+        const juce::SpinLock::ScopedLockType l(lock);
+        auto out = std::move(queue);
+        queue.clear();
+        return out;
     }
 private:
-    mutable juce::SpinLock lock;
-    std::map<int, juce::String> latest;
+    juce::SpinLock lock;
+    std::vector<std::pair<juce::String, juce::String>> queue;
 };
 
 // ── The processor ─────────────────────────────────────────────────────────────
@@ -140,9 +177,20 @@ public:
     // mirroring the LV2 atom-loop path.
     void requestFileLoad(int hfProp, const juce::String& path);
     void requestPreset(int flatIndex);   // 0..127
+    // Webview bridge entry points (message thread):
+    void requestPortSet(const juce::String& symbol, float value);
+    void requestParamSet(const juce::String& uri, const juce::String& value);   // patch:Set path semantics
+    void requestPresetRename(const juce::String& name);                          // #ps_name patch
+    static int propForUri(const juce::String& uri);                              // -1 if unknown
 
     bool engineReady() const { return eng != nullptr; }
     double engineRate() const { return eng ? eng->rate : 0.0; }
+    HexForge* engine() const { return eng; }               // message-thread reads only
+    DesktopHost& hostQueue() { return hostBridge; }
+    float portValue(int port) const { return hostVals[(size_t) port]; }
+
+    std::atomic<bool> uiAttached { false };   // editor webview live → engine pushes notifies
+    std::atomic<bool> uiResync { false };     // one-shot: replay files/name/index/apply (patch:Get)
 
     juce::AudioProcessorValueTreeState apvts;
 
@@ -162,7 +210,12 @@ private:
 
     struct ParamRow { int port; std::atomic<float>* value; };
     std::vector<ParamRow> rows;                 // PARAM + SETTING rows
+    std::map<juce::String, int> portBySym;      // every control-port symbol → port index
     juce::AudioProcessorParameter* bypassParam = nullptr;
+
+    juce::SpinLock renameLock;                  // #ps_name patch from the UI
+    juce::String pendingRename;
+    std::atomic<bool> haveRename { false };
 
     juce::AudioBuffer<float> inCopy;            // engine input must not alias output
 

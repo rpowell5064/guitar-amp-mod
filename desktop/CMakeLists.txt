@@ -45,6 +45,7 @@ juce_add_plugin(HexForge
     PLUGIN_MANUFACTURER_CODE "HxCh"
     PLUGIN_CODE              "HxFg"
     FORMATS                  AU VST3 Standalone
+    NEEDS_WEBVIEW2           TRUE
     IS_SYNTH                 FALSE
     NEEDS_MIDI_INPUT         FALSE
     NEEDS_MIDI_OUTPUT        FALSE
@@ -68,11 +69,16 @@ target_include_directories(HexForge PRIVATE
 )
 
 target_compile_definitions(HexForge PUBLIC
-    JUCE_WEB_BROWSER=0
+    JUCE_WEB_BROWSER=1
+    JUCE_USE_WIN_WEBVIEW2=1
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0
     JUCE_DISPLAY_SPLASH_SCREEN=0
     JUCE_REPORT_APP_USAGE=0
+    # M2 dev serving: page + assets straight from the repo (packaging embeds
+    # them later). Forward slashes keep MSVC's preprocessor happy.
+    HF_DESKTOP_RESOURCES_DIR="${CMAKE_CURRENT_SOURCE_DIR}/resources"
+    HF_MODGUI_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../lv2/modgui-hexforge"
 )
 
 if(MSVC)
