@@ -30,7 +30,7 @@ static void hfPrime(HexForge* p) {
 // LV2; MIDI-learn later on desktop). swPresses is replayed at the exact point
 // the MIDI decode sat, after the command-port edges.
 static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPresses) {
-    const bool haveNotify = (p->notify != nullptr);
+    const bool haveNotify = p->uiNotify;
     // ── Output Voice: FRFR (2026-08-21, global layer — auto-cal pattern, never
     // preset-captured). OFF = Headphones/Studio = bit-identical. ON = the
     // FRFR-10 room voice: de-close-mic EQ post-mono-sum (below), plus the

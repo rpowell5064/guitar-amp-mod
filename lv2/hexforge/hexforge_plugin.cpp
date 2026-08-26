@@ -82,8 +82,30 @@
 #define HEXFORGE_AMP2NAM HEXFORGE_URI "#amp2nam"
 #define HEXFORGE_IR2_URI HEXFORGE_URI "#ir2file"
 #define HEXFORGE_DR2NAM  HEXFORGE_URI "#dr2nam"
+#define LV2_MIDI_MidiEvent_URI "http://lv2plug.in/ns/ext/midi#MidiEvent"
 #include "engine/hf_types.inc"
-static void mapURIs(HexForge* p) {
+
+// ── LV2 instance (Stage B3): the wrapper's own state around the engine ────────
+// HexForge is now host-API-free; everything LV2 (atom sequences, URID map,
+// worker schedule handle, notify forge) lives on this derived instance struct.
+struct URIs {
+    LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
+    LV2_URID patch_Set, patch_Get, patch_property, patch_value;
+    LV2_URID ir_file, amp_nam, dr_nam, cab_nam, amp2_nam, ir2_file, dr2_nam;
+    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner, cal;
+    LV2_URID midi_MidiEvent;
+    LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
+};
+struct HexForgeLv2 : HexForge {
+    const LV2_Atom_Sequence* control = nullptr;
+    const LV2_Atom_Sequence* midiIn  = nullptr;   // footswitch CCs (pi-Stomp)
+    LV2_Atom_Sequence*       notify  = nullptr;
+    LV2_URID_Map*        map      = nullptr;
+    LV2_Worker_Schedule* schedule = nullptr;
+    LV2_Atom_Forge       forge;
+    URIs                 uris;
+};
+static void mapURIs(HexForgeLv2* p) {
     LV2_URID_Map* m = p->map;
     p->uris.atom_Object   = m->map(m->handle, LV2_ATOM__Object);
     p->uris.atom_Path     = m->map(m->handle, LV2_ATOM__Path);
@@ -113,7 +135,7 @@ static void mapURIs(HexForge* p) {
     p->uris.time_bpm      = m->map(m->handle, LV2_TIME__beatsPerMinute);
     p->uris.atom_Float    = m->map(m->handle, LV2_ATOM__Float);
 }
-static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
+static void writeFileToNotify(HexForgeLv2* p, LV2_URID prop, const char* path) {
     const URIs& u = p->uris;
     LV2_Atom_Forge_Frame frame;
     lv2_atom_forge_frame_time(&p->forge, 0);
@@ -128,7 +150,7 @@ static void writeFileToNotify(HexForge* p, LV2_URID prop, const char* path) {
 // ── Preset engine: notify emitters + recall/save/bank/move ────────────────────
 // All of these run inside hf_run with the notify forge sequence already open, so
 // they may append patch:Set messages to the UI.
-static void forgeStringSet(HexForge* p, LV2_URID prop, const char* s) {
+static void forgeStringSet(HexForgeLv2* p, LV2_URID prop, const char* s) {
     const URIs& u = p->uris;
     LV2_Atom_Forge_Frame frame;
     lv2_atom_forge_frame_time(&p->forge, 0);
@@ -140,7 +162,7 @@ static void forgeStringSet(HexForge* p, LV2_URID prop, const char* s) {
     lv2_atom_forge_pop(&p->forge, &frame);
 }
 // "bank|slot|name0|name1|...|name31" — drives the UI bank indicator + name list.
-static void emitIndex(HexForge* p) {
+static void emitIndex(HexForgeLv2* p) {
     if (!p->notify) return;
     char buf[6144]; int o = 0;   // 32 banks × 4 slots of names
     o += std::snprintf(buf, sizeof(buf), "%d|%d", p->curBank, p->curSlot);
@@ -154,7 +176,7 @@ static void emitIndex(HexForge* p) {
     forgeStringSet(p, p->uris.ps_index, buf);
 }
 // "sym=val;sym=val;..." for every param port — the UI replays it via set_port_value.
-static void emitApply(HexForge* p) {
+static void emitApply(HexForgeLv2* p) {
     if (!p->notify) return;
     char buf[6144]; int o = 0; buf[0] = '\0';
     for (int i = 0; i < HF_N_PORTS; ++i)
@@ -174,13 +196,13 @@ static void hfWriteStatus(HexForge* p) {
 }
 // ── Engine ⇄ host bridge impls (Stage B1): the LV2 side of the interfaces ─────
 struct Lv2Worker final : HfWorkerIface {
-    HexForge* p = nullptr;
+    HexForgeLv2* p = nullptr;
     bool schedule(const void* msg, uint32_t size) override {
         return p->schedule->schedule_work(p->schedule->handle, size, msg) == LV2_WORKER_SUCCESS;
     }
 };
 struct Lv2Host final : HfHostIface {
-    HexForge* p = nullptr;
+    HexForgeLv2* p = nullptr;
     LV2_URID uridFor(int prop) const {
         switch (prop) {
             case HFP_PS_NAME:  return p->uris.ps_name;
@@ -207,7 +229,7 @@ struct Lv2Host final : HfHostIface {
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
                                  const char*, const LV2_Feature* const* features) {
-    auto* p = new(std::nothrow) HexForge;
+    auto* p = new(std::nothrow) HexForgeLv2;
     if (!p) return nullptr;
     p->map      = static_cast<LV2_URID_Map*>(lv2_find_feature(features, LV2_URID__map));
     p->schedule = static_cast<LV2_Worker_Schedule*>(lv2_find_feature(features, LV2_WORKER__schedule));
@@ -305,7 +327,7 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
 }
 
 static void hf_connect_port(LV2_Handle h, uint32_t port, void* data) {
-    auto* p = static_cast<HexForge*>(h);
+    auto* p = static_cast<HexForgeLv2*>(h);
     if (port == HF_CONTROL)      p->control = static_cast<const LV2_Atom_Sequence*>(data);
     else if (port == HF_NOTIFY)  p->notify  = static_cast<LV2_Atom_Sequence*>(data);
     else if (port == HF_MIDI_IN) p->midiIn  = static_cast<const LV2_Atom_Sequence*>(data);
@@ -331,6 +353,22 @@ static const char* cabSentinel(const char* path) {
     return base[0] == '@' ? base : nullptr;
 }
 #include "engine/hf_worker.inc"
+
+// ── LV2 adapters for the engine worker (Stage B3) ─────────────────────────────
+static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
+                                 LV2_Worker_Respond_Handle handle, uint32_t, const void* data) {
+    struct Ctx { LV2_Worker_Respond_Function r; LV2_Worker_Respond_Handle h; } ctx{respond, handle};
+    const HfRespondFn shim = [](void* c, uint32_t sz, const void* d) {
+        auto* x = static_cast<Ctx*>(c); x->r(x->h, sz, d);
+    };
+    return hfWork(static_cast<HexForgeLv2*>(h), data, shim, &ctx)
+        ? LV2_WORKER_SUCCESS : LV2_WORKER_ERR_NO_SPACE;
+}
+static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* data) {
+    hfWorkResponse(static_cast<HexForgeLv2*>(h), data);
+    return LV2_WORKER_SUCCESS;
+}
+
 #include "engine/hf_run_core.inc"
 
 // ── run(): LV2 event plumbing around the host-API-free engine (Stage B2) ──────
@@ -339,9 +377,10 @@ static const char* cabSentinel(const char* path) {
 // close the notify sequence.
 static void hf_run(LV2_Handle h, uint32_t n) {
     DenormalGuard denormalGuard;
-    auto* p = static_cast<HexForge*>(h);
+    auto* p = static_cast<HexForgeLv2*>(h);
     const URIs& u = p->uris;
     hfPrime(p);
+    p->uiNotify = (p->notify != nullptr);   // engine-visible "UI attached" flag
 
     // ── Atom: IR file set / get, + open notify sequence ──
     const bool haveNotify = (p->notify != nullptr);
@@ -446,7 +485,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
 }
 
 static void hf_cleanup(LV2_Handle h) {
-    auto* p = static_cast<HexForge*>(h);
+    auto* p = static_cast<HexForgeLv2*>(h);
     delete p->amp;
     delete p->ampNam; delete p->drNam; delete p->cabNam; delete p->amp2Nam; delete p->dr2Nam;
     delete p->worker; delete p->host;   // Stage B1 bridges
@@ -457,7 +496,7 @@ static void hf_cleanup(LV2_Handle h) {
 static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
                                 LV2_State_Handle handle, uint32_t flags,
                                 const LV2_Feature* const* features) {
-    auto* p = static_cast<HexForge*>(h);
+    auto* p = static_cast<HexForgeLv2*>(h);
     auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
     auto saveOne = [&](LV2_URID prop, const char* raw) {
         if (raw[0] == '\0') return;
@@ -506,7 +545,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
 static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function retrieve,
                                    LV2_State_Handle handle, uint32_t,
                                    const LV2_Feature* const* features) {
-    auto* p = static_cast<HexForge*>(h);
+    auto* p = static_cast<HexForgeLv2*>(h);
     auto* mapPath = static_cast<LV2_State_Map_Path*>(lv2_find_feature(features, LV2_STATE__mapPath));
     size_t size=0; uint32_t type=0, vflags=0;
 

@@ -5,12 +5,14 @@
 // NOT a standalone TU: #included by hexforge_plugin.cpp at the exact spot
 // this text was cut from. Do not add includes or include guards here.
 // ─────────────────────────────────────────────────────────────────────────────
-static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
-                                 LV2_Worker_Respond_Handle handle, uint32_t, const void* data) {
-    auto* p = static_cast<HexForge*>(h);
+// Off-RT work body, host-agnostic (Stage B3): the wrapper's worker adapter
+// hands in a respond callback that queues the reply back to the audio thread,
+// where hfWorkResponse() consumes it. Returns false only on allocation failure.
+using HfRespondFn = void (*)(void* handle, uint32_t size, const void* data);
+static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* handle) {
     const auto* msg = static_cast<const WorkMsg*>(data);
-    if (msg->type == W_AMP_FREE) { delete msg->amp; return LV2_WORKER_SUCCESS; }
-    if (msg->type == W_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
+    if (msg->type == W_AMP_FREE) { delete msg->amp; return true; }
+    if (msg->type == W_NAM_FREE) { delete msg->nam; return true; }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
         const char* sent = cabSentinel(msg->path);
@@ -20,34 +22,34 @@ static LV2_Worker_Status hf_work(LV2_Handle h, LV2_Worker_Respond_Function respo
             else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
                 p->cab2.setIR(L, R.empty()?nullptr:&R);
             else p->cab2.setIR(CabModels::generate("@factory", p->rate));
-            return LV2_WORKER_SUCCESS;
+            return true;
         }
         if (sent)                                                         // built-in synthetic cab
             p->cab.setIR(CabModels::generate(sent, p->rate));
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
         else p->cab.setIR(CabModels::generate("@factory", p->rate));   // empty path = clear to (enriched) Factory Cab
-        return LV2_WORKER_SUCCESS;
+        return true;
     }
     if (msg->type == W_NAM_LOAD) {
         auto* nm = new(std::nothrow) NamModel;
-        if (!nm) return LV2_WORKER_ERR_NO_SPACE;
+        if (!nm) return false;
         if (nm->loadFromFile(msg->path)) nm->reset(p->rate, kMaxBlock);
         WorkMsg reply; reply.type = W_NAM_LOAD; reply.nam = nm; reply.namSlot = msg->namSlot;
         respond(handle, sizeof(reply), &reply);
-        return LV2_WORKER_SUCCESS;
+        return true;
     }
     // W_AMP_LOAD — build a fresh amp off the RT thread.
     auto* na = new(std::nothrow) AmpBlockExtended;
-    if (!na) return LV2_WORKER_ERR_NO_SPACE;
+    if (!na) return false;
     na->prepare(p->rate, kMaxBlock, 2);
     na->setEco(msg->eco);   // Engine Quality: must precede setAmpModel (wrapper built there)
     na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kMt15Idx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx; reply.namSlot = msg->namSlot;   // slot 1 = Rig B (forgetting this routed B builds into the MAIN amp)
     respond(handle, sizeof(reply), &reply);
-    return LV2_WORKER_SUCCESS;
+    return true;
 }
-static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* data) {
-    auto* p = static_cast<HexForge*>(h);
+// Reply consumer — MUST run on the audio thread (pointer swaps + fade re-arm).
+static void hfWorkResponse(HexForge* p, const void* data) {
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == W_NAM_LOAD) {
         // Defer the swap to the mute-ramp's zero point (a mid-waveform model swap
@@ -65,9 +67,9 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
         // PREVIOUS preset's model; race is latent on-device as well). State 1 needs nothing
         // (zero point is coming anyway).
         if (p->swFadeState == 0 || p->swFadeState == 2) p->swFadeState = 1;
-        return LV2_WORKER_SUCCESS;
+        return;
     }
-    if (msg->type != W_AMP_LOAD) return LV2_WORKER_SUCCESS;
+    if (msg->type != W_AMP_LOAD) return;
     if (msg->namSlot == 1) {   // Rig B amp reply
         if (p->pendAmp2) {
             WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp2;
@@ -76,7 +78,7 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
         p->pendAmp2 = msg->amp;
         p->pendAmp2Model = msg->modelIdx;
         if (p->swFadeState == 0 || p->swFadeState == 2) p->swFadeState = 1;
-        return LV2_WORKER_SUCCESS;
+        return;
     }
     if (p->pendAmp) {
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp;
@@ -85,7 +87,7 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
     p->pendAmp = msg->amp;
     p->pendAmpModel = msg->modelIdx;
     if (p->swFadeState == 0 || p->swFadeState == 2) p->swFadeState = 1;   // re-arm during fade-in (see NAM note above)
-    return LV2_WORKER_SUCCESS;
+    return;
 }
 
 // ── Audio helpers ─────────────────────────────────────────────────────────────

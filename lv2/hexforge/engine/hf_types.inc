@@ -16,7 +16,6 @@ static constexpr int kDrMax     = 9;   // highest dr_model index (9 = Tube Chauf
 // range is one switch "press" → preset recall / bank combo. Change here if the
 // pi-Stomp config uses a different base CC.
 static constexpr int kMidiBaseCC = 60;
-#define LV2_MIDI_MidiEvent_URI "http://lv2plug.in/ns/ext/midi#MidiEvent"
 
 static constexpr int kMaxBlock = 512;
 static constexpr int kPathMax  = 1024;
@@ -326,15 +325,6 @@ struct WorkMsg {
     char              path[kPathMax] = {0};   // CAB_IR / NAM_LOAD
 };
 
-struct URIs {
-    LV2_URID atom_Object, atom_Path, atom_URID, atom_String, atom_Chunk;
-    LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID ir_file, amp_nam, dr_nam, cab_nam, amp2_nam, ir2_file, dr2_nam;
-    LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner, cal;
-    LV2_URID midi_MidiEvent;
-    LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
-};
-
 // ── Engine ⇄ host interfaces (Stage B1) ───────────────────────────────────────
 // The engine talks to its host ONLY through these two interfaces (plus the
 // float port arrays): the LV2 wrapper backs them with the worker extension and
@@ -503,12 +493,10 @@ struct HexForge {
 
     // ports — `ports[]` are the pointers the DSP reads. For param ports they are
     // redirected to point at eff[] (the preset/override layer); for everything
-    // else they point at the host buffer (hostPorts[]). See hf_run priming.
+    // else they point at the host buffer (hostPorts[]). See hfPrime().
     float* ports[HF_N_PORTS]     = {};
     float* hostPorts[HF_N_PORTS] = {};
-    const LV2_Atom_Sequence* control = nullptr;
-    const LV2_Atom_Sequence* midiIn  = nullptr;   // footswitch CCs (pi-Stomp)
-    LV2_Atom_Sequence*       notify  = nullptr;
+    bool   uiNotify = false;   // host sets per run: a notify channel is attached
 
     // preset engine
     Preset presets[kBanks][kSlots];
@@ -607,11 +595,6 @@ struct HexForge {
     std::vector<float> dblApA, dblApB;
     int dblApAw = 0, dblApBw = 0;
 
-    // host features
-    LV2_URID_Map*        map      = nullptr;
-    LV2_Worker_Schedule* schedule = nullptr;
-    LV2_Atom_Forge       forge;
-    URIs                 uris;
     // engine ⇄ host bridges (Stage B1): the engine schedules work and pushes
     // notifications ONLY through these (wrapper-owned, installed at instantiate).
     HfWorkerIface*       worker = nullptr;

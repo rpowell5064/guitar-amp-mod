@@ -471,7 +471,7 @@ static void psRecall(HexForge* p, int bank, int slot) {
             std::strncpy(p->ir2Path, pr.ir2Path, kPathMax-1); p->ir2Path[kPathMax-1]='\0';
             p->lastCab2Model = -1;                        // forces the run() logic to (re)load next block
         }
-        if (p->notify) {   // best-effort UI sync; headless recall still changes sound
+        if (p->uiNotify) {   // best-effort UI sync; headless recall still changes sound
             p->host->emitApply();
             p->host->fileSet(HFP_IR_FILE, p->irPath);
             p->host->fileSet(HFP_AMP_NAM, p->ampNamPath);
