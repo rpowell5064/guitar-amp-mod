@@ -1,4 +1,5 @@
 #include "HexForgeProcessor.h"
+#include "BinaryData.h"
 
 // ── Parameter layout from the generated table ─────────────────────────────────
 juce::AudioProcessorValueTreeState::ParameterLayout HexForgeProcessor::makeLayout() {
@@ -93,10 +94,28 @@ void HexForgeProcessor::rebuildEngine(double rate) {
 }
 
 void HexForgeProcessor::prepareToPlay(double sampleRate, int samplesPerBlock) {
-    if (!eng || eng->rate != sampleRate)
-        rebuildEngine(sampleRate);
-    inCopy.setSize(2, juce::jmax(16, samplesPerBlock), false, false, true);
-    setLatencySamples(0);   // OLA convolver is zero-latency; no other lookahead
+    // The engine ALWAYS runs at 48 kHz (factory preset levels were measured
+    // there and NAM captures don't resample); other host rates are wrapped.
+    if (!eng)
+        rebuildEngine(48000.0);
+    const int blk = juce::jmax(16, samplesPerBlock);
+    inCopy.setSize(2, blk, false, false, true);
+    srcActive = std::abs(sampleRate - 48000.0) > 1.0;
+    if (srcActive) {
+        srcIn.prepare(sampleRate, 48000.0, blk);
+        const int cap48 = (int) std::ceil(blk * 48000.0 / sampleRate) + 16;
+        srcOut.prepare(48000.0, sampleRate, cap48);
+        src48In.setSize(2, cap48, false, false, true);
+        src48Out.setSize(2, cap48, false, false, true);
+        srcFifoL.assign((size_t) (blk * 2 + 64), 0.0f);
+        srcFifoR.assign((size_t) (blk * 2 + 64), 0.0f);
+        srcFifoLen = kSrcPrime;   // zeros — absorbs per-block ±1 count jitter
+        setLatencySamples((int) std::lround(srcIn.groupDelayInputSamples()
+                                            + srcOut.groupDelayInputSamples() * sampleRate / 48000.0)
+                          + kSrcPrime);
+    } else {
+        setLatencySamples(0);   // OLA convolver is zero-latency; no other lookahead
+    }
 }
 
 bool HexForgeProcessor::isBusesLayoutSupported(const BusesLayout& layouts) const {
@@ -192,14 +211,48 @@ void HexForgeProcessor::processBlock(juce::AudioBuffer<float>& buffer, juce::Mid
         eng->hostPorts[i] = ptr;
         if (!eng->primed || !isParamPort(i)) eng->ports[i] = ptr;
     };
-    setPort(HF_IN_L, inCopy.getWritePointer(0));
-    setPort(HF_IN_R, inCopy.getWritePointer(1));
-    setPort(HF_OUT_L, outL);
-    setPort(HF_OUT_R, outR);
-
-    hfPrime(eng);
     eng->uiNotify = uiAttached.load(std::memory_order_relaxed);
-    hfEngineRun(eng, (uint32_t) n, nullptr, 0);
+
+    if (!srcActive) {
+        setPort(HF_IN_L, inCopy.getWritePointer(0));
+        setPort(HF_IN_R, inCopy.getWritePointer(1));
+        setPort(HF_OUT_L, outL);
+        setPort(HF_OUT_R, outR);
+        hfPrime(eng);
+        hfEngineRun(eng, (uint32_t) n, nullptr, 0);
+    } else {
+        // host → 48k → engine → 48k → host (see HfResampler.h)
+        if (src48In.getNumSamples() < (int) std::ceil(n * 48000.0 / getSampleRate()) + 16) {
+            const int cap = (int) std::ceil(n * 48000.0 / getSampleRate()) + 16;
+            src48In.setSize(2, cap, false, false, true);
+            src48Out.setSize(2, cap, false, false, true);
+        }
+        const int m = srcIn.process(inCopy.getReadPointer(0), inCopy.getReadPointer(1), n,
+                                    src48In.getWritePointer(0), src48In.getWritePointer(1));
+        setPort(HF_IN_L, src48In.getWritePointer(0));
+        setPort(HF_IN_R, src48In.getWritePointer(1));
+        setPort(HF_OUT_L, src48Out.getWritePointer(0));
+        setPort(HF_OUT_R, src48Out.getWritePointer(1));
+        hfPrime(eng);
+        hfEngineRun(eng, (uint32_t) m, nullptr, 0);
+        if ((int) srcFifoL.size() < srcFifoLen + n + 8) {
+            srcFifoL.resize((size_t) (srcFifoLen + n + 8));
+            srcFifoR.resize((size_t) (srcFifoLen + n + 8));
+        }
+        const int o = srcOut.process(src48Out.getReadPointer(0), src48Out.getReadPointer(1), m,
+                                     srcFifoL.data() + srcFifoLen, srcFifoR.data() + srcFifoLen);
+        srcFifoLen += o;
+        const int take = juce::jmin(srcFifoLen, n);
+        std::memcpy(outL, srcFifoL.data(), (size_t) take * sizeof(float));
+        std::memcpy(outR, srcFifoR.data(), (size_t) take * sizeof(float));
+        if (take < n) {   // startup only, covered by the reported latency
+            std::memset(outL + take, 0, (size_t) (n - take) * sizeof(float));
+            std::memset(outR + take, 0, (size_t) (n - take) * sizeof(float));
+        }
+        std::memmove(srcFifoL.data(), srcFifoL.data() + take, (size_t) (srcFifoLen - take) * sizeof(float));
+        std::memmove(srcFifoR.data(), srcFifoR.data() + take, (size_t) (srcFifoLen - take) * sizeof(float));
+        srcFifoLen -= take;
+    }
 
     if (buffer.getNumChannels() == 1 && outR == monoScratch.data())
         for (int i = 0; i < n; ++i) outL[i] = 0.5f * (outL[i] + outR[i]);
@@ -380,11 +433,13 @@ public:
           resDir(HF_DESKTOP_RESOURCES_DIR), modguiDir(HF_MODGUI_DIR) {
         auto opts =
             juce::WebBrowserComponent::Options {}
+#if JUCE_WINDOWS
                 .withBackend(juce::WebBrowserComponent::Options::Backend::webview2)
                 .withWinWebView2Options(
                     juce::WebBrowserComponent::Options::WinWebView2 {}.withUserDataFolder(
                         juce::File::getSpecialLocation(juce::File::tempDirectory)
                             .getChildFile("HexForgeWebView2")))
+#endif  // macOS/Linux: JUCE's default backend (WKWebView / webkit2gtk)
                 .withNativeIntegrationEnabled()
                 .withResourceProvider([this](const auto& url) { return provide(url); })
                 .withEventListener("hfMsg", [this](const juce::var& v) { onMsg(v); });
@@ -403,21 +458,40 @@ private:
     std::optional<juce::WebBrowserComponent::Resource> provide(const juce::String& url) {
         juce::String path = url.startsWith("/") ? url.substring(1) : url;
         if (path.contains("?")) path = path.upToFirstOccurrenceOf("?", false, false);
-        juce::File f;
-        if (path.isEmpty() || path == "index.html")
-            f = resDir.getChildFile("icon-hexforge-desktop.html");
-        else if (path.startsWith("resources/"))
-            f = modguiDir.getChildFile(path.substring(10));
-        else if (path.startsWith("modgui/"))
-            f = modguiDir.getChildFile(path.substring(7));
-        else
-            f = resDir.getChildFile(path);
-        if (!f.existsAsFile()) return std::nullopt;
-        juce::MemoryBlock mb;
-        if (!f.loadFileAsData(mb)) return std::nullopt;
-        const auto* b = static_cast<const std::byte*>(mb.getData());
-        return juce::WebBrowserComponent::Resource { std::vector<std::byte>(b, b + mb.getSize()),
-                                                     mimeFor(f.getFileExtension()) };
+        if (path.isEmpty() || path == "index.html") path = "icon-hexforge-desktop.html";
+        // Dev mode: the repo checkout is present — serve the live files so UI
+        // edits are a reload away.
+        if (modguiDir.isDirectory()) {
+            juce::File f;
+            if (path.startsWith("resources/"))   f = modguiDir.getChildFile(path.substring(10));
+            else if (path.startsWith("modgui/")) f = modguiDir.getChildFile(path.substring(7));
+            else                                 f = resDir.getChildFile(path);
+            juce::MemoryBlock mb;
+            if (f.existsAsFile() && f.loadFileAsData(mb)) {
+                const auto* b = static_cast<const std::byte*>(mb.getData());
+                return juce::WebBrowserComponent::Resource {
+                    std::vector<std::byte>(b, b + mb.getSize()),
+                    mimeFor(f.getFileExtension()) };
+            }
+        }
+        // Embedded assets (BinaryData flattens paths — basenames are unique).
+        const juce::String base = path.fromLastOccurrenceOf("/", false, false);
+        static const auto embedded = [] {
+            std::map<juce::String, std::pair<const char*, int>> m;
+            for (int i = 0; i < BinaryData::namedResourceListSize; ++i) {
+                const char* name = BinaryData::namedResourceList[i];
+                int size = 0;
+                const char* data = BinaryData::getNamedResource(name, size);
+                m[BinaryData::getNamedResourceOriginalFilename(name)] = { data, size };
+            }
+            return m;
+        }();
+        const auto it = embedded.find(base);
+        if (it == embedded.end()) return std::nullopt;
+        const auto* b = reinterpret_cast<const std::byte*>(it->second.first);
+        return juce::WebBrowserComponent::Resource {
+            std::vector<std::byte>(b, b + it->second.second),
+            mimeFor("." + base.fromLastOccurrenceOf(".", false, false)) };
     }
 
     void pushBatch(const juce::StringArray& calls) {

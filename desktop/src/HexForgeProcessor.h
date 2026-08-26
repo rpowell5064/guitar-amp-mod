@@ -19,6 +19,7 @@
 #include <JuceHeader.h>
 #include "hf_engine_all.h"
 #include "hexforge_params.h"
+#include "HfResampler.h"
 
 // ── Worker thread: LV2 worker semantics on a juce::Thread ─────────────────────
 class DesktopWorker final : public HfWorkerIface, private juce::Thread {
@@ -218,6 +219,16 @@ private:
     std::atomic<bool> haveRename { false };
 
     juce::AudioBuffer<float> inCopy;            // engine input must not alias output
+
+    // ── Sample-rate wrapper (M3): the engine ALWAYS runs at 48 kHz (preset
+    // levels + NAM captures live there); other host rates get a resampler
+    // pair around it, with the filter delay + FIFO prime reported as latency.
+    static constexpr int kSrcPrime = 8;         // output-FIFO priming (jitter head-room)
+    bool srcActive = false;
+    HfPolyResampler srcIn, srcOut;              // host→48k, 48k→host
+    juce::AudioBuffer<float> src48In, src48Out; // 48k-domain engine I/O
+    std::vector<float> srcFifoL, srcFifoR;      // host-rate output FIFO
+    int srcFifoLen = 0;
 
     // UI → audio-thread command hand-off (SPSC-ish: single writer = message thread)
     struct PathCmd { int prop; char path[kPathMax]; };

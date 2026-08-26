@@ -71,6 +71,10 @@ target_include_directories(hexforge_golden PRIVATE
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
 
+# Desktop sample-rate converter verification (M3): SNR, image rejection,
+# streaming equivalence across ragged block sizes.
+add_executable(hf_resampler_test "${CMAKE_CURRENT_SOURCE_DIR}/hf_resampler_test.cpp")
+
 # Compile-time proof that the engine umbrella needs no LV2 headers (the JUCE
 # desktop processor's situation). Note: NO LV2 include dir on this target.
 add_executable(hexforge_engine_standalone
