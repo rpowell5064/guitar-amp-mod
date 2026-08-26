@@ -57,8 +57,8 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         std::strncpy(pr.name, s, sizeof(pr.name)-1); pr.name[sizeof(pr.name)-1]='\0';
                         for (char* c=pr.name; *c; ++c) if (*c=='|') *c=' ';   // keep index delimiter clean
                         pr.used = true;
-                        if (haveNotify) emitIndex(p);
-                        hfWriteStatus(p);
+                        if (haveNotify) p->host->emitIndex();
+                        p->host->statusDump();
                         hfWriteBackup(p);
                     }
                     continue;
@@ -82,7 +82,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     if (e2[0]) {
                         WorkMsg m2; m2.type = W_CAB_IR; m2.namSlot = 1;
                         std::strncpy(m2.path, e2, kPathMax-1); m2.path[kPathMax-1]='\0';
-                        p->schedule->schedule_work(p->schedule->handle, sizeof(m2), &m2);
+                        p->worker->schedule(&m2, sizeof(m2));
                     } else p->lastCab2Model = -1;   // re-sentinel from rb_cab next block
                     continue;
                 }
@@ -91,19 +91,19 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     const char* eff = (dst == p->irPath && std::strcmp(path, kFactoryIR) == 0) ? "" : path;
                     std::strncpy(dst, eff, kPathMax-1); dst[kPathMax-1]='\0';
                     std::strncpy(msg.path, dst, kPathMax-1); msg.path[kPathMax-1]='\0';
-                    p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+                    p->worker->schedule(&msg, sizeof(msg));
                 }
             } else if (obj->body.otype == u.patch_Get && haveNotify) {
-                writeFileToNotify(p, u.ir_file, p->irPath);
-                writeFileToNotify(p, u.amp_nam, p->ampNamPath);
-                writeFileToNotify(p, u.dr_nam, p->drNamPath);
-                writeFileToNotify(p, u.cab_nam, p->cabNamPath);
-                writeFileToNotify(p, u.amp2_nam, p->amp2NamPath);
-                writeFileToNotify(p, u.ir2_file, p->ir2Path);
-                writeFileToNotify(p, u.dr2_nam, p->dr2NamPath);
-                forgeStringSet(p, u.ps_name, p->presets[p->curBank][p->curSlot].name);
-                emitIndex(p);
-                emitApply(p);   // sync knobs to the active preset's effective values
+                p->host->fileSet(HFP_IR_FILE, p->irPath);
+                p->host->fileSet(HFP_AMP_NAM, p->ampNamPath);
+                p->host->fileSet(HFP_DR_NAM, p->drNamPath);
+                p->host->fileSet(HFP_CAB_NAM, p->cabNamPath);
+                p->host->fileSet(HFP_AMP2_NAM, p->amp2NamPath);
+                p->host->fileSet(HFP_IR2_FILE, p->ir2Path);
+                p->host->fileSet(HFP_DR2_NAM, p->dr2NamPath);
+                p->host->stringSet(HFP_PS_NAME, p->presets[p->curBank][p->curSlot].name);
+                p->host->emitIndex();
+                p->host->emitApply();   // sync knobs to the active preset's effective values
             } else if (obj->body.otype == u.time_Position) {
                 // Host tempo (tap-tempo / MIDI clock) → cache BPM for the synced Delay/Mod.
                 const LV2_Atom* bpmA = nullptr;
@@ -361,7 +361,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     const bool ecoQ = *p->ports[HF_QUALITY] > 0.5f;
     if (ampIsAlgo && (ampModel != p->lastAmpModel || ecoQ != p->lastEco)) {   // rebuild for algo models (model or Engine Quality change)
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel; msg.eco=ecoQ;
-        if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
+        if (p->worker->schedule(&msg, sizeof(msg)))
             { p->lastAmpModel = ampModel; p->lastEco = ecoQ; }
     }
     // ── Rig B (dual amp/cab, 2026-07-30): schedule builds + set params ──────
@@ -371,7 +371,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         // enabled, so a direct handoff to the free worker is safe) -- a player
         // who parked Rig B should get the RAM back.
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->amp2;
-        if (p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm) == LV2_WORKER_SUCCESS) {
+        if (p->worker->schedule(&fm, sizeof(fm))) {
             p->amp2 = nullptr; p->lastAmp2Model = -1;
         }
     }
@@ -384,7 +384,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
         if (!rbNamSel && (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) && !p->amp2Requested) {
             WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=rbModel; msg.eco=rbEco; msg.namSlot=1;
-            if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
+            if (p->worker->schedule(&msg, sizeof(msg)))
                 { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
         }
         const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
@@ -395,14 +395,14 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             // later clear re-generates. -2 = "user IR active".
             WorkMsg m2; m2.type = W_CAB_IR; m2.namSlot = 1;
             std::strncpy(m2.path, p->ir2Path, kPathMax-1); m2.path[kPathMax-1]='\0';
-            if (p->schedule->schedule_work(p->schedule->handle, sizeof(m2), &m2) == LV2_WORKER_SUCCESS)
+            if (p->worker->schedule(&m2, sizeof(m2)))
                 p->lastCab2Model = -2;
         }
         if (!ir2User && rbCab != p->lastCab2Model && rbCab < 6) {
             static const char* kRbCabIr[6] = { "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom" };
             WorkMsg msg; msg.type=W_CAB_IR; msg.namSlot=1;
             std::snprintf(msg.path, sizeof(msg.path), "%s", kRbCabIr[rbCab]);
-            if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
+            if (p->worker->schedule(&msg, sizeof(msg)))
                 p->lastCab2Model = rbCab;
         }
         if (!ir2User && rbCab >= 6) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
@@ -1362,12 +1362,12 @@ static void hf_run(LV2_Handle h, uint32_t n) {
         if (std::fabs(mIn - p->meterSentIn) > 0.015f || std::fabs(mOut - p->meterSentOut) > 0.015f) {
             p->meterSentIn = mIn; p->meterSentOut = mOut;
             char mbuf[24]; std::snprintf(mbuf, sizeof(mbuf), "%.3f|%.3f", mIn, mOut);
-            forgeStringSet(p, p->uris.meters, mbuf);
+            p->host->stringSet(HFP_METERS, mbuf);
         }
         // Strobe tuner readout → same atom channel (output ports don't reach the modgui).
         if (tunerOn) {
             char tbuf[24]; std::snprintf(tbuf, sizeof(tbuf), "%d|%.1f", p->tuner.note, p->tuner.cents);
-            forgeStringSet(p, p->uris.tuner, tbuf);
+            p->host->stringSet(HFP_TUNER, tbuf);
         }
         // Calibration wizard: state|progress|floorDb|humFrac|touchDb|play10msDb|
         // recTrim|recFloor|err — pushed while running + ~5 s after completion so a
@@ -1383,7 +1383,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                           p->calPh[0].peakDb, p->calPh[0].humFrac,
                           p->calPh[1].peakDb, p->calPh[2].rms10msMaxDb,
                           p->calRec.trimOffsDb, p->calRec.floorOffsDb, p->calRec.error);
-            forgeStringSet(p, p->uris.cal, cbuf);
+            p->host->stringSet(HFP_CAL, cbuf);
         }
     }
 

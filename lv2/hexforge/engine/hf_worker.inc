@@ -56,7 +56,7 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
         const int sl = msg->namSlot;
         if (p->pendNam[sl]) {
             WorkMsg fm; fm.type = W_NAM_FREE; fm.nam = p->pendNam[sl];
-            p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+            p->worker->schedule(&fm, sizeof(fm));
         }
         p->pendNam[sl] = msg->nam;
         // Re-arm during fade-IN too (state 2): a fast load's response lands while the recall
@@ -71,7 +71,7 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
     if (msg->namSlot == 1) {   // Rig B amp reply
         if (p->pendAmp2) {
             WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp2;
-            p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+            p->worker->schedule(&fm, sizeof(fm));
         }
         p->pendAmp2 = msg->amp;
         p->pendAmp2Model = msg->modelIdx;
@@ -80,7 +80,7 @@ static LV2_Worker_Status hf_work_response(LV2_Handle h, uint32_t, const void* da
     }
     if (p->pendAmp) {
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = p->pendAmp;
-        p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+        p->worker->schedule(&fm, sizeof(fm));
     }
     p->pendAmp = msg->amp;
     p->pendAmpModel = msg->modelIdx;
@@ -139,7 +139,7 @@ static void hfApplySwitch(HexForge* p) {
         p->amp = p->pendAmp; p->pendAmp = nullptr;
         p->lastAmpModel = p->pendAmpModel;
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
-        p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+        p->worker->schedule(&fm, sizeof(fm));
     }
     if (p->pendAmp2) {
         AmpBlockExtended* old = p->amp2;
@@ -147,7 +147,7 @@ static void hfApplySwitch(HexForge* p) {
         p->lastAmp2Model = p->pendAmp2Model;
         p->amp2Requested = false;
         if (old) { WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
-                   p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm); }
+                   p->worker->schedule(&fm, sizeof(fm)); }
     }
     for (int sl = 0; sl < 5; ++sl) if (p->pendNam[sl]) {
         NamModel** slot = (sl == 0) ? &p->ampNam : (sl == 1) ? &p->drNam : (sl == 2) ? &p->cabNam
@@ -155,7 +155,7 @@ static void hfApplySwitch(HexForge* p) {
         NamModel* old = *slot;
         *slot = p->pendNam[sl]; p->pendNam[sl] = nullptr;
         WorkMsg fm; fm.type = W_NAM_FREE; fm.nam = old;
-        p->schedule->schedule_work(p->schedule->handle, sizeof(fm), &fm);
+        p->worker->schedule(&fm, sizeof(fm));
     }
     // v40: fuzz/nail Eco -- rebuild the oversampling wrappers at the new factor
     // HERE (output is at zero; the same allocate-on-switch class of behavior the

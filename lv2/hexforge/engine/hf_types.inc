@@ -335,6 +335,29 @@ struct URIs {
     LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
 };
 
+// ── Engine ⇄ host interfaces (Stage B1) ───────────────────────────────────────
+// The engine talks to its host ONLY through these two interfaces (plus the
+// float port arrays): the LV2 wrapper backs them with the worker extension and
+// the atom notify forge; the JUCE desktop build backs them with a worker
+// thread + the webview bridge. Keeps every engine file free of LV2 API calls.
+enum HfProp {   // host-visible properties (the wrapper maps these to URIDs)
+    HFP_PS_NAME, HFP_METERS, HFP_TUNER, HFP_CAL,
+    HFP_IR_FILE, HFP_AMP_NAM, HFP_DR_NAM, HFP_CAB_NAM,
+    HFP_AMP2_NAM, HFP_IR2_FILE, HFP_DR2_NAM,
+};
+struct HfWorkerIface {  // async off-RT work (NAM parse, amp rebuild, IR load)
+    virtual bool schedule(const void* msg, uint32_t size) = 0;
+    virtual ~HfWorkerIface() = default;
+};
+struct HfHostIface {    // engine → UI notifications
+    virtual void stringSet(int prop, const char* s) = 0;    // string property push
+    virtual void fileSet(int prop, const char* path) = 0;   // file-path property push
+    virtual void emitIndex() = 0;                           // preset list/index refresh
+    virtual void emitApply() = 0;                           // knob resync pulse
+    virtual void statusDump() = 0;                          // debug status snapshot
+    virtual ~HfHostIface() = default;
+};
+
 // ── Chromatic strobe tuner ── autocorrelation pitch detector on the dry input. Only runs
 // when the tuner is engaged. Reports note (0..11 = C..B, -1 = no pitch) + cents (-50..+50).
 struct TunerDetector {
@@ -589,6 +612,10 @@ struct HexForge {
     LV2_Worker_Schedule* schedule = nullptr;
     LV2_Atom_Forge       forge;
     URIs                 uris;
+    // engine ⇄ host bridges (Stage B1): the engine schedules work and pushes
+    // notifications ONLY through these (wrapper-owned, installed at instantiate).
+    HfWorkerIface*       worker = nullptr;
+    HfHostIface*         host   = nullptr;
 };
 
 // ── IR file reading (mirrors the standalone Cab) ──────────────────────────────

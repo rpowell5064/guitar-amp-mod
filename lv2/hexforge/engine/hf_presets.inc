@@ -439,6 +439,15 @@ static bool hfLoadBackup(HexForge* p) {
     return hfDeserialize(p, blob.data(), blob.size());
 }
 
+// Schedule a worker (re)load for a file slot whose path changed (empty path =
+// clear: NAM loads an unloaded model the DSP ignores; IR resets to the default).
+static void schedPath(HexForge* p, char* cur, const char* want, WorkType wt, int namSlot) {
+    if (std::strcmp(cur, want) == 0) return;
+    std::strncpy(cur, want, kPathMax - 1); cur[kPathMax - 1] = '\0';
+    WorkMsg m; m.type = wt; m.namSlot = namSlot;
+    std::strncpy(m.path, want, kPathMax - 1); m.path[kPathMax - 1] = '\0';
+    p->worker->schedule(&m, sizeof(m));
+}
 // Recall: move the active position to (bank,slot). If the slot holds a preset,
 // load its params into eff[] and (re)load its files; if empty, just move the
 // cursor (sound unchanged) so the UI can Save the current sound into it.
@@ -446,7 +455,7 @@ static void psRecall(HexForge* p, int bank, int slot) {
     p->curBank = bank & (kBanks - 1);
     p->curSlot = slot & (kSlots - 1);
     const Preset& pr = p->presets[p->curBank][p->curSlot];
-    hfWriteStatus(p);
+    p->host->statusDump();
     if (pr.used) {
         for (int i = 0; i < HF_N_PORTS; ++i) if (isParamPort(i)) {
             p->eff[i] = pr.vals[i];
@@ -463,17 +472,17 @@ static void psRecall(HexForge* p, int bank, int slot) {
             p->lastCab2Model = -1;                        // forces the run() logic to (re)load next block
         }
         if (p->notify) {   // best-effort UI sync; headless recall still changes sound
-            emitApply(p);
-            writeFileToNotify(p, p->uris.ir_file, p->irPath);
-            writeFileToNotify(p, p->uris.amp_nam, p->ampNamPath);
-            writeFileToNotify(p, p->uris.dr_nam,  p->drNamPath);
-            writeFileToNotify(p, p->uris.cab_nam, p->cabNamPath);
-            writeFileToNotify(p, p->uris.amp2_nam, p->amp2NamPath);
-            writeFileToNotify(p, p->uris.ir2_file, p->ir2Path);
-            writeFileToNotify(p, p->uris.dr2_nam, p->dr2NamPath);
+            p->host->emitApply();
+            p->host->fileSet(HFP_IR_FILE, p->irPath);
+            p->host->fileSet(HFP_AMP_NAM, p->ampNamPath);
+            p->host->fileSet(HFP_DR_NAM,  p->drNamPath);
+            p->host->fileSet(HFP_CAB_NAM, p->cabNamPath);
+            p->host->fileSet(HFP_AMP2_NAM, p->amp2NamPath);
+            p->host->fileSet(HFP_IR2_FILE, p->ir2Path);
+            p->host->fileSet(HFP_DR2_NAM, p->dr2NamPath);
         }
     }
-    emitIndex(p);
+    p->host->emitIndex();
 }
 // Save: overwrite the active slot with the live (edited) settings + current files.
 static void psSave(HexForge* p) {
@@ -489,8 +498,8 @@ static void psSave(HexForge* p) {
     if (pr.name[0] == '\0')
         std::snprintf(pr.name, sizeof(pr.name), "%c%d", 'A' + p->curSlot, p->curBank + 1);
     pr.used = true;
-    emitIndex(p);
-    hfWriteStatus(p);
+    p->host->emitIndex();
+    p->host->statusDump();
     hfWriteBackup(p);   // keep the off-instance backup current
 }
 // RT trigger: the actual recall runs at the mute-ramp's zero point (seamless).
@@ -520,7 +529,7 @@ static void psMoveDelta(HexForge* p, int d) {
     p->presets[p->curBank][p->curSlot] = p->presets[tgt / kSlots][tgt % kSlots];
     p->presets[tgt / kSlots][tgt % kSlots] = tmp;
     p->curBank = tgt / kSlots; p->curSlot = tgt % kSlots;
-    emitIndex(p);
+    p->host->emitIndex();
     hfWriteBackup(p);
 }
 

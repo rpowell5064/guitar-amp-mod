@@ -162,15 +162,6 @@ static void emitApply(HexForge* p) {
             o += std::snprintf(buf + o, sizeof(buf) - o, "%s=%g;", HF_PORT_SYM[i], p->eff[i]);
     forgeStringSet(p, p->uris.ps_apply, buf);
 }
-// Schedule a worker (re)load for a file slot whose path changed (empty path =
-// clear: NAM loads an unloaded model the DSP ignores; IR resets to the default).
-static void schedPath(HexForge* p, char* cur, const char* want, WorkType wt, int namSlot) {
-    if (std::strcmp(cur, want) == 0) return;
-    std::strncpy(cur, want, kPathMax - 1); cur[kPathMax - 1] = '\0';
-    WorkMsg m; m.type = wt; m.namSlot = namSlot;
-    std::strncpy(m.path, want, kPathMax - 1); m.path[kPathMax - 1] = '\0';
-    p->schedule->schedule_work(p->schedule->handle, sizeof(m), &m);
-}
 // Publish the active bank/slot/name to a status file the pi-Stomp LCD reads
 // ("<bank><slot> <name>", e.g. "1A Clean"). Written only on preset changes.
 static void hfWriteStatus(HexForge* p) {
@@ -181,6 +172,37 @@ static void hfWriteStatus(HexForge* p) {
                  (pr.used && pr.name[0]) ? pr.name : "(empty)");
     std::fclose(f);
 }
+// ── Engine ⇄ host bridge impls (Stage B1): the LV2 side of the interfaces ─────
+struct Lv2Worker final : HfWorkerIface {
+    HexForge* p = nullptr;
+    bool schedule(const void* msg, uint32_t size) override {
+        return p->schedule->schedule_work(p->schedule->handle, size, msg) == LV2_WORKER_SUCCESS;
+    }
+};
+struct Lv2Host final : HfHostIface {
+    HexForge* p = nullptr;
+    LV2_URID uridFor(int prop) const {
+        switch (prop) {
+            case HFP_PS_NAME:  return p->uris.ps_name;
+            case HFP_METERS:   return p->uris.meters;
+            case HFP_TUNER:    return p->uris.tuner;
+            case HFP_CAL:      return p->uris.cal;
+            case HFP_IR_FILE:  return p->uris.ir_file;
+            case HFP_AMP_NAM:  return p->uris.amp_nam;
+            case HFP_DR_NAM:   return p->uris.dr_nam;
+            case HFP_CAB_NAM:  return p->uris.cab_nam;
+            case HFP_AMP2_NAM: return p->uris.amp2_nam;
+            case HFP_IR2_FILE: return p->uris.ir2_file;
+            case HFP_DR2_NAM:  return p->uris.dr2_nam;
+        }
+        return 0;
+    }
+    void stringSet(int prop, const char* s) override { forgeStringSet(p, uridFor(prop), s); }
+    void fileSet(int prop, const char* path) override { writeFileToNotify(p, uridFor(prop), path); }
+    void emitIndex() override { ::emitIndex(p); }
+    void emitApply() override { ::emitApply(p); }
+    void statusDump() override { hfWriteStatus(p); }
+};
 #include "engine/hf_presets.inc"
 // ── Lifecycle ─────────────────────────────────────────────────────────────────
 static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
@@ -192,6 +214,13 @@ static LV2_Handle hf_instantiate(const LV2_Descriptor*, double rate,
     if (!p->map || !p->schedule) { delete p; return nullptr; }
     mapURIs(p);
     lv2_atom_forge_init(&p->forge, p->map);
+    {   // engine ⇄ host bridges (Stage B1)
+        auto* w = new(std::nothrow) Lv2Worker;
+        auto* hb = new(std::nothrow) Lv2Host;
+        if (!w || !hb) { delete w; delete hb; delete p; return nullptr; }
+        w->p = p; hb->p = p;
+        p->worker = w; p->host = hb;
+    }
 
     p->rate = rate;
     p->trimHum.prepare(rate);
@@ -307,6 +336,7 @@ static void hf_cleanup(LV2_Handle h) {
     auto* p = static_cast<HexForge*>(h);
     delete p->amp;
     delete p->ampNam; delete p->drNam; delete p->cabNam; delete p->amp2Nam; delete p->dr2Nam;
+    delete p->worker; delete p->host;   // Stage B1 bridges
     delete p;
 }
 
