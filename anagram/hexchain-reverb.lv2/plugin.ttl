@@ -1,0 +1,133 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/reverb#ingroup>
+    a pg:StereoGroup, pg:InputGroup ;
+    lv2:symbol "audioin" ;
+    lv2:name "Audio In" .
+
+<https://rpowell5064.github.io/guitaramp-suite/reverb#outgroup>
+    a pg:StereoGroup, pg:OutputGroup ;
+    lv2:symbol "audioout" ;
+    lv2:name "Audio Out" .
+
+<https://rpowell5064.github.io/guitaramp-suite/reverb>
+    a lv2:Plugin, lv2:ReverbPlugin ;
+    dg:abbreviation "RVB" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Reverb" ;
+    doap:name  "Hex Chain Reverb" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Three reverb machines in one: modulated plate, three-spring tank, and a blooming cinematic ambient wash.
+
+Three reverb machines under one set of knobs:
+
+- PLATE — a smooth, gently modulated tank, from tight room to long lush wash, with a Density switch: Classic keeps the familiar four-comb voicing, Dense runs a bigger eight-comb / six-diffuser tank for a lusher, less metallic tail.
+- SPRING — a three-spring tank model with real drip and boing, the outboard-unit sound that surf and early rock records were soaked in.
+- AMBIENT — a modern blooming pad reverb: a long, heavily diffused tail whose density GROWS after you stop playing, driven by a dedicated BLOOM control that scales the smear, the late-tail regeneration, the slow evolving motion and the stereo width together. Attack-softening diffusion keeps picking gentle, the modulation is slow and non-pitchy (no chorus wobble), the low end stays clean in long tails, and the width is mono-safe. Play a chord, let go, and listen to it swell.
+
+Pre-delay, decay, damping, modulation and a unity-gain wet/dry blend — engaging it never drops your level. All three types are loudness-matched, so switching between them keeps your place in the mix. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind.
+
+Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 33 ;   # 32: Tank group widgets (Type/Density/Bloom). 31: Hex Ambient type + Bloom port + the type-port TTL nesting FIX
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/reverb#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/reverb#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/reverb#outgroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/reverb#outgroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "pre_delay_ms" ; lv2:name "Pre-Delay" ;
+        units:unit units:ms ;
+        lv2:default 10.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "decay_time" ; lv2:name "Decay" ;
+        lv2:default 1.5 ; lv2:minimum 0.1 ; lv2:maximum 8.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "damping" ; lv2:name "Damping" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 0.99
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "mod_depth" ; lv2:name "Mod Depth" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "mod_rate" ; lv2:name "Mod Rate" ;
+        lv2:default 0.8 ; lv2:minimum 0.01 ; lv2:maximum 5.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "density" ; lv2:name "Density" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ,
+                       [ rdfs:label "Dense"   ; rdf:value 1 ]
+    ] , [
+        # FIXED 2026-07-25: this port was accidentally nested INSIDE density's
+        # scalePoint list, so it was never a port of the plugin — the standalone
+        # Plate/Spring selector had been silently broken since it shipped.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 12 ; lv2:symbol "type" ; lv2:name "Type" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Plate"   ; rdf:value 0 ] ,
+                       [ rdfs:label "Spring"  ; rdf:value 1 ] ,
+                       [ rdfs:label "Ambient" ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 13 ; lv2:symbol "bloom" ; lv2:name "Bloom" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 14 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 15 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

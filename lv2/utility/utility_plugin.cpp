@@ -6,6 +6,9 @@
 #include <lv2/core/lv2.h>
 #include <cmath>
 #include <new>
+#ifdef HEXCHAIN_ANAGRAM
+#include <cstring>   // enabled=0 passthrough memcpy
+#endif
 
 #define UTILITY_URI "https://rpowell5064.github.io/guitaramp-suite/utility"
 
@@ -21,6 +24,11 @@ enum UtilPorts {
     P_BOOST     = 8,   // clean-boost enable
     P_BOOST_AMT = 9,   // clean-boost amount in dB (0..12)
     P_PICKUP_LOAD = 10, // pickup/cable/input-impedance sim (2026-07-23, default 0 = off)
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports).
+                          // Input Trim has no stock bypass port, so enabled=0 is a plain
+                          // passthrough (memcpy) rather than a shared bypass path.
+#endif
     P_N_PORTS
 };
 
@@ -53,6 +61,9 @@ struct UtilityPlugin {
     OutputBoost  boost;        // clean boost + low-mid beef
     float*       ports[P_N_PORTS];
     float        sr = 44100.0f;
+#ifdef HEXCHAIN_ANAGRAM
+    bool         resetLatch = false;   // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle util_instantiate(const LV2_Descriptor*, double rate,
@@ -62,6 +73,10 @@ static LV2_Handle util_instantiate(const LV2_Descriptor*, double rate,
     p->sr = static_cast<float>(rate);
     p->hum.prepare(rate);
     p->load.prepare(rate);
+#ifdef HEXCHAIN_ANAGRAM
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+    p->ports[P_RESET]   = nullptr;
+#endif
     return p;
 }
 
@@ -71,6 +86,27 @@ static void util_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void util_run(LV2_Handle h, uint32_t n) {
     auto*       p        = static_cast<UtilityPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): reconstruct every stateful processor so a freshly
+    // paired dual-mono partner starts identical (see anagram/ANAGRAM-NOTES.md).
+    // voice/boost re-prepare lazily below (reconstruction clears their guards).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->hum   = HumNotchComb{};  p->hum.prepare(p->sr);
+            p->load  = PickupLoadSim{}; p->load.prepare(p->sr);
+            p->voice = PickupVoicer{};
+            p->boost = OutputBoost{};
+        }
+    } else p->resetLatch = false;
+    // lv2:enabled (KosmOS bypass, 1 = on): Input Trim has no stock bypass port,
+    // so enabled=0 is a plain passthrough.
+    if (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f) {
+        if (p->ports[P_OUT] != p->ports[P_IN])
+            std::memcpy(p->ports[P_OUT], p->ports[P_IN], sizeof(float) * n);
+        return;
+    }
+#endif
     const float gainLin  = std::pow(10.0f, *p->ports[P_GAIN_DB] / 20.0f);
     const float sign     = (*p->ports[P_PHASE] > 0.5f) ? -1.0f : 1.0f;
     const bool  humOn    = *p->ports[P_HUM] > 0.5f;

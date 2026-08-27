@@ -26,12 +26,19 @@ enum NailPorts {
     P_LEVEL   = 6,   // output volume
     P_RING    = 7,   // Tusk ring-mod toggle (off by default)
     P_BYPASS  = 8,
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+#endif
     P_N_PORTS
 };
 
 struct NailPlugin {
     std::unique_ptr<OversamplingWrapper> nail;
     float* ports[P_N_PORTS] = {};
+#ifdef HEXCHAIN_ANAGRAM
+    double sampleRate = 48000.0;   // for the kx:Reset full re-init
+    bool   resetLatch = false;     // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle nail_instantiate(const LV2_Descriptor*, double rate,
@@ -42,6 +49,9 @@ static LV2_Handle nail_instantiate(const LV2_Descriptor*, double rate,
     if (!p->nail) { delete p; return nullptr; }
     p->nail->prepare(rate, 512, 1);
     p->nail->setParameter("mode", 2.0f);   // default: Delicate
+#ifdef HEXCHAIN_ANAGRAM
+    p->sampleRate = rate;
+#endif
     return p;
 }
 
@@ -52,7 +62,21 @@ static void nail_connect_port(LV2_Handle h, uint32_t port, void* data) {
 static void nail_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<NailPlugin*>(h);
 
-    if (*p->ports[P_BYPASS] > 0.5f) {
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): full state re-init so a freshly paired dual-mono
+    // partner starts identical (see anagram/ANAGRAM-NOTES.md). Mode/params are
+    // re-applied every run below.
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) { p->resetLatch = true; p->nail->prepare(p->sampleRate, 512, 1); }
+    } else p->resetLatch = false;
+#endif
+
+    bool bypassed = *p->ports[P_BYPASS] > 0.5f;
+#ifdef HEXCHAIN_ANAGRAM
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#endif
+    if (bypassed) {
         if (p->ports[P_OUT] != p->ports[P_IN])
             std::memcpy(p->ports[P_OUT], p->ports[P_IN], sizeof(float) * n);
         return;

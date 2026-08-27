@@ -85,12 +85,30 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
     endOfPrefixes = ttl.index("\n", ttl.index(".", lastPrefix)) + 1
     ttl = ttl[:endOfPrefixes] + EXTRA_PREFIXES + ttl[endOfPrefixes:]
 
-    # 4. Audio port group node + plugin-level dg: metadata.
-    group_uri = f"<{plugin_uri}#audiogroup>"
-    group_node = (f"{group_uri}\n"
-                  "    a pg:MonoGroup, pg:Group ;\n"
-                  "    lv2:symbol \"audio\" ;\n"
-                  "    lv2:name \"Audio\" .\n\n")
+    # 4. Audio port group node(s) + plugin-level dg: metadata. Mono plugins
+    #    (1-in/1-out) get the dark-tremolo MonoGroup shape; stereo plugins
+    #    (2-in/2-out — the only other shape KosmOS allows) get standard
+    #    port-groups Stereo in/out groups with left/right designations.
+    stereo = ttl.count("lv2:AudioPort") == 4
+    assert ttl.count("lv2:AudioPort") in (2, 4), \
+        f"{src_path}: unexpected audio port count (KosmOS allows 1/1 or 2/2 only)"
+    if stereo:
+        in_group_uri  = f"<{plugin_uri}#ingroup>"
+        out_group_uri = f"<{plugin_uri}#outgroup>"
+        group_node = (f"{in_group_uri}\n"
+                      "    a pg:StereoGroup, pg:InputGroup ;\n"
+                      "    lv2:symbol \"audioin\" ;\n"
+                      "    lv2:name \"Audio In\" .\n\n"
+                      f"{out_group_uri}\n"
+                      "    a pg:StereoGroup, pg:OutputGroup ;\n"
+                      "    lv2:symbol \"audioout\" ;\n"
+                      "    lv2:name \"Audio Out\" .\n\n")
+    else:
+        group_uri = f"<{plugin_uri}#audiogroup>"
+        group_node = (f"{group_uri}\n"
+                      "    a pg:MonoGroup, pg:Group ;\n"
+                      "    lv2:symbol \"audio\" ;\n"
+                      "    lv2:name \"Audio\" .\n\n")
     plug_anchor = f"<{plugin_uri}>\n"
     assert plug_anchor in ttl, f"{src_path}: plugin URI block not found"
     ttl = ttl.replace(plug_anchor, group_node + plug_anchor, 1)
@@ -109,14 +127,34 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
     blocks = re.split(r"\n    \] , \[\n", ports_text)
     assert len(blocks) >= 4, f"{src_path}: too few port blocks ({len(blocks)})"
 
+    # Sort by the ORIGINAL lv2:index — some source TTLs declare late-appended
+    # ports out of textual order (amp.ttl: mv_* 36-42 sit after the atoms in
+    # the file). Renumbering in textual order would both scramble the enum
+    # mapping and put control ports after the atoms (the mod-host breaker).
+    # For in-order TTLs this sort is a no-op.
+    def orig_index(b):
+        m = re.search(r"lv2:index (\d+)", b)
+        assert m, f"{src_path}: port block has no index"
+        return int(m.group(1))
+    blocks.sort(key=orig_index)
+
     out_blocks = []
     for b in blocks:
         if "lv2:AudioPort" in b:
             b = b.rstrip()
             if not b.endswith(";"):
                 b += " ;"
-            b += (f"\n        lv2:designation pg:center ;"
-                  f"\n        pg:group {group_uri}")
+            if stereo:
+                sym = re.search(r'lv2:symbol "([^"]+)"', b)
+                assert sym and sym.group(1).endswith(("_l", "_r")), \
+                    f"{src_path}: stereo audio port symbol {sym and sym.group(1)!r} lacks _l/_r"
+                side = "pg:left" if sym.group(1).endswith("_l") else "pg:right"
+                grp = in_group_uri if "lv2:InputPort" in b else out_group_uri
+                b += (f"\n        lv2:designation {side} ;"
+                      f"\n        pg:group {grp}")
+            else:
+                b += (f"\n        lv2:designation pg:center ;"
+                      f"\n        pg:group {group_uri}")
         out_blocks.append(b)
 
     new_blocks = [port_block(x) for x in enabled_reset_blocks()]
@@ -141,16 +179,30 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
                 "    rdfs:seeAlso <plugin.ttl> .\n")
     return ttl + "\n", manifest
 
+URI_BASE = "https://rpowell5064.github.io/guitaramp-suite/"
+
 PLUGINS = [
     # (source ttl, plugin uri, abbrev, .so name, bundle dir, strip_nam)
     # strip_nam stays available for toolchains that can't build NAM; the
     # Anagram keeps NAM (KosmOS supports the Neural Loader atom:Path file
     # pattern, and the submodule's nam_atomic_fallback patch makes NamCore
     # build on its GCC 9.4 toolchain).
-    ("lv2/drive.ttl", "https://rpowell5064.github.io/guitaramp-suite/drive",
-     "DRV", "guitaramp_drive.so", "hexchain-drive.lv2", False),
-    ("lv2/fuzz.ttl", "https://rpowell5064.github.io/guitaramp-suite/fuzz",
-     "FZZ", "guitaramp_fuzz.so", "hexchain-fuzz.lv2", False),
+    # M4 pilots (mono):
+    ("lv2/drive.ttl",   URI_BASE + "drive",   "DRV", "guitaramp_drive.so",   "hexchain-drive.lv2",   False),
+    ("lv2/fuzz.ttl",    URI_BASE + "fuzz",    "FZZ", "guitaramp_fuzz.so",    "hexchain-fuzz.lv2",    False),
+    # M5 full-suite pass — mono (1-in/1-out, dual-mono rules apply):
+    ("lv2/comp.ttl",    URI_BASE + "comp",    "CMP", "guitaramp_comp.so",    "hexchain-comp.lv2",    False),
+    ("lv2/gate.ttl",    URI_BASE + "gate",    "GTE", "guitaramp_gate.so",    "hexchain-gate.lv2",    False),
+    ("lv2/nail.ttl",    URI_BASE + "nail",    "NL",  "guitaramp_nail.so",    "hexchain-nail.lv2",    False),
+    ("lv2/utility.ttl", URI_BASE + "utility", "TRM", "guitaramp_utility.so", "hexchain-utility.lv2", False),
+    # M5 — stereo (2-in/2-out, single-instance):
+    ("lv2/amp.ttl",     URI_BASE + "amp",     "AMP", "guitaramp_amp.so",     "hexchain-amp.lv2",     False),
+    ("lv2/cab.ttl",     URI_BASE + "cab",     "CAB", "guitaramp_cab.so",     "hexchain-cab.lv2",     False),
+    ("lv2/delay.ttl",   URI_BASE + "delay",   "DLY", "guitaramp_delay.so",   "hexchain-delay.lv2",   False),
+    ("lv2/modfx.ttl",   URI_BASE + "modfx",   "MOD", "guitaramp_modfx.so",   "hexchain-modfx.lv2",   False),
+    ("lv2/octave.ttl",  URI_BASE + "octave",  "OCT", "guitaramp_octave.so",  "hexchain-octave.lv2",  False),
+    ("lv2/reverb.ttl",  URI_BASE + "reverb",  "RVB", "guitaramp_reverb.so",  "hexchain-reverb.lv2",  False),
+    ("lv2/wah.ttl",     URI_BASE + "wah",     "WAH", "guitaramp_wah.so",     "hexchain-wah.lv2",     False),
 ]
 
 if __name__ == "__main__":

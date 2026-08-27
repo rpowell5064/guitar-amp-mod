@@ -1,0 +1,421 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# NAM neural-model file parameter (mod-ui renders a NAM file browser; the model
+# is loaded on the worker thread). Used when Model = "Neural (NAM)".
+<https://rpowell5064.github.io/guitaramp-suite/amp#nammodel>
+    a lv2:Parameter ;
+    rdfs:label "NAM Model" ;
+    rdfs:range atom:Path ;
+    mod:fileTypes "nammodel,nam" .
+
+<https://rpowell5064.github.io/guitaramp-suite/amp#ingroup>
+    a pg:StereoGroup, pg:InputGroup ;
+    lv2:symbol "audioin" ;
+    lv2:name "Audio In" .
+
+<https://rpowell5064.github.io/guitaramp-suite/amp#outgroup>
+    a pg:StereoGroup, pg:OutputGroup ;
+    lv2:symbol "audioout" ;
+    lv2:name "Audio Out" .
+
+<https://rpowell5064.github.io/guitaramp-suite/amp>
+    a lv2:Plugin, lv2:AmplifierPlugin ;
+    dg:abbreviation "AMP" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Amp" ;
+    doap:name  "Hex Chain Amp" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Thirteen original guitar-amp voicings — sparkling clean to modern high-gain — each with a modeled power amp, plus a NAM loader.
+
+A whole wall of amps in one plugin — THIRTEEN original voicings, every name a wink and every circuit tuned against real-amp captures:
+
+- Clean Meanie — shimmering American blackface-era clean
+- Crunchy McCrunchFace — hot-rodded British master-volume crunch
+- Gainzilla — tight modern high-gain monster
+- Doom Daddy — a doom/fuzz grinder with two full channels (Normal + Brite)
+- Tangerang — thick, mid-forward British lead crunch
+- Beardo BE — boutique hot-rod head with Clean / BE / HBE channels
+- Hi-Volt — high-headroom, pedal-loving British clean
+- Chime Thirty — chimey class-A jangle machine
+- Backline Plus — the scrappy solid-state combo every rehearsal room owns
+- Plexiglass — vintage British sparkle with jumpered Vol I + Vol II channels, just like bridging the inputs on the classic four-hole heads
+- Cali V — a 9-mode, three-channel Californian switcher (Clean / Crunch / Lead) with its own 5-band graphic EQ
+- Diamond Plate — an 8-mode, three-channel chrome-plated Californian high-gain head (Raw / Vintage / Modern per channel) with Bold/Spongy variac and Silicon/Tube rectifier feel switches, tuned against real captures of a legendary high-gain American design
+- Tremont 15 — a tight, percussive lunchbox high-gain head (Clean / Crunch / Lead + bright switch) with a gain-riding bright cap on the crunch channel, tuned against real captures
+
+Every voicing feeds a modeled power-amp section — sag, presence, depth, resonance and selectable output-tube flavors — for real cab-pushing feel and touch dynamics rather than a flat distortion. A shared tone stack keeps switching between voicings fast on stage, a built-in mains-hum filter and decay-aware noise conditioning keep the high-gain modes quiet between notes, and everything is oversampled with steep anti-alias filtering so the top end stays clean.
+
+On 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures alongside the thirteen algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted. Works standalone or as part of the Hex Chain suite / Hex Forge.
+
+Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 2 ;
+    lv2:microVersion 57 ;   # 56: tube-correctness audit — Fender 6V6 (new TubeType 4, real AB763), EVH 6L6 (real 5150III), Sunn KT88 (inert, PA bypassed); Power Tube enum gains 6V6. 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
+
+    # Analog model switches rebuild the amp off the audio thread (they allocate an
+    # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
+    # has been removed — use a dedicated NAM block on the pi-Stomp instead.
+    lv2:requiredFeature urid:map , work:schedule ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:extensionData state:interface , work:interface ;
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/amp#nammodel> ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/amp#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/amp#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/amp#outgroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/amp#outgroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "model" ; lv2:name "Model" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 13 ;
+        lv2:scalePoint [ rdfs:label "Clean Meanie"         ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Crunchy McCrunchFace" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Gainzilla"            ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Doom Daddy"           ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Tangerang"            ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "Neural (NAM)"         ; rdf:value 5 ] ;
+        lv2:scalePoint [ rdfs:label "Beardo BE"            ; rdf:value 6 ] ;
+        lv2:scalePoint [ rdfs:label "Hi-Volt"              ; rdf:value 7 ] ;
+        lv2:scalePoint [ rdfs:label "Chime Thirty"         ; rdf:value 8 ] ;
+        lv2:scalePoint [ rdfs:label "Backline Plus"        ; rdf:value 9 ] ;
+        lv2:scalePoint [ rdfs:label "Plexiglass"           ; rdf:value 10 ] ;
+        lv2:scalePoint [ rdfs:label "Cali V"               ; rdf:value 11 ] ;
+        lv2:scalePoint [ rdfs:label "Diamond Plate"        ; rdf:value 12 ] ;
+        lv2:scalePoint [ rdfs:label "Tremont 15"           ; rdf:value 13 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "gain" ; lv2:name "Gain" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "bass" ; lv2:name "Bass" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "mid" ; lv2:name "Mid" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "treble" ; lv2:name "Treble" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "presence" ; lv2:name "Presence" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "master" ; lv2:name "Master" ;
+        lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "sag" ; lv2:name "Sag" ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 12 ; lv2:symbol "channel" ; lv2:name "Channel" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 13 ; lv2:symbol "resonance" ; lv2:name "Resonance" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "sunn_vol2" ; lv2:name "Brite Vol" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 15 ; lv2:symbol "sunn_link" ; lv2:name "Ch Link" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Independent" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Parallel"    ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Series"      ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+    # ── Power-amp stage ──────────────────────────────────────────────────────
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 17 ; lv2:symbol "pamp_bypass" ; lv2:name "Power Amp Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 18 ; lv2:symbol "pamp_tube" ; lv2:name "Power Tube" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
+        lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "EL34"  ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "EL84"  ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "KT88"  ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "6V6"   ; rdf:value 4 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 19 ; lv2:symbol "pamp_presence" ; lv2:name "PA Presence" ;
+        lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 20 ; lv2:symbol "pamp_depth" ; lv2:name "PA Depth" ;
+        lv2:default 0.18 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 21 ; lv2:symbol "pamp_sag" ; lv2:name "PA Sag" ;
+        lv2:default 0.33 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 22 ; lv2:symbol "pamp_master" ; lv2:name "PA Master" ;
+        lv2:default 0.62 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 23 ; lv2:symbol "pamp_nfb" ; lv2:name "PA NFB" ;
+        lv2:default 0.42 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 24 ; lv2:symbol "pamp_resonance" ; lv2:name "PA Resonance" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 25 ; lv2:symbol "pamp_airfeel" ; lv2:name "Air Feel" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+    # When on (default), the power amp follows per-model defaults + auto tube;
+    # the pamp_* knobs above are active only when this is off.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 26 ; lv2:symbol "pamp_auto" ; lv2:name "PA Auto" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Sunn Model T Brite-channel controls (used only when Model = Doom Daddy) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 27 ; lv2:symbol "sunn_bass2" ; lv2:name "Brite Bass" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 28 ; lv2:symbol "sunn_mid2" ; lv2:name "Brite Mid" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 29 ; lv2:symbol "sunn_treble2" ; lv2:name "Brite Treble" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 30 ; lv2:symbol "sunn_bright1" ; lv2:name "Bright I" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 31 ; lv2:symbol "sunn_bright2" ; lv2:name "Bright II" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Beardo BE (Friedman) controls (used only when Model = Beardo BE) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 32 ; lv2:symbol "fr_channel" ; lv2:name "BE Channel" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "BE"    ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "HBE"   ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 33 ; lv2:symbol "fr_fat" ; lv2:name "Fat" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 34 ; lv2:symbol "fr_c45" ; lv2:name "C45" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 35 ; lv2:symbol "fr_sat" ; lv2:name "Sat" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Cali V (Mesa Mark V) controls (used only when Model = Cali V) ──
+        # 9 modes across 3 channels + a 5-band graphic EQ (geq 0.5 = flat, ±12 dB).
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 36 ; lv2:symbol "mv_mode" ; lv2:name "Cali V Mode" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 6 ; lv2:minimum 0 ; lv2:maximum 8 ;
+        lv2:scalePoint [ rdfs:label "Clean"     ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Fat"       ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Tweed"     ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Edge"      ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Crunch"    ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "Mark I"    ; rdf:value 5 ] ;
+        lv2:scalePoint [ rdfs:label "Mark IIC+" ; rdf:value 6 ] ;
+        lv2:scalePoint [ rdfs:label "Mark IV"   ; rdf:value 7 ] ;
+        lv2:scalePoint [ rdfs:label "Extreme"   ; rdf:value 8 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 37 ; lv2:symbol "mv_geq0" ; lv2:name "EQ 80Hz" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 38 ; lv2:symbol "mv_geq1" ; lv2:name "EQ 240Hz" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 39 ; lv2:symbol "mv_geq2" ; lv2:name "EQ 750Hz" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 40 ; lv2:symbol "mv_geq3" ; lv2:name "EQ 2.2kHz" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 41 ; lv2:symbol "mv_geq4" ; lv2:name "EQ 6.6kHz" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 42 ; lv2:symbol "mv_eqpreset" ; lv2:name "EQ Preset" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
+        lv2:scalePoint [ rdfs:label "Custom"    ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Flat"      ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "V-Scoop"   ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Deep V"    ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Mid Boost" ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "Bright"    ; rdf:value 5 ]
+    
+    ] , [
+        # ── Neural (NAM) input/output trims (used only when Model = Neural) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 43 ; lv2:symbol "nam_gain" ; lv2:name "NAM Gain" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 44 ; lv2:symbol "nam_vol" ; lv2:name "NAM Level" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        # ── Plexiglass (Marshall 1959) Vol II — the jumpered Normal-channel volume ──
+        # (used only when Model = Plexiglass; 0 = the pre-Vol-II single-volume voicing)
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 45 ; lv2:symbol "pl_vol2" ; lv2:name "Vol II" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Diamond Plate (Mesa Dual Rectifier) controls (used only when Model = Diamond Plate) ──
+        # 8 modes across 3 channels + the power-section feel switches (Variac, rectifier type).
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 46 ; lv2:symbol "rc_mode" ; lv2:name "Recto Mode" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 7 ; lv2:minimum 0 ; lv2:maximum 7 ;
+        lv2:scalePoint [ rdfs:label "CH1 Clean"   ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "CH1 Pushed"  ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "CH2 Raw"     ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "CH2 Vintage" ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "CH2 Modern"  ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "CH3 Raw"     ; rdf:value 5 ] ;
+        lv2:scalePoint [ rdfs:label "CH3 Vintage" ; rdf:value 6 ] ;
+        lv2:scalePoint [ rdfs:label "CH3 Modern"  ; rdf:value 7 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 47 ; lv2:symbol "rc_variac" ; lv2:name "Variac" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Bold"   ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Spongy" ; rdf:value 1 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 48 ; lv2:symbol "rc_rect" ; lv2:name "Rectifier" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Silicon" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Tube"    ; rdf:value 1 ]
+    ] , [
+        # ── Tremont 15 (PRS MT15) controls (used only when Model = Tremont 15) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 49 ; lv2:symbol "mt_mode" ; lv2:name "MT Channel" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Clean"  ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Crunch" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Lead"   ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 50 ; lv2:symbol "mt_bright" ; lv2:name "MT Bright" ;
+        lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 51 ; lv2:symbol "pamp_coupl" ; lv2:name "Speaker Coupling" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 52 ; lv2:symbol "pl_variac" ; lv2:name "Variac (Brown)" ;
+        lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 53 ; lv2:symbol "jcm_sir34" ; lv2:name "SIR #34 Mod" ;
+        lv2:portProperty lv2:integer, lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 54 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 55 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 56 ; lv2:symbol "control" ; lv2:name "Control"
+    ] , [
+        a lv2:OutputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 57 ; lv2:symbol "notify" ; lv2:name "Notify"] .

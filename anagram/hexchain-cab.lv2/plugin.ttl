@@ -1,0 +1,203 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix atom:  <http://lv2plug.in/ns/ext/atom#> .
+@prefix patch: <http://lv2plug.in/ns/ext/patch#> .
+@prefix state: <http://lv2plug.in/ns/ext/state#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
+@prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# ── Cabinet IR file parameter ─────────────────────────────────────────────────
+# Writable path parameter; mod-ui renders a file browser filtered by mod:fileTypes.
+# "cabsim,ir" map to the "Speaker Cabinets IRs" / IR user-files folders, so IR .wav
+# files dropped there appear in the browser. The chosen absolute path arrives as a
+# patch:Set(atom:Path) on the control port and is loaded on the worker thread.
+<https://rpowell5064.github.io/guitaramp-suite/cab#irfile>
+    a lv2:Parameter ;
+    rdfs:label "Cabinet IR" ;
+    rdfs:range atom:Path ;
+    mod:fileTypes "cabsim,ir,wav,audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/cab#ingroup>
+    a pg:StereoGroup, pg:InputGroup ;
+    lv2:symbol "audioin" ;
+    lv2:name "Audio In" .
+
+<https://rpowell5064.github.io/guitaramp-suite/cab#outgroup>
+    a pg:StereoGroup, pg:OutputGroup ;
+    lv2:symbol "audioout" ;
+    lv2:name "Audio Out" .
+
+<https://rpowell5064.github.io/guitaramp-suite/cab>
+    a lv2:Plugin, lv2:FilterPlugin ;
+    dg:abbreviation "CAB" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Cabinet" ;
+    doap:name  "Hex Chain Cabinet" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Cabinet sim: six built-in cabs + your own .wav IRs, a draggable mic-placement pad, Room/Studio voicing, and adjustable room ambience.
+
+A convolution cabinet with a studio's worth of mic technique built in.
+
+SIX built-in cabs cover the classics without shipping a single sampled IR: the Factory 4x12 (Thirty-Something ceramic bite), Chime 2x12 (alnico sparkle), American 2x12 (open-back spread), Cashback 4x12 (woody vintage crunch), Hi-Volt 4x12 (big, fast and clean) and Doom 4x12 (huge + dark). Each one is synthesized with measured-IR anatomy — cone-breakup ripple, baffle reflections and box resonance — so they fingerprint like real cabs, and they're loudness-matched so switching never jumps in volume.
+
+MIC PLACEMENT is a draggable pad, not a knob bank: slide the mic from the cap to the cone edge and pull it back up to ~30 cm — position darkens and thickens like moving off-axis, distance trades proximity punch for room air. It works on the built-in cabs AND your own IRs, and it saves with presets.
+
+ROOM ambience adds a compact stereo small-to-medium room behind the cab (toggle, mix and size), so direct rigs stop sounding like a speaker pressed against your eardrum. Also preset-savable — and a Room Density switch picks between the Classic room engine and a Dense variant with a smoother, more even reflection tail.
+
+CAB VOICE picks the perspective: Room is the raw amp-in-the-room sound, Studio runs the 'recorded' chain — a second darker virtual mic blended against yours, bracketing filters, a fixed console curve and gentle level-independent bus glue — for that produced, sits-in-the-mix tone.
+
+Load your own .wav impulse responses through the file browser — they're resampled with windowed-sinc quality, so a 44.1 kHz IR keeps its top end intact. Low-cut, high-cut and dry/wet mix finish the voicing.
+
+Ships making sound out of the box. Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 46 ;   # 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
+
+    # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
+    lv2:requiredFeature urid:map , work:schedule ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+    lv2:extensionData state:interface , work:interface ;
+
+    patch:writable <https://rpowell5064.github.io/guitaramp-suite/cab#irfile> ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#outgroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#outgroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "low_cut_hz" ; lv2:name "Low Cut" ;
+        units:unit units:hz ;
+        lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "high_cut_hz" ; lv2:name "High Cut" ;
+        units:unit units:hz ;
+        lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Legacy NAM trims — DORMANT since the cab went IR-only (2026-07-13); the
+        # ports stay because indices are ABI (hosts save/restore by index) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "nam_gain" ; lv2:name "NAM Gain" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "nam_vol" ; lv2:name "NAM Level" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        # ── Mic placement (post-convolution morphs; 0/0 = the voiced baseline) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "mic_pos" ; lv2:name "Mic Pos" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "mic_dist" ; lv2:name "Mic Dist" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # ── Room ambience (post-convolution small room; off = bit-identical) ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 12 ; lv2:symbol "room_on" ; lv2:name "Room" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 13 ; lv2:symbol "room_mix" ; lv2:name "Room Mix" ;
+        lv2:default 0.12 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "room_amt" ; lv2:name "Room Size" ;
+        lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 15 ; lv2:symbol "voice" ; lv2:name "Voice" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0 ;
+        lv2:scalePoint [ rdfs:label "Room"   ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Studio" ; rdf:value 1.0 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "room_density" ; lv2:name "Room Density" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0 ;
+        lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1.0 ]
+    ] , [
+        # ── Speaker Drive (item #40, 2026-07-28): PRE-convolution phenomenological
+        # cone/coil response -- program compression + LF soft-sat + slow thermal HF
+        # tilt. One enumerated depth control (Off = bit-identical) instead of a
+        # toggle+knob pair -- fits the same compact dropdown-row pattern as
+        # Voice/Density rather than crowding the (already nowrap) knob rows. ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 17 ; lv2:symbol "spk_drive" ; lv2:name "Speaker Drive" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 2.0 ;
+        lv2:scalePoint [ rdfs:label "Off"    ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Subtle" ; rdf:value 1.0 ] ;
+        lv2:scalePoint [ rdfs:label "Full"   ; rdf:value 2.0 ]
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 18 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 19 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 20 ; lv2:symbol "control" ; lv2:name "Control"
+    ] , [
+        a lv2:OutputPort, atom:AtomPort ;
+        atom:bufferType atom:Sequence ;
+        atom:supports patch:Message ;
+        lv2:designation lv2:control ;
+        rsz:minimumSize 8192 ;
+        lv2:index 21 ; lv2:symbol "notify" ; lv2:name "Notify"
+    ] .

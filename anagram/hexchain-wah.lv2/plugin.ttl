@@ -1,0 +1,106 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/wah#ingroup>
+    a pg:StereoGroup, pg:InputGroup ;
+    lv2:symbol "audioin" ;
+    lv2:name "Audio In" .
+
+<https://rpowell5064.github.io/guitaramp-suite/wah#outgroup>
+    a pg:StereoGroup, pg:OutputGroup ;
+    lv2:symbol "audioout" ;
+    lv2:name "Audio Out" .
+
+<https://rpowell5064.github.io/guitaramp-suite/wah>
+    a lv2:Plugin, lv2:FilterPlugin ;
+    dg:abbreviation "WAH" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Wah" ;
+    doap:name  "Hex Chain Wah" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Auto-wah + fixed cocked-wah filter.
+
+A wah with two modes: Auto, an envelope filter that sweeps with your picking dynamics, and Fixed, a parked "cocked-wah" midrange honk — so it works as a saved preset with no expression pedal needed. Resonance and range controls shape the vowel. Light on CPU; runs on every target including 32-bit Pi.
+
+Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 26 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in_l" ; lv2:name "In L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 1 ; lv2:symbol "in_r" ; lv2:name "In R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#ingroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 2 ; lv2:symbol "out_l" ; lv2:name "Out L" ;
+        lv2:designation pg:left ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#outgroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 3 ; lv2:symbol "out_r" ; lv2:name "Out R" ;
+        lv2:designation pg:right ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#outgroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "wah_type" ; lv2:name "Mode" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Auto"  ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Fixed" ; rdf:value 1 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "freq" ; lv2:name "Freq" ;
+        lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "depth" ; lv2:name "Range" ;
+        lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "sens" ; lv2:name "Sens" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "q" ; lv2:name "Resonance" ;
+        lv2:default 0.6 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 11 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 12 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

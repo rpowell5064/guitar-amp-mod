@@ -92,6 +92,35 @@ link. If the Anagram ever runs a 16K-page kernel, revisit.
 2. CPU headroom check (fuzz oversamples 4× — the `eco` 2× variant is the
    fallback) and the LVGL auto-UI pass (pages of 6, block images).
 
+## M5: FULL SUITE PORTED (2026-08-27)
+
+All 13 plugins now carry the Anagram treatment (was: drive+fuzz pilots).
+Shapes: **mono** (dual-mono contract) = drive, fuzz, comp, gate, nail,
+utility; **stereo 2-in/2-out** (single-instance) = amp, cab, delay, modfx,
+octave, reverb, wah — both shapes KosmOS-legal. Per-plugin guards follow the
+pilot pattern (enabled/reset appended after stock ports — before atoms on
+amp/cab — resetLatch + full re-init, DenormalGuard out). gen_anagram.py
+gained stereo pg:StereoGroup in/out groups (pg:left/right) + a sort-by-
+original-lv2:index step (amp.ttl declares mv_* 36-42 textually AFTER the
+atoms — textual renumbering scrambled the enum AND put controls after
+atoms). gen_anagram_assets.py: 13 tile sets, accents = each pedal's modgui
+--acc. anagram_dualmono_test grew a `stereo` mode (ports 0/1 in, 2/3 out;
+A/B instance determinism + reset).
+
+**Pi results (KosmOS-toolchain binaries, 16K relink): 13/13 bitwise PASS**
+— phase1 identical-stream AND phase2 post-kx:Reset both exactly 0.
+Two reset bugs found+fixed en route:
+- reverb: prepare()'s same-size resize() keeps old delay-line audio
+  (~0.007 residue) → reset reconstructs the block (`dsp = PlateReverbBlock{}`).
+- amp: TWO layers — reconstruct-the-PA wasn't enough because the still-old
+  (divergent) amp re-contaminates the fresh PA within the reset block itself
+  (~0.1) → reset now reconstructs PA/gate/combs/fits IN PLACE (destroy +
+  placement-new for the PA), schedules a worker rebuild of the amp, and the
+  plugin PASSES THROUGH until the fresh amp swaps in (resetSwapWait).
+RULE for future blocks: never trust a second prepare() to clear state —
+verify with the harness, and never let a stale upstream stage run into a
+freshly reset downstream one.
+
 ## Marketplace vendor track (2026-08-26)
 
 User obtained the vendor overview PDF (in Downloads — CONFIDENTIAL, keep the

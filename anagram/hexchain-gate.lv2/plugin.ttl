@@ -1,0 +1,89 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/gate#audiogroup>
+    a pg:MonoGroup, pg:Group ;
+    lv2:symbol "audio" ;
+    lv2:name "Audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/gate>
+    a lv2:Plugin, lv2:GatePlugin ;
+    dg:abbreviation "GTE" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Noise Gate" ;
+    doap:name  "Hex Chain Noise Gate" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Low-CPU noise gate for high-gain rigs.
+
+A clean, low-CPU noise gate with threshold and timing controls. Detection is decoupled from the fade, so it clamps hum and hiss promptly without chopping your sustain or truncating decay tails — in front of or after high-gain amps. Runs comfortably on every target including 32-bit Pi.
+
+Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 28 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#audiogroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#audiogroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "threshold" ; lv2:name "Threshold" ;
+        units:unit units:db ;
+        lv2:default -60.0 ; lv2:minimum -80.0 ; lv2:maximum 0.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "attack_ms" ; lv2:name "Attack" ;
+        units:unit units:ms ;
+        lv2:default 5.0 ; lv2:minimum 0.1 ; lv2:maximum 50.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "hold_ms" ; lv2:name "Hold" ;
+        units:unit units:ms ;
+        lv2:default 50.0 ; lv2:minimum 0.0 ; lv2:maximum 500.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "release_ms" ; lv2:name "Release" ;
+        units:unit units:ms ;
+        lv2:default 100.0 ; lv2:minimum 10.0 ; lv2:maximum 2000.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "hysteresis" ; lv2:name "Hysteresis" ;
+        units:unit units:db ;
+        lv2:default 6.0 ; lv2:minimum 0.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 8 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 9 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

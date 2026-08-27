@@ -18,6 +18,9 @@ enum ModfxPorts {
     P_BYPASS = 9,
     P_OFFSET = 10,   // Center Delay (ms) — pushes the modulation centre out (delay types only)
     P_SHAPE  = 11,   // Tremolo waveform: 0 bias / 1 opto / 2 harmonic (tremolo only)
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+#endif
     P_N_PORTS
 };
 
@@ -25,6 +28,10 @@ struct ModfxPlugin {
     ModulationBlock dsp;
     float* ports[P_N_PORTS];
     int    lastType = -1;
+#ifdef HEXCHAIN_ANAGRAM
+    double sampleRate = 48000.0;   // for the kx:Reset full re-init
+    bool   resetLatch = false;     // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle modfx_instantiate(const LV2_Descriptor*, double rate,
@@ -33,6 +40,11 @@ static LV2_Handle modfx_instantiate(const LV2_Descriptor*, double rate,
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 2);
     p->dsp.setType(ModulationType::CE2_Chorus);
+#ifdef HEXCHAIN_ANAGRAM
+    p->sampleRate = rate;
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+    p->ports[P_RESET]   = nullptr;
+#endif
     return p;
 }
 
@@ -42,7 +54,22 @@ static void modfx_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void modfx_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<ModfxPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): full state re-init — restarts the LFO from its
+    // deterministic initial phase (see anagram/ANAGRAM-NOTES.md).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->dsp.prepare(p->sampleRate, 512, 2);
+            p->lastType = -1;   // re-apply the modulation type below
+        }
+    } else p->resetLatch = false;
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
+                     (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
+#else
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
+#endif
 
     const int type = static_cast<int>(*p->ports[P_TYPE] + 0.5f);
     if (type != p->lastType) {

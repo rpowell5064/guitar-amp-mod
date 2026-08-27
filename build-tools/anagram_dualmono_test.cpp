@@ -58,9 +58,10 @@ struct Inst {
     LV2_Handle h = nullptr;
     std::vector<float> vals;
     std::vector<float> in, out;
-    std::vector<uint8_t> atomIn, atomOut;
+    std::vector<float> in2, out2;   // stereo mode: right channel (ports 1/3)
     SyncWorker worker;
     LV2_Worker_Schedule sched {};
+    std::vector<uint8_t> atomIn, atomOut;
 };
 
 int main(int argc, char** argv) {
@@ -69,6 +70,7 @@ int main(int argc, char** argv) {
     const char* URI = argv[2];
     const int NP = atoi(argv[3]);
     int atomInIdx = -1, atomOutIdx = -1, resetIdx = -1;
+    bool stereo = false;             // stereo: ports 0/1 = in L/R, 2/3 = out L/R
     const char* namPath = nullptr;   // nam=<path>: load a capture via patch:Set
     const char* namProp = nullptr;   // namprop=<uri>: the file-parameter URI
     std::vector<std::pair<int, float>> overrides;
@@ -77,6 +79,7 @@ int main(int argc, char** argv) {
         if (sscanf(argv[a], "atomin=%d", &i) == 1) atomInIdx = i;
         else if (sscanf(argv[a], "atomout=%d", &i) == 1) atomOutIdx = i;
         else if (sscanf(argv[a], "reset=%d", &i) == 1) resetIdx = i;
+        else if (!strcmp(argv[a], "stereo")) stereo = true;
         else if (!strncmp(argv[a], "nam=", 4)) namPath = argv[a] + 4;
         else if (!strncmp(argv[a], "namprop=", 8)) namProp = argv[a] + 8;
         else if (sscanf(argv[a], "set:%d=%f", &i, &v) == 2) overrides.push_back({ i, v });
@@ -109,14 +112,19 @@ int main(int argc, char** argv) {
         for (auto& o : overrides) if (o.first >= 0 && o.first < NP) I.vals[(size_t) o.first] = o.second;
         I.in.assign(NF, 0.0f);
         I.out.assign(NF, 0.0f);
+        if (stereo) { I.in2.assign(NF, 0.0f); I.out2.assign(NF, 0.0f); }
         I.atomIn.assign(8192, 0);
         I.atomOut.assign(8192, 0);
         auto* si = (LV2_Atom_Sequence*) I.atomIn.data();
         si->atom.size = sizeof(LV2_Atom_Sequence_Body); si->atom.type = seqURID;
         for (int i = 0; i < NP; ++i) {
             void* ptr;
-            if (i == 0) ptr = I.in.data();
-            else if (i == 1) ptr = I.out.data();
+            if (stereo && i == 0) ptr = I.in.data();
+            else if (stereo && i == 1) ptr = I.in2.data();
+            else if (stereo && i == 2) ptr = I.out.data();
+            else if (stereo && i == 3) ptr = I.out2.data();
+            else if (!stereo && i == 0) ptr = I.in.data();
+            else if (!stereo && i == 1) ptr = I.out.data();
             else if (i == atomInIdx) ptr = I.atomIn.data();
             else if (i == atomOutIdx) ptr = I.atomOut.data();
             else ptr = &I.vals[(size_t) i];
@@ -184,16 +192,28 @@ int main(int argc, char** argv) {
         printf("nam capture staged: %s\n", namPath);
     }
 
+    // Stereo-aware helpers: fill both channels from the SAME lcg stream (still
+    // deterministic), mirror into B, compare every output channel A-vs-B.
+    auto fillIns = [&](Inst& I, uint32_t& lcg) {
+        fill(I.in, lcg);
+        if (stereo) fill(I.in2, lcg);
+    };
+    auto mirrorIns = [&](Inst& dst, const Inst& src) {
+        std::memcpy(dst.in.data(), src.in.data(), NF * sizeof(float));
+        if (stereo) std::memcpy(dst.in2.data(), src.in2.data(), NF * sizeof(float));
+    };
+
     // ── Phase 1: identical streams ────────────────────────────────────────────
     double maxd1 = 0.0, activity = 0.0;
     const int blocks = (int) (10.0 * RATE / NF);   // 10 s
     for (int b = 0; b < blocks; ++b) {
-        fill(A.in, lcgA);
-        std::memcpy(B.in.data(), A.in.data(), NF * sizeof(float));
+        fillIns(A, lcgA);
+        mirrorIns(B, A);
         runOne(A);
         runOne(B);
         for (uint32_t i = 0; i < NF; ++i) {
-            const double dd = std::fabs((double) A.out[i] - (double) B.out[i]);
+            double dd = std::fabs((double) A.out[i] - (double) B.out[i]);
+            if (stereo) dd = std::fmax(dd, std::fabs((double) A.out2[i] - (double) B.out2[i]));
             if (dd > maxd1) maxd1 = dd;
             const double da = std::fabs((double) A.out[i] - (double) A.in[i]);
             if (da > activity) activity = da;
@@ -212,22 +232,23 @@ int main(int argc, char** argv) {
     double maxd2 = -1.0;
     if (resetIdx >= 0) {
         uint32_t lcgX = 0xBEEFu;
-        for (int b = 0; b < 64; ++b) { fill(B.in, lcgX); runOne(B); }   // B diverges
+        for (int b = 0; b < 64; ++b) { fillIns(B, lcgX); runOne(B); }   // B diverges
         A.vals[(size_t) resetIdx] = 1.0f;
         B.vals[(size_t) resetIdx] = 1.0f;
-        fill(A.in, lcgA);
-        std::memcpy(B.in.data(), A.in.data(), NF * sizeof(float));
+        fillIns(A, lcgA);
+        mirrorIns(B, A);
         runOne(A); runOne(B);
         A.vals[(size_t) resetIdx] = 0.0f;
         B.vals[(size_t) resetIdx] = 0.0f;
         maxd2 = 0.0;
         for (int b = 0; b < blocks / 2; ++b) {
-            fill(A.in, lcgA);
-            std::memcpy(B.in.data(), A.in.data(), NF * sizeof(float));
+            fillIns(A, lcgA);
+            mirrorIns(B, A);
             runOne(A);
             runOne(B);
             for (uint32_t i = 0; i < NF; ++i) {
-                const double dd = std::fabs((double) A.out[i] - (double) B.out[i]);
+                double dd = std::fabs((double) A.out[i] - (double) B.out[i]);
+                if (stereo) dd = std::fmax(dd, std::fabs((double) A.out2[i] - (double) B.out2[i]));
                 if (dd > maxd2) maxd2 = dd;
             }
         }

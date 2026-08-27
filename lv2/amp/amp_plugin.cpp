@@ -86,6 +86,9 @@ enum AmpPorts {
     P_PAMP_COUPL,                                              // speaker-impedance coupling (2026-07-23, additive, default 0)
     P_PL_VARIAC,                                               // Plexiglass Variac (brown sound, v46, default 0 = stock)
     P_JCM_SIR34,                                               // Crunchy (JCM800) SIR #34 mod (v47, default 0 = stock)
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,                                        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the atoms (mod-host breaks if control ports follow them)
+#endif
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
 };
@@ -136,6 +139,10 @@ struct AmpPlugin {
     char namPath[kPathMax] = {0};
     float mono[kMaxBlock], monoOut[kMaxBlock];
     float gbufL[kMaxBlock], gbufR[kMaxBlock];   // gated-input scratch (avoids writing host input buffers)
+#ifdef HEXCHAIN_ANAGRAM
+    bool resetLatch    = false;   // kx:Reset edge detect
+    bool resetSwapWait = false;   // reset fired: passthrough until the fresh amp swaps in
+#endif
 
     LV2_Worker_Schedule* schedule = nullptr;
     LV2_URID_Map*        map      = nullptr;
@@ -254,6 +261,9 @@ static LV2_Worker_Status amp_work_response(LV2_Handle h, uint32_t, const void* d
     AmpBlockExtended* old = p->amp;
     p->amp = msg->amp;
     p->lastModel = msg->modelIdx;
+#ifdef HEXCHAIN_ANAGRAM
+    p->resetSwapWait = false;   // fresh amp in place — resume processing
+#endif
     WorkMsg freeMsg; freeMsg.type = WORK_FREE; freeMsg.amp = old;
     p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
     return LV2_WORKER_SUCCESS;
@@ -261,9 +271,49 @@ static LV2_Worker_Status amp_work_response(LV2_Handle h, uint32_t, const void* d
 
 // ── Audio ─────────────────────────────────────────────────────────────────────
 static void amp_run(LV2_Handle h, uint32_t n) {
+#ifndef HEXCHAIN_ANAGRAM
     DenormalGuard denormalGuard;
+#endif  // KosmOS forbids touching global CPU registers (FTZ) — even scoped
     auto* p = static_cast<AmpPlugin*>(h);
     const URIs& u = p->uris;
+
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset trigger (rising edge): re-init every stateful stage.
+    // RECONSTRUCT the value members, not just prepare() — prepare()'s
+    // same-size resize() calls keep old buffer content (measured 0.2 residue
+    // on the Pi). The heap amp is rebuilt through the normal worker path
+    // (fresh AmpBlockExtended swapped in, old one freed off-RT) — a few
+    // blocks of stale-amp output until the swap lands, same as any model
+    // change. Reconstruction allocates, but the host only fires Reset on
+    // preset/bank/pairing events (see anagram/ANAGRAM-NOTES.md).
+    if (p->ctrl[P_RESET] && *p->ctrl[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            scheduleRebuild(p, p->lastModel < 0 ? 1 : p->lastModel);
+            // Passthrough until the fresh amp lands: otherwise the still-old
+            // (divergent) amp re-contaminates the just-reset PA/gate within
+            // this very block (measured 0.1 post-reset divergence on the Pi).
+            p->resetSwapWait = true;
+            p->pa.~PowerAmpProcessor();
+            new (&p->pa) PowerAmpProcessor{};
+            p->pa.prepare(p->rate, kMaxBlock, 2);
+            p->inGate = NoiseGateBlock{};
+            p->inGate.prepare(p->rate, kMaxBlock, 2);
+            p->inGate.setParameter("attack",     2.0f);
+            p->inGate.setParameter("hold",     120.0f);
+            p->inGate.setParameter("release",  250.0f);
+            p->inGate.setParameter("hysteresis", 8.0f);
+            p->inComb[0] = HumNotchComb{};   p->inComb[0].prepare(p->rate);
+            p->inComb[1] = HumNotchComb{};   p->inComb[1].prepare(p->rate);
+            p->evhFit[0] = EvhCaptureFit{};  p->evhFit[0].prepare(p->rate);
+            p->evhFit[1] = EvhCaptureFit{};  p->evhFit[1].prepare(p->rate);
+            p->rectoFit[0] = RectoCaptureFit{}; p->rectoFit[0].prepare(p->rate);
+            p->rectoFit[1] = RectoCaptureFit{}; p->rectoFit[1].prepare(p->rate);
+            if (p->nam) p->nam->reset(p->rate, kMaxBlock);
+            p->lastTube = -1;   // re-apply the tube type below
+        }
+    } else p->resetLatch = false;
+#endif
 
     // Open the notify sequence + handle incoming NAM file set/get.
     const bool haveNotify = (p->notify != nullptr);
@@ -296,11 +346,21 @@ static void amp_run(LV2_Handle h, uint32_t n) {
 
     const int  modelIdx   = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);
     const bool isNam       = (modelIdx == kNamIdx);
+#ifdef HEXCHAIN_ANAGRAM
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    const bool fullBypass  = (*p->ctrl[P_BYPASS] > 0.5f) ||
+                             (p->ctrl[P_ENABLED] && *p->ctrl[P_ENABLED] <= 0.5f);
+#else
     const bool fullBypass  = *p->ctrl[P_BYPASS] > 0.5f;
+#endif
     float* inL  = p->ctrl[P_IN_L];  float* inR  = p->ctrl[P_IN_R];
     float* outL = p->ctrl[P_OUT_L]; float* outR = p->ctrl[P_OUT_R];
 
+#ifdef HEXCHAIN_ANAGRAM
+    if (fullBypass || p->resetSwapWait) {
+#else
     if (fullBypass) {
+#endif
         if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
         if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);

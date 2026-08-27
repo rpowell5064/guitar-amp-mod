@@ -1,0 +1,106 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/utility#audiogroup>
+    a pg:MonoGroup, pg:Group ;
+    lv2:symbol "audio" ;
+    lv2:name "Audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/utility>
+    a lv2:Plugin, lv2:UtilityPlugin ;
+    dg:abbreviation "TRM" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Input Trim" ;
+    doap:name  "Hex Chain Input Trim" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Gain / phase / hum-filter + single-coil→humbucker voicing.
+
+A small but handy front-of-chain utility: clean gain trim, phase invert, a mains-hum filter (a comb of notches at 60 Hz and its harmonics), and a single-coil→humbucker voicing. The voicing re-voices a single-coil pickup toward one of three target bridge humbuckers — '59 Bucker (warm late-'50s vintage), Norse Hammer (hot ceramic) or Modern Flux (active hi-fi) — with an Amount control (0 = bypass). Minimal CPU; runs on every target.
+
+Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 2 ;
+    lv2:microVersion 31 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/utility#audiogroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/utility#audiogroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "gain_db" ; lv2:name "Gain" ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "phase_invert" ; lv2:name "Phase" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "hum_filter" ; lv2:name "Hum Filter" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "hb_model" ; lv2:name "HB Model" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "'59 Bucker"   ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Norse Hammer" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Modern Flux"  ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "hb_amount" ; lv2:name "HB Amount" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "humbucker" ; lv2:name "Humbucker" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "boost" ; lv2:name "Boost" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "boost_amt" ; lv2:name "Boost Amt" ;
+        units:unit units:db ;
+        lv2:default 4.0 ; lv2:minimum 0.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "pickup_load" ; lv2:name "Pickup Load" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 11 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 12 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

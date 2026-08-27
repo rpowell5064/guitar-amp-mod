@@ -16,6 +16,9 @@ enum CompPorts {
     P_MAKEUP = 8,
     P_GR     = 9,
     P_BYPASS = 10,
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+#endif
     P_N_PORTS
 };
 
@@ -23,6 +26,10 @@ struct CompPlugin {
     CompressorBlock dsp;
     float* ports[P_N_PORTS];
     float  grOut = 0.0f;
+#ifdef HEXCHAIN_ANAGRAM
+    double sampleRate = 48000.0;   // for the kx:Reset full re-init
+    bool   resetLatch = false;     // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle comp_instantiate(const LV2_Descriptor*, double rate,
@@ -30,6 +37,11 @@ static LV2_Handle comp_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) CompPlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 1);
+#ifdef HEXCHAIN_ANAGRAM
+    p->sampleRate = rate;
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+    p->ports[P_RESET]   = nullptr;
+#endif
     return p;
 }
 
@@ -39,7 +51,18 @@ static void comp_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void comp_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<CompPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): full state re-init so a freshly paired dual-mono
+    // partner starts identical (see anagram/ANAGRAM-NOTES.md).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) { p->resetLatch = true; p->dsp.prepare(p->sampleRate, 512, 1); }
+    } else p->resetLatch = false;
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
+                     (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
+#else
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
+#endif
     p->dsp.setParameter("type",      *p->ports[P_TYPE]);
     p->dsp.setParameter("threshold", *p->ports[P_THRESH]);
     p->dsp.setParameter("ratio",     *p->ports[P_RATIO]);

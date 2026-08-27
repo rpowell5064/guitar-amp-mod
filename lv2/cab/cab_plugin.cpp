@@ -41,6 +41,10 @@ enum CabPorts {
     P_VOICE,                   // cab voice (2026-07-22): 0 Room (untouched legacy path) / 1 Studio (recorded chain)
     P_ROOMDENSE,               // room density (2026-07-23): 0 Classic 4-comb / 1 Dense 6-comb+2AP
     P_SPKDRIVE,                // speaker drive (item #40, 2026-07-28): 0 Off / 1 Subtle / 2 Full
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the
+                               // atoms (mod-host breaks if control ports follow them)
+#endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
 };
@@ -66,6 +70,9 @@ struct CabPlugin {
     char irPath[kPathMax]  = {0};
     char namPath[kPathMax] = {0};
     float namIn[kMaxBlock], namOut[kMaxBlock];
+#ifdef HEXCHAIN_ANAGRAM
+    bool resetLatch = false;   // kx:Reset edge detect
+#endif
 
     LV2_URID_Map*        map      = nullptr;
     LV2_Worker_Schedule* schedule = nullptr;
@@ -227,9 +234,28 @@ static LV2_Worker_Status cab_work_response(LV2_Handle h, uint32_t, const void* d
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 static void cab_run(LV2_Handle h, uint32_t n) {
+#ifndef HEXCHAIN_ANAGRAM
     DenormalGuard denormalGuard;   // flush denormals (NAM/IR state can spike CPU in decay/silence)
+#endif  // KosmOS forbids touching global CPU registers (FTZ) — even scoped
     auto* p = static_cast<CabPlugin*>(h);
     const URIs& u = p->uris;
+
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset trigger (rising edge): re-init the convolver, then rebuild the
+    // active IR on the worker (prepare() drops the loaded IR; the worker
+    // regenerates it from irPath — "" → the enriched Factory Cab). NAM state
+    // resets in place. See anagram/ANAGRAM-NOTES.md.
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->dsp.prepare(p->rate, kMaxBlock, 2);
+            WorkMsg msg; msg.type = WORK_IR; msg.nam = nullptr;
+            std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
+            p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+            if (p->nam) p->nam->reset(p->rate, kMaxBlock);
+        }
+    } else p->resetLatch = false;
+#endif
 
     const bool haveNotify = (p->notify != nullptr);
     LV2_Atom_Forge_Frame seqFrame;
@@ -267,7 +293,13 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         }
     }
 
+#ifdef HEXCHAIN_ANAGRAM
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass/passthrough paths.
+    const bool bypass = (*p->ports[P_BYPASS] > 0.5f) ||
+                        (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#else
     const bool bypass = *p->ports[P_BYPASS] > 0.5f;
+#endif
     float* inL  = p->ports[P_IN_L];  float* inR  = p->ports[P_IN_R];
     float* outL = p->ports[P_OUT_L]; float* outR = p->ports[P_OUT_R];
 

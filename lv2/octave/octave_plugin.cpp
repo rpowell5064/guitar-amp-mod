@@ -10,12 +10,20 @@
 enum OctavePorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
     P_UP, P_DOWN, P_DRY,
-    P_BYPASS, P_MICRO, P_INTERVAL, P_N_PORTS
+    P_BYPASS, P_MICRO, P_INTERVAL,
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+#endif
+    P_N_PORTS
 };
 
 struct OctavePlugin {
     OctaveBlock dsp;
     float* ports[P_N_PORTS];
+#ifdef HEXCHAIN_ANAGRAM
+    double sampleRate = 48000.0;   // for the kx:Reset full re-init
+    bool   resetLatch = false;     // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle octave_instantiate(const LV2_Descriptor*, double rate,
@@ -23,6 +31,11 @@ static LV2_Handle octave_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) OctavePlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 2);
+#ifdef HEXCHAIN_ANAGRAM
+    p->sampleRate = rate;
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+    p->ports[P_RESET]   = nullptr;
+#endif
     return p;
 }
 
@@ -32,7 +45,17 @@ static void octave_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void octave_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<OctavePlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): full state re-init (see anagram/ANAGRAM-NOTES.md).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) { p->resetLatch = true; p->dsp.prepare(p->sampleRate, 512, 2); }
+    } else p->resetLatch = false;
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
+                     (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
+#else
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
+#endif
     p->dsp.setParameter("up",       *p->ports[P_UP]);
     p->dsp.setParameter("down",     *p->ports[P_DOWN]);
     p->dsp.setParameter("dry",      *p->ports[P_DRY]);

@@ -75,13 +75,24 @@ target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
 # streaming equivalence across ragged block sizes.
 add_executable(hf_resampler_test "${CMAKE_CURRENT_SOURCE_DIR}/hf_resampler_test.cpp")
 
-# Anagram compile gates (M4): the drive + fuzz TUs must build in BOTH flag
-# states (default pi-Stomp AND -DHEXCHAIN_ANAGRAM=1) — object libs only, no
-# linking (each TU exports lv2_descriptor).
+# Anagram compile gates (M4 pilots + M5 full suite): every ported TU must
+# build in BOTH flag states (default pi-Stomp AND -DHEXCHAIN_ANAGRAM=1) —
+# object libs only, no linking (each TU exports lv2_descriptor).
 foreach(mode default anagram)
     add_library(anagram_check_${mode} OBJECT
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/drive/drive_plugin.cpp"
-        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/fuzz/fuzz_plugin.cpp")
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/fuzz/fuzz_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/amp/amp_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/cab/cab_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/comp/comp_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/gate/gate_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/delay/delay_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/modfx/modfx_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/nail/nail_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/octave/octave_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/reverb/reverb_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/wah/wah_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/utility/utility_plugin.cpp")
     target_include_directories(anagram_check_${mode} PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
         ${HF_LV2_INCLUDE})

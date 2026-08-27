@@ -1,0 +1,95 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix dg:    <http://www.darkglass.com/lv2/ns#> .
+@prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+<https://rpowell5064.github.io/guitaramp-suite/nail#audiogroup>
+    a pg:MonoGroup, pg:Group ;
+    lv2:symbol "audio" ;
+    lv2:name "Audio" .
+
+<https://rpowell5064.github.io/guitaramp-suite/nail>
+    a lv2:Plugin, lv2:DistortionPlugin ;
+    dg:abbreviation "NL" ;
+    dg:blockImageOff <block-off.png> ;
+    dg:blockImageOn <block-on.png> ;
+    rdfs:label "Hex Chain — Nail" ;
+    doap:name  "Hex Chain Nail" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Five-mode industrial distortion: fuzz, resonant filter, bitcrush, cab re-amp, ring-mod.
+
+An industrial distortion block with five distinct topologies — each its own circuit, not one voicing knob: Broke (crude digital hard-clip with sample-rate decimation + bit-reduction), Dahnward (scooped high-gain preamp into a sweepable resonant band-pass), Delicate (a swollen, gherkin-fat fuzz with a wide filter sweep), Con Molars (a bright clip re-amped through a fixed miked-speaker voicing) and Yo, Hey Adrian! (a high-sustain clip into a switchable ring modulator). Controls: Mode, Drive, Filter, Texture, Level, plus a Ring Mod toggle for the Yo, Hey Adrian! mode. Oversampled; works standalone or in the Hex Chain suite.
+
+Amp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a cranked British master-volume half-stack is the classic move. Free and open source (GPL-3).""" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 26 ;
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/nail#audiogroup>
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out" ;
+        lv2:designation pg:center ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/nail#audiogroup>
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "mode" ; lv2:name "Mode" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 4 ;
+        lv2:scalePoint [ rdfs:label "Broke"      ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Dahnward"   ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Delicate"   ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Con Molars"     ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Yo, Hey Adrian!" ; rdf:value 4 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;
+        lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "filter" ; lv2:name "Filter" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "texture" ; lv2:name "Texture" ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "level" ; lv2:name "Level" ;
+        lv2:default 0.65 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "ring" ; lv2:name "Ring Mod" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 9 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 10 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:designation kx:Reset ;
+        lv2:portProperty lv2:toggled, pprops:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

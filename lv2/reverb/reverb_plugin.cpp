@@ -19,12 +19,19 @@ enum ReverbPorts {
     P_DENSITY = 11,   // Classic / Dense tank (2026-07-23, default Classic = bit-identical)
     P_TYPE    = 12,   // Plate / Spring / Ambient (2026-07-25: type 2 = Hex Ambient)
     P_BLOOM   = 13,   // Hex Ambient bloom (smear/density/width macro; inert on plate/spring)
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+#endif
     P_N_PORTS
 };
 
 struct ReverbPlugin {
     PlateReverbBlock dsp;
     float* ports[P_N_PORTS];
+#ifdef HEXCHAIN_ANAGRAM
+    double sampleRate = 48000.0;   // for the kx:Reset full re-init
+    bool   resetLatch = false;     // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle reverb_instantiate(const LV2_Descriptor*, double rate,
@@ -32,6 +39,11 @@ static LV2_Handle reverb_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) ReverbPlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 2);
+#ifdef HEXCHAIN_ANAGRAM
+    p->sampleRate = rate;
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+    p->ports[P_RESET]   = nullptr;
+#endif
     return p;
 }
 
@@ -41,7 +53,24 @@ static void reverb_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void reverb_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<ReverbPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): full state re-init — kills the tank tail so a
+    // rig/preset change never carries stale reverb (see anagram/ANAGRAM-NOTES.md).
+    // RECONSTRUCT the block, not just prepare(): prepare()'s same-size resize()
+    // calls keep old delay-line content (measured 0.007 residue on the Pi).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->dsp = PlateReverbBlock{};
+            p->dsp.prepare(p->sampleRate, 512, 2);
+        }
+    } else p->resetLatch = false;
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
+                     (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
+#else
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
+#endif
     p->dsp.setParameter("preDelayMs", *p->ports[P_PREDLY]);
     p->dsp.setParameter("decayTime",  *p->ports[P_DECAY]);
     p->dsp.setParameter("damping",    *p->ports[P_DAMP]);

@@ -24,6 +24,9 @@ enum DelayPorts {
     P_MODDEP  = 15,   // Seraph: modulation depth
     P_MODRATE = 16,   // Seraph: modulation rate
     P_AGE     = 17,   // EP-3: worn-transport / oxide age (ignored by others)
+#ifdef HEXCHAIN_ANAGRAM
+    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+#endif
     P_N_PORTS
 };
 
@@ -40,6 +43,10 @@ struct DelayPlugin {
     DelayBlock dsp;
     float* ports[P_N_PORTS];
     int    lastType = -1;
+#ifdef HEXCHAIN_ANAGRAM
+    double sampleRate = 48000.0;   // for the kx:Reset full re-init
+    bool   resetLatch = false;     // kx:Reset edge detect
+#endif
 };
 
 static LV2_Handle delay_instantiate(const LV2_Descriptor*, double rate,
@@ -47,6 +54,11 @@ static LV2_Handle delay_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) DelayPlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 2);
+#ifdef HEXCHAIN_ANAGRAM
+    p->sampleRate = rate;
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+    p->ports[P_RESET]   = nullptr;
+#endif
     return p;
 }
 
@@ -56,7 +68,22 @@ static void delay_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void delay_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<DelayPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset (rising edge): full state re-init — clears the delay lines so a
+    // rig/preset change never replays stale echoes (see anagram/ANAGRAM-NOTES.md).
+    if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
+        if (!p->resetLatch) {
+            p->resetLatch = true;
+            p->dsp.prepare(p->sampleRate, 512, 2);
+            p->lastType = -1;   // re-apply the delay type below
+        }
+    } else p->resetLatch = false;
+    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
+                     (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
+#else
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
+#endif
 
     const int type = static_cast<int>(*p->ports[P_TYPE] + 0.5f);
     if (type != p->lastType) {
