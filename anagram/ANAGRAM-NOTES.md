@@ -92,6 +92,35 @@ link. If the Anagram ever runs a 16K-page kernel, revisit.
 2. CPU headroom check (fuzz oversamples 4× — the `eco` 2× variant is the
    fallback) and the LVGL auto-UI pass (pages of 6, block images).
 
+## Marketplace vendor track (2026-08-26)
+
+User obtained the vendor overview PDF (in Downloads — CONFIDENTIAL, keep the
+doc and its business terms OUT of this repo; commercial details live in the
+private project memory). Technical takeaways safe to record:
+
+- **An official Anagram Desktop Simulator exists** (Linux/macOS/Windows,
+  mirrors the device UI for DSP + UI testing) — vendor-track, not public.
+  This answers the old "emulator?" question: request it via onboarding.
+- A **Figma UI SDK** with all device widget assets/layouts is available to
+  vendors for styling design work.
+- UI model confirmed: Block Image (chain) + Block Settings Screen auto-built
+  from LV2 metadata, one widget per physical knob, fixed 6-slot grid.
+  Commercial vendors are EXPECTED to do at least basic styling.
+- Styling levels: (1) style the standard UI via the `dgcs:` custom-styling
+  LV2 extension (KosmOS ≥ v1.14, Plugin-Dev-Setup STYLING.md) — custom
+  knob/fader/toggle/list visuals, bundled FreeType fonts, backgrounds/
+  watermark, top-bar elements, pagination dots; styling lives in a SEPARATE
+  ttl referenced by `rdfs:seeAlso` from manifest.ttl (regeneration-safe —
+  fits gen_anagram.py perfectly); knob visuals are **film-strip frame
+  sequences (min→max)** = the same sprite-strip format our modgui already
+  ships, so Hex Chain knob art ports nearly directly; peakmeters not
+  stylable as of v1.14. (2) Custom LVGL widgets. (3) Fully custom LVGL
+  screens (their Parametric EQ/Entropia/Ignissor).
+- Onboarding path: Vendor Input Form → review → Slack + Developer Access
+  Agreement + developer tools. Licensing: device-bound license system; the
+  licensing library is supplied to vendors so binaries are produced without
+  sharing DSP source.
+
 ## Open questions for Darkglass (with the Marketplace/dev application)
 
 - Sideload/dev-mode procedure for unpublished plugins.
@@ -99,6 +128,8 @@ link. If the Anagram ever runs a 16K-page kernel, revisit.
   them; their own open-source dark-plugins ship no block images — our TTLs
   declare `<block-off.png>`/`<block-on.png>` at plugin level).
 - File-parameter (atom:Path / NAM picker) UI behavior on device.
-- Whether an emulator exists for approved developers (none is public).
+- ~~Whether an emulator exists for approved developers~~ ANSWERED: the
+  Desktop Simulator exists — request access + the Figma UI SDK link.
 - `dg:quickPot` (the quick-access knob designation, seen in dark-tremolo):
   candidate = `drive` on Drive, `sustain` on Fuzz — not yet declared.
+- KosmOS version floor to declare for `dgcs:` styling (needs ≥ v1.14).
