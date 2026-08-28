@@ -112,6 +112,11 @@ int main() {
       a.setParameter("mode", 2.0f);   // Lead = worst case (5 stages + DNR)
       PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_6L6GC);
       run("Amp: Tremont + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
+    { AmpBlockExtended a; a.prepare(FS,NB,2); a.setAmpModel(AmpModel::AmpegSVT);
+      a.setParameter("ultralo", 1.0f);   // worst case: both Ultras + mid engaged
+      a.setParameter("ultrahi", 1.0f);
+      PowerAmpProcessor pa; pa.prepare(FS,NB,2); pa.setTubeType(TubeType::Tube_6550);
+      run("Amp: BlueLiner + PA", 2, [&](float**i,float**o,int n,int c){ a.process(i,o,n,c); pa.process(o,o,n,c); }, true); }
     // Sunn Model T: its PA is internal, so measure the amp block alone — in each
     // channel-link mode. Parallel/Series run BOTH preamp channels (≈2x triodes).
     // Silence column flags denormal/decay cost (relevant to "notes cut out").

@@ -171,6 +171,8 @@ int main() {
         {"Recto CH3 Mod", AmpModel::MesaDualRectifier,  7, 0, false, "mode", 7.0f},
         {"MT15 Clean",    AmpModel::PRSMT15,            8, 0, false, "mode", 0.0f},
         {"MT15 Lead",     AmpModel::PRSMT15,            8, 0, false, "mode", 2.0f},
+        {"BlueLiner",     AmpModel::AmpegSVT,          11, 5},
+        {"BlueLiner UL",  AmpModel::AmpegSVT,          11, 5, false, "ultralo", 1.0f},
     };
     printf("%-14s | GAIN thd%% @ .05 / .3 / .5 / 1.0        | TONE swing dB (0->1): bass mid treb pres\n", "amp");
     printf("%-14s | ------------------------------------- | ----------------------------------------\n", "");

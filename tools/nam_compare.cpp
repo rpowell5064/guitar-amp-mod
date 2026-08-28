@@ -209,6 +209,8 @@ static bool resolveModel(std::string name, ModelSpec& out) {
                               { out = {AmpModel::PeaveyBackstage, 0, 0, false, "Peavey Backstage Plus (Backline Plus)"}; return true; }
     if (name == "hiwatt" || name == "dr103" || name == "hiwattdr103")
                               { out = {AmpModel::HiwattDR103, 0, 1, false, "Hiwatt DR103 (high-headroom clean)"}; return true; }
+    if (name == "svt" || name == "ampeg" || name == "blueliner" || name == "pegleg")
+                              { out = {AmpModel::AmpegSVT, 11, 5, false, "Ampeg SVT (Blue Liner)"}; return true; }   // BASS; 6550, PA row 11; --ultralo/--ultrahi/--midfreq
     // ── drive pedals (OverdriveBlock path; drive/tone/level via --gain/--tone/--level) ──
     if (name == "rat" || name == "rodent" || name == "dearrodentboy")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "ProCo RAT (Dear Rodent Boy)", true, OverdriveType::ProcoRAT}; return true; }
@@ -252,6 +254,7 @@ struct Knobs {
     float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+); Recto mode 0..7
     float variac = 0.0f, rect = 0.0f;           // Recto: 0 Bold/Silicon, 1 Spongy/Tube
     float bright = 0.0f;                        // MT15: clean/crunch bright switch
+    float ultralo = 0.0f, ultrahi = 0.0f, midfreq = 1.0f;  // SVT: Ultra switches + mid selector (0/1/2 = 220/800/3k)
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
     float gvol = 1.0f;   // #45: guitar volume-pot position (1 = full = bit-identical)
     float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
@@ -451,6 +454,9 @@ static void runModel(const ModelSpec& m, const Knobs& k, double sr,
     if (k.rectothp   >= 0.0f) amp.setParameter("fit_tighthp",   k.rectothp);
     if (k.rectoghost >= 0.0f) amp.setParameter("fit_ghostim",   k.rectoghost);
     amp.setParameter("bright", k.bright);  // MT15 bright switch (ignored by other models)
+    amp.setParameter("ultralo", k.ultralo);  // SVT Ultra-Lo (ignored by other models)
+    amp.setParameter("ultrahi", k.ultrahi);  // SVT Ultra-Hi
+    amp.setParameter("midfreq", k.midfreq);  // SVT mid selector 0/1/2 = 220/800/3k
 
     PowerAmpProcessor pa;
     pa.prepare(sr, BLK, 1);
@@ -876,6 +882,7 @@ int main(int argc, char** argv) {
     knob("--mode", k.mode);   // Mesa Mark V mode 0..8 / Recto mode 0..7
     knob("--variac", k.variac); knob("--rect", k.rect);  // Recto power-section switches
     knob("--bright", k.bright);  // MT15 bright switch
+    knob("--ultralo", k.ultralo); knob("--ultrahi", k.ultrahi); knob("--midfreq", k.midfreq);  // SVT
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
     knob("--gvol", k.gvol);   // #45 guitar volume-pot (Tone Bender)
     knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit

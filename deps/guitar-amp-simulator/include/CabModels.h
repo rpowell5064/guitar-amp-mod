@@ -21,6 +21,14 @@
 //   @greenback   British Greenback 4×12 — warm woody mids, smooth ~5 kHz rolloff
 //   @hiwatt      Hiwatt/Fane 4×12 — full-range, tight, flat/hi-fi, extended ends
 //   @doom        Big dark 4×12 — huge lows, thick low-mids, early dark top (doom/stoner)
+// Bass cabs (2026-08-28, the Blue Liner batch — longer IRs, per-cab macro bands):
+//   @bass810     Bass 8x10 Sealed — SVT-style fridge: sealed 58 Hz rolloff, punchy
+//                mids, the 500-900 Hz grind, no tweeter (top dies ~4 kHz)
+//   @bass410h    Bass 4x10 Horn — ported + horn: deep 35-48 Hz reach, port hump,
+//                scooped 800 Hz, crossover notch ~4 kHz, horn top to 12 kHz
+//   @bass210     Bass 2x10 — compact, mid-forward, articulate
+//   @bass115     Bass 1x15 Flip-Top — B-15-style reflex: round, warm, tubby dip,
+//                early dark top (the Motown studio voice)
 // (@factory / empty / unknown fall back to DefaultCabIR — the V30+SM57.)
 namespace CabModels {
 
@@ -70,7 +78,18 @@ struct Enrich {
     float    combMs[3], combG[3];
     float    backMs, backG, backLpHz;    // box return (negative G = open-back cancel)
     float    modeHz, modeDb, modeQ;      // air-mode resonance
+    // Per-cab macro-correction band table (2026-08-28, appended for the bass
+    // cabs — POSITIONAL-INIT: only append fields at the END). nullptr = the
+    // legacy kBands inside enrich() → the six guitar cabs stay bit-identical.
+    // Bass cabs point at kBassBands: the legacy table starts at 95 Hz, leaving
+    // exactly the band where bass fundamentals live uncorrected.
+    const double* bands  = nullptr;
+    int           nBands = 0;
 };
+
+// Macro-correction centers for bass cabs — extends the loop down to 45 Hz.
+inline const double kBassBands[11] = {45.0, 70.0, 110.0, 170.0, 260.0, 400.0,
+                                      650.0, 1050.0, 1700.0, 2700.0, 4300.0};
 
 inline uint32_t lcgNext(uint32_t& s) { s = s * 1664525u + 1013904223u; return s; }
 inline float    frand01(uint32_t& s) { return (lcgNext(s) >> 8) / 16777216.0f; }
@@ -131,9 +150,12 @@ inline void enrich(std::vector<float>& ir, double sr, const Enrich& e) {
     {
         static const double kBands[] = {95.0, 150.0, 240.0, 400.0, 650.0, 1050.0,
                                         1500.0, 2100.0, 2900.0, 4300.0, 7000.0};
+        const double* bands = e.bands ? e.bands : kBands;
+        const int     nB    = e.bands ? e.nBands : static_cast<int>(sizeof(kBands) / sizeof(kBands[0]));
         for (int pass = 0; pass < 6; ++pass) {
             std::vector<BiquadFilter> fix;
-            for (double fc : kBands) {
+            for (int bi = 0; bi < nB; ++bi) {
+                const double fc = bands[bi];
                 double se = 0.0, sb = 0.0;
                 for (double m : {0.79, 0.89, 1.0, 1.12, 1.26}) {
                     se += dftMag(ir,     fc * m, sr);
@@ -168,12 +190,32 @@ inline const Enrich* enrichFor(const std::string& id) {
         3, {0.20f, 0.44f, 0.78f}, {0.26f, -0.19f, 0.14f}, 2.7f, 0.12f, 2000.0f, 100.0f, 2.2f, 6.0f };
     static const Enrich kDoom    = { 0xD0053B06u, 16, 700.0f, 3500.0f, 4.8f,
         3, {0.28f, 0.58f, 1.02f}, {0.32f, -0.24f, 0.18f}, 3.6f, 0.20f,  900.0f,  88.0f, 2.2f, 6.0f };
+    // Bass cabs (2026-08-28): all use kBassBands so the macro correction covers
+    // the fundamental range (legacy table starts at 95 Hz). 8x10 = 8 unequal
+    // cones → dense combs + sealed back return + 60 Hz box mode; 410h = ported
+    // 46 Hz sharp-Q port ring; 115 = single cone → sparse combs, reflex ring.
+    static const Enrich kBass810  = { 0xBA55810Au, 20, 400.0f, 3500.0f, 4.5f,
+        3, {0.30f, 0.66f, 1.10f}, {0.33f, -0.24f, 0.18f}, 3.4f, 0.18f, 900.0f, 60.0f, 2.2f, 7.0f,
+        kBassBands, 11 };
+    static const Enrich kBass410h = { 0xBA55410Bu, 18, 350.0f, 6000.0f, 4.0f,
+        3, {0.28f, 0.60f, 0.14f}, {0.28f, -0.20f, 0.12f}, 3.0f, 0.10f, 700.0f, 46.0f, 2.5f, 9.0f,
+        kBassBands, 11 };
+    static const Enrich kBass210  = { 0xBA55210Cu, 16, 500.0f, 5000.0f, 3.8f,
+        2, {0.22f, 0.48f, 0.0f},  {0.24f, -0.18f, 0.0f},  2.2f, 0.12f, 1100.0f, 75.0f, 2.0f, 6.0f,
+        kBassBands, 11 };
+    static const Enrich kBass115  = { 0xBA55B15Du, 14, 300.0f, 2800.0f, 4.2f,
+        1, {0.35f, 0.0f, 0.0f},   {0.18f, 0.0f, 0.0f},    3.8f, 0.16f, 700.0f, 50.0f, 2.6f, 8.0f,
+        kBassBands, 11 };
     if (id.empty() || id == "@factory") return &kFactory;
     if (id == "@vox2x12")     return &kVox;
     if (id == "@american-ob") return &kAmerOB;
     if (id == "@greenback")   return &kGreenbk;
     if (id == "@hiwatt")      return &kHiwatt;
     if (id == "@doom")        return &kDoom;
+    if (id == "@bass810")     return &kBass810;
+    if (id == "@bass410h")    return &kBass410h;
+    if (id == "@bass210")     return &kBass210;
+    if (id == "@bass115")     return &kBass115;
     return nullptr;
 }
 
@@ -261,6 +303,52 @@ inline std::vector<float> generate(const std::string& id, double sr, bool enrich
         add(Filters::lowpass  (4200.0, 0.80, sr));
         add(Filters::lowpass  (4400.0, 0.70, sr));
         add(Filters::peaking  (6500.0,-8.0, 2.0, sr));  // kill any fizz hard
+    } else if (id == "@bass810") {
+        // Bass 8x10 Sealed (SVT fridge): sealed "infinite baffle", 58 Hz-5 kHz
+        // ±3 dB, punchy mid-forward, the famous 500-900 Hz grind, no tweeter.
+        // Longer IR — a 45 Hz cycle is 22 ms and the fade eats the last 25%.
+        lenSec = 0.10f;
+        add(Filters::highpass (58.0,  0.65, sr));       // sealed 12 dB/oct alignment
+        add(Filters::peaking  (100.0,  2.5, 0.9, sr));  // punch
+        add(Filters::peaking  (250.0,  1.5, 1.0, sr));  // thickness
+        add(Filters::peaking  (700.0,  3.5, 0.8, sr));  // THE grind (500-900 Hz)
+        add(Filters::peaking  (1600.0, 1.2, 1.2, sr));  // bite
+        add(Filters::lowpass  (4000.0, 1.20, sr));      // ten-inch top death (no tweeter)
+        add(Filters::lowpass  (4200.0, 0.70, sr));
+        add(Filters::peaking  (6000.0,-8.0, 2.0, sr));
+    } else if (id == "@bass410h") {
+        // Bass 4x10 Horn (ported + 1" horn ~4 kHz crossover): 48 Hz-18 kHz,
+        // usable to 28 Hz, port hump, modern scoop, horn sizzle.
+        lenSec = 0.11f;                                 // deepest reach of the set
+        add(Filters::highpass (35.0,  0.90, sr));       // ported 24 dB/oct below tuning
+        add(Filters::highpass (48.0,  0.70, sr));
+        add(Filters::peaking  (55.0,   2.5, 1.4, sr));  // port hump
+        add(Filters::peaking  (800.0, -3.0, 1.0, sr));  // the HLF scoop
+        add(Filters::peaking  (4000.0,-3.0, 2.5, sr));  // crossover notch
+        add(Filters::peaking  (7000.0, 4.0, 0.8, sr));  // horn presence
+        add(Filters::lowpass  (12000.0, 0.75, sr));     // horn top
+    } else if (id == "@bass210") {
+        // Bass 2x10: compact, mid-forward, articulate — tight studio voice.
+        lenSec = 0.10f;
+        add(Filters::highpass (62.0,  0.80, sr));
+        add(Filters::peaking  (120.0,  2.0, 0.9, sr));  // tight body
+        add(Filters::peaking  (900.0,  2.5, 1.0, sr));  // articulation
+        add(Filters::peaking  (2500.0, 2.0, 1.4, sr));  // definition
+        add(Filters::lowpass  (5000.0, 1.20, sr));
+        add(Filters::lowpass  (5200.0, 0.70, sr));
+        add(Filters::peaking  (7000.0,-6.0, 2.5, sr));
+    } else if (id == "@bass115") {
+        // Bass 1x15 Flip-Top (B-15 reflex): round, warm, tubby dip, early dark
+        // top — the Motown studio voice.
+        lenSec = 0.10f;
+        add(Filters::highpass (45.0,  0.80, sr));       // reflex reach
+        add(Filters::peaking  (80.0,   3.0, 0.8, sr));  // round body
+        add(Filters::peaking  (250.0,  2.0, 1.0, sr));  // warmth
+        add(Filters::peaking  (1200.0,-2.0, 1.2, sr));  // the "tubby" dip
+        add(Filters::lowpass  (3200.0, 1.30, sr));      // early dark top (doom-style triple)
+        add(Filters::lowpass  (3200.0, 0.80, sr));
+        add(Filters::lowpass  (3400.0, 0.70, sr));
+        add(Filters::peaking  (5000.0,-8.0, 2.0, sr));
     } else {
         return DefaultCabIR::generate(sr);              // unknown sentinel
     }

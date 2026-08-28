@@ -72,6 +72,7 @@ public:
             case AmpModel::MesaMarkV:          fid = FID::MesaMarkV;           break;
             case AmpModel::MesaDualRectifier:  fid = FID::MesaDualRectifier;   break;
             case AmpModel::PRSMT15:            fid = FID::PRSMT15;             break;
+            case AmpModel::AmpegSVT:           fid = FID::AmpegSVT;            break;
             default:                            isExtended = false;              break;
         }
 

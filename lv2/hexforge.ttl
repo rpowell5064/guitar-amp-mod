@@ -98,23 +98,23 @@
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
-    rdfs:comment """Your entire guitar rig in one plugin — 13 amps, 7 drives, 4 fuzzes, mod/delay/3-type reverb/EQ/wah/octave, cab mic + room, 60+ song-inspired presets, footswitch recall, and a full node-chain UI.
+    rdfs:comment """Your entire guitar AND bass rig in one plugin — 14 amps (incl. a classic all-tube bass head), 7 drives, 4 fuzzes, mod/delay/3-type reverb/EQ/wah/octave, cab mic + room, 60+ song-inspired presets, footswitch recall, and a full node-chain UI.
 
 Hex Forge is the flagship — the whole Hex Chain signal chain in a SINGLE plugin, rebuilt around a modern node-chain interface: every block is a card you tap to edit, drag to reorder, and click to bypass, with per-model faceplates, live tone readouts and a built-in strobe tuner.
 
 The blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, a 6-band graphic EQ, modulation, delay, reverb, wah, octave and the industrial 'Nail' stage — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:
 
-- AMP: THIRTEEN original voicings (clean to modern high-gain), including the Cali V — a 9-mode three-channel switcher with a 5-band graphic EQ — the chrome-clad Diamond Plate with 8 high-gain modes plus Bold/Spongy variac and Silicon/Tube rectifier feel switches, and the Plexiglass with its jumpered Vol I + Vol II channels; every voicing rides a modeled power amp, with hum filtering and decay-aware noise conditioning on the hot channels.
+- AMP: FOURTEEN original voicings (clean to modern high-gain — plus the Blue Liner, a classic all-tube 300 W BASS head with Ultra-Lo/Ultra-Hi switches and a 3-position mid selector), including the Cali V — a 9-mode three-channel switcher with a 5-band graphic EQ — the chrome-clad Diamond Plate with 8 high-gain modes plus Bold/Spongy variac and Silicon/Tube rectifier feel switches, and the Plexiglass with its jumpered Vol I + Vol II channels; every voicing rides a modeled power amp, with hum filtering and decay-aware noise conditioning on the hot channels.
 - DRIVE: seven overdrive/boost/distortion voicings, from the green mid-hump legend to the mythical gold horse.
 - FUZZ: four pedals — the multi-era Italian Hero, the germanium I Know It bender, the octave-ringing Octavius, and the self-oscillating Fuzz Zachary starve box.
-- CAB: six loudness-matched built-in cabs (plus your own IRs), a DRAGGABLE mic-placement pad (cap→edge position, close→30 cm distance) and adjustable stereo room ambience — all preset-savable, plus a Room/Studio cab voice (Studio = second virtual mic, console curve and bus glue for the 'recorded' sound).
+- CAB: ten loudness-matched built-in cabs — six guitar 4x12/2x12 voices plus four BASS cabs (sealed 8x10 fridge, ported 4x10+horn, 2x10, 1x15 flip-top) — plus your own IRs, a DRAGGABLE mic-placement pad (cap→edge position, close→30 cm distance) and adjustable stereo room ambience — all preset-savable, plus a Room/Studio cab voice (Studio = second virtual mic, console curve and bus glue for the 'recorded' sound).
 - Plus modulation (two choruses, vibe, seasick tape-warble, phaser, flanger, tremolo, rotary — with a 0–100 ms center-delay control), the four-machine delay (digital / tape / multi-head Echo Wreck / dual Seraph), a THREE-machine reverb (modulated plate with a Classic/Dense tank switch, drippy three-spring tank, and a blooming cinematic AMBIENT wash with its own Bloom control), a 6-band graphic EQ with a live response scope and preset curves (movable anywhere in the chain — post-everything mix sculpting or classic tone shaping), wah, and an octaver with a microtonal quarter-tone shimmer voice.
 
 A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory rigs — grunge, doom-pop ghouls, psychedelic prog, '60s guitar heroes, art rock, sludge metal, nu metal, djent, ambient post-rock and more — every one researched against the original gear, level-matched so no preset jumps out, and recalled hands-free via A/B/C/D footswitches and hold-both bank chords. The preset browser has live type-to-search filtering, so slot 47 of 128 is three keystrokes away. The factory pedalboard is pre-wired, so the pi-Stomp footswitches work the moment you load it — no MIDI setup. A dB-scaled master output with a transparent clip limiter keeps the whole rig stage-safe, and an optional stereo DOUBLER fakes a second tracked take (micro-delay + slow detune) for instant width.
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 212 ;
+    lv2:microVersion 213 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -529,7 +529,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 54 ; lv2:symbol "amp_model" ; lv2:name "Amp Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 13 ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 14 ;
         lv2:scalePoint [ rdfs:label "Clean Meanie" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Crunchy McCrunchFace" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Gainzilla" ; rdf:value 2 ] ;
@@ -543,7 +543,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "Plexiglass" ; rdf:value 10 ] ;
         lv2:scalePoint [ rdfs:label "Cali V" ; rdf:value 11 ] ;
         lv2:scalePoint [ rdfs:label "Diamond Plate" ; rdf:value 12 ] ;
-        lv2:scalePoint [ rdfs:label "Tremont 15" ; rdf:value 13 ]
+        lv2:scalePoint [ rdfs:label "Tremont 15" ; rdf:value 13 ] ;
+        lv2:scalePoint [ rdfs:label "Blue Liner" ; rdf:value 14 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 55 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain" ;
@@ -602,12 +603,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 67 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "EL34" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "EL84" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "KT88" ; rdf:value 3 ] ;
-        lv2:scalePoint [ rdfs:label "6V6" ; rdf:value 4 ]
+        lv2:scalePoint [ rdfs:label "6V6" ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "6550" ; rdf:value 5 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 68 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence" ;
@@ -1640,7 +1642,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 217 ; lv2:symbol "rb_amp" ; lv2:name "Rig B Amp" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 13 ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 14 ;
         lv2:scalePoint [ rdfs:label "Clean Meanie" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Crunchy McCrunchFace" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Gainzilla" ; rdf:value 2 ] ;
@@ -1654,7 +1656,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "Plexiglass" ; rdf:value 10 ] ;
         lv2:scalePoint [ rdfs:label "Cali V" ; rdf:value 11 ] ;
         lv2:scalePoint [ rdfs:label "Diamond Plate" ; rdf:value 12 ] ;
-        lv2:scalePoint [ rdfs:label "Tremont 15" ; rdf:value 13 ]
+        lv2:scalePoint [ rdfs:label "Tremont 15" ; rdf:value 13 ] ;
+        lv2:scalePoint [ rdfs:label "Blue Liner" ; rdf:value 14 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 218 ; lv2:symbol "rb_gain" ; lv2:name "Rig B Gain" ;
@@ -1697,14 +1700,18 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 227 ; lv2:symbol "rb_cab" ; lv2:name "Rig B Cab" ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 6 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 10 ;
         lv2:scalePoint [ rdfs:label "Factory 4x12 (Thirty-Something)" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Chime 2x12 (Vox)" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "American Open-Back 2x12" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "Cashback 4x12" ; rdf:value 3 ] ;
         lv2:scalePoint [ rdfs:label "Hi-Volt 4x12" ; rdf:value 4 ] ;
         lv2:scalePoint [ rdfs:label "Doom 4x12" ; rdf:value 5 ] ;
-        lv2:scalePoint [ rdfs:label "No Cab (Direct)" ; rdf:value 6 ]
+        lv2:scalePoint [ rdfs:label "No Cab (Direct)" ; rdf:value 6 ] ;
+        lv2:scalePoint [ rdfs:label "Bass 8x10 Sealed" ; rdf:value 7 ] ;
+        lv2:scalePoint [ rdfs:label "Bass 4x10 Horn" ; rdf:value 8 ] ;
+        lv2:scalePoint [ rdfs:label "Bass 2x10" ; rdf:value 9 ] ;
+        lv2:scalePoint [ rdfs:label "Bass 1x15 Flip-Top" ; rdf:value 10 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 228 ; lv2:symbol "rb_lowcut" ; lv2:name "Rig B Cab Low Cut" ;
@@ -1895,12 +1902,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 260 ; lv2:symbol "rb_pamp_tube" ; lv2:name "Rig B Power Tube" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "EL34" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "EL84" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "KT88" ; rdf:value 3 ] ;
-        lv2:scalePoint [ rdfs:label "6V6" ; rdf:value 4 ]
+        lv2:scalePoint [ rdfs:label "6V6" ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "6550" ; rdf:value 5 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 261 ; lv2:symbol "rb_pamp_presence" ; lv2:name "Rig B PA Presence" ;
@@ -2885,266 +2893,302 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 400.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 401 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:index 401 ; lv2:symbol "amp_sv_ultralo" ; lv2:name "Amp Ultra-Lo" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 402 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:index 402 ; lv2:symbol "amp_sv_ultrahi" ; lv2:name "Amp Ultra-Hi" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 403 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:index 403 ; lv2:symbol "amp_sv_midfreq" ; lv2:name "Amp Mid Freq" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "220 Hz" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "800 Hz" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "3 kHz" ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 404 ; lv2:symbol "rb_sv_ultralo" ; lv2:name "Rig B Ultra-Lo" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 404 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:index 405 ; lv2:symbol "rb_sv_ultrahi" ; lv2:name "Rig B Ultra-Hi" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 405 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        lv2:index 406 ; lv2:symbol "rb_sv_midfreq" ; lv2:name "Rig B Mid Freq" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "220 Hz" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "800 Hz" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "3 kHz" ; rdf:value 2 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 407 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 408 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 409 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 410 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 411 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 406 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        lv2:index 412 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 407 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        lv2:index 413 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 408 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        lv2:index 414 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 409 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        lv2:index 415 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 410 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
+        lv2:index 416 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 411 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
+        lv2:index 417 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 412 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        lv2:index 418 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 127
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 413 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        lv2:index 419 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 31
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 414 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        lv2:index 420 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 415 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        lv2:index 421 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 416 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
+        lv2:index 422 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 417 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
+        lv2:index 423 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 418 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
+        lv2:index 424 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 419 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
+        lv2:index 425 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 420 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
+        lv2:index 426 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 421 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
+        lv2:index 427 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
         lv2:portProperty lv2:integer ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 11
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 422 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
+        lv2:index 428 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
         lv2:default 0.0 ; lv2:minimum -50.0 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 423 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
+        lv2:index 429 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 424 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
+        lv2:index 430 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 425 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
+        lv2:index 431 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 426 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
+        lv2:index 432 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 427 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
+        lv2:index 433 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 428 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
+        lv2:index 434 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 429 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
+        lv2:index 435 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 430 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
+        lv2:index 436 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 431 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
+        lv2:index 437 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 432 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
+        lv2:index 438 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 433 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
+        lv2:index 439 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 434 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
+        lv2:index 440 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 435 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
+        lv2:index 441 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 436 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
+        lv2:index 442 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 437 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive 2" ;
+        lv2:index 443 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 438 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
+        lv2:index 444 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 439 ; lv2:symbol "cpu_gt2" ; lv2:name "CPU Gate 2" ;
+        lv2:index 445 ; lv2:symbol "cpu_gt2" ; lv2:name "CPU Gate 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 440 ; lv2:symbol "cpu_cp2" ; lv2:name "CPU Comp 2" ;
+        lv2:index 446 ; lv2:symbol "cpu_cp2" ; lv2:name "CPU Comp 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 441 ; lv2:symbol "cpu_fz2" ; lv2:name "CPU Fuzz 2" ;
+        lv2:index 447 ; lv2:symbol "cpu_fz2" ; lv2:name "CPU Fuzz 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 442 ; lv2:symbol "cpu_nail2" ; lv2:name "CPU Nail 2" ;
+        lv2:index 448 ; lv2:symbol "cpu_nail2" ; lv2:name "CPU Nail 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 443 ; lv2:symbol "cpu_md2" ; lv2:name "CPU Modulation 2" ;
+        lv2:index 449 ; lv2:symbol "cpu_md2" ; lv2:name "CPU Modulation 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 444 ; lv2:symbol "cpu_dl2" ; lv2:name "CPU Delay 2" ;
+        lv2:index 450 ; lv2:symbol "cpu_dl2" ; lv2:name "CPU Delay 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 445 ; lv2:symbol "cpu_rv2" ; lv2:name "CPU Reverb 2" ;
+        lv2:index 451 ; lv2:symbol "cpu_rv2" ; lv2:name "CPU Reverb 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 446 ; lv2:symbol "cpu_wh2" ; lv2:name "CPU Wah 2" ;
+        lv2:index 452 ; lv2:symbol "cpu_wh2" ; lv2:name "CPU Wah 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 447 ; lv2:symbol "cpu_oc2" ; lv2:name "CPU Octave 2" ;
+        lv2:index 453 ; lv2:symbol "cpu_oc2" ; lv2:name "CPU Octave 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 448 ; lv2:symbol "cpu_eq2" ; lv2:name "CPU EQ 2" ;
+        lv2:index 454 ; lv2:symbol "cpu_eq2" ; lv2:name "CPU EQ 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 449 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
+        lv2:index 455 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 450 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command" ;
+        lv2:index 456 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command" ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 451 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset" ;
+        lv2:index 457 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset" ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 452 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset" ;
+        lv2:index 458 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset" ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 453 ; lv2:symbol "cal_state" ; lv2:name "Cal State" ;
+        lv2:index 459 ; lv2:symbol "cal_state" ; lv2:name "Cal State" ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 454 ; lv2:symbol "cal_progress" ; lv2:name "Cal Progress" ;
+        lv2:index 460 ; lv2:symbol "cal_progress" ; lv2:name "Cal Progress" ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 455 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR" ;
+        lv2:index 461 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 456 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut" ;
+        lv2:index 462 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut" ;
         units:unit units:hz ;
         lv2:default 100.75 ; lv2:minimum 40.0 ; lv2:maximum 140.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 457 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip" ;
+        lv2:index 463 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip" ;
         units:unit units:db ;
         lv2:default 1.815 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 458 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip" ;
+        lv2:index 464 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip" ;
         units:unit units:db ;
         lv2:default 3.225 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 459 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt" ;
+        lv2:index 465 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt" ;
         units:unit units:db ;
         lv2:default 2.7 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
@@ -3152,7 +3196,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 460 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 466 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -3955,52 +3999,64 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         ] , [
             lv2:index 393 ; lv2:symbol "rb_locut" ; lv2:name "Rig B Low Cut"
         ] , [
-            lv2:index 394 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+            lv2:index 394 ; lv2:symbol "amp_sv_ultralo" ; lv2:name "Amp Ultra-Lo"
         ] , [
-            lv2:index 395 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+            lv2:index 395 ; lv2:symbol "amp_sv_ultrahi" ; lv2:name "Amp Ultra-Hi"
         ] , [
-            lv2:index 396 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+            lv2:index 396 ; lv2:symbol "amp_sv_midfreq" ; lv2:name "Amp Mid Freq"
         ] , [
-            lv2:index 397 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+            lv2:index 397 ; lv2:symbol "rb_sv_ultralo" ; lv2:name "Rig B Ultra-Lo"
         ] , [
-            lv2:index 398 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+            lv2:index 398 ; lv2:symbol "rb_sv_ultrahi" ; lv2:name "Rig B Ultra-Hi"
         ] , [
-            lv2:index 399 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+            lv2:index 399 ; lv2:symbol "rb_sv_midfreq" ; lv2:name "Rig B Mid Freq"
         ] , [
-            lv2:index 400 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+            lv2:index 400 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
         ] , [
-            lv2:index 401 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+            lv2:index 401 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
         ] , [
-            lv2:index 402 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+            lv2:index 402 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
         ] , [
-            lv2:index 403 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+            lv2:index 403 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
         ] , [
-            lv2:index 404 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+            lv2:index 404 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
         ] , [
-            lv2:index 405 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+            lv2:index 405 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
         ] , [
-            lv2:index 406 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
+            lv2:index 406 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
         ] , [
-            lv2:index 407 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
+            lv2:index 407 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
         ] , [
-            lv2:index 408 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
+            lv2:index 408 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
         ] , [
-            lv2:index 409 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
+            lv2:index 409 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
         ] , [
-            lv2:index 410 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command"
+            lv2:index 410 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
         ] , [
-            lv2:index 411 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset"
+            lv2:index 411 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
         ] , [
-            lv2:index 412 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset"
+            lv2:index 412 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ] , [
-            lv2:index 413 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR"
+            lv2:index 413 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
         ] , [
-            lv2:index 414 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut"
+            lv2:index 414 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
         ] , [
-            lv2:index 415 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip"
+            lv2:index 415 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
         ] , [
-            lv2:index 416 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip"
+            lv2:index 416 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command"
         ] , [
-            lv2:index 417 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt"
+            lv2:index 417 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset"
+        ] , [
+            lv2:index 418 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset"
+        ] , [
+            lv2:index 419 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR"
+        ] , [
+            lv2:index 420 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut"
+        ] , [
+            lv2:index 421 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip"
+        ] , [
+            lv2:index 422 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip"
+        ] , [
+            lv2:index 423 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt"
         ]
     ] .

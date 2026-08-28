@@ -57,9 +57,11 @@ function (event, funcs) {
         icon.find('[rata-role=rectogroup]').toggleClass('mod-hidden', m !== 12);
         // Tremont 15 (13): Clean/Crunch/Lead + bright switch
         icon.find('[rata-role=mt15group]').toggleClass('mod-hidden', m !== 13);
+        // Blue Liner (14): Ultra-Lo/Ultra-Hi + 3-position mid selector (bass)
+        icon.find('[rata-role=svtgroup]').toggleClass('mod-hidden', m !== 14);
         // Per-model realistic faceplate skin + engraved badge (Forge parity)
-        icon.find('[rata-role=ampface]').attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 13) ? m : 1));
-        var NAMES = ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15'];
+        icon.find('[rata-role=ampface]').attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 14) ? m : 1));
+        var NAMES = ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner'];
         icon.find('[rata-role=ampbadge]').text(NAMES[m] || 'AMP');
         // Which tabs make sense for this model, then keep the active tab in sync with the mode:
         // switching the model (via dropdown or preset recall) to/from Neural flips the tab too.

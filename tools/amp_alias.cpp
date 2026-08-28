@@ -12,6 +12,7 @@
 //   /tmp/amp_alias
 #include "MesaMarkV.h"
 #include "MesaDualRectifier.h"
+#include "AmpegSVT.h"
 #include "OversamplingWrapper.h"
 #include <complex>
 #include <vector>
@@ -180,6 +181,55 @@ int main() {
             Result r4 = analyze(render<MesaDualRectifier>(4, mode, gain, f0), f0);
             printf("%-8s %-6.0f | %7.1f / %7.1f      | %7.1f / %7.1f      | %7.1f / %7.1f\n",
                    rname(mode), f0,
+                   r1.aliasFloorDb, r1.peakAliasDb,
+                   r2.aliasFloorDb, r2.peakAliasDb,
+                   r4.aliasFloorDb, r4.peakAliasDb);
+        }
+    }
+    // Blue Liner (Ampeg SVT, bass): clean-headroom preamp so the aliasing budget
+    // is mild, but sweep BASS fundamentals (41-196 Hz region + a high fret) with
+    // both Ultra switches engaged (hottest spectral tilt the model can take).
+    printf("\nAmpeg SVT (Blue Liner) aliasing — bass fundamentals, Ultras engaged\n\n");
+    printf("%-8s %-6s | %-22s | %-22s | %-22s\n", "mode", "f0",
+           "1x floor/peak", "2x floor/peak", "4x floor/peak (SHIP)");
+    {
+        const double bf0s[] = { 46.875, 93.75, 187.5, 375.0, 750.0 };   // bin-aligned (kFs/kN multiples)
+        for (double f0 : bf0s) {
+            auto mk = [&](int factor){
+                const int total = kN + 8192;
+                std::vector<float> out(total);
+                if (factor == 1) {
+                    AmpegSVT amp; amp.prepare(kFs, 512);
+                    amp.setParameter("ultralo", 1.0f); amp.setParameter("ultrahi", 1.0f);
+                    amp.setParameter("gain", 0.9f); amp.setParameter("master", 0.7f); amp.reset();
+                    for (int i = 0; i < total; ++i) {
+                        float x = kInAmp * (float)std::sin(2.0 * kPi * f0 * i / kFs);
+                        amp.advanceSmoothing();
+                        out[i] = amp.processSample(x, 0);
+                    }
+                } else {
+                    OversamplingWrapper w(std::make_unique<AmpegSVT>(), factor);
+                    w.prepare(kFs, 512, 1);
+                    w.setParameter("ultralo", 1.0f); w.setParameter("ultrahi", 1.0f);
+                    w.setParameter("gain", 0.9f); w.setParameter("master", 0.7f);
+                    int done = 0;
+                    while (done < total) {
+                        int n = std::min(512, total - done);
+                        std::vector<float> in(n);
+                        for (int i = 0; i < n; ++i)
+                            in[i] = kInAmp * (float)std::sin(2.0 * kPi * f0 * (done + i) / kFs);
+                        float* ip = in.data(); float* op = out.data() + done;
+                        w.process(&ip, &op, n, 1);
+                        done += n;
+                    }
+                }
+                return out;
+            };
+            Result r1 = analyze(mk(1), f0);
+            Result r2 = analyze(mk(2), f0);
+            Result r4 = analyze(mk(4), f0);
+            printf("%-8s %-6.0f | %7.1f / %7.1f      | %7.1f / %7.1f      | %7.1f / %7.1f\n",
+                   "UL+UH", f0,
                    r1.aliasFloorDb, r1.peakAliasDb,
                    r2.aliasFloorDb, r2.peakAliasDb,
                    r4.aliasFloorDb, r4.peakAliasDb);

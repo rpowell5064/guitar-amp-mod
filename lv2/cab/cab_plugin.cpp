@@ -132,6 +132,17 @@ static bool readWav(const char* path, std::vector<float>& L, std::vector<float>&
     return true;
 }
 
+// mod-ui MANGLES @sentinel paths on pedalboard save (materializes them into
+// broken <pedalboard>/effect-N/@name self-symlinks — the 2026-08-21 hexforge
+// incident; the standalone cab had the same latent bug until 2026-08-28).
+// Detect a sentinel by BASENAME so both the raw "@vox2x12" and the mangled
+// ".../@vox2x12" forms resolve to the built-in cab.
+static const char* cabSentinel(const char* path) {
+    const char* base = std::strrchr(path, '/');
+    base = base ? base + 1 : path;
+    return base[0] == '@' ? base : nullptr;
+}
+
 // IR resampling upgraded linear -> windowed-sinc 2026-07-14 (lv2/common/IrResample.h):
 // linear interp baked ~-1 dB @ 10 kHz droop + imaging aliases into every 44.1 kHz IR.
 static bool loadIRFile(const char* path, double dstRate,
@@ -203,8 +214,8 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == WORK_IR) {
         std::vector<float> L, R;
-        if (msg->path[0] == '@')                                  // built-in synthetic cab (@vox2x12, @greenback, …)
-            p->dsp.setIR(CabModels::generate(msg->path, p->rate));
+        if (const char* sent = cabSentinel(msg->path))            // built-in synthetic cab (@vox2x12, @bass810, …; basename-detected — see cabSentinel)
+            p->dsp.setIR(CabModels::generate(sent, p->rate));
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
             p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
         else
@@ -389,7 +400,10 @@ static LV2_State_Status cab_restore(LV2_Handle h, LV2_State_Retrieve_Function re
         const char* ap = static_cast<const char*>(irv);
         char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
         std::vector<float> L, R;
-        if (loadIRFile(path, p->rate, L, R)) {
+        if (const char* sent = cabSentinel(path)) {   // built-in cab (possibly mod-ui-mangled path)
+            p->dsp.setIR(CabModels::generate(sent, p->rate));
+            std::strncpy(p->irPath, sent, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
+        } else if (loadIRFile(path, p->rate, L, R)) {
             p->dsp.setIR(L, R.empty() ? nullptr : &R);
             std::strncpy(p->irPath, path, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
         }

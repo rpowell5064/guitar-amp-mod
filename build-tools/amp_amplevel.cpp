@@ -14,13 +14,16 @@
 #include <vector>
 #include <map>
 
-// amp_plugin.cpp AmpPorts enum (kept in sync by hand):
+// amp_plugin.cpp AmpPorts enum (kept in sync by hand — resynced 2026-08-28:
+// had drifted, missing PAMP_COUPL/PL_VARIAC/JCM_SIR34 since v51; measurements
+// were writing to wrong ports for any model touching those):
 enum { P_IN_L=0,P_IN_R,P_OUT_L,P_OUT_R,P_MODEL,P_GAIN,P_BASS,P_MID,P_TREBLE,P_PRES,P_MASTER,P_SAG,
        P_CHANNEL,P_RESON,P_SUNN_V2,P_SUNN_LNK,P_BYPASS,P_PA_BYPASS,P_PA_TUBE,P_PA_PRES,P_PA_DEPTH,
        P_PA_SAG,P_PA_MASTER,P_PA_NFB,P_PA_RESON,P_PA_AIR,P_PA_AUTO,P_SUNN_B2,P_SUNN_M2,P_SUNN_T2,
        P_SUNN_BR1,P_SUNN_BR2,P_FR_CHANNEL,P_FR_FAT,P_FR_C45,P_FR_SAT,P_MV_MODE,P_MV_GEQ0,P_MV_GEQ1,
        P_MV_GEQ2,P_MV_GEQ3,P_MV_GEQ4,P_MV_EQPRESET,P_NAM_GAIN,P_NAM_VOL,P_PL_VOL2,
-       P_RC_MODE,P_RC_VARIAC,P_RC_RECT,P_MT_MODE,P_MT_BRIGHT,P_CONTROL,P_NOTIFY,P_N_PORTS };
+       P_RC_MODE,P_RC_VARIAC,P_RC_RECT,P_MT_MODE,P_MT_BRIGHT,P_PAMP_COUPL,P_PL_VARIAC,P_JCM_SIR34,
+       P_SV_ULTRALO,P_SV_ULTRAHI,P_SV_MIDFREQ,P_CONTROL,P_NOTIFY,P_N_PORTS };
 
 static std::map<std::string,uint32_t> g_uris;
 static LV2_URID map_uri(LV2_URID_Map_Handle,const char* u){
@@ -78,11 +81,12 @@ int main(){
         outSeq(notify); d->run(inst,NF);
         if(g_haveResp){ if(g_worker&&g_worker->work_response)g_worker->work_response(inst,(uint32_t)g_resp.size(),g_resp.data()); g_haveResp=false; if(g_worker&&g_worker->end_run)g_worker->end_run(inst); }
     };
-    const char* names[14]={"Fender(Clean)","JCM800","EVH5150","Sunn","Rockerverb","NAM(skip)","Friedman","Hiwatt(Clean)","Vox(Clean)","Backline(Clean)","Plexi","CaliV","Recto","Tremont"};
+    const char* names[15]={"Fender(Clean)","JCM800","EVH5150","Sunn","Rockerverb","NAM(skip)","Friedman","Hiwatt(Clean)","Vox(Clean)","Backline(Clean)","Plexi","CaliV","Recto","Tremont","BlueLiner(Bass)"};
     const bool isClean[12]={true,false,false,false,false,false,false,true,true,true,false,false};
     printf("amp model         rms_dBFS  peak_dBFS  (standalone Amp plugin, noon, no cab)\n");
     size_t pos=0;
-    for(int m=0;m<14;++m){
+    val[P_SV_MIDFREQ]=1.0f;   // SVT mid selector: 800 Hz (the enum default)
+    for(int m=0;m<15;++m){
         if(m==5) continue;
         val[P_MODEL]=(float)m;
         for(int s=0;s<400;++s) runBlock(pos);

@@ -14,9 +14,10 @@ static double mag(const std::vector<float>& ir, double f, double sr) {
 
 int main() {
     const double sr = 48000.0;
-    const char* ids[] = {"@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom"};
-    const double freqs[] = {80, 160, 320, 640, 1000, 2000, 4000, 6000, 8000};
-    printf("cab            L2      pk   | dB re 1kHz @ 80/160/320/640/1k/2k/4k/6k/8k\n");
+    const char* ids[] = {"@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom",
+                         "@bass810", "@bass410h", "@bass210", "@bass115"};
+    const double freqs[] = {40, 80, 160, 320, 640, 1000, 2000, 4000, 6000, 8000};
+    printf("cab            L2      pk   | dB re 1kHz @ 40/80/160/320/640/1k/2k/4k/6k/8k\n");
     for (auto id : ids) {
         auto ir = CabModels::generate(id, sr);
         double l2 = 0, pk = 0;

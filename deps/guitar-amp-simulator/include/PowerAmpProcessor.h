@@ -10,9 +10,12 @@ enum class TubeType {
     Tube_EL34  = 1,
     Tube_EL84  = 2,
     Tube_KT88  = 3,
-    Tube_6V6   = 4    // 2026-08-21 tube-correctness audit: the Fender Deluxe
+    Tube_6V6   = 4,   // 2026-08-21 tube-correctness audit: the Fender Deluxe
                       // (AB763, 6V6GT + GZ34 tube rectifier) had been running
                       // 6L6GC since the PA existed — see k6V6 in the .cpp.
+    Tube_6550  = 5    // 2026-08-28 Blue Liner (Ampeg SVT): NOT KT88-reused —
+                      // rippleHz is per-tube and KT88 is 100 Hz British mains;
+                      // the SVT is a 60 Hz US amp with an SS rectifier.
 };
 
 // Power amp stage: power tube transfer function, dynamic sag, output transformer,
@@ -206,6 +209,7 @@ private:
     static const TubeParams kEL84;
     static const TubeParams kKT88;
     static const TubeParams k6V6;
+    static const TubeParams k6550;
     TubeParams tp{};
 
     // ── Sag (mono envelope, applied before oversampling) ─────────────────────

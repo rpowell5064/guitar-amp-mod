@@ -127,6 +127,33 @@ const PowerAmpProcessor::TubeParams PowerAmpProcessor::k6V6 = {
     /* spkrLPHz   */ 6000.0f   // NOTE: spkrPeak/spkrLP are currently never applied.
 };
 
+// 6550 — the Ampeg SVT's power tube (Blue Liner, 2026-08-28; six of them,
+// fixed-bias, 300 W). Beam tetrode in the KT88 family but a distinct row:
+// the SVT has run a SOLID-STATE rectifier since 1969 (stiff supply — the
+// tightest tube amp in the suite), US 60 Hz mains (KT88 is hard-coded to
+// 100 Hz British), and the largest output transformer of the set (deepest
+// LF extension — bass fundamentals live an octave below guitar). Slightly
+// more fixed-bias asymmetry than the cathode-y KT88; a touch more screen
+// compression (six paralleled screens sag the node under real current).
+const PowerAmpProcessor::TubeParams PowerAmpProcessor::k6550 = {
+    /* driveScale  */ 2.2f,
+    /* biasShift   */ 0.018f,
+    /* dcOffset    */ 0.0f,   // computed in recalcTubeParams
+    /* screenComp  */ 0.10f,
+    /* cathodeComp */ 0.08f,
+    /* outputGain  */ 1.00f,
+    /* sagDepth    */ 0.15f,  // solid-state rectifier — stiff, percussive
+    /* sagAttackMs */ 25.0f,
+    /* sagRelMs    */ 300.0f,
+    /* rippleHz    */ 60.0f,  // USA mains
+    /* xfmrHPHz   */ 22.0f,  // biggest iron in the suite — deepest LF
+    /* xfmrHPQ    */ 0.50f,
+    /* xfmrLPHz   */ 15000.0f,
+    /* spkrResHz  */ 55.0f,  // bass-cab cone resonance region
+    /* spkrResQ   */ 1.2f,
+    /* spkrLPHz   */ 4500.0f  // NOTE: spkrPeak/spkrLP are currently never applied.
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tube waveshaper — static, no state, safe to call at oversampled rate
 // ─────────────────────────────────────────────────────────────────────────────
@@ -199,6 +226,7 @@ void PowerAmpProcessor::recalcTubeParams() noexcept {
     case TubeType::Tube_EL84:  tp = kEL84;  break;
     case TubeType::Tube_KT88:  tp = kKT88;  break;
     case TubeType::Tube_6V6:   tp = k6V6;   break;
+    case TubeType::Tube_6550:  tp = k6550;  break;
     }
     // Evens desk-loop (phase 2): scale the waveshaper's two intrinsic asymmetry
     // levers. Both are inert on a railed input (two-level theorem), but with the
@@ -591,6 +619,16 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // Mark V borrowed JCM800's row; the JCM800 HG-round-2 bake must not
         // re-voice them. kCanonical maps them here in both plugins + nam_compare.
         case 10: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.0f, 1.0f, 0.02f, 0.15f }; // Plexi / Mark V (frozen old-JCM800 values)
+        // Ampeg SVT (Blue Liner, 2026-08-28) — the suite's first bass amp.
+        // sag 0.12 = tightest tube amp here (SS rectifier since 1969; MT15 is
+        // 0.15); depth 0.62 = strong LF resonance (huge OT + sealed-cab
+        // pairing, cf. EVH 0.72 / Recto 0.55); nfb 0.50 moderate damping;
+        // duty 0.10 fixed-bias 6550 even tinge (Recto precedent 0.15);
+        // rippleSagCoupling 0.008 small (giant filter caps); fluxOT TRUE —
+        // the flux-domain LF grind IS the driven-SVT growl, but re-probe the
+        // EVH LF-collapse trap during capture fitting (flux-off A/B first).
+        // paDrive/paMakeup are the primary nam_compare fit levers.
+        case 11: return { 0.60f,  0.30f,  0.62f,  0.50f,  0.12f,  0.05f,  0.10f, 1.2f, 0.95f, 0.008f, 0.0f, true }; // Ampeg SVT (Blue Liner)
         default: return { 0.50f, 0.50f,  0.50f,  0.50f,  0.50f,  0.00f };
     }
 }

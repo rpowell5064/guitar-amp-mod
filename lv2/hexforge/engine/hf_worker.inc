@@ -55,7 +55,7 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     if (!na) return false;
     na->prepare(p->rate, kMaxBlock, 2);
     na->setEco(msg->eco);   // Engine Quality: must precede setAmpModel (wrapper built there)
-    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kMt15Idx)]);
+    na->setAmpModel(kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kSvtIdx)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx; reply.namSlot = msg->namSlot;   // slot 1 = Rig B (forgetting this routed B builds into the MAIN amp)
     respond(handle, sizeof(reply), &reply);
     return true;

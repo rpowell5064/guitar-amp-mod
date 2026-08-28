@@ -17,7 +17,7 @@ function (event, funcs) {
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
     // the HTML instead; these are the ones we can't (enumerated → would show a number).
     var NV = {
-        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15'],
+        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner'],
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250','Echo Primer'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus','Seasick Vibe','Script Phaser'],
@@ -525,6 +525,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-mesa', m === 11);
         show(icon, 'amp', '.c-amp-recto', m === 12);
         show(icon, 'amp', '.c-amp-mt15', m === 13);
+        show(icon, 'amp', '.c-amp-svt', m === 14);
         show(icon, 'amp', '.c-amp-reso', m === 2);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
@@ -533,7 +534,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-nam',  m === 5);
         // Tab buttons: Voicing only for models with a channel/EQ chassis (Sunn 3 / Beardo 6 /
         // Cali V 11 / Diamond Plate 12); Power Amp hidden for Sunn (auto-bypassed) and NAM (capture has its own).
-        var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13);
+        var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13 || m === 14);
         var showPower = (m !== 3 && m !== 5);
         var p = panelOf(icon, 'amp');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
@@ -561,12 +562,13 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-mesa', m === 11);
         show(icon, 'amp2', '.c-rb-recto', m === 12);
         show(icon, 'amp2', '.c-rb-mt15', m === 13);
+        show(icon, 'amp2', '.c-rb-svt', m === 14);
         show(icon, 'amp2', '.c-rb-reso', m === 2);
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
         show(icon, 'amp2', '.c-rb-jcm', m === 1);
         show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5);
         show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && !a);
-        var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13);
+        var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13 || m === 14);
         var showPower = (m !== 3 && m !== 5);
         var p = panelOf(icon, 'amp2');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
@@ -682,14 +684,18 @@ function (event, funcs) {
     }
     var CAB_NAMES = { '@factory':'Factory 4x12 (Thirty-Something)', '@vox2x12':'Chime 2x12 (alnico)',
                       '@american-ob':'American Open-Back 2x12', '@greenback':'Cashback 4x12',
-                      '@hiwatt':'Hi-Volt 4x12', '@doom':'Doom 4x12', '@nocab':'No Cab (Direct)' };
+                      '@hiwatt':'Hi-Volt 4x12', '@doom':'Doom 4x12', '@nocab':'No Cab (Direct)',
+                      '@bass810':'Bass 8x10 Sealed', '@bass410h':'Bass 4x10 Horn',
+                      '@bass210':'Bass 2x10', '@bass115':'Bass 1x15 Flip-Top' };
     // Cab 2's unified IR picker (2026-07-30, "match cab 1"): its label shows the
     // ir2 path when set, else mirrors the legacy rb_cab selection (preset recall).
-    var RBCAB_SENT = ['@factory','@vox2x12','@american-ob','@greenback','@hiwatt','@doom','@nocab'];
+    // rb_cab order: 0-5 guitar cabs, 6 = No Cab (FROZEN), 7-10 = bass cabs.
+    var RBCAB_SENT = ['@factory','@vox2x12','@american-ob','@greenback','@hiwatt','@doom','@nocab',
+                      '@bass810','@bass410h','@bass210','@bass115'];
     function setIr2Label(icon) {
         var v = icon.data('hf_ir2');
         if (v == null || v === '' || v === '@builtin') {
-            var rc = parseInt(icon.data('hf_rb_cab'), 10); if (isNaN(rc) || rc < 0 || rc > 6) rc = 0;
+            var rc = parseInt(icon.data('hf_rb_cab'), 10); if (isNaN(rc) || rc < 0 || rc > 10) rc = 0;
             v = RBCAB_SENT[rc];
         }
         if (CAB_NAMES[v]) { setFile(icon, 'Ir2', v, CAB_NAMES[v]); return; }

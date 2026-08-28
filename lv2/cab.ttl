@@ -29,17 +29,17 @@
     rdfs:label "Hex Chain — Cabinet" ;
     doap:name  "Hex Chain Cabinet" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Cabinet sim: six built-in cabs + your own .wav IRs, a draggable mic-placement pad, Room/Studio voicing, and adjustable room ambience.
+    rdfs:comment """Cabinet sim: ten built-in cabs (guitar AND bass) + your own .wav IRs, a draggable mic-placement pad, Room/Studio voicing, and adjustable room ambience.
 
 A convolution cabinet with a studio's worth of mic technique built in.
 
-SIX built-in cabs cover the classics without shipping a single sampled IR: the Factory 4x12 (Thirty-Something ceramic bite), Chime 2x12 (alnico sparkle), American 2x12 (open-back spread), Cashback 4x12 (woody vintage crunch), Hi-Volt 4x12 (big, fast and clean) and Doom 4x12 (huge + dark). Each one is synthesized with measured-IR anatomy — cone-breakup ripple, baffle reflections and box resonance — so they fingerprint like real cabs, and they're loudness-matched so switching never jumps in volume.
+TEN built-in cabs cover the classics without shipping a single sampled IR: the Factory 4x12 (Thirty-Something ceramic bite), Chime 2x12 (alnico sparkle), American 2x12 (open-back spread), Cashback 4x12 (woody vintage crunch), Hi-Volt 4x12 (big, fast and clean) and Doom 4x12 (huge + dark) — plus FOUR bass cabs: the sealed Bass 8x10 fridge with its 500-900 Hz grind, the deep ported Bass 4x10 with a horn top, the tight mid-forward Bass 2x10, and the round Motown-voiced Bass 1x15 Flip-Top. Each one is synthesized with measured-IR anatomy — cone-breakup ripple, baffle reflections and box resonance — so they fingerprint like real cabs, and they're loudness-matched so switching never jumps in volume.
 
 MIC PLACEMENT is a draggable pad, not a knob bank: slide the mic from the cap to the cone edge and pull it back up to ~30 cm — position darkens and thickens like moving off-axis, distance trades proximity punch for room air. It works on the built-in cabs AND your own IRs, and it saves with presets.
 
 ROOM ambience adds a compact stereo small-to-medium room behind the cab (toggle, mix and size), so direct rigs stop sounding like a speaker pressed against your eardrum. Also preset-savable — and a Room Density switch picks between the Classic room engine and a Dense variant with a smoother, more even reflection tail.
 
-CAB VOICE picks the perspective: Room is the raw amp-in-the-room sound, Studio runs the 'recorded' chain — a second darker virtual mic blended against yours, bracketing filters, a fixed console curve and gentle level-independent bus glue — for that produced, sits-in-the-mix tone.
+CAB VOICE picks the perspective: Room is the raw amp-in-the-room sound, Studio runs the 'recorded' chain — a second darker virtual mic blended against yours, bracketing filters, a fixed console curve and gentle level-independent bus glue — for that produced, sits-in-the-mix tone. (The Studio chain brackets at 78 Hz — voiced for guitar; keep the bass cabs on Room voice to preserve their fundamentals.)
 
 Load your own .wav impulse responses through the file browser — they're resampled with windowed-sinc quality, so a 44.1 kHz IR keeps its top end intact. Low-cut, high-cut and dry/wet mix finish the voicing.
 
@@ -50,7 +50,7 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 46 ;   # 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
+    lv2:microVersion 47 ;   # 47: FOUR bass cabs (@bass810/@bass410h/@bass210/@bass115, longer IRs + 45 Hz macro bands) + the @sentinel basename fix (mod-ui path-mangling — the hexforge 2026-08-21 incident, latent here). 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
 
     # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
     lv2:requiredFeature urid:map , work:schedule ;

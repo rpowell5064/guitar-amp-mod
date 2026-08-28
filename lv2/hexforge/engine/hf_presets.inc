@@ -145,9 +145,19 @@ static_assert(HF_DL_AGE == HF_RB_PL_VARIAC + 1 && HF_DL2_AGE == HF_DL_AGE + 1,
 //   * v43: SIR #34 mod toggles, both amps.
 static_assert(HF_AMP_SIR34 == HF_DL2_AGE + 1 && HF_RB_SIR34 == HF_AMP_SIR34 + 1,
               "v43: the SIR #34 pair");
-//   * v44: rig-B blend low cut ends the param range.
-static_assert(HF_RB_LOCUT == HF_RB_SIR34 + 1 && HF_RB_LOCUT == HF_SW_A - 1,
-              "v44: rb_locut ends the param range");
+//   * v44: rig-B blend low cut.
+static_assert(HF_RB_LOCUT == HF_RB_SIR34 + 1,
+              "v44: rb_locut follows the SIR pair");
+//   * v45: Blue Liner (Ampeg SVT) Ultra-Lo/Ultra-Hi/Mid-Freq, A-side + Rig B —
+//     the six-port tail; rb_sv_midfreq ends the param range.
+static_assert(HF_AMP_SV_ULTRALO == HF_RB_LOCUT + 1 &&
+              HF_AMP_SV_ULTRAHI == HF_AMP_SV_ULTRALO + 1 &&
+              HF_AMP_SV_MIDFREQ == HF_AMP_SV_ULTRAHI + 1 &&
+              HF_RB_SV_ULTRALO  == HF_AMP_SV_MIDFREQ + 1 &&
+              HF_RB_SV_ULTRAHI  == HF_RB_SV_ULTRALO + 1 &&
+              HF_RB_SV_MIDFREQ  == HF_RB_SV_ULTRAHI + 1 &&
+              HF_RB_SV_MIDFREQ  == HF_SW_A - 1,
+              "v45: the Blue Liner six-port tail ends the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -310,6 +320,12 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v44 appended the rig-B blend low cut; default 0 = off (bit-identical).
     const bool rlGap = (srcVer < 44);
     const int rlAt = HF_RB_LOCUT;
+    // v45 appended the Blue Liner (Ampeg SVT) six-port tail [HF_AMP_SV_ULTRALO..
+    // HF_RB_SV_MIDFREQ]; Ultra switches off, Mid-Freq 1 (800 Hz) — plain
+    // zero-fill would recall the 220 Hz mid position on BOTH rigs.
+    static const float svdef[6] = {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f};
+    const bool svGap = (srcVer < 45);
+    const int svAt = HF_AMP_SV_ULTRALO, svEnd = HF_AMP_SV_ULTRALO + 6;
 
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
@@ -355,6 +371,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (agGap && i >= agAt && i < agEnd)        vals[i] = 0.35f;             // v42 EP-3 age
         else if (smGap && i >= smAt && i < smEnd)        vals[i] = 0.0f;              // v43 SIR #34 stock
         else if (rlGap && i == rlAt)                     vals[i] = 0.0f;              // v44 rig-B low cut off
+        else if (svGap && i >= svAt && i < svEnd)        vals[i] = svdef[i - svAt];   // v45 Blue Liner: Ultras off, mid 800 Hz
         else                                             vals[i] = old[o++];
     }
 }
@@ -367,7 +384,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(44); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(45); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -389,9 +406,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 44) return false;
+    if (ver < 2 || ver > 45) return false;
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 44);  // ...v44 rb_locut
+    const bool needMigrate  = (ver < 45);  // ...v45 Blue Liner six-port tail
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -1021,6 +1038,87 @@ static void seedFactoryPresets(HexForge* p) {
             js.vals[HF_OUT_LEVEL] = -20.3f;   // parity re-trim after the #34 build (was -20.8)
             std::strncpy(js.ir2Path, "@greenback", kPathMax-1);
             js.ir2Path[kPathMax-1] = '\0';
+        }
+    }
+
+    // BANK 19 (index 18) -- LOW END (rev 124, the Blue Liner bass bank):
+    // A Round Trip (SVT clean round: light comp, 810, dead dry), B Fridge
+    //   Grind (driven SVT, Ultra-Hi, 220 Hz mid push, 810), C Motor City
+    //   (flip-top Motown: Ultra-Lo, dark top, heavier comp, 1x15, bone dry),
+    //   D Fuzz Wall (Italian Hero Muff into a CLEAN SVT — the fuzz-staging
+    //   rule: the fuzz is line-hot, the amp must stay clean — into the 410h).
+    // KEY bass housekeeping baked into every slot: cab low_cut 35-40 (the 80
+    // default guts a bass cab), room ambience OFF (a Schroeder room on a
+    // 40 Hz fundamental is mud), Room cab voice (Studio brackets at 78 Hz).
+    // out_levels provisional -16: measure on-device vs the Bank-1 anchor
+    // (hexforge_amplevel/store-bake pass) before calling them final.
+    {
+        auto mkb = [&](int slot, const char* name) -> Preset& {
+            Preset& pr = p->presets[18][slot];
+            pr = p->presets[0][1];
+            pr.used = true;
+            std::snprintf(pr.name, sizeof(pr.name), "%s", name);
+            pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0]
+                = pr.amp2NamPath[0] = pr.ir2Path[0] = pr.dr2NamPath[0] = '\0';
+            static const int offs[] = { HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE,
+                HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE,
+                HF_NAIL_ENABLE, HF_EQ_ENABLE, HF_DR2_ENABLE, HF_RB_ENABLE, HF_RB_CAB2ON,
+                HF_GT2_ENABLE, HF_CP2_ENABLE, HF_FZ2_ENABLE, HF_NAIL2_ENABLE, HF_MD2_ENABLE,
+                HF_DL2_ENABLE, HF_RV2_ENABLE, HF_WH2_ENABLE, HF_OC2_ENABLE, HF_EQ2_ENABLE };
+            for (int o : offs) pr.vals[o] = 0.0f;
+            pr.vals[HF_AMP_MODEL]   = 14.0f;   // Blue Liner
+            pr.vals[HF_AMP_SV_ULTRALO] = 0.0f; pr.vals[HF_AMP_SV_ULTRAHI] = 0.0f;
+            pr.vals[HF_AMP_SV_MIDFREQ] = 1.0f; // 800 Hz
+            pr.vals[HF_AMP_PL_VARIAC] = 0.0f;  pr.vals[HF_AMP_PL_VOL2] = 0.0f;
+            pr.vals[HF_AMP_SIR34] = 0.0f;
+            pr.vals[HF_AMP_MASTER] = 0.62f;    pr.vals[HF_AMP_SAG] = 0.3f;
+            pr.vals[HF_CAB_LOWCUT] = 38.0f;    pr.vals[HF_CAB_HIGHCUT] = 9000.0f;
+            pr.vals[HF_CAB_MICPOS] = 0.0f;     pr.vals[HF_CAB_MICDIST] = 0.0f;
+            pr.vals[HF_CAB_ROOMON] = 0.0f;     pr.vals[HF_CAB_VOICE] = 0.0f;   // Room voice
+            pr.vals[HF_CAB_SPKDRIVE] = 0.0f;   // its LF split sits mid-fundamental — off until auditioned
+            pr.vals[HF_GT_THRESH] = -50.0f;
+            pr.vals[HF_OUT_LEVEL] = -16.0f;    // provisional, measure on-device
+            return pr;
+        };
+        {   // A: Round Trip — the clean round SVT + fridge.
+            Preset& pr = mkb(0, "Round Trip");
+            pr.vals[HF_AMP_GAIN] = 0.35f;
+            pr.vals[HF_AMP_BASS] = 0.55f; pr.vals[HF_AMP_MID] = 0.5f;
+            pr.vals[HF_AMP_TREBLE] = 0.45f;
+            pr.vals[HF_CP_ENABLE] = 1.0f;   // light glue
+            pr.vals[HF_CP_RATIO] = 2.5f; pr.vals[HF_CP_THRESH] = -24.0f;
+            std::strncpy(pr.irPath, "@bass810", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
+        }
+        {   // B: Fridge Grind — the driven SVT rock tone.
+            Preset& pr = mkb(1, "Fridge Grind");
+            pr.vals[HF_AMP_GAIN] = 0.72f;
+            pr.vals[HF_AMP_SV_ULTRAHI] = 1.0f;
+            pr.vals[HF_AMP_SV_MIDFREQ] = 0.0f;   // 220 Hz push
+            pr.vals[HF_AMP_BASS] = 0.5f; pr.vals[HF_AMP_MID] = 0.65f;
+            pr.vals[HF_AMP_TREBLE] = 0.5f; pr.vals[HF_AMP_MASTER] = 0.75f;
+            std::strncpy(pr.irPath, "@bass810", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
+        }
+        {   // C: Motor City — flip-top Motown thump.
+            Preset& pr = mkb(2, "Motor City");
+            pr.vals[HF_AMP_GAIN] = 0.30f;
+            pr.vals[HF_AMP_SV_ULTRALO] = 1.0f;
+            pr.vals[HF_AMP_BASS] = 0.55f; pr.vals[HF_AMP_MID] = 0.45f;
+            pr.vals[HF_AMP_TREBLE] = 0.30f;
+            pr.vals[HF_CP_ENABLE] = 1.0f;   // the studio squeeze
+            pr.vals[HF_CP_RATIO] = 4.0f; pr.vals[HF_CP_THRESH] = -28.0f;
+            pr.vals[HF_CAB_LOWCUT] = 40.0f;
+            std::strncpy(pr.irPath, "@bass115", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
+        }
+        {   // D: Fuzz Wall — Muff into a CLEAN SVT (fuzz-staging rule).
+            Preset& pr = mkb(3, "Fuzz Wall");
+            pr.vals[HF_FZ_ENABLE] = 1.0f; pr.vals[HF_FZ_PEDAL] = 0.0f;   // Italian Hero
+            pr.vals[HF_FZ_SUSTAIN] = 0.6f; pr.vals[HF_FZ_TONE] = 0.45f;
+            pr.vals[HF_FZ_VOLUME] = 0.32f;   // tame the line-hot output into the amp
+            pr.vals[HF_AMP_GAIN] = 0.25f;    // CLEAN amp under fuzz
+            pr.vals[HF_AMP_BASS] = 0.5f; pr.vals[HF_AMP_MID] = 0.5f;
+            pr.vals[HF_AMP_TREBLE] = 0.45f;
+            pr.vals[HF_CAB_LOWCUT] = 40.0f;
+            std::strncpy(pr.irPath, "@bass410h", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         }
     }
 

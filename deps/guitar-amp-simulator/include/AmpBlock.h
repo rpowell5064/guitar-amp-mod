@@ -20,7 +20,9 @@ enum class AmpModel {
     MarshallPlexi,     // 1959 Super Lead Plexi — bright, power-amp-driven EL34 crunch
     MesaMarkV,         // Mesa/Boogie Mark V — 9 modes across 3 channels, Simul-Class
     MesaDualRectifier, // Mesa Dual Rectifier — 8 modes across 3 channels, 6L6, variac/rect switches
-    PRSMT15            // PRS MT15 — Clean/Crunch/Lead + bright switch, tight strong-NFB high gain
+    PRSMT15,           // PRS MT15 — Clean/Crunch/Lead + bright switch, tight strong-NFB high gain
+    AmpegSVT           // Ampeg SVT "Blue Liner" — the suite's first BASS amp: Ultra-Lo/Ultra-Hi,
+                       // 3-position mid selector, 6×6550 solid-state-rectified 300 W power
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

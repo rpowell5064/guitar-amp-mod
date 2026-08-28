@@ -86,7 +86,7 @@ DR = [
     ("octave", "Octave", "f", 0, 1, 0.3, None),
 ]
 AMP = [
-    ("model",         "Model",        "e", 0, 13, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12),("Tremont 15",13)]),
+    ("model",         "Model",        "e", 0, 14, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural (NAM)",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12),("Tremont 15",13),("Blue Liner",14)]),
     ("gain",          "Gain",         "f", 0, 1, 0.5, None),
     ("bass",          "Bass",         "f", 0, 1, 0.5, None),
     ("mid",           "Mid",          "f", 0, 1, 0.5, None),
@@ -99,7 +99,7 @@ AMP = [
     ("sunn_vol2",     "Brite Vol",    "f", 0, 1, 0.5, None),
     ("sunn_link",     "Ch Link",      "e", 0, 2, 0, [("Independent",0),("Parallel",1),("Series",2)]),
     ("pamp_bypass",   "PA Bypass",    "t", 0, 1, 0, None),
-    ("pamp_tube",     "Power Tube",   "e", 0, 4, 1, [("6L6GC",0),("EL34",1),("EL84",2),("KT88",3),("6V6",4)]),
+    ("pamp_tube",     "Power Tube",   "e", 0, 5, 1, [("6L6GC",0),("EL34",1),("EL84",2),("KT88",3),("6V6",4),("6550",5)]),
     ("pamp_presence", "PA Presence",  "f", 0, 1, 0.55, None),
     ("pamp_depth",    "PA Depth",     "f", 0, 1, 0.18, None),
     ("pamp_sag",      "PA Sag",       "f", 0, 1, 0.33, None),
@@ -495,7 +495,7 @@ ctrl.append(mkport("DR2_BYPASS", "dr2_bypass", "Drive 2 Bypass", "t", 0, 1, 0, N
 # slot / one file-picker per instance). Uniform rb_ prefix = one tile/panel
 # family. Migrated v35.
 RB = [
-    ("amp",     "Amp",      "e", 0, 13, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12),("Tremont 15",13)]),
+    ("amp",     "Amp",      "e", 0, 14, 1, [("Clean Meanie",0),("Crunchy McCrunchFace",1),("Gainzilla",2),("Doom Daddy",3),("Tangerang",4),("Neural",5),("Beardo BE",6),("Hi-Volt",7),("Chime Thirty",8),("Backline Plus",9),("Plexiglass",10),("Cali V",11),("Diamond Plate",12),("Tremont 15",13),("Blue Liner",14)]),
     ("gain",    "Gain",     "f", 0, 1, 0.5, None),
     ("bass",    "Bass",     "f", 0, 1, 0.5, None),
     ("mid",     "Mid",      "f", 0, 1, 0.5, None),
@@ -505,7 +505,7 @@ RB = [
     ("sag",     "Sag",      "f", 0, 1, 0.3, None),
     ("channel", "Channel",  "t", 0, 1, 0, None),
     ("eco",     "Eco (2x OS)", "t", 0, 1, 0, None),
-    ("cab",     "Cab",      "e", 0, 6, 0, [("Factory 4x12 (Thirty-Something)",0),("Chime 2x12 (Vox)",1),("American Open-Back 2x12",2),("Cashback 4x12",3),("Hi-Volt 4x12",4),("Doom 4x12",5),("No Cab (Direct)",6)]),   # hidden below: superseded by the unified Cab 2 IR picker
+    ("cab",     "Cab",      "e", 0, 10, 0, [("Factory 4x12 (Thirty-Something)",0),("Chime 2x12 (Vox)",1),("American Open-Back 2x12",2),("Cashback 4x12",3),("Hi-Volt 4x12",4),("Doom 4x12",5),("No Cab (Direct)",6),("Bass 8x10 Sealed",7),("Bass 4x10 Horn",8),("Bass 2x10",9),("Bass 1x15 Flip-Top",10)]),   # hidden below: superseded by the unified Cab 2 IR picker. No Cab stays FROZEN at 6 (stored presets); bass cabs append 7-10 (kNoCabIdx/kRbCabMax in hf_types.inc)
     ("lowcut",  "Cab Low Cut",  "hz", 20, 500, 80, None),
     ("highcut", "Cab High Cut", "hz", 2000, 20000, 16000, None),
     ("blend",   "Blend A/B", "f", 0, 1, 0.5, None),
@@ -618,6 +618,18 @@ ctrl.append(mkport("RB_SIR34",  "rb_sir34",  "Rig B SIR #34 Mod", "t", 0, 1, 0, 
 # the layer's lows keeps its attack-clarity purpose and removes the pumping
 # band. 0 = off = bit-identical. Migrated v44.
 ctrl.append(mkport("RB_LOCUT", "rb_locut", "Rig B Low Cut", "hz", 0, 400, 0, None, "B LoCut"))
+
+# ── Blue Liner (Ampeg SVT, 2026-08-28): the suite's first BASS amp (model 14).
+# Ultra-Lo (mid-notch illusion switch), Ultra-Hi (+9 dB @ 8k), and the
+# 3-position mid selector (220/800/3000 Hz, default 800 = MIGRATION GAP MUST
+# DEFAULT 1 — zero-fill would recall 220 Hz). A-side + Rig B twins, appended
+# at the tail per the SIR34 pattern. Migrated v45.
+ctrl.append(mkport("AMP_SV_ULTRALO", "amp_sv_ultralo", "Amp Ultra-Lo",   "t", 0, 1, 0, None, "Ultra-Lo"))
+ctrl.append(mkport("AMP_SV_ULTRAHI", "amp_sv_ultrahi", "Amp Ultra-Hi",   "t", 0, 1, 0, None, "Ultra-Hi"))
+ctrl.append(mkport("AMP_SV_MIDFREQ", "amp_sv_midfreq", "Amp Mid Freq",   "e", 0, 2, 1, [("220 Hz",0),("800 Hz",1),("3 kHz",2)], "Mid Freq"))
+ctrl.append(mkport("RB_SV_ULTRALO",  "rb_sv_ultralo",  "Rig B Ultra-Lo", "t", 0, 1, 0, None, "Ultra-Lo"))
+ctrl.append(mkport("RB_SV_ULTRAHI",  "rb_sv_ultrahi",  "Rig B Ultra-Hi", "t", 0, 1, 0, None, "Ultra-Hi"))
+ctrl.append(mkport("RB_SV_MIDFREQ",  "rb_sv_midfreq",  "Rig B Mid Freq", "e", 0, 2, 1, [("220 Hz",0),("800 Hz",1),("3 kHz",2)], "Mid Freq"))
 
 # ── Preset / bank command + status ports ──────────────────────────────────────
 # A/B/C/D recall switches: a rising edge recalls that slot in the current bank.
@@ -865,23 +877,23 @@ def emit_ttl():
     # plugin-level rdfs:comment as the listing description ("No description
     # available." when absent -- which clobbered manually-pasted copy on every
     # re-list until 2026-08-23).
-    L.append('    rdfs:comment """' + """Your entire guitar rig in one plugin — 13 amps, 7 drives, 4 fuzzes, mod/delay/3-type reverb/EQ/wah/octave, cab mic + room, 60+ song-inspired presets, footswitch recall, and a full node-chain UI.
+    L.append('    rdfs:comment """' + """Your entire guitar AND bass rig in one plugin — 14 amps (incl. a classic all-tube bass head), 7 drives, 4 fuzzes, mod/delay/3-type reverb/EQ/wah/octave, cab mic + room, 60+ song-inspired presets, footswitch recall, and a full node-chain UI.
 
 Hex Forge is the flagship — the whole Hex Chain signal chain in a SINGLE plugin, rebuilt around a modern node-chain interface: every block is a card you tap to edit, drag to reorder, and click to bypass, with per-model faceplates, live tone readouts and a built-in strobe tuner.
 
 The blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, a 6-band graphic EQ, modulation, delay, reverb, wah, octave and the industrial 'Nail' stage — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:
 
-- AMP: THIRTEEN original voicings (clean to modern high-gain), including the Cali V — a 9-mode three-channel switcher with a 5-band graphic EQ — the chrome-clad Diamond Plate with 8 high-gain modes plus Bold/Spongy variac and Silicon/Tube rectifier feel switches, and the Plexiglass with its jumpered Vol I + Vol II channels; every voicing rides a modeled power amp, with hum filtering and decay-aware noise conditioning on the hot channels.
+- AMP: FOURTEEN original voicings (clean to modern high-gain — plus the Blue Liner, a classic all-tube 300 W BASS head with Ultra-Lo/Ultra-Hi switches and a 3-position mid selector), including the Cali V — a 9-mode three-channel switcher with a 5-band graphic EQ — the chrome-clad Diamond Plate with 8 high-gain modes plus Bold/Spongy variac and Silicon/Tube rectifier feel switches, and the Plexiglass with its jumpered Vol I + Vol II channels; every voicing rides a modeled power amp, with hum filtering and decay-aware noise conditioning on the hot channels.
 - DRIVE: seven overdrive/boost/distortion voicings, from the green mid-hump legend to the mythical gold horse.
 - FUZZ: four pedals — the multi-era Italian Hero, the germanium I Know It bender, the octave-ringing Octavius, and the self-oscillating Fuzz Zachary starve box.
-- CAB: six loudness-matched built-in cabs (plus your own IRs), a DRAGGABLE mic-placement pad (cap→edge position, close→30 cm distance) and adjustable stereo room ambience — all preset-savable, plus a Room/Studio cab voice (Studio = second virtual mic, console curve and bus glue for the 'recorded' sound).
+- CAB: ten loudness-matched built-in cabs — six guitar 4x12/2x12 voices plus four BASS cabs (sealed 8x10 fridge, ported 4x10+horn, 2x10, 1x15 flip-top) — plus your own IRs, a DRAGGABLE mic-placement pad (cap→edge position, close→30 cm distance) and adjustable stereo room ambience — all preset-savable, plus a Room/Studio cab voice (Studio = second virtual mic, console curve and bus glue for the 'recorded' sound).
 - Plus modulation (two choruses, vibe, seasick tape-warble, phaser, flanger, tremolo, rotary — with a 0–100 ms center-delay control), the four-machine delay (digital / tape / multi-head Echo Wreck / dual Seraph), a THREE-machine reverb (modulated plate with a Classic/Dense tank switch, drippy three-spring tank, and a blooming cinematic AMBIENT wash with its own Bloom control), a 6-band graphic EQ with a live response scope and preset curves (movable anywhere in the chain — post-everything mix sculpting or classic tone shaping), wah, and an octaver with a microtonal quarter-tone shimmer voice.
 
 A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory rigs — grunge, doom-pop ghouls, psychedelic prog, '60s guitar heroes, art rock, sludge metal, nu metal, djent, ambient post-rock and more — every one researched against the original gear, level-matched so no preset jumps out, and recalled hands-free via A/B/C/D footswitches and hold-both bank chords. The preset browser has live type-to-search filtering, so slot 47 of 128 is three keystrokes away. The factory pedalboard is pre-wired, so the pi-Stomp footswitches work the moment you load it — no MIDI setup. A dB-scaled master output with a transparent clip limiter keeps the whole rig stage-safe, and an optional stereo DOUBLER fakes a second tracked take (micro-delay + slow detune) for instant width.
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" + '""" ;')
     L.append("    lv2:minorVersion 1 ;")
-    L.append("    lv2:microVersion 212 ;")   # 212: PatchStorage listing description baked into the TTL (plugin-level rdfs:comment). 211: pos-echo rewrite storm fixed (eq_pos max 13->24 + the modgui never writes pos ports from change echoes). 210: OUT jack LED = plugin on/off (toolbar powerswitch retired), IN jack LED = master mute (tuner_mute decoupled from tuner_on); LEDs act like tile dots (lit/dark + hover/pressed states, hit halos); ADD button sized/aligned to the end caps. 209: IN/OUT dot back above the label, warmer slate-blue chip; block toggle LEDs 14px + invisible ~30px hit halo. 208: IN/OUT squares vertically centred on the block row; label brighter/heavier (13px 900, lighter gradient stops). 207: IN/OUT squares bigger (12px label on top, jack dot below); helix drift back to the original subtle pace. 206: IN/OUT = one larger rounded square containing the jack dot + gradient label; helix particle flow sped up so signal visibly travels IN->OUT. 205: drop slot more noticeable (accent fill, full-opacity 2px dashes, breathing glow). 204: grab-without-move lift race fixed (tiles no longer vanish); IN/OUT = gradient-text chips on dark rounded boxes + jack dots; ADV icon is a real cog. 203: drag polish — dragged tile collapses out of the row (ghost IS the block, no doubled tile), ghost carries the block accent + name, IN/OUT end caps redesigned as quiet jack dots on the signal line. 202: ghost dead-zone fixed (pointer-events:none sent over-ghost hovers to the container = bounce + drop-at-end); FRFR knob reveal now observes the switch widget class. 201: ghost tile animates open/closed (smooth row parting; collapsing clone at the old slot on moves). 200: insertion preview v2 — dashed GHOST TILE placeholder (row parts to make room; cursor-dead-zone placement, no jitter). 199: drag-and-drop insertion preview (glowing landing-slot bar, gap/tail drops, palette drag-to-place, drag-to-palette removes). 198: Calibrate back bottom-right; FRFR knobs show only when the voice is ON; ADVANCED and the preset menu are mutually exclusive. 197: Tube Chauffeur (Butler Tube Driver, drive model 9 — starved-12AX7 warm OD/clean boost, the Gilmour staple) + Numb Sustain restage + Desert Robot gain trim. 196: EVH lab CANCELED unused (bake 0.8875 kept); ADVANCED = FLOW strip under the toolbar (no longer covers controls); Doubler switch label overlap fixed. 195: EVH fit LAB restored (dbg_evhfit blend, default 0.8875 = the bake = bit-identical; TEMPORARY re-tune session on the 6L6/FRFR rig). 194: rb_locut — HP on the rig-B blend layer (blob v44; kills the dual-rig low-mid cancellation pump = the residual Periphery woosh; 0 = off). 193: monoRoom — with the output mono-summed the cab room uses ONE bank (the two decorrelated banks folded into a flanger-like comb on one-speaker rigs; the Periphery woosh). 192: Green Man (TS-808) gain-floor fix (x11.85 mid-band floor at drive 0 = the real boost trick; capture anchor d=0.5 exact). 191: ADVANCED popout enlarged (wrap rows, FRFR knobs always visible, row labels). 190: ADVANCED popout (Auto-Limit/Mono/Doubler/FRFR voice/Calibrate off the toolbar; ADV gear toggles), tuner button back in the toolbar. 189: FRFR voice levers promoted to PERMANENT user knobs (fv_locut/prox/pres/fizz, defaults = the in-room reference bake; knobs show only while OUT is on). 188: FRFR voice BAKED at the user's in-room values (locut 100.75 / prox 1.815 / pres 3.225 / fizz 2.70), dbg_fv_* knobs retired, out_voice switch permanent (OUT corner strip). 187: Output Voice FRFR global layer (out_voice PERMANENT + 4 TEMPORARY dbg_fv_* LAB knobs for the FRFR-10 ears session; presets untouched, off = bit-identical). 186: tube-correctness audit — Fender 6V6 (new TubeType), EVH 6L6, Sunn KT88(inert); manual Power Tube dropdown gains 6V6. 185: Fender PA lab retired — user swept it by ear and chose STOCK 0.15/13 ms; nothing baked, PA-compression frontier closed with an ears verdict. 184: Fender PA-compression LAB RESTORED by user request (TEMPORARY). 183: Recto CH3-Modern capture-fit BAKED at user blend 1.0 (RectoCaptureFit.h + mode-7 satDrive 1.84/tightHP 200; loudness-parity makeup), lab retired. 182: Recto voicing LAB (TEMPORARY). 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
+    L.append("    lv2:microVersion 213 ;")   # 213: Blue Liner (Ampeg SVT) BASS amp (model 14, Ultra-Lo/Hi + 3-way mid, 6550 power tube, blob v45) + four bass cabs (@bass810/@bass410h/@bass210/@bass115, rb_cab 7-10 after the frozen No Cab 6). 212: PatchStorage listing description baked into the TTL (plugin-level rdfs:comment). 211: pos-echo rewrite storm fixed (eq_pos max 13->24 + the modgui never writes pos ports from change echoes). 210: OUT jack LED = plugin on/off (toolbar powerswitch retired), IN jack LED = master mute (tuner_mute decoupled from tuner_on); LEDs act like tile dots (lit/dark + hover/pressed states, hit halos); ADD button sized/aligned to the end caps. 209: IN/OUT dot back above the label, warmer slate-blue chip; block toggle LEDs 14px + invisible ~30px hit halo. 208: IN/OUT squares vertically centred on the block row; label brighter/heavier (13px 900, lighter gradient stops). 207: IN/OUT squares bigger (12px label on top, jack dot below); helix drift back to the original subtle pace. 206: IN/OUT = one larger rounded square containing the jack dot + gradient label; helix particle flow sped up so signal visibly travels IN->OUT. 205: drop slot more noticeable (accent fill, full-opacity 2px dashes, breathing glow). 204: grab-without-move lift race fixed (tiles no longer vanish); IN/OUT = gradient-text chips on dark rounded boxes + jack dots; ADV icon is a real cog. 203: drag polish — dragged tile collapses out of the row (ghost IS the block, no doubled tile), ghost carries the block accent + name, IN/OUT end caps redesigned as quiet jack dots on the signal line. 202: ghost dead-zone fixed (pointer-events:none sent over-ghost hovers to the container = bounce + drop-at-end); FRFR knob reveal now observes the switch widget class. 201: ghost tile animates open/closed (smooth row parting; collapsing clone at the old slot on moves). 200: insertion preview v2 — dashed GHOST TILE placeholder (row parts to make room; cursor-dead-zone placement, no jitter). 199: drag-and-drop insertion preview (glowing landing-slot bar, gap/tail drops, palette drag-to-place, drag-to-palette removes). 198: Calibrate back bottom-right; FRFR knobs show only when the voice is ON; ADVANCED and the preset menu are mutually exclusive. 197: Tube Chauffeur (Butler Tube Driver, drive model 9 — starved-12AX7 warm OD/clean boost, the Gilmour staple) + Numb Sustain restage + Desert Robot gain trim. 196: EVH lab CANCELED unused (bake 0.8875 kept); ADVANCED = FLOW strip under the toolbar (no longer covers controls); Doubler switch label overlap fixed. 195: EVH fit LAB restored (dbg_evhfit blend, default 0.8875 = the bake = bit-identical; TEMPORARY re-tune session on the 6L6/FRFR rig). 194: rb_locut — HP on the rig-B blend layer (blob v44; kills the dual-rig low-mid cancellation pump = the residual Periphery woosh; 0 = off). 193: monoRoom — with the output mono-summed the cab room uses ONE bank (the two decorrelated banks folded into a flanger-like comb on one-speaker rigs; the Periphery woosh). 192: Green Man (TS-808) gain-floor fix (x11.85 mid-band floor at drive 0 = the real boost trick; capture anchor d=0.5 exact). 191: ADVANCED popout enlarged (wrap rows, FRFR knobs always visible, row labels). 190: ADVANCED popout (Auto-Limit/Mono/Doubler/FRFR voice/Calibrate off the toolbar; ADV gear toggles), tuner button back in the toolbar. 189: FRFR voice levers promoted to PERMANENT user knobs (fv_locut/prox/pres/fizz, defaults = the in-room reference bake; knobs show only while OUT is on). 188: FRFR voice BAKED at the user's in-room values (locut 100.75 / prox 1.815 / pres 3.225 / fizz 2.70), dbg_fv_* knobs retired, out_voice switch permanent (OUT corner strip). 187: Output Voice FRFR global layer (out_voice PERMANENT + 4 TEMPORARY dbg_fv_* LAB knobs for the FRFR-10 ears session; presets untouched, off = bit-identical). 186: tube-correctness audit — Fender 6V6 (new TubeType), EVH 6L6, Sunn KT88(inert); manual Power Tube dropdown gains 6V6. 185: Fender PA lab retired — user swept it by ear and chose STOCK 0.15/13 ms; nothing baked, PA-compression frontier closed with an ears verdict. 184: Fender PA-compression LAB RESTORED by user request (TEMPORARY). 183: Recto CH3-Modern capture-fit BAKED at user blend 1.0 (RectoCaptureFit.h + mode-7 satDrive 1.84/tightHP 200; loudness-parity makeup), lab retired. 182: Recto voicing LAB (TEMPORARY). 181: HG round 2 BAKED at user blend 0.72 (JCM800 padrive 1.72 + knee 0.36; Tremont tilt 2.88/6.84; Plexi/MarkV frozen on row 10), lab retired. 180: HG round 2 LAB. 179: EVH capture-fit BAKED. 178: LAB strip. 177: PA lab UNIVERSAL. 176: PA-compression LAB. 175: AUTO-CALIBRATE wizard (3-phase measurement -> global cal_trim_offs/cal_floor_offs layer, 5 tail ports, #cal notify) + post-Apply APPLIED feedback (near-zero recs on the reference rig are the SUCCESS case and now say so). 174: per-amp PA drive/makeup now on the main rig (EVH/Rockerverb/Vox un-over-driven; was Rig-B-only). 173: REVERTED the Fender PA re-voice (172) -- didn't sound right. Back to the pre-revoice PA. 171: Script Phaser mod type 8 (no-feedback script-era P90) + md type clamp fix (Seasick Vibe silently ran as Nevermind Chorus in the Forge). 170: SIR #34 mod toggle on the JCM800, both amps (blob v43). 169: EP-3 Echo delay type (JFET preamp + Age, dl_age/dl2_age, blob v42) + Echo Primer drive model 8. 168: Plexi Variac (brown sound) on both amps. 167: quick wins (FF dead Tone hidden, fuzz/nail Eco, Drive 2 Neural). 166: Voicing/Channel tab label + Friedman defaults HBE. 165: Cab 2 unified IR picker (matches Cab 1) + quiet REMOVE button. 164: Amp 2 NAM + Cab 2 user IR + mirrored cab names (blob v39). 163: Amp2/Cab2 CPU badges + dashed-off strips. 162: Amp2/Cab2 call-to-action strips (+ prefix, filled-when-on). 161: a 2 of every effect (X2 clones, palette-gated). 160: Amp 2/Cab 2 FULL amp/cab UIs + in-tile strips (2026-07-30). 159: standalone panels   # 142: tremolo Shape selector conditional on Type=Tremolo (2026-07-29). 141: search clear ×. 140: preset-menu search box (2026-07-25)
     L.append("")
     L.append("    # Amp model rebuilds + cab IR loads run on the worker thread.")
     L.append("    lv2:requiredFeature urid:map , work:schedule ;")
@@ -1020,6 +1032,8 @@ COND = {
     "amp_rc_mode":"c-amp-recto", "amp_rc_variac":"c-amp-recto", "amp_rc_rect":"c-amp-recto",
     # Tremont 15 / PRS MT15 (model 13): channel + bright switch
     "amp_mt_mode":"c-amp-mt15", "amp_mt_bright":"c-amp-mt15",
+    # Blue Liner / Ampeg SVT (model 14): Ultra switches + 3-way mid selector
+    "amp_sv_ultralo":"c-amp-svt", "amp_sv_ultrahi":"c-amp-svt", "amp_sv_midfreq":"c-amp-svt",
     # power-amp: whole section hidden for Sunn; manual knobs hidden when PA Auto on
     "amp_pamp_bypass":"c-amp-pa", "amp_pamp_auto":"c-amp-pa",
     "amp_pamp_resonance":"c-amp-pa", "amp_pamp_airfeel":"c-amp-pa", "amp_pamp_coupl":"c-amp-pa",
@@ -1156,6 +1170,10 @@ IR_PICKER = ('<div class="hf-ir"><span class="hf-sel-label">Impulse Response</sp
     '<div mod-role="enumeration-option" mod-parameter-value="@greenback">Cashback 4x12</div>'
     '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12</div>'
     '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@bass810">Bass 8x10 Sealed</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@bass410h">Bass 4x10 Horn</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@bass210">Bass 2x10</div>'
+    '<div mod-role="enumeration-option" mod-parameter-value="@bass115">Bass 1x15 Flip-Top</div>'
     '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
     '</div>{{/path}}{{/effect.parameters.6}}</div>')
 
@@ -1363,6 +1381,13 @@ def amp_body(ns="amp"):
             + render_ctrl(CTRL_BY_SYM[S("mt_mode")])
             + render_ctrl(CTRL_BY_SYM[S("mt_bright")])
             + '</div></div></div>')
+    # Blue Liner (Ampeg SVT): Ultra-Lo / Ultra-Hi toggles + the mid selector, one row.
+    svt = ('<div class="hf-pa-face ' + CC("c-amp-svt") + '"><div class="hf-pa-title">Blue Liner</div>'
+           + '<div class="hf-mv-group"><div class="hf-mv-selrow">'
+           + render_ctrl(CTRL_BY_SYM[S("sv_ultralo")])
+           + render_ctrl(CTRL_BY_SYM[S("sv_ultrahi")])
+           + render_ctrl(CTRL_BY_SYM[S("sv_midfreq")])
+           + '</div></div></div>')
     # Blend chassis (B only): how Amp 2 mixes back in after Cab 1 / Cab 2.
     blend_panel = ""
     if rb:
@@ -1381,7 +1406,7 @@ def amp_body(ns="amp"):
                   + (('<div class="hf-atabpanel" rata-role="apanel" data-tab="blend" role="tabpanel" aria-label="Blend">' + blend_panel + '</div>') if rb else ''))
     panels = ('<div class="hf-atabpanels">'
               '<div class="hf-atabpanel hf-atab-on" rata-role="apanel" data-tab="amp" role="tabpanel" aria-label="Amp">' + face + '</div>'
-              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + mt15 + '</div>'
+              '<div class="hf-atabpanel" rata-role="apanel" data-tab="voice" role="tabpanel" aria-label="Voicing">' + brite + beardo + mesa + recto + mt15 + svt + '</div>'
               '<div class="hf-atabpanel" rata-role="apanel" data-tab="power" role="tabpanel" aria-label="Power Amp">' + pa + '</div>'
               + last_panel + '</div>')
     return selrow + tabs + panels
@@ -1411,6 +1436,10 @@ def cab2_body():
            '<div mod-role="enumeration-option" mod-parameter-value="@greenback">Cashback 4x12</div>'
            '<div mod-role="enumeration-option" mod-parameter-value="@hiwatt">Hi-Volt 4x12</div>'
            '<div mod-role="enumeration-option" mod-parameter-value="@doom">Doom 4x12</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@bass810">Bass 8x10 Sealed</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@bass410h">Bass 4x10 Horn</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@bass210">Bass 2x10</div>'
+           '<div mod-role="enumeration-option" mod-parameter-value="@bass115">Bass 1x15 Flip-Top</div>'
            '<div mod-role="enumeration-option" mod-parameter-value="@nocab">No Cab (Direct)</div>'
            '{{#files}}<div mod-role="enumeration-option" mod-parameter-value="{{fullname}}">{{basename}}</div>{{/files}}</div>'
            '</div>{{/path}}{{/effect.parameters.5}}</div>')

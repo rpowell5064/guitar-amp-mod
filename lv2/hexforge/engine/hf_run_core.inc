@@ -267,9 +267,9 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->nail->setParameter("texture", *p->ports[HF_NAIL_TEXTURE]);
     p->nail->setParameter("level",   *p->ports[HF_NAIL_LEVEL]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kMt15Idx);
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kSvtIdx);
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
-    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx);
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx) || (ampModel == kSvtIdx);
     const bool ecoQ = *p->ports[HF_QUALITY] > 0.5f;
     if (ampIsAlgo && (ampModel != p->lastAmpModel || ecoQ != p->lastEco)) {   // rebuild for algo models (model or Engine Quality change)
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel; msg.eco=ecoQ;
@@ -288,7 +288,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         }
     }
     if (rbOn) {
-        int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kMt15Idx);
+        int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kSvtIdx);
         const bool rbNamSel = (rbModel == kAmpNamIdx);   // Neural on the B side (v39)
         const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
         // amp2Requested guards the build-in-flight window: without it, !p->amp2
@@ -299,7 +299,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             if (p->worker->schedule(&msg, sizeof(msg)))
                 { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
         }
-        const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, 6);
+        const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, kRbCabMax);
         const bool ir2NoCab = (std::strcmp(p->ir2Path, "@nocab") == 0);   // unified picker's No Cab entry
         const bool ir2User = (p->ir2Path[0] != '\0') && !ir2NoCab;   // IR/sentinel override active (v39)
         if (ir2User && p->lastCab2Model != -2) {
@@ -310,14 +310,17 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             if (p->worker->schedule(&m2, sizeof(m2)))
                 p->lastCab2Model = -2;
         }
-        if (!ir2User && rbCab != p->lastCab2Model && rbCab < 6) {
-            static const char* kRbCabIr[6] = { "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom" };
+        if (!ir2User && rbCab != p->lastCab2Model && rbCab != kNoCabIdx) {
+            // Index kNoCabIdx (6) is "No Cab (Direct)" — nullptr slot, never looked up.
+            static const char* kRbCabIr[kRbCabMax + 1] = {
+                "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom",
+                nullptr /* No Cab */, "@bass810", "@bass410h", "@bass210", "@bass115" };
             WorkMsg msg; msg.type=W_CAB_IR; msg.namSlot=1;
             std::snprintf(msg.path, sizeof(msg.path), "%s", kRbCabIr[rbCab]);
             if (p->worker->schedule(&msg, sizeof(msg)))
                 p->lastCab2Model = rbCab;
         }
-        if (!ir2User && rbCab >= 6) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
+        if (!ir2User && rbCab == kNoCabIdx) p->lastCab2Model = rbCab;   // No Cab (Direct): bypass below
         if (p->amp2) {
             AmpBlockExtended* a2 = p->amp2;
             const int rbM = p->lastAmp2Model;
@@ -376,6 +379,11 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 a2->setParameter("mode",   *p->ports[HF_RB_MT_MODE]);
                 a2->setParameter("bright", *p->ports[HF_RB_MT_BRIGHT]);
             }
+            if (rbM == kSvtIdx) {
+                a2->setParameter("ultralo", *p->ports[HF_RB_SV_ULTRALO]);
+                a2->setParameter("ultrahi", *p->ports[HF_RB_SV_ULTRAHI]);
+                a2->setParameter("midfreq", *p->ports[HF_RB_SV_MIDFREQ]);
+            }
             const int rbAlgo = (rbM < 0) ? 1 : ((rbM == 5) ? 1 : rbM);
             const float rbRcMode = *p->ports[HF_RB_RC_MODE];
             const bool rbRectoModern = (rbM == kRectoIdx) &&
@@ -395,7 +403,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 p->pa2.setParameter("sag",      *p->ports[HF_RB_PAMP_SAG]);
                 p->pa2.setParameter("master",   *p->ports[HF_RB_PAMP_MASTER]);
                 p->pa2.setParameter("nfb",      *p->ports[HF_RB_PAMP_NFB]);
-                p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 4)));   // 4 = 6V6 (2026-08-21)
+                p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 5)));   // 5 = 6550 (2026-08-28 Blue Liner)
             }
             p->pa2.setParameter("resonance", *p->ports[HF_RB_PAMP_RESONANCE]);
             p->pa2.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_RB_PAMP_AIRFEEL]);   // FRFR voice: air off
@@ -430,7 +438,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             // No Cab (Direct): the player may run rig A into a real power amp +
             // physical cab -- rig B then skips speaker sim too.
             p->cab2.setBypass((std::strcmp(p->ir2Path, "@nocab") == 0)
-                              || (p->ir2Path[0] == '\0' && clampi(*p->ports[HF_RB_CAB], 0, 6) >= 6));
+                              || (p->ir2Path[0] == '\0' && clampi(*p->ports[HF_RB_CAB], 0, kRbCabMax) == kNoCabIdx));
         }
     }
     AmpBlockExtended* amp = p->amp;
@@ -492,6 +500,12 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         amp->setParameter("mode",   *p->ports[HF_AMP_MT_MODE]);
         amp->setParameter("bright", *p->ports[HF_AMP_MT_BRIGHT]);
     }
+    // Blue Liner (Ampeg SVT): Ultra switches + the 3-position mid selector.
+    if (ampModel == kSvtIdx) {
+        amp->setParameter("ultralo", *p->ports[HF_AMP_SV_ULTRALO]);
+        amp->setParameter("ultrahi", *p->ports[HF_AMP_SV_ULTRAHI]);
+        amp->setParameter("midfreq", *p->ports[HF_AMP_SV_MIDFREQ]);
+    }
     // Recto Modern modes (4, 7) disconnect the power-amp NFB loop on the real amp.
     const float rcMode = *p->ports[HF_AMP_RC_MODE];
     const bool rectoModern = (ampModel == kRectoIdx) &&
@@ -513,7 +527,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->pa.setParameter("nfb",       *p->ports[HF_AMP_PAMP_NFB]);
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
         p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
-        desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 4);   // 4 = 6V6 (2026-08-21)
+        desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 5);   // 5 = 6550 (2026-08-28 Blue Liner)
     }
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).bloomVca);
@@ -879,7 +893,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         // Rig B: run amp2 -> pa2 -> cab2 on the tapped buffer and mix into L/R.
         // Called after the main CAB (or after the AMP when no cab is active).
         auto rigBMix = [&](void) {
-            const bool rbNamRun = (clampi(*p->ports[HF_RB_AMP], 0, kMt15Idx) == kAmpNamIdx)
+            const bool rbNamRun = (clampi(*p->ports[HF_RB_AMP], 0, kSvtIdx) == kAmpNamIdx)
                                   && p->amp2Nam && p->amp2Nam->isLoaded();
             if (!p->rigBHeld || (!rbNamRun && !p->amp2)) return;
             p->rigBHeld = false;

@@ -12,6 +12,7 @@
 #include "MesaMarkV.h"
 #include "MesaDualRectifier.h"
 #include "PRSMT15.h"
+#include "AmpegSVT.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -28,6 +29,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::MesaMarkV:           return std::make_unique<MesaMarkV>();
         case ModelID::MesaDualRectifier:   return std::make_unique<MesaDualRectifier>();
         case ModelID::PRSMT15:             return std::make_unique<PRSMT15>();
+        case ModelID::AmpegSVT:            return std::make_unique<AmpegSVT>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -58,6 +60,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::MesaMarkV:           return "Mesa Mark V";
         case ModelID::MesaDualRectifier:   return "Diamond Plate";
         case ModelID::PRSMT15:             return "Tremont 15";
+        case ModelID::AmpegSVT:            return "Blue Liner";
         default:                           return "Unknown";
     }
 }
@@ -81,6 +84,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::MesaMarkV:           return 0;  // 6L6GC (Simul-Class, 6L6-dominant)
         case ModelID::MesaDualRectifier:   return 0;  // 6L6GC
         case ModelID::PRSMT15:             return 0;  // 6L6GC (PRS ships 6L6GC despite the EL84-tight feel)
+        case ModelID::AmpegSVT:            return 5;  // 6550 (six of them; SS rectifier, 60 Hz mains)
         default:                           return 1;
     }
 }
@@ -100,6 +104,7 @@ const char* const* AmpModelFactory::getAllModelNames() noexcept {
         "Mesa Mark V",
         "Diamond Plate",
         "Tremont 15",
+        "Blue Liner",
         nullptr
     };
     return kNames;
@@ -119,5 +124,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Mesa Mark V")               return ModelID::MesaMarkV;
     if (name == "Diamond Plate")             return ModelID::MesaDualRectifier;
     if (name == "Tremont 15")                return ModelID::PRSMT15;
+    if (name == "Blue Liner")                return ModelID::AmpegSVT;
     return ModelID::SunnModelT;
 }

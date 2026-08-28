@@ -26,9 +26,10 @@ public:
         MesaMarkV          = 10,
         MesaDualRectifier  = 11,
         PRSMT15            = 12,
+        AmpegSVT           = 13,
     };
 
-    static constexpr int kNumModels = 13;
+    static constexpr int kNumModels = 14;
 
     // Returns ownership of a newly constructed model. Never returns null;
     // unknown IDs fall back to SunnModelT.

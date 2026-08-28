@@ -26,7 +26,8 @@ static double mag(const std::vector<float>& ir, double f, double sr) {
 // within tolerance, and loudness is checked against DefaultCabIR (the L2 anchor for all cabs).
 int main() {
     const double sr = 48000.0;
-    const char* ids[] = {"@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom"};
+    const char* ids[] = {"@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt", "@doom",
+                         "@bass810", "@bass410h", "@bass210", "@bass115"};
     const std::vector<float> ref = DefaultCabIR::generate(sr);
     const float refL2 = CabModels::l2norm(ref);
     std::printf("%-14s %8s %10s %14s  %s\n", "cab", "L2/ref", "ripple(dB)", "macroDelta(dB)", "octave deltas vs base @ 125/250/500/2k/4k");

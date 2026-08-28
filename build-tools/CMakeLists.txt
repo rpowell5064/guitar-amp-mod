@@ -29,6 +29,11 @@ add_executable(conv_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/conv_check.cpp")
 target_link_libraries(conv_check PRIVATE GuitarAmpSim)
 add_executable(cab_voice_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_voice_check.cpp")
 target_link_libraries(cab_voice_check PRIVATE GuitarAmpSim)
+# Cab integrity gates (promoted from ad-hoc g++ for the bass-cab batch):
+add_executable(cab_enrich_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_enrich_check.cpp")
+target_link_libraries(cab_enrich_check PRIVATE GuitarAmpSim)
+add_executable(cab_verify "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_verify.cpp")
+target_link_libraries(cab_verify PRIVATE GuitarAmpSim)
 # Preset-blob migration round-trip (header-only vs the generated port enum).
 add_executable(hexforge_migrate_test "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_migrate_test.cpp")
 target_include_directories(hexforge_migrate_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge")

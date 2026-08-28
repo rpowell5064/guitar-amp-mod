@@ -26,9 +26,9 @@ static const HfScalePoint kHfSp_fz_mode[] = { { "Delta", 0.0f }, { "Ovis", 1.0f 
 static const HfScalePoint kHfSp_dr_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_dr_model[] = { { "Green Man", 0.0f }, { "New Dawn", 1.0f }, { "Dear Rodent Boy", 2.0f }, { "Neural (NAM)", 3.0f }, { "Grunge DS", 4.0f }, { "Gilded Horse", 5.0f }, { "Super Nova", 6.0f }, { "Preamp 250", 7.0f }, { "Echo Primer", 8.0f }, { "Tube Chauffeur", 9.0f } };
 static const HfScalePoint kHfSp_amp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
-static const HfScalePoint kHfSp_amp_model[] = { { "Clean Meanie", 0.0f }, { "Crunchy McCrunchFace", 1.0f }, { "Gainzilla", 2.0f }, { "Doom Daddy", 3.0f }, { "Tangerang", 4.0f }, { "Neural (NAM)", 5.0f }, { "Beardo BE", 6.0f }, { "Hi-Volt", 7.0f }, { "Chime Thirty", 8.0f }, { "Backline Plus", 9.0f }, { "Plexiglass", 10.0f }, { "Cali V", 11.0f }, { "Diamond Plate", 12.0f }, { "Tremont 15", 13.0f } };
+static const HfScalePoint kHfSp_amp_model[] = { { "Clean Meanie", 0.0f }, { "Crunchy McCrunchFace", 1.0f }, { "Gainzilla", 2.0f }, { "Doom Daddy", 3.0f }, { "Tangerang", 4.0f }, { "Neural (NAM)", 5.0f }, { "Beardo BE", 6.0f }, { "Hi-Volt", 7.0f }, { "Chime Thirty", 8.0f }, { "Backline Plus", 9.0f }, { "Plexiglass", 10.0f }, { "Cali V", 11.0f }, { "Diamond Plate", 12.0f }, { "Tremont 15", 13.0f }, { "Blue Liner", 14.0f } };
 static const HfScalePoint kHfSp_amp_sunn_link[] = { { "Independent", 0.0f }, { "Parallel", 1.0f }, { "Series", 2.0f } };
-static const HfScalePoint kHfSp_amp_pamp_tube[] = { { "6L6GC", 0.0f }, { "EL34", 1.0f }, { "EL84", 2.0f }, { "KT88", 3.0f }, { "6V6", 4.0f } };
+static const HfScalePoint kHfSp_amp_pamp_tube[] = { { "6L6GC", 0.0f }, { "EL34", 1.0f }, { "EL84", 2.0f }, { "KT88", 3.0f }, { "6V6", 4.0f }, { "6550", 5.0f } };
 static const HfScalePoint kHfSp_cab_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_md_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_md_type[] = { { "Lush-2", 0.0f }, { "Uni-Verse", 1.0f }, { "Phaser", 2.0f }, { "Flanger", 3.0f }, { "Tremolo", 4.0f }, { "Rotary", 5.0f }, { "Nevermind Chorus", 6.0f }, { "Seasick Vibe", 7.0f }, { "Script Phaser", 8.0f } };
@@ -63,8 +63,8 @@ static const HfScalePoint kHfSp_cab_spkdrive[] = { { "Off", 0.0f }, { "Subtle", 
 static const HfScalePoint kHfSp_md_shape[] = { { "Bias", 0.0f }, { "Opto", 1.0f }, { "Harmonic", 2.0f } };
 static const HfScalePoint kHfSp_dr2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_dr2_model[] = { { "Green Man", 0.0f }, { "New Dawn", 1.0f }, { "Dear Rodent Boy", 2.0f }, { "Neural", 3.0f }, { "Grunge DS", 4.0f }, { "Gilded Horse", 5.0f }, { "Super Nova", 6.0f }, { "Preamp 250", 7.0f }, { "Echo Primer", 8.0f } };
-static const HfScalePoint kHfSp_rb_amp[] = { { "Clean Meanie", 0.0f }, { "Crunchy McCrunchFace", 1.0f }, { "Gainzilla", 2.0f }, { "Doom Daddy", 3.0f }, { "Tangerang", 4.0f }, { "Neural", 5.0f }, { "Beardo BE", 6.0f }, { "Hi-Volt", 7.0f }, { "Chime Thirty", 8.0f }, { "Backline Plus", 9.0f }, { "Plexiglass", 10.0f }, { "Cali V", 11.0f }, { "Diamond Plate", 12.0f }, { "Tremont 15", 13.0f } };
-static const HfScalePoint kHfSp_rb_cab[] = { { "Factory 4x12 (Thirty-Something)", 0.0f }, { "Chime 2x12 (Vox)", 1.0f }, { "American Open-Back 2x12", 2.0f }, { "Cashback 4x12", 3.0f }, { "Hi-Volt 4x12", 4.0f }, { "Doom 4x12", 5.0f }, { "No Cab (Direct)", 6.0f } };
+static const HfScalePoint kHfSp_rb_amp[] = { { "Clean Meanie", 0.0f }, { "Crunchy McCrunchFace", 1.0f }, { "Gainzilla", 2.0f }, { "Doom Daddy", 3.0f }, { "Tangerang", 4.0f }, { "Neural", 5.0f }, { "Beardo BE", 6.0f }, { "Hi-Volt", 7.0f }, { "Chime Thirty", 8.0f }, { "Backline Plus", 9.0f }, { "Plexiglass", 10.0f }, { "Cali V", 11.0f }, { "Diamond Plate", 12.0f }, { "Tremont 15", 13.0f }, { "Blue Liner", 14.0f } };
+static const HfScalePoint kHfSp_rb_cab[] = { { "Factory 4x12 (Thirty-Something)", 0.0f }, { "Chime 2x12 (Vox)", 1.0f }, { "American Open-Back 2x12", 2.0f }, { "Cashback 4x12", 3.0f }, { "Hi-Volt 4x12", 4.0f }, { "Doom 4x12", 5.0f }, { "No Cab (Direct)", 6.0f }, { "Bass 8x10 Sealed", 7.0f }, { "Bass 4x10 Horn", 8.0f }, { "Bass 2x10", 9.0f }, { "Bass 1x15 Flip-Top", 10.0f } };
 static const HfScalePoint kHfSp_rb_sunn_link[] = { { "Independent", 0.0f }, { "Parallel", 1.0f }, { "Series", 2.0f } };
 static const HfScalePoint kHfSp_rb_fr_channel[] = { { "Clean", 0.0f }, { "BE", 1.0f }, { "HBE", 2.0f } };
 static const HfScalePoint kHfSp_rb_mv_mode[] = { { "Clean", 0.0f }, { "Fat", 1.0f }, { "Tweed", 2.0f }, { "Edge", 3.0f }, { "Crunch", 4.0f }, { "Mk I", 5.0f }, { "IIC+", 6.0f }, { "Mk IV", 7.0f }, { "Xtreme", 8.0f } };
@@ -74,7 +74,7 @@ static const HfScalePoint kHfSp_rb_rc_variac[] = { { "Bold", 0.0f }, { "Spongy",
 static const HfScalePoint kHfSp_rb_rc_rect[] = { { "Silicon", 0.0f }, { "Tube", 1.0f } };
 static const HfScalePoint kHfSp_rb_mt_mode[] = { { "Clean", 0.0f }, { "Crunch", 1.0f }, { "Lead", 2.0f } };
 static const HfScalePoint kHfSp_rb_mt_bright[] = { { "Off", 0.0f }, { "On", 1.0f } };
-static const HfScalePoint kHfSp_rb_pamp_tube[] = { { "6L6GC", 0.0f }, { "EL34", 1.0f }, { "EL84", 2.0f }, { "KT88", 3.0f }, { "6V6", 4.0f } };
+static const HfScalePoint kHfSp_rb_pamp_tube[] = { { "6L6GC", 0.0f }, { "EL34", 1.0f }, { "EL84", 2.0f }, { "KT88", 3.0f }, { "6V6", 4.0f }, { "6550", 5.0f } };
 static const HfScalePoint kHfSp_rb_cabroomdense[] = { { "Classic", 0.0f }, { "Dense", 1.0f } };
 static const HfScalePoint kHfSp_rb_cabvoice[] = { { "Room", 0.0f }, { "Studio", 1.0f } };
 static const HfScalePoint kHfSp_rb_cabspkdrive[] = { { "Off", 0.0f }, { "Subtle", 1.0f }, { "Full", 2.0f } };
@@ -105,6 +105,8 @@ static const HfScalePoint kHfSp_oc2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3
 static const HfScalePoint kHfSp_oc2_interval[] = { { "1/4 Up", 0.0f }, { "1/4 Dn", 1.0f }, { "Neutral 2nd", 2.0f }, { "Neutral 3rd", 3.0f }, { "Neutral 6th", 4.0f }, { "Octave +1/4", 5.0f } };
 static const HfScalePoint kHfSp_eq2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_eq2_preset[] = { { "Manual", 0.0f }, { "Clean Sparkle", 1.0f }, { "De-Mud", 2.0f }, { "Classic Rock", 3.0f }, { "Metal Rhythm", 4.0f }, { "Lead Cut", 5.0f }, { "Cocked Wah", 6.0f } };
+static const HfScalePoint kHfSp_amp_sv_midfreq[] = { { "220 Hz", 0.0f }, { "800 Hz", 1.0f }, { "3 kHz", 2.0f } };
+static const HfScalePoint kHfSp_rb_sv_midfreq[] = { { "220 Hz", 0.0f }, { "800 Hz", 1.0f }, { "3 kHz", 2.0f } };
 
 static const HfDesktopParam kHfDesktopParams[] = {
     { 6, "bypass", "Bypass", "Global", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
@@ -155,7 +157,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 51, "dr_octave", "Drive Octave", "Drive", 0.0f, 1.0f, 0.3f, "f", HFD_PARAM, nullptr, 0 },
     { 52, "amp_pos", "Amp Position", "Amp", 1.0f, 24.0f, 5.0f, "e", HFD_INTERNAL, kHfSp_amp_pos, int(sizeof(kHfSp_amp_pos)/sizeof(HfScalePoint)) },
     { 53, "amp_enable", "Amp Enable", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 54, "amp_model", "Amp Model", "Amp", 0.0f, 13.0f, 1.0f, "e", HFD_PARAM, kHfSp_amp_model, int(sizeof(kHfSp_amp_model)/sizeof(HfScalePoint)) },
+    { 54, "amp_model", "Amp Model", "Amp", 0.0f, 14.0f, 1.0f, "e", HFD_PARAM, kHfSp_amp_model, int(sizeof(kHfSp_amp_model)/sizeof(HfScalePoint)) },
     { 55, "amp_gain", "Amp Gain", "Amp", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 56, "amp_bass", "Amp Bass", "Amp", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 57, "amp_mid", "Amp Mid", "Amp", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -168,7 +170,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 64, "amp_sunn_vol2", "Amp Brite Vol", "Amp", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 65, "amp_sunn_link", "Amp Ch Link", "Amp", 0.0f, 2.0f, 0.0f, "e", HFD_PARAM, kHfSp_amp_sunn_link, int(sizeof(kHfSp_amp_sunn_link)/sizeof(HfScalePoint)) },
     { 66, "amp_pamp_bypass", "Amp PA Bypass", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 67, "amp_pamp_tube", "Amp Power Tube", "Amp", 0.0f, 4.0f, 1.0f, "e", HFD_PARAM, kHfSp_amp_pamp_tube, int(sizeof(kHfSp_amp_pamp_tube)/sizeof(HfScalePoint)) },
+    { 67, "amp_pamp_tube", "Amp Power Tube", "Amp", 0.0f, 5.0f, 1.0f, "e", HFD_PARAM, kHfSp_amp_pamp_tube, int(sizeof(kHfSp_amp_pamp_tube)/sizeof(HfScalePoint)) },
     { 68, "amp_pamp_presence", "Amp PA Presence", "Amp", 0.0f, 1.0f, 0.55f, "f", HFD_PARAM, nullptr, 0 },
     { 69, "amp_pamp_depth", "Amp PA Depth", "Amp", 0.0f, 1.0f, 0.18f, "f", HFD_PARAM, nullptr, 0 },
     { 70, "amp_pamp_sag", "Amp PA Sag", "Amp", 0.0f, 1.0f, 0.33f, "f", HFD_PARAM, nullptr, 0 },
@@ -318,7 +320,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 214, "dr2_eco", "Drive 2 Eco (2x OS)", "Drive 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 215, "dr2_bypass", "Drive 2 Bypass", "Drive 2", 0.0f, 1.0f, 0.0f, "t", HFD_INTERNAL, nullptr, 0 },
     { 216, "rb_enable", "Amp 2 In Chain", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 217, "rb_amp", "Rig B Amp", "Rig B", 0.0f, 13.0f, 1.0f, "e", HFD_PARAM, kHfSp_rb_amp, int(sizeof(kHfSp_rb_amp)/sizeof(HfScalePoint)) },
+    { 217, "rb_amp", "Rig B Amp", "Rig B", 0.0f, 14.0f, 1.0f, "e", HFD_PARAM, kHfSp_rb_amp, int(sizeof(kHfSp_rb_amp)/sizeof(HfScalePoint)) },
     { 218, "rb_gain", "Rig B Gain", "Rig B", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 219, "rb_bass", "Rig B Bass", "Rig B", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 220, "rb_mid", "Rig B Mid", "Rig B", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -328,7 +330,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 224, "rb_sag", "Rig B Sag", "Rig B", 0.0f, 1.0f, 0.3f, "f", HFD_PARAM, nullptr, 0 },
     { 225, "rb_channel", "Rig B Channel", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 226, "rb_eco", "Rig B Eco (2x OS)", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 227, "rb_cab", "Rig B Cab", "Rig B", 0.0f, 6.0f, 0.0f, "e", HFD_INTERNAL, kHfSp_rb_cab, int(sizeof(kHfSp_rb_cab)/sizeof(HfScalePoint)) },
+    { 227, "rb_cab", "Rig B Cab", "Rig B", 0.0f, 10.0f, 0.0f, "e", HFD_INTERNAL, kHfSp_rb_cab, int(sizeof(kHfSp_rb_cab)/sizeof(HfScalePoint)) },
     { 228, "rb_lowcut", "Rig B Cab Low Cut", "Rig B", 20.0f, 500.0f, 80.0f, "hz", HFD_PARAM, nullptr, 0 },
     { 229, "rb_highcut", "Rig B Cab High Cut", "Rig B", 2000.0f, 20000.0f, 16000.0f, "hz", HFD_PARAM, nullptr, 0 },
     { 230, "rb_blend", "Rig B Blend A/B", "Rig B", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -361,7 +363,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 257, "rb_pl_vol2", "Rig B Vol II", "Rig B", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 258, "rb_pamp_bypass", "Rig B PA Bypass", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 259, "rb_pamp_auto", "Rig B PA Auto", "Rig B", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 260, "rb_pamp_tube", "Rig B Power Tube", "Rig B", 0.0f, 4.0f, 1.0f, "e", HFD_PARAM, kHfSp_rb_pamp_tube, int(sizeof(kHfSp_rb_pamp_tube)/sizeof(HfScalePoint)) },
+    { 260, "rb_pamp_tube", "Rig B Power Tube", "Rig B", 0.0f, 5.0f, 1.0f, "e", HFD_PARAM, kHfSp_rb_pamp_tube, int(sizeof(kHfSp_rb_pamp_tube)/sizeof(HfScalePoint)) },
     { 261, "rb_pamp_presence", "Rig B PA Presence", "Rig B", 0.0f, 1.0f, 0.55f, "f", HFD_PARAM, nullptr, 0 },
     { 262, "rb_pamp_depth", "Rig B PA Depth", "Rig B", 0.0f, 1.0f, 0.18f, "f", HFD_PARAM, nullptr, 0 },
     { 263, "rb_pamp_sag", "Rig B PA Sag", "Rig B", 0.0f, 1.0f, 0.33f, "f", HFD_PARAM, nullptr, 0 },
@@ -502,64 +504,70 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 398, "amp_sir34", "Amp SIR #34 Mod", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 399, "rb_sir34", "Rig B SIR #34 Mod", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 400, "rb_locut", "Rig B Low Cut", "Rig B", 0.0f, 400.0f, 0.0f, "hz", HFD_PARAM, nullptr, 0 },
-    { 401, "sw_a", "Preset A", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 402, "sw_b", "Preset B", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 403, "sw_c", "Preset C", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 404, "sw_d", "Preset D", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 405, "ps_bank_up", "Bank Up", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 406, "ps_bank_dn", "Bank Down", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 407, "ps_save", "Save Preset", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 408, "ps_move_up", "Move Earlier", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 409, "ps_move_dn", "Move Later", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 410, "ps_backup", "Backup Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 411, "ps_restore", "Restore Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 412, "ps_goto", "Go To Preset", "Presets", -1.0f, 127.0f, -1.0f, "i", HFD_COMMAND, nullptr, 0 },
-    { 413, "ps_bank", "Active Bank", "Presets", 0.0f, 31.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 414, "ps_slot", "Active Slot", "Presets", 0.0f, 3.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 415, "out_auto", "Output Auto-Limit", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 416, "in_meter", "Input Level", "", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 417, "out_meter", "Output Level", "Output", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 418, "out_mono", "Output Mono Sum", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 419, "tuner_on", "Tuner", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 420, "tuner_mute", "Tuner Mute", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 421, "tuner_note", "Tuner Note", "Tuner", -1.0f, 11.0f, -1.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 422, "tuner_cents", "Tuner Cents", "Tuner", -50.0f, 50.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 423, "cpu_gt", "CPU Gate", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 424, "cpu_cp", "CPU Comp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 425, "cpu_fz", "CPU Fuzz", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 426, "cpu_dr", "CPU Drive", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 427, "cpu_amp", "CPU Amp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 428, "cpu_cab", "CPU Cab", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 429, "cpu_md", "CPU Mod", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 430, "cpu_dl", "CPU Delay", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 431, "cpu_rv", "CPU Reverb", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 432, "cpu_wh", "CPU Wah", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 433, "cpu_oc", "CPU Octave", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 434, "cpu_nail", "CPU Nail", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 435, "cpu_eq", "CPU EQ", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 436, "cpu_total", "CPU Total", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 437, "cpu_dr2", "CPU Drive 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 438, "cpu_rigb", "CPU Rig B", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 439, "cpu_gt2", "CPU Gate 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 440, "cpu_cp2", "CPU Comp 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 441, "cpu_fz2", "CPU Fuzz 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 442, "cpu_nail2", "CPU Nail 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 443, "cpu_md2", "CPU Modulation 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 444, "cpu_dl2", "CPU Delay 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 445, "cpu_rv2", "CPU Reverb 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 446, "cpu_wh2", "CPU Wah 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 447, "cpu_oc2", "CPU Octave 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 448, "cpu_eq2", "CPU EQ 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 449, "cpu_cab2", "CPU Cab 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 450, "cal_cmd", "Calibrate Command", "Calibration", 0.0f, 9.0f, 0.0f, "i", HFD_COMMAND, nullptr, 0 },
-    { 451, "cal_trim_offs", "Cal Trim Offset", "Calibration", -12.0f, 12.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
-    { 452, "cal_floor_offs", "Cal Floor Offset", "Calibration", -20.0f, 20.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
-    { 453, "cal_state", "Cal State", "Calibration", 0.0f, 5.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 454, "cal_progress", "Cal Progress", "Calibration", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 455, "out_voice", "Output Voice FRFR", "Output", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 456, "fv_locut", "FRFR Low Cut", "Output Voice", 40.0f, 140.0f, 100.75f, "hz", HFD_SETTING, nullptr, 0 },
-    { 457, "fv_prox", "FRFR Prox Dip", "Output Voice", 0.0f, 6.0f, 1.815f, "db", HFD_SETTING, nullptr, 0 },
-    { 458, "fv_pres", "FRFR Pres Dip", "Output Voice", 0.0f, 6.0f, 3.225f, "db", HFD_SETTING, nullptr, 0 },
-    { 459, "fv_fizz", "FRFR Fizz Tilt", "Output Voice", 0.0f, 6.0f, 2.7f, "db", HFD_SETTING, nullptr, 0 },
+    { 401, "amp_sv_ultralo", "Amp Ultra-Lo", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 402, "amp_sv_ultrahi", "Amp Ultra-Hi", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 403, "amp_sv_midfreq", "Amp Mid Freq", "Amp", 0.0f, 2.0f, 1.0f, "e", HFD_PARAM, kHfSp_amp_sv_midfreq, int(sizeof(kHfSp_amp_sv_midfreq)/sizeof(HfScalePoint)) },
+    { 404, "rb_sv_ultralo", "Rig B Ultra-Lo", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 405, "rb_sv_ultrahi", "Rig B Ultra-Hi", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 406, "rb_sv_midfreq", "Rig B Mid Freq", "Rig B", 0.0f, 2.0f, 1.0f, "e", HFD_PARAM, kHfSp_rb_sv_midfreq, int(sizeof(kHfSp_rb_sv_midfreq)/sizeof(HfScalePoint)) },
+    { 407, "sw_a", "Preset A", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 408, "sw_b", "Preset B", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 409, "sw_c", "Preset C", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 410, "sw_d", "Preset D", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 411, "ps_bank_up", "Bank Up", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 412, "ps_bank_dn", "Bank Down", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 413, "ps_save", "Save Preset", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 414, "ps_move_up", "Move Earlier", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 415, "ps_move_dn", "Move Later", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 416, "ps_backup", "Backup Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 417, "ps_restore", "Restore Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 418, "ps_goto", "Go To Preset", "Presets", -1.0f, 127.0f, -1.0f, "i", HFD_COMMAND, nullptr, 0 },
+    { 419, "ps_bank", "Active Bank", "Presets", 0.0f, 31.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 420, "ps_slot", "Active Slot", "Presets", 0.0f, 3.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 421, "out_auto", "Output Auto-Limit", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 422, "in_meter", "Input Level", "", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 423, "out_meter", "Output Level", "Output", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 424, "out_mono", "Output Mono Sum", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 425, "tuner_on", "Tuner", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 426, "tuner_mute", "Tuner Mute", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 427, "tuner_note", "Tuner Note", "Tuner", -1.0f, 11.0f, -1.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 428, "tuner_cents", "Tuner Cents", "Tuner", -50.0f, 50.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 429, "cpu_gt", "CPU Gate", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 430, "cpu_cp", "CPU Comp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 431, "cpu_fz", "CPU Fuzz", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 432, "cpu_dr", "CPU Drive", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 433, "cpu_amp", "CPU Amp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 434, "cpu_cab", "CPU Cab", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 435, "cpu_md", "CPU Mod", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 436, "cpu_dl", "CPU Delay", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 437, "cpu_rv", "CPU Reverb", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 438, "cpu_wh", "CPU Wah", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 439, "cpu_oc", "CPU Octave", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 440, "cpu_nail", "CPU Nail", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 441, "cpu_eq", "CPU EQ", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 442, "cpu_total", "CPU Total", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 443, "cpu_dr2", "CPU Drive 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 444, "cpu_rigb", "CPU Rig B", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 445, "cpu_gt2", "CPU Gate 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 446, "cpu_cp2", "CPU Comp 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 447, "cpu_fz2", "CPU Fuzz 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 448, "cpu_nail2", "CPU Nail 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 449, "cpu_md2", "CPU Modulation 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 450, "cpu_dl2", "CPU Delay 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 451, "cpu_rv2", "CPU Reverb 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 452, "cpu_wh2", "CPU Wah 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 453, "cpu_oc2", "CPU Octave 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 454, "cpu_eq2", "CPU EQ 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 455, "cpu_cab2", "CPU Cab 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 456, "cal_cmd", "Calibrate Command", "Calibration", 0.0f, 9.0f, 0.0f, "i", HFD_COMMAND, nullptr, 0 },
+    { 457, "cal_trim_offs", "Cal Trim Offset", "Calibration", -12.0f, 12.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
+    { 458, "cal_floor_offs", "Cal Floor Offset", "Calibration", -20.0f, 20.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
+    { 459, "cal_state", "Cal State", "Calibration", 0.0f, 5.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 460, "cal_progress", "Cal Progress", "Calibration", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 461, "out_voice", "Output Voice FRFR", "Output", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 462, "fv_locut", "FRFR Low Cut", "Output Voice", 40.0f, 140.0f, 100.75f, "hz", HFD_SETTING, nullptr, 0 },
+    { 463, "fv_prox", "FRFR Prox Dip", "Output Voice", 0.0f, 6.0f, 1.815f, "db", HFD_SETTING, nullptr, 0 },
+    { 464, "fv_pres", "FRFR Pres Dip", "Output Voice", 0.0f, 6.0f, 3.225f, "db", HFD_SETTING, nullptr, 0 },
+    { 465, "fv_fizz", "FRFR Fizz Tilt", "Output Voice", 0.0f, 6.0f, 2.7f, "db", HFD_SETTING, nullptr, 0 },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));

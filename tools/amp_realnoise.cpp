@@ -65,6 +65,7 @@ static const ModelSpec kSpecs[] = {
     {"mesa",      AmpModel::MesaMarkV,          2.16f},
     {"recto",     AmpModel::MesaDualRectifier,  1.0f},
     {"mt15",      AmpModel::PRSMT15,            1.0f},
+    {"svt",       AmpModel::AmpegSVT,           1.0f},
 };
 
 struct Chain {
