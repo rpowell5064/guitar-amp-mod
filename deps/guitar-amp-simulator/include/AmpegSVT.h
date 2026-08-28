@@ -62,6 +62,11 @@ private:
                                                     // (real SVT has none, but a DEAD visible
                                                     // knob is the FF-Tone-knob bug class)
         BiquadFilter    airLP, dcBlk;
+        BiquadFilter    fit[5];                     // capture-fit EQ (SVT CLEAN, 2026-08-28):
+                                                    // corrects the measured real-DI delta —
+                                                    // the memoryless-saturation HF ducking the
+                                                    // WaveNet reference doesn't share (the EVH
+                                                    // "model too dark >800 Hz" class)
         TriodeComponent stage1, stage2, stageDrv;   // 12AX7 in, 12DW7 recovery, driver
         float sagEnv = 0.0f, sagDecay = 0.0f;
     };

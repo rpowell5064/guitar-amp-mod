@@ -14,7 +14,13 @@ constexpr float kSagDepth = 0.06f;
 // nam_compare; the cascade stays polite, the PA row carries the growl).
 // Tempered 2026-08-28 after amp_knobcheck: 8x pot + 1.2/1.3 ran 12.5% THD at
 // noon — an SVT Channel 1 is far cleaner; growl belongs to the 6550 PA row.
-constexpr float kG1 = 1.0f, kG2 = 1.1f, kMakeup = 0.30f;   // makeup rebalanced for the floored volume law
+constexpr float kG1 = 1.0f, kG2 = 1.1f, kMakeup = 0.54f;   // 0.30 × the measured x1.81 capture-loudness alignment (SVT CLEAN fit, 2026-08-28)
+// The 6550 wall: the real fixed-bias push-pull ceiling is razor-kneed — the
+// SVT CLEAN capture jumps 3.7% -> 17.5% THD between -18 and -12 dBFS in.
+// softLimit's sharp knee (linear to .95) models it better than the PA's
+// smooth shaper, so the wall is staged HERE (MT15 satDrive pattern) and the
+// PA row keeps a moderate paDrive for texture, not the ceiling.
+constexpr float kSatDrive = 2.6f, kSatInv = 1.0f / kSatDrive;
 }  // namespace
 
 constexpr float AmpegSVT::kMidCenters[3];
@@ -57,7 +63,15 @@ void AmpegSVT::recalcFilters() noexcept {
         c.midPk.setCoeffs(Filters::peaking(kMidCenters[midFreq_], midDb, 0.9, oversampledFs_));
         c.trebSh.setCoeffs(Filters::highshelf(4000.0, trebDb, oversampledFs_));
         c.presSh.setCoeffs(Filters::highshelf(3000.0, presDb, oversampledFs_));
-        c.airLP.setCoeffs(Filters::lowpass(9000.0, 0.707, oversampledFs_));
+        c.airLP.setCoeffs(Filters::lowpass(12000.0, 0.707, oversampledFs_));
+        // Capture-fit EQ (SVT CLEAN real-DI fit, 2026-08-28 — nam_compare deltas
+        // at matched THD: dark 50/80 (−4.5/−3.4), plump 200-315 (+1.2), dark
+        // 1.2k..8k (−4.6/−7.9/−9.5/−7.5/−14)):
+        c.fit[0].setCoeffs(Filters::lowshelf (  90.0,  5.0, oversampledFs_));
+        c.fit[1].setCoeffs(Filters::peaking  ( 240.0, -2.0, 1.0, oversampledFs_));
+        c.fit[2].setCoeffs(Filters::highshelf(2000.0,  8.0, oversampledFs_));
+        c.fit[3].setCoeffs(Filters::peaking  (1800.0,  3.0, 0.9, oversampledFs_));
+        c.fit[4].setCoeffs(Filters::highshelf(7000.0,  5.5, oversampledFs_));
         c.dcBlk.setCoeffs(Filters::highpass(8.0, 0.707, oversampledFs_));   // below the 22 Hz OT corner
     }
 }
@@ -69,6 +83,7 @@ void AmpegSVT::reset() noexcept {
         c.inHP.reset();
         c.ultraLoPk.reset(); c.ultraLoSh.reset(); c.ultraHiSh.reset();
         c.bassSh.reset(); c.midPk.reset(); c.trebSh.reset(); c.presSh.reset();
+        for (auto& f : c.fit) f.reset();
         c.airLP.reset(); c.dcBlk.reset();
         c.stage1.reset(); c.stage2.reset(); c.stageDrv.reset();
         c.sagEnv = 0.0f;
@@ -116,7 +131,8 @@ float AmpegSVT::processSample(float x, int chn) noexcept {
     c.sagEnv = c.sagDecay * c.sagEnv + sagAttack * std::abs(x);
     x *= std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * kSagDepth);
 
-    x = softLimit(x) * kMakeup;
+    x = softLimit(x * kSatDrive) * kSatInv * kMakeup;
+    for (auto& f : c.fit) x = f.process(x);   // capture-fit EQ (see recalcFilters)
     x = c.airLP.process(x);
     return x;
 }
