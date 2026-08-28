@@ -24,7 +24,7 @@ static const HfScalePoint kHfSp_fz_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3"
 static const HfScalePoint kHfSp_fz_pedal[] = { { "Italian Hero", 0.0f }, { "I Know It", 1.0f }, { "Octavius", 2.0f }, { "Fuzz Zachary", 3.0f } };
 static const HfScalePoint kHfSp_fz_mode[] = { { "Delta", 0.0f }, { "Ovis", 1.0f }, { "Gotham", 2.0f }, { "Cold War", 3.0f }, { "Red Bear", 4.0f }, { "Boutique", 5.0f } };
 static const HfScalePoint kHfSp_dr_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
-static const HfScalePoint kHfSp_dr_model[] = { { "Green Man", 0.0f }, { "New Dawn", 1.0f }, { "Dear Rodent Boy", 2.0f }, { "Neural (NAM)", 3.0f }, { "Grunge DS", 4.0f }, { "Gilded Horse", 5.0f }, { "Super Nova", 6.0f }, { "Preamp 250", 7.0f }, { "Echo Primer", 8.0f }, { "Tube Chauffeur", 9.0f } };
+static const HfScalePoint kHfSp_dr_model[] = { { "Green Man", 0.0f }, { "New Dawn", 1.0f }, { "Dear Rodent Boy", 2.0f }, { "Neural (NAM)", 3.0f }, { "Grunge DS", 4.0f }, { "Gilded Horse", 5.0f }, { "Super Nova", 6.0f }, { "Preamp 250", 7.0f }, { "Echo Primer", 8.0f }, { "Tube Chauffeur", 9.0f }, { "Helsinki Grind", 10.0f } };
 static const HfScalePoint kHfSp_amp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_amp_model[] = { { "Clean Meanie", 0.0f }, { "Crunchy McCrunchFace", 1.0f }, { "Gainzilla", 2.0f }, { "Doom Daddy", 3.0f }, { "Tangerang", 4.0f }, { "Neural (NAM)", 5.0f }, { "Beardo BE", 6.0f }, { "Hi-Volt", 7.0f }, { "Chime Thirty", 8.0f }, { "Backline Plus", 9.0f }, { "Plexiglass", 10.0f }, { "Cali V", 11.0f }, { "Diamond Plate", 12.0f }, { "Tremont 15", 13.0f }, { "Blue Liner", 14.0f } };
 static const HfScalePoint kHfSp_amp_sunn_link[] = { { "Independent", 0.0f }, { "Parallel", 1.0f }, { "Series", 2.0f } };
@@ -149,7 +149,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 43, "fz_getemp", "Fuzz Ge Temp", "Fuzz", 0.0f, 1.0f, 0.4f, "f", HFD_PARAM, nullptr, 0 },
     { 44, "dr_pos", "Drive Position", "Drive", 1.0f, 24.0f, 4.0f, "e", HFD_INTERNAL, kHfSp_dr_pos, int(sizeof(kHfSp_dr_pos)/sizeof(HfScalePoint)) },
     { 45, "dr_enable", "Drive Enable", "Drive", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 46, "dr_model", "Drive Model", "Drive", 0.0f, 9.0f, 0.0f, "e", HFD_PARAM, kHfSp_dr_model, int(sizeof(kHfSp_dr_model)/sizeof(HfScalePoint)) },
+    { 46, "dr_model", "Drive Model", "Drive", 0.0f, 10.0f, 0.0f, "e", HFD_PARAM, kHfSp_dr_model, int(sizeof(kHfSp_dr_model)/sizeof(HfScalePoint)) },
     { 47, "dr_drive", "Drive Drive", "Drive", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 48, "dr_tone", "Drive Tone", "Drive", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 49, "dr_level", "Drive Level", "Drive", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },

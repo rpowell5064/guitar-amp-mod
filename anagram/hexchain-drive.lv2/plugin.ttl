@@ -36,9 +36,9 @@
     rdfs:label "Hex Chain — Drive/Boost" ;
     doap:name  "Hex Chain Drive" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Seven original overdrive, boost & distortion voicings + a NAM loader.
+    rdfs:comment """Nine original overdrive, boost & distortion voicings (guitar AND bass) + a NAM loader.
 
-Eight original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
+Nine original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
 
 - Green Man — the mid-humped green legend that pushes an amp into song
 - New Dawn — smooth, singing overdrive for lead work
@@ -48,15 +48,16 @@ Eight original drive, boost and distortion voicings in one pedal, each with driv
 - Super Nova — a smooth super-overdrive with a warm asymmetric clip
 - Preamp 250 — gritty '70s preamp-in-a-box distortion
 - Echo Primer — the tape-echo JFET front end that warmed up so many cranked rigs
+- Tube Chauffeur — the starved-tube chauffeur that drove the great sustained leads: fat clean boost to warm overdrive
 
-Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the eight algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
+Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the nine algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
 
 Free and open source (GPL-3).""" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 41 ;   # 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:microVersion 42 ;   #
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;

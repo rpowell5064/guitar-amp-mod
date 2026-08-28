@@ -18,7 +18,7 @@ function (event, funcs) {
     // the HTML instead; these are the ones we can't (enumerated → would show a number).
     var NV = {
         amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner'],
-        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250','Echo Primer'],
+        dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250','Echo Primer','Tube Chauffeur','Helsinki Grind'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus','Seasick Vibe','Script Phaser'],
         dl:  ['Digital','Tape','Echo Wreck','Seraph','Vintage Echo'],

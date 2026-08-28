@@ -10,7 +10,7 @@ static constexpr int kDrNamIdx  = 3;   // drive model slot = Neural (NAM)
 static constexpr int kDrDs1Idx  = 4;   // drive model slot = Grunge DS (DS-1)
 static constexpr int kDrKlonIdx = 5;   // drive model slot = Gilded Horse (Klon)
 static constexpr int kDrSd1Idx  = 6;   // drive model slot = Super Nova (Boss SD-1)
-static constexpr int kDrMax     = 9;   // highest dr_model index (9 = Tube Chauffeur / Butler Tube Driver)
+static constexpr int kDrMax     = 10;  // highest dr_model index (10 = Helsinki Grind / Microtubes B7K)
 
 // pi-Stomp footswitches emit CC 60..63 (one per switch). A received CC in this
 // range is one switch "press" → preset recall / bank combo. Change here if the
@@ -103,11 +103,17 @@ static const float kAmpMakeup[15] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1
 // upstream blocks are handled by preset gain-staging, not by distorting every amp's front end.
 
 // Indexed by dr_model port: 0/1/2/4/5 = algorithmic, 3 = NAM (special-cased, entry unused).
-static const OverdriveType kDriveMap[10] = {
+static const OverdriveType kDriveMap[11] = {
     OverdriveType::TubeScreamer808, OverdriveType::LifePedal, OverdriveType::ProcoRAT,
     OverdriveType::ProcoRAT /* [3]=NAM placeholder, never used */, OverdriveType::DS1,
     OverdriveType::Klon, OverdriveType::SuperOverdriveSD1, OverdriveType::DOD250,
-    OverdriveType::EchoplexPreamp,   // 8 = Echo Primer (EP-3 JFET, v42) OverdriveType::TubeDriver,
+    OverdriveType::EchoplexPreamp,   // 8 = Echo Primer (EP-3 JFET, v42)
+    OverdriveType::TubeDriver,       // 9 = Tube Chauffeur — BUGFIX 2026-08-28: this entry
+                                     // had been swallowed into the line-8 comment, so the
+                                     // array was 9 long and index 9 ZERO-FILLED — the
+                                     // Forge's Tube Chauffeur silently ran as a Green Man
+                                     // (the standalone Drive plugin was always correct)
+    OverdriveType::MicrotubesB7K,    // 10 = Helsinki Grind (Microtubes B7K; mix = Blend)
 };
 
 // Binson Echorec rotary program -> playback-head bitmask (mirrors delay plugin).

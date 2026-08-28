@@ -220,6 +220,8 @@ static bool resolveModel(std::string name, ModelSpec& out) {
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Life Pedal (New Dawn)", true, OverdriveType::LifePedal}; return true; }
     if (name == "tubedriver" || name == "butler" || name == "chauffeur" || name == "tubechauffeur")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Butler Tube Driver (Tube Chauffeur)", true, OverdriveType::TubeDriver}; return true; }
+    if (name == "b7k" || name == "microtubes" || name == "darkglass" || name == "helsinki" || name == "helsinkigrind")
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Microtubes B7K (Helsinki Grind)", true, OverdriveType::MicrotubesB7K}; return true; }   // bass; --gain drive, --tone Attack, --level, mix via... (drive path uses gain/tone/level; blend defaults .5 in-model)
     if (name == "ds1" || name == "grungeds" || name == "grunge")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "DS-1 (Grunge DS)", true, OverdriveType::DS1}; return true; }
     if (name == "sd1" || name == "superod" || name == "supernova")

@@ -1,6 +1,7 @@
 function (event, funcs) {
     // Model: 0 Green Man (TS-808), 1 New Dawn (Life Pedal), 2 Dear Rodent Boy (RAT),
-    //        3 Neural (NAM), 4 Grunge DS, 5 Gilded Horse, 6 Super Nova, 7 Preamp 250, 8 Echo Primer.
+    //        3 Neural (NAM), 4 Grunge DS, 5 Gilded Horse, 6 Super Nova, 7 Preamp 250, 8 Echo Primer,
+    //        9 Tube Chauffeur, 10 Helsinki Grind (B7K-style: Mix = Blend, Tone = Attack).
     var NAM_IDX = 3, INTERNAL_DEFAULT = 0;
     function update_model(icon, value) {
         var m = parseInt(value, 10);

@@ -49,9 +49,25 @@ def enabled_reset_blocks():
          "        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0"),
     ]
 
-def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False):
+def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False,
+              strip_b7k=False):
     with open(src_path, "r", encoding="utf-8") as f:
         ttl = f.read()
+
+    if strip_b7k:
+        # Marketplace courtesy (2026-08-28): the Helsinki Grind (Microtubes B7K
+        # parody) stays OFF the Anagram bundle while the Darkglass vendor
+        # application is live — TTL-level hiding, same mechanism as the 32-bit
+        # NAM strip (the .so still contains the model; the UI can't select past
+        # lv2:maximum).
+        ttl, n1 = re.subn(r" ;\n\s*lv2:scalePoint \[ rdfs:label \"Helsinki Grind\"[^\n]*", "", ttl)
+        ttl, n2 = re.subn(r"(lv2:symbol \"model\"[^\[]*?lv2:maximum )10", r"\g<1>9", ttl, flags=re.S)
+        ttl, n3 = re.subn(r"\n- Helsinki Grind[^\n]*", "", ttl)              # listing bullet
+        ttl, n4 = re.subn(r"# 42: Helsinki Grind[^\n]*", "#", ttl)           # changelog note
+        ttl, n5 = re.subn(r"Ten original", "Nine original", ttl)             # counts (2 sites)
+        ttl, n6 = re.subn(r"the ten algorithmic voicings", "the nine algorithmic voicings", ttl)
+        assert (n1, n2, n3, n4, n5, n6) == (1, 1, 1, 1, 2, 1), \
+            f"{src_path}: B7K strip anchors moved {n1},{n2},{n3},{n4},{n5},{n6}"
 
     if strip_nam:
         # KosmOS target ships without NAM (GCC 9.4 toolchain can't build the
@@ -187,7 +203,8 @@ PLUGINS = [
     # Anagram keeps NAM (KosmOS supports the Neural Loader atom:Path file
     # pattern, and the submodule's nam_atomic_fallback patch makes NamCore
     # build on its GCC 9.4 toolchain).
-    # M4 pilots (mono):
+    # M4 pilots (mono). Drive: strip_b7k hides the Helsinki Grind on the
+    # Anagram (vendor-application courtesy; see transform()).
     ("lv2/drive.ttl",   URI_BASE + "drive",   "DRV", "guitaramp_drive.so",   "hexchain-drive.lv2",   False),
     ("lv2/fuzz.ttl",    URI_BASE + "fuzz",    "FZZ", "guitaramp_fuzz.so",    "hexchain-fuzz.lv2",    False),
     # M5 full-suite pass — mono (1-in/1-out, dual-mono rules apply):
@@ -208,7 +225,8 @@ PLUGINS = [
 if __name__ == "__main__":
     ok = True
     for src, uri, abbrev, so, bundle, strip_nam in PLUGINS:
-        ttl, manifest = transform(os.path.join(REPO, src), uri, abbrev, so, bundle, strip_nam)
+        ttl, manifest = transform(os.path.join(REPO, src), uri, abbrev, so, bundle, strip_nam,
+                                  strip_b7k=(src == "lv2/drive.ttl"))
         bdir = os.path.join(REPO, "anagram", bundle)
         os.makedirs(bdir, exist_ok=True)
         with open(os.path.join(bdir, "plugin.ttl"), "w", newline="\n", encoding="utf-8") as f:

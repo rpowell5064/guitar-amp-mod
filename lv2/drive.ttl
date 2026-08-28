@@ -25,9 +25,9 @@
     rdfs:label "Hex Chain — Drive/Boost" ;
     doap:name  "Hex Chain Drive" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Seven original overdrive, boost & distortion voicings + a NAM loader.
+    rdfs:comment """Ten original overdrive, boost & distortion voicings (guitar AND bass) + a NAM loader.
 
-Eight original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
+Ten original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
 
 - Green Man — the mid-humped green legend that pushes an amp into song
 - New Dawn — smooth, singing overdrive for lead work
@@ -37,8 +37,10 @@ Eight original drive, boost and distortion voicings in one pedal, each with driv
 - Super Nova — a smooth super-overdrive with a warm asymmetric clip
 - Preamp 250 — gritty '70s preamp-in-a-box distortion
 - Echo Primer — the tape-echo JFET front end that warmed up so many cranked rigs
+- Tube Chauffeur — the starved-tube chauffeur that drove the great sustained leads: fat clean boost to warm overdrive
+- Helsinki Grind — a modern parallel-blend BASS preamp/overdrive: the Mix knob blends clean lows under a tight, aggressive grind (Tone works the pre-clip attack), the sound under a decade of modern low-end records
 
-Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the eight algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
+Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the ten algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
 
 Free and open source (GPL-3).""" ;
     mod:label  "Drive" ;
@@ -47,7 +49,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 41 ;   # 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:microVersion 42 ;   # 42: Helsinki Grind (Darkglass Microtubes B7K parody) model 10 — parallel-Blend bass preamp/OD: Mix = the clean/drive Blend, Tone = the Attack lever (pre-clip HF −6..+9 dB @ 2.8k), Grunt baked Flat, Microtubes two-stage cascade. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
@@ -63,7 +65,7 @@ Free and open source (GPL-3).""" ;
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 10 ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
@@ -73,7 +75,8 @@ Free and open source (GPL-3).""" ;
         lv2:scalePoint [ rdfs:label "Super Nova"      ; rdf:value 6 ] ;
         lv2:scalePoint [ rdfs:label "Preamp 250"      ; rdf:value 7 ] ;
         lv2:scalePoint [ rdfs:label "Echo Primer"     ; rdf:value 8 ] ;
-        lv2:scalePoint [ rdfs:label "Tube Chauffeur"  ; rdf:value 9 ]
+        lv2:scalePoint [ rdfs:label "Tube Chauffeur"  ; rdf:value 9 ] ;
+        lv2:scalePoint [ rdfs:label "Helsinki Grind"  ; rdf:value 10 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;

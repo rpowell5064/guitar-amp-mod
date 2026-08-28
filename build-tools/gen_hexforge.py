@@ -78,7 +78,7 @@ FZ = [
     ("getemp",    "Ge Temp",    "f", 0, 1, 0.4, None),
 ]
 DR = [
-    ("model",  "Model",  "e", 0, 9, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7),("Echo Primer",8),("Tube Chauffeur",9)]),
+    ("model",  "Model",  "e", 0, 10, 0, [("Green Man",0),("New Dawn",1),("Dear Rodent Boy",2),("Neural (NAM)",3),("Grunge DS",4),("Gilded Horse",5),("Super Nova",6),("Preamp 250",7),("Echo Primer",8),("Tube Chauffeur",9),("Helsinki Grind",10)]),
     ("drive",  "Drive",  "f", 0, 1, 0.5, None),
     ("tone",   "Tone",   "f", 0, 1, 0.5, None),
     ("level",  "Level",  "f", 0, 1, 0.5, None),
