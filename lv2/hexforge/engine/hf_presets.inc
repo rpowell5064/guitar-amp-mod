@@ -1077,7 +1077,7 @@ static void seedFactoryPresets(HexForge* p) {
             pr.vals[HF_CAB_ROOMON] = 0.0f;     pr.vals[HF_CAB_VOICE] = 0.0f;   // Room voice
             pr.vals[HF_CAB_SPKDRIVE] = 0.0f;   // its LF split sits mid-fundamental — off until auditioned
             pr.vals[HF_GT_THRESH] = -50.0f;
-            pr.vals[HF_OUT_LEVEL] = -16.0f;    // provisional, measure on-device
+            pr.vals[HF_OUT_LEVEL] = -16.0f;    // overridden per preset below (rev 125 parity trims)
             return pr;
         };
         {   // A: Round Trip — the clean round SVT + fridge.
@@ -1087,6 +1087,7 @@ static void seedFactoryPresets(HexForge* p) {
             pr.vals[HF_AMP_TREBLE] = 0.45f;
             pr.vals[HF_CP_ENABLE] = 1.0f;   // light glue
             pr.vals[HF_CP_RATIO] = 2.5f; pr.vals[HF_CP_THRESH] = -24.0f;
+            pr.vals[HF_OUT_LEVEL] = -21.5f;   // rev 125: golden-domain parity vs the Bank-1 anchor
             std::strncpy(pr.irPath, "@bass810", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         }
         {   // B: Fridge Grind — the driven SVT rock tone.
@@ -1096,6 +1097,7 @@ static void seedFactoryPresets(HexForge* p) {
             pr.vals[HF_AMP_SV_MIDFREQ] = 0.0f;   // 220 Hz push
             pr.vals[HF_AMP_BASS] = 0.5f; pr.vals[HF_AMP_MID] = 0.65f;
             pr.vals[HF_AMP_TREBLE] = 0.5f; pr.vals[HF_AMP_MASTER] = 0.75f;
+            pr.vals[HF_OUT_LEVEL] = -26.0f;   // rev 125: parity (was clipping at the makeup bake, peak 1.49)
             std::strncpy(pr.irPath, "@bass810", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         }
         {   // C: Motor City — flip-top Motown thump.
@@ -1107,6 +1109,7 @@ static void seedFactoryPresets(HexForge* p) {
             pr.vals[HF_CP_ENABLE] = 1.0f;   // the studio squeeze
             pr.vals[HF_CP_RATIO] = 4.0f; pr.vals[HF_CP_THRESH] = -28.0f;
             pr.vals[HF_CAB_LOWCUT] = 40.0f;
+            pr.vals[HF_OUT_LEVEL] = -19.8f;   // rev 125: parity
             std::strncpy(pr.irPath, "@bass115", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         }
         {   // D: Fuzz Wall — Muff into a CLEAN SVT (fuzz-staging rule).
@@ -1118,6 +1121,7 @@ static void seedFactoryPresets(HexForge* p) {
             pr.vals[HF_AMP_BASS] = 0.5f; pr.vals[HF_AMP_MID] = 0.5f;
             pr.vals[HF_AMP_TREBLE] = 0.45f;
             pr.vals[HF_CAB_LOWCUT] = 40.0f;
+            pr.vals[HF_OUT_LEVEL] = -18.7f;   // rev 125: parity
             std::strncpy(pr.irPath, "@bass410h", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         }
     }
