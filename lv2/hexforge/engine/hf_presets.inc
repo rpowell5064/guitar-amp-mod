@@ -1115,6 +1115,8 @@ static void seedFactoryPresets(HexForge* p) {
         {   // D: Fuzz Wall — Muff into a CLEAN SVT (fuzz-staging rule).
             Preset& pr = mkb(3, "Fuzz Wall");
             pr.vals[HF_FZ_ENABLE] = 1.0f; pr.vals[HF_FZ_PEDAL] = 0.0f;   // Italian Hero
+            pr.vals[HF_FZ_MODE] = 4.0f;   // Red Bear — the Green-Russian-style era
+                                          // (fattest lows), THE bass-wall Muff (user 2026-08-28)
             pr.vals[HF_FZ_SUSTAIN] = 0.6f; pr.vals[HF_FZ_TONE] = 0.45f;
             pr.vals[HF_FZ_VOLUME] = 0.32f;   // tame the line-hot output into the amp
             pr.vals[HF_AMP_GAIN] = 0.25f;    // CLEAN amp under fuzz
