@@ -38,7 +38,7 @@ Ten original drive, boost and distortion voicings in one pedal, each with drive,
 - Preamp 250 — gritty '70s preamp-in-a-box distortion
 - Echo Primer — the tape-echo JFET front end that warmed up so many cranked rigs
 - Tube Chauffeur — the starved-tube chauffeur that drove the great sustained leads: fat clean boost to warm overdrive
-- Helsinki Grind — a modern parallel-blend BASS preamp/overdrive: the Mix knob blends clean lows under a tight, aggressive grind (Tone works the pre-clip attack), the sound under a decade of modern low-end records
+- Helsinki Grind — a modern parallel-blend BASS preamp/overdrive: the Mix knob blends clean lows under a tight, aggressive grind (Tone is the fat-to-tight lever: how much low end enters the grind), the sound under a decade of modern low-end records
 
 Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the ten algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
 
@@ -49,7 +49,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 42 ;   # 42: Helsinki Grind (Darkglass Microtubes B7K parody) model 10 — parallel-Blend bass preamp/OD: Mix = the clean/drive Blend, Tone = the Attack lever (pre-clip HF −6..+9 dB @ 2.8k), Grunt baked Flat, Microtubes two-stage cascade. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:microVersion 42 ;   # 42: Helsinki Grind (Darkglass Microtubes B7K parody) model 10 — parallel-Blend bass preamp/OD: Mix = the clean/drive Blend, Tone = the fat↔tight Grunt lever (90→600 Hz into the clipper, Attack shelf coupled −2..+9 dB @ 2.8k), voiced to the 5-capture B7K Bass Pack, Microtubes two-stage cascade. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;

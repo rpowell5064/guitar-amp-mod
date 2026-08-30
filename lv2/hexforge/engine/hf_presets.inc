@@ -1127,6 +1127,36 @@ static void seedFactoryPresets(HexForge* p) {
             std::strncpy(pr.irPath, "@bass410h", kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         }
     }
+    // BANK 20 (index 19) -- HELSINKI (rev 127, the Darkglass B7K bank): the four
+    // "B7K Bass Pack" captures the Helsinki Grind was fitted to (2026-08-28), at
+    // their MEASURED knob<->capture map (specESR on the player's DI: Clean 13.3 % /
+    // Hard Rock 19.3 % / Heavy 29.3 % / Djent 31.0 %; Tone = the Grunt fat<->tight
+    // lever, Mix = Blend), each into a CLEAN Blue Liner -- the pedal makes the
+    // tone, the amp is the platform (same staging rule as Fuzz Wall). Bass
+    // housekeeping inherited from Round Trip (low_cut 38, room OFF, Room voice);
+    // the B7K's own squash replaces the comp. out_levels = golden-domain parity
+    // vs the .158 rms anchor (rev 127).
+    {
+        auto mkh = [&](int slot, const char* name, float drive, float tone, float mix,
+                       const char* cab, float out) {
+            Preset& pr = p->presets[19][slot];
+            pr = p->presets[18][0];            // Round Trip = the clean Blue Liner + 810 platform
+            std::snprintf(pr.name, sizeof(pr.name), "%s", name);
+            pr.vals[HF_CP_ENABLE] = 0.0f;
+            pr.vals[HF_AMP_GAIN]  = 0.30f;     // clean platform under the pedal
+            pr.vals[HF_DR_ENABLE] = 1.0f;  pr.vals[HF_DR_MODEL] = 10.0f;   // Helsinki Grind
+            pr.vals[HF_DR_DRIVE]  = drive; pr.vals[HF_DR_TONE]  = tone;
+            pr.vals[HF_DR_MIX]    = mix;   pr.vals[HF_DR_LEVEL] = 0.6f;
+            pr.vals[HF_DR_OCTAVE] = 0.0f;
+            pr.vals[HF_OUT_LEVEL] = out;
+            std::strncpy(pr.irPath, cab, kPathMax-1); pr.irPath[kPathMax-1] = '\0';
+        };
+        mkh(0, "Helsinki Clean", 0.25f, 0.30f, 0.50f, "@bass810",  -25.2f);   // the B7K "Clean" capture
+        mkh(1, "Helsinki Rock",  0.75f, 0.05f, 0.95f, "@bass810",  -26.5f);   // "Hard Rock" (fat Grunt, near-full Blend)
+        mkh(2, "Helsinki Heavy", 1.00f, 0.80f, 0.85f, "@bass410h", -19.3f);   // "Heavy" (thin Grunt -- the tight djent grind)
+        mkh(3, "Helsinki Djent", 1.00f, 0.00f, 0.95f, "@bass410h", -20.7f);   // "Djent" (fat Grunt dimed, full Blend)
+    }
+    // END BANK 20
 
     // Speaker Drive per-amp defaults (rev 71, item #40, user request): applied AFTER
     // every preset is loaded (Bank 1 + extras), keyed on each preset's OWN amp choice

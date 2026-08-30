@@ -49,6 +49,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <limits>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -88,6 +89,19 @@ static void fft(std::vector<std::complex<double>>& a) {
 }
 
 // ── Minimal WAV reader: PCM 16/24/32-int, IEEE float32, mono or stereo→mono ──
+// --dump <prefix>: write a mono 32-bit-float WAV (for offline spectrogram forensics).
+static void writeWavF32(const std::string& path, const std::vector<float>& x, double sr) {
+    std::ofstream f(path, std::ios::binary);
+    if (!f) { std::fprintf(stderr, "cannot write %s\n", path.c_str()); return; }
+    auto u32 = [&](uint32_t v) { f.write(reinterpret_cast<const char*>(&v), 4); };
+    auto u16 = [&](uint16_t v) { f.write(reinterpret_cast<const char*>(&v), 2); };
+    const uint32_t dataBytes = uint32_t(x.size() * 4);
+    f.write("RIFF", 4); u32(36 + dataBytes); f.write("WAVE", 4);
+    f.write("fmt ", 4); u32(16); u16(3); u16(1); u32(uint32_t(sr)); u32(uint32_t(sr) * 4); u16(4); u16(32);
+    f.write("data", 4); u32(dataBytes);
+    f.write(reinterpret_cast<const char*>(x.data()), dataBytes);
+}
+
 static bool readWav(const std::string& path, std::vector<float>& mono, double& fileSr) {
     std::ifstream f(path, std::ios::binary);
     if (!f) return false;
@@ -221,7 +235,7 @@ static bool resolveModel(std::string name, ModelSpec& out) {
     if (name == "tubedriver" || name == "butler" || name == "chauffeur" || name == "tubechauffeur")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "Butler Tube Driver (Tube Chauffeur)", true, OverdriveType::TubeDriver}; return true; }
     if (name == "b7k" || name == "microtubes" || name == "darkglass" || name == "helsinki" || name == "helsinkigrind")
-        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Microtubes B7K (Helsinki Grind)", true, OverdriveType::MicrotubesB7K}; return true; }   // bass; --gain drive, --tone Attack, --level, mix via... (drive path uses gain/tone/level; blend defaults .5 in-model)
+        { out = {AmpModel::FenderDeluxe, 0, 0, false, "Microtubes B7K (Helsinki Grind)", true, OverdriveType::MicrotubesB7K}; return true; }   // bass; --gain drive, --tone Grunt fat/tight, --level, --mix Blend, --fit gruntHz,gainMul,ls110,pk160,pk500,pk1k8,outLP,hs4k,stage2In
     if (name == "ds1" || name == "grungeds" || name == "grunge")
         { out = {AmpModel::FenderDeluxe, 0, 0, false, "DS-1 (Grunge DS)", true, OverdriveType::DS1}; return true; }
     if (name == "sd1" || name == "superod" || name == "supernova")
@@ -252,6 +266,7 @@ struct Knobs {
     float presence = 0.5f, master = 0.7f, sag = 0.3f;
     float channel = 0.0f, reson = 0.5f;
     float tone = 0.5f, level = 0.7f;   // drive-pedal: tone=filter, level=volume (gain=drive)
+    float mix = 1.0f;                  // drive-pedal dry/wet (B7K: the Blend) — 1 = fully wet (legacy default)
     float fat = 0.0f, c45 = 0.0f, sat = 0.0f;  // Friedman BE-Deluxe voicing toggles
     float mode = 6.0f;                          // Mesa Mark V mode 0..8 (default Mark IIC+); Recto mode 0..7
     float variac = 0.0f, rect = 0.0f;           // Recto: 0 Bold/Silicon, 1 Spongy/Tube
@@ -260,6 +275,7 @@ struct Knobs {
     float bias = 0.5f, itrim = 0.5f, gtemp = 0.4f;  // Tone Bender: Q2 bias / input trim / germanium temp
     float gvol = 1.0f;   // #45: guitar volume-pot position (1 = full = bit-identical)
     float gmin = -1.0f, posrail = -1.0f;   // SD-1 capture-fit params (-1 = model defaults)
+    std::vector<float> fit;                // --fit a,b,c,... -> setParameter("fit0".."fitN") (blank/x = keep default)
     float pablrel = -1.0f;                 // bloom-VCA release ms (-1 = stock 13)
     float evhfit  = 0.0f;                  // EVH correction-EQ blend (0 = off)
     float rectofit = 0.0f;                 // Recto CH2/CH3-Modern correction-EQ blend (0 = off)
@@ -280,8 +296,10 @@ static void runDriveModel(const ModelSpec& m, const Knobs& k, double sr,
     od.setParameter("drive",  k.gain);
     od.setParameter("tone",   k.tone);
     od.setParameter("level",  k.level);
-    od.setParameter("mix",    1.0f);
+    od.setParameter("mix",    k.mix);
     od.setParameter("octave", 0.0f);
+    for (size_t i = 0; i < k.fit.size(); ++i)                       // --fit a,b,c: model capture-fit params (fit0..)
+        if (!std::isnan(k.fit[i])) od.setParameter("fit" + std::to_string(i), k.fit[i]);
     if (k.gmin    > 0.0f) od.setParameter("gmin",    k.gmin);     // SD-1 fit params
     if (k.posrail > 0.0f) od.setParameter("posrail", k.posrail);
     out.assign(in.size(), 0.0f);
@@ -880,6 +898,7 @@ int main(int argc, char** argv) {
     knob("--treble", k.treble); knob("--presence", k.presence); knob("--master", k.master);
     knob("--sag", k.sag);     knob("--channel", k.channel); knob("--reson", k.reson);
     knob("--tone", k.tone);   knob("--level", k.level);   // drive-pedal filter/volume
+    knob("--mix", k.mix);     // drive-pedal dry/wet (B7K Blend); default 1 = fully wet
     knob("--fat", k.fat);     knob("--c45", k.c45);       knob("--sat", k.sat);  // Friedman toggles
     knob("--mode", k.mode);   // Mesa Mark V mode 0..8 / Recto mode 0..7
     knob("--variac", k.variac); knob("--rect", k.rect);  // Recto power-section switches
@@ -888,6 +907,16 @@ int main(int argc, char** argv) {
     knob("--bias", k.bias);   knob("--itrim", k.itrim);   knob("--gtemp", k.gtemp);  // Tone Bender
     knob("--gvol", k.gvol);   // #45 guitar volume-pot (Tone Bender)
     knob("--gmin", k.gmin);   knob("--posrail", k.posrail);   // SD-1 capture fit
+    if (const char* fs = argVal(argc, argv, "--fit")) {          // comma list; "x" keeps the model default
+        std::string cur;
+        for (const char* q = fs; ; ++q) {
+            if (*q == ',' || *q == '\0') {
+                k.fit.push_back(cur.empty() || cur == "x" ? std::numeric_limits<float>::quiet_NaN() : float(std::atof(cur.c_str())));
+                cur.clear();
+                if (*q == '\0') break;
+            } else cur += *q;
+        }
+    }
     knob("--pablrel", k.pablrel);   // bloom-VCA release ms (PA-compression lab)
     knob("--evhfit", k.evhfit);     // EVH correction-EQ blend candidate
     knob("--rectofit", k.rectofit); // Recto correction-EQ blend candidate
@@ -952,6 +981,13 @@ int main(int argc, char** argv) {
     const size_t skip = std::min<size_t>(size_t(sr * 0.5), exc.size() / 2);
     std::vector<float> namM(namOut.begin() + skip, namOut.end());
     std::vector<float> modM(modOut.begin() + skip, modOut.end());
+    if (const char* dump = argVal(argc, argv, "--dump")) {   // offline forensics: in/ref/model renders
+        std::vector<float> inM(exc.begin() + skip, exc.end());
+        writeWavF32(std::string(dump) + "_in.wav",  inM,  sr);
+        writeWavF32(std::string(dump) + "_ref.wav", namM, sr);
+        writeWavF32(std::string(dump) + "_mod.wav", modM, sr);
+        std::printf("dumped %s_{in,ref,mod}.wav\n", dump);
+    }
 
     // ── Frequency-response report ────────────────────────────────────────────
     double namB[kNumBands], modB[kNumBands];
