@@ -55,7 +55,13 @@ target_link_libraries(GuitarAmpSim PUBLIC $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
 if(MSVC)
     target_compile_options(GuitarAmpSim PRIVATE /W4 $<$<NOT:$<CONFIG:Debug>>:/O2>)
 else()
-    target_compile_options(GuitarAmpSim PRIVATE -Wall -Wextra -O3 -ffast-math -march=native)
+    target_compile_options(GuitarAmpSim PRIVATE -Wall -Wextra -O3 -ffast-math)
+    # -march=native: Apple clang on arm64 rejects it and it breaks the universal
+    # (arm64;x86_64) desktop build; NEON/SSE2 are baseline there anyway. The
+    # Linux/Pi builds keep it.
+    if(NOT APPLE)
+        target_compile_options(GuitarAmpSim PRIVATE -march=native)
+    endif()
 endif()
 
 add_executable(GuitarAmpExample example/main.cpp)

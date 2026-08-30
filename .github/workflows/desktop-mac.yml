@@ -1,0 +1,107 @@
+name: Desktop plugin (macOS)
+
+# Builds the Hex Forge desktop plugin (desktop/ — JUCE 8: AU + VST3 + Standalone)
+# on a macOS runner as a UNIVERSAL (arm64 + x86_64) binary, ad-hoc codesigns it
+# (personal use — no notarization), runs auval + pluginval as first-run checks,
+# and uploads the three bundles as a workflow artifact.
+#
+# The SAME engine source as the LV2/pi-Stomp build (lv2/hexforge/engine +
+# deps/guitar-amp-simulator, NAM core fetched by CMake). Assets are embedded
+# (juce_add_binary_data), so the downloaded bundles run without the repo.
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'lv2/hexforge/**'
+      - 'lv2/common/**'
+      - 'lv2/modgui-hexforge/**'
+      - 'deps/guitar-amp-simulator/**'
+      - '.github/workflows/desktop-mac.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+
+      - name: Toolchain info
+        run: |
+          sw_vers
+          xcodebuild -version
+          cmake --version | head -1
+
+      - name: Configure (universal, Release)
+        run: |
+          cmake -S desktop -B desktop/out \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+
+      - name: Build
+        run: cmake --build desktop/out --config Release --parallel 3
+
+      - name: Locate artefacts
+        id: art
+        run: |
+          set -e
+          AU=$(find desktop/out/HexForge_artefacts -maxdepth 3 -name "*.component" -type d | head -1)
+          VST3=$(find desktop/out/HexForge_artefacts -maxdepth 3 -name "*.vst3" -type d | head -1)
+          APP=$(find desktop/out/HexForge_artefacts -maxdepth 3 -name "*.app" -type d | head -1)
+          echo "AU=$AU"; echo "VST3=$VST3"; echo "APP=$APP"
+          test -d "$AU" && test -d "$VST3" && test -d "$APP"
+          echo "au=$AU" >> "$GITHUB_OUTPUT"
+          echo "vst3=$VST3" >> "$GITHUB_OUTPUT"
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+          echo "--- slices:"
+          lipo -info "$VST3/Contents/MacOS/"* "$AU/Contents/MacOS/"* "$APP/Contents/MacOS/"*
+
+      - name: Ad-hoc codesign
+        run: |
+          for b in "${{ steps.art.outputs.au }}" "${{ steps.art.outputs.vst3 }}" "${{ steps.art.outputs.app }}"; do
+            codesign --force --deep -s - "$b"
+            codesign --verify --deep --strict "$b" && echo "signed: $b"
+          done
+
+      - name: auval (AU validation)
+        continue-on-error: true
+        run: |
+          mkdir -p ~/Library/Audio/Plug-Ins/Components
+          cp -R "${{ steps.art.outputs.au }}" ~/Library/Audio/Plug-Ins/Components/
+          killall -9 AudioComponentRegistrar 2>/dev/null || true
+          auval -v aufx HxFg HxCh 2>&1 | tee auval.log | tail -60
+          grep -q "AU VALIDATION SUCCEEDED" auval.log
+
+      - name: pluginval (VST3, strictness 8)
+        continue-on-error: true
+        run: |
+          curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+          ./pluginval.app/Contents/MacOS/pluginval --strictness-level 8 --validate-in-process \
+            --validate "${{ steps.art.outputs.vst3 }}" 2>&1 | tee pluginval.log | tail -60
+
+      - name: Package
+        run: |
+          mkdir -p dist
+          SHA=$(git rev-parse --short HEAD)
+          ditto -c -k --keepParent "${{ steps.art.outputs.au }}"   "dist/HexForge-macOS-universal-AU-$SHA.zip"
+          ditto -c -k --keepParent "${{ steps.art.outputs.vst3 }}" "dist/HexForge-macOS-universal-VST3-$SHA.zip"
+          ditto -c -k --keepParent "${{ steps.art.outputs.app }}"  "dist/HexForge-macOS-universal-Standalone-$SHA.zip"
+          cp auval.log pluginval.log dist/ 2>/dev/null || true
+          ls -la dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hexforge-macos-universal
+          path: dist/
+          if-no-files-found: error
