@@ -40,12 +40,29 @@ jobs:
           xcodebuild -version
           cmake --version | head -1
 
-      - name: Configure (universal, Release)
+      - name: Eigen from Homebrew (avoids NAM's gitlab.com submodule)
         run: |
-          cmake -S desktop -B desktop/out \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0
+          brew install eigen
+          echo "EIGEN_DIR=$(brew --prefix eigen)/include/eigen3" >> "$GITHUB_ENV"
+          ls "$(brew --prefix eigen)/include/eigen3/Eigen/Dense"
+
+      - name: Configure (universal, Release)
+        # Retried with backoff: the remaining fetches (NAM core, AudioDSPTools,
+        # JUCE — all github.com) can still hit transient failures.
+        run: |
+          for attempt in 1 2 3 4; do
+            if cmake -S desktop -B desktop/out \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+                 -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+                 -DGAS_EIGEN_DIR="$EIGEN_DIR"; then
+              exit 0
+            fi
+            echo "::warning::configure attempt $attempt failed (transient fetch?) - retrying"
+            rm -rf desktop/out/_deps/neuralampmodelercore-*
+            sleep $((attempt * 45))
+          done
+          exit 1
 
       - name: Build
         run: cmake --build desktop/out --config Release --parallel 3

@@ -6,8 +6,19 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ─── NeuralAmpModelerCore ─────────────────────────────────────────────────────
 include(FetchContent)
+# External Eigen (header-only): NAM's Eigen submodule lives on gitlab.com, which
+# refuses clones under load and has killed CI runs. Point GAS_EIGEN_DIR at a
+# directory containing Eigen/Dense (e.g. `brew --prefix eigen`/include/eigen3)
+# to skip that submodule; empty (default) = the pinned submodule as before.
+set(GAS_EIGEN_DIR "" CACHE PATH "External Eigen include root (skips NAM's gitlab.com Eigen submodule)")
+if(GAS_EIGEN_DIR)
+    set(GAS_NAM_SUBMODULES GIT_SUBMODULES "Dependencies/AudioDSPTools")   # everything but eigen
+else()
+    set(GAS_NAM_SUBMODULES "")
+endif()
 FetchContent_Declare(NeuralAmpModelerCore
     GIT_REPOSITORY https://github.com/sdatkinson/NeuralAmpModelerCore.git
+    ${GAS_NAM_SUBMODULES}
     # Pin to the known-good commit d65cf21 — it has ResetAndPrewarm() as a nam::DSP
     # method, which NamModel.cpp calls. (The previous pin 5edb0ba does NOT have that
     # method and fails a fresh build; it worked locally only because the sibling-repo
@@ -31,10 +42,15 @@ endif()
 file(GLOB_RECURSE NAM_SRCS "${neuralampmodelercore_SOURCE_DIR}/NAM/*.cpp")
 add_library(NamCore STATIC ${NAM_SRCS})
 set_target_properties(NamCore PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED OFF)
+if(GAS_EIGEN_DIR)
+    set(GAS_EIGEN_INCLUDE "${GAS_EIGEN_DIR}")
+else()
+    set(GAS_EIGEN_INCLUDE "${neuralampmodelercore_SOURCE_DIR}/Dependencies/eigen")
+endif()
 target_include_directories(NamCore PUBLIC
     "${neuralampmodelercore_SOURCE_DIR}/NAM"
     "${neuralampmodelercore_SOURCE_DIR}/Dependencies"
-    "${neuralampmodelercore_SOURCE_DIR}/Dependencies/eigen"
+    "${GAS_EIGEN_INCLUDE}"
     "${neuralampmodelercore_SOURCE_DIR}/Dependencies/nlohmann"
 )
 target_compile_definitions(NamCore PUBLIC NAM_SAMPLE_FLOAT)
