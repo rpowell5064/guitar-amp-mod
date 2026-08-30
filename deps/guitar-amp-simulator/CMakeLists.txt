@@ -12,7 +12,9 @@ include(FetchContent)
 # to skip that submodule; empty (default) = the pinned submodule as before.
 set(GAS_EIGEN_DIR "" CACHE PATH "External Eigen include root (skips NAM's gitlab.com Eigen submodule)")
 if(GAS_EIGEN_DIR)
-    set(GAS_NAM_SUBMODULES GIT_SUBMODULES "Dependencies/AudioDSPTools")   # everything but eigen
+    # Only AudioDSPTools, and NOT recursively: AudioDSPTools carries its OWN
+    # nested gitlab.com Eigen submodule (nothing we compile includes it).
+    set(GAS_NAM_SUBMODULES GIT_SUBMODULES "Dependencies/AudioDSPTools" GIT_SUBMODULES_RECURSE OFF)
 else()
     set(GAS_NAM_SUBMODULES "")
 endif()
