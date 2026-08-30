@@ -2,7 +2,7 @@ name: Desktop plugin (macOS)
 
 # Builds the Hex Forge desktop plugin (desktop/ — JUCE 8: AU + VST3 + Standalone)
 # on a macOS runner as a UNIVERSAL (arm64 + x86_64) binary, ad-hoc codesigns it
-# (personal use — no notarization), runs auval + pluginval as first-run checks,
+# (personal use — no notarization), gates on auval + pluginval (strictness 8),
 # and uploads the three bundles as a workflow artifact.
 #
 # The SAME engine source as the LV2/pi-Stomp build (lv2/hexforge/engine +
@@ -90,7 +90,6 @@ jobs:
           done
 
       - name: auval (AU validation)
-        continue-on-error: true
         run: |
           mkdir -p ~/Library/Audio/Plug-Ins/Components
           cp -R "${{ steps.art.outputs.au }}" ~/Library/Audio/Plug-Ins/Components/
@@ -99,7 +98,6 @@ jobs:
           grep -q "AU VALIDATION SUCCEEDED" auval.log
 
       - name: pluginval (VST3, strictness 8)
-        continue-on-error: true
         run: |
           curl -sSL -o pluginval.zip https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
           unzip -q pluginval.zip
