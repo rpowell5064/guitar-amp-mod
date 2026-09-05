@@ -19,14 +19,26 @@ foreach(_f "NAM/wavenet/slimmable.h" "NAM/wavenet/slimmable.cpp")
 endforeach()
 message(STATUS "NAM patched: atomic<shared_ptr> fallback widened to feature test")
 
-# ── Eigen 3.4.0 compat (2026-08-31): NAM uses Eigen::placeholders::lastN, which
-# exists in its pinned Eigen master snapshot but NOT in released Eigen 3.4.0
-# (e.g. Debian trixie libeigen3-dev via GAS_EIGEN_DIR). Eigen::lastN exists in
-# both, so rewrite. Idempotent; byte-identical when already clean.
+# ── Eigen lastN compat (fixed 2026-09-05): NAM writes Eigen::placeholders::lastN.
+# Verified against both Eigens this project builds with:
+#
+#   spelling                      Eigen 3.4.0 (released)   NAM's bundled Eigen (master)
+#   Eigen::lastN                  yes                      NO
+#   Eigen::placeholders::lastN    NO (no such namespace)   yes
+#   Eigen::indexing::lastN        yes                      yes
+#
+# So neither unqualified spelling builds everywhere, and rewriting to
+# Eigen::lastN (as this did from 2026-08-31) fixed the released-Eigen build
+# while breaking every build on NAM's bundled Eigen -- which is what CI, the
+# Pi and Windows all use. Eigen::indexing is the namespace Eigen provides for
+# exactly this purpose and is the one spelling valid in both, so normalise to
+# it. Idempotent: any of the three spellings converges here.
 file(GLOB_RECURSE _nam_eigen_files "NAM/*.h" "NAM/*.cpp")
 foreach(_f IN LISTS _nam_eigen_files)
     file(READ "${_f}" _c)
-    string(REPLACE "Eigen::placeholders::lastN" "Eigen::lastN" _c "${_c}")
+    string(REPLACE "Eigen::indexing::lastN" "Eigen::placeholders::lastN" _c "${_c}")
+    string(REPLACE "Eigen::lastN"           "Eigen::placeholders::lastN" _c "${_c}")
+    string(REPLACE "Eigen::placeholders::lastN" "Eigen::indexing::lastN"  _c "${_c}")
     file(WRITE "${_f}" "${_c}")
 endforeach()
-message(STATUS "NAM patched: Eigen::placeholders::lastN -> Eigen::lastN (Eigen 3.4.0 compat)")
+message(STATUS "NAM patched: lastN -> Eigen::indexing::lastN (valid in Eigen 3.4.0 and master)")
