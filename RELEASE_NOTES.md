@@ -1,5 +1,40 @@
 # Hex Chain Release Notes
 
+## v1.18.0 — 2026-09-05
+
+The bass update — and a deep re-voice pass on the guitar side. The suite grows a
+complete bass rig (amp, four cabs, a bass drive, two banks), six guitar amps were
+re-voiced against a fresh reference measurement set, every song preset was rebuilt
+from rig research and then hand-finished by ear, and there's a new germanium treble
+booster.
+
+### Added
+
+- **Blue Liner — the suite's first BASS amp.** A classic all-tube 300-watt US bass head: Ultra-Lo and Ultra-Hi voicing switches, a 3-position mid selector (220 / 800 / 3000 Hz) and a six-tube output section. The Power Amp tube menu gains the **6550** to go with it.
+- **Four bass cabinets** — the sealed 8×10 fridge with its 500—900 Hz grind, a deep ported 4×10 with a horn top, a tight mid-forward 2×10, and a round Motown-voiced 1×15 flip-top. Same synthesized measured-IR anatomy as the guitar cabs, and loudness-matched against them so switching between guitar and bass rigs doesn't jump.
+- **Helsinki Grind** (drive model 10) — a modern parallel-blend bass preamp/overdrive. Mix is the pedal's signature Blend: a clean low path always runs underneath the drive path, phase-coherent, so you keep your fundamentals while the grind sits on top. Tone is the fat↔tight lever — how much low end gets into the distortion in the first place.
+- **Treble Ranger** (drive model 11) — a germanium treble booster, the little box that lit the fuse on British blues-rock. It is modeled as the real circuit behaves rather than as a filter-plus-clipper: the transistor is biased near cutoff so the bite comes on with your picking, it loads your pickups the way the real one loads them, and its bias shifts under sustained playing. Runs a dark amp from clean-and-cutting into singing sustain.
+- **LOW END** (bank 19) and **HELSINKI** (bank 20) — eight bass rigs built on the new amp, cabs and drive.
+- **Output polarity, ON by default** — an absolute-phase inversion at the very end of the chain, after every block and the master output, which is how the big modelers ship. It's a global setting rather than a per-preset one, so it costs nothing to try: if your rig already inverts somewhere, switch it off.
+
+### Changed
+
+- **Six amps re-voiced against reference measurements.** A large new measurement set was fitted amp by amp, and the models were re-tuned to it: **Gainzilla** (the modern high-gain head — rebuilt around its real master-volume taper), **Crunchy McCrunchFace** (the British hot-rod), **Beardo BE** (the boutique hot-rod, now tracking its real gain dial), **Diamond Plate** (both the Modern and Vintage voices), **Tangerang** (the British lead crunch — the closest match in the suite) and **Chime Thirty**. In every case the old hand-fitted correction layers came out and the underlying model does the work.
+- **Chime Thirty's rail now ramps with gain.** The clean end had been running honest-to-measurement but too hot, so the amp's own floor was already saturating; the supply now ramps the way the real amp's does, and the dirt presets were re-matched at their honest dial positions.
+- **Every song preset rebuilt — then hand-finished.** All 53 song presets were re-authored from per-song rig documentation against the re-voiced amps. The rebuild was then A/B'd by ear: the ones that landed were kept, the rest were rolled back to their previous definitions and hand-fixed on the device, and those hand dial-ins are baked in here verbatim.
+- **Quieter high-gain amps.** Two amps were amplifying the input noise floor with a boost applied late in the chain, where it lifts hiss and hum along with the tone: Gainzilla's power-amp presence and Chime Thirty's input stage span both came down. Measured *better* against the reference takes without them — the noise was a tax with nothing bought.
+- **The FRFR Output Voice now defaults to OFF.** It's a rig-specific voicing for full-range flat-response cabs, so it shouldn't be in the path until you ask for it. Headphone and amp-in-the-room users get the unvoiced signal by default; if you had it on, it stays on.
+- **Fuzz Wall** now runs the Red Bear voicing — the Green-Russian-era bass-heavy Muff, which is what that wall of sound actually wants.
+- **Bass cabs and the Studio cab voice.** The Studio 'recorded' chain brackets at 78 Hz, which is voiced for guitar and eats a bass cab's fundamentals; the bass presets ship on the Room voice, and the plugin description now says so.
+
+### Fixed
+
+- **The Tube Chauffeur ran as a Green Man inside Hex Forge.** A drive-model lookup table was one entry short — the entry had been swallowed into the comment above it — so selecting the tube-driver voicing in the Forge silently gave you the green mid-hump overdrive instead. It has been wrong since that model shipped. The standalone Drive plugin was always correct.
+- **A factory knob-law remap could rewrite your own presets.** A sound-preserving remap that ships with a re-voiced amp was being applied to every slot with that amp selected, including user-built ones, where it silently moved their knobs. It is now scoped to factory slots only.
+- **Presets saved before this release** pick up the new output polarity correctly instead of loading it as zero.
+
+---
+
 ## v1.17.0 — 2026-08-23
 
 The correct-tubes update: every amp re-measured against the player's own DI takes, the right power tubes in the right amps, a room-speaker voice, and a big chain-UI overhaul.

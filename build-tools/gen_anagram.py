@@ -76,8 +76,8 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
         # microVersion line, so cut from its "NN: Helsinki Grind" marker up to
         # whatever version marker follows it (or end of line).
         ttl, n4 = re.subn(r"\s*4[0-9]: Helsinki Grind.*?(?=\s\d\d: |\n)", "", ttl)
-        ttl, n5 = re.subn(r"Ten original", "Nine original", ttl)             # counts (2 sites)
-        ttl, n6 = re.subn(r"the ten algorithmic voicings", "the nine algorithmic voicings", ttl)
+        ttl, n5 = re.subn(r"Eleven original", "Ten original", ttl)             # counts (2 sites)
+        ttl, n6 = re.subn(r"the eleven algorithmic voicings", "the ten algorithmic voicings", ttl)
         assert (n1, n2, n3, n4, n5, n6) == (1, 1, 1, 1, 2, 1), \
             f"{src_path}: B7K strip anchors moved {n1},{n2},{n3},{n4},{n5},{n6}"
 

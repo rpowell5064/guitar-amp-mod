@@ -36,9 +36,9 @@
     rdfs:label "Hex Chain — Drive/Boost" ;
     doap:name  "Hex Chain Drive" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Nine original overdrive, boost & distortion voicings (guitar AND bass) + a NAM loader.
+    rdfs:comment """Ten original overdrive, boost & distortion voicings (guitar AND bass) + a NAM loader.
 
-Nine original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
+Ten original drive, boost and distortion voicings in one pedal, each with drive, tone, level and dry/wet mix:
 
 - Green Man — the mid-humped green legend that pushes an amp into song
 - New Dawn — smooth, singing overdrive for lead work
@@ -50,7 +50,7 @@ Nine original drive, boost and distortion voicings in one pedal, each with drive
 - Echo Primer — the tape-echo JFET front end that warmed up so many cranked rigs
 - Tube Chauffeur — the starved-tube chauffeur that drove the great sustained leads: fat clean boost to warm overdrive
 
-Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the nine algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
+Stack them in front of the Hex Chain Amp or your own rig. On 64-bit/desktop targets a Neural (NAM) slot runs your own .nam pedal captures alongside the ten algorithmic voicings; on 32-bit (patchbox-os-arm32) NAM is omitted.
 
 Free and open source (GPL-3).""" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
