@@ -3,8 +3,8 @@
 ## v1.18.0 — 2026-09-05
 
 The bass update — and a deep re-voice pass on the guitar side. The suite grows a
-complete bass rig (amp, four cabs, a bass drive, two banks), six guitar amps were
-re-voiced against a fresh reference measurement set, every song preset was rebuilt
+complete bass rig (amp, four cabs, a bass drive, two banks), the guitar amps were re-tuned
+against a fresh reference measurement set, every song preset was rebuilt
 from rig research and then hand-finished by ear, and there's a new germanium treble
 booster.
 
@@ -19,7 +19,8 @@ booster.
 
 ### Changed
 
-- **Six amps re-voiced against reference measurements.** A large new measurement set was fitted amp by amp, and the models were re-tuned to it: **Gainzilla** (the modern high-gain head — rebuilt around its real master-volume taper), **Crunchy McCrunchFace** (the British hot-rod), **Beardo BE** (the boutique hot-rod, now tracking its real gain dial), **Diamond Plate** (both the Modern and Vintage voices), **Tangerang** (the British lead crunch — the closest match in the suite) and **Chime Thirty**. In every case the old hand-fitted correction layers came out and the underlying model does the work.
+- **Amps re-tuned against reference measurements.** A large new measurement set was fitted amp by amp and the models re-tuned to it. Re-voiced: **Gainzilla** (the modern high-gain head, rebuilt around its real master-volume taper), **Crunchy McCrunchFace** (the British hot-rod), **Diamond Plate** across its Modern modes and then its Vintage ones, **Cali V** on the Mark-IV mode — with its third-channel knob laws re-lawed to the real dials, which had been running about twice as hot (every saved preset is sound-preserved through that change, so your dial positions still mean what they meant) — and **Chime Thirty**. In each case the old hand-fitted correction layers came out and the underlying model does the work now.
+- **Two amps measured correct and were left alone.** **Tangerang** came back the closest match in the suite and **Beardo BE**’s model measured right as it stood — tonestack, mid taper and low-end voicing all confirmed. Neither was touched tonally; both only gained a corrected gain-knob loudness law, so the dial now spans the range the real amp spans.
 - **Chime Thirty's rail now ramps with gain.** The clean end had been running honest-to-measurement but too hot, so the amp's own floor was already saturating; the supply now ramps the way the real amp's does, and the dirt presets were re-matched at their honest dial positions.
 - **Every song preset rebuilt — then hand-finished.** All 53 song presets were re-authored from per-song rig documentation against the re-voiced amps. The rebuild was then A/B'd by ear: the ones that landed were kept, the rest were rolled back to their previous definitions and hand-fixed on the device, and those hand dial-ins are baked in here verbatim.
 - **Quieter high-gain amps.** Two amps were amplifying the input noise floor with a boost applied late in the chain, where it lifts hiss and hum along with the tone: Gainzilla's power-amp presence and Chime Thirty's input stage span both came down. Measured *better* against the reference takes without them — the noise was a tax with nothing bought.
