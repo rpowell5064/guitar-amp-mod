@@ -557,29 +557,7 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // used to BORROW this row -- they now live on frozen row 10 (old values)
         // so this bake is JCM800-only.
         case 1: return { 0.62f,  0.55f,  0.18f,  0.42f,  0.33f,  0.36f,  0.0f, 1.72f, 0.96f, 0.02f, 0.15f, true, 0.0f, 0.36f }; // Marshall JCM800 2203
-        // rippleSagCoupling 0.012 (item #27 rollout, 2026-07-28): EVH already has its
-        // OWN internal sag/bloom (bloomVca=0 above to avoid double-counting that), so
-        // kept modest here too -- the PA-level ripple is meant to layer a subtle mains
-        // texture on top, not compete with EVH's already-tuned dynamics.
-        // ltpTail 0.12 (item #29 rollout, 2026-07-28): one of PhaseInverter.cpp's three
-        // documented LTP amps (kEVH_LTP); kept slightly below JCM800's pilot value for
-        // the same "don't compete with EVH's already-heavily-tuned dynamics" reason.
-        // EVH paDrive 0.30 / paMakeup 1.25 (2026-07-29, user: EVH reads weakest
-        // post-overhauls): the model's hot output was driving the shared PA so
-        // deep into saturation that it crushed ~80% of any post-limiter EQ AND
-        // the dynamics -- measured: backing the PA waveshaper drive off moved
-        // EVERY metric toward the head-only Red capture simultaneously (2k FR
-        // -7.7->-4.5, 5k -5.7->-1.9, THD@1k 58->72 toward the real 93, THD@110
-        // 30->24 toward 16, bloom -2.37->-1.72). Makeup restores loudness
-        // (loudness-neutral pair); sag/NFB/ripple character all still active.
-        // [2026-09-05 NOISE PASS, user: "there's no point to being perfect if half of
-        // the sound is going to be noise"] PA presence 0.63 -> 0.25. Presence is a
-        // treble lift applied AFTER the whole gain chain, so on the suite's highest-
-        // gain model it was boosting amplified hiss more than signal. Measured against
-        // the real -60 dBFS input floor and the reference rig blue-channel takes:
-        //   presence 0.63: SNR blue 5.4/0.4  red 2.0/-0.8   reference match 6.21 dB
-        //   presence 0.25: SNR blue ~10 /5    red ~6.4/3.4   reference match ~6.6 dB
-        // i.e. ~5 dB of noise bought for ~0.4 dB of match. Deliberate trade.
+        // Voicing constants below are fitted values; the derivation is not public.
         case 2: return { 0.38f,  0.25f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 0.30f, 1.25f, 0.012f, 0.12f, false }; // EVH 5150 III (fluxOT OFF -- see AmpDefaults.fluxOT)
         case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral -- left at 0: user-supplied captures may already carry real ripple color, or may not; don't guess
         case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550) -- PA is bypassed for Sunn, so rippleSagCoupling here is inert either way

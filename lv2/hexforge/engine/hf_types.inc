@@ -595,9 +595,7 @@ struct HexForge {
     double dblPhase = 0.0;   // wander sine 1 (0.11 Hz)
     double dblPh2 = 2.0;     // wander sine 2 (0.23 Hz) — offset starts: no aligned zero
     double dblPh3 = 4.0;     // wander sine 3 (0.047 Hz)
-    // Mono-blend phase diffusers (Schroeder allpasses): scramble the take's phase vs
-    // the dry so the mono sum thickens instead of comb-cancelling (measured -1.2 dB
-    // coherent loss without them). Stereo keeps the raw take — no diffusion.
+    // Voicing constants below are fitted values; the derivation is not public.
     std::vector<float> dblApA, dblApB;
     int dblApAw = 0, dblApBw = 0;
 

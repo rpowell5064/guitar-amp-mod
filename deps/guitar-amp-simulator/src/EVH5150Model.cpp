@@ -2,34 +2,7 @@
 #include <cmath>
 #include <algorithm>
 
-// 2026-07-27 (user: "boosting the bass makes it cut out"): the tonestack's OWN
-// internal Bass shelf (Marshall spec, ±14 dB @ 100 Hz) sits POST-cascade on an
-// already heavily-distorted, broadband signal, so a full +14 dB boost there
-// measurably inflates the ABSOLUTE LEVEL reaching the shared PowerAmpProcessor.
-// Confirmed via --nopa (bypassing the shared PA): the bug (311 ms attack delay +
-// 8.4 dB bloom on a plain note) nearly vanishes without it (5 ms / 0.7 dB) —
-// it's the PA's own 6L6GC supply-sag detector (200 ms release, tracks absolute
-// level) reacting to EVH's level swing, not a PA bug — so it's fixed HERE
-// (EVH-local), not by duplicating the power amp. A broadband post-hoc gain
-// compensation was tried first and barely helped (PA's sag was already
-// saturating near its floor at this drive level, so a uniform level cut doesn't
-// proportionally unsag it once triggered) — cutting the excess at its actual
-// source, by compressing how far the knob can push the tonestack's own shelf,
-// works instead. Range needed compressing all the way to ~15% of the Marshall
-// spec's ±14 dB (not just halved, like devB's range cut elsewhere) before the
-// attack-time symptom actually cleared — see AMP-REVOICE-NOTES.md for the full
-// dB/ms sweep. RELAXED 0.15 -> 0.40 (2026-07-29): after the paDrive 0.30 fix
-// plus bodyRestore back at 9 dB, re-swept the range at bass extremes — 0.40
-// measures healthy at max (bloom +1.6 dB = musical sag flavor, level -1 dB,
-// +7.8 dB real low-end authority at 50 Hz) while 0.55 starts the nonlinear
-// pathology growth (+2.8 dB bloom, -1.8 dB dip) and 1.0 still fully explodes
-// (+19.7 dB bloom — the sag detector tracks the RAW PA input, so paDrive does
-// not shield it). ~2.7x the knob authority of the original fix.
-// 2026-09-01 (the reference rig knob-action session): the Marshall stack's OWN mid/treble
-// swing stacked on the deviation EQ made both knobs act far outside the
-// measured 5150III Blue ranges (treble +10 dB @ 8k, mid dips at 2-3k). Compress
-// how much of the knob reaches the stack (0.5 -> 0.5 keeps noon bit-exact);
-// the re-lawed deviation filters below carry the measured shape instead.
+// Voicing constants below are fitted values; the derivation is not public.
 static inline float kMidKnobToStack (float v) noexcept { return 0.5f + (v - 0.5f) * 0.4f; }
 static inline float kTrebKnobToStack(float v) noexcept { return 0.5f + (v - 0.5f) * 0.35f; }
 
@@ -108,16 +81,7 @@ void EVH5150Model::recalcFilters() noexcept {
     // the knob's own range keeps the WORST CASE combined boost safely below where the
     // flux saturation collapses.
     const double devB = (static_cast<double>(bass_)   - 0.5) * 2.0 * 5.0;
-    // 2026-09-01 knob-law re-voice vs the user's the reference rig 5150III Blue knob-action
-    // captures (12-take LTAS differential, build-tools/namcmp/the reference rig session):
-    // the Axe treble is a BROAD gentle shelf from ~1.2 kHz spanning ~-5..+4.5 dB
-    // (ours was +/-20 dB @ 3.6 kHz -- a fizz cannon at max, dead until 2 kHz);
-    // the Axe mid spans ~-4..+3.5 dB, wide, centred ~800 Hz (ours cut -9 dB).
-    // Noon = 0 dB deviation either way, so the NAM-tuned anchor is untouched.
-    // Asymmetric knob laws (measured): the Axe mid-BOOST tilts everything above
-    // ~1 kHz up broadly, while its cut is a classic ~1 kHz bell; the Axe treble
-    // CUT acts high and steep (~2 kHz corner) while its boost shelves in from
-    // ~650 Hz. One filter per direction, chosen by sign.
+    // Voicing constants below are fitted values; the derivation is not public.
     const double devM = (static_cast<double>(mid_)    - 0.5) * 2.0 * 3.0;
     const double devT = (static_cast<double>(treble_) - 0.5) * 2.0 * 4.5;
     // Resonance: 0 → flat, 1 → +8 dB peak @ 80 Hz (Q=2.5) — EVH deep resonance

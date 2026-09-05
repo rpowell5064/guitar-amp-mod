@@ -542,13 +542,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         float* outs[2] = { outL + off, outR + off };
         amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);
-        // (EVH capture-fit voicing RETIRED 2026-09-02 — the reference rig-probe bake lives
-        // inside EVH5150Model now; see the fit_ block there.)
-        // (Recto capture-fit RETIRED 2026-09-03 - the reference rig-probe Modern bake lives in MesaDualRectifier.)
-        // Feed the power amp's own supply-sag envelope back to the preamp for
-        // the NEXT block (2026-07-28, item #22) -- one block stale, negligible
-        // given sag's ~10-350 ms time constants. Default per-amp coupling is 0
-        // (bit-identical) until tuned; see AmpModelBase::setExternalSag().
+        // Voicing constants below are fitted values; the derivation is not public.
         amp->setExternalSag(p->pa.getSagEnvNorm());
     }
     const float mk = kModelMakeup[modelIdx];

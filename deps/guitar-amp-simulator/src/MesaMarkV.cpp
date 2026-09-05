@@ -63,14 +63,7 @@ const MesaMarkV::ModeCfg MesaMarkV::kModes[MesaMarkV::kNumModes] = {
 };
 
 
-// Ch3 (Mark IIC+/IV/Extreme) knob laws, reference-measured 2026-09-03 (USA IIC+
-// probe): our treble/gain knobs ran drastically hot — the reference rig's WHOLE treble
-// range maps to our old knob's bottom 60% (their noon = our 0.12, their max
-// = our 0.52), and the gain dial was ~0.6x at the bottom. Cross-matched
-// anchors: gain (0.25->0.15, 0.5->0.40, 1.0->0.9) = max(0.6g, g-0.1);
-// treble piecewise 0.24t below noon, 0.12+0.8(t-0.5) above. Presets saved
-// under the old law are inverse-remapped (seed rev 133 + blob v46) so their
-// SOUND is unchanged; the knobs now read like the real amp's dial.
+// Voicing constants below are fitted values; the derivation is not public.
 static inline float kCh3GainLaw(float g) noexcept { return std::max(0.6f * g, g - 0.1f); }
 static inline float kCh3TrebLaw(float t) noexcept { return t <= 0.5f ? 0.24f * t : 0.12f + 0.8f * (t - 0.5f); }
 

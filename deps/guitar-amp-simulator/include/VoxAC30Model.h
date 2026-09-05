@@ -70,41 +70,9 @@ private:
         float sagDecay = 0.0f;
     };
     std::array<ChannelState, kMaxCh> ch_;
-    // the reference rig fit hooks (2026-09-04 "Class-A 30W TB" probe): the reference rig TB is a
-    // level-invariant railed core (42-49% THD@1k flat) our polite 2-stage
-    // model can't reach even dimed. fit0 stage-span scale | fit1 input dB |
-    // fit2 softLimit rail dB | fit3 knee | fit4 post pk dB @ fit5 Hz | fit6
-    // post hs4k dB. Neutral defaults.
-    // BAKED 2026-09-04 (config W1 of the reference Class-A 30W top-boost probe): mean
-    // 48.8 -> 26.6. the reference rig TB is a level-invariant railed core our polite
-    // 2-stage model couldn't reach even dimed: stage span x1.8 (+ gain-
-    // coupled 0.8: the top of the dial runs hotter, the bottom cleaner),
-    // input +3 dB, terminal rail +18 dB / knee 0.2, and the AC30 honk
-    // restored (pk150 -8 un-fattens the low mids, pk1800 -7 + hs4k -5 tame
-    // the scoop brightness — ours was smiley where the real amp is
-    // mid-forward). Knob laws measured CORRECT (noon<->0.5, g25<->0.2).
+    // Voicing constants below are fitted values; the derivation is not public.
     static constexpr int kNFit = 9;
-    // NOISE PASS 2026-09-05 (user: "more noise even while playing"). fit1 was a
-    // +3 dB INPUT drive — a straight pre-gain boost, so it lifted the rig's hiss
-    // by 3 dB before the amp ever saw it. Measured against the real input floor
-    // (-60.1 dBFS, captured off the device) and the reference rig Vox takes:
-    //
-    //                 SNR g0.35 / g0.65      reference spectral match
-    //   +3 dB (was)      9.4 / 23.8 dB           8.02 dB
-    //    0 dB (now)     11.3 / 26.5 dB           7.81 dB
-    //
-    // Better on BOTH axes — the stage span (fit0) already supplies the drive the
-    // real TB has, so the extra input gain was buying nothing but noise. Cutting
-    // span as well would buy another ~3 dB of quiet but costs the hardware match
-    // (8.76 dB), i.e. it undoes the point of the re-voice — left alone.
-    // [2026-09-05 NOISE PASS] stage span 1.8 -> 1.3. The span is what let this
-    // polite 2-stage model reach the reference rig's crank, but it multiplies the rig floor
-    // along with the signal. Measured (real -60 dBFS floor / the reference rig Vox takes):
-    //   span 1.8: SNR 11.3/26.5   match 7.81 dB      (pre-the reference rig was 18.3/38.9)
-    //   span 1.3: SNR 15.6/32.0   match 8.57 dB
-    // ~5 dB of noise bought for ~0.76 dB of match, on the user's explicit call.
-    // Going to 1.1 would restore the old noise floor entirely (18.1/34.8, match
-    // 8.46) if the amp still reads too noisy — the knee is shallow down there.
+    // Voicing constants below are fitted values; the derivation is not public.
     float fit_[kNFit] = { 1.3f, 0.0f, 18.0f, 0.2f, -7.0f, 1800.0f, -5.0f, -8.0f, 0.8f };
     float slDrive_ = 1.0f, slNorm_ = 1.0f, inDrive_ = 1.0f;
 

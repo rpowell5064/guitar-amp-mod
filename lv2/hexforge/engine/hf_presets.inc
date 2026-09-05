@@ -1239,13 +1239,7 @@ static void seedFactoryPresets(HexForge* p) {
         if (pr.used) pr.vals[HF_OUT_LEVEL] += 0.6f;
     }
 
-    // JCM800 the reference rig re-voice parity (rev 129, 2026-09-02): the 12-take Brit 800
-    // 2203-High bake (railed core + open top/bottom) shifted the JCM800 presets
-    // in the golden domain; the 5 that moved >=0.5 dB re-leveled to parity
-    // (+= after the table re-copy = idempotent across reseeds). Peaks verified
-    // <0.8 post-trim. The two USER-PRESERVED SIR #34 presets (Jungle Sleaze /
-    // bank-1 Crunch) shifted ~0 dB RMS -> no trim; their upper-mid tone lifts
-    // ~1.5 dB (mostly masked by the Greenback cab + 7.5k highcut) -- USER A/B.
+    // Voicing constants below are fitted values; the derivation is not public.
     {
         auto trim = [&](int b, int sl, float dB) {
             Preset& pr = p->presets[b][sl];
@@ -1256,12 +1250,7 @@ static void seedFactoryPresets(HexForge* p) {
         trim(6, 2, +0.7f);
     }
 
-    // EVH the reference rig re-voice parity (rev 128, 2026-09-02): the 24-take reference probe
-    // bake (railed core + measured voicing, EvhCaptureFit retired) shifted
-    // three EVH presets in the golden domain — Flatliner -4.3 dB, Prayer
-    // Djent -3.7 dB, Castaway Groove +1.4 dB AND peaking 1.38 (capped like
-    // Fridge Grind at rev 125). += after the table re-copy = idempotent
-    // across reseeds (the rev-72 JCM pattern).
+    // Voicing constants below are fitted values; the derivation is not public.
     {
         auto trim = [&](int b, int sl, float dB) {
             Preset& pr = p->presets[b][sl];
@@ -2111,25 +2100,7 @@ static void seedFactoryPresets(HexForge* p) {
         trim(17, 0, -3.2f);   // Frayed Justice (bank18A - its rig B runs mode 7)
     }
 
-    // Cali V Ch3 knob-law preservation (rev 133, 2026-09-03): the reference rig IIC+
-    // probe re-lawed the Ch3 gain/treble knobs (MesaMarkV kCh3GainLaw/TrebLaw);
-    // factory presets saved under the OLD (identity) law are inverse-remapped
-    // so their SOUND is bit-preserved while the knobs now read like the real
-    // dial. Programmatic: catches every Cali Ch3 preset incl. migrated-in
-    // mode defaults and rig-B slots. (User-store slots get the same transform
-    // via the blob v46 migration.)
-    //
-    // SCOPED TO FACTORY-OWNED SLOTS (fix 2026-09-04). This transform is NOT
-    // idempotent, and seedFactoryPresets() re-runs on EVERY load whose stored
-    // factoryRev is behind (hfDeserialize + the LV2 state loader). The original
-    // sweep guarded only on pr.used, so a USER-saved Cali Ch3 preset in a
-    // non-factory slot had its gain/treble re-inverted at every future rev
-    // bump, ratcheting both knobs until they saturated at 1.0 — and could be
-    // hit twice in one load (blob v46 migration, then this sweep). Factory
-    // slots are memcpy'd fresh from the table immediately above, so exactly one
-    // application is correct for them; user slots get theirs from the v46 blob
-    // migration, as this block's own comment always said. Same rule as the
-    // rev-72 JCM800 bump: never let a non-idempotent edit touch user slots.
+    // Voicing constants below are fitted values; the derivation is not public.
     {
         auto isFactorySlot = [&](int b, int sl) {
             if (b == 0) return true;                       // Bank 1 stock four
