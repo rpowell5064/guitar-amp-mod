@@ -442,7 +442,7 @@ add(
     rv={"enable":1,"predelay":35,"decay":3.2,"damping":0.4,"mix":0.38},
     cab={"micpos":0.30,"micdist":0.25,"lowcut":80,"highcut":12000}),
   preset(7, 2, "Flatliner", out_level=OUT,               # Periphery — Flatline
-    # RESEARCHED (Misha Mansoors own Fractal Tone Tour): PVH 6160 Block = 5150; Drive 6.5/Bass 5/Mid 5/
+    # RESEARCHED (Misha Mansoors own published rig interview): PVH 6160 Block = 5150; Drive 6.5/Bass 5/Mid 5/
     # Treble 6/Pres 5/Master 4, minimal sag. TS808 as a CLEAN boost (drive 0, level max). Drop Ab 7-str.
     # revoiced 2026-07-11: TS was a UNITY-level boost (1.0) slamming an untamed front-end (input-clip removed)
     # -> too gainy/fizzy. TS level 1.0->0.72 (still a clean tightening boost, not a gain wall) + treble/presence

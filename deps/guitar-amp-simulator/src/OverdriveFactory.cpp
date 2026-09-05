@@ -10,6 +10,7 @@
 #include "EchoplexPreamp.h"
 #include "TubeDriver.h"
 #include "MicrotubesB7K.h"
+#include "TrebleBooster.h"
 
 std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
     switch (type) {
@@ -25,6 +26,7 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
         case OverdriveType::EchoplexPreamp:  return std::make_unique<EchoplexPreamp>();
         case OverdriveType::TubeDriver:      return std::make_unique<TubeDriver>();
         case OverdriveType::MicrotubesB7K:   return std::make_unique<MicrotubesB7K>();
+        case OverdriveType::TrebleBooster:   return std::make_unique<TrebleBooster>();
         default:                             return std::make_unique<TubeScreamer808>();
     }
 }
@@ -55,6 +57,7 @@ const char* OverdriveFactory::modelName(OverdriveType type) noexcept {
         case OverdriveType::EchoplexPreamp:  return "Echoplex EP-3 Preamp";
         case OverdriveType::TubeDriver:      return "Butler Tube Driver";
         case OverdriveType::MicrotubesB7K:   return "Helsinki Grind";
+        case OverdriveType::TrebleBooster:   return "Treble Ranger";
         default:                             return "Unknown";
     }
 }
@@ -73,6 +76,7 @@ OverdriveType OverdriveFactory::fromIndex(int index) noexcept {
         case 9:  return OverdriveType::EchoplexPreamp;
         case 10: return OverdriveType::TubeDriver;
         case 11: return OverdriveType::MicrotubesB7K;
+        case 12: return OverdriveType::TrebleBooster;
         default: return OverdriveType::TubeScreamer808;
     }
 }

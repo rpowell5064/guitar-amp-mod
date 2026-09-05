@@ -32,6 +32,7 @@ enum class TubeType {
 class PowerAmpProcessor : public AudioBlock {
 public:
     void  prepare(double sampleRate, int maxBlockSize, int numChannels) override;
+    void  recalcTrack() noexcept;
     void  process(float** in, float** out, int numSamples, int numChannels) override;
     void  setParameter(const std::string& id, float value) override;
     float getParameter(const std::string& id) const override;
@@ -107,6 +108,24 @@ public:
         // ⚠️ POSITIONAL-INIT TRAP: rows use positional aggregate initializers.
         // ONLY append new fields HERE at the END; any row that sets a late field
         // must spell out every field before it (incl. fluxOT/evenDepth) explicitly.
+        // Supply duck-and-swell (2026-09-03, reference-measured on the Friedman BE):
+        // the real amp DUCKS at note onset (B+ dips under the transient
+        // current draw) and SWELLS back over ~sagTauS as the rail recovers.
+        // Self-normalised two-node differential depth*(1 - beta*envS/envF),
+        // applied POST-saturation (pre-saturation shaping is erased by the
+        // waveshaper — the bloomVca lesson). APPENDED AT END: positional row
+        // initializers stay valid; rows that omit them get the 0 = no-op.
+        float sagDip  = 0.0f;   // onset dip depth (0.44 ~= -5 dB)
+        float sagBeta = 1.0f;   // recovery fraction (1 = full swell back)
+        float sagTauS = 0.25f;  // rail-recovery time constant (s)
+        // Post-PA gain-level tracking (2026-09-03, reference-measured on the
+        // Friedman BE): the real amp's gain knob spans ~8 dB of loudness
+        // below noon where the railed pre/PA chain spans ~3. Two-sided
+        // power law pow(gain/0.5, exp) applied POST-master (level-only —
+        // in-model or pre-PA tracking changes the PA operating point = tone
+        // cost, measured). 0/0 = no-op (legacy rows).
+        float trackLo = 0.0f;   // exponent below noon
+        float trackHi = 0.0f;   // exponent above noon
     };
     static AmpDefaults getDefaultsForModel(int ampModelIdx) noexcept;
 
@@ -126,7 +145,7 @@ private:
     // Speaker-impedance COUPLING (2026-07-23, additive, default 0 = bit-identical):
     // how much of the speaker's impedance curve (cone-resonance thump + voice-coil
     // HF rise) reaches the output. The blend rides a drive envelope, so it BLOOMS
-    // as the power stage works harder — real damping collapse, the Fractal-class
+    // as the power stage works harder — real damping collapse, the modern-modeler-class
     // speaker interaction feel. Uses the previously dormant spkrPeak filters.
     float    coupling  = 0.0f;  // [0,1]
     // Class-AB crossover notch (item 25, additive default 0 = bit-identical): a soft
@@ -222,6 +241,10 @@ private:
     // limiter; this clean output-side VCA delivers the recoverable compression and
     // pick "bloom" the real power amp shows. Depth is per-amp (getDefaultsForModel).
     float bloomVcaDepth     = 0.0f;
+    float dipDepth_ = 0.0f, dipBeta_ = 1.0f, dipTauS_ = 0.25f;
+    float dipEnvF_[kMaxCh] = {}, dipEnvS_[kMaxCh] = {};
+    float dipAttF_ = 0.0f, dipRelF_ = 0.0f, dipSlowCoef_ = 0.0f;
+    float trackLo_ = 0.0f, trackHi_ = 0.0f, trackKnob_ = 0.5f, trackGain_ = 1.0f;
     // Release τ runtime-settable ("bloomrelms", 5..300 ms; default 13 = the JCM800
     // capture match). The 13 ms release modulates WITHIN a low-E cycle at high
     // depth (the rev-99 "bitcrush" mechanism) — slower release trades bloom speed

@@ -17,7 +17,8 @@ enum class OverdriveType {
     DOD250          = 8,
     EchoplexPreamp  = 9,
     TubeDriver      = 10,
-    MicrotubesB7K   = 11
+    MicrotubesB7K   = 11,
+    TrebleBooster   = 12
 };
 
 class OverdriveFactory {

@@ -18,3 +18,15 @@ foreach(_f "NAM/wavenet/slimmable.h" "NAM/wavenet/slimmable.cpp")
     file(WRITE "${_f}" "${_c}")
 endforeach()
 message(STATUS "NAM patched: atomic<shared_ptr> fallback widened to feature test")
+
+# ── Eigen 3.4.0 compat (2026-08-31): NAM uses Eigen::placeholders::lastN, which
+# exists in its pinned Eigen master snapshot but NOT in released Eigen 3.4.0
+# (e.g. Debian trixie libeigen3-dev via GAS_EIGEN_DIR). Eigen::lastN exists in
+# both, so rewrite. Idempotent; byte-identical when already clean.
+file(GLOB_RECURSE _nam_eigen_files "NAM/*.h" "NAM/*.cpp")
+foreach(_f IN LISTS _nam_eigen_files)
+    file(READ "${_f}" _c)
+    string(REPLACE "Eigen::placeholders::lastN" "Eigen::lastN" _c "${_c}")
+    file(WRITE "${_f}" "${_c}")
+endforeach()
+message(STATUS "NAM patched: Eigen::placeholders::lastN -> Eigen::lastN (Eigen 3.4.0 compat)")

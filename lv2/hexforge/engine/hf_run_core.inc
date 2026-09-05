@@ -418,7 +418,12 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 p->pa2.setParameter("ripplesag",d2.rippleSagCoupling);
                 p->pa2.setParameter("ltptail",  d2.ltpTail);
                 p->pa2.setParameter("fluxOT",   d2.fluxOT ? 1.0f : 0.0f);
+                // Gain-level tracking on Rig B too (audit 2026-09-04): the main
+                // rig has applied the per-amp law since rev 136, so the SAME amp
+                // was loud on one rig and not the other — a straight divergence.
+                p->pa2.setParameter("tracklo", d2.trackLo); p->pa2.setParameter("trackhi", d2.trackHi);
             }
+            p->pa2.setParameter("trackgain", *p->ports[HF_RB_GAIN]);   // tracking follows Rig B's own gain knob
             p->pa2.setBypass((*p->ports[HF_RB_PAMP_BYPASS] > 0.5f) || rbM == kSunnIdx);
             // Full cab parity
             p->cab2.setParameter("lowCutHz",  *p->ports[HF_RB_LOWCUT]);
@@ -506,6 +511,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         amp->setParameter("ultrahi", *p->ports[HF_AMP_SV_ULTRAHI]);
         amp->setParameter("midfreq", *p->ports[HF_AMP_SV_MIDFREQ]);
     }
+    bool trackingSet = false;   // did the PA-Auto branch already push the amp's tracking law?
     // Recto Modern modes (4, 7) disconnect the power-amp NFB loop on the real amp.
     const float rcMode = *p->ports[HF_AMP_RC_MODE];
     const bool rectoModern = (ampModel == kRectoIdx) &&
@@ -516,6 +522,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->pa.setParameter("master", d.master); p->pa.setParameter("presence", d.presence);
         p->pa.setParameter("depth", d.depth);   p->pa.setParameter("nfb", rectoModern ? 0.05f : d.nfb);
         p->pa.setParameter("sag", d.sag);
+        p->pa.setParameter("tracklo", d.trackLo); p->pa.setParameter("trackhi", d.trackHi);   // post-PA gain-level tracking (the reference rig)
+        trackingSet = true;
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
         p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
         desiredTube = kAmpTube[ampAlgo];
@@ -529,8 +537,19 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
         desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 5);   // 5 = 6550 (2026-08-28 Blue Liner)
     }
+    // The tracking law belongs to the AMP, not to the PA voicing, but it used to
+    // be pushed only inside the PA-Auto branch while "trackgain" was pushed
+    // unconditionally — so with PA Auto OFF the amp inherited whichever law the
+    // PREVIOUS preset's amp had set, and nothing ever cleared it (audit
+    // 2026-09-04). Push it either way.
+    if (!trackingSet) {
+        const auto dt = PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]);
+        p->pa.setParameter("tracklo", dt.trackLo); p->pa.setParameter("trackhi", dt.trackHi);
+    }
+
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).bloomVca);
+    p->pa.setParameter("trackgain", *p->ports[HF_AMP_GAIN]);   // post-PA gain-level tracking follows the amp gain knob
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).duty);
     p->pa.setParameter("evengen",  PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).evenDepth);
     p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[ampAlgo]).rippleSagCoupling);
@@ -552,35 +571,13 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // (depth 0.15 / release 13 ms) — nothing baked; the PA-compression
     // frontier is now closed WITH an ears verdict, not just by abandonment.
     // See pa-compression-fender memory.)
-    // EVH capture-fit voicing: applied post-PA in the amp block below. LAB-
-    // blendable (2026-08-22): dbg_evhfit scales the fit dB; default 0.8875 =
-    // the 2026-08-19 bake.
-    const bool evhFitOn = kAmpMap[ampAlgo] == AmpModel::EVH5150III;
-    if (evhFitOn) {
-        // (The 2026-08-22 dbg_evhfit lab was CANCELED unused — the blend stays
-        // fixed at the 2026-08-19 ear-chosen bake; the blendable machinery is
-        // kept dormant for the next lab session.)
-        const float eb = 0.8875f;
-        if (eb != p->evhLabLast) {
-            p->evhLabLast = eb;
-            for (int c = 0; c < 2; ++c) {
-                p->evhLab[c][0].setCoeffs(Filters::lowshelf (  55.0, -5.0 * eb, p->rate));
-                p->evhLab[c][1].setCoeffs(Filters::peaking  ( 130.0,  6.5 * eb, 1.1, p->rate));
-                p->evhLab[c][2].setCoeffs(Filters::peaking  (1200.0,  2.5 * eb, 0.8, p->rate));
-                p->evhLab[c][3].setCoeffs(Filters::highshelf(2400.0,  4.5 * eb, p->rate));
-                p->evhLab[c][4].setCoeffs(Filters::highshelf(7500.0,  5.5 * eb, p->rate));
-            }
-            p->evhLabGain = std::pow(0.6918f, eb / 0.8875f);   // bake-anchored neutralizer
-        }
-    }
+    // (EVH capture-fit voicing RETIRED 2026-09-02 — the reference rig-probe bake lives
+    // inside EVH5150Model; the 2026-08-19 EvhCaptureFit/evhLab stack measured
+    // only 31.4% vs the bare model's 32.2% against real the reference rig ground truth.)
     // (The 2026-08-20 dbg_hgfit LAB lived here; retired at mv181 after the user
     // approved both candidates at blend 0.72 — values baked into AmpDefaults
     // rows 1/8 with the Plexi/MarkV row-10 split.)
-    // Recto CH3-Modern capture-fit voicing (BAKED 2026-08-20 at the user's
-    // blend 1.0; the nonlinear half — satDrive 1.84, tightHP 200 — is baked in
-    // the model's mode-7 ModeCfg row): applied post-PA in the amp block below,
-    // Diamond Plate + mode 7 only. See lv2/common/RectoCaptureFit.h.
-    const bool rectoFitOn = (ampModel == kRectoIdx) && rcMode > 6.5f;
+    // (Recto capture-fit RETIRED 2026-09-03 - the reference rig-probe Modern bake lives in MesaDualRectifier.)
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx);
     p->pa.setBypass(paBypass);
@@ -1016,12 +1013,6 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                         amp->process(io1, io1, len, 1);
                         p->pa.process(io1, io1, len, 1);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
-                        if (evhFitOn) for (int i=0;i<len;++i) {
-                            float v = L[i];
-                            for (auto& f : p->evhLab[0]) v = f.process(v);
-                            L[i] = p->evhLabGain * v;
-                        }
-                        if (rectoFitOn) for (int i=0;i<len;++i) L[i]=p->rectoFit[0].process(L[i]);
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
                     } else {
@@ -1029,16 +1020,6 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                         amp->process(io, io, len, 2);
                         p->pa.process(io, io, len, 2);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
-                        if (evhFitOn) for (int i=0;i<len;++i) {
-                            float vl = L[i], vr = R[i];
-                            for (auto& f : p->evhLab[0]) vl = f.process(vl);
-                            for (auto& f : p->evhLab[1]) vr = f.process(vr);
-                            L[i] = p->evhLabGain * vl; R[i] = p->evhLabGain * vr;
-                        }
-                        if (rectoFitOn) for (int i=0;i<len;++i) {
-                            L[i]=p->rectoFit[0].process(L[i]);
-                            R[i]=p->rectoFit[1].process(R[i]);
-                        }
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
                     }
                     // NOTE: the amp's output is mono-identical when its input was — do NOT
@@ -1250,6 +1231,13 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // floors — both engines still read the dry input upstream of the chain.
     if (tunerMute || calMute) { std::memset(outL, 0, sizeof(float)*n); std::memset(outR, 0, sizeof(float)*n); }
 
+    // ── Output polarity ── applied dead last, after the limiter and the switch
+    // ramp, so it is a PURE sign flip and cannot change any nonlinearity or mix.
+    // Default ON: a real amp inverts (odd number of inverting stages), and the
+    // the reference rig ships inverted, so this rig sums correctly against it.
+    if (*p->ports[HF_OUT_PHASE] > 0.5f)
+        for (uint32_t i = 0; i < n; ++i) { outL[i] = -outL[i]; outR[i] = -outR[i]; }
+
     // ── Clip indicator: latch for ~250 ms whenever the output hits full scale ──
     float peak = 0.0f;
     for (uint32_t i = 0; i < n; ++i) {
@@ -1323,8 +1311,6 @@ static bool hfEngineInit(HexForge* p, double rate) {
     p->trimHum.prepare(rate);
     p->trimLoad.prepare(rate);
     // (EVH lab EQ coeffs are set in run() from dbg_evhfit on first use / knob move.)
-    p->rectoFit[0].prepare(rate);
-    p->rectoFit[1].prepare(rate);
     // (FRFR voice EQ coeffs are set in run() from the fv_* knobs on first
     // enable + on any knob move — see the fvOn block before the Output stage.)
     p->trimVoice.reset();   // coeffs are set lazily in run() from the live HB Amount port

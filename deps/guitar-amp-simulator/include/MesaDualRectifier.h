@@ -99,6 +99,29 @@ private:
     // ── Capture-fit levers (2026-08-19 HG round 2; SD-1 gmin/posrail precedent:
     // runtime-settable for the nam_compare harness, neutral defaults = bit-
     // identical, ids stay after any bake). See DI-REMEASURE-NOTES.md.
+    // the reference rig Modern-mode fit hooks (2026-09-03 probe grids; Modern = the broken
+    // modes, 39-45% vs Vintage 18-27): fit_body dB on bodySh | fit_lowkeep
+    // scale on the parallel low path | fit_midcut dB @1.6k | fit_pres scale on
+    // the Modern passive-presence span | fit_potfloor gain-pot bottom |
+    // fit_mvdrive 0..1 decouples PI drive from low master. Neutral defaults.
+    // BAKED 2026-09-03 (config Z of the reference rig Recto2 probe fit): the Modern
+    // modes were the suite's worst (39-45% specESR); Z lands 33.0 hot-spot
+    // mean / noon 44.9->30.6. All Modern-gated: pk125 +9 (the chug PEAK — a
+    // shelf paints 50/200 instead), parallel lowKeep x0.8, pk1600 -5, passive
+    // presence span x0.4, gain-pot floor 1.0 (the real dial barely drops
+    // drive below noon), PI drive decoupled from low master (the master_low
+    // tone collapse), tightHP 260->60 Hz (lows INTO the clips: 223 Hz THD was
+    // HALF the real amp's), sag x0.1 (the reference rig Modern is tight: 0.58 dB bloom vs
+    // our 3.25), 82 Hz notch OFF, 205 Hz bump x0.3. Replaces RectoCaptureFit.
+    float fitBody_ = 9.0f, fitLowKeep_ = 0.8f, fitMidCut_ = -5.0f;
+    float fitPres_ = 0.4f, fitPotF_ = 1.0f, fitMvDrv_ = 1.0f;
+    float fitSagD_ = 1.0f, fitNotch_ = 0.0f, fitLowMid_ = 0.3f;
+    // Vintage-gated voicing (fit_vinmid pk1200 dB / fit_vinair hs7500 dB /
+    // fit_vinlm pk200 dB): mode-3 residual measured +3.3 @1.2k, -5.9 @8k,
+    // +2.8 @200 vs the reference rig Recto2 Orange Vintage. Modes 3/6 only.
+    // BAKED 2026-09-03 (config VB): every Vintage take improved or held,
+    // including the mode-6 guards (redvin noon 18.2 -> 17.0).
+    float fitVinMid_ = -3.0f, fitVinAir_ = 6.0f, fitVinLm_ = -3.0f;
     float  fitSat_  = 1.0f;   // × ModeCfg satDrive          [0.75, 1.25]
     float  fitCasc_ = 1.0f;   // × every stage's gBase        [0.9, 1.6]  (THD@1k lever)
     float  fitBack_ = 1.0f;   // × backDrive on stages ≥ 2    [1.0, 1.5]
@@ -115,6 +138,9 @@ private:
         BiquadFilter    bodySh, subSh, postPk;  // post-clip voicing (see ModeCfg bodyFc/subDb/postHiFc)
         BiquadFilter    lowMidPk, modernAir;    // ~200 Hz load resonance bump + Modern no-NFB air shelf
         BiquadFilter    lowNotch;               // Modern only: ~82 Hz woof control between the sub and the punch
+        BiquadFilter    fitMidPk;               // the reference rig-fit mid cut (fit_midcut)
+        BiquadFilter    fitBodyPk;              // the reference rig-fit 125 Hz chug peak (fit_body)
+        BiquadFilter    fitVinMid, fitVinAir, fitVinLm;   // the reference rig-fit Vintage voicing
         BiquadFilter    lowKeepLP;              // parallel low path lowpass (see ModeCfg lowKeep)
         TriodeComponent stage[kMaxStage];
         TriodeComponent stagePI;

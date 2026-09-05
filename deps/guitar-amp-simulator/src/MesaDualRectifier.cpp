@@ -113,7 +113,7 @@ void MesaDualRectifier::rebuild() noexcept {
     if (oversampledFs_ <= 0.0) return;
     const auto& m = kModes[mode_];
     // Sag character from the power-section switches (deterministic parameter sets).
-    sagDepth_ = kSagDepth[rect_][variac_];
+    sagDepth_ = kSagDepth[rect_][variac_] * fitSagD_ * (kModes[mode_].modern ? 0.10f : 1.0f);   // BAKED: the reference rig Modern is tight
     const float sagTau = kSagTauS[rect_][variac_];
     for (auto& c : ch_) {
         for (int i = 0; i < m.nStages; ++i) c.stage[i].prepare(oversampledFs_, cfgOf(m.stage[i]));
@@ -149,11 +149,11 @@ void MesaDualRectifier::recalcFilters() noexcept {
         c.brightSh.setCoeffs(Filters::highshelf(m.brightFc, m.brightDb, oversampledFs_));
         c.interHP.setCoeffs(Filters::highpass1pole(m.interHPfc, oversampledFs_));
         // tightHP corner: capture-fit override wins when set (fit_tighthp), else ModeCfg.
-        tightHpEff_ = fitThp_ > 0.0f ? fitThp_ : m.tightHPfc;
+        tightHpEff_ = fitThp_ > 0.0f ? fitThp_ : (m.modern ? 60.0f : m.tightHPfc);   // BAKED: Modern 260->60 (lows into the clips)
         if (tightHpEff_ > 0.0f)
             c.tightHP.setCoeffs(Filters::highpass1pole(tightHpEff_, oversampledFs_));
         c.interLP.setCoeffs(Filters::lowpass1pole(m.interLPfc, oversampledFs_));
-        c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
+        c.presenceF.setCoeffs(Filters::highshelf(m.presFc, m.modern ? presDb * fitPres_ : presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_)); // Recto bite
         c.spongySh.setCoeffs(Filters::highshelf(3500.0, variac_ ? -1.5 : 0.0, oversampledFs_)); // browner variac top
         // The post-clip low restoration must FOLLOW the bass knob (it bypasses the tone
@@ -164,14 +164,20 @@ void MesaDualRectifier::recalcFilters() noexcept {
         c.postPk.setCoeffs(Filters::peaking(m.postHiFc, m.postHiDb, m.postHiQ, oversampledFs_)); // post-clip bite
         // The captures show a distinct ~200 Hz bump on every dirty mode (OT/load resonance,
         // strongest with the NFB loop out) and extended air above 5 kHz on the Modern modes.
-        const double lmDb = m.modern ? 9.0 : (m.tsType == ToneStackComponent::Type::Recto ? 3.5 : 0.0);
+        const double lmDb = m.modern ? 9.0 * fitLowMid_ : (m.tsType == ToneStackComponent::Type::Recto ? 3.5 : 0.0);
         c.lowMidPk.setCoeffs(Filters::peaking(m.modern ? 205.0 : 215.0, lmDb, m.modern ? 1.3 : 1.8,
                                               oversampledFs_));
         // Modern captures put a clear seam between the 55 Hz sub-weight and the 200 Hz
         // punch: without this notch the restored lows smear into an 80 Hz woof (+4.7 dB
         // vs the ch3_modern capture, 2026-07-23) that reads as mush, not gain.
-        c.lowNotch.setCoeffs(Filters::peaking(82.0, m.modern ? -3.0 : 0.0, 2.0, oversampledFs_));
+        c.lowNotch.setCoeffs(Filters::peaking(82.0, m.modern ? -3.0f * fitNotch_ : 0.0, 2.0, oversampledFs_));   // the reference rig fit: the 82 Hz notch fights the 80 Hz body
         c.lowKeepLP.setCoeffs(Filters::lowpass(55.0, 0.707, oversampledFs_)); // parallel low path
+        c.fitMidPk.setCoeffs(Filters::peaking(1600.0, m.modern ? fitMidCut_ : 0.0f, 0.8, oversampledFs_)); // the reference rig fit
+        c.fitBodyPk.setCoeffs(Filters::peaking(125.0, m.modern ? fitBody_ : 0.0f, 1.0, oversampledFs_)); // the reference rig fit: the 125 Hz chug PEAK (a shelf paints 50/200 instead — measured)
+        const bool vin = (mode_ == 3 || mode_ == 6);
+        c.fitVinMid.setCoeffs(Filters::peaking (1200.0, vin ? fitVinMid_ : 0.0f, 0.9, oversampledFs_));
+        c.fitVinAir.setCoeffs(Filters::highshelf(7500.0, vin ? fitVinAir_ : 0.0f, oversampledFs_));
+        c.fitVinLm.setCoeffs (Filters::peaking ( 200.0, vin ? fitVinLm_  : 0.0f, 1.2, oversampledFs_));
                                                                              // (sub-thump only; 80-200 Hz
                                                                              // belongs to the main path)
         c.modernAir.setCoeffs(Filters::highshelf(5500.0, m.modern ? 6.3 : 0.0, oversampledFs_));
@@ -197,6 +203,7 @@ void MesaDualRectifier::reset() noexcept {
         for (auto& s : c.stage) s.reset();
         c.stagePI.reset(); c.tonestack.reset(); c.sagEnv = 0.0f; c.ghostPh = 0.0f;
         c.dnrLP.reset(); c.dnrEnv = 0.0f; c.dnrD = 1.0f;
+        c.fitMidPk.reset(); c.fitBodyPk.reset(); c.fitVinMid.reset(); c.fitVinAir.reset(); c.fitVinLm.reset();   // audit 2026-09-04: new fit filters were never cleared
     }
 }
 
@@ -216,7 +223,8 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     // Audio-taper pot with unity at knob 0.375 (not 0.5): the capture-matched
     // full-gain roar arrives by ~9-10 o'clock and noon runs ~+4.5 dB hotter,
     // matching how a real Recto's gain dial feels (user feedback 2026-07-22).
-    const float pot  = std::min(18.96f * knob * knob * knob, 2.2f);  // cubic taper, unity at 0.375, cap +6.8 dB:
+    float pot  = std::min(18.96f * knob * knob * knob, 2.2f);  // cubic taper, unity at 0.375, cap +6.8 dB:
+    if (m.modern && fitPotF_ > 0.0f && knob > 0.05f) pot = std::max(pot, fitPotF_);  // BAKED (Modern): the real dial barely drops drive below noon
                                                                // beyond it the MV stages
                                                                // block (bias choke)
     // The pot cap lands at knob ~0.49 — but a real Recto keeps getting gainier all the
@@ -252,7 +260,8 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     x = c.tonestack.process(x);   // Recto stack is ALWAYS post-cascade
 
     // Phase-inverter → shared 6L6 power amp
-    x = c.stagePI.process(x * (m.piBase + mv * m.piSpan)) * (0.80f * mv);
+    const float mvDrv = m.modern ? mv + fitMvDrv_ * (0.5f - mv) : mv;   // BAKED (Modern): low master starved the PI drive -> tone collapse
+    x = c.stagePI.process(x * (m.piBase + mvDrv * m.piSpan)) * (0.80f * mv);
     if (!m.modern) x = c.presenceF.process(x);  // Vintage: NFB presence rides INTO the clip
     x = c.voicePk.process(x);                   // Recto bite (2.7–3.2 kHz)
     x = c.dcBlk.process(x);
@@ -276,7 +285,8 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     }
 
     // Per-mode clip drive (unity small-signal gain: the clip point moves, not the level).
-    x = softLimit(x * satClip_) * satClipInv_ * m.makeup;
+    const float mkFit = (mode_ == 3 || mode_ == 6) ? 1.66f : 1.0f;   // BAKED: Vintage modes measured ~4.4 dB quiet vs the reference rig
+    x = softLimit(x * satClip_) * satClipInv_ * m.makeup * mkFit;
     // Post-clip voicing: the Recto signature. The preamp clips TIGHT (HPF-stacked cascade),
     // then the un-NFB'd 6L6 power section puts the huge clean lows back (bodySh) and the
     // clip harmonics ride over the fundamental (postHiSh).
@@ -287,11 +297,16 @@ float MesaDualRectifier::processSample(float x, int chn) noexcept {
     // thump that re-boosting the stripped band with big shelves would produce.
     if (m.lowKeep > 0.0f)   // scaled by makeup so the low/main balance tracks per-mode leveling,
                             // and by the bass knob (the parallel lows bypass the tone stack)
-        x += softLimit(c.lowKeepLP.process(lowTap) * m.lowKeep) * (8.0f * m.makeup * (0.55f + 0.9f * bass_));
+        x += softLimit(c.lowKeepLP.process(lowTap) * m.lowKeep) * (8.0f * m.makeup * (0.55f + 0.9f * bass_) * fitLowKeep_);
     x = c.postPk.process(x);
     if (m.tsType == ToneStackComponent::Type::Recto)
         x = c.lowMidPk.process(x);              // ~200 Hz load-resonance bump (all dirty modes)
+    if (mode_ == 3 || mode_ == 6) {
+        x = c.fitVinLm.process(c.fitVinAir.process(c.fitVinMid.process(x)));   // the reference rig-fit Vintage voicing
+    }
     if (m.modern) {
+        x = c.fitMidPk.process(x);   // the reference rig fit: 1.2-2k excess
+        x = c.fitBodyPk.process(x);  // the reference rig fit: 125 Hz chug peak
         x = c.lowNotch.process(x);
         x = c.modernAir.process(x);             // undamped top: extra air shelf
         x = c.presenceF.process(x);             // Modern: no NFB — presence is a passive post-PI tilt
@@ -341,9 +356,20 @@ void MesaDualRectifier::setParameter(const std::string& id, float value) noexcep
         return;
     }
     if (id == "fit_cascdrive") { fitCasc_ = std::clamp(value, 0.9f, 1.6f);  return; }
+    if (id == "fit_body")      { fitBody_    = std::clamp(value, -3.0f, 12.0f); rebuild(); return; }
+    if (id == "fit_lowkeep")   { fitLowKeep_ = std::clamp(value, 0.0f, 4.0f);   return; }
+    if (id == "fit_midcut")    { fitMidCut_  = std::clamp(value, -9.0f, 3.0f);  rebuild(); return; }
+    if (id == "fit_pres")      { fitPres_    = std::clamp(value, 0.2f, 1.5f);   rebuild(); return; }
+    if (id == "fit_potfloor")  { fitPotF_    = std::clamp(value, 0.0f, 2.0f);   return; }
+    if (id == "fit_mvdrive")   { fitMvDrv_   = std::clamp(value, 0.0f, 1.0f);   return; }
+    if (id == "fit_tighthp")   { fitThp_     = (value <= 0.0f) ? 0.0f : std::clamp(value, 40.0f, 600.0f); rebuild(); return; }   // absolute Hz; 0 = stock corner. (A duplicate handler below this one was shadowed and dead — audit 2026-09-04.)
+    if (id == "fit_sagdepth")  { fitSagD_    = std::clamp(value, 0.0f, 2.0f);   rebuild(); return; }
+    if (id == "fit_notch")     { fitNotch_   = std::clamp(value, 0.0f, 1.0f);   rebuild(); return; }
+    if (id == "fit_lowmid")    { fitLowMid_  = std::clamp(value, 0.0f, 1.5f);   rebuild(); return; }
+    if (id == "fit_vinmid")    { fitVinMid_  = std::clamp(value, -6.0f, 3.0f);  rebuild(); return; }
+    if (id == "fit_vinair")    { fitVinAir_  = std::clamp(value, -3.0f, 9.0f);  rebuild(); return; }
+    if (id == "fit_vinlm")     { fitVinLm_   = std::clamp(value, -6.0f, 3.0f);  rebuild(); return; }
     if (id == "fit_backdrive") { fitBack_ = std::clamp(value, 1.0f, 1.5f);  return; }
-    if (id == "fit_tighthp")   { fitThp_  = value <= 0.0f ? 0.0f : std::clamp(value, 80.0f, 320.0f);
-                                 recalcFilters(); return; }
     if (id == "fit_ghostim")   { fitGhostIm_ = std::clamp(value, 0.0f, 0.5f); return; }
 
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }

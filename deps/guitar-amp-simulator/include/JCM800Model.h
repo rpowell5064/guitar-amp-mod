@@ -107,6 +107,7 @@ private:
         ToneStackComponent tonestack;  // Marshall type
         BiquadFilter     inter34HPF;   // 70 Hz HPF (PI input tighten)
         TriodeComponent  stage4;       // kMarshallV4
+        BiquadFilter     fitHi1, fitHi2, fitLo, fitBody;   // reference-fit voicing (fit5..7, fit9)
         BiquadFilter     presenceF;    // high shelf @ 4 kHz
         BiquadFilter     airLP;        // 1-pole LP @ 14 kHz
         // Post-clipping body restore: the pre-gain HPFs are raised to keep the bass
@@ -127,6 +128,59 @@ private:
     };
     std::array<ChannelState, kMaxCh> ch_;
 
+    // reference ground-truth fit hooks (2026-09-02, 12-take Brit 800 2203-High probe):
+    // runtime "fit0".."fit9" for nam_compare --fit sweeps; defaults reproduce
+    // the current voicing bit-identically.
+    //   fit0 input HPF Hz (LF into the clipper)     fit1 preEmph dB @700
+    //   fit2 stage drive-span scale                 fit3 softLimit rail dB
+    //   fit4 softLimit knee (0.05 legacy)           fit5 post HF-open dB @2500
+    //   fit6 post HF-open dB @6000                  fit7 post LF-open dB @70
+    //   fit8 master taper exponent (0 = LEGACY linear pre-limiter master;
+    //        >0 = STRUCTURAL: stage4 at fixed noon master, taper post-limiter)
+    //   fit9 bodyShelf dB @260 (post-clip low-mid body)
+    // BAKED 2026-09-02 from the 12-take reference 2203-high probe (config H2):
+    // input HPF 150 (lows out of the clipper -> the reference rig's flat LF THD), preEmph +11
+    // (mids drive the crunch), softLimit railed +18 dB / knee 0.25 (the reference rig's
+    // saturated, level-invariant core; mean specESR 25.5 -> 21.5), post-clip
+    // open top (+6@2.5k / +5@6k) + bottom (+6@70) to match the reference rig's much more
+    // open High-input response. Master taper NOT structural here (the JCM master
+    // already drives the PI -> legacy behaviour is more correct; measured worse
+    // with the EVH-style taper). mid_min residual (~28%) is the tonestack mid
+    // interaction, a memoryless-EQ floor. Re-grounds the old padrive/knee bake.
+    static constexpr int kNFit = 10;
+    // RE-FIT 2026-09-04 (audit): the original bake measured its own fit0/fit1
+    // sweeps through levers that were INERT at runtime — both were set only in
+    // prepare(), so "input HPF 150 / preEmph +11" was never actually tested
+    // against the alternatives. With the levers live, re-measured against the
+    // reference takes: mean spectral error across 6 takes / 7 bands falls 7.86 -> 5.25
+    // dB, improving on EVERY take, and the bass knob recovers its authority
+    // (90 Hz rel 1 kHz, bass 0->1: 3.34 -> 8.21 dB against the hardware's 8.00 —
+    // the shipped fit had taken so much low end out ahead of the clipper that
+    // the Bass control barely worked).
+    // fit7 (post LF-open) LEFT AT 6: +9 measured a slightly better spectral
+    // match but blew the gain ladder up (THD 74% -> 241% at gain 1.0) — the
+    // documented LF-restore ceiling on this model, see the bassRestore note
+    // below. The low end now comes from the front end, not from a post-clip
+    // shelf, which is where it belongs.
+    // NOISE PASS 2026-09-05 (user: "a lot of interference… more noise even while
+    // playing"). The post-clip HF opens were +6 dB @2.5k / +5 dB @6k — applied
+    // AFTER the clipper, so they lifted the amplified hiss straight into the most
+    // audible band for free. Measured against the user's real rig floor (-45 dBFS,
+    // 89% hum) with the chain Hum Filter engaged, and against the reference takes:
+    //
+    //                       SNR vs rig floor    reference spectral match   bass authority
+    //   +6.0/+5.0 (was)       2.2 dB               5.75 dB              4.9 dB
+    //   +1.5/+1.0 (now)       6.5 dB               4.93 dB              7.8 dB
+    //
+    // i.e. STRICTLY better on all three — the HF opens were hurting the hardware
+    // match too, and dumping that much energy into the rail cost bass-knob travel
+    // (hardware measures 8.0 dB). Less post-clip HF also means less material for
+    // the anti-aliasing filter. The top end now comes from the amp, not a shelf.
+    float fit_[kNFit] = { 70.0f, 8.0f, 1.0f, 18.0f, 0.25f, 1.5f, 1.0f, 6.0f, 0.0f, 6.0f };
+    // Derived (recomputed in recalcFilters(); NO per-sample pow):
+    float slDrive_ = 7.943f;   // lin(fit3=18)
+    float slNorm_  = 0.2237f;  // 1/(0.5+0.5*slDrive_)
+
     static constexpr float kPreToneGain = 0.75f;
     static constexpr float kSirG      = 3.98107f;   // +12 dB into the cold knee
     static constexpr float kSirK1     = 0.18f;      // cold-bias 2nd-order term
@@ -142,6 +196,7 @@ private:
     static constexpr float kCouple12    = 0.55f;
     static constexpr float kCouple23    = 0.50f;
 
-    static float softLimit(float x) noexcept;
-    void recalcFilters() noexcept;
+    float softLimit(float x) noexcept;
+    void  recalcFilters() noexcept;
+    float taperedMaster() const noexcept;   // fit8 master taper (audit 2026-09-04)
 };

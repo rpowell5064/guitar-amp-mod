@@ -5,51 +5,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Host-only scratch build for the nam_compare analysis tool. Reuses the DSP
 # submodule; the real bundle build lives in the parent CMakeLists.
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator" gas-build)
-add_executable(nam_compare "${CMAKE_CURRENT_SOURCE_DIR}/../tools/nam_compare.cpp")
-target_link_libraries(nam_compare PRIVATE GuitarAmpSim)
-add_executable(fuzz_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/fuzz_probe.cpp")
-target_link_libraries(fuzz_probe PRIVATE GuitarAmpSim)
-add_executable(seraph_test "${CMAKE_CURRENT_SOURCE_DIR}/../tools/seraph_test.cpp")
-target_link_libraries(seraph_test PRIVATE GuitarAmpSim)
-add_executable(amp_alias "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_alias.cpp")
-target_link_libraries(amp_alias PRIVATE GuitarAmpSim)
-add_executable(amp_knobcheck "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_knobcheck.cpp")
-target_link_libraries(amp_knobcheck PRIVATE GuitarAmpSim)
-add_executable(amp_noise "${CMAKE_CURRENT_SOURCE_DIR}/../tools/amp_noise.cpp")
-target_link_libraries(amp_noise PRIVATE GuitarAmpSim)
-add_executable(evh_hiss "${CMAKE_CURRENT_SOURCE_DIR}/../tools/evh_hiss.cpp")
-target_link_libraries(evh_hiss PRIVATE GuitarAmpSim)
-add_executable(fidelity_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/fidelity_check.cpp")
-target_link_libraries(fidelity_check PRIVATE GuitarAmpSim)
-add_executable(pa_flux_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/pa_flux_probe.cpp")
-target_link_libraries(pa_flux_probe PRIVATE GuitarAmpSim)
-add_executable(vox_ts_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/vox_ts_check.cpp")
-target_link_libraries(vox_ts_check PRIVATE GuitarAmpSim)
-add_executable(conv_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/conv_check.cpp")
-target_link_libraries(conv_check PRIVATE GuitarAmpSim)
-add_executable(cab_voice_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_voice_check.cpp")
-target_link_libraries(cab_voice_check PRIVATE GuitarAmpSim)
 # Cab integrity gates (promoted from ad-hoc g++ for the bass-cab batch):
-add_executable(cab_enrich_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_enrich_check.cpp")
-target_link_libraries(cab_enrich_check PRIVATE GuitarAmpSim)
-add_executable(cab_verify "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cab_verify.cpp")
-target_link_libraries(cab_verify PRIVATE GuitarAmpSim)
 # Preset-blob migration round-trip (header-only vs the generated port enum).
 add_executable(hexforge_migrate_test "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_migrate_test.cpp")
 target_include_directories(hexforge_migrate_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge")
 
-add_executable(pa_node_dump "${CMAKE_CURRENT_SOURCE_DIR}/../tools/pa_node_dump.cpp")
-target_link_libraries(pa_node_dump PRIVATE GuitarAmpSim)
-
-add_executable(vox_idle_probe "${CMAKE_CURRENT_SOURCE_DIR}/../tools/vox_idle_probe.cpp")
-target_link_libraries(vox_idle_probe PRIVATE GuitarAmpSim)
-
 # Auto-calibration measurement check (header-only DSP: synth reference-rig +
 # real-capture modes; asserts the wizard reproduces the hand-tuned rig).
-add_executable(cal_check "${CMAKE_CURRENT_SOURCE_DIR}/../tools/cal_check.cpp")
-target_include_directories(cal_check PRIVATE
-    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
-    "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include")
 
 # ── Golden-render fingerprint harness (engine-extraction gate, M0) ────────────
 # Statically links the WHOLE plugin TU (no dlopen) so it runs on Windows too.

@@ -372,7 +372,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(44);                 // version (44: + rb_locut; 43: + SIR #34 pair; 42: + EP-3 Age pair; 41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(47);                 // version (47: + out_phase tail port, gap-fills INVERTED; 46: Cali V Ch3 knob-law value transform (no layout change); 45: + the Blue Liner six-port tail — STAMP FIXED 2026-08-31: 08-28..08-31 builds saved the 45 layout stamped 44; 44: + rb_locut; 43: + SIR #34 pair; 42: + EP-3 Age pair; 41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -457,11 +457,12 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 45) return LV2_STATE_SUCCESS;    // unknown layout — start fresh
+        if (ver < 2 || ver > 47) return LV2_STATE_SUCCESS;    // unknown layout — start fresh (47 = out_phase tail port)
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
-        const bool needMigrate  = (ver < 45);     // ...v45 Blue Liner six-port tail
         getU32(np);
-        if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)                                 // param-port count at save time
+        if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)
+        if (ver == 44 && np >= 467) ver = 45;     // 2026-08-31: 08-28..08-31 builds stamped the 45 layout (467 params) as 44 (putU32 missed) — precedent: v36/np
+        const bool needMigrate  = (ver < 47);     // ...v47 out_phase tail port (computed AFTER the np disambiguations)                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {
@@ -471,6 +472,18 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
             else off = size;
             if (needMigrate) migratePorts(vals, ver);                 // insert voicing/boost + Seraph ports
+            if (ver < 46) {   // v46 (2026-09-03): Cali V Ch3 knob-law VALUE transform (no layout change) —
+                              // the reference rig IIC+ re-law made the Ch3 gain/treble knobs read like the real dial;
+                              // saved knob values are inverse-remapped so every stored sound is preserved.
+                auto invG = [](float g) { return std::min(1.0f, std::min(g / 0.6f, g + 0.1f)); };
+                auto invT = [](float t) { return std::min(1.0f, t <= 0.12f ? t / 0.24f : 0.5f + (t - 0.12f) / 0.8f); };
+                if (static_cast<int>(vals[HF_AMP_MODEL] + 0.5f) == 11 && vals[HF_AMP_MV_MODE] >= 5.5f) {
+                    vals[HF_AMP_GAIN] = invG(vals[HF_AMP_GAIN]); vals[HF_AMP_TREBLE] = invT(vals[HF_AMP_TREBLE]);
+                }
+                if (static_cast<int>(vals[HF_RB_AMP] + 0.5f) == 11 && vals[HF_RB_MV_MODE] >= 5.5f) {
+                    vals[HF_RB_GAIN] = invG(vals[HF_RB_GAIN]); vals[HF_RB_TREBLE] = invT(vals[HF_RB_TREBLE]);
+                }
+            }
             if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);  // 0..1 -> dB
             if (ver < 10) vals[HF_OUT_MONO] = 1.0f;   // pre-v10 saves default to MONO
             char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax],a2[kPathMax],i2[kPathMax],d2n[kPathMax];

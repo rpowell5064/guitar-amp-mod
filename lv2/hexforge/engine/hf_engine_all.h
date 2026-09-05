@@ -23,8 +23,6 @@
 #include "PickupVoicer.h"
 #include "HumNotchComb.h"
 #include "CalMeasure.h"
-#include "EvhCaptureFit.h"
-#include "RectoCaptureFit.h"
 #include "PickupLoadSim.h"
 #include "IrResample.h"
 #include "AdaaSoftClip.h"

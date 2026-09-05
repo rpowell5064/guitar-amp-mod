@@ -237,33 +237,9 @@ foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge
     install(DIRECTORY lv2/modgui-${_m} DESTINATION ${BUNDLE_DIR})
 endforeach()
 
-# ── Offline analysis tool (host only, opt-in) ─────────────────────────────────
-# nam_compare reports frequency-response / THD / loudness deltas between a .nam
-# capture and the algorithmic amp model (tuning aid). It needs NAM, so it links
-# NamCore explicitly. OFF by default so on-device (Pi) builds skip it entirely;
-# enable on a desktop host with -DGUITARAMP_BUILD_TOOLS=ON.
-option(GUITARAMP_BUILD_TOOLS "Build host-side analysis tools (nam_compare)" OFF)
-if(GUITARAMP_BUILD_TOOLS AND NOT CMAKE_CROSSCOMPILING)
-    add_executable(nam_compare tools/nam_compare.cpp)
-    target_link_libraries(nam_compare PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-    set_target_properties(nam_compare PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
-
-    # Per-effect DSP cost/denormal benchmark (host/native; see tools/bench.cpp).
-    add_executable(bench tools/bench.cpp)
-    target_link_libraries(bench PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-    set_target_properties(bench PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
-
-    # Sunn Model T crunch sweep (THD vs volume) — see tools/sunn_sweep.cpp.
-    add_executable(sunn_sweep tools/sunn_sweep.cpp)
-    target_link_libraries(sunn_sweep PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-    set_target_properties(sunn_sweep PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
-
-    # Sunn Model T envelope/"sputter" probe — see tools/sunn_envelope.cpp.
-    add_executable(sunn_envelope tools/sunn_envelope.cpp)
-    target_link_libraries(sunn_envelope PRIVATE GuitarAmpSim $<LINK_LIBRARY:WHOLE_ARCHIVE,NamCore>)
-    set_target_properties(sunn_envelope PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tools")
-endif()
+# ── Offline analysis tooling ──────────────────────────────────────────────────
+# The measurement, fitting and verification harnesses live in a SEPARATE PRIVATE
+# repository (guitar-amp-lab) and are not part of this build. They consume this
+# tree's headers directly; point the lab's CMake at this directory to use them.
+# Nothing here depends on them — the plugins, the golden regression gate and the
+# migration test all build without them.

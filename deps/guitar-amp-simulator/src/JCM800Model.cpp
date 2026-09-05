@@ -9,7 +9,7 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
     masterSmooth_.reset(oversampledFs_, 0.020);
     sir34Smooth_.reset(oversampledFs_,  0.020);
     gainSmooth_.setCurrentAndTargetValue(gain_);
-    masterSmooth_.setCurrentAndTargetValue(master_);
+    masterSmooth_.setCurrentAndTargetValue(taperedMaster());   // NOT the raw knob: fit8 taper (audit 2026-09-04)
     sir34Smooth_.setCurrentAndTargetValue(sir34_);
     sirDcR_ = 1.0f - 2.0f * 3.14159265f * 22.0f / static_cast<float>(oversampledFs_);
 
@@ -18,11 +18,11 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
         // cold-clipper stages (nam_compare: bass was 49-65% THD / h2 36% vs a real
         // JCM800's 20-31% / 7%). Tighter bass INTO the gain = the mids drive the crunch
         // like a real 800; the post-gain tonestack still restores the low-mid body.
-        c.inputHPF.setCoeffs(Filters::highpass1pole(70.0, oversampledFs_));  // was 60: keep bass OUT of stage 1 (the LF over-saturation happens here, before the inter HPFs)
+        c.inputHPF.setCoeffs(Filters::highpass1pole(fit_[0], oversampledFs_));  // fit0: LF into stage 1
         // Marshall bright-cap pre-emphasis: tilt the signal bright BEFORE the clipper so
         // the mids/highs break up (real 800 is 30%@110 / 61%@1k THD) and the lows don't
         // over-saturate — the missing piece behind the LF-weighted distortion + dark FR.
-        c.preEmph.setCoeffs(Filters::highshelf(700.0, 8.0, oversampledFs_));
+        c.preEmph.setCoeffs(Filters::highshelf(700.0, fit_[1], oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kMarshallV1);
         c.inter12HPF.setCoeffs(Filters::highpass1pole(150.0, oversampledFs_));
@@ -70,12 +70,33 @@ void JCM800Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) no
     reset();
 }
 
+// See EVH5150Model::taperedMaster — masterSmooth_ carries the TAPERED master
+// whenever fit8 is live, so reset()/prepare() must seed it the same way.
+float JCM800Model::taperedMaster() const noexcept {
+    return fit_[8] > 0.0f ? std::pow(master_ / 0.5f, fit_[8]) : master_;
+}
+
 void JCM800Model::recalcFilters() noexcept {
+    // fit0 (input HPF) and fit1 (pre-emphasis) live HERE as well as in prepare().
+    // They used to be set ONLY in prepare(), which made them inert to
+    // setParameter — so every --fit sweep of those two slots measured nothing
+    // and reported "no change", and the baked 150 Hz / +11 dB were never
+    // actually tested against the alternatives (audit 2026-09-04).
+    for (auto& c : ch_) {
+        c.inputHPF.setCoeffs(Filters::highpass1pole(fit_[0], oversampledFs_));
+        c.preEmph.setCoeffs (Filters::highshelf(700.0, fit_[1], oversampledFs_));
+    }
+    slDrive_ = std::pow(10.0f, fit_[3] / 20.0f);
+    slNorm_  = 1.0f / (0.5f + 0.5f * slDrive_);
     const double presDb = (static_cast<double>(presence_) - 0.5) * 2.0 * 10.0; // ±10 dB
     for (auto& c : ch_) {
         c.presenceF.setCoeffs(Filters::highshelf(4000.0, presDb, oversampledFs_));
+        c.fitHi1.setCoeffs (Filters::highshelf(2500.0, fit_[5], oversampledFs_));   // the reference rig-fit top open
+        c.fitHi2.setCoeffs (Filters::highshelf(6000.0, fit_[6], oversampledFs_));
+        c.fitLo.setCoeffs  (Filters::lowshelf (  70.0, fit_[7], oversampledFs_));   // the reference rig-fit bottom open
+        c.fitBody.setCoeffs(Filters::lowshelf ( 260.0, fit_[9], oversampledFs_));
         c.airLP.setCoeffs(Filters::lowpass1pole(19000.0, oversampledFs_));   // brighter top (was 14k, FR -5dB@3-8k)
-        c.bodyShelf.setCoeffs(Filters::lowshelf(260.0, 6.0, oversampledFs_)); // restore the low-mid body the tight input HPF pulls out (FR 125-260 Hz)
+        c.bodyShelf.setCoeffs(Filters::lowshelf(260.0, fit_[9], oversampledFs_)); // fit9: low-mid body
         // Fuzzy-when-driven fix, part 2 (2026-07-28): restore the LF FUNDAMENTAL
         // -- a buried fundamental under full-strength harmonics IS the "fuzzy"
         // percept, and the dark LF (-12 dB @ 50 Hz vs the knob-matched capture)
@@ -96,7 +117,7 @@ void JCM800Model::recalcFilters() noexcept {
 
 void JCM800Model::reset() noexcept {
     gainSmooth_.setCurrentAndTargetValue(gain_);
-    masterSmooth_.setCurrentAndTargetValue(master_);
+    masterSmooth_.setCurrentAndTargetValue(taperedMaster());   // NOT the raw knob: fit8 taper (audit 2026-09-04)
     for (auto& c : ch_) {
         c.inputHPF.reset();
         c.preEmph.reset();
@@ -113,6 +134,7 @@ void JCM800Model::reset() noexcept {
         c.airLP.reset();
         c.bodyShelf.reset();
         c.bassRestore.reset();
+        c.fitHi1.reset(); c.fitHi2.reset(); c.fitLo.reset(); c.fitBody.reset();
         c.sagEnv = 0.0f;
         c.dnr.reset();
         c.sirShelf.reset(); c.sirPeak.reset(); c.sirNfbLo.reset();
@@ -163,7 +185,7 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     // The knob-matched JCM800 capture is a clean h3-dominant Marshall (h4-h9 single-digit);
     // the old ×10/×12/×11 drives railed each stage hard → h4-h9 at 20-30% (fizz). Lower
     // spans keep the stages in the softer LUT knee → h3-dominant like the real amp.
-    x = c.stage1.process(x * (1.5f + gEff * 5.0f)) * 0.90f * kCouple12;
+    x = c.stage1.process(x * (1.5f + gEff * 5.0f) * fit_[2]) * 0.90f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // SIR #34 cold-biased extra stage (between stages 1 and 2; see header).
@@ -205,7 +227,7 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     x = c.inter23LP.process(x);
 
     // Stage 3 (full bypass, aggressive)
-    x = c.stage3.process(x * (2.6f + gEff * 5.0f)) * 0.82f;
+    x = c.stage3.process(x * (2.6f + gEff * 5.0f) * fit_[2]) * 0.82f;
     x *= kPreToneGain;
 
     // Tonestack
@@ -219,7 +241,8 @@ float JCM800Model::processSample(float x, int channel) noexcept {
 
     // Stage 4 PI driver (master-controlled)
     x = c.inter34HPF.process(x);
-    x = c.stage4.process(x * 3.0f) * (0.75f * m);
+    const float mPre = (fit_[8] > 0.0f) ? 0.5f : m;   // fit8>0: PI at fixed noon master, taper post-limiter
+    x = c.stage4.process(x * 3.0f) * (0.75f * mPre);
 
     // Power-stage shaping
     x = c.presenceF.process(x);
@@ -228,6 +251,7 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     // Restore low-mid body after all clipping (bass stays tight, not flubby)
     x = c.bodyShelf.process(x);
     x = c.bassRestore.process(x);   // LF fundamental restore (fuzzy-fix part 2)
+    x = c.fitLo.process(c.fitHi2.process(c.fitHi1.process(x)));   // the reference rig-fit open top+bottom
 
     // Supply sag (EL34 B+ under drive)
     const float sagAttack = 1.0f - c.sagDecay;
@@ -236,12 +260,15 @@ float JCM800Model::processSample(float x, int channel) noexcept {
     const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.25f);   // floored (see VoxAC30Model 2026-07-25 note)
     x *= sag;
 
-    return c.dnr.process(softLimit(x), gain_ > 0.4f);
+    float y = softLimit(x * slDrive_) * slNorm_;   // fit3: rail the terminal clip (half-compensated PA operating point)
+    if (fit_[8] > 0.0f) y *= m;                    // fit8: real master taper (m carries the tapered gain; see setParameter)
+    return c.dnr.process(y, gain_ > 0.4f);
 }
 
 void JCM800Model::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
-    else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
+    else if (id == "master")   { master_ = value;
+        masterSmooth_.setTargetValue(fit_[8] > 0.0f ? std::pow(value / 0.5f, fit_[8]) : value); }
     else if (id == "sag")      { sag_    = value; }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
@@ -253,6 +280,13 @@ void JCM800Model::setParameter(const std::string& id, float value) noexcept {
     else if (id == "exactts")  { for (auto& c : ch_) c.tonestack.setExact(value > 0.5f); }
     else if (id == "sir34")    { sir34_ = value < 0.0f ? 0.0f : (value > 1.0f ? 1.0f : value);
                                  sir34Smooth_.setTargetValue(sir34_); }
+    else if (id.size() == 4 && id.compare(0, 3, "fit") == 0) {   // "fit0".."fit9": the reference rig-fit hooks
+        const int i = id[3] - '0';
+        if (i >= 0 && i < kNFit) {
+            fit_[i] = value; recalcFilters();
+            if (i == 8) masterSmooth_.setCurrentAndTargetValue(taperedMaster());   // fit8 = the taper itself
+        }
+    }
 }
 
 float JCM800Model::getParameter(const std::string& id) const noexcept {
@@ -269,7 +303,8 @@ float JCM800Model::getParameter(const std::string& id) const noexcept {
 }
 
 float JCM800Model::softLimit(float x) noexcept {
-    if (x >  0.95f) return  0.95f + (x - 0.95f) / (1.0f + (x - 0.95f) / 0.05f);
-    if (x < -0.95f) return -0.95f - (-x - 0.95f) / (1.0f + (-x - 0.95f) / 0.05f);
+    float k = fit_[4]; if (k < 1e-3f) k = 1e-3f;   // audit 2026-09-04: k=0 divided to inf -> NaN through the PA   // 0.05 = legacy sharp knee
+    if (x >  0.95f) return  0.95f + (x - 0.95f) / (1.0f + (x - 0.95f) / k);
+    if (x < -0.95f) return -0.95f - (-x - 0.95f) / (1.0f + (-x - 0.95f) / k);
     return x;
 }

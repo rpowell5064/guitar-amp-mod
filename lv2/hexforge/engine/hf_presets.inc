@@ -327,6 +327,12 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     const bool svGap = (srcVer < 45);
     const int svAt = HF_AMP_SV_ULTRALO, svEnd = HF_AMP_SV_ULTRALO + 6;
 
+    // v47 (2026-09-05): out_phase appended at the tail. Gap-fills to 1.0, NOT 0 —
+    // output invert is ON by default (real amps invert; the reference rig ships inverted),
+    // so an old blob must come back inverted too or the same preset would sum
+    // differently before and after the upgrade.
+    const bool opGap = (srcVer < 47);
+    const int  opAt  = HF_OUT_PHASE;
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
     int o = 0;
@@ -372,6 +378,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (smGap && i >= smAt && i < smEnd)        vals[i] = 0.0f;              // v43 SIR #34 stock
         else if (rlGap && i == rlAt)                     vals[i] = 0.0f;              // v44 rig-B low cut off
         else if (svGap && i >= svAt && i < svEnd)        vals[i] = svdef[i - svAt];   // v45 Blue Liner: Ultras off, mid 800 Hz
+        else if (opGap && i == opAt)                     vals[i] = 1.0f;             // v47 output phase INVERTED (matches real amps / the reference rig)
         else                                             vals[i] = old[o++];
     }
 }
@@ -384,7 +391,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(45); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(47); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -396,6 +403,8 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     }
     putU32(static_cast<uint32_t>(p->curBank));
     putU32(static_cast<uint32_t>(p->curSlot));
+
+
 }
 static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
     size_t off = 0;
@@ -406,9 +415,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 45) return false;
+    if (ver < 2 || ver > 47) return false;   // 47 = out_phase tail port
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 45);  // ...v45 Blue Liner six-port tail
+    const bool needMigrate  = (ver < 47);  // ...v47 out_phase tail port
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -420,6 +429,16 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         if (off + (size_t)np*4 <= size) { std::memcpy(vals, d+off, (size_t)npc*4); off += (size_t)np*4; }
         else off = size;
         if (needMigrate) migratePorts(vals, ver);   // insert voicing/boost + Seraph ports (defaults)
+        if (ver < 46) {   // v46: Cali V Ch3 knob-law VALUE transform (sound-preserving; see hexforge_plugin.cpp)
+            auto invG = [](float g) { return std::min(1.0f, std::min(g / 0.6f, g + 0.1f)); };
+            auto invT = [](float t) { return std::min(1.0f, t <= 0.12f ? t / 0.24f : 0.5f + (t - 0.12f) / 0.8f); };
+            if (static_cast<int>(vals[HF_AMP_MODEL] + 0.5f) == 11 && vals[HF_AMP_MV_MODE] >= 5.5f) {
+                vals[HF_AMP_GAIN] = invG(vals[HF_AMP_GAIN]); vals[HF_AMP_TREBLE] = invT(vals[HF_AMP_TREBLE]);
+            }
+            if (static_cast<int>(vals[HF_RB_AMP] + 0.5f) == 11 && vals[HF_RB_MV_MODE] >= 5.5f) {
+                vals[HF_RB_GAIN] = invG(vals[HF_RB_GAIN]); vals[HF_RB_TREBLE] = invT(vals[HF_RB_TREBLE]);
+            }
+        }
         if (migrateOutDb) vals[HF_OUT_LEVEL] = linToDb(vals[HF_OUT_LEVEL]);
         if (ver < 10) vals[HF_OUT_MONO] = 1.0f;   // pre-v10 saves default to MONO
         char ir[kPathMax],an[kPathMax],dn[kPathMax],cn[kPathMax],a2[kPathMax],i2[kPathMax],d2n[kPathMax];
@@ -1209,6 +1228,48 @@ static void seedFactoryPresets(HexForge* p) {
             if (fp.bank >= 0 && fp.bank < kBanks && fp.slot >= 0 && fp.slot < kSlots)
                 bump(p->presets[fp.bank][fp.slot]);
         }
+    }
+
+    // Friedman post-PA gain-level tracking parity (rev 130, 2026-09-03): the
+    // reference-measured tracking law (trackLo .95/trackHi .12 on the PA row) makes
+    // the Friedman gain knob span real loudness; only one preset moved >=0.5
+    // dB in the golden domain.
+    {
+        Preset& pr = p->presets[3][3];
+        if (pr.used) pr.vals[HF_OUT_LEVEL] += 0.6f;
+    }
+
+    // JCM800 the reference rig re-voice parity (rev 129, 2026-09-02): the 12-take Brit 800
+    // 2203-High bake (railed core + open top/bottom) shifted the JCM800 presets
+    // in the golden domain; the 5 that moved >=0.5 dB re-leveled to parity
+    // (+= after the table re-copy = idempotent across reseeds). Peaks verified
+    // <0.8 post-trim. The two USER-PRESERVED SIR #34 presets (Jungle Sleaze /
+    // bank-1 Crunch) shifted ~0 dB RMS -> no trim; their upper-mid tone lifts
+    // ~1.5 dB (mostly masked by the Greenback cab + 7.5k highcut) -- USER A/B.
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(14, 0, +1.2f);  trim(14, 1, +1.2f);   // Mesa Mark banks' JCM taps
+        trim(11, 1, +0.8f);  trim(11, 0, -0.5f);   // Gojira
+        trim(6, 2, +0.7f);
+    }
+
+    // EVH the reference rig re-voice parity (rev 128, 2026-09-02): the 24-take reference probe
+    // bake (railed core + measured voicing, EvhCaptureFit retired) shifted
+    // three EVH presets in the golden domain — Flatliner -4.3 dB, Prayer
+    // Djent -3.7 dB, Castaway Groove +1.4 dB AND peaking 1.38 (capped like
+    // Fridge Grind at rev 125). += after the table re-copy = idempotent
+    // across reseeds (the rev-72 JCM pattern).
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(7, 2, +1.9f);   // Flatliner (Periphery djent) — PEAK-CAPPED: full +4.3 parity pushed the golden peak to 1.45 (the railed core is spikier on chugs); +1.9 lands ~1.1 (the rev-125 'target or peak-cap' rule)
+        trim(7, 3, +3.7f);   // Prayer Djent
+        trim(12, 3, -2.8f);  // Castaway Groove (Gojira Silvera, EVH Red) — peak cap
     }
 
     // Vox gate floor-compliance round 2 (rev 76, 2026-07-29): the Chime
@@ -2007,6 +2068,651 @@ static void seedFactoryPresets(HexForge* p) {
         // while the peaks drop 0.3-0.5 dB (less clipping, the intent). No
         // out_level compensation needed (0.3 dB bake threshold).
     }
+
+    // Rockerverb gain-tracking parity (rev 136, 2026-09-04): trackLo 1.71
+    // makes the Orange gain knob span its real loudness; two low-gain
+    // presets re-leveled.
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(2, 0, +13.5f);  trim(2, 1, +2.6f);
+    }
+
+    // Vox AC30 the reference rig re-voice parity (rev 135, 2026-09-04): the W1 drive-
+    // extension bake (span x1.8 gain-coupled, rail +18, honk voicing) shifted
+    // nine Vox-carrying presets; trims to parity.
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(16, 0, -3.4f);  // Sweet Dispersion
+        trim(10, 1, +2.4f);  trim(10, 3, +2.4f);   // Glide Wall / Regal Solo
+        trim(9, 1, -2.0f);   // Glide Wall b10? (bank10B = index 9 slot 1)
+        trim(1, 0, +1.9f);   // Come As Water (bank02A)
+        trim(10, 0, +1.8f);  // March? (bank11A = index 10 slot 0)
+        trim(10, 2, -1.6f);  // bank11C
+        trim(14, 0, +1.3f);  // MoP (bank15A)
+        trim(1, 3, -0.6f);   // bank02D
+    }
+
+    // Mark IV mode-7 the reference rig re-voice parity (rev 134, 2026-09-03): the config-L
+    // bake lifted three mode-7 presets; trims to parity (placed with the
+    // late blocks so nothing overwrites them).
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(13, 2, -3.4f);   // Colors Lead (bank14C, mode 7)
+        trim(13, 1, -2.8f);   // Colors Rhythm (bank14B)
+        trim(17, 0, -3.2f);   // Frayed Justice (bank18A - its rig B runs mode 7)
+    }
+
+    // Cali V Ch3 knob-law preservation (rev 133, 2026-09-03): the reference rig IIC+
+    // probe re-lawed the Ch3 gain/treble knobs (MesaMarkV kCh3GainLaw/TrebLaw);
+    // factory presets saved under the OLD (identity) law are inverse-remapped
+    // so their SOUND is bit-preserved while the knobs now read like the real
+    // dial. Programmatic: catches every Cali Ch3 preset incl. migrated-in
+    // mode defaults and rig-B slots. (User-store slots get the same transform
+    // via the blob v46 migration.)
+    //
+    // SCOPED TO FACTORY-OWNED SLOTS (fix 2026-09-04). This transform is NOT
+    // idempotent, and seedFactoryPresets() re-runs on EVERY load whose stored
+    // factoryRev is behind (hfDeserialize + the LV2 state loader). The original
+    // sweep guarded only on pr.used, so a USER-saved Cali Ch3 preset in a
+    // non-factory slot had its gain/treble re-inverted at every future rev
+    // bump, ratcheting both knobs until they saturated at 1.0 — and could be
+    // hit twice in one load (blob v46 migration, then this sweep). Factory
+    // slots are memcpy'd fresh from the table immediately above, so exactly one
+    // application is correct for them; user slots get theirs from the v46 blob
+    // migration, as this block's own comment always said. Same rule as the
+    // rev-72 JCM800 bump: never let a non-idempotent edit touch user slots.
+    {
+        auto isFactorySlot = [&](int b, int sl) {
+            if (b == 0) return true;                       // Bank 1 stock four
+            if (b == 17 || b == 18 || b == 19) return true; // banks 18/19/20, seeded inline above
+            for (int i = 0; i < kFactoryExtraCount; ++i)
+                if (kFactoryExtra[i].bank == b && kFactoryExtra[i].slot == sl) return true;
+            return false;
+        };
+        auto invG = [](float g) { return std::min(g / 0.6f, g + 0.1f); };
+        auto invT = [](float t) { return t <= 0.12f ? t / 0.24f : 0.5f + (t - 0.12f) / 0.8f; };
+        for (int b = 0; b < kBanks; ++b) for (int sl = 0; sl < kSlots; ++sl) {
+            Preset& pr = p->presets[b][sl];
+            if (!pr.used || !isFactorySlot(b, sl)) continue;
+            if (static_cast<int>(pr.vals[HF_AMP_MODEL] + 0.5f) == 11 && pr.vals[HF_AMP_MV_MODE] >= 5.5f) {
+                pr.vals[HF_AMP_GAIN]   = std::min(1.0f, invG(pr.vals[HF_AMP_GAIN]));
+                pr.vals[HF_AMP_TREBLE] = std::min(1.0f, invT(pr.vals[HF_AMP_TREBLE]));
+            }
+            if (static_cast<int>(pr.vals[HF_RB_AMP] + 0.5f) == 11 && pr.vals[HF_RB_MV_MODE] >= 5.5f) {
+                pr.vals[HF_RB_GAIN]   = std::min(1.0f, invG(pr.vals[HF_RB_GAIN]));
+                pr.vals[HF_RB_TREBLE] = std::min(1.0f, invT(pr.vals[HF_RB_TREBLE]));
+            }
+        }
+    }
+
+    // Drive-point restoration after the reference rig re-voices (rev 137, 2026-09-04,
+    // overnight pass + user direction): factory presets were dialed against
+    // the OLD models; each preset's measured THD@1k drive point is restored
+    // on the re-voiced amps by re-dialing GAIN (the amp stays real, the
+    // preset keeps its documented intent). Vox cleans floored at 0.12 (a
+    // real TB dial; matching their old 4-8% THD needed absurd 0.03 knobs -
+    // flagged for ears). Cardinal pair set to the USER's stated real dial
+    // (gain 5-6/10): their 0.15 dial-in compensated for the old 2x-hot Ch3
+    // law and rev-133 faithfully preserved the compensation - overridden on
+    // user direction 2026-09-04. Quiet Drive left as-is (match failed).
+    {
+        auto setg = [&](int b, int sl, float g) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_AMP_GAIN] = g;
+        };
+        setg(1, 0, 0.101f); setg(1, 3, 0.12f);   // Regal Sustain / Come As Water (rev 138: ramped-rail rematch)
+        setg(7, 2, 0.85f);  setg(7, 3, 0.71f);   // Flatliner / Prayer Djent
+        setg(8, 0, 0.73f);  setg(9, 1, 0.12f);   // Bridge Vibe / Apache Echo
+        setg(10, 0, 0.107f); setg(10, 1, 0.132f); // Innerspeaker / Glide Wall (rev 138)
+        setg(10, 2, 0.229f); setg(10, 3, 0.099f); // Streets Chime / Regal Solo (rev 138)
+        setg(12, 3, 0.85f); setg(13, 3, 0.70f);  // Castaway / Grunge Drop
+        setg(14, 0, 0.63f); setg(14, 3, 0.99f);  // Plug-In Junior / Duality Crush
+        setg(15, 2, 0.84f);                      // One Step Deeper
+        setg(16, 0, 0.12f); setg(16, 1, 0.12f);  // Sweet Dispersion / Homesick Saucer
+        setg(3, 2, 0.55f);  setg(3, 3, 0.55f);   // Cardinal Rhythm/Lead (USER: real dial 5-6)
+        // loudness re-parity for the re-dials (golden-measured):
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(16, 0, +3.9f);  trim(1, 3, +1.1f);  trim(9, 1, +1.0f);
+        trim(3, 3, -0.8f);   trim(16, 1, +0.8f);
+        // rev 138 (ramped-rail rematch) re-parity:
+        trim(10, 3, -2.0f);  trim(10, 1, -1.8f);  trim(16, 0, +1.5f);
+        trim(1, 0, -1.3f);   trim(10, 2, +1.3f);  trim(10, 0, +0.8f);  trim(9, 1, +0.6f);   // (1,0)=Regal Sustain — a P004/bank02A slot-map slip put this on Come As Water first
+    }
+
+
+    // Recto Modern-mode the reference rig re-voice parity (rev 131, 2026-09-03) — placed LAST: the NIN/nu-metal user-bake blocks assign ABSOLUTE out_levels above and would overwrite these trims: the config-Z
+    // bake (chug peak, tightHP 60, sag x0.1, presence/mv laws) + Vintage
+    // makeup x1.66 shifted six presets. Broken Crush PEAK-CAPPED (hit 2.26
+    // after the bake; -5.5 lands ~1.2 - the rev-125 rule).
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        trim(11, 2, -5.5f);   // Broken Crush (NIN, mode 7) - peak cap
+        trim(15, 0, -1.7f);  trim(15, 1, -2.3f);  trim(15, 3, -1.3f);   // nu-metal Vintage lifts (rev 132: VB voicing pulled A/D back 0.8/1.2)
+        trim(15, 2, +1.5f);  trim(14, 3, +1.1f);
+    }
+
+
+
+
+
+    // === REV 139/140: RESEARCH REBUILD, user-curated (2026-09-04) ===
+    // Rev-139 rebuilt 53 presets from per-song rig research; the user A/B kept
+    // GHOST (banks 3+4), the BTBAM Spectrum pair, Numb Sustain and Desert
+    // Robot (QOTSA) -- rev 140 rolls the other 41 back for manual fixes.
+    // User: "let's rethink all of the presets... research the presets for each
+    // band and song that we're replicating and try creating them from scratch."
+    // 8 web-research agents (per-song rig documentation, evidence-graded);
+    // values authored against the reference-fitted amp laws + rev-137 drive points.
+    // UNTOUCHED: Bank 1, NIN B/C/D, all Plexiglass presets, Solar Monolith /
+    // Knights of Fuzz / Retro Poland / I Saw a Deer / Jungle Sleaze (user
+    // builds), banks 19/20. Placed LAST: absolute values, overrides all
+    // earlier rev blocks for these slots. out_levels re-measured (golden).
+    {
+        auto rb = [&](int b, int slot, const char* name, const char* ir) -> Preset& {
+            Preset& pr = p->presets[b][slot];
+            pr = p->presets[0][1];
+            pr.used = true;
+            std::snprintf(pr.name, sizeof(pr.name), "%s", name);
+            pr.irPath[0] = pr.ampNamPath[0] = pr.drNamPath[0] = pr.cabNamPath[0]
+                = pr.amp2NamPath[0] = pr.ir2Path[0] = pr.dr2NamPath[0] = '\0';
+            if (ir) { std::strncpy(pr.irPath, ir, kPathMax-1); pr.irPath[kPathMax-1] = '\0'; }
+            static const int offs[] = { HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE,
+                HF_MD_ENABLE, HF_DL_ENABLE, HF_RV_ENABLE, HF_WH_ENABLE, HF_OC_ENABLE,
+                HF_NAIL_ENABLE, HF_EQ_ENABLE, HF_DR2_ENABLE, HF_RB_ENABLE, HF_RB_CAB2ON,
+                HF_GT2_ENABLE, HF_CP2_ENABLE, HF_FZ2_ENABLE, HF_NAIL2_ENABLE, HF_MD2_ENABLE,
+                HF_DL2_ENABLE, HF_RV2_ENABLE, HF_WH2_ENABLE, HF_OC2_ENABLE, HF_EQ2_ENABLE };
+            for (int o : offs) pr.vals[o] = 0.0f;
+            // canonical chain slots (the donor may carry a user re-order)
+            static const int posv[][2] = { {HF_GT_POS,1}, {HF_CP_POS,2}, {HF_FZ_POS,3},
+                {HF_DR_POS,4}, {HF_AMP_POS,5}, {HF_CAB_POS,6}, {HF_MD_POS,7}, {HF_DL_POS,8},
+                {HF_RV_POS,9}, {HF_WH_POS,10}, {HF_OC_POS,11}, {HF_NAIL_POS,12}, {HF_EQ_POS,13},
+                {HF_DR2_POS,14}, {HF_GT2_POS,15}, {HF_CP2_POS,16}, {HF_FZ2_POS,17},
+                {HF_NAIL2_POS,18}, {HF_MD2_POS,19}, {HF_DL2_POS,20}, {HF_RV2_POS,21},
+                {HF_WH2_POS,22}, {HF_OC2_POS,23}, {HF_EQ2_POS,24} };
+            for (auto& kv : posv) pr.vals[kv[0]] = (float)kv[1];
+            pr.vals[HF_GT_ENABLE] = 1.0f;  pr.vals[HF_GT_ATTACK] = 2.0f;
+            pr.vals[HF_GT_HOLD] = 120.0f;  pr.vals[HF_GT_RELEASE] = 250.0f;
+            pr.vals[HF_GT_HYST] = 8.0f;
+            pr.vals[HF_AMP_ENABLE] = 1.0f; pr.vals[HF_AMP_BYPASS] = 0.0f;
+            pr.vals[HF_AMP_CHANNEL] = 0.0f; pr.vals[HF_AMP_RESONANCE] = 0.0f;
+            pr.vals[HF_AMP_SAG] = 0.3f;   pr.vals[HF_AMP_SIR34] = 0.0f;
+            pr.vals[HF_AMP_FR_CHANNEL] = 1.0f; pr.vals[HF_AMP_FR_FAT] = 0.0f;
+            pr.vals[HF_AMP_FR_C45] = 0.0f; pr.vals[HF_AMP_FR_SAT] = 0.0f;
+            pr.vals[HF_AMP_MV_MODE] = 0.0f; pr.vals[HF_AMP_MV_EQPRESET] = 0.0f;
+            pr.vals[HF_AMP_MV_GEQ0] = 0.5f; pr.vals[HF_AMP_MV_GEQ1] = 0.5f;
+            pr.vals[HF_AMP_MV_GEQ2] = 0.5f; pr.vals[HF_AMP_MV_GEQ3] = 0.5f;
+            pr.vals[HF_AMP_MV_GEQ4] = 0.5f;
+            pr.vals[HF_AMP_RC_MODE] = 4.0f; pr.vals[HF_AMP_RC_RECT] = 0.0f;
+            pr.vals[HF_AMP_RC_VARIAC] = 0.0f;
+            pr.vals[HF_AMP_PL_VARIAC] = 0.0f; pr.vals[HF_AMP_PL_VOL2] = 0.0f;
+            pr.vals[HF_CAB_ENABLE] = 1.0f; pr.vals[HF_CAB_MIX] = 1.0f;
+            pr.vals[HF_CAB_MICPOS] = 0.0f; pr.vals[HF_CAB_MICDIST] = 0.0f;
+            pr.vals[HF_CAB_ROOMON] = 1.0f; pr.vals[HF_CAB_ROOMMIX] = 0.10f;
+            pr.vals[HF_CAB_ROOMAMT] = 0.35f; pr.vals[HF_CAB_ROOMDENSE] = 1.0f;
+            pr.vals[HF_CAB_SPKDRIVE] = 0.0f; pr.vals[HF_CAB_VOICE] = 0.0f;
+            pr.vals[HF_RV_DENSITY] = 1.0f; pr.vals[HF_RV_PREDELAY] = 10.0f;
+            pr.vals[HF_RV_DAMPING] = 0.3f; pr.vals[HF_RV_BLOOM] = 0.5f;
+            pr.vals[HF_FZ_GVOL] = 1.0f;
+            pr.vals[HF_IT_BOOST] = 0.0f; pr.vals[HF_IT_BOOSTAMT] = 0.0f;
+            pr.vals[HF_IT_GAIN] = 0.0f; pr.vals[HF_IT_PHASE] = 0.0f;
+            pr.vals[HF_OUT_DOUBLER] = 0.0f;
+            pr.vals[HF_MD_OFFSET] = 0.0f; pr.vals[HF_MD_SHAPE] = 0.0f;
+            pr.vals[HF_MD_WIDTH] = 0.5f; pr.vals[HF_DL_WIDTH] = 0.5f;
+            pr.vals[HF_DL_AGE] = 0.35f; pr.vals[HF_DL_HEADS] = 10.0f;
+            pr.vals[HF_DL_WOW] = 0.003f; pr.vals[HF_DL_FLUTTER] = 0.001f;
+            pr.vals[HF_DL_DUCKING] = 0.0f; pr.vals[HF_DL_SYNC] = 0.0f;
+            pr.vals[HF_EQ_LEVEL] = 0.0f;
+            pr.vals[HF_OUT_LEVEL] = -16.0f;   // provisional; golden-measured below
+            return pr;
+        };
+        {   // [3/A] Candlelit Clean
+            // Meliora cleans: NO Fender documented -- the same Marshall+Orange pool at
+            // low gain, Tele brightness. Rockerverb CLEAN channel, optical comp, light
+            // chorus + plate (community-consensus dressing).
+            Preset& q = rb(2, 0, "Candlelit Clean", "@factory");
+            q.vals[HF_GT_THRESH] = -52.0f; q.vals[HF_CP_ENABLE] = 1.0f;
+            q.vals[HF_CP_TYPE] = 0.0f; q.vals[HF_CP_THRESH] = -24.0f;
+            q.vals[HF_CP_RATIO] = 1.0f; q.vals[HF_CP_MAKEUP] = 2.0f;
+            q.vals[HF_AMP_MODEL] = 4.0f; q.vals[HF_AMP_CHANNEL] = 1.0f;
+            q.vals[HF_AMP_GAIN] = 0.35f; q.vals[HF_AMP_BASS] = 0.45f;
+            q.vals[HF_AMP_MID] = 0.5f; q.vals[HF_AMP_TREBLE] = 0.62f;
+            q.vals[HF_AMP_PRESENCE] = 0.55f; q.vals[HF_AMP_MASTER] = 0.7f;
+            q.vals[HF_MD_ENABLE] = 1.0f; q.vals[HF_MD_TYPE] = 0.0f; q.vals[HF_MD_RATE] = 0.35f;
+            q.vals[HF_MD_DEPTH] = 0.45f; q.vals[HF_MD_MIX] = 0.25f;
+            q.vals[HF_RV_ENABLE] = 1.0f; q.vals[HF_RV_TYPE] = 0.0f; q.vals[HF_RV_MIX] = 0.15f;
+            q.vals[HF_RV_DECAY] = 1.8f; q.vals[HF_CAB_LOWCUT] = 80.0f;
+            q.vals[HF_CAB_HIGHCUT] = 9000.0f; q.vals[HF_OUT_LEVEL] = -5.0f;
+        }
+        {   // [3/B] Sermon Crunch
+            // Meliora rhythm: 12-amp Marshall+Orange wall, MID-gain (riff-led, mids
+            // intact -- the wall is layering, not gain). Rockerverb dirty + doubler.
+            Preset& q = rb(2, 1, "Sermon Crunch", "@factory");
+            q.vals[HF_GT_THRESH] = -48.0f; q.vals[HF_AMP_MODEL] = 4.0f;
+            q.vals[HF_AMP_GAIN] = 0.5f; q.vals[HF_AMP_BASS] = 0.5f; q.vals[HF_AMP_MID] = 0.55f;
+            q.vals[HF_AMP_TREBLE] = 0.55f; q.vals[HF_AMP_PRESENCE] = 0.5f;
+            q.vals[HF_AMP_MASTER] = 0.7f; q.vals[HF_AMP_SAG] = 0.3f;
+            q.vals[HF_OUT_DOUBLER] = 1.0f; q.vals[HF_RV_ENABLE] = 1.0f;
+            q.vals[HF_RV_TYPE] = 0.0f; q.vals[HF_RV_MIX] = 0.1f; q.vals[HF_RV_DECAY] = 1.4f;
+            q.vals[HF_CAB_LOWCUT] = 80.0f; q.vals[HF_CAB_HIGHCUT] = 7800.0f;
+            q.vals[HF_OUT_LEVEL] = -22.4f;
+        }
+        {   // [3/C] Sermon Rhythm
+            // Cirice main riff: same wall, a step hotter.
+            Preset& q = rb(2, 2, "Sermon Rhythm", "@factory");
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_AMP_MODEL] = 4.0f;
+            q.vals[HF_AMP_GAIN] = 0.58f; q.vals[HF_AMP_BASS] = 0.52f;
+            q.vals[HF_AMP_MID] = 0.55f; q.vals[HF_AMP_TREBLE] = 0.55f;
+            q.vals[HF_AMP_PRESENCE] = 0.5f; q.vals[HF_AMP_MASTER] = 0.75f;
+            q.vals[HF_AMP_SAG] = 0.3f; q.vals[HF_OUT_DOUBLER] = 1.0f;
+            q.vals[HF_RV_ENABLE] = 1.0f; q.vals[HF_RV_TYPE] = 0.0f; q.vals[HF_RV_MIX] = 0.08f;
+            q.vals[HF_RV_DECAY] = 1.4f; q.vals[HF_CAB_LOWCUT] = 80.0f;
+            q.vals[HF_CAB_HIGHCUT] = 7800.0f; q.vals[HF_OUT_LEVEL] = -22.0f;
+        }
+        {   // [3/D] Sermon Solo
+            // Pinnacle/Cirice solo voice: hotter channel from the same pool, neck-ish
+            // warmth, mix delay + Lead Cut.
+            Preset& q = rb(2, 3, "Sermon Solo", "@factory");
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_AMP_MODEL] = 4.0f;
+            q.vals[HF_AMP_GAIN] = 0.62f; q.vals[HF_AMP_BASS] = 0.5f;
+            q.vals[HF_AMP_MID] = 0.58f; q.vals[HF_AMP_TREBLE] = 0.5f;
+            q.vals[HF_AMP_PRESENCE] = 0.48f; q.vals[HF_AMP_MASTER] = 0.75f;
+            q.vals[HF_DL_ENABLE] = 1.0f; q.vals[HF_DL_TYPE] = 0.0f;
+            q.vals[HF_DL_TIME] = 380.0f; q.vals[HF_DL_FEEDBACK] = 0.35f;
+            q.vals[HF_DL_MIX] = 0.22f; q.vals[HF_RV_ENABLE] = 1.0f; q.vals[HF_RV_TYPE] = 0.0f;
+            q.vals[HF_RV_MIX] = 0.12f; q.vals[HF_RV_DECAY] = 1.6f;
+            q.vals[HF_CAB_LOWCUT] = 85.0f; q.vals[HF_CAB_HIGHCUT] = 7500.0f;
+            q.vals[HF_EQ_ENABLE] = 1.0f; q.vals[HF_EQ_PRESET] = 5.0f;
+            q.vals[HF_EQ_POS] = 13.0f; q.vals[HF_EQ_100] = -1.0f; q.vals[HF_EQ_200] = 0.0f;
+            q.vals[HF_EQ_400] = 1.0f; q.vals[HF_EQ_800] = 3.0f; q.vals[HF_EQ_1K6] = 4.0f;
+            q.vals[HF_EQ_3K2] = 5.0f; q.vals[HF_OUT_LEVEL] = -22.2f;
+        }
+        {   // [4/A] Imperial Rhythm
+            // Impera rhythm (Akesson, documented): his Friedman BE-100 + Sugar Drive
+            // (Klon) boost, 8-track packs -> doubler. Beardo BE ch BE.
+            Preset& q = rb(3, 0, "Imperial Rhythm", "@factory");
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_DR_ENABLE] = 1.0f;
+            q.vals[HF_DR_MODEL] = 5.0f; q.vals[HF_DR_DRIVE] = 0.2f; q.vals[HF_DR_TONE] = 0.55f;
+            q.vals[HF_DR_LEVEL] = 0.7f; q.vals[HF_AMP_MODEL] = 6.0f;
+            q.vals[HF_AMP_FR_CHANNEL] = 1.0f; q.vals[HF_AMP_GAIN] = 0.55f;
+            q.vals[HF_AMP_BASS] = 0.5f; q.vals[HF_AMP_MID] = 0.55f;
+            q.vals[HF_AMP_TREBLE] = 0.55f; q.vals[HF_AMP_PRESENCE] = 0.55f;
+            q.vals[HF_AMP_MASTER] = 0.7f; q.vals[HF_OUT_DOUBLER] = 1.0f;
+            q.vals[HF_CAB_SPKDRIVE] = 2.0f; q.vals[HF_CAB_LOWCUT] = 85.0f;
+            q.vals[HF_CAB_HIGHCUT] = 7500.0f; q.vals[HF_OUT_LEVEL] = -18.8f;
+        }
+        {   // [4/B] Imperial Lead
+            // Impera leads (documented STRONG): late-50s Plexi + DOD Preamp 250 'for
+            // extra scream' (the Yngwie recipe). Plexi is user-reserved -> JCM800
+            // platform, the 250 supplies the scream.
+            Preset& q = rb(3, 1, "Imperial Lead", "@greenback");
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_DR_ENABLE] = 1.0f;
+            q.vals[HF_DR_MODEL] = 7.0f; q.vals[HF_DR_DRIVE] = 0.45f;
+            q.vals[HF_DR_TONE] = 0.55f; q.vals[HF_DR_LEVEL] = 0.75f;
+            q.vals[HF_AMP_MODEL] = 1.0f; q.vals[HF_AMP_GAIN] = 0.62f;
+            q.vals[HF_AMP_BASS] = 0.5f; q.vals[HF_AMP_MID] = 0.6f;
+            q.vals[HF_AMP_TREBLE] = 0.55f; q.vals[HF_AMP_PRESENCE] = 0.55f;
+            q.vals[HF_AMP_MASTER] = 0.75f; q.vals[HF_DL_ENABLE] = 1.0f;
+            q.vals[HF_DL_TYPE] = 0.0f; q.vals[HF_DL_TIME] = 430.0f;
+            q.vals[HF_DL_FEEDBACK] = 0.38f; q.vals[HF_DL_MIX] = 0.25f;
+            q.vals[HF_RV_ENABLE] = 1.0f; q.vals[HF_RV_TYPE] = 0.0f; q.vals[HF_RV_MIX] = 0.1f;
+            q.vals[HF_RV_DECAY] = 1.5f; q.vals[HF_CAB_SPKDRIVE] = 2.0f;
+            q.vals[HF_CAB_LOWCUT] = 85.0f; q.vals[HF_CAB_HIGHCUT] = 7800.0f;
+            q.vals[HF_EQ_ENABLE] = 1.0f; q.vals[HF_EQ_PRESET] = 5.0f;
+            q.vals[HF_EQ_POS] = 13.0f; q.vals[HF_EQ_100] = -1.0f; q.vals[HF_EQ_200] = 0.0f;
+            q.vals[HF_EQ_400] = 1.0f; q.vals[HF_EQ_800] = 3.0f; q.vals[HF_EQ_1K6] = 4.0f;
+            q.vals[HF_EQ_3K2] = 5.0f; q.vals[HF_OUT_LEVEL] = -20.2f;
+        }
+        {   // [4/C] Cardinal Rhythm
+            // Skeleta rhythm (SoS engineering feature): Rockman->JC-120+Plexi 80s sheen
+            // core + HETFIELD's actual IIC+ heavy layer. Cali V IIC+ at the USER's real
+            // dial (gain 5-6/10), comp+chorus = the Rockman sheen.
+            Preset& q = rb(3, 2, "Cardinal Rhythm", "@factory");
+            q.vals[HF_GT_THRESH] = -48.0f; q.vals[HF_CP_ENABLE] = 1.0f;
+            q.vals[HF_CP_TYPE] = 0.0f; q.vals[HF_CP_THRESH] = -26.0f;
+            q.vals[HF_CP_RATIO] = 1.0f; q.vals[HF_CP_MAKEUP] = 2.0f;
+            q.vals[HF_AMP_MODEL] = 11.0f; q.vals[HF_AMP_MV_MODE] = 6.0f;
+            q.vals[HF_AMP_GAIN] = 0.55f; q.vals[HF_AMP_BASS] = 0.3f;
+            q.vals[HF_AMP_MID] = 0.45f; q.vals[HF_AMP_TREBLE] = 0.55f;
+            q.vals[HF_AMP_PRESENCE] = 0.55f; q.vals[HF_AMP_MASTER] = 0.65f;
+            q.vals[HF_AMP_MV_GEQ0] = 0.6f; q.vals[HF_AMP_MV_GEQ1] = 0.5f;
+            q.vals[HF_AMP_MV_GEQ2] = 0.35f; q.vals[HF_AMP_MV_GEQ3] = 0.55f;
+            q.vals[HF_AMP_MV_GEQ4] = 0.65f; q.vals[HF_MD_ENABLE] = 1.0f;
+            q.vals[HF_MD_TYPE] = 0.0f; q.vals[HF_MD_RATE] = 0.35f; q.vals[HF_MD_DEPTH] = 0.5f;
+            q.vals[HF_MD_MIX] = 0.3f; q.vals[HF_CAB_LOWCUT] = 80.0f;
+            q.vals[HF_CAB_HIGHCUT] = 7800.0f; q.vals[HF_OUT_LEVEL] = -19.5f;
+        }
+        {   // [4/D] Cardinal Lead
+            // Skeleta leads (SoS): vintage Boss OD-1 (14-pin) into the same pool --
+            // Super Nova as the OD-1-family stand-in, IIC+ behind it, gain 5-6/10.
+            Preset& q = rb(3, 3, "Cardinal Lead", "@factory");
+            q.vals[HF_GT_THRESH] = -48.0f; q.vals[HF_DR_ENABLE] = 1.0f;
+            q.vals[HF_DR_MODEL] = 6.0f; q.vals[HF_DR_DRIVE] = 0.4f; q.vals[HF_DR_TONE] = 0.5f;
+            q.vals[HF_DR_LEVEL] = 0.7f; q.vals[HF_AMP_MODEL] = 11.0f;
+            q.vals[HF_AMP_MV_MODE] = 6.0f; q.vals[HF_AMP_GAIN] = 0.58f;
+            q.vals[HF_AMP_BASS] = 0.3f; q.vals[HF_AMP_MID] = 0.45f;
+            q.vals[HF_AMP_TREBLE] = 0.55f; q.vals[HF_AMP_PRESENCE] = 0.6f;
+            q.vals[HF_AMP_MASTER] = 0.65f; q.vals[HF_AMP_MV_GEQ0] = 0.6f;
+            q.vals[HF_AMP_MV_GEQ1] = 0.5f; q.vals[HF_AMP_MV_GEQ2] = 0.4f;
+            q.vals[HF_AMP_MV_GEQ3] = 0.6f; q.vals[HF_AMP_MV_GEQ4] = 0.65f;
+            q.vals[HF_DL_ENABLE] = 1.0f; q.vals[HF_DL_TYPE] = 0.0f;
+            q.vals[HF_DL_TIME] = 400.0f; q.vals[HF_DL_FEEDBACK] = 0.35f;
+            q.vals[HF_DL_MIX] = 0.25f; q.vals[HF_CAB_LOWCUT] = 85.0f;
+            q.vals[HF_CAB_HIGHCUT] = 7800.0f; q.vals[HF_EQ_ENABLE] = 1.0f;
+            q.vals[HF_EQ_PRESET] = 5.0f; q.vals[HF_EQ_POS] = 13.0f; q.vals[HF_EQ_100] = -1.0f;
+            q.vals[HF_EQ_200] = 0.0f; q.vals[HF_EQ_400] = 1.0f; q.vals[HF_EQ_800] = 3.0f;
+            q.vals[HF_EQ_1K6] = 4.0f; q.vals[HF_EQ_3K2] = 5.0f; q.vals[HF_OUT_LEVEL] = -21.2f;
+        }
+        {   // [5/C] Numb Sustain
+            // Comfortably Numb solo: RAM'S HEAD Muff (sust 70/tone 30-40/vol 55) into a
+            // LOUD clean Hiwatt + RA-200 rotary LOW under it, MXR DDL ~370 ms low mix,
+            // double-tracked -> doubler.
+            Preset& q = rb(4, 2, "Numb Sustain", "@hiwatt");
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_FZ_ENABLE] = 1.0f;
+            q.vals[HF_FZ_PEDAL] = 0.0f; q.vals[HF_FZ_MODE] = 1.0f;
+            q.vals[HF_FZ_SUSTAIN] = 0.7f; q.vals[HF_FZ_TONE] = 0.35f;
+            q.vals[HF_FZ_VOLUME] = 0.55f; q.vals[HF_FZ_GVOL] = 1.0f;
+            q.vals[HF_AMP_MODEL] = 7.0f; q.vals[HF_AMP_GAIN] = 0.3f;
+            q.vals[HF_AMP_BASS] = 0.5f; q.vals[HF_AMP_MID] = 0.6f;
+            q.vals[HF_AMP_TREBLE] = 0.45f; q.vals[HF_AMP_PRESENCE] = 0.65f;
+            q.vals[HF_AMP_MASTER] = 0.8f; q.vals[HF_MD_ENABLE] = 1.0f;
+            q.vals[HF_MD_TYPE] = 5.0f; q.vals[HF_MD_RATE] = 0.35f; q.vals[HF_MD_DEPTH] = 0.5f;
+            q.vals[HF_MD_MIX] = 0.25f; q.vals[HF_DL_ENABLE] = 1.0f; q.vals[HF_DL_TYPE] = 0.0f;
+            q.vals[HF_DL_TIME] = 370.0f; q.vals[HF_DL_FEEDBACK] = 0.45f;
+            q.vals[HF_DL_MIX] = 0.2f; q.vals[HF_OUT_DOUBLER] = 1.0f;
+            q.vals[HF_CAB_MICPOS] = 0.25f; q.vals[HF_CAB_MICDIST] = 0.2f;
+            q.vals[HF_CAB_LOWCUT] = 75.0f; q.vals[HF_CAB_HIGHCUT] = 8500.0f;
+            q.vals[HF_EQ_ENABLE] = 1.0f; q.vals[HF_EQ_PRESET] = 5.0f;
+            q.vals[HF_EQ_POS] = 13.0f; q.vals[HF_EQ_100] = -1.0f; q.vals[HF_EQ_200] = 0.0f;
+            q.vals[HF_EQ_400] = 1.0f; q.vals[HF_EQ_800] = 3.0f; q.vals[HF_EQ_1K6] = 4.0f;
+            q.vals[HF_EQ_3K2] = 5.0f; q.vals[HF_OUT_LEVEL] = -20.2f;
+        }
+        {   // [10/C] Desert Robot
+            // QOTSA robot rhythm (documented: PEAVEY DECADE solid-state + Ampeg VT-40
+            // layers, mid-forward, amp-first, NO pedal story): Backline Plus saturation
+            // channel character, mids up, darker top.
+            Preset& q = rb(9, 2, "Desert Robot", "@american-ob");
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_AMP_MODEL] = 9.0f;
+            q.vals[HF_AMP_GAIN] = 0.55f; q.vals[HF_AMP_BASS] = 0.5f;
+            q.vals[HF_AMP_MID] = 0.65f; q.vals[HF_AMP_TREBLE] = 0.45f;
+            q.vals[HF_AMP_PRESENCE] = 0.45f; q.vals[HF_AMP_MASTER] = 0.7f;
+            q.vals[HF_CAB_ROOMMIX] = 0.1f; q.vals[HF_CAB_LOWCUT] = 80.0f;
+            q.vals[HF_CAB_HIGHCUT] = 7000.0f; q.vals[HF_OUT_LEVEL] = -25.6f;
+        }
+        {   // [14/B] Spectrum Rhythm
+            // Colors (best-documented: Dual Rectifier family, the 'no mids' era EQ,
+            // Jamie King): moved from Cali V Mark IV -> Diamond Plate Modern, mids
+            // dumped, TS-808 habit boost, tight gate.
+            Preset& q = rb(13, 1, "Spectrum Rhythm", "@factory");
+            q.vals[HF_GT_THRESH] = -42.0f; q.vals[HF_DR_ENABLE] = 1.0f;
+            q.vals[HF_DR_MODEL] = 0.0f; q.vals[HF_DR_DRIVE] = 0.15f; q.vals[HF_DR_TONE] = 0.6f;
+            q.vals[HF_DR_LEVEL] = 0.7f; q.vals[HF_AMP_MODEL] = 12.0f;
+            q.vals[HF_AMP_RC_MODE] = 7.0f; q.vals[HF_AMP_GAIN] = 0.75f;
+            q.vals[HF_AMP_BASS] = 0.55f; q.vals[HF_AMP_MID] = 0.2f;
+            q.vals[HF_AMP_TREBLE] = 0.55f; q.vals[HF_AMP_PRESENCE] = 0.5f;
+            q.vals[HF_AMP_MASTER] = 0.7f; q.vals[HF_OUT_DOUBLER] = 1.0f;
+            q.vals[HF_CAB_SPKDRIVE] = 2.0f; q.vals[HF_CAB_ROOMMIX] = 0.08f;
+            q.vals[HF_CAB_LOWCUT] = 85.0f; q.vals[HF_CAB_HIGHCUT] = 7500.0f;
+            q.vals[HF_OUT_LEVEL] = -25.0f;
+        }
+        {   // [14/C] Spectrum Lead
+            // Colors lead voice: same Recto platform, TS pushed harder, delay + Lead Cut.
+            Preset& q = rb(13, 2, "Spectrum Lead", "@factory");
+            q.vals[HF_GT_THRESH] = -44.0f; q.vals[HF_DR_ENABLE] = 1.0f;
+            q.vals[HF_DR_MODEL] = 0.0f; q.vals[HF_DR_DRIVE] = 0.3f; q.vals[HF_DR_TONE] = 0.6f;
+            q.vals[HF_DR_LEVEL] = 0.75f; q.vals[HF_AMP_MODEL] = 12.0f;
+            q.vals[HF_AMP_RC_MODE] = 7.0f; q.vals[HF_AMP_GAIN] = 0.78f;
+            q.vals[HF_AMP_BASS] = 0.5f; q.vals[HF_AMP_MID] = 0.3f;
+            q.vals[HF_AMP_TREBLE] = 0.55f; q.vals[HF_AMP_PRESENCE] = 0.55f;
+            q.vals[HF_AMP_MASTER] = 0.7f; q.vals[HF_DL_ENABLE] = 1.0f;
+            q.vals[HF_DL_TYPE] = 0.0f; q.vals[HF_DL_TIME] = 380.0f;
+            q.vals[HF_DL_FEEDBACK] = 0.35f; q.vals[HF_DL_MIX] = 0.22f;
+            q.vals[HF_CAB_SPKDRIVE] = 2.0f; q.vals[HF_CAB_LOWCUT] = 85.0f;
+            q.vals[HF_CAB_HIGHCUT] = 7500.0f; q.vals[HF_EQ_ENABLE] = 1.0f;
+            q.vals[HF_EQ_PRESET] = 5.0f; q.vals[HF_EQ_POS] = 13.0f; q.vals[HF_EQ_100] = -1.0f;
+            q.vals[HF_EQ_200] = 0.0f; q.vals[HF_EQ_400] = 1.0f; q.vals[HF_EQ_800] = 3.0f;
+            q.vals[HF_EQ_1K6] = 4.0f; q.vals[HF_EQ_3K2] = 5.0f; q.vals[HF_OUT_LEVEL] = -25.1f;
+        }
+    }
+    // === END REV 139 ===
+
+
+    // ═══ REV 141: USER DIAL-INS BAKED VERBATIM (2026-09-04) ═══
+    // The user hand-fixed presets on the device after the rev-140 deploy and
+    // asked for them to be baked. These are their EXACT on-device values,
+    // store-diffed against a snapshot taken immediately after that deploy.
+    // DO NOT RETUNE. Placed LAST so it wins over every earlier block —
+    // including the rev-139 research rebuild — and so that the NEXT factory-
+    // rev bump reseeds these slots to the user's sounds rather than over-
+    // writing them (a rev bump is destructive to un-baked on-device edits).
+    {
+        auto S = [&](int b, int sl) -> Preset& { return p->presets[b][sl]; };
+        {   // bank02-C  Nevermind Wall
+            Preset& q = S(1, 2);
+            q.vals[HF_DR_DRIVE] = 1.0f; q.vals[HF_DR_TONE] = 0.409999996f;
+            q.vals[HF_DR_LEVEL] = 0.819999993f; q.vals[HF_AMP_GAIN] = 0.584999979f;
+            q.vals[HF_AMP_MASTER] = 0.720000029f;
+        }
+        {   // bank03-B  Sermon Crunch
+            Preset& q = S(2, 1);
+            q.vals[HF_OUT_LEVEL] = -20.7600002f;
+        }
+        {   // bank03-C  Sermon Rhythm
+            Preset& q = S(2, 2);
+            q.vals[HF_OUT_LEVEL] = -17.1599998f; q.vals[HF_CP_POS] = 6.0f;
+            q.vals[HF_FZ_POS] = 7.0f; q.vals[HF_DR_POS] = 2.0f; q.vals[HF_DR_ENABLE] = 1.0f;
+            q.vals[HF_DR_DRIVE] = 0.0f; q.vals[HF_DR_LEVEL] = 0.667500019f;
+            q.vals[HF_AMP_POS] = 3.0f; q.vals[HF_AMP_GAIN] = 0.457500011f;
+            q.vals[HF_AMP_BASS] = 0.370000005f; q.vals[HF_AMP_MID] = 0.722500026f;
+            q.vals[HF_AMP_TREBLE] = 0.584999979f; q.vals[HF_AMP_PRESENCE] = 0.574999988f;
+            q.vals[HF_CAB_POS] = 4.0f; q.vals[HF_MD_POS] = 8.0f; q.vals[HF_DL_POS] = 9.0f;
+            q.vals[HF_RV_POS] = 5.0f;
+        }
+        {   // bank03-D  Sermon Solo
+            Preset& q = S(2, 3);
+            q.vals[HF_CP_POS] = 8.0f; q.vals[HF_FZ_POS] = 9.0f; q.vals[HF_DR_POS] = 2.0f;
+            q.vals[HF_DR_ENABLE] = 1.0f; q.vals[HF_DR_DRIVE] = 0.0f;
+            q.vals[HF_DR_LEVEL] = 0.642499983f; q.vals[HF_AMP_POS] = 3.0f;
+            q.vals[HF_AMP_GAIN] = 0.547500014f; q.vals[HF_CAB_POS] = 4.0f;
+            q.vals[HF_MD_POS] = 10.0f; q.vals[HF_DL_POS] = 5.0f; q.vals[HF_RV_POS] = 6.0f;
+            q.vals[HF_WH_POS] = 11.0f; q.vals[HF_OC_POS] = 12.0f; q.vals[HF_NAIL_POS] = 13.0f;
+            q.vals[HF_EQ_POS] = 7.0f;
+        }
+        {   // bank04-A  Imperial Rhythm
+            Preset& q = S(3, 0);
+            q.vals[HF_OUT_LEVEL] = -18.6000004f; q.vals[HF_CP_POS] = 6.0f;
+            q.vals[HF_FZ_POS] = 7.0f; q.vals[HF_DR_POS] = 2.0f;
+            q.vals[HF_DR_DRIVE] = 0.224999994f; q.vals[HF_DR_LEVEL] = 0.732500017f;
+            q.vals[HF_AMP_POS] = 3.0f; q.vals[HF_AMP_GAIN] = 0.694999993f;
+            q.vals[HF_AMP_BASS] = 0.317499995f; q.vals[HF_AMP_MID] = 0.627499998f;
+            q.vals[HF_AMP_TREBLE] = 0.617500007f; q.vals[HF_AMP_PRESENCE] = 0.517499983f;
+            q.vals[HF_AMP_MASTER] = 0.639999986f; q.vals[HF_CAB_POS] = 4.0f;
+            q.vals[HF_MD_POS] = 8.0f; q.vals[HF_DL_POS] = 9.0f; q.vals[HF_RV_POS] = 5.0f;
+            q.vals[HF_RV_ENABLE] = 1.0f;
+        }
+        {   // bank04-B  Imperial Lead
+            Preset& q = S(3, 1);
+            q.vals[HF_OUT_LEVEL] = -17.5200005f; q.vals[HF_DR_DRIVE] = 0.212500006f;
+            q.vals[HF_AMP_MODEL] = 6.0f; q.vals[HF_AMP_GAIN] = 0.42750001f;
+            q.vals[HF_AMP_BASS] = 0.50999999f; q.vals[HF_AMP_MID] = 0.762499988f;
+            q.vals[HF_AMP_TREBLE] = 0.610000014f; q.vals[HF_AMP_PRESENCE] = 0.472499996f;
+            q.vals[HF_AMP_MASTER] = 0.704999983f; q.vals[HF_AMP_FR_SAT] = 1.0f;
+            q.vals[HF_EQ_LEVEL] = -0.779999971f; q.vals[HF_EQ_BYPASS] = 1.0f;
+        }
+        {   // bank04-C  Cardinal Rhythm
+            Preset& q = S(3, 2);
+            q.vals[HF_OUT_LEVEL] = -18.7800007f; q.vals[HF_AMP_GAIN] = 0.582499981f;
+            q.vals[HF_AMP_BASS] = 0.0f; q.vals[HF_AMP_MID] = 0.487500012f;
+            q.vals[HF_AMP_TREBLE] = 0.600000024f; q.vals[HF_AMP_MV_GEQ0] = 0.5f;
+            q.vals[HF_AMP_MV_GEQ2] = 0.547500014f; q.vals[HF_AMP_MV_GEQ3] = 0.519999981f;
+            q.vals[HF_AMP_MV_GEQ4] = 0.555000007f;
+        }
+        {   // bank04-D  Cardinal Lead
+            Preset& q = S(3, 3);
+            q.vals[HF_DR_DRIVE] = 0.3125f; q.vals[HF_AMP_GAIN] = 0.379999995f;
+            q.vals[HF_AMP_BASS] = 0.284999996f; q.vals[HF_AMP_TREBLE] = 0.514999986f;
+            q.vals[HF_AMP_PRESENCE] = 0.532500029f; q.vals[HF_AMP_MV_GEQ2] = 0.467500001f;
+            q.vals[HF_AMP_MV_GEQ3] = 0.584999979f;
+        }
+        {   // bank05-B  Berlin Wall Pulse
+            Preset& q = S(4, 1);
+            q.vals[HF_CP_ATTACK] = 3.7750001f; q.vals[HF_CP_RELEASE] = 6.0250001f;
+            q.vals[HF_CP_MAKEUP] = 5.4000001f; q.vals[HF_FZ_POS] = 9.0f;
+            q.vals[HF_DR_POS] = 3.0f; q.vals[HF_DR_MODEL] = 9.0f;
+            q.vals[HF_DR_DRIVE] = 0.189999998f; q.vals[HF_DR_TONE] = 0.55250001f;
+            q.vals[HF_DR_LEVEL] = 0.752499998f; q.vals[HF_AMP_GAIN] = 0.307500005f;
+            q.vals[HF_AMP_MASTER] = 0.762499988f; q.vals[HF_MD_POS] = 4.0f;
+            q.vals[HF_MD_MIX] = 0.402500004f; q.vals[HF_DL_POS] = 7.0f;
+            q.vals[HF_RV_POS] = 8.0f; q.vals[HF_WH_POS] = 11.0f; q.vals[HF_OC_POS] = 12.0f;
+            q.vals[HF_NAIL_POS] = 13.0f; q.vals[HF_EQ_POS] = 10.0f;
+            q.vals[HF_CAB_SPKDRIVE] = 1.0f;
+        }
+        {   // bank05-D  Gravity Lead
+            Preset& q = S(4, 3);
+            q.vals[HF_DR_DRIVE] = 0.354999989f; q.vals[HF_DR_LEVEL] = 0.430000007f;
+        }
+        {   // bank06-C  Little Feather
+            Preset& q = S(5, 2);
+            q.vals[HF_OUT_LEVEL] = -10.5f;
+        }
+        {   // bank07-D  Solar Monolith
+            Preset& q = S(6, 3);
+            q.vals[HF_OUT_LEVEL] = -17.8799992f;
+        }
+        {   // bank08-C  Flatliner
+            Preset& q = S(7, 2);
+            q.vals[HF_DR_LEVEL] = 0.495000005f; q.vals[HF_AMP_GAIN] = 0.305000007f;
+            q.vals[HF_AMP_BASS] = 0.204999998f;
+        }
+        {   // bank08-D  Prayer Djent
+            Preset& q = S(7, 3);
+            q.vals[HF_OUT_LEVEL] = -9.96000004f; q.vals[HF_DR_DRIVE] = 0.0125000002f;
+            q.vals[HF_DR_TONE] = 0.644999981f; q.vals[HF_DR_LEVEL] = 0.670000017f;
+            q.vals[HF_AMP_GAIN] = 0.262499988f; q.vals[HF_AMP_BASS] = 0.337500006f;
+        }
+        {   // bank09-A  Bridge Vibe
+            Preset& q = S(8, 0);
+            q.vals[HF_AMP_GAIN] = 0.670000017f;
+        }
+        {   // bank10-A  Surf Splash
+            Preset& q = S(9, 0);
+            q.vals[HF_OUT_LEVEL] = -2.4000001f; q.vals[HF_AMP_GAIN] = 0.25999999f;
+            q.vals[HF_RV_DECAY] = 3.67475009f; q.vals[HF_RV_DAMPING] = 0.358875006f;
+        }
+        {   // bank10-D  Moondust Glam
+            Preset& q = S(9, 3);
+            q.vals[HF_FZ_SUSTAIN] = 0.567499995f; q.vals[HF_FZ_BIAS] = 0.647499979f;
+            q.vals[HF_FZ_INPUTTRIM] = 0.392500013f; q.vals[HF_AMP_GAIN] = 0.435000002f;
+            q.vals[HF_AMP_MID] = 0.547500014f; q.vals[HF_AMP_TREBLE] = 0.582499981f;
+            q.vals[HF_AMP_PRESENCE] = 0.495000005f; q.vals[HF_AMP_PL_VOL2] = 0.465000004f;
+        }
+        {   // bank11-D  Regal Solo
+            Preset& q = S(10, 3);
+            q.vals[HF_CP_POS] = 8.0f; q.vals[HF_FZ_POS] = 9.0f; q.vals[HF_DR_POS] = 2.0f;
+            q.vals[HF_AMP_POS] = 3.0f; q.vals[HF_AMP_GAIN] = 0.152500004f;
+            q.vals[HF_AMP_PRESENCE] = 0.502499998f; q.vals[HF_CAB_POS] = 4.0f;
+            q.vals[HF_MD_POS] = 10.0f; q.vals[HF_DL_POS] = 5.0f;
+            q.vals[HF_DL_TIME] = 510.744995f; q.vals[HF_RV_POS] = 6.0f;
+            q.vals[HF_WH_POS] = 11.0f; q.vals[HF_OC_POS] = 12.0f; q.vals[HF_NAIL_POS] = 13.0f;
+            q.vals[HF_EQ_POS] = 7.0f; q.vals[HF_EQ_ENABLE] = 1.0f;
+        }
+        {   // bank12-A  March Stabs
+            Preset& q = S(11, 0);
+            q.vals[HF_GT_THRESH] = -46.0f; q.vals[HF_CP_POS] = 7.0f; q.vals[HF_FZ_POS] = 8.0f;
+            q.vals[HF_DR_POS] = 9.0f; q.vals[HF_AMP_GAIN] = 0.462500006f;
+            q.vals[HF_AMP_BASS] = 0.57249999f; q.vals[HF_AMP_MID] = 0.5625f;
+            q.vals[HF_AMP_TREBLE] = 0.625f; q.vals[HF_AMP_PRESENCE] = 0.675000012f;
+            q.vals[HF_AMP_MASTER] = 0.725000024f; q.vals[HF_CAB_POS] = 5.0f;
+            q.vals[HF_CAB_ENABLE] = 1.0f; q.vals[HF_CAB_HIGHCUT] = 9155.0f;
+            q.vals[HF_CAB_MIX] = 0.247500002f; q.vals[HF_OC_UP] = 0.354999989f;
+            q.vals[HF_OC_DOWN] = 0.0700000003f; q.vals[HF_OC_BYPASS] = 1.0f;
+            q.vals[HF_NAIL_DRIVE] = 0.790000021f; q.vals[HF_NAIL_TONE] = 0.492500007f;
+            q.vals[HF_NAIL_TEXTURE] = 0.0f; q.vals[HF_CAB_MICPOS] = 0.141287997f;
+            q.vals[HF_CAB_MICDIST] = 0.058823999f; q.vals[HF_EQ_POS] = 6.0f;
+            q.vals[HF_RB_GAIN] = 0.472499996f;
+            std::strncpy(q.irPath, "@doom", kPathMax-1); q.irPath[kPathMax-1] = 0;
+        }
+        {   // bank13-D  Castaway Groove
+            Preset& q = S(12, 3);
+            q.vals[HF_OUT_LEVEL] = -17.1599998f; q.vals[HF_DR_DRIVE] = 0.0f;
+            q.vals[HF_DR_LEVEL] = 0.882499993f; q.vals[HF_AMP_GAIN] = 0.344999999f;
+            q.vals[HF_AMP_MID] = 0.625f; q.vals[HF_AMP_PRESENCE] = 0.5f;
+        }
+        {   // bank14-B  Spectrum Rhythm
+            Preset& q = S(13, 1);
+            q.vals[HF_OUT_LEVEL] = -16.6200008f; q.vals[HF_DR_DRIVE] = 0.0199999996f;
+            q.vals[HF_DR_LEVEL] = 1.0f; q.vals[HF_AMP_GAIN] = 0.382499993f;
+            q.vals[HF_AMP_BASS] = 0.0500000007f; q.vals[HF_AMP_MID] = 0.649999976f;
+            q.vals[HF_AMP_TREBLE] = 0.699999988f; q.vals[HF_AMP_RC_VARIAC] = 1.0f;
+            q.vals[HF_AMP_RC_RECT] = 1.0f;
+        }
+        {   // bank14-C  Spectrum Lead
+            Preset& q = S(13, 2);
+            q.vals[HF_OUT_LEVEL] = -19.6800003f;
+        }
+        {   // bank15-A  Plug-In Junior
+            Preset& q = S(14, 0);
+            q.vals[HF_FZ_SUSTAIN] = 0.605000019f; q.vals[HF_FZ_BIAS] = 0.3125f;
+            q.vals[HF_AMP_GAIN] = 0.472499996f; q.vals[HF_RB_GAIN] = 0.234999999f;
+        }
+        {   // bank15-C  Retro Poland
+            Preset& q = S(14, 2);
+            q.vals[HF_DL_BYPASS] = 0.0f;
+        }
+        {   // bank16-A  Blind Squall
+            Preset& q = S(15, 0);
+            q.vals[HF_OUT_LEVEL] = -22.3999996f; q.vals[HF_AMP_GAIN] = 0.737500012f;
+            q.vals[HF_AMP_BASS] = 0.492500007f;
+        }
+    }
+    // Loudness parity after the JCM800 re-fit (audit 2026-09-04). ONLY presets
+    // the user did NOT hand-dial are compensated: where a slot carries their own
+    // baked level (March Stabs, Plug-In Junior) that choice is theirs and stands,
+    // even though the amp under it changed — those want an ear check, not a trim.
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] += dB;
+        };
+        // Vox span 1.8->1.3 (rev 143 noise pass) took these down with it. All
+        // factory slots — none carry a user level, so re-levelling is safe.
+        trim(1, 0, +1.53f);    // Regal Sustain
+        trim(1, 3, +3.31f);    // Come As Water   (peak-capped: full +4.00 pushed it past its old peak)
+        trim(9, 1, +2.57f);    // Apache Echo     (peak-capped)
+        trim(10, 0, +3.62f);   // Innerspeaker Swirl (peak-capped)
+        trim(10, 1, +0.84f);   // Glide Wall
+        trim(10, 2, +3.56f);   // Streets Chime
+        trim(16, 0, +5.05f);   // Sweet Dispersion
+        trim(16, 1, +3.88f);   // Homesick Saucer
+
+        // Vox noise fix (rev 142): dropping the +3 dB input drive took these six
+        // Vox presets down with it. None are user-baked, so re-level them.
+        trim(1, 3, +1.59f);    // Come As Water
+        trim(9, 1, +1.69f);    // Apache Echo
+        trim(10, 0, +1.78f);   // Innerspeaker Swirl
+        trim(10, 2, +1.57f);   // Streets Chime
+        trim(16, 0, +2.38f);   // Sweet Dispersion
+        trim(16, 1, +1.53f);   // Homesick Saucer
+
+        trim(6, 1, -0.69f);    // Skye (No Mod)
+        trim(11, 1, -2.03f);   // World Went Away
+        trim(14, 1, -1.16f);   // Knights of Fuzz
+    }
+    // ═══ END REV 141 ═══
 }
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);

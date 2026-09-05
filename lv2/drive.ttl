@@ -49,7 +49,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 42 ;   # 42: Helsinki Grind (Darkglass Microtubes B7K parody) model 10 — parallel-Blend bass preamp/OD: Mix = the clean/drive Blend, Tone = the fat↔tight Grunt lever (90→600 Hz into the clipper, Attack shelf coupled −2..+9 dB @ 2.8k), voiced to the 5-capture B7K Bass Pack, Microtubes two-stage cascade. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:microVersion 43 ;   # 43: Treble Ranger (Dallas Rangemaster germanium treble booster) model 11 — one OC44 common-emitter stage solved Ebers-Moll against its load line; the 5 nF input cap keeps the lows out of the amp (the whole point), Tone = the input-cap RANGE mod (5 nF treble → 22 nF mid → 100 nF full-range), Drive = how hard the germanium is pushed (always boosting, h2-dominant until you dig in); validated against R.G. Keen's measured original to 0.62 dB mean, and the pickup loading it puts on the guitar — the reason it is a 1.2 kHz band-pass in use rather than the bench shelf — is modeled. 42: Helsinki Grind (Darkglass Microtubes B7K parody) model 10 — parallel-Blend bass preamp/OD: Mix = the clean/drive Blend, Tone = the fat↔tight Grunt lever (90→600 Hz into the clipper, Attack shelf coupled −2..+9 dB @ 2.8k), voiced to the 5-capture B7K Bass Pack, Microtubes two-stage cascade. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
@@ -65,7 +65,7 @@ Free and open source (GPL-3).""" ;
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 10 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 11 ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "New Dawn"        ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Dear Rodent Boy" ; rdf:value 2 ] ;
@@ -76,7 +76,8 @@ Free and open source (GPL-3).""" ;
         lv2:scalePoint [ rdfs:label "Preamp 250"      ; rdf:value 7 ] ;
         lv2:scalePoint [ rdfs:label "Echo Primer"     ; rdf:value 8 ] ;
         lv2:scalePoint [ rdfs:label "Tube Chauffeur"  ; rdf:value 9 ] ;
-        lv2:scalePoint [ rdfs:label "Helsinki Grind"  ; rdf:value 10 ]
+        lv2:scalePoint [ rdfs:label "Helsinki Grind" ; rdf:value 10 ] ;
+        lv2:scalePoint [ rdfs:label "Treble Ranger"  ; rdf:value 11 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;

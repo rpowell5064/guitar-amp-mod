@@ -58,7 +58,26 @@ void VoxAC30Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
         c.lowBody.setCoeffs(Filters::peaking(315.0, 1.5, 0.8, oversampledFs_));
         c.chimePk.setCoeffs(Filters::peaking(10270.0, 9.0, 1.0, oversampledFs_));   // top-octave air; 14.5/Q1.2 -> 9.0/Q1.0 2026-07-29: fit through the OLD compressing PA, now over-expressed -- was concentrating the idle noise floor into a 10.3 kHz whistle (user: "high pitched noise when not playing") and its skirt made 8 kHz read +2 bright
     }
+    recalcFit();   // before reset(): reset must clear filters that recalcFit installs
     reset();
+}
+
+void VoxAC30Model::recalcFit() noexcept {
+    // Rail RAMPS IN with the gain knob (2026-09-04, user ears + rematch data):
+    // the reference rig grid only constrained g >= 0.25, and a fixed +18 dB rail made
+    // the amp's FLOOR too hot (>=20% THD at gain 0.02 - old clean presets
+    // lived at 7-8%). Full rail by g=0.30, fading to none at zero: the
+    // validated region is preserved, low dials genuinely clean up.
+    const float railRamp = std::min(1.0f, std::max(0.0f, gain_) / 0.30f);
+    slDrive_ = std::pow(10.0f, fit_[2] * railRamp / 20.0f);
+    slNorm_  = 1.0f / (0.5f + 0.5f * slDrive_);
+    inDrive_ = std::pow(10.0f, fit_[1] / 20.0f);
+    if (oversampledFs_ > 0.0)
+        for (auto& c : ch_) {
+            c.fitPk.setCoeffs(Filters::peaking(fit_[5], fit_[4], 0.8, oversampledFs_));
+            c.fitHs.setCoeffs(Filters::highshelf(4000.0, fit_[6], oversampledFs_));
+            c.fitLo.setCoeffs(Filters::peaking(150.0, fit_[7], 0.8, oversampledFs_));
+        }
 }
 
 void VoxAC30Model::reset() noexcept {
@@ -77,6 +96,7 @@ void VoxAC30Model::reset() noexcept {
         c.bodyShelf.reset();
         c.lowBody.reset();
         c.chimePk.reset();
+        c.fitPk.reset(); c.fitHs.reset(); c.fitLo.reset();   // audit 2026-09-04: new fit filters were never cleared
         c.sagEnv = 0.0f;
     }
 }
@@ -97,11 +117,12 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
 
     // Stage 1: bright, driven harder than a Fender clean (Top Boost extra gain) —
     // chimes/breaks up early for that jangly EL84 edge.
-    x = c.stage1.process(x * (0.48f + g * 1.6f)) * 0.92f * kCouple12;
+    const float spanEff = fit_[0] * (1.0f + fit_[8] * (g - 0.5f));   // fit8: gain-coupled span (top of dial hotter, bottom cleaner)
+    x = c.stage1.process(x * (0.48f + g * 1.6f) * spanEff * inDrive_) * 0.92f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2: pushes into glassy breakup toward the top of the gain range.
-    x = c.stage2.process(x * (0.52f + g * 1.5f)) * 0.90f;
+    x = c.stage2.process(x * (0.52f + g * 1.5f) * spanEff) * 0.90f;
     x *= kPreToneGain;
 
     // Vox Top Boost tonestack + presence
@@ -122,7 +143,7 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     const float sag = std::fmax(0.35f, 1.0f - sag_ * c.sagEnv * 0.25f);
     x *= sag;
 
-    x = softLimit(x);
+    x = softLimit(x * slDrive_) * slNorm_;   // fit2: rail the terminal clip (the level-invariant core lever)
 
     // Voicing EQ POST-limiter (item #26 restructure, 2026-07-29): at performance
     // master settings the terminal softLimit rails hard enough to act as an AGC
@@ -135,17 +156,22 @@ float VoxAC30Model::processSample(float x, int channel) noexcept {
     x = c.brightShelf.process(x);
     x = c.bodyShelf.process(x);
     x = c.lowBody.process(x);
+    x = c.fitPk.process(x); x = c.fitHs.process(x); x = c.fitLo.process(x);   // the reference rig-fit residual voicing
     return c.dnr.process(c.chimePk.process(x), gain_ > 0.45f);
 }
 
 void VoxAC30Model::setParameter(const std::string& id, float value) noexcept {
-    if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
+    if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); recalcFit(); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.tonestack.setPresence(value); }
+    else if (id.size() == 4 && id.compare(0, 3, "fit") == 0) {   // "fit0".."fit6": the reference rig-fit hooks
+        const int i = id[3] - '0';
+        if (i >= 0 && i < kNFit) { fit_[i] = value; recalcFit(); }
+    }
     // Item #26 (2026-07-29): exact closed-form Top Boost tone stack, opt-in
     // pilot -- default off (0) = bit-identical to the existing heuristic path.
     // See VoxToneStack.h for the schematic trace + verification record.
@@ -165,7 +191,8 @@ float VoxAC30Model::getParameter(const std::string& id) const noexcept {
 }
 
 float VoxAC30Model::softLimit(float x) noexcept {
-    if (x >  0.95f) return  0.95f + (x - 0.95f) / (1.0f + (x - 0.95f) / 0.05f);
-    if (x < -0.95f) return -0.95f - (-x - 0.95f) / (1.0f + (-x - 0.95f) / 0.05f);
+    float k = fit_[3]; if (k < 1e-3f) k = 1e-3f;   // audit 2026-09-04: k=0 divided to inf -> NaN through the PA   // 0.05 legacy knee
+    if (x >  0.95f) return  0.95f + (x - 0.95f) / (1.0f + (x - 0.95f) / k);
+    if (x < -0.95f) return -0.95f - (-x - 0.95f) / (1.0f + (-x - 0.95f) / k);
     return x;
 }

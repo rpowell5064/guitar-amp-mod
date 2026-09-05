@@ -60,10 +60,22 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
         # application is live — TTL-level hiding, same mechanism as the 32-bit
         # NAM strip (the .so still contains the model; the UI can't select past
         # lv2:maximum).
-        ttl, n1 = re.subn(r" ;\n\s*lv2:scalePoint \[ rdfs:label \"Helsinki Grind\"[^\n]*", "", ttl)
-        ttl, n2 = re.subn(r"(lv2:symbol \"model\"[^\[]*?lv2:maximum )10", r"\g<1>9", ttl, flags=re.S)
+        # 2026-09-04: Helsinki is no longer the LAST scalePoint (Treble Ranger
+        # follows it at 11), so strip the line WITH ITS OWN trailing " ;" first;
+        # the old form (Helsinki last, terminator on the previous line) stays as
+        # the fallback so this keeps working whichever way the list ends.
+        ttl, n1 = re.subn(r"\n\s*lv2:scalePoint \[ rdfs:label \"Helsinki Grind\"[^\n]*\] ;", "", ttl)
+        if n1 == 0:
+            ttl, n1 = re.subn(r" ;\n\s*lv2:scalePoint \[ rdfs:label \"Helsinki Grind\"[^\n]*", "", ttl)
+        # Only Helsinki is hidden, and it now sits MID-list: the surviving top
+        # model is Treble Ranger at 11, so the ceiling stays 11 (it used to drop
+        # to 9 because Helsinki was the top entry).
+        ttl, n2 = re.subn(r"(lv2:symbol \"model\"[^\[]*?lv2:maximum )1[01]", r"\g<1>11", ttl, flags=re.S)
         ttl, n3 = re.subn(r"\n- Helsinki Grind[^\n]*", "", ttl)              # listing bullet
-        ttl, n4 = re.subn(r"# 42: Helsinki Grind[^\n]*", "#", ttl)           # changelog note
+        # changelog note: the Helsinki entry is no longer the newest one on the
+        # microVersion line, so cut from its "NN: Helsinki Grind" marker up to
+        # whatever version marker follows it (or end of line).
+        ttl, n4 = re.subn(r"\s*4[0-9]: Helsinki Grind.*?(?=\s\d\d: |\n)", "", ttl)
         ttl, n5 = re.subn(r"Ten original", "Nine original", ttl)             # counts (2 sites)
         ttl, n6 = re.subn(r"the ten algorithmic voicings", "the nine algorithmic voicings", ttl)
         assert (n1, n2, n3, n4, n5, n6) == (1, 1, 1, 1, 2, 1), \

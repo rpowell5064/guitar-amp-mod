@@ -65,6 +65,20 @@ private:
         float     satDrive;                // extra preamp saturation (waveshaper drive; 1 = none, leads 2-3)
     };
     static const ModeCfg kModes[kNumModes];
+    // Mode-7 (Mark IV) the reference rig fit hooks (2026-09-03 "USA Lead" probe): the reference rig's
+    // IV lead voice = near-clean lows (8-10% THD@111 vs our 54-62), a +17 dB
+    // 125 Hz hump, and a STEEP top rolloff (-13..15 dB darker 5-8k). Runtime
+    // "fit0".."fit6", mode-7-gated, neutral defaults: fit0 inHPfc Hz override
+    // (0=stock) | fit1 interLPfc Hz override (0=stock) | fit2 post pk125 dB |
+    // fit3 post pk1500 dB | fit4 post hs5000 dB | fit5 stage-drive scale |
+    // fit6 brightDb scale.
+    // BAKED 2026-09-03 (config L of the reference rig "USA Lead" fit): mean 40.9 -> 18.7.
+    // the reference rig IV lead = near-clean lows + a 125 Hz hump + steep top rolloff;
+    // lows leave the clip via inHP 75->160, interLP 15k->7k, then the post
+    // voicing restores the hump (+10 @125) and shapes the darkness (-6 @1.5k,
+    // -8 @5k shelf). Drive/bright measured correct as-was.
+    static constexpr int kNFit = 7;
+    float fit_[kNFit] = { 160.0f, 7000.0f, 10.0f, -6.0f, -8.0f, 1.0f, 1.0f };
 
     static const TriodeComponent::CircuitParams& cfgOf(StageType s) noexcept;
 
@@ -97,6 +111,7 @@ private:
         // detection), it slides a post-amp lowpass down as the note decays into the noise floor — killing the
         // hiss tail while keeping attacks/sustain bright. Mimics a real note losing its top as it rings out.
         BiquadFilter    dnrLP;    // fixed dark-state lowpass; blended in by (1-dnrD)
+        BiquadFilter    fitPk125, fitPk15, fitHs5;   // mode-7 reference-fit voicing (fit2/3/4)
         float dnrEnv = 0.0f;      // input peak envelope
         float dnrD   = 1.0f;      // brightness amount: 1 = full bright (playing), 0 = dark (quiet tail)
     };

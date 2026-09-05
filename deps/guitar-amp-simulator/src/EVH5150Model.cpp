@@ -25,6 +25,14 @@
 // pathology growth (+2.8 dB bloom, -1.8 dB dip) and 1.0 still fully explodes
 // (+19.7 dB bloom — the sag detector tracks the RAW PA input, so paDrive does
 // not shield it). ~2.7x the knob authority of the original fix.
+// 2026-09-01 (the reference rig knob-action session): the Marshall stack's OWN mid/treble
+// swing stacked on the deviation EQ made both knobs act far outside the
+// measured 5150III Blue ranges (treble +10 dB @ 8k, mid dips at 2-3k). Compress
+// how much of the knob reaches the stack (0.5 -> 0.5 keeps noon bit-exact);
+// the re-lawed deviation filters below carry the measured shape instead.
+static inline float kMidKnobToStack (float v) noexcept { return 0.5f + (v - 0.5f) * 0.4f; }
+static inline float kTrebKnobToStack(float v) noexcept { return 0.5f + (v - 0.5f) * 0.35f; }
+
 static inline float kBassKnobToStack(float v) noexcept {
     // 2026-08-02: 0.40 -> 0.25. User "cranked bass on Red still stutters" -- measured
     // bass 1.0 sent THD@1k to 158% (runaway) + dropped output. 0.40 healthy at MAX in
@@ -40,7 +48,7 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
     gainSmooth_.reset(oversampledFs_,   0.015); // slightly faster response for tight high-gain
     masterSmooth_.reset(oversampledFs_, 0.015);
     gainSmooth_.setCurrentAndTargetValue(gain_);
-    masterSmooth_.setCurrentAndTargetValue(master_);
+    masterSmooth_.setCurrentAndTargetValue(taperedMaster());   // NOT the raw knob: fit9 taper (audit 2026-09-04)
 
     for (auto& c : ch_) {
         c.dcBlock.setCoeffs(Filters::highpass1pole(45.0, oversampledFs_));
@@ -65,8 +73,8 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
         c.tonestack.setBass(kBassKnobToStack(bass_));
-        c.tonestack.setMid(mid_);
-        c.tonestack.setTreble(treble_);
+        c.tonestack.setMid(kMidKnobToStack(mid_));
+        c.tonestack.setTreble(kTrebKnobToStack(treble_));
         c.tonestack.setPresence(presence_);
 
         c.sagDecay  = std::exp(-1.0f / (float)(oversampledFs_ * 0.22));
@@ -78,7 +86,17 @@ void EVH5150Model::prepare(double oversampledSampleRate, int /*maxBlockSize*/) n
     reset();
 }
 
+// The value masterSmooth_ must hold: with the fit9 taper live it carries the
+// TAPERED master, so reset()/prepare() have to seed it the same way setParameter
+// does or the stage runs at the raw knob until the next master write.
+float EVH5150Model::taperedMaster() const noexcept {
+    return fit_[9] > 0.0f ? std::pow(master_ / 0.5f, fit_[9]) : master_;
+}
+
 void EVH5150Model::recalcFilters() noexcept {
+    inDrive_ = std::pow(10.0f, fit_[0] / 20.0f);
+    slDrive_ = std::pow(10.0f, fit_[2] / 20.0f);
+    slNorm_  = 1.0f / (0.5f + 0.5f * slDrive_);
     // Presence: ±12 dB shelf @ 5 kHz
     const double presDb = (static_cast<double>(presence_) - 0.5) * 2.0 * 12.0;
     // 2026-07-27: range halved 10->5 dB (user: "boosting the bass makes it cut out").
@@ -90,16 +108,32 @@ void EVH5150Model::recalcFilters() noexcept {
     // the knob's own range keeps the WORST CASE combined boost safely below where the
     // flux saturation collapses.
     const double devB = (static_cast<double>(bass_)   - 0.5) * 2.0 * 5.0;
-    const double devM = (static_cast<double>(mid_)    - 0.5) * 2.0 * 8.0;
-    const double devT = (static_cast<double>(treble_) - 0.5) * 2.0 * 20.0;
+    // 2026-09-01 knob-law re-voice vs the user's the reference rig 5150III Blue knob-action
+    // captures (12-take LTAS differential, build-tools/namcmp/the reference rig session):
+    // the Axe treble is a BROAD gentle shelf from ~1.2 kHz spanning ~-5..+4.5 dB
+    // (ours was +/-20 dB @ 3.6 kHz -- a fizz cannon at max, dead until 2 kHz);
+    // the Axe mid spans ~-4..+3.5 dB, wide, centred ~800 Hz (ours cut -9 dB).
+    // Noon = 0 dB deviation either way, so the NAM-tuned anchor is untouched.
+    // Asymmetric knob laws (measured): the Axe mid-BOOST tilts everything above
+    // ~1 kHz up broadly, while its cut is a classic ~1 kHz bell; the Axe treble
+    // CUT acts high and steep (~2 kHz corner) while its boost shelves in from
+    // ~650 Hz. One filter per direction, chosen by sign.
+    const double devM = (static_cast<double>(mid_)    - 0.5) * 2.0 * 3.0;
+    const double devT = (static_cast<double>(treble_) - 0.5) * 2.0 * 4.5;
     // Resonance: 0 → flat, 1 → +8 dB peak @ 80 Hz (Q=2.5) — EVH deep resonance
     const double resDb  = static_cast<double>(resonance_) * 8.0;
     for (auto& c : ch_) {
         c.presenceF.setCoeffs (Filters::highshelf(3800.0, presDb, oversampledFs_));
         c.devBass.setCoeffs  (Filters::lowshelf (100.0, devB, oversampledFs_));
-        c.devMid.setCoeffs   (Filters::peaking  (600.0, devM, 0.7, oversampledFs_));
-        c.devTreble.setCoeffs(Filters::highshelf(3600.0, devT, oversampledFs_));
+        if (devM >= 0.0) c.devMid.setCoeffs(Filters::peaking(2200.0, devM * 1.45, 0.22, oversampledFs_));
+        else             c.devMid.setCoeffs(Filters::peaking(1000.0, devM, 0.4, oversampledFs_));
+        if (devT >= 0.0) c.devTreble.setCoeffs(Filters::highshelf(650.0, devT * 1.35, oversampledFs_));
+        else             c.devTreble.setCoeffs(Filters::highshelf(2200.0, devT * 1.8, oversampledFs_));
         c.resonanceF.setCoeffs(Filters::peaking  (80.0, resDb, 2.5, oversampledFs_));
+        c.fitEq[0].setCoeffs(Filters::peaking  ( 130.0, fit_[5], 1.0, oversampledFs_));
+        c.fitEq[1].setCoeffs(Filters::peaking  (1600.0, fit_[6], 0.8, oversampledFs_));
+        c.fitEq[2].setCoeffs(Filters::highshelf(6500.0, fit_[7], oversampledFs_));
+        c.fitEq[3].setCoeffs(Filters::lowshelf (  55.0, fit_[8], oversampledFs_));
         // Post-clip CLEAN low restore + musical presence, vs the speaker-less "5150
         // Head Only Pack" captures (2026-07-27 re-voice #2 — the earlier speaker-baked
         // captures wrongly suggested a cab curve; the amp itself really does have a
@@ -145,10 +179,11 @@ void EVH5150Model::recalcFilters() noexcept {
 
 void EVH5150Model::reset() noexcept {
     gainSmooth_.setCurrentAndTargetValue(gain_);
-    masterSmooth_.setCurrentAndTargetValue(master_);
+    masterSmooth_.setCurrentAndTargetValue(taperedMaster());   // NOT the raw knob: fit9 taper (audit 2026-09-04)
     for (auto& c : ch_) {
         c.dcBlock.reset();
         c.inputTightHP.reset();
+        for (auto& f : c.fitEq) f.reset();
         c.stage1.reset();
         c.inter12HPF.reset();
         c.stage2.reset();
@@ -191,9 +226,11 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // Clean-up knee (2026-07-22 audit): above knob 0.35 the amp is BIT-IDENTICAL to
     // the shipped voicing (presets unchanged); below, an audio-taper attenuator adds
     // the clean range the real amp has (drives alone cannot clean a railed cascade).
-    const float gEff = g < 0.35f ? 0.35f : g;
-    const float gk   = g < 0.35f ? g * (1.0f / 0.35f) : 1.0f;
+    const float gFloor = fit_[1];
+    const float gEff = (g < gFloor ? gFloor : g) * fit_[4] + (fit_[4] - 1.0f) * 0.0f;
+    const float gk   = g < gFloor ? g * (1.0f / (gFloor > 1e-3f ? gFloor : 1.0f)) : 1.0f;
     x *= gk * gk * gk;
+    x *= inDrive_;   // fit0 (cached)
     // Per-channel preamp drive trim (see header): lift Blue toward its capture, nudge Red.
     x *= (redChannel_ ? kRedDrive : kBlueDrive);
 
@@ -219,10 +256,11 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     // it — see 2026-08-02 measurement). Blue now runs a GENTLER 4th stage (~half Red's
     // drive) so it saturates like the real Blue crunch channel: adds a late nonlinearity
     // that lifts the ceiling + harmonic density without reaching Red's near-square 103%.
+    const float mPre = (fit_[9] > 0.0f) ? 0.5f : m;   // fit9>0: stage4 at fixed noon drive, master moves POST-limiter
     if (redChannel_)
-        x = c.stage4.process(x * (3.0f + gEff * 6.0f)) * (0.72f * m);
+        x = c.stage4.process(x * (3.0f + gEff * 6.0f)) * (0.72f * mPre);
     else
-        x = c.stage4.process(x * (1.05f + gEff * 2.2f)) * (0.72f * m * kBlueMakeup);  // Blue: full 4th stage, but fed softly (kBlueDrive) for a gradual sweep
+        x = c.stage4.process(x * (1.05f + gEff * 2.2f)) * (0.72f * mPre * kBlueMakeup);  // Blue: full 4th stage, but fed softly (kBlueDrive) for a gradual sweep
 
     x *= kPreToneGain;
 
@@ -257,7 +295,8 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
 
     // Post-limiter: tone-knob deviations from noon + presence (noon = all identity,
     // so the shipped noon voicing and every preset at noon are bit-identical).
-    float y = softLimit(x);
+    float y = softLimit(x * slDrive_) * slNorm_;   // fit2: rail the terminal clip (half-compensated PA operating point)
+    if (fit_[9] > 0.0f) y *= m;                    // fit9: real master taper — m is the TAPERED gain (smoothed; see setParameter)
     // Fixed re-voice EQ (2026-07-27) — POST-limiter, or the hot limiter crushes it
     // (same reason the dev EQ below sits here): restore the clean lows tightened out
     // of the cascade + the broad 5150 presence hump the muffled top was missing.
@@ -268,20 +307,35 @@ float EVH5150Model::processSample(float x, int channel) noexcept {
     y = c.devMid.process(y);
     y = c.devTreble.process(y);
     y = c.presenceF.process(y);
+    y = c.fitEq[0].process(y); y = c.fitEq[1].process(y);   // reference-fit voicing (identity at 0 dB)
+    y = c.fitEq[2].process(y); y = c.fitEq[3].process(y);
     return c.dnr.process(y, redChannel_);
 }
 
 void EVH5150Model::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")      { gain_   = value; gainSmooth_.setTargetValue(value); }
-    else if (id == "master")    { master_ = value; masterSmooth_.setTargetValue(value); }
+    else if (id == "master")    { master_ = value;
+        // fit9>0: the smoother carries the TAPERED post-limiter gain (pow once here, not per sample)
+        masterSmooth_.setTargetValue(fit_[9] > 0.0f ? std::pow(value / 0.5f, fit_[9]) : value); }
     else if (id == "sag")       { sag_    = value; }
     else if (id == "bass")      { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(kBassKnobToStack(value)); recalcFilters(); }
-    else if (id == "mid")       { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); recalcFilters(); }
-    else if (id == "treble")    { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); recalcFilters(); }
+    else if (id == "mid")       { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(kMidKnobToStack(value)); recalcFilters(); }
+    else if (id == "treble")    { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(kTrebKnobToStack(value)); recalcFilters(); }
     else if (id == "presence")  { presence_ = value; recalcFilters(); }
     else if (id == "resonance") { resonance_ = value; recalcFilters(); }
     // channel: 0.0 = Blue (rhythm), 1.0 = Red (lead)
     else if (id == "channel")   { redChannel_ = (value >= 0.5f); recalcFilters(); }  // Red/Blue presence gain differs
+    else if (id.size() == 4 && id.compare(0, 3, "fit") == 0) {   // "fit0".."fit9": the reference rig-fit hooks (raw units)
+        const int i = id[3] - '0';
+        if (i >= 0 && i < kNFit) {
+            fit_[i] = value; recalcFilters();
+            // fit9 IS the master taper: re-derive the smoother, otherwise the
+            // lever is dead for anything that sets fits after master (which is
+            // the order every sweep uses) and fit9=0 leaves a tapered value
+            // being treated as raw.
+            if (i == 9) masterSmooth_.setCurrentAndTargetValue(taperedMaster());
+        }
+    }
 }
 
 float EVH5150Model::getParameter(const std::string& id) const noexcept {
@@ -298,7 +352,9 @@ float EVH5150Model::getParameter(const std::string& id) const noexcept {
 }
 
 float EVH5150Model::softLimit(float x) noexcept {
-    if (x >  0.95f) return  0.95f + (x - 0.95f) / (1.0f + (x - 0.95f) / 0.05f);
-    if (x < -0.95f) return -0.95f - (-x - 0.95f) / (1.0f + (-x - 0.95f) / 0.05f);
+    float knee = fit_[3]; if (knee < 1e-3f) knee = 1e-3f;   // 0.05 = legacy sharp knee; guarded (audit 2026-09-04: knee 0 divided to inf -> NaN into the PA)
+    const float th   = 0.95f;
+    if (x >  th) return  th + (x - th) / (1.0f + (x - th) / knee);
+    if (x < -th) return -th - (-x - th) / (1.0f + (-x - th) / knee);
     return x;
 }

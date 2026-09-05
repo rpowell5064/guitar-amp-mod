@@ -62,6 +62,18 @@ const MesaMarkV::ModeCfg MesaMarkV::kModes[MesaMarkV::kNumModes] = {
     66.0f, 190.0f, 14000.0f, 720.0f, 3.0f, 3600.0f, 12.0f, 3300.0f,8.0f,0.5f, 1.5f,2.1f, 0.096f, 0.80f, 1.0f },
 };
 
+
+// Ch3 (Mark IIC+/IV/Extreme) knob laws, reference-measured 2026-09-03 (USA IIC+
+// probe): our treble/gain knobs ran drastically hot — the reference rig's WHOLE treble
+// range maps to our old knob's bottom 60% (their noon = our 0.12, their max
+// = our 0.52), and the gain dial was ~0.6x at the bottom. Cross-matched
+// anchors: gain (0.25->0.15, 0.5->0.40, 1.0->0.9) = max(0.6g, g-0.1);
+// treble piecewise 0.24t below noon, 0.12+0.8(t-0.5) above. Presets saved
+// under the old law are inverse-remapped (seed rev 133 + blob v46) so their
+// SOUND is unchanged; the knobs now read like the real amp's dial.
+static inline float kCh3GainLaw(float g) noexcept { return std::max(0.6f * g, g - 0.1f); }
+static inline float kCh3TrebLaw(float t) noexcept { return t <= 0.5f ? 0.24f * t : 0.12f + 0.8f * (t - 0.5f); }
+
 void MesaMarkV::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
     oversampledFs_ = oversampledSampleRate;
     gainSmooth_.reset(oversampledFs_,   0.020);
@@ -91,7 +103,7 @@ void MesaMarkV::rebuild() noexcept {
         if (exactTS_ && mode_ >= 6)
             c.tonestack.setExactCircuit(true, YehSmithToneStack::kMarkIIC);
         c.tonestack.setBass(bass_); c.tonestack.setMid(mid_);
-        c.tonestack.setTreble(treble_); c.tonestack.setPresence(presence_);
+        c.tonestack.setTreble(mode_ >= 6 ? kCh3TrebLaw(treble_) : treble_); c.tonestack.setPresence(presence_);
     }
     satDrive_ = m.satDrive;
     // Keep the cubic's small-signal gain at ~1.5 regardless of drive (the clip point scales instead).
@@ -105,10 +117,10 @@ void MesaMarkV::recalcFilters() noexcept {
     const auto& m = kModes[mode_];
     const double presDb = (static_cast<double>(presence_) - 0.5) * 2.0 * m.presSpanDb;
     for (auto& c : ch_) {
-        c.inHP.setCoeffs(Filters::highpass1pole(m.inHPfc, oversampledFs_));
-        c.brightSh.setCoeffs(Filters::highshelf(m.brightFc, m.brightDb, oversampledFs_));
+        c.inHP.setCoeffs(Filters::highpass1pole((mode_ == 7 && fit_[0] > 0.0f) ? fit_[0] : m.inHPfc, oversampledFs_));
+        c.brightSh.setCoeffs(Filters::highshelf(m.brightFc, m.brightDb * (mode_ == 7 ? fit_[6] : 1.0f), oversampledFs_));
         c.interHP.setCoeffs(Filters::highpass1pole(m.interHPfc, oversampledFs_));
-        c.interLP.setCoeffs(Filters::lowpass1pole(m.interLPfc, oversampledFs_));
+        c.interLP.setCoeffs(Filters::lowpass1pole((mode_ == 7 && fit_[1] > 0.0f) ? fit_[1] : m.interLPfc, oversampledFs_));
         for (auto& f : c.coupDC) f.setCoeffs(Filters::highpass1pole(22.0, oversampledFs_));  // coupling caps
         c.presenceF.setCoeffs(Filters::highshelf(m.presFc, presDb, oversampledFs_));
         c.voicePk.setCoeffs(Filters::peaking(m.voicePkFc, m.voicePkDb, m.voicePkQ, oversampledFs_)); // Mesa presence bite
@@ -120,6 +132,9 @@ void MesaMarkV::recalcFilters() noexcept {
         // dulling. Peers roll off at 14-16 kHz with a gentler slope. See tools/amp_noise.cpp.
         c.dcBlk.setCoeffs(Filters::highpass(12.0, 0.707, oversampledFs_));
         c.dnrLP.setCoeffs(Filters::lowpass(kDnrFcDark, 0.707, oversampledFs_));  // DNR dark-state LP (6 kHz)
+        c.fitPk125.setCoeffs(Filters::peaking( 125.0, mode_ == 7 ? fit_[2] : 0.0f, 1.0, oversampledFs_));  // mode-7 the reference rig fit
+        c.fitPk15.setCoeffs (Filters::peaking(1500.0, mode_ == 7 ? fit_[3] : 0.0f, 0.7, oversampledFs_));
+        c.fitHs5.setCoeffs  (Filters::highshelf(5000.0, mode_ == 7 ? fit_[4] : 0.0f, oversampledFs_));
     }
 }
 
@@ -153,6 +168,7 @@ void MesaMarkV::reset() noexcept {
         for (auto& s : c.stage) s.reset();
         c.stagePI.reset(); c.tonestack.reset(); c.sagEnv = 0.0f;
         c.dnrLP.reset(); c.dnrEnv = 0.0f; c.dnrD = 1.0f;
+        c.fitPk125.reset(); c.fitPk15.reset(); c.fitHs5.reset();   // audit 2026-09-04: new fit filters were never cleared
     }
 }
 
@@ -170,7 +186,8 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
     // touch response and lowers the pumped floor; still very high gain. Only the knob-dependent span is
     // trimmed, so the base voicing is preserved. (see tools/amp_noise.cpp level sweep)
     constexpr float kHiGainTrim = 0.88f;
-    const float knob = gainSmooth_.getCurrentValue();
+    const float raw  = gainSmooth_.getCurrentValue();
+    const float knob = mode_ >= 6 ? kCh3GainLaw(raw) : raw;
     // Clean-up knee (2026-07-22 audit): above knob 0.35 BIT-IDENTICAL to the shipped
     // voicing; below, an audio-taper attenuator adds the missing clean range (also
     // fixes the Crunch mode's noise-dominated low-knob pathology).
@@ -194,7 +211,7 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
     if (m.tsPre) x = c.tonestack.process(x);      // Mark lead: tone stack before the cascade
 
     for (int i = 0; i < m.nStages; ++i) {
-        x = c.stage[i].process(x * (m.gBase[i] + g * m.gSpan[i])) * 0.82f;
+        x = c.stage[i].process(x * (m.gBase[i] + g * m.gSpan[i]) * (mode_ == 7 ? fit_[5] : 1.0f)) * 0.82f;
         if (i == 0) x = c.interHP.process(x);     // tighten bass early
         else        x = c.coupDC[i].process(x);   // coupling cap: block the bias-walk DC
         if (i == 1) x = c.interLP.process(x);     // limit fizz mid-cascade
@@ -230,6 +247,7 @@ float MesaMarkV::processSample(float x, int chn) noexcept {
         const float lp = c.dnrLP.process(x);
         x = lp + c.dnrD * (x - lp);
     }
+    if (mode_ == 7) x = c.fitHs5.process(c.fitPk15.process(c.fitPk125.process(x)));   // reference-fit voicing
     return x;
 }
 
@@ -252,7 +270,11 @@ void MesaMarkV::setParameter(const std::string& id, float value) noexcept {
     else if (id == "sag")      { sag_    = value; }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
-    else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
+    else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(mode_ >= 6 ? kCh3TrebLaw(value) : value); }
+    else if (id.size() == 4 && id.compare(0, 3, "fit") == 0) {   // "fit0".."fit6": mode-7 the reference rig-fit hooks
+        const int i = id[3] - '0';
+        if (i >= 0 && i < kNFit) { fit_[i] = value; rebuild(); }
+    }
     else if (id == "presence") { presence_ = value; recalcFilters(); }
     else if (id.size() == 4 && id[0] == 'g' && id[1] == 'e' && id[2] == 'q') {
         int b = id[3] - '0';                       // "geq0".."geq4" → ±12 dB (0.5 = flat)

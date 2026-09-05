@@ -353,6 +353,9 @@ void PowerAmpProcessor::recalcFilters() {
     // transient overshoot before the VCA clamps (= bloom); 13 ms release sets the
     // recovery τ (matches the JCM800 capture's ~13 ms).
     bloomVcaAttCoef = static_cast<float>(std::exp(-1.0 / (0.0025 * sr)));
+    dipAttF_     = static_cast<float>(std::exp(-1.0 / (0.002 * sr)));
+    dipRelF_     = static_cast<float>(std::exp(-1.0 / (0.040 * sr)));
+    dipSlowCoef_ = static_cast<float>(std::exp(-1.0 / (dipTauS_ * sr)));
     cplAtt = 1.0f - static_cast<float>(std::exp(-1.0 / (0.015 * sr)));   // coupling env: 15 ms up
     cplRel = 1.0f - static_cast<float>(std::exp(-1.0 / (0.250 * sr)));   // 250 ms down
     bloomVcaRelCoef = static_cast<float>(std::exp(-1.0 / (bloomVcaRelMs * 0.001 * sr)));
@@ -396,6 +399,7 @@ void PowerAmpProcessor::prepare(double sr, int maxBlock, int nCh) {
         fluxSatPrev[c]  = 0.0f;
         bloomEnv[c]     = 0.0f;
         bloomVcaEnv[c]  = 0.0f;
+        dipEnvF_[c] = 0.0f; dipEnvS_[c] = 0.0f;
         dcLpA[c] = 0.0f; dcLpB[c] = 0.0f; dcSgn[c] = 0.0f;
         ltpEnv[c] = 0.0f;
     }
@@ -421,6 +425,11 @@ void PowerAmpProcessor::setTubeType(TubeType type) noexcept {
 // ─────────────────────────────────────────────────────────────────────────────
 // setParameter / getParameter
 // ─────────────────────────────────────────────────────────────────────────────
+void PowerAmpProcessor::recalcTrack() noexcept {
+    const float ex = trackKnob_ < 0.5f ? trackLo_ : trackHi_;
+    trackGain_ = (ex != 0.0f) ? std::pow(std::max(trackKnob_, 0.05f) / 0.5f, ex) : 1.0f;
+}
+
 void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     const float c01 = std::clamp(v, 0.0f, 1.0f);
     bool needFilters = false;
@@ -430,6 +439,13 @@ void PowerAmpProcessor::setParameter(const std::string& id, float v) {
     else if (id == "depth")    { depth     = c01; needFilters = true; }
     else if (id == "sag")      { sagAmount = c01; }
     else if (id == "bloomvca") { bloomVcaDepth = c01; }
+    else if (id == "sagdip")   { dipDepth_ = std::clamp(v, 0.0f, 0.75f); }
+    else if (id == "sagbeta")  { dipBeta_  = std::clamp(v, 0.0f, 1.0f); }
+    else if (id == "sagtaus")  { dipTauS_  = std::clamp(v, 0.05f, 1.0f);
+        if (sampleRate > 0.0) dipSlowCoef_ = static_cast<float>(std::exp(-1.0 / (dipTauS_ * sampleRate))); }
+    else if (id == "tracklo")  { trackLo_ = v; recalcTrack(); }
+    else if (id == "trackhi")  { trackHi_ = v; recalcTrack(); }
+    else if (id == "trackgain"){ trackKnob_ = c01; recalcTrack(); }
     // ── HG round 2 levers (all neutral-default = bit-identical) ──
     else if (id == "pakneecurve") { kneeCurve_ = c01; }
     else if (id == "padutydyn")   { padutyDyn_ = std::clamp(v, 0.0f, 2.0f); }
@@ -556,7 +572,15 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // -7.7->-4.5, 5k -5.7->-1.9, THD@1k 58->72 toward the real 93, THD@110
         // 30->24 toward 16, bloom -2.37->-1.72). Makeup restores loudness
         // (loudness-neutral pair); sag/NFB/ripple character all still active.
-        case 2: return { 0.38f,  0.63f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 0.30f, 1.25f, 0.012f, 0.12f, false }; // EVH 5150 III (fluxOT OFF -- see AmpDefaults.fluxOT)
+        // [2026-09-05 NOISE PASS, user: "there's no point to being perfect if half of
+        // the sound is going to be noise"] PA presence 0.63 -> 0.25. Presence is a
+        // treble lift applied AFTER the whole gain chain, so on the suite's highest-
+        // gain model it was boosting amplified hiss more than signal. Measured against
+        // the real -60 dBFS input floor and the reference rig blue-channel takes:
+        //   presence 0.63: SNR blue 5.4/0.4  red 2.0/-0.8   reference match 6.21 dB
+        //   presence 0.25: SNR blue ~10 /5    red ~6.4/3.4   reference match ~6.6 dB
+        // i.e. ~5 dB of noise bought for ~0.4 dB of match. Deliberate trade.
+        case 2: return { 0.38f,  0.25f,  0.72f,  0.61f,  0.29f,  0.00f,  0.0f, 0.30f, 1.25f, 0.012f, 0.12f, false }; // EVH 5150 III (fluxOT OFF -- see AmpDefaults.fluxOT)
         case 3: return { 0.50f,  0.50f,  0.50f,  0.50f,  0.50f,  0.00f }; // NAM neutral -- left at 0: user-supplied captures may already carry real ripple color, or may not; don't guess
         case 4: return { 0.71f,  0.44f,  0.82f,  0.19f,  0.21f,  0.00f }; // Sunn Model T (own 6550) -- PA is bypassed for Sunn, so rippleSagCoupling here is inert either way
         // rippleSagCoupling 0.022 (item #27 rollout): highest sag (0.47) of the EL34
@@ -570,17 +594,17 @@ PowerAmpProcessor::getDefaultsForModel(int idx) noexcept {
         // keeps the shaper in its curved region; ltpTail 3.0 turns the LTP
         // grid-bias envelope ripple into the h2 generator (hits the dimed
         // capture's h2 at BOTH 111/223 Hz); paMakeup restores loudness parity.
-        case 5: return { 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 0.4f, 1.60f, 0.022f, 3.0f, true, 0.40f }; // Orange Rockerverb 100 MKII [2026-08-04: paMakeup 1.75->1.60 to cancel the even-exciter's +0.8 dB -> loudness-neutral, no preset re-level needed] [2026-08-03: duty NO-OP (dimed preamp swamps PA evens) -> post-distortion even exciter 0.40 instead; h2 matched + h4/h6 doubled (partial -- extreme h4/h6~20 still wants PA-first-class re-arch); +0.9 dB -> re-level presets]
+        case 5: { auto d = AmpDefaults{ 0.54f,  0.32f,  0.66f,  0.28f,  0.47f,  0.15f,  0.0f, 0.4f, 1.60f, 0.022f, 3.0f, true, 0.40f }; d.trackLo = 1.71f; d.trackHi = 0.13f; return d; } // Orange Rockerverb 100 MKII [2026-08-04: paMakeup 1.75->1.60 to cancel the even-exciter's +0.8 dB -> loudness-neutral, no preset re-level needed] [2026-08-03: duty NO-OP (dimed preamp swamps PA evens) -> post-distortion even exciter 0.40 instead; h2 matched + h4/h6 doubled (partial -- extreme h4/h6~20 still wants PA-first-class re-arch); +0.9 dB -> re-level presets] [2026-09-04 reference RV50 probe: gain-knob loudness law — the real dial drops 10.3 dB more below noon (g25 -19.4 vs noon -9.1); tone needed NOTHING (grid mean 12.4%, best in the suite)]
         // NOTE (2026-07-26): duty 0.45 was tried here for the dimed capture's even-rich
         // profile (h2 17/h4 13/h6 11%) and measured NO effect — the PA contributes so
         // little distortion vs the preamp (35% THD) that PA evens dilute to ~nothing.
         // The evens gap needs the PA driven as a first-class distortion contributor
         // (gain-staging re-architecture + full preset re-level) — supervised project.
         // rippleSagCoupling 0.018 (item #27 rollout): EL34, moderate sag (0.35).
-        case 6: return { 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f,  0.0f, 2.5f, 1.0f, 0.018f, 0.0f, true, 0.30f }; // Friedman BE-Deluxe [2026-08-04 "more gain": paDrive 1.0->2.5 flattens the saturation curve (soft playing 40->44% THD = more consistently driven) at stable level. THD CEILING ~48% (both preamp softLimit + PA waveshaper are smooth clips); the capture's flat 53% needs power-amp CROSSOVER = the bigger project] (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom)
+        case 6: { auto d = AmpDefaults{ 0.60f,  0.50f,  0.30f,  0.40f,  0.35f,  0.36f,  0.0f, 2.5f, 1.0f, 0.018f, 0.0f, true, 0.30f }; d.trackLo = 0.95f; d.trackHi = 0.12f; return d; } // Friedman BE-Deluxe [2026-08-04 "more gain": paDrive 1.0->2.5 flattens the saturation curve (soft playing 40->44% THD = more consistently driven) at stable level. THD CEILING ~48% (both preamp softLimit + PA waveshaper are smooth clips); the capture's flat 53% needs power-amp CROSSOVER = the bigger project] (Beardo BE) — EL34; bloomVca 0.36 = HBE bloom matches NAM exactly (tested: lower over-sags nothing, just loses HBE bloom) [2026-09-03 reference probe: post-PA gain tracking 0.95/0.12 = the real BE gain-knob loudness span]
         // rippleSagCoupling 0.010 (item #27 rollout): TIGHT supply (bloom only 4 dB
         // vs the capture) -> proportionally less ripple depth than JCM800/Rockerverb.
-        case 7: return { 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f,  0.15f, 1.0f, 1.0f, 0.010f }; // Mesa Dual Rectifier (Diamond Plate) [2026-08-03 duty 0.15: PA distorts here, evens rise toward capture] — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA
+        case 7: { auto d = AmpDefaults{ 0.55f,  0.45f,  0.55f,  0.30f,  0.25f,  0.05f,  0.15f, 1.0f, 1.0f, 0.010f }; d.trackLo = -0.63f; return d; } // Mesa Dual Rectifier (Diamond Plate) [2026-08-03 duty 0.15: PA distorts here, evens rise toward capture] — 6L6, low NFB (Vintage baseline; Modern modes get a host-side nfb≈0.05 override), deep lows, TIGHT supply (capture bloom only 4 dB); variac/rect feel lives in the model's own sag VCA [2026-09-03 reference probe: low gain ~4 dB too quiet on Orange+Red -> negative tracking exponent]
         // rippleSagCoupling 0.006 (item #27 rollout): tightest/most percussive amp in
         // the suite (sag 0.15) -> smallest ripple depth, so it doesn't fight the
         // deliberately tight/snappy character.
@@ -867,10 +891,33 @@ void PowerAmpProcessor::process(float** in, float** out, int numSamples, int nCh
             }
     }
 
-    // ── Master volume ─────────────────────────────────────────────────────────
+    // ── Supply duck-and-swell (2026-09-03, the reference rig ground truth) ─────────────────
+    // Post-saturation like bloomVca (the waveshaper erases pre-sat shaping).
+    // dip = depth*(1 - beta*envS/envF): full depth at note onset (the slow
+    // rail node lags), decaying to depth*(1-beta) as the rail recovers = the
+    // audible swell. Ratio form = tap-magnitude-proof.
+    if (dipDepth_ > 0.0f) {
+        for (int ch = 0; ch < chCount; ++ch) {
+            float& ef = dipEnvF_[ch];
+            float& es = dipEnvS_[ch];
+            for (int i = 0; i < numSamples; ++i) {
+                const float a = std::abs(out[ch][i]);
+                ef = (a > ef) ? (dipAttF_ * ef + (1.0f - dipAttF_) * a)
+                              : (dipRelF_ * ef + (1.0f - dipRelF_) * a);
+                es = dipSlowCoef_ * es + (1.0f - dipSlowCoef_) * a;
+                if (ef > 1.0e-5f) {
+                    const float dip = dipDepth_ * std::fmax(0.0f, 1.0f - dipBeta_ * es / ef);
+                    out[ch][i] *= 1.0f - dip;
+                }
+            }
+        }
+    }
+
+    // ── Master volume + post-PA gain-level tracking (cached pow, level-only) ──
+    const float mv = masterVol * trackGain_;
     for (int ch = 0; ch < chCount; ++ch)
         for (int i = 0; i < numSamples; ++i)
-            out[ch][i] *= masterVol;
+            out[ch][i] *= mv;
 
     // ── Copy-through any extra channels beyond kMaxCh ─────────────────────────
     for (int ch = chCount; ch < nCh; ++ch)

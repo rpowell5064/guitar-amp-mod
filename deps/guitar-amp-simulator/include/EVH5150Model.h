@@ -77,6 +77,7 @@ private:
                                         // pre-clip tonestack gets crushed by the hot
                                         // final limiter, so knob deviations from noon
                                         // are re-applied where they can be heard
+        BiquadFilter     fitEq[4];      // reference-fit voicing (fit5..fit8), post-chain
         BiquadFilter     resonanceF;   // peak @ 80 Hz (EVH deep resonance)
         BiquadFilter     bodyRestore;  // 2026-07-27: post-clip CLEAN low restore (lows
                                        // tightened out of the cascade come back full,
@@ -92,6 +93,32 @@ private:
         float sagDecayF = 0.0f;
     };
     std::array<ChannelState, kMaxCh> ch_;
+
+    // reference ground-truth fit hooks (2026-09-02, 24-take probe session): runtime
+    // "fit0".."fit9" for nam_compare --fit sweeps; defaults = legacy behaviour.
+    //   fit0 input drive dB | fit1 gain-law floor (gEff min) | fit2 softLimit
+    //   drive dB (rails the terminal clip -> level-invariant core) | fit3
+    //   softLimit knee width (0.05 legacy; wider = rounder = less buzz) |
+    //   fit4 stage gain-span scale | fit5 pk130 dB | fit6 pk1600 dB | fit7
+    //   hs6500 dB | fit8 ls55 dB (post-voicing, replaces EvhCaptureFit) |
+    //   fit9 master taper exponent (0 = LEGACY pre-limiter linear master;
+    //   >0 = structural fix: stage4 at fixed noon drive, master applied
+    //   POST-limiter as (m/0.5)^fit9 so the taper is real -- the legacy
+    //   pre-limiter master was eaten by the railed limiter: -3 dB where the
+    //   the reference rig does -13).
+    // BAKED 2026-09-02 from the 24-take reference 5150-class probe session (config W2):
+    // softLimit rail +15 dB (the level-invariant railed core — THE lever, mean
+    // specESR 32.7 -> 27.0 on its own), knee 0.15 (rounder = the reference rig's faster
+    // harmonic rolloff), voicing pk130 +5 / pk1600 -4.5 / hs6500 -1 / ls55 -1.5
+    // (-> 21.6), master taper 2.0... exponent 2.4 = the reference rig's measured law
+    // (post-limiter, structural). Input drive, gain floor and stage span
+    // measured CORRECT as-was. This bake REPLACES EvhCaptureFit/evhLab.
+    static constexpr int kNFit = 10;
+    float fit_[kNFit] = { 0.0f, 0.35f, 15.0f, 0.15f, 1.0f, 5.0f, -4.5f, -1.0f, -1.5f, 2.4f };
+    // Derived (recomputed in recalcFilters()/setParameter — NO per-sample pow):
+    float inDrive_ = 1.0f;     // lin(fit0)
+    float slDrive_ = 5.623f;   // lin(fit2)
+    float slNorm_  = 0.3019f;  // 1/(0.5+0.5*slDrive_)
 
     static constexpr float kPreToneGain = 0.30f;
     static constexpr float kCouple12    = 0.55f;
@@ -121,6 +148,7 @@ private:
     static constexpr float kSagDepth   = 0.30f;
     static constexpr float kSagFastMix = 0.45f;   // 0 = old slow-only sag
 
-    static float softLimit(float x) noexcept;
-    void recalcFilters() noexcept;
+    float softLimit(float x) noexcept;
+    void  recalcFilters() noexcept;
+    float taperedMaster() const noexcept;   // fit9 master taper (audit 2026-09-04)
 };

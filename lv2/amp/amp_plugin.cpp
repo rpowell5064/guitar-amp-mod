@@ -18,8 +18,6 @@
 #include "PowerAmpProcessor.h"
 #include "NoiseGateBlock.h"
 #include "HumNotchComb.h"
-#include "EvhCaptureFit.h"
-#include "RectoCaptureFit.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -129,8 +127,6 @@ struct AmpPlugin {
     HumNotchComb      inComb[2];       // 60 Hz hum comb, also pre-gain (the user's measured idle floor is
                                        // 89% mains-hum harmonics; ~15 dB off it puts the floor under the
                                        // gate's close threshold). Engaged with the gate; always fed (warm state).
-    EvhCaptureFit     evhFit[2];       // EVH capture-fit voicing (baked 2026-08-19), post-PA, model 2 only
-    RectoCaptureFit   rectoFit[2];     // Recto CH3-Modern capture-fit (baked 2026-08-20), post-PA, model 12 mode 7 only
     NamModel*         nam = nullptr;   // swapped in by the worker on file load
 
     float* ctrl[P_N_PORTS] = {};
@@ -201,10 +197,6 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->pa.prepare(rate, kMaxBlock, 2);
     p->inGate.prepare(rate, kMaxBlock, 2);
     p->inComb[0].prepare(rate);
-    p->evhFit[0].prepare(rate);
-    p->evhFit[1].prepare(rate);
-    p->rectoFit[0].prepare(rate);
-    p->rectoFit[1].prepare(rate);
     p->inComb[1].prepare(rate);
     // Tuned for a fast, transparent noise-floor gate: quick open, long smooth tail so sustain rings out.
     p->inGate.setParameter("attack",     2.0f);
@@ -308,10 +300,6 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             p->inGate.setParameter("hysteresis", 8.0f);
             p->inComb[0] = HumNotchComb{};   p->inComb[0].prepare(p->rate);
             p->inComb[1] = HumNotchComb{};   p->inComb[1].prepare(p->rate);
-            p->evhFit[0] = EvhCaptureFit{};  p->evhFit[0].prepare(p->rate);
-            p->evhFit[1] = EvhCaptureFit{};  p->evhFit[1].prepare(p->rate);
-            p->rectoFit[0] = RectoCaptureFit{}; p->rectoFit[0].prepare(p->rate);
-            p->rectoFit[1] = RectoCaptureFit{}; p->rectoFit[1].prepare(p->rate);
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
             p->lastTube = -1;   // re-apply the tube type below
         }
@@ -477,6 +465,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->pa.setParameter("depth",    d.depth);
         p->pa.setParameter("nfb",      rectoModern ? 0.05f : d.nfb);
         p->pa.setParameter("sag",      d.sag);
+        p->pa.setParameter("tracklo",  d.trackLo); p->pa.setParameter("trackhi", d.trackHi);   // post-PA gain-level tracking (the reference rig)
         p->pa.setParameter("resonance", *p->ctrl[P_PA_RESON]);
     p->pa.setParameter("coupling", *p->ctrl[P_PAMP_COUPL]);   // speaker-impedance coupling (v24 fidelity)
         p->pa.setParameter("airFeel",   *p->ctrl[P_PA_AIR]);
@@ -493,6 +482,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     }
     // Post-saturation sag-VCA depth is a per-amp voicing value with no user port.
     p->pa.setParameter("bloomvca", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).bloomVca);
+    p->pa.setParameter("trackgain", *p->ctrl[P_GAIN]);   // post-PA gain-level tracking follows the amp gain knob
     p->pa.setParameter("duty",     PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).duty);
     p->pa.setParameter("evengen",  PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).evenDepth);
     p->pa.setParameter("ripplesag",PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).rippleSagCoupling);
@@ -552,20 +542,9 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         float* outs[2] = { outL + off, outR + off };
         amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);
-        // EVH capture-fit voicing (baked 2026-08-19; loudness-neutral, model 2 only).
-        if (modelIdx == 2)
-            for (int i = 0; i < len; ++i) {
-                outs[0][i] = p->evhFit[0].process(outs[0][i]);
-                outs[1][i] = p->evhFit[1].process(outs[1][i]);
-            }
-        // Recto CH3-Modern capture-fit (baked 2026-08-20 at the user's blend 1.0;
-        // loudness-neutral, model 12 mode 7 only — the nonlinear half is baked in
-        // the model's ModeCfg row). See lv2/common/RectoCaptureFit.h.
-        if (modelIdx == kRectoIdx && *p->ctrl[P_RC_MODE] > 6.5f)
-            for (int i = 0; i < len; ++i) {
-                outs[0][i] = p->rectoFit[0].process(outs[0][i]);
-                outs[1][i] = p->rectoFit[1].process(outs[1][i]);
-            }
+        // (EVH capture-fit voicing RETIRED 2026-09-02 — the reference rig-probe bake lives
+        // inside EVH5150Model now; see the fit_ block there.)
+        // (Recto capture-fit RETIRED 2026-09-03 - the reference rig-probe Modern bake lives in MesaDualRectifier.)
         // Feed the power amp's own supply-sag envelope back to the preamp for
         // the NEXT block (2026-07-28, item #22) -- one block stale, negligible
         // given sag's ~10-350 ms time constants. Default per-amp coupling is 0
