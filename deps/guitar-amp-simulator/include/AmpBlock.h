@@ -21,8 +21,10 @@ enum class AmpModel {
     MesaMarkV,         // Mesa/Boogie Mark V — 9 modes across 3 channels, Simul-Class
     MesaDualRectifier, // Mesa Dual Rectifier — 8 modes across 3 channels, 6L6, variac/rect switches
     PRSMT15,           // PRS MT15 — Clean/Crunch/Lead + bright switch, tight strong-NFB high gain
-    AmpegSVT           // Ampeg SVT "Blue Liner" — the suite's first BASS amp: Ultra-Lo/Ultra-Hi,
+    AmpegSVT,          // Ampeg SVT "Blue Liner" — the suite's first BASS amp: Ultra-Lo/Ultra-Hi,
                        // 3-position mid selector, 6×6550 solid-state-rectified 300 W power
+    EVH5150Comp        // EXPERIMENTAL component-exact 5150 III preamp (harness-only;
+                       // not wired into any plugin dropdown — see EVH5150ComponentModel.h)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

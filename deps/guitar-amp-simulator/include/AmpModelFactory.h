@@ -27,6 +27,10 @@ public:
         MesaDualRectifier  = 11,
         PRSMT15            = 12,
         AmpegSVT           = 13,
+        // EXPERIMENTAL (2026-09-09): component-exact 5150 III preamp, kept out
+        // of kNumModels/getAllModelNames so no UI or registry iteration sees it
+        // until the experiment graduates. Reachable via create()/fromString().
+        EVH5150Component   = 14,
     };
 
     static constexpr int kNumModels = 14;

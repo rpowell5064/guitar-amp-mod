@@ -122,6 +122,33 @@ public:
         250e3, 500e3, 25e3, 39e3
     };
 
+    // EVH 5150 III 50W (2026-09-09) -- read directly off the Fender factory
+    // service diagram (drawing 0079092000 Rev E, "EVH 5150 III 50W MAIN PCB
+    // ASSY", sheet 1, traced at 345 DPI). Channel THREE (Red/lead) carries a
+    // standard TMB after the V4-B cathode follower: C10=470pF (treble cap),
+    // C6=C7=.022uF (bass/mid), R9=250kB (treble pot), R7=1M-5A (bass pot),
+    // R8=25kB (mid pot), R23=47k (slope). NOTE the schematic ALSO hangs an
+    // R83 33k + C43 .01uF series branch to ground on the stack input node and
+    // feeds the whole network through R61 43k -- those two elements are NOT
+    // part of the TMB topology and are modelled separately by the caller
+    // (EVH5150ComponentModel); only the pure TMB lives here.
+    static constexpr CircuitParams kEVH5150IIICh3 = {
+        470e-12, 0.022e-6, 0.022e-6,
+        250e3, 1e6, 25e3, 47e3
+    };
+
+    // EVH 5150 III 50W channels ONE/TWO (Green/Blue, shared stack) -- same
+    // drawing, sheet 1: C49=470pF treble cap, C13=.1uF bass, C4=.022uF mid,
+    // R4=250kB treble pot, R2=250k-15A bass pot, R3=25kB mid pot, slope
+    // relay-selected R104 43k (CH1) / R88 47k (CH2). This entry carries the
+    // CH2 (Blue) value; CH1 additionally relays C51 250pF + R99 100k onto the
+    // treble cap (not modelled -- the suite's Blue channel maps to CH2).
+    // The series R97 43k feed is modelled by the caller.
+    static constexpr CircuitParams kEVH5150IIICh12 = {
+        470e-12, 0.1e-6, 0.022e-6,
+        250e3, 250e3, 25e3, 47e3
+    };
+
     void prepare(double sampleRate, const CircuitParams& p) noexcept {
         sampleRate_ = sampleRate;
         params_     = p;

@@ -73,6 +73,7 @@ public:
             case AmpModel::MesaDualRectifier:  fid = FID::MesaDualRectifier;   break;
             case AmpModel::PRSMT15:            fid = FID::PRSMT15;             break;
             case AmpModel::AmpegSVT:           fid = FID::AmpegSVT;            break;
+            case AmpModel::EVH5150Comp:        fid = FID::EVH5150Component;    break;
             default:                            isExtended = false;              break;
         }
 
