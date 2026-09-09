@@ -55,6 +55,10 @@ public:
         // OT band limits (estimates — see header note).
         otHP_.setCoeffs(Filters::highpass1pole(35.0, fs_));
         otLP_.setCoeffs(Filters::lowpass1pole(15e3, fs_));
+        // Reflected speaker-impedance shape (see process() note).
+        zRes_.setCoeffs(Filters::peaking(120.0, 12.5, 0.9, fs_));
+        zHF_.setCoeffs(Filters::highshelf(4000.0, 4.5, fs_));
+        fluxLP_.setCoeffs(Filters::lowpass1pole(120.0, fs_));
         // B+ droop: fast reservoir + slow chain (estimates, mild — the EVH
         // runs a solid-state bridge; the audible "swell" is LF-path, not sag).
         sagAtk_ = std::exp(-1.0 / (0.010 * fs_));   // screen cap charge under load
@@ -71,6 +75,7 @@ public:
         scrFactor_ = 1.0;
         biasShift_ = 0.0;
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
+        zRes_.reset(); zHF_.reset(); fluxLP_.reset();
         presShelf_.reset(); resoShelf_.reset();
         c89HP_.reset(); c118HP_.reset(); c119HP_.reset();
     }
@@ -141,9 +146,27 @@ public:
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / kVg2), 1.5);
         }
         // Differential plate current into the OT primary → speaker volts.
+        // The load is the REFLECTED SPEAKER IMPEDANCE, not a resistor: a
+        // guitar speaker's Z peaks ~4x nominal at its ~100 Hz resonance and
+        // rises inductively above ~2 kHz, so output voltage follows Z(f) for
+        // a pentode current source (the NFB loop then partially flattens it —
+        // it runs INSIDE the loop here, as in the amp). Curve constants are
+        // speaker-typical estimates (the reference recordings ran the Axe's
+        // PA speaker-impedance modeling, cab off — same convention).
         double spk = (iP - iN) * (kRaa / 4.0) / kOtRatio * scrFactor_;
+        spk = zHF_.process(zRes_.process(float(spk)));
 
         spk = otLP_.process(otHP_.process(float(spk)));
+        // OT CORE SATURATION: flux scales with V/f, so the low band drives
+        // the core toward saturation first — the hardware reference shows a
+        // flat ~22% THD floor at 111 Hz at every gain and drive level, which
+        // only a flux limit produces. Split at ~120 Hz and soft-limit the low
+        // band (kFluxLim in speaker-node volts); runs inside the NFB loop.
+        {
+            const float lo = fluxLP_.process(float(spk));
+            const double hi = spk - lo;
+            spk = hi + kFluxLim * std::tanh(lo / kFluxLim);
+        }
         nfbPrev_ = float(spk);
         // Small residual level trim vs the TP47-derived speaker targets (the
         // bulk of the old 6.5x trim was the TP41 mis-assignment, now fixed in
@@ -316,6 +339,10 @@ private:
     float presence_ = 0.5f, resonance_ = 0.5f, sagDepth_ = 0.3f;
     ShelfV presShelf_, resoShelf_;
     BiquadFilter nfbStabLP_, otHP_, otLP_, c89HP_, c118HP_, c119HP_;
+    BiquadFilter zRes_, zHF_;   // reflected speaker-impedance curve
+    BiquadFilter fluxLP_;       // OT core-saturation band split
+    static constexpr double kFluxLim = 4.0;   // flux limit, speaker-node volts (estimate,
+                                              // set by the hardware 111 Hz THD floor)
     float  nfbPrev_ = 0.0f;
     double sagEnv_ = 0.0, sagAtk_ = 0.0, sagRel_ = 0.0;
     double scrEnv_ = 0.018, scrFactor_ = 1.0;    // screen-node droop state

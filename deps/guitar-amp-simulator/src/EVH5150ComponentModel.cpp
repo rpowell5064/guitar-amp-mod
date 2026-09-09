@@ -196,13 +196,13 @@ void EVH5150ComponentModel::recalcPots() noexcept {
     // THREE gain pot: 1M, 5A audio taper, R36 1M wiper load, C5 .001 bright
     // cap bridging the top segment (input→wiper). Loaded divider at LF; the
     // bright cap lifts it toward unity above fc = 1/(2π C5 (Rt∥(Rb∥RL))).
-    // Taper curve CALIBRATED to the drawing's own AC ladder (2026-09-09): the
-    // pot is marked 1M-5A, but at GAIN 1/4 the documented TP14 level implies a
-    // steeper low-rotation curve than a plain 5%-at-noon power law — the
-    // effective mid-fraction that reproduces the service point is 2.35%.
-    // (Single-point calibration; refine against Axe-FX gain sweeps when the
-    // refwav recordings exist.)
-    const float r = audioTaper(gain_, 0.0235f);
+    // Taper: the pot's own 5%-at-noon audio law. The Axe-FX hardware gain
+    // sweep (g25/noon/g75/gmax refwavs, 2026-09-09) confirms it across the
+    // rotation range, OUTVOTING the drawing's single GAIN-1/4 AC point
+    // (TP14), which had an unexplained x3 anomaly and briefly pulled the
+    // calibration to an over-steep 2.35% law. TP14 stays a documented
+    // service-data discrepancy.
+    const float r = audioTaper(gain_, 0.05f);
     for (auto& c : ch_) {
         const double Rb  = std::max(50.0, double(r) * 1e6);
         const double Rt  = std::max(50.0, (1.0 - double(r)) * 1e6);
