@@ -14,10 +14,12 @@
 
 using namespace evhcomp;
 
-// FX-loop buffer chain gain (TL072 send/return path): derived from the
-// drawing's own AC ladder, TP11 -> TP40 (162 mV -> 79 mV, THREE settings)
-// with the PI input divider inside EVHPowerSectionV accounted for.
-static constexpr double kPaBufGain = 0.544;
+// FX-loop buffer chain gain (TL072 send/return path): TP41's pointer lands
+// on the C93 line = the PI INPUT (sheet-2 crop, 2026-09-09), so the chain
+// gain is TP11 -> TP41 = 162 mV -> 412 mV = x2.54. (The earlier 0.544 read
+// TP40 as the PI grid — a test-point mis-assignment that masqueraded as a
+// 16 dB PA forward-gain gap.)
+static constexpr double kPaBufGain = 2.54;
 
 void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
     fs_ = oversampledSampleRate;
@@ -59,10 +61,14 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
             const double Zp2b  = 1.0 / (1.0 / 100e3 + 1.0 / rpEff);
             c.v2bPole.setCoeffs(Filters::lowpass1pole(
                 1.0 / (2.0 * M_PI * 1e-9 * Zp2b), fs_));
-            c.d_v23.prepare(fs_, 0.022e-6 /*C19*/, Zp2b + 220e3 /*R40*/, 330e3 /*R39*/);
+            // Retrace 2026-09-09 (audit crop): R39 330k is the LEAK at the C19
+            // node and R40 220k a pure series grid stopper into V3-A — NOT a
+            // divider. Transfer = R39/(R39+Zp) with R40 in the grid-conduction
+            // source impedance only.
+            c.d_v23.prepare(fs_, 0.022e-6 /*C19*/, Zp2b, 330e3 /*R39*/);
         }
         c.v3a.prepare(fs_, { kRailX, 220e3 /*R80*/, 1.8e3 /*R56*/, 1e-6 /*C30*/,
-                             0.0, 0.0, 161e3 /*(Zp+R40)||R39*/ });
+                             220e3 /*R40 stopper*/, 0.0, 295e3 /*R40 + R39||Zp*/ });
         {
             const double Zp3a = 1.0 / (1.0 / 220e3 + 1.0 / kRp);
             c.d_v3ab.prepare(fs_, 0.022e-6 /*C31*/, Zp3a + 1e6 /*R66*/, 150e3 /*R65*/);

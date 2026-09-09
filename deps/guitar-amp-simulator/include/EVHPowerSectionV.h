@@ -57,8 +57,9 @@ public:
         otLP_.setCoeffs(Filters::lowpass1pole(15e3, fs_));
         // B+ droop: fast reservoir + slow chain (estimates, mild — the EVH
         // runs a solid-state bridge; the audible "swell" is LF-path, not sag).
-        sagAtk_ = std::exp(-1.0 / (0.002 * fs_));
-        sagRel_ = std::exp(-1.0 / (0.120 * fs_));
+        sagAtk_ = std::exp(-1.0 / (0.010 * fs_));   // screen cap charge under load
+        sagRel_ = std::exp(-1.0 / (0.220 * fs_));   // 10k x 22uF recovery
+        biasDecay_ = std::exp(-1.0 / (0.25 * fs_));   // C97 10uF x R171 25k
         reset();
     }
 
@@ -66,6 +67,9 @@ public:
         IaOpA_ = IaOpB_ = ltpIaBiasA_;
         nfbPrev_ = 0.0f;
         sagEnv_ = 0.0;
+        scrEnv_ = 2.0 * 0.06 * 0.15;   // idle screen current
+        scrFactor_ = 1.0;
+        biasShift_ = 0.0;
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
         presShelf_.reset(); resoShelf_.reset();
         c89HP_.reset(); c118HP_.reset(); c119HP_.reset();
@@ -102,26 +106,48 @@ public:
         // 220k bias feeds + 1.5k stoppers; grid conduction clamped vs bias).
         double gA = c118HP_.process(float(vpA - ltpVpBiasA_));
         double gB = c119HP_.process(float(vpB - ltpVpBiasB_));
-        gA = gridClamp(gA); gB = gridClamp(gB);
+        // 6L6 grid conduction ALSO charges the shared bias network: grid
+        // current flows through the 220k feeds into C97 10uF on the bias-adj
+        // rail, pushing BOTH grids colder; it recovers through R171 25k
+        // (tau = 0.25 s). This is the amp's ~300 ms onset-settle ("swell")
+        // mechanism — burst onset plays at full bias, then the stage settles
+        // a few dB colder. All values from sheet 2.
+        {
+            const double overA = std::max(0.0, gA - (-vBias_ + 0.7));
+            const double overB = std::max(0.0, gB - (-vBias_ + 0.7));
+            biasShift_ += (overA + overB) / (220e3 * 10e-6 * fs_);   // through R151/R158 220k
+            biasShift_ *= biasDecay_;
+            if (biasShift_ > 12.0) biasShift_ = 12.0;
+        }
+        gA = gridClamp(gA) - biasShift_;
+        gB = gridClamp(gB) - biasShift_;
 
-        // ── 6L6GC push-pull via the bias-solved LUT (B+ droop scales rail) ──
-        const double sag = 1.0 - sagDepth_ * kSagDepthMax * sagEnv_;
+        // ── 6L6GC push-pull via the bias-solved LUT ─────────────────────────
         const double iP  = lut(gA) * kImbalance;
         const double iN  = lut(gB);
+        // SCREEN SAG (the amp's dominant onset-settle mechanism): the screens
+        // feed through R125/R130 10k 2W from +485 with 22 uF caps — tau =
+        // 0.22 s. Screen current (~15% of cathode current, 6L6 datasheet
+        // class-AB region) droops the screen node tens of volts under drive,
+        // and pentode output follows ~Vg2^1.5 — onset plays at full ceiling,
+        // then settles over ~300 ms. sagDepth 0.3 = schematic-nominal.
+        {
+            const double scrI = (std::abs(iP) + std::abs(iN) + 2.0 * outIdle_) * 0.15;
+            scrEnv_ += (scrI > scrEnv_ ? (1.0 - sagAtk_) : (1.0 - sagRel_)) * (scrI - scrEnv_);
+            // Relative to idle — the drawing's +485 V TP is measured WITH the
+            // idle screen current already flowing.
+            const double droop = std::min(200.0, std::max(0.0, scrEnv_ - 0.018) * 10e3)
+                               * (sagDepth_ / 0.3);
+            scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / kVg2), 1.5);
+        }
         // Differential plate current into the OT primary → speaker volts.
-        double spk = (iP - iN) * (kRaa / 4.0) / kOtRatio * sag;
-        // Track EXCESS conduction over idle (normalised) for the B+ droop.
-        const double cond = std::max(0.0,
-            (std::abs(iP) + std::abs(iN)) / (2.0 * outIdle_) - 1.0) * 0.5;
-        sagEnv_ += (cond > sagEnv_ ? (1.0 - sagAtk_) : (1.0 - sagRel_)) * (cond - sagEnv_);
+        double spk = (iP - iN) * (kRaa / 4.0) / kOtRatio * scrFactor_;
 
         spk = otLP_.process(otHP_.process(float(spk)));
         nfbPrev_ = float(spk);
-        // Post-loop level trim, calibrated to the drawing's TP47-derived
-        // speaker levels (2026-09-09). It closes a ~16 dB forward-gain gap
-        // whose in-loop owner (LTP gain / pentode gm / Ra-a / OT ratio) is
-        // not yet resolved — the loop therefore runs with LESS feedback
-        // action than the real amp until the PA gain audit lands. KNOWN-OPEN.
+        // Small residual level trim vs the TP47-derived speaker targets (the
+        // bulk of the old 6.5x trim was the TP41 mis-assignment, now fixed in
+        // the model's kPaBufGain).
         return spk * kOtTrim;
     }
 
@@ -152,7 +178,7 @@ private:
     // with feedback from the 4-ohm tap (half the 16-ohm-tap voltage) — the
     // fixed-tap NFB convention of this amp family.
     static constexpr double kNfbTap = 0.5;
-    static constexpr double kOtTrim = 6.5;   // see process() note — service-ladder level calibration
+    static constexpr double kOtTrim = 1.35;  // residual ladder level calibration (post TP41 re-read)
     static constexpr double kRaa     = 6000.0;  // derived from the 50 W output test
     static constexpr double kOtRatio = 19.36;   // sqrt(Raa / 16Ω), voltage step-down
     static constexpr double kImbalance = 0.98;  // push/pull matching
@@ -292,6 +318,8 @@ private:
     BiquadFilter nfbStabLP_, otHP_, otLP_, c89HP_, c118HP_, c119HP_;
     float  nfbPrev_ = 0.0f;
     double sagEnv_ = 0.0, sagAtk_ = 0.0, sagRel_ = 0.0;
+    double scrEnv_ = 0.018, scrFactor_ = 1.0;    // screen-node droop state
+    double biasShift_ = 0.0, biasDecay_ = 0.0;   // C97 bias-network charge (mild)
 
 public:
     // C118/C119 (.047 into 220k+1.5k) and C89 (.047 into 1M) coupling poles —

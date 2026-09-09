@@ -84,7 +84,7 @@ private:
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
     float outScale_ = 0.20f;   // preamp-only mode: units per volt at the volume pot
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)
-    float outScalePa_ = 0.0028f; // own-PA mode: units per SPEAKER volt
+    float outScalePa_ = 0.0066f; // own-PA mode: units per SPEAKER volt
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)
 
     LinearSmoother gainSmooth_, masterSmooth_;
