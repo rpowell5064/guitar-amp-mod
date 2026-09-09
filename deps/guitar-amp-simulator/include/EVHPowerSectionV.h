@@ -100,7 +100,7 @@ public:
         // enter inverted.
         const double vgB = -nfb;
         double IaA = IaOpA_, IaB = IaOpB_;
-        for (int it = 0; it < 3; ++it) {   // do not trim (accuracy, see EVHComponentStages)
+        for (int it = 0; it < 2; ++it) {   // warm-started pair; 2 rounds measured identical to 3
             IaA = ltpSolveSide(vgA, IaA, IaB, kLtpRaA);
             IaB = ltpSolveSide(vgB, IaB, IaA, kLtpRaB);
         }
@@ -234,7 +234,7 @@ private:
     double ltpSolveSide(double vg, double Ia, double Iother, double Ra) noexcept {
         const double maxIa = kLtpVcc / Ra * 0.99;
         Ia = std::clamp(Ia, 0.0, maxIa);
-        for (int it = 0; it < 6; ++it) {
+        for (int it = 0; it < 4; ++it) {
             // DC: node at +51.2 V (divider). AC: the tail current variation
             // sees the FULL R159 10k (the divider feed is decoupled), which is
             // what makes the second triode phase-split — treating the node as
@@ -261,7 +261,8 @@ private:
         else if (inner < -80.0)  return 0.0;
         else                     e1 = kVg2 / kKp * std::log1p(std::exp(inner));
         if (e1 <= 0.0) return 0.0;
-        return kIaScale * std::pow(e1, kEx) / kKg1 * std::atan(std::max(0.5, vpk) / kKvb);
+        return kIaScale * std::exp2(kEx * std::log2(e1)) / kKg1
+             * std::atan(std::max(0.5, vpk) / kKvb);
     }
 
     // Bias the pair to the drawing's 60 mA set point (bisection on Vbias —

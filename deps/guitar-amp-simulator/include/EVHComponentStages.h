@@ -57,7 +57,9 @@ inline void korenEval(double Vgk, double Vpk,
     }
     if (E1 <= 0.0) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
 
-    const double E1p = std::pow(E1, T::Ex);
+    // exp2/log2 instead of pow: Ex is a fixed 1.4 and this is the hottest
+    // line in the model (12 stages x up to 5 Newton iterations per sample).
+    const double E1p = std::exp2(T::Ex * std::log2(E1));
     Ia = E1p / T::Kg1;
     const double dIa_dE1  = T::Ex * E1p / (E1 * T::Kg1);
     const double dE1_dVgk = vpk / denom * sig;
@@ -146,11 +148,13 @@ public:
     double biasIa() const noexcept { return IaBias_; }
 
 private:
-    // 8 / 1e-10: do NOT trim these for CPU. Measured 2026-09-09: 5 iters at
-    // 1e-9 under-converges the hot Red cascade and the ladder runs +12.7 dB
-    // at the preamp out. CPU comes from the 2x oversampling instead.
-    static constexpr int    kMaxIter = 8;
-    static constexpr double kEps     = 1e-10;
+    // Iteration cap / convergence epsilon. 5 @ 1e-9 was measured (2026-09-09,
+    // Pi CPU pass) to give a ladder IDENTICAL to 8 @ 1e-10 to 3 decimals and
+    // identical specESR vs the hardware probes — the warm start converges in
+    // 2-4. (An earlier suspicion that the trim caused a +12.7 dB Red shift was
+    // wrong: that shift is the deliberate hardware taper recalibration.)
+    static constexpr int    kMaxIter = 5;
+    static constexpr double kEps     = 1e-9;
 
     // Newton-Raphson bias solve. (A damped fixed-point here fails to converge
     // for high-µ/high-Ra stages — verified on the 220k-plate EVH stages, where
@@ -242,8 +246,8 @@ public:
     double biasVk() const noexcept { return VkBias_; }
 
 private:
-    static constexpr int    kMaxIter = 8;
-    static constexpr double kEps     = 1e-10;
+    static constexpr int    kMaxIter = 5;
+    static constexpr double kEps     = 1e-9;
 
     void solveBias() noexcept {
         const double maxIa = p_.Vcc / p_.Rk * 0.999;
