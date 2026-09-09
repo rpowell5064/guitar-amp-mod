@@ -72,8 +72,10 @@ private:
     float treble_  = 0.5f;
     float master_  = 0.5f;   // = the per-channel VOLUME pot (no global master on the 50W)
     bool  red_     = true;   // channel: 0=Blue(CH2) 1=Red(CH3)
-    bool  blueR79_ = true;   // K3-A R79 10k shunt leg on the Blue divider (relay-side
-                             // ambiguity; resolved empirically vs TP7 — see .cpp)
+    // K3-A relay state. false = CH2 (BLUE, R90 330k leg — the shipping state);
+    // true = CH1 (GREEN, R79 10k leg = the clean channel's -33 dB attenuator),
+    // kept only for A/B. See the long note in prepare().
+    bool  greenLegs_ = false;
     // Phase 2 (2026-09-09): component power section (sheet 2). ON by default;
     // the harness bypasses the shared PowerAmpProcessor when it is on (the
     // Sunn pattern — a complete amp must not double-stack power stages).
@@ -117,7 +119,8 @@ private:
         evhcomp::ShelfV     v1bLoad;     // CH1 C33-network loading on the V1-B plate (APPROX)
         evhcomp::RCDividerV ch2Feed;     // C35 750pF + R51 100k into the 250k pot
         evhcomp::CCStageV   v5a;
-        evhcomp::RCDividerV d_v56;       // C50/R78/R90∥R70(∥R79 opt)
+        evhcomp::RCDividerV d_v56;       // C50 into the K3-A node-A network
+        float               v56Post = 0.3158f;   // R70/(R78+R70) post-divider leg
         evhcomp::CCStageV   v5b;
         BiquadFilter        v5bPole;     // C38 270pF plate pole
         evhcomp::RCDividerV d_v56b;      // C52/R95/R92

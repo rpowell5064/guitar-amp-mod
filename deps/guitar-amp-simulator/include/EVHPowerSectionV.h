@@ -100,7 +100,7 @@ public:
         // enter inverted.
         const double vgB = -nfb;
         double IaA = IaOpA_, IaB = IaOpB_;
-        for (int it = 0; it < 3; ++it) {
+        for (int it = 0; it < 3; ++it) {   // do not trim (accuracy, see EVHComponentStages)
             IaA = ltpSolveSide(vgA, IaA, IaB, kLtpRaA);
             IaB = ltpSolveSide(vgB, IaB, IaA, kLtpRaB);
         }

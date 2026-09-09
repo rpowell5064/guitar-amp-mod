@@ -127,22 +127,48 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
         c.v5a.prepare(fs_, { kRailW, 100e3 /*R85*/, 1.5e3 /*R69*/, 22e-6 /*C34*/,
                              0.0, 0.0, 100e3 /*pot wiper + R51 feed, APPROX*/ });
         {
+            // K3-A CHANNEL LEGS (re-traced 2026-09-09 at 4x after the user
+            // reported Blue playing like the Green channel — it was):
+            //   node A (post-C50, pre-R78) --- R90 330k --- K3-A pin 8 (NO)
+            //   node B (V5-B grid, post-R78) - R79 10k  --- K3-A pin 6 (NC)
+            //   node B ------------------------ R70 180k -- ground (permanent)
+            //   K3-A pin 4 (common) = ground
+            // The relay convention is fixed by K3-B (whose CH2/NO = the C35
+            // feed, confirmed by the drawing's own TP3->TP5 step): CH2 is the
+            // ENERGIZED state = the NO contact. So:
+            //   CH2 (BLUE):  R90 330k grounded at node A, R79 floating
+            //                -> -11.5 dB  (crunch channel)
+            //   CH1 (GREEN): R79 10k grounded at node B, R90 floating
+            //                -> -33 dB    (clean channel)
+            // The previous build shunted 330k||180k||27k at the grid (-25.6 dB)
+            // using R26 27k, which the re-trace shows belongs to the CH1 FEED
+            // network, not here at all: a 14 dB error that made Blue clean.
+            // KNOWN DIVERGENCE: the drawing's printed TWO column at TP7+ wants
+            // ~-26 dB here, but that value is inconsistent with its OWN TP5
+            // (which pins the C35/CH2 feed) and with V5-B's DC-verified 1.5k
+            // unbypassed gain of ~32. Four independent sources (relay trace,
+            // user's ears, the Axe-FX blue probe, the capture) agree the hot
+            // leg is right; the printed column is treated as anomalous, same
+            // call as the TP14 taper anomaly that hardware later vindicated.
             const double Zp5a = 1.0 / (1.0 / 100e3 + 1.0 / kRp);
-            // Divider shunt: R90 330k ∥ R70 180k, plus — on CH2 — the K3-A
-            // relay leg into the CH1 feed network's R26 27k to ground. The
-            // 27k reading is AC-ladder-arbitrated: it reproduces TP5→TP7
-            // (0.74→1.1 VAC) within ~1 dB where the bare 116.5k shunt is
-            // +12 dB hot and an R79 10k shunt −8 dB low. blueR79 keeps the
-            // alternative for A/B (see evh_component_verify).
-            const double sh = blueR79_ ? 1.0 / (1.0 / 330e3 + 1.0 / 180e3 + 1.0 / 27e3)
-                                       : 1.0 / (1.0 / 330e3 + 1.0 / 180e3);
-            c.d_v56.prepare(fs_, 0.01e-6 /*C50*/, Zp5a + 390e3 /*R78*/, sh);
+            if (greenLegs_) {   // CH1 relay state (clean channel), A/B only
+                const double sh = 1.0 / (1.0 / 10e3 + 1.0 / 180e3);   // R79 || R70
+                c.d_v56.prepare(fs_, 0.01e-6 /*C50*/, Zp5a + 390e3 /*R78*/, sh);
+                c.v56Post = 1.0f;
+            } else {            // CH2 relay state = BLUE
+                const double shA = 1.0 / (1.0 / 330e3 + 1.0 / (390e3 + 180e3));
+                c.d_v56.prepare(fs_, 0.01e-6 /*C50*/, Zp5a, shA);
+                c.v56Post = float(180e3 / (390e3 + 180e3));   // R70/(R78+R70)
+            }
         }
         c.v5b.prepare(fs_, { kRailW, 100e3 /*R75*/, 1.5e3 /*R106, UNBYPASSED*/, 0.0,
-                             0.0, 0.0, 92e3 /*(Zp+R78)||R90||R70*/ });
+                             0.0, 0.0,
+                             greenLegs_ ? 9.4e3   /*R79||R70||(R78+...)*/
+                                        : 126e3   /*R70||(R78+R90||Zp)*/ });
         {
             const double rpEff = kRp + 101.0 * 1.5e3;
             const double Zp5b  = 1.0 / (1.0 / 100e3 + 1.0 / rpEff);
+            (void)0;
             c.v5bPole.setCoeffs(Filters::lowpass1pole(
                 1.0 / (2.0 * M_PI * 270e-12 /*C38*/ * Zp5b), fs_));
             c.d_v56b.prepare(fs_, 0.0033e-6 /*C52*/, Zp5b + 390e3 /*R95*/, 180e3 /*R92*/);
@@ -305,7 +331,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(3, v);
         v = c.v5a.process(v);
         tap(4, v);
-        v = c.d_v56.process(float(v));
+        v = c.d_v56.process(float(v)) * c.v56Post;   // R78/R70 leg (see prepare)
         v = c.v5b.process(v);
         v = c.v5bPole.process(float(v));
         tap(5, v);
@@ -339,7 +365,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "presence"){ presence_ = value; for (auto& c : ch_) c.pa.setPresence(value); }
     else if (id == "resonance"){ resonance_ = value; for (auto& c : ch_) c.pa.setResonance(value); }
     else if (id == "sag")     { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
-    else if (id == "bluer79") { blueR79_ = value >= 0.5f; prepare(fs_, 0); }
+    else if (id == "greenlegs") { greenLegs_ = value >= 0.5f; prepare(fs_, 0); }   // CH1 relay state (A/B)
     else if (id == "tapreset") {
         for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; }
     }

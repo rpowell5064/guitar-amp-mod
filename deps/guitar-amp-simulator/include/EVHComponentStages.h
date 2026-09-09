@@ -146,6 +146,9 @@ public:
     double biasIa() const noexcept { return IaBias_; }
 
 private:
+    // 8 / 1e-10: do NOT trim these for CPU. Measured 2026-09-09: 5 iters at
+    // 1e-9 under-converges the hot Red cascade and the ladder runs +12.7 dB
+    // at the preamp out. CPU comes from the 2x oversampling instead.
     static constexpr int    kMaxIter = 8;
     static constexpr double kEps     = 1e-10;
 
