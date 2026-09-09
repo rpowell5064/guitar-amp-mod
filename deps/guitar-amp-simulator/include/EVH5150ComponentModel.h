@@ -1,6 +1,7 @@
 #pragma once
 #include "AmpModelBase.h"
 #include "EVHComponentStages.h"
+#include "EVHPowerSectionV.h"
 #include "YehSmithToneStack.h"
 #include <array>
 #include <string>
@@ -73,12 +74,18 @@ private:
     bool  red_     = true;   // channel: 0=Blue(CH2) 1=Red(CH3)
     bool  blueR79_ = true;   // K3-A R79 10k shunt leg on the Blue divider (relay-side
                              // ambiguity; resolved empirically vs TP7 — see .cpp)
+    // Phase 2 (2026-09-09): component power section (sheet 2). ON by default;
+    // the harness bypasses the shared PowerAmpProcessor when it is on (the
+    // Sunn pattern — a complete amp must not double-stack power stages).
+    bool  ownPa_ = true;
+    float presence_ = 0.5f, resonance_ = 0.5f, sag_ = 0.3f;
 
     // Level calibration (the ONLY free parameters; not voicing):
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
-    float outScale_ = 0.20f;   // output units per volt at the volume-pot wiper
-                               // (set by loudness match vs the JFE Red capture
-                               // through the shared EVH PA row, 2026-09-09)
+    float outScale_ = 0.20f;   // preamp-only mode: units per volt at the volume pot
+                               // (loudness-matched vs the JFE Red capture, 2026-09-09)
+    float outScalePa_ = 0.0028f; // own-PA mode: units per SPEAKER volt
+                               // (loudness-matched vs the JFE Red capture, 2026-09-09)
 
     LinearSmoother gainSmooth_, masterSmooth_;
 
@@ -119,6 +126,9 @@ private:
         evhcomp::CFStageV   v6b;
         evhcomp::ShelfV     ch12Shelf;   // R97 43k + R104 43k/C58 .01 Thevenin shelf
         YehSmithToneStack   ts12;
+
+        // Phase 2: component power section (LTP + 2x 6L6GC + NFB + OT)
+        evhcomp::EVHPowerSectionV pa;
 
         // Debug taps (RMS accumulators for the verification harness; indices
         // documented in evh_component_verify.cpp). Cheap: one MAC per tap.

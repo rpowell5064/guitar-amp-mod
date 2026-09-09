@@ -14,6 +14,11 @@
 
 using namespace evhcomp;
 
+// FX-loop buffer chain gain (TL072 send/return path): derived from the
+// drawing's own AC ladder, TP11 -> TP40 (162 mV -> 79 mV, THREE settings)
+// with the PI input divider inside EVHPowerSectionV accounted for.
+static constexpr double kPaBufGain = 0.544;
+
 void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlockSize*/) noexcept {
     fs_ = oversampledSampleRate;
 
@@ -168,6 +173,12 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
             c.ts12.prepare(fs_, p);
         }
 
+        // Phase 2: component power section (sheet 2 values inside the class).
+        c.pa.prepare(fs_);
+        c.pa.setPresence(presence_);
+        c.pa.setResonance(resonance_);
+        c.pa.setSagDepth(sag_);
+
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -179,7 +190,13 @@ void EVH5150ComponentModel::recalcPots() noexcept {
     // THREE gain pot: 1M, 5A audio taper, R36 1M wiper load, C5 .001 bright
     // cap bridging the top segment (input→wiper). Loaded divider at LF; the
     // bright cap lifts it toward unity above fc = 1/(2π C5 (Rt∥(Rb∥RL))).
-    const float r = audioTaper(gain_, 0.05f);
+    // Taper curve CALIBRATED to the drawing's own AC ladder (2026-09-09): the
+    // pot is marked 1M-5A, but at GAIN 1/4 the documented TP14 level implies a
+    // steeper low-rotation curve than a plain 5%-at-noon power law — the
+    // effective mid-fraction that reproduces the service point is 2.35%.
+    // (Single-point calibration; refine against Axe-FX gain sweeps when the
+    // refwav recordings exist.)
+    const float r = audioTaper(gain_, 0.0235f);
     for (auto& c : ch_) {
         const double Rb  = std::max(50.0, double(r) * 1e6);
         const double Rt  = std::max(50.0, (1.0 - double(r)) * 1e6);
@@ -211,6 +228,7 @@ void EVH5150ComponentModel::reset() noexcept {
         c.d_v56.reset(); c.v5b.reset(); c.v5bPole.reset(); c.d_v56b.reset();
         c.v6a.reset(); c.cfFeed12.reset(); c.v6b.reset(); c.ch12Shelf.reset();
         c.ts12.reset();
+        c.pa.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -269,6 +287,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(9, v);
         v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // THREE VOLUME 1M-30A
         tap(10, v);
+        if (ownPa_) { v = c.pa.process(v * kPaBufGain); tap(11, v); return float(v * outScalePa_); }
         return float(v * outScale_);
     } else {
         // ONE/TWO path: jack → R32 → V1-B → CH2 bright feed → gain pot → V5-A …
@@ -296,6 +315,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(9, v);
         v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // CH1/2 VOL 1M-30A
         tap(10, v);
+        if (ownPa_) { v = c.pa.process(v * kPaBufGain); tap(11, v); return float(v * outScalePa_); }
         return float(v * outScale_);
     }
 }
@@ -309,12 +329,14 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "channel") { red_ = value >= 0.5f; }
     else if (id == "involts") { inVolts_  = value; }
     else if (id == "outscale"){ outScale_ = value; }
+    else if (id == "ownpa")   { ownPa_ = value >= 0.5f; }
+    else if (id == "presence"){ presence_ = value; for (auto& c : ch_) c.pa.setPresence(value); }
+    else if (id == "resonance"){ resonance_ = value; for (auto& c : ch_) c.pa.setResonance(value); }
+    else if (id == "sag")     { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "bluer79") { blueR79_ = value >= 0.5f; prepare(fs_, 0); }
     else if (id == "tapreset") {
         for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; }
     }
-    // presence / resonance / sag are power-amp-side controls on the real 50W
-    // (NFB network, sheet 2) — handled by the downstream PowerAmpProcessor.
 }
 
 float EVH5150ComponentModel::getParameter(const std::string& id) const noexcept {
@@ -326,6 +348,11 @@ float EVH5150ComponentModel::getParameter(const std::string& id) const noexcept 
     if (id == "channel") return red_ ? 1.0f : 0.0f;
     if (id == "involts") return inVolts_;
     if (id == "outscale")return outScale_;
+    if (id == "ownpa")   return ownPa_ ? 1.0f : 0.0f;
+    if (id == "presence") return presence_;
+    if (id == "resonance") return resonance_;
+    if (id == "pa_idle_ma") return float(ch_[0].pa.outIdlemA());
+    if (id == "pa_tail_v")  return float(ch_[0].pa.ltpTailV());
     // Debug taps: RMS volts at the tap points (channel-0 state).
     if (id.size() >= 4 && id.compare(0, 3, "tap") == 0) {
         const int i = std::atoi(id.c_str() + 3);
