@@ -315,6 +315,8 @@ static const int kSwWatch[] = {
     HF_RV2_DENSITY, HF_RV2_TYPE, HF_NAIL2_MODE, HF_CP2_TYPE, HF_WH2_TYPE,
     // v40: fuzz/nail Eco rebuild at the mute zero point
     HF_FZ_ECO, HF_NAIL_ECO, HF_FZ2_ECO, HF_NAIL2_ECO,
+    // v48: EVH component-model lab toggle (whole-amp swap)
+    HF_AMP_EVHCOMP,
     // v41: Plexi Variac (drive/sag topology step)
     HF_AMP_PL_VARIAC, HF_RB_PL_VARIAC,
     // v43: SIR #34 mod (adds/removes a whole gain stage)
@@ -335,6 +337,7 @@ struct WorkMsg {
     NamModel*         nam = nullptr;   // NAM_LOAD reply / NAM_FREE target
     int               modelIdx = 0;
     bool              eco      = false;   // AMP_LOAD: build with 2x oversampling (Engine Quality)
+    bool              evhComp  = false;   // AMP_LOAD: EVH(2) -> the component-model experiment
     int               namSlot  = 0;    // 0=amp 1=drive 2=cab
     char              path[kPathMax] = {0};   // CAB_IR / NAM_LOAD
 };
@@ -524,6 +527,7 @@ struct HexForge {
     double cpuAcc[B_COUNT + 1] = {};    // per-block + [B_COUNT]=whole-chunk seconds (CPU meters)
     long   cpuSamps   = 0;              // samples since last meter publish
     bool   lastEco    = false;          // last Engine Quality the amp was built with
+    bool   lastEvhComp = false;         // last state of the EVH component-model lab toggle
     int    lastGoto   = -1;             // last ps_goto target serviced
     float  meterIn = 0.0f, meterOut = 0.0f;  // smoothed peak level meters (-> in_meter/out_meter)
     float  meterSentIn = -1.0f, meterSentOut = -1.0f;  // last values pushed to UI (deadband)
