@@ -599,6 +599,10 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // mono; bit-identical when the sum is off.
     const bool monoSum = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
     p->cab.setParameter("monoroom", monoSum ? 1.0f : 0.0f);
+    // monosum (2026-09-09): the plate/ambient L/R tails are incoherent, so the
+    // output fold drops the wet ~3 dB against the dry — mono presets read drier
+    // than voiced. The reverb emits an energy-preserving correlated wet instead.
+    p->reverb.setParameter("monosum", monoSum ? 1.0f : 0.0f);
     p->pa.setParameter("coupling",   *p->ports[HF_AMP_PAMP_COUPL]);   // speaker-impedance coupling (v24)
     p->reverb.setParameter("density", *p->ports[HF_RV_DENSITY]);      // classic / dense tank (v25)
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
@@ -795,6 +799,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->reverb2.setParameter("modDepth",   *p->ports[HF_RV2_MODDEPTH]);
         p->reverb2.setParameter("modRate",    *p->ports[HF_RV2_MODRATE]);
         p->reverb2.setParameter("mix",        *p->ports[HF_RV2_MIX]);
+        p->reverb2.setParameter("monosum",    monoSum ? 1.0f : 0.0f);   // same fold compensation as Reverb 1
     }
     if (*p->ports[HF_WH2_ENABLE] > 0.5f) {
         p->wah2.setBypass(false);

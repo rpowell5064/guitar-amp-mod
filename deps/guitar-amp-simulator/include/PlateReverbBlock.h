@@ -61,6 +61,13 @@ private:
     // `bloom` (0..1) drives smear g, recirc gain, mod depth and width together.
     bool  ambientOn  = false;
     float bloom      = 0.5f;
+    // monoSum (2026-09-09): the host rig collapses L+R downstream. The plate's
+    // L/R tails are incoherent (odd/even comb split), so a plain 0.5*(L+R) sum
+    // drops the wet ~3 dB against the correlated dry — every preset reads drier
+    // in mono than it was voiced. When on, emit the energy-preserving correlated
+    // wet 0.7071*(wetL+wetR) on both channels instead; the downstream sum then
+    // leaves the wet/dry balance where stereo ears hear it. OFF = bit-identical.
+    bool  monoSum    = false;
 
     // ---- Internal delay-line wrappers ----
     struct DelayLine {

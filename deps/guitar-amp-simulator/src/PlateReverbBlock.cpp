@@ -157,6 +157,7 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
     }
     else if (id == "mix")        { mix      = std::clamp(v, 0.0f, 1.0f); spring.setMix(mix); }
     else if (id == "drip")       { drip     = std::clamp(v, 0.0f, 1.0f); spring.setDrip(drip); }  // spring dispersion (item 31)
+    else if (id == "monosum")    { monoSum  = v > 0.5f; }   // host collapses L+R downstream (spring is already correlated)
 }
 
 float PlateReverbBlock::getParameter(const std::string& id) const {
@@ -170,6 +171,7 @@ float PlateReverbBlock::getParameter(const std::string& id) const {
     if (id == "modDepth")   return modDepth;
     if (id == "modRate")    return modRate;
     if (id == "mix")        return mix;
+    if (id == "monosum")    return monoSum ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -234,7 +236,14 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
             float wl = sumL * norm, wr = sumR * norm;
             const float mS = 0.5f * (wl + wr), sS = 0.5f * (wl - wr) * widthAmt;
             wl = mS + sS; wr = mS - sS;                           // mono-safe width (M untouched)
-            if (nCh >= 2) { out[0][i] = in[0][i] + wl * mix; out[1][i] = in[1][i] + wr * mix; }
+            if (nCh >= 2) {
+                if (monoSum) {   // energy-preserving correlated wet: survives the downstream L+R fold
+                    const float w = (wl + wr) * 0.70711f * mix;
+                    out[0][i] = in[0][i] + w; out[1][i] = in[1][i] + w;
+                } else {
+                    out[0][i] = in[0][i] + wl * mix; out[1][i] = in[1][i] + wr * mix;
+                }
+            }
             else          { out[0][i] = in[0][i] + mS * mix; }
         }
         for (int c = 2; c < nCh; ++c)
@@ -288,8 +297,14 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
         // overall level from dropping when reverb is engaged — only the Input Trim
         // and Output blocks should change level.
         if (nCh >= 2) {
-            out[0][i] = in[0][i] + outL * mix;
-            out[1][i] = in[1][i] + outR * mix;
+            if (monoSum) {   // energy-preserving correlated wet: survives the downstream L+R fold
+                const float w = (outL + outR) * 0.70711f * mix;
+                out[0][i] = in[0][i] + w;
+                out[1][i] = in[1][i] + w;
+            } else {
+                out[0][i] = in[0][i] + outL * mix;
+                out[1][i] = in[1][i] + outR * mix;
+            }
         } else {
             out[0][i] = in[0][i] + (outL + outR) * 0.5f * mix;
         }
