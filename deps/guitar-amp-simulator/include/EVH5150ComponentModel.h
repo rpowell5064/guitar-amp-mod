@@ -76,7 +76,9 @@ private:
 
     // Level calibration (the ONLY free parameters; not voicing):
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
-    float outScale_ = 0.05f;   // output units per volt at the volume-pot wiper
+    float outScale_ = 0.20f;   // output units per volt at the volume-pot wiper
+                               // (set by loudness match vs the JFE Red capture
+                               // through the shared EVH PA row, 2026-09-09)
 
     LinearSmoother gainSmooth_, masterSmooth_;
 
@@ -96,9 +98,9 @@ private:
         evhcomp::CCStageV   v3a;
         evhcomp::RCDividerV d_v3ab;      // C31/R66/R65
         evhcomp::CCStageV   v3b;
-        evhcomp::RCDividerV d_v34;       // C20/R48/R60∥R46
-        evhcomp::CCStageV   v4a;
-        evhcomp::RCDividerV d_cf3;       // C39/R59/R58 (C29/R57 = AC ground)
+        evhcomp::RCDividerV d_v34;       // C20 coupling into the V4-A feedback node
+        evhcomp::CCStageV   v4a;         // local shunt-shunt NFB: C39+R60 plate→grid
+        float               cfDiv3 = 0.282f;  // DC-coupled R59/R58 divider (C29 grounds R57)
         evhcomp::CFStageV   v4b;
         evhcomp::ShelfV     ch3Shelf;    // R61 43k + R83 33k/C43 .01 Thevenin shelf
         YehSmithToneStack   ts3;
@@ -115,6 +117,7 @@ private:
         evhcomp::CCStageV   v6a;
         evhcomp::ShelfV     cfFeed12;    // R96/R98/C44/R100 (DC-coupled divider)
         evhcomp::CFStageV   v6b;
+        evhcomp::ShelfV     ch12Shelf;   // R97 43k + R104 43k/C58 .01 Thevenin shelf
         YehSmithToneStack   ts12;
 
         // Debug taps (RMS accumulators for the verification harness; indices
@@ -137,7 +140,7 @@ private:
     // folded into the CH3 stack's slope resistor (see .cpp).
     static constexpr double kZthCh3  = 30e3;
     // APPROX: R97 43k series feed folded into the CH1/2 stack's slope resistor.
-    static constexpr double kZthCh12 = 43e3;
+    static constexpr double kZthCh12 = 21.5e3;   // R97 ∥ (R104+C58) mid-band
 
     friend struct EVHCompVerifyAccess;   // lab verification harness introspection
 };

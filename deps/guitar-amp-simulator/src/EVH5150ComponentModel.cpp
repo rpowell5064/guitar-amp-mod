@@ -40,7 +40,7 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
 
         // ── Red / CH3 ────────────────────────────────────────────────────────
         c.v2a.prepare(fs_, { kRailW, 100e3 /*R81*/, 1.8e3 /*R45*/, 1e-6 /*C16*/,
-                             10e3 /*R35*/, 0.0, 330e3 /*R35 + R20||R36*/ });
+                             10e3 /*R35*/, 0.0, 500e3 /*R35 + R20 + wiper Z*/ });
         {
             const double Zp2a = 1.0 / (1.0 / 100e3 + 1.0 / kRp);
             c.d_v2ab.prepare(fs_, 1e-9 /*C36*/, Zp2a + 470e3 /*R73*/, 820e3 /*R55*/);
@@ -62,32 +62,30 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
             const double Zp3a = 1.0 / (1.0 / 220e3 + 1.0 / kRp);
             c.d_v3ab.prepare(fs_, 0.022e-6 /*C31*/, Zp3a + 1e6 /*R66*/, 150e3 /*R65*/);
         }
-        // SIGNAL-ORDER NOTE (2026-09-09, arbitrated by the drawing's own AC
-        // ladder): the chain runs V3-A → V4-A → V3-B → V4-B(CF). Three
-        // independent TP ratios confirm it (TP18×0.125×gain ≈ TP22; the
-        // compressed TP22→TP20 step; TP20×0.258 ≈ TP24) where the page's
-        // left-to-right tube order does not.
-        c.v4a.prepare(fs_, { kRailX, 100e3 /*R76*/, 2.2e3 /*R41, UNBYPASSED*/, 0.0,
+        // Page order stands: V3-A → V3-B → V4-A → V4-B(CF). The 2026-09-09
+        // retrace resolved the earlier ladder anomaly: C39 .022 + R60 1M are a
+        // plate→grid LOCAL FEEDBACK around V4-A (with R48 1M series in and
+        // R46 1M leak), making it a near-unity inverting stage — exactly the
+        // drawing's TP20 16 VAC → TP22 13.4 VAC step.
+        c.v3b.prepare(fs_, { kRailX, 220e3 /*R82*/, 2.2e3 /*R64, UNBYPASSED*/, 0.0,
                              0.0, 0.0, 131e3 /*(Zp+R66)||R65*/ });
         {
             const double rpEff = kRp + 101.0 * 2.2e3;
-            const double Zp4a  = 1.0 / (1.0 / 100e3 + 1.0 / rpEff);
-            c.d_v34.prepare(fs_, 0.022e-6 /*C20*/, Zp4a + 1e6 /*R48*/,
-                            500e3 /*R60 1M ∥ R46 1M*/);
-        }
-        c.v3b.prepare(fs_, { kRailX, 220e3 /*R82*/, 2.2e3 /*R64, UNBYPASSED*/, 0.0,
-                             0.0, 0.0, 346e3 /*(Zp+R48)||R60||R46*/ });
-        {
-            const double rpEff = kRp + 101.0 * 2.2e3;
             const double Zp3b  = 1.0 / (1.0 / 220e3 + 1.0 / rpEff);
-            // C29 .22µF grounds the R58/R57 junction at audio, so the CF grid
-            // divider's AC shunt is R58 220k alone.
-            c.d_cf3.prepare(fs_, 0.022e-6 /*C39*/, Zp3b + 560e3 /*R59*/, 220e3 /*R58*/);
+            // C20 .022 couples V3-B's plate into the feedback node; the node's
+            // input impedance ≈ R48 + R46∥(Miller-halved R60) ≈ 1.33M.
+            c.d_v34.prepare(fs_, 0.022e-6 /*C20*/, Zp3b, 1.33e6);
         }
-        // V4-B cathode follower: plate to X, Rk = R49 100k. DC grid set by the
-        // R59/(R58+R57) divider off the LAST cascade plate (V3-B): 550/1110.
-        c.v4b.prepare(fs_, { kRailX, 100e3, c.v3b.biasVp() * (550.0 / 1110.0),
-                             165e3 /*(Zp+R59)||R58*/ });
+        evhcomp::CCStageV::Params p4a{ kRailX, 100e3 /*R76*/, 2.2e3 /*R41*/, 0.0,
+                                       0.0, 0.0, 0.0 /*grid held small by NFB*/ };
+        p4a.RfbP = 1e6 /*R60*/; p4a.RinFb = 1e6 /*R48*/; p4a.RleakFb = 1e6 /*R46*/;
+        c.v4a.prepare(fs_, p4a);
+        // CF feed is DC-COUPLED: V4-A plate → R59 560k → R58 220k (+R57 330k
+        // behind C29, AC-grounded) → V4-B grid. Audio divider 220/780 = 0.282
+        // (V4-A's NFB output impedance is small); DC 550/1110 sets the bias.
+        c.cfDiv3 = float(220e3 / (560e3 + 220e3));
+        c.v4b.prepare(fs_, { kRailX, 100e3, c.v4a.biasVp() * (550.0 / 1110.0),
+                             165e3 /*(R59)||R58*/ });
         // Stack feed: R61 43k series, R83 33k + C43 .01µF shunt to ground.
         // Exact Thevenin voltage shelf; the residual frequency-dependent source
         // impedance (43k LF → 19k HF) is folded into the stack slope as the
@@ -159,9 +157,14 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
                                  c.v6a.biasVp() * (shDC / (430e3 + shDC)),
                                  91e3 /*(Zp+R96)||shAC*/ });
         }
+        // Stack feed mirrors CH3's: R97 43k series with R104 43k + C58 .01uF
+        // to ground (retrace 2026-09-09) — exact Thevenin shelf, mid-band Zth
+        // folded into the stack slope as kZthCh12.
+        c.ch12Shelf.prepare(fs_, 1.0, 43e3 / (43e3 + 43e3),
+                            1.0 / (2.0 * M_PI * 0.01e-6 * (43e3 + 43e3)));
         {
             YehSmithToneStack::CircuitParams p = YehSmithToneStack::kEVH5150IIICh12;
-            p.R4 += kZthCh12;   // R97 43k series feed fold (APPROX, as above)
+            p.R4 += kZthCh12;
             c.ts12.prepare(fs_, p);
         }
 
@@ -173,12 +176,17 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
 }
 
 void EVH5150ComponentModel::recalcPots() noexcept {
-    // THREE gain pot: 1M, 5A audio taper, with C5 .001 bright cap across the
-    // top segment — a treble-bleed shelf from the wiper fraction up to ~1.
+    // THREE gain pot: 1M, 5A audio taper, R36 1M wiper load, C5 .001 bright
+    // cap bridging the top segment (input→wiper). Loaded divider at LF; the
+    // bright cap lifts it toward unity above fc = 1/(2π C5 (Rt∥(Rb∥RL))).
     const float r = audioTaper(gain_, 0.05f);
     for (auto& c : ch_) {
-        const double Rpar = std::max(1e3, double(r) * (1.0 - double(r)) * 1e6);
-        c.ch3Bright.prepare(fs_, r, 1.0, 1.0 / (2.0 * M_PI * 1e-9 * Rpar));
+        const double Rb  = std::max(50.0, double(r) * 1e6);
+        const double Rt  = std::max(50.0, (1.0 - double(r)) * 1e6);
+        const double RbL = 1.0 / (1.0 / Rb + 1.0 / 1e6);   // wiper ∥ R36
+        const double gLo = RbL / (RbL + Rt);
+        const double Rc  = 1.0 / (1.0 / Rt + 1.0 / RbL);
+        c.ch3Bright.prepare(fs_, gLo, 1.0, 1.0 / (2.0 * M_PI * 1e-9 * Rc));
         // Tone pots: HIGH 250kB / MID 25kB are linear (direct wiper fraction);
         // LOW is audio — 1M-5A on CH3, 250k-15A on CH1/2.
         c.ts3.setTreble(treble_);
@@ -197,11 +205,12 @@ void EVH5150ComponentModel::reset() noexcept {
         c.v1a.reset(); c.v1aSnub.reset(); c.coup32.reset();
         c.ch3Bright.reset(); c.v2a.reset(); c.d_v2ab.reset(); c.v2b.reset();
         c.v2bPole.reset(); c.d_v23.reset(); c.v3a.reset(); c.d_v3ab.reset();
-        c.v3b.reset(); c.d_v34.reset(); c.v4a.reset(); c.d_cf3.reset();
+        c.v3b.reset(); c.d_v34.reset(); c.v4a.reset();
         c.v4b.reset(); c.ch3Shelf.reset(); c.ts3.reset();
         c.v1b.reset(); c.v1bLoad.reset(); c.ch2Feed.reset(); c.v5a.reset();
         c.d_v56.reset(); c.v5b.reset(); c.v5bPole.reset(); c.d_v56b.reset();
-        c.v6a.reset(); c.cfFeed12.reset(); c.v6b.reset(); c.ts12.reset();
+        c.v6a.reset(); c.cfFeed12.reset(); c.v6b.reset(); c.ch12Shelf.reset();
+        c.ts12.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -231,9 +240,10 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(0, v);
         v = c.coup32.process(float(v));
         tap(1, v);
-        // THREE gain pot (+C5 bright), R20/R36 divider, zener clamp, R35 → V2-A
+        // THREE gain pot (R36 1M wiper load, C5 .001 top-to-wiper bright),
+        // then R20 470k into the high-Z zener/mute node — no divider there
+        // (retrace 2026-09-09: R36 loads the WIPER, nothing shunts after R20).
         v = c.ch3Bright.process(float(v));
-        v *= 1e6 / (470e3 + 1e6);            // R20 470k into R36 1M
         v = ZenerClampV::process(v);         // Z1+Z2 1N5246B 16V back-to-back
         tap(2, v);
         v = c.v2a.process(v);
@@ -246,12 +256,12 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         v = c.v3a.process(v);
         tap(5, v);
         v = c.d_v3ab.process(float(v));
-        v = c.v4a.process(v);
+        v = c.v3b.process(v);
         tap(6, v);
         v = c.d_v34.process(float(v));
-        v = c.v3b.process(v);
+        v = c.v4a.process(v);   // shunt-shunt NFB stage (C39/R60/R48/R46)
         tap(7, v);
-        v = c.d_cf3.process(float(v));
+        v *= c.cfDiv3;
         v = c.v4b.process(v);
         tap(8, v);
         v = c.ch3Shelf.process(float(v));
@@ -281,6 +291,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(7, v);
         v = c.v6b.process(v);
         tap(8, v);
+        v = c.ch12Shelf.process(float(v));
         v = c.ts12.process(float(v));
         tap(9, v);
         v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // CH1/2 VOL 1M-30A

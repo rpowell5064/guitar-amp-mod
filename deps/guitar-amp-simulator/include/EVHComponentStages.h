@@ -83,6 +83,15 @@ public:
         // the 0079092000 AC ladder — without it the late EVH stages rail at
         // ~10x the drawing's documented swing.
         double RgSrc = 0.0;
+        // Optional shunt-shunt local feedback (the 5150 III's V4-A: C39+R60
+        // from plate to grid, R48 series in, R46 grid leak). When RfbP > 0 the
+        // stage input is the SOURCE side of RinFb and the grid node equation
+        //   (vSrc−Vg)/RinFb + (0−Vg)/RleakFb + (ΔVp−Vg)/RfbP = 0
+        // is folded into the Newton-Raphson solve (feedback cap treated as a
+        // short at audio; it blocks DC so the bias solve is unaffected).
+        double RfbP    = 0.0;
+        double RinFb   = 0.0;
+        double RleakFb = 0.0;
     };
     // Conducting grid-cathode diode resistance (tube physics, like kRp).
     static constexpr double kRgDiode = 2e3;
@@ -92,6 +101,10 @@ public:
         p_ = p; fs_ = fs;
         Geq_ = 2.0 * p_.Ck * fs_;
         Gk_  = 1.0 / p_.Rk + Geq_;
+        if (p_.RfbP > 0.0) {
+            Gfb_    = 1.0 / p_.RinFb + 1.0 / p_.RleakFb + 1.0 / p_.RfbP;
+            invGfb_ = 1.0 / Gfb_;
+        } else { Gfb_ = 0.0; invGfb_ = 0.0; }
         solveBias();
         if (p_.Cgs > 0.0 && p_.Rgs > 0.0) {
             gridLP_.setCoeffs(Filters::lowpass1pole(
@@ -157,18 +170,26 @@ private:
         VpBias_ = p_.Vcc - Ia * p_.Ra;
     }
 
-    double solveIa(double Vg) noexcept {
+    // vgOrSrc: grid swing (plain stage) or the source-side swing ahead of
+    // RinFb (feedback stage — the grid voltage is then a function of Ia via
+    // the plate feedback, handled inside the iteration).
+    double solveIa(double vgOrSrc) noexcept {
         const double rk    = 1.0 / Gk_;
         const double maxIa = p_.Vcc / p_.Ra * 0.99;
+        const bool   fb    = p_.RfbP > 0.0;
         double Ia = std::clamp(IaOp_, 0.0, maxIa);
         for (int it = 0; it < kMaxIter; ++it) {
             const double Vk  = (Ia + Ihist_) / Gk_;
-            const double Vpk = (p_.Vcc - Ia * p_.Ra) - Vk;
+            const double Vp  = p_.Vcc - Ia * p_.Ra;
+            double Vg = vgOrSrc;
+            if (fb)   // grid node with plate feedback (ΔVp through RfbP)
+                Vg = (vgOrSrc / p_.RinFb + (Vp - VpBias_) / p_.RfbP) * invGfb_;
             double IaK, dVgk, dVpk;
-            korenEval(Vg - Vk, Vpk, IaK, dVgk, dVpk);
+            korenEval(Vg - Vk, Vp - Vk, IaK, dVgk, dVpk);
             const double f = Ia - IaK;
             if (std::abs(f) < kEps) break;
-            const double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
+            double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
+            if (fb) fp += dVgk * (p_.Ra / p_.RfbP) * invGfb_;
             if (std::abs(fp) < 1e-30) break;
             Ia = std::clamp(Ia - f / fp, 0.0, maxIa);
         }
@@ -180,6 +201,7 @@ private:
     double fs_ = 48000.0;
     double Geq_ = 0.0, Gk_ = 1.0, Ihist_ = 0.0, IaOp_ = 0.0;
     double IaBias_ = 0.0, VpBias_ = 0.0, VkBias_ = 0.0, VkPrev_ = 0.0;
+    double Gfb_ = 0.0, invGfb_ = 0.0;
     BiquadFilter gridLP_;
     bool hasGridLP_ = false;
 };
