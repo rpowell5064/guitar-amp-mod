@@ -353,7 +353,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             a2->setParameter("presence",  *p->ports[HF_RB_PRESENCE]);
             a2->setParameter("master",    *p->ports[HF_RB_MASTER]);
             a2->setParameter("sag",       *p->ports[HF_RB_SAG]);
-            a2->setParameter("channel",   *p->ports[HF_RB_CHANNEL]);
+            if (rbM != kFriedmanIdx) a2->setParameter("channel", *p->ports[HF_RB_CHANNEL]);   // Friedman: own port below (see main rig)
             a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
             if (rbM == kFriedmanIdx) {
                 a2->setParameter("channel", *p->ports[HF_RB_FR_CHANNEL]);
@@ -474,7 +474,11 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     amp->setParameter("presence",  *p->ports[HF_AMP_PRESENCE]);
     amp->setParameter("master",    *p->ports[HF_AMP_MASTER]);
     amp->setParameter("sag",       *p->ports[HF_AMP_SAG]);
-    amp->setParameter("channel",   *p->ports[HF_AMP_CHANNEL]);
+    // The Friedman takes its channel from its OWN port below; sending the generic
+    // amp_channel first made the component build (which re-prepares its relay-
+    // switched stages on every real change) flip 0->HBE EVERY BLOCK = a 1.5 kHz
+    // state reset that sounded like a bit-crusher/ring-mod (2026-09-10).
+    if (ampModel != kFriedmanIdx) amp->setParameter("channel", *p->ports[HF_AMP_CHANNEL]);
     amp->setParameter("resonance", *p->ports[HF_AMP_RESONANCE]);
     // Beardo BE (Friedman): its own 3-way channel (Clean/BE/HBE) + voicing toggles.
     if (ampModel == kFriedmanIdx) {
