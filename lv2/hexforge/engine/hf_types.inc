@@ -69,6 +69,19 @@ static const AmpModel kAmpMap[15] = {
     AmpModel::AmpegSVT,            // 14 = Blue Liner (Ampeg SVT: BASS — Ultra-Lo/Hi + 3-way mid)
 };
 static const int   kCanonical[15] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8, 11 }; // PowerAmp default lookup ([8] Vox -> its own EL84 case 9) ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa -> FROZEN row 10 since the 2026-08-20 JCM800 HG-round-2 bake re-voiced row 1) ([14] SVT -> its own 6550 case 11)
+// ── Component-model programme (Lab toggle, v48+) ──────────────────────────────
+// Amps that have a schematic-exact component build. Keep in sync with the
+// c-amp-comp visibility rule in script-hexforge.js.
+static inline bool hasComponentModel(int ampModel) noexcept {
+    return ampModel == 1 || ampModel == 2;
+}
+static inline AmpModel componentAmpFor(int ampModel) noexcept {
+    switch (ampModel) {
+        case 1:  return AmpModel::JCM800Comp;
+        case 2:  return AmpModel::EVH5150Comp;
+        default: return AmpModel::EVH5150Comp;
+    }
+}
 static constexpr int kSunnIdx     = 3;
 static constexpr int kFriedmanIdx = 6;
 static constexpr int kHiwattIdx   = 7;

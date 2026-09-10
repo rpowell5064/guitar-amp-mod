@@ -31,6 +31,7 @@ public:
         // of kNumModels/getAllModelNames so no UI or registry iteration sees it
         // until the experiment graduates. Reachable via create()/fromString().
         EVH5150Component   = 14,
+        JCM800Component    = 15,
     };
 
     static constexpr int kNumModels = 14;

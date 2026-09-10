@@ -74,6 +74,7 @@ public:
             case AmpModel::PRSMT15:            fid = FID::PRSMT15;             break;
             case AmpModel::AmpegSVT:           fid = FID::AmpegSVT;            break;
             case AmpModel::EVH5150Comp:        fid = FID::EVH5150Component;    break;
+            case AmpModel::JCM800Comp:         fid = FID::JCM800Component;     break;
             default:                            isExtended = false;              break;
         }
 

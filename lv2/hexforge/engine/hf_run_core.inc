@@ -271,14 +271,15 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
     const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx) || (ampModel == kSvtIdx);
     const bool ecoQ = *p->ports[HF_QUALITY] > 0.5f;
-    // v48 lab toggle: EVH (model 2) swaps to the schematic-exact component
-    // model (its own sheet-2 power section; shared PA bypassed below).
-    const bool evhCompOn = p->ports[HF_AMP_EVHCOMP] && *p->ports[HF_AMP_EVHCOMP] > 0.5f;
+    // v48 lab toggle: amps with a component build swap to the schematic-exact
+    // model (each carries its own power section; the shared PA is bypassed).
+    const bool compOn = p->ports[HF_AMP_EVHCOMP] && *p->ports[HF_AMP_EVHCOMP] > 0.5f
+                        && hasComponentModel(ampModel);
     if (ampIsAlgo && (ampModel != p->lastAmpModel || ecoQ != p->lastEco
-                      || (ampModel == 2 && evhCompOn != p->lastEvhComp))) {   // rebuild for algo models (model / Engine Quality / lab-toggle change)
-        WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel; msg.eco=ecoQ; msg.evhComp=evhCompOn;
+                      || compOn != p->lastEvhComp)) {   // rebuild for algo models (model / Engine Quality / lab-toggle change)
+        WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel; msg.eco=ecoQ; msg.evhComp=compOn;
         if (p->worker->schedule(&msg, sizeof(msg)))
-            { p->lastAmpModel = ampModel; p->lastEco = ecoQ; p->lastEvhComp = evhCompOn; }
+            { p->lastAmpModel = ampModel; p->lastEco = ecoQ; p->lastEvhComp = compOn; }
     }
     // ── Rig B (dual amp/cab, 2026-07-30): schedule builds + set params ──────
     const bool rbOn = *p->ports[HF_RB_ENABLE] > 0.5f;
@@ -584,7 +585,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // (Recto capture-fit RETIRED 2026-09-03 - the reference rig-probe Modern bake lives in MesaDualRectifier.)
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx)
-                        || (ampModel == 2 && evhCompOn);   // component EVH carries its own PA (v48)
+                        || compOn;   // every component model carries its own PA (v48)
     p->pa.setBypass(paBypass);
     const float ampMakeup = kAmpMakeup[ampAlgo];
     // Cab
