@@ -123,7 +123,7 @@ void JCM800ComponentModel::recalcPots() noexcept {
     // VR1/VR2 are 1M LOG. Marshall log pots run ~15 % at half rotation; the
     // exact law is calibrated against the hardware gain sweep, exactly as the
     // EVH's was (its drawing's single AC point proved anomalous there).
-    const float r = audioTaper(gain_, 0.25f);
+    const float r = audioTaper(gain_, gainMid_);
     for (auto& c : ch_) {
         // C4 470p bridges R5 470k (inputâ†’wiper), so the network lifts toward
         // unity above its corner â€” the 2203's bright feed.
@@ -197,6 +197,8 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
+    else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
+    else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // The 2203 has no channel switch and no resonance control.
 }

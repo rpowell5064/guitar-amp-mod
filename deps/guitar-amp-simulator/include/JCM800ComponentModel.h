@@ -66,8 +66,14 @@ private:
     float master_ = 0.5f, presence_ = 0.5f, sag_ = 0.3f;
 
     // Level calibration (the only free parameters).
-    float inVolts_    = 0.35f;
+    // 2026-09-10 gain-law pass: the reference rig runs the front end hotter than the
+    // 0.35 V/unit inherited from the EVH calibration; 0.70 V improves every take
+    // (g25/noon/gmax 16.1/26.2/26.1 -> 14.7/18.1/19.8 % at master 0.7), where the
+    // VR1 pot law only helped below noon.
+    float inVolts_    = 0.70f;
     float outScalePa_ = 0.0048f;
+
+    float gainMid_ = 0.25f;   // VR1 1M log: fraction at half rotation (fit0 in the lab harness)
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

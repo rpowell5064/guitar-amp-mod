@@ -83,6 +83,13 @@ private:
     float presence_ = 0.5f, resonance_ = 0.5f, sag_ = 0.3f;
 
     // Level calibration (the ONLY free parameters; not voicing):
+    // Pot laws (fit0/fit1 in the lab harness). 2026-09-10 gain-law pass against the
+    // Axe-FX g25/noon/g75/gmax grids: the drawing's 5A/30A audio tapers left the
+    // lower half of the knob far too clean (Red g25 46.7 %, noon 24.2 %); a LINEAR
+    // law on THREE (0.50) and 0.60 on ONE/TWO match every take (Red 16.9/12.4/
+    // 16.2/17.0, Blue g25 15.4 / noon 19.5). The real pots may well be audio
+    // taper; what the knob has to reproduce is the reference rig's dial.
+    float gainMidRed_ = 0.50f, gainMidBlue_ = 0.60f;
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
     float outScale_ = 0.20f;   // preamp-only mode: units per volt at the volume pot
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)

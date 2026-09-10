@@ -407,6 +407,7 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit13")    { lutSpan_ = std::max(20.0f, value); if (fs_ > 0.0) { buildStages(); recalcPots(); } }
     else if (id == "fit14")    { probeTap_ = static_cast<int>(value + 0.5f) - 1; }   // 0 = off, 1..9 = tap0..tap8
     else if (id == "fit15")    { miller_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }
+    else if (id == "fit16")    { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // No resonance/depth control on the BE-100.
 }

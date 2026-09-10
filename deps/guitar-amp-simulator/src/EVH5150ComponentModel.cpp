@@ -228,7 +228,7 @@ void EVH5150ComponentModel::recalcPots() noexcept {
     // (TP14), which had an unexplained x3 anomaly and briefly pulled the
     // calibration to an over-steep 2.35% law. TP14 stays a documented
     // service-data discrepancy.
-    const float r = audioTaper(gain_, 0.05f);
+    const float r = audioTaper(gain_, gainMidRed_);
     for (auto& c : ch_) {
         const double Rb  = std::max(50.0, double(r) * 1e6);
         const double Rt  = std::max(50.0, (1.0 - double(r)) * 1e6);
@@ -327,7 +327,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         v = c.v1bLoad.process(float(v));
         tap(2, v);
         v = c.ch2Feed.process(float(v));
-        v *= audioTaper(gainSmooth_.getCurrentValue(), 0.30f);     // ONE/TWO GAIN 250k-30A
+        v *= audioTaper(gainSmooth_.getCurrentValue(), gainMidBlue_);     // ONE/TWO GAIN 250k-30A
         tap(3, v);
         v = c.v5a.process(v);
         tap(4, v);
@@ -359,6 +359,9 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "mid")     { mid_    = value; recalcPots(); }
     else if (id == "treble")  { treble_ = value; recalcPots(); }
     else if (id == "channel") { red_ = value >= 0.5f; }
+    else if (id == "fit0")    { gainMidRed_  = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: THREE gain pot law
+    else if (id == "fit1")    { gainMidBlue_ = std::clamp(value, 0.02f, 0.9f); }                // lab: ONE/TWO gain pot law
+    else if (id == "fit2")    { inVolts_  = std::max(0.01f, value); }   // lab alias of involts
     else if (id == "involts") { inVolts_  = value; }
     else if (id == "outscale"){ outScale_ = value; }
     else if (id == "ownpa")   { ownPa_ = value >= 0.5f; }

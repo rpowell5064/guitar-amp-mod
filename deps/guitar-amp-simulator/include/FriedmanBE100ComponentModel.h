@@ -103,7 +103,10 @@ private:
     int   bright_ = 0;   // 0 off / 1 = C11 220p / 2 = C12 100p (clean channel)
 
     // Level calibration (free parameters).
-    float inVolts_    = 0.35f;
+    // 2026-09-10 gain-law pass: 1.0 V/unit at the jack (was the EVH's 0.35) — the
+    // lever that lifted the whole knob, not just its lower half: BE g25/noon/gmax
+    // 31.9/27.2/22.8 -> 20.6/16.9/20.3 %, HBE 25.5/17.0/16.5 -> 17.2/14.0/16.9 %.
+    float inVolts_    = 1.00f;
     float outScalePa_ = 0.0054f;   // loudness parity vs the FM9 grids (BE +1.9 / HBE +0.1 dB split)
     // ESTIMATE-class constants exposed to the lab harness as fit0..fit5 so the
     // hardware-grid calibration can sweep them without a rebuild. Defaults =
