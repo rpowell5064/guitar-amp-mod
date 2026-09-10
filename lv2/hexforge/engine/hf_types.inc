@@ -73,12 +73,13 @@ static const int   kCanonical[15] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8
 // Amps that have a schematic-exact component build. Keep in sync with the
 // c-amp-comp visibility rule in script-hexforge.js.
 static inline bool hasComponentModel(int ampModel) noexcept {
-    return ampModel == 1 || ampModel == 2;
+    return ampModel == 1 || ampModel == 2 || ampModel == 6;
 }
 static inline AmpModel componentAmpFor(int ampModel) noexcept {
     switch (ampModel) {
         case 1:  return AmpModel::JCM800Comp;
         case 2:  return AmpModel::EVH5150Comp;
+        case 6:  return AmpModel::FriedmanBE100Comp;
         default: return AmpModel::EVH5150Comp;
     }
 }

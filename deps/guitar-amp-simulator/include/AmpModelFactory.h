@@ -32,6 +32,7 @@ public:
         // until the experiment graduates. Reachable via create()/fromString().
         EVH5150Component   = 14,
         JCM800Component    = 15,
+        FriedmanBE100Component = 16,
     };
 
     static constexpr int kNumModels = 14;

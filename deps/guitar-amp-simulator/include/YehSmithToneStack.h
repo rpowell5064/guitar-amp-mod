@@ -149,6 +149,28 @@ public:
         250e3, 250e3, 25e3, 47e3
     };
 
+    // Friedman BE-100 v2 (2026-09-10) -- read off the "BE-100 v2" Rev 1.5
+    // drawing (Patrice Frey / Equinox trace, May 2014; the user-supplied
+    // source for the component-amp programme). The BE/HBE stack sits after the
+    // V3B cathode follower: R8=33k slope, C4=500pF treble cap, C1=C6=22nF,
+    // VR6=250kB treble (LINEAR), VR8=1MA bass (audio -- caller applies the
+    // taper), VR7=25kB middle (linear). The R33/C25/SAT branch and the R59/R32/
+    // VR5 master network are NOT part of the TMB and live in the caller.
+    static constexpr CircuitParams kFriedmanBE100 = {
+        500e-12, 22e-9, 22e-9,
+        250e3, 1e6, 25e3, 33e3
+    };
+
+    // Friedman BE-100 v2 CLEAN channel (same drawing): a Fender-style stack
+    // hung directly off the V1A plate-load tap (R9/R3 junction): C10=50pF
+    // treble cap, C7=C2=.022uF, VR2=1MA treble (audio), VR1=250kA bass
+    // (audio), R42=10k FIXED mid resistor (drive with m = 1.0), R25=100k
+    // slope. The V1A source impedance is folded into R4 by the caller.
+    static constexpr CircuitParams kFriedmanBE100Clean = {
+        50e-12, 22e-9, 22e-9,
+        1e6, 250e3, 10e3, 100e3
+    };
+
     void prepare(double sampleRate, const CircuitParams& p) noexcept {
         sampleRate_ = sampleRate;
         params_     = p;

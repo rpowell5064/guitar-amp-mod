@@ -252,6 +252,7 @@ public:
     }
 
     double biasVk() const noexcept { return VkBias_; }
+    double biasIa() const noexcept { return IaBias_; }
 
 private:
     // A follower is far more linear than a gain stage (unity gain, huge local

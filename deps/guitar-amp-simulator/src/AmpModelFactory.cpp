@@ -15,6 +15,7 @@
 #include "AmpegSVT.h"
 #include "EVH5150ComponentModel.h"
 #include "JCM800ComponentModel.h"
+#include "FriedmanBE100ComponentModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -34,6 +35,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::AmpegSVT:            return std::make_unique<AmpegSVT>();
         case ModelID::EVH5150Component:    return std::make_unique<EVH5150ComponentModel>();
         case ModelID::JCM800Component:     return std::make_unique<JCM800ComponentModel>();
+        case ModelID::FriedmanBE100Component: return std::make_unique<FriedmanBE100ComponentModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -74,6 +76,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::AmpegSVT:            return "Blue Liner";
         case ModelID::EVH5150Component:    return "EVH 5150 III Component";
         case ModelID::JCM800Component:     return "Marshall JCM800 Component";
+        case ModelID::FriedmanBE100Component: return "Friedman BE-100 Component";
         default:                           return "Unknown";
     }
 }
@@ -100,6 +103,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::AmpegSVT:            return 5;  // 6550 (six of them; SS rectifier, 60 Hz mains)
         case ModelID::EVH5150Component:    return 0;  // 2x 6L6GC (V7/V8, drawing 0079092000)
         case ModelID::JCM800Component:     return 1;  // 4x EL34 (V4-V7, 2203 Iss.6)
+        case ModelID::FriedmanBE100Component: return 1;  // 4x EL34 (V5-V8, BE-100 v2 Rev 1.5)
         default:                           return 1;
     }
 }
@@ -142,5 +146,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Blue Liner")                return ModelID::AmpegSVT;
     if (name == "EVH 5150 III Component")    return ModelID::EVH5150Component;
     if (name == "Marshall JCM800 Component") return ModelID::JCM800Component;
+    if (name == "Friedman BE-100 Component") return ModelID::FriedmanBE100Component;
     return ModelID::SunnModelT;
 }

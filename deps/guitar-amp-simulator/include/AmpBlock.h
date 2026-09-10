@@ -24,7 +24,8 @@ enum class AmpModel {
     AmpegSVT,          // Ampeg SVT "Blue Liner" — the suite's first BASS amp: Ultra-Lo/Ultra-Hi,
                        // 3-position mid selector, 6×6550 solid-state-rectified 300 W power
     EVH5150Comp,       // component-exact 5150 III (Lab toggle; see EVH5150ComponentModel.h)
-    JCM800Comp         // component-exact JCM800 2203 (Lab toggle)
+    JCM800Comp,        // component-exact JCM800 2203 (Lab toggle)
+    FriedmanBE100Comp  // component-exact Friedman BE-100 v2 (Lab toggle)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

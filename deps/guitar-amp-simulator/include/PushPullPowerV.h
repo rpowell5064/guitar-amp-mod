@@ -50,8 +50,14 @@ public:
         double ltpRaB   = 100e3;   // plate load, NFB side
         double ltpRtail = 10e3;    // tail resistor to ground
         double ltpRk    = 470.0;   // shared cathode resistor
-        double ltpTailV = 51.2;    // measured tail-node voltage (service TP)
+        double ltpTailV = 51.2;    // measured tail-node voltage (service TP);
+                                   // <= 0 = no TP available: solve it from the
+                                   // tail resistor's own drop (V_t = I_tail * Rtail)
         double piInDiv  = 1e6 / (100e3 + 1e6);   // grid divider at the PI input
+        // Optional plate-to-plate cap across the LTP (the Marshall-family
+        // stability cap, e.g. the BE-100's C32 100p): a differential 1-pole
+        // roll-off at 1/(2π·C·(ZpA+ZpB)), Zp = Ra ‖ rp(62k5). 0 = none.
+        double piPlateCap = 0.0;
 
         // ── Output stage ─────────────────────────────────────────────────────
         double vb   = 491.0;       // plate supply (V)
@@ -74,8 +80,19 @@ public:
         // ── Global NFB ───────────────────────────────────────────────────────
         double nfbDiv = 10e3 / (47e3 + 10e3);  // divider at the PI grid
         double nfbTap = 0.5;                   // secondary tap the loop reads
+        // Optional frequency-dependent series leg (a resistor bridged by a cap
+        // in the NFB feed, e.g. the BE-100's R51 220k || C36 4.7n): the divider
+        // is nfbLoDiv below the pole and nfbDiv above it. nfbLoDiv <= 0 = plain
+        // resistive divider (bit-identical to the pre-2026-09-10 behaviour).
+        double nfbLoDiv = -1.0;
+        double nfbLoHz  = 0.0;
+        double nfbStabHz = 20e3;               // loop stability lag (modelling term)
         double presCap = 0.136e-6;             // presence cap(s) to ground
         double presPot = 10e3;                 // presence pot
+        // Fraction of the HF feedback the presence cap removes at full
+        // rotation (the cap's reactance against the injection node's shunt
+        // resistance). 0.85 = the original toolkit constant.
+        double presDepth = 0.85;
         double resoCap = 0.0068e-6;            // resonance/depth cap (0 = none)
         double resoPot = 1e6;
 
@@ -102,10 +119,20 @@ public:
             1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
         c89HP_.setCoeffs(Filters::highpass1pole(
             1.0 / (2.0 * M_PI * 0.047e-6 * 1e6), fs_));
+        piCapActive_ = p_.piPlateCap > 0.0;
+        if (piCapActive_) {
+            const double zpA = 1.0 / (1.0 / p_.ltpRaA + 1.0 / 62.5e3);
+            const double zpB = 1.0 / (1.0 / p_.ltpRaB + 1.0 / 62.5e3);
+            const double fc  = 1.0 / (2.0 * M_PI * p_.piPlateCap * (zpA + zpB));
+            piCapA_.setCoeffs(Filters::lowpass1pole(fc, fs_));
+            piCapB_.setCoeffs(Filters::lowpass1pole(fc, fs_));
+        }
         solveLtpBias();
         solveOutputBias();
         buildLUT();
-        nfbStabLP_.setCoeffs(Filters::lowpass1pole(20e3, fs_));
+        nfbStabLP_.setCoeffs(Filters::lowpass1pole(p_.nfbStabHz, fs_));
+        nfbLoActive_ = p_.nfbLoDiv > 0.0 && p_.nfbLoHz > 0.0;
+        if (nfbLoActive_) nfbLoShelf_.prepare(fs_, p_.nfbLoDiv, p_.nfbDiv, p_.nfbLoHz);
         recalcNfb();
         otHP_.setCoeffs(Filters::highpass1pole(p_.otLfHz, fs_));
         otLP_.setCoeffs(Filters::lowpass1pole(p_.otHfHz, fs_));
@@ -127,7 +154,8 @@ public:
         biasShift_ = 0.0;
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
         zRes_.reset(); zHF_.reset(); fluxLP_.reset();
-        presShelf_.reset(); resoShelf_.reset();
+        presShelf_.reset(); resoShelf_.reset(); nfbLoShelf_.reset();
+        piCapA_.reset(); piCapB_.reset();
         c89HP_.reset(); c118HP_.reset(); c119HP_.reset();
     }
 
@@ -137,8 +165,10 @@ public:
 
     // vin: PI input volts. Returns speaker-node volts.
     double process(double vin) noexcept {
-        const double nfb = c89HP_.process(nfbStabLP_.process(
-            resoShelf_.process(presShelf_.process(nfbPrev_ * float(p_.nfbTap))))) * p_.nfbDiv;
+        const float nfbRaw = c89HP_.process(nfbStabLP_.process(
+            resoShelf_.process(presShelf_.process(nfbPrev_ * float(p_.nfbTap)))));
+        const double nfb = nfbLoActive_ ? double(nfbLoShelf_.process(nfbRaw))
+                                        : nfbRaw * p_.nfbDiv;
 
         const double vgA = vin * p_.piInDiv;
         const double vgB = -nfb;    // secondary polarity chosen so the loop is negative
@@ -150,6 +180,7 @@ public:
         IaOpA_ = IaA; IaOpB_ = IaB;
         double gA = c118HP_.process(float(p_.ltpVcc - IaA * p_.ltpRaA - ltpVpBiasA_));
         double gB = c119HP_.process(float(p_.ltpVcc - IaB * p_.ltpRaB - ltpVpBiasB_));
+        if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
 
         // Grid conduction charges the shared fixed-bias network colder.
         {
@@ -188,12 +219,21 @@ public:
     }
 
     double ltpTailV()  const noexcept { return ltpTailV_; }
+    double ltpTailmA() const noexcept { return ltpIBiasTot_ * 1e3; }
     double outIdlemA() const noexcept { return outIdle_ * 1e3; }
+    double outBiasV()  const noexcept { return vBias_; }
 
 private:
     void solveLtpBias() noexcept {
-        ltpTailV_ = p_.ltpTailV;
+        // With a documented tail-node TP the drawing's own figure is used
+        // as-is. Without one (ltpTailV <= 0) the node is found from the
+        // circuit itself: V_t = I_tail * Rtail, iterated to a fixed point.
+        const bool selfSolve = p_.ltpTailV <= 0.0;
+        ltpTailV_ = selfSolve ? 2e-3 * p_.ltpRtail : p_.ltpTailV;
         double I = 2e-3;
+        const int outer = selfSolve ? 60 : 1;
+        for (int o = 0; o < outer; ++o) {
+        if (selfSolve && o > 0) ltpTailV_ += 0.5 * (I * p_.ltpRtail - ltpTailV_);
         for (int i = 0; i < 200; ++i) {
             const double vK = ltpTailV_ + I * p_.ltpRk;
             double iA, iB, d1, d2;
@@ -201,6 +241,7 @@ private:
             korenEval(ltpTailV_ - vK, p_.ltpVcc - (I * 0.5) * p_.ltpRaB - vK, iB, d1, d2);
             I += 0.3 * ((iA + iB) - I);
             I = std::clamp(I, 1e-5, 10e-3);
+        }
         }
         ltpIaBiasA_  = I * 0.5;
         ltpIBiasTot_ = I;
@@ -275,7 +316,7 @@ private:
     }
 
     void recalcNfb() noexcept {
-        const double presDepth = 0.85 * presence_;
+        const double presDepth = p_.presDepth * presence_;
         presShelf_.prepare(fs_, 1.0, 1.0 - presDepth,
                            1.0 / (2.0 * M_PI * p_.presCap
                                   * (p_.presPot * std::max(0.05f, presence_))));
@@ -303,7 +344,10 @@ private:
     double vBias_ = -52.0, outIdle_ = 0.06;
 
     float presence_ = 0.5f, resonance_ = 0.5f, sagDepth_ = 0.3f;
-    ShelfV presShelf_, resoShelf_;
+    ShelfV presShelf_, resoShelf_, nfbLoShelf_;
+    bool   nfbLoActive_ = false;
+    BiquadFilter piCapA_, piCapB_;
+    bool   piCapActive_ = false;
     BiquadFilter nfbStabLP_, otHP_, otLP_, c89HP_, c118HP_, c119HP_;
     BiquadFilter zRes_, zHF_, fluxLP_;
     float  nfbPrev_ = 0.0f;
