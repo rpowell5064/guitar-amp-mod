@@ -120,6 +120,19 @@ private:
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 10.0, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; 10 V = the 100 W core, 50 Hz −5.7→−3.7 dB)
     bool   biasShift_ = true;                    // fit11 (lab only)
+    double kneeV_ = 0.15;                        // fit12: grid-conduction knee width (V)
+    double lutSpan_ = 60.0;                      // fit13: EL34 grid LUT half-span (V)
+    int    probeTap_ = -1;                       // fit14 (lab): return this tap instead of the speaker
+    bool   miller_ = true;                       // fit15: 12AX7 Miller/input capacitance at each grid
+    // 12AX7 datasheet capacitances: Cgp 1.7 pF, Cgk 1.6 pF. Reflected at the
+    // grid as Cgk + Cgp·(1 + A), A = µ·Ra/(Ra + rp), against the HF Thevenin
+    // source resistance of that grid — a real ~10 kHz pole at V3A (which the
+    // drawing's C26 500p bridge exists to counter) and the reason a driven
+    // stage's edges are not infinitely sharp.
+    static constexpr double kCgp = 1.7e-12, kCgk = 1.6e-12;
+    double millerC(double Ra) const noexcept {
+        return miller_ ? kCgk + kCgp * (1.0 + 100.0 * Ra / (Ra + kRp)) : 0.0;
+    }
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

@@ -102,10 +102,28 @@ public:
         double RfbP    = 0.0;
         double RinFb   = 0.0;
         double RleakFb = 0.0;
+        // Width (V) of the grid-conduction knee. 0 = the original hard
+        // piecewise-linear kink (bit-identical). A real grid diode conducts
+        // exponentially, so a hard kink puts slope discontinuities in the
+        // waveform whose harmonics reach past 190 kHz and alias even at 4x
+        // (measured 2026-09-10 on the BE-100 HBE: sidebands at f*k +/- 400 Hz).
+        double gridKneeV = 0.0;
     };
     // Conducting grid-cathode diode resistance (tube physics, like kRp).
     static constexpr double kRgDiode = 2e3;
     static constexpr double kVgKnee  = 0.7;   // Vgk where grid current starts
+    // Grid-conduction limiter: above lim the source divider absorbs the
+    // excess (ratio = kRgDiode/(kRgDiode+RgSrc)). kneeV > 0 blends the two
+    // slopes with a softplus of that width instead of a hard corner.
+    static double clampGrid(double vg, double lim, double ratio, double kneeV) noexcept {
+        if (kneeV <= 0.0) return vg > lim ? lim + (vg - lim) * ratio : vg;
+        const double over = (vg - lim) / kneeV;
+        double soft;
+        if (over > 30.0)       soft = over;
+        else if (over < -30.0) soft = 0.0;
+        else                   soft = std::log1p(std::exp(over));
+        return vg - soft * kneeV * (1.0 - ratio);
+    }
 
     void prepare(double fs, const Params& p) noexcept {
         p_ = p; fs_ = fs;
@@ -138,11 +156,8 @@ public:
         // cathode sits at Vk, so the grid-cathode diode conducts when the grid
         // swing exceeds Vk + kVgKnee. Above that the source divider (RgSrc vs
         // the conducting diode) absorbs the excess drive.
-        if (p_.RgSrc > 0.0) {
-            const double lim = VkPrev_ + kVgKnee;
-            if (vgIn > lim)
-                vgIn = lim + (vgIn - lim) * (kRgDiode / (kRgDiode + p_.RgSrc));
-        }
+        if (p_.RgSrc > 0.0)
+            vgIn = clampGrid(vgIn, VkPrev_ + kVgKnee, kRgDiode / (kRgDiode + p_.RgSrc), p_.gridKneeV);
         const double Ia = solveIa(vgIn);
         const double Vk = (Ia + Ihist_) / Gk_;
         const double Vp = p_.Vcc - Ia * p_.Ra;
@@ -229,6 +244,7 @@ public:
         double Rk;       // cathode load (Ω)
         double VgBias;   // DC grid voltage set by the driving divider (V)
         double RgSrc = 0.0;   // Thevenin source R at the grid (grid conduction)
+        double gridKneeV = 0.0;   // see CCStageV::Params
     };
 
     void prepare(double /*fs*/, const Params& p) noexcept {
@@ -241,11 +257,9 @@ public:
     // vgIn: grid swing about VgBias. Returns cathode swing (V, non-inverting).
     double process(double vgIn) noexcept {
         double Vg = p_.VgBias + vgIn;
-        if (p_.RgSrc > 0.0) {
-            const double lim = VkPrev_ + CCStageV::kVgKnee;
-            if (Vg > lim)
-                Vg = lim + (Vg - lim) * (CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.RgSrc));
-        }
+        if (p_.RgSrc > 0.0)
+            Vg = CCStageV::clampGrid(Vg, VkPrev_ + CCStageV::kVgKnee,
+                                     CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.RgSrc), p_.gridKneeV);
         const double Ia = solveIa(Vg);
         VkPrev_ = Ia * p_.Rk;
         return VkPrev_ - VkBias_;

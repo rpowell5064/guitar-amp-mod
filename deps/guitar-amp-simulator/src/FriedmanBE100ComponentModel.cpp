@@ -16,7 +16,7 @@ namespace {
 inline double par(double a, double b) { return 1.0 / (1.0 / a + 1.0 / b); }
 
 // Output-stage parameters for the BE-100 v2: V4 ECC83 LTP + 4x EL34.
-PushPullPowerV::Params friedmanPowerParams(double railPI, double otHfHz, double zHfDb, double zResDb, double idleMa, double nfbStabHz, double iaScale, double nfbScale, double fluxLim, double otLfHz, bool biasShift) {
+PushPullPowerV::Params friedmanPowerParams(double railPI, double otHfHz, double zHfDb, double zResDb, double idleMa, double nfbStabHz, double iaScale, double nfbScale, double fluxLim, double otLfHz, bool biasShift, double kneeV, double lutSpan) {
     PushPullPowerV::Params p;
     // ── V4 long-tail PI (drawing sheet, zone 5) ────────────────────────────
     p.ltpVcc   = railPI;   // derived node (see solveRails)
@@ -41,10 +41,11 @@ PushPullPowerV::Params friedmanPowerParams(double railPI, double otHfHz, double 
     p.raa        = 3400.0;  // ESTIMATE: T1 is unlabelled; standard 100 W EL34 primary
     p.otRatio    = std::sqrt(3400.0 / 16.0);
     p.gridFeedR  = 1.5e3;   // R66/R67 grid stoppers
+    p.gridKneeV  = kneeV;
     p.biasFeedR  = biasShift ? 220e3 : 1e12;   // R44/R45 (lab: 1e12 disables the grid-current bias shift)
     p.biasCap    = 10e-6;   // C41 (the bias reservoir behind R56/P12)
     p.biasRecovR = 60e3;    // R56 47k + P12 25k trimmer (ESTIMATE: mid-travel)
-    p.lutSpan    = 60.0;
+    p.lutSpan    = lutSpan;
 
     // ── Global NFB + presence (zone 5) ─────────────────────────────────────
     // Speaker node → R51 220k ‖ C36 4.7n → R50 47k → VR9 5k presence leg.
@@ -124,7 +125,7 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
     for (int chI = 0; chI < kMaxCh; ++chI) {
         auto& c = ch_[chI];
         // ── V1A: R3 100k + R9 220k plate chain, R4 2k7 ‖ C5 0.68µ, R2 33k stop ──
-        c.v1a.prepare(fs_, { railV12_, 320e3, 2.7e3, 0.68e-6, 33e3, 0.0, 33e3 });
+        c.v1a.prepare(fs_, { railV12_, 320e3, 2.7e3, 0.68e-6, 33e3, millerC(320e3), 33e3, 0.0, 0.0, 0.0, kneeV_ });
         c.v1aSnub.prepare(fs_, 1.0, gHi, fcSnub);
         // Clean take-off at the R9/R3 junction: R9/(R9+R3) of the plate swing
         // at LF, the full (snubbed) plate swing once C8 shorts R3.
@@ -135,7 +136,7 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         // ── V2A: R17 100k + R18 220k, C13 500p across R17, R10 2k7 ‖ C20 0.68µ ──
         // Grid source: HBE = R7 33k + (R6 68k ‖ R5-side); BE = R7 33k off the jack.
         const double rgV2a = (channel_ == CH_HBE) ? 33e3 + par(68e3, 1e6 + Zp320) : 33e3;
-        c.v2a.prepare(fs_, { railV12_, 320e3, 2.7e3, 0.68e-6, 33e3, 0.0, rgV2a });
+        c.v2a.prepare(fs_, { railV12_, 320e3, 2.7e3, 0.68e-6, rgV2a, millerC(320e3), rgV2a, 0.0, 0.0, 0.0, kneeV_ });
         c.v2aSnub.prepare(fs_, 1.0, gHi, fcSnub);
 
         // ── Coupling into the C45 network (FAT adds C15 22n to C14 2.2n) ──
@@ -154,8 +155,10 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
             }
         }
         // ── V2B: R21 100k, R24 2k7 ‖ C17 0.68µ, R23 33k stop ──
-        c.v2b.prepare(fs_, { railV12_, 100e3, 2.7e3, 0.68e-6, 33e3, 0.0,
-                             33e3 + (c45_ ? par(220e3, 560e3) : par(68e3, 68e3)) });
+        {
+            const double rg = 33e3 + (c45_ ? par(220e3, 560e3) : par(68e3, 68e3));
+            c.v2b.prepare(fs_, { railV12_, 100e3, 2.7e3, 0.68e-6, rg, millerC(100e3), rg, 0.0, 0.0, 0.0, kneeV_ });
+        }
         // C19 2.2n into VR4 1M
         c.coup19.prepare(fs_, 2.2e-9, Zp100, 1e6);
 
@@ -163,13 +166,14 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         //    (‖ C43 470µ with VOICE). Grid source R28 ‖ (R30 + wiper Z), taken
         //    at the noon wiper (ESTIMATE-class constant: re-preparing the stage
         //    per knob move would reset its state).
+        // HF source at V3A's grid: C26 shorts R30, leaving R28 ‖ the wiper Z.
         c.v3a.prepare(fs_, { railV3_, 100e3, 820.0, 0.68e-6 + (voice_ ? 470e-6 : 0.0),
-                             0.0, 0.0, par(470e3, 470e3 + 250e3) });
+                             par(470e3, 250e3), millerC(100e3), par(470e3, 470e3 + 250e3), 0.0, 0.0, 0.0, kneeV_ });
         c.v3aLP.prepare(fs_, 1.0, 0.0, 1.0 / (2.0 * M_PI * 500e-12 * Zp100));
         // ── V3B cathode follower: R31 100k, grid DC-coupled to V3A's plate.
         //    Its grid conducts against V3A's plate impedance (R27 ‖ rp) — the
         //    Marshall-family CF clip that rounds the positive peaks. ──
-        c.v3b.prepare(fs_, { railV3_, 100e3, c.v3a.biasVp(), Zp100 });
+        c.v3b.prepare(fs_, { railV3_, 100e3, c.v3a.biasVp(), Zp100, kneeV_ });
         {
             // CF output impedance at bias (tube physics): 1/(gm + 1/rp + 1/Rk).
             double Ia, dg, dp;
@@ -193,12 +197,12 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
             c.tsClean.prepare(fs_, p);
         }
         // V1B: R12 100k, R14 820 ‖ C21 10µ; grid off the VR3 wiper (noon Z, as above)
-        c.v1b.prepare(fs_, { railV12_, 100e3, 820.0, 10e-6, 0.0, 0.0, 250e3 });
+        c.v1b.prepare(fs_, { railV12_, 100e3, 820.0, 10e-6, 200e3, millerC(100e3), 250e3, 0.0, 0.0, 0.0, kneeV_ });
         c.coup9.prepare(fs_, 22e-9, Zp100 + 470e3, 470e3);          // C9 → R15 / R22
         c.coup31c.prepare(fs_, 22e-9, par(470e3, 470e3), 1e6);       // C31 → R37 1M
 
         // ── Power section ──
-        c.pa.prepare(fs_, friedmanPowerParams(railPI_, otHfHz_, zHfDb_, zResDb_, idleMa_, nfbStabHz_, iaScale_, nfbScale_, fluxLim_, otLfHz_, biasShift_));
+        c.pa.prepare(fs_, friedmanPowerParams(railPI_, otHfHz_, zHfDb_, zResDb_, idleMa_, nfbStabHz_, iaScale_, nfbScale_, fluxLim_, otLfHz_, biasShift_, kneeV_, lutSpan_));
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -214,7 +218,7 @@ void FriedmanBE100ComponentModel::prepSwitches() noexcept {
     const double Zp320 = par(320e3, kRp);
     for (auto& c : ch_) {
         const double rgV2a = (channel_ == CH_HBE) ? 33e3 + par(68e3, 1e6 + Zp320) : 33e3;
-        c.v2a.prepare(fs_, { railV12_, 320e3, 2.7e3, 0.68e-6, 33e3, 0.0, rgV2a });
+        c.v2a.prepare(fs_, { railV12_, 320e3, 2.7e3, 0.68e-6, rgV2a, millerC(320e3), rgV2a, 0.0, 0.0, 0.0, kneeV_ });
         const double C = 2.2e-9 + (fat_ ? 22e-9 : 0.0);
         if (!c45_) {
             c.c45Coup.prepare(fs_, C, Zp320 + 68e3, 68e3);
@@ -225,10 +229,13 @@ void FriedmanBE100ComponentModel::prepSwitches() noexcept {
             c.c45Lift.prepare(fs_, 1.0, lift,
                               1.0 / (2.0 * M_PI * 680e-12 * par(560e3, 220e3 + Zp320)));
         }
-        c.v2b.prepare(fs_, { railV12_, 100e3, 2.7e3, 0.68e-6, 33e3, 0.0,
-                             33e3 + (c45_ ? par(220e3, 560e3) : par(68e3, 68e3)) });
+        {
+            const double rg = 33e3 + (c45_ ? par(220e3, 560e3) : par(68e3, 68e3));
+            c.v2b.prepare(fs_, { railV12_, 100e3, 2.7e3, 0.68e-6, rg, millerC(100e3), rg, 0.0, 0.0, 0.0, kneeV_ });
+        }
+        // HF source at V3A's grid: C26 shorts R30, leaving R28 ‖ the wiper Z.
         c.v3a.prepare(fs_, { railV3_, 100e3, 820.0, 0.68e-6 + (voice_ ? 470e-6 : 0.0),
-                             0.0, 0.0, par(470e3, 470e3 + 250e3) });
+                             par(470e3, 250e3), millerC(100e3), par(470e3, 470e3 + 250e3), 0.0, 0.0, 0.0, kneeV_ });
     }
 }
 
@@ -293,7 +300,8 @@ void FriedmanBE100ComponentModel::advanceSmoothing() noexcept {
 
 float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
-    auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; };
+    double probeVal = 0.0;
+    auto tap = [&c, this, &probeVal](int i, double v) { c.tapAcc[i] += v * v; if (i == probeTap_) probeVal = v; };
     c.tapN++;
 
     // Jack → R2 33k grid stopper (R1 1M leak at the jack); the DI is the source.
@@ -360,6 +368,7 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
         out = c.pa.process(s);
         tap(8, out);
     }
+    if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
     return float(out * outScalePa_);
 }
 
@@ -394,6 +403,10 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit9")     { fluxLim_ = value;   if (fs_ > 0.0) { buildStages(); recalcPots(); } }
     else if (id == "fit10")    { otLfHz_ = value;    if (fs_ > 0.0) { buildStages(); recalcPots(); } }
     else if (id == "fit11")    { biasShift_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }
+    else if (id == "fit12")    { kneeV_ = std::max(0.0f, value); if (fs_ > 0.0) { buildStages(); recalcPots(); } }
+    else if (id == "fit13")    { lutSpan_ = std::max(20.0f, value); if (fs_ > 0.0) { buildStages(); recalcPots(); } }
+    else if (id == "fit14")    { probeTap_ = static_cast<int>(value + 0.5f) - 1; }   // 0 = off, 1..9 = tap0..tap8
+    else if (id == "fit15")    { miller_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // No resonance/depth control on the BE-100.
 }

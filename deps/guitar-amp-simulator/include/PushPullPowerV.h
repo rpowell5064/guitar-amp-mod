@@ -73,6 +73,7 @@ public:
         double otRatio    = 19.36; // primary→secondary voltage step-down
         double imbalance  = 0.98;  // push/pull matching
         double gridFeedR  = 30e3;  // series R the grid conducts through
+        double gridKneeV  = 0.0;   // output-tube grid-conduction knee width (0 = hard)
         double biasFeedR  = 220e3; // bias-network feed (grid-current charge path)
         double biasCap    = 10e-6; // bias reservoir
         double biasRecovR = 25e3;  // bias-network bleed (recovery)
@@ -309,10 +310,8 @@ private:
     }
 
     double gridClamp(double vg) const noexcept {
-        const double lim = -vBias_ + 0.7;
-        if (vg > lim)
-            vg = lim + (vg - lim) * (CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.gridFeedR));
-        return vg;
+        return CCStageV::clampGrid(vg, -vBias_ + 0.7,
+                                   CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.gridFeedR), p_.gridKneeV);
     }
 
     void recalcNfb() noexcept {
