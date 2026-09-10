@@ -47,10 +47,18 @@ inline void korenEval(double Vgk, double Vpk,
     const double denom = std::sqrt(T::Kvb + vpk * vpk);
     const double inner = T::Kp * (1.0 / T::mu + Vgk / denom);
 
+    // softplus(inner) with tail fast paths: log1p(exp(x)) -> x for large x and
+    // -> exp(x) for very negative x, each within ~5e-5 relative at |x| = 12.
+    // Saves one transcendental on the majority of samples (a driven stage
+    // spends most of its time in one tail or the other).
     double E1, sig;
-    if (inner >= 80.0)       { E1 = vpk / T::Kp * inner; sig = 1.0; }
+    if (inner >= 12.0)       { E1 = vpk / T::Kp * inner; sig = 1.0; }
     else if (inner <= -80.0) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
-    else {
+    else if (inner <= -12.0) {
+        const double eInner = std::exp(inner);
+        E1  = vpk / T::Kp * eInner;
+        sig = eInner;
+    } else {
         const double eInner = std::exp(inner);
         E1  = vpk / T::Kp * std::log1p(eInner);
         sig = eInner / (1.0 + eInner);
@@ -246,7 +254,9 @@ public:
     double biasVk() const noexcept { return VkBias_; }
 
 private:
-    static constexpr int    kMaxIter = 5;
+    // A follower is far more linear than a gain stage (unity gain, huge local
+    // feedback through Rk), so it converges in 1-2 warm-started steps.
+    static constexpr int    kMaxIter = 3;
     static constexpr double kEps     = 1e-9;
 
     void solveBias() noexcept {

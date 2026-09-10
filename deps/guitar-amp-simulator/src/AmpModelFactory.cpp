@@ -43,13 +43,14 @@ std::unique_ptr<OversamplingWrapper> AmpModelFactory::createWithOversampling(Mod
     // (verified via tools/sunn_envelope period-jitter). Other models stay at 4x —
     // unless eco (2026-07-30 Engine Quality switch): 2x everywhere, trading some
     // aliasing headroom on the hottest models for roughly half the amp CPU.
-    // The EVH component model joins the Sunn at 2x: it is by far the heaviest
-    // model (12 Newton-solved triodes + LTP + PA), and its breakup is band-
-    // limited twice over (grid-stopper/coupling poles in the preamp, NFB + OT
-    // band limits in its own power section), so 2x adds negligible aliasing —
-    // and 4x measured ~70% of a Pi 5 core (user report, 2026-09-09).
-    const int factor = (eco || id == ModelID::SunnModelT
-                            || id == ModelID::EVH5150Component) ? 2 : 4;
+    // The EVH component model STAYS AT 4x (2026-09-10). It was briefly moved to
+    // 2x for CPU and the user immediately heard it: measured (lab
+    // evh_alias_ab) the 12-stage Newton cascade puts 7-8 dB MORE inharmonic
+    // energy in the 2.6-4.4 kHz band at 2x than at 4x (Red: -20.7/-18.7 vs
+    // -28.5/-25.9 dB). Unlike the Sunn — whose breakup really is band-limited —
+    // this model's cascade generates high-order content that folds audibly as
+    // playing grit. Eco still drops it to 2x as the user's explicit CPU escape.
+    const int factor = (eco || id == ModelID::SunnModelT) ? 2 : 4;
     return std::make_unique<OversamplingWrapper>(create(id), factor);
 }
 

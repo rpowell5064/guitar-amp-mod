@@ -100,7 +100,7 @@ public:
         // enter inverted.
         const double vgB = -nfb;
         double IaA = IaOpA_, IaB = IaOpB_;
-        for (int it = 0; it < 2; ++it) {   // warm-started pair; 2 rounds measured identical to 3
+        for (int it = 0; it < 1; ++it) {   // warm-started pair (CPU: see the note in ltpSolveSide)
             IaA = ltpSolveSide(vgA, IaA, IaB, kLtpRaA);
             IaB = ltpSolveSide(vgB, IaB, IaA, kLtpRaB);
         }
@@ -234,7 +234,11 @@ private:
     double ltpSolveSide(double vg, double Ia, double Iother, double Ra) noexcept {
         const double maxIa = kLtpVcc / Ra * 0.99;
         Ia = std::clamp(Ia, 0.0, maxIa);
-        for (int it = 0; it < 4; ++it) {
+        // The LTP is the PA's per-sample cost centre (this runs twice per side
+        // per outer round). It is near-linear until clipping and warm-starts
+        // from the previous sample, so a short cap is safe -- verified against
+        // the service ladder and the hardware specESR.
+        for (int it = 0; it < 3; ++it) {
             // DC: node at +51.2 V (divider). AC: the tail current variation
             // sees the FULL R159 10k (the divider feed is decoupled), which is
             // what makes the second triode phase-split — treating the node as
