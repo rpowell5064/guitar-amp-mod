@@ -171,6 +171,18 @@ public:
         1e6, 250e3, 10e3, 100e3
     };
 
+    // Mesa/Boogie Mark V, Channel 3 (2026-09-10) -- read off the Mesa factory
+    // drawing "MARK V / PREAMP PART 1" (MVPRE1.S01, John M, MAR 10 2009, board
+    // rev MARKV-1): the stack hangs directly on the V1A plate. C15 750p + C14
+    // 250p in parallel = 1 nF treble cap, C16 0.1uF bass, C17 0.047uF mid,
+    // TREBLE 200KA, BASS 250KA, MID 10KA (all audio taper -- the caller applies
+    // the laws), R27 100k slope. The R22 330k / R23 56k / R24 470k / R25 100k
+    // divider and the C18 180p bright bypass after the wiper live in the caller.
+    static constexpr CircuitParams kMesaMarkVCh3 = {
+        1.0e-9, 0.1e-6, 0.047e-6,
+        200e3, 250e3, 10e3, 100e3
+    };
+
     void prepare(double sampleRate, const CircuitParams& p) noexcept {
         sampleRate_ = sampleRate;
         params_     = p;

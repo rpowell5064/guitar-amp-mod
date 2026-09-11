@@ -33,6 +33,7 @@ public:
         EVH5150Component   = 14,
         JCM800Component    = 15,
         FriedmanBE100Component = 16,
+        MesaMarkVComponent = 17,
     };
 
     static constexpr int kNumModels = 14;

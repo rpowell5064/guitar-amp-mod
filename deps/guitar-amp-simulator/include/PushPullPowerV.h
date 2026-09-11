@@ -161,6 +161,14 @@ public:
     }
 
     void setPresence (float v) noexcept { presence_  = std::clamp(v, 0.0f, 1.0f); recalcNfb(); }
+    // Live re-voice of the LF/HF feedback split, for amps whose presence control sits IN
+    // SERIES with the feedback path (a rheostat changes the divider itself, not a shunt).
+    // Click-free: only the shelf's coefficients move.
+    void setNfbSplit(double loDiv, double hiDiv, double hz) noexcept {
+        p_.nfbLoDiv = loDiv; p_.nfbDiv = hiDiv; p_.nfbLoHz = hz;
+        nfbLoActive_ = loDiv > 0.0 && hz > 0.0;
+        if (nfbLoActive_ && fs_ > 0.0) nfbLoShelf_.prepare(fs_, loDiv, hiDiv, hz);
+    }
     void setResonance(float v) noexcept { resonance_ = std::clamp(v, 0.0f, 1.0f); recalcNfb(); }
     void setSagDepth (float v) noexcept { sagDepth_  = std::clamp(v, 0.0f, 1.0f); }
 

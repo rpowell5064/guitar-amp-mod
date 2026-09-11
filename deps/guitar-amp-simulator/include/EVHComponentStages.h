@@ -356,6 +356,18 @@ struct ZenerClampV {
     }
 };
 
+// Parameterised series zener string to ground (e.g. Mesa's 4x 1N4744: two
+// anti-series 15 V pairs in series = ±(2·15 + 2·0.7) V). Above the knee the
+// residual slope is the zener dynamic impedance against the source R.
+struct ZenerStringV {
+    double vClamp = 31.4, resid = 0.02;
+    double process(double v) const noexcept {
+        if (v >  vClamp) return  vClamp + (v - vClamp) * resid;
+        if (v < -vClamp) return -vClamp - (-v - vClamp) * resid;
+        return v;
+    }
+};
+
 // Audio-taper pot law: wiper voltage fraction at rotation α ∈ [0,1] for a pot
 // marked "<pct>A" (pct % resistance at 50% rotation), e.g. 30A / 15A / 5A.
 // r(α) = α^k with k = ln(pct)/ln(0.5); linear ("B") pots use the fraction as-is.
