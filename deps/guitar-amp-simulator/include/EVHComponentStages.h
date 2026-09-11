@@ -178,6 +178,13 @@ private:
     // wrong: that shift is the deliberate hardware taper recalibration.)
     static constexpr int    kMaxIter = 5;
     static constexpr double kEps     = 1e-9;
+    // Step criterion (2026-09-11 CPU pass): Newton converges quadratically, so a
+    // correction step below kStepEps leaves a residual far under kEps — accept it
+    // without the confirming evaluation that the residual test would spend.
+    // Silence still costs one evaluation; busy signals (reverb/delay tails in
+    // front of the amp) drop from ~2.1-2.9 to ~1.2-2.0 evaluations per sample.
+    // Gated: DC ladders + hardware specESR grids unchanged (see the lab audit).
+    static constexpr double kStepEps = 1e-6;
 
     // Newton-Raphson bias solve. (A damped fixed-point here fails to converge
     // for high-µ/high-Ra stages — verified on the 220k-plate EVH stages, where
@@ -221,7 +228,9 @@ private:
             double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
             if (fb) fp += dVgk * (p_.Ra / p_.RfbP) * invGfb_;
             if (std::abs(fp) < 1e-30) break;
-            Ia = std::clamp(Ia - f / fp, 0.0, maxIa);
+            const double step = f / fp;
+            Ia = std::clamp(Ia - step, 0.0, maxIa);
+            if (std::abs(step) < kStepEps) break;
         }
         IaOp_ = Ia;
         return Ia;

@@ -271,7 +271,9 @@ private:
             const double dVk = p_.ltpRk + p_.ltpRtail;
             const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
             if (std::abs(fp) < 1e-30) break;
-            Ia = std::clamp(Ia - f / fp, 0.0, maxIa);
+            const double step = f / fp;
+            Ia = std::clamp(Ia - step, 0.0, maxIa);
+            if (std::abs(step) < 1e-8) break;   // step criterion, see CCStageV::kStepEps
         }
         return Ia;
     }
