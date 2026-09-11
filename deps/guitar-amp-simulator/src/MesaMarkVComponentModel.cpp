@@ -189,6 +189,7 @@ void MesaMarkVComponentModel::buildStages() noexcept {
                                            fluxLim_, kneeV_, double(presence_) * presPot_));
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
+        c.dnr.prepare(fs_);
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -228,7 +229,7 @@ void MesaMarkVComponentModel::reset() noexcept {
         c.v1a.reset(); c.ts.reset(); c.c18.reset(); c.v1b.reset(); c.coup20.reset(); c.bleed.reset();
         c.v5a.reset(); c.coup37.reset(); c.c38lp.reset(); c.v4b.reset(); c.coup28.reset();
         c.c27lift.reset(); c.n2lp.reset(); c.v3a.reset(); c.coup33.reset(); c.v6a.reset();
-        c.coup43.reset(); c.v6b.reset(); c.coup50.reset(); c.coup56.reset(); c.pa.reset();
+        c.coup43.reset(); c.v6b.reset(); c.coup50.reset(); c.coup56.reset(); c.pa.reset(); c.dnr.reset();
         for (auto& g : c.geq) g.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
@@ -245,6 +246,7 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
     double probeVal = 0.0;
     auto tap = [&c, this, &probeVal](int i, double v) { c.tapAcc[i] += v * v; if (i == probeTap_) probeVal = v; };
     c.tapN++;
+    c.dnr.track(x);
 
     double v = double(x) * inVolts_;
     // V1A → stack on the plate (+ the C18 bypass) → R22/R23 → R24/R25 node.
@@ -293,7 +295,7 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
     const double out = c.pa.process(e);
     tap(11, out);
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
-    return float(out * outScalePa_);
+    return c.dnr.process(float(out * outScalePa_), true);   // channel 3 is always high-gain
 }
 
 void MesaMarkVComponentModel::setParameter(const std::string& id, float value) noexcept {
@@ -332,7 +334,7 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit13")    { c18On_ = value > 0.5f; }
     else if (id == "fit14")    { bleedOn_ = value > 0.5f; }
     else if (id == "fit15")    { liftOn_ = value > 0.5f; }
-    else if (id == "fit16")    { inVolts_ = std::max(0.01f, value); }
+    else if (id == "fit16")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "fit17")    { masterMid_ = std::clamp(value, 0.02f, 0.9f); }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     else if (id.size() == 4 && id.compare(0, 3, "geq") == 0) {

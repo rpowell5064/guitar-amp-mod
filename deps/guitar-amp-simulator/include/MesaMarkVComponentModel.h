@@ -3,6 +3,7 @@
 #include "EVHComponentStages.h"
 #include "PushPullPowerV.h"
 #include "YehSmithToneStack.h"
+#include "DnrRolloff.h"
 #include <array>
 #include <string>
 
@@ -79,8 +80,17 @@ private:
     int   mode_ = 6;          // 6 IIC+ / 7 Mark IV / 8 Extreme (0-5 → 6)
     bool  bright_ = true;     // CH3 BRIGHT (C40 0.22µ across R57)
 
-    // Level calibration.
-    float inVolts_    = 1.00f;
+    // Level calibration. inVolts_ is the plugin-unit -> jack-volts scale every
+    // component amp carries; here it is 50 dB below the EVH/JCM800/Friedman
+    // calibrations because the drawn channel-3 chain (six triodes behind a fixed
+    // −4.5 dB "Volume 1" divider) reaches full saturation with ~40 µV at the jack
+    // at GAIN noon, and the hardware reference grids sit ~50 dB below that on every
+    // take (g25 61 → 21, noon 39 → 26, master_low 38 → 22 specESR with the pad; the
+    // improvement is monotonic from 0 to −50 dB). ESTIMATE-class: the drawing gives
+    // no service-level sensitivity, so whether the real front end is padded or the
+    // reference amp simply runs a lower Volume 1 cannot be settled from the sheet.
+    // Without it a −58 dBFS rig hum floor rails the channel at 60 Hz.
+    float inVolts_    = 0.003f;
     float outScalePa_ = 0.0030f;
     // ESTIMATE-class constants (lab hooks fit0..):
     float  gainMid_   = 0.15f;   // fit0: GAIN 1MA law
@@ -126,6 +136,8 @@ private:
                                              // biquads at 80/240/750/2200/6600 Hz, Q 1.4, ±12 dB) until
                                              // the MVEQ discrete LC circuit is modelled (phase 2)
         evhcomp::PushPullPowerV pa;
+        DnrRolloff              dnr;    // shared decay darkener (rig conditioning, same as the shipped
+                                        // high-gain amps — not a circuit element; keyed on the raw input)
 
         static constexpr int kNTaps = 12;
         double tapAcc[kNTaps] = {};
