@@ -26,7 +26,8 @@ enum class AmpModel {
     EVH5150Comp,       // component-exact 5150 III (Lab toggle; see EVH5150ComponentModel.h)
     JCM800Comp,        // component-exact JCM800 2203 (Lab toggle)
     FriedmanBE100Comp, // component-exact Friedman BE-100 v2 (Lab toggle)
-    MesaMarkVComp      // component-exact Mesa Mark V, channel 3 (Lab toggle)
+    MesaMarkVComp,     // component-exact Mesa Mark V, channel 3 (Lab toggle)
+    MesaDualRectifierComp   // component-exact Mesa Dual Rectifier Rev F (Lab toggle)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

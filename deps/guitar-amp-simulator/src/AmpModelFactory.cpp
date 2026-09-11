@@ -17,6 +17,7 @@
 #include "JCM800ComponentModel.h"
 #include "FriedmanBE100ComponentModel.h"
 #include "MesaMarkVComponentModel.h"
+#include "MesaDualRectifierComponentModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -38,6 +39,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::JCM800Component:     return std::make_unique<JCM800ComponentModel>();
         case ModelID::FriedmanBE100Component: return std::make_unique<FriedmanBE100ComponentModel>();
         case ModelID::MesaMarkVComponent:  return std::make_unique<MesaMarkVComponentModel>();
+        case ModelID::MesaDualRectifierComponent: return std::make_unique<MesaDualRectifierComponentModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -80,6 +82,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::JCM800Component:     return "Marshall JCM800 Component";
         case ModelID::FriedmanBE100Component: return "Friedman BE-100 Component";
         case ModelID::MesaMarkVComponent:  return "Mesa Mark V Component";
+        case ModelID::MesaDualRectifierComponent: return "Mesa Dual Rectifier Component";
         default:                           return "Unknown";
     }
 }
@@ -108,6 +111,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::JCM800Component:     return 1;  // 4x EL34 (V4-V7, 2203 Iss.6)
         case ModelID::FriedmanBE100Component: return 1;  // 4x EL34 (V5-V8, BE-100 v2 Rev 1.5)
         case ModelID::MesaMarkVComponent:  return 0;  // 6L6 Simul-Class quad (MVPWR.S01)
+        case ModelID::MesaDualRectifierComponent: return 0;  // 6L6 quad (Rev F power amp sheet)
         default:                           return 1;
     }
 }
@@ -152,5 +156,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Marshall JCM800 Component") return ModelID::JCM800Component;
     if (name == "Friedman BE-100 Component") return ModelID::FriedmanBE100Component;
     if (name == "Mesa Mark V Component")      return ModelID::MesaMarkVComponent;
+    if (name == "Mesa Dual Rectifier Component") return ModelID::MesaDualRectifierComponent;
     return ModelID::SunnModelT;
 }

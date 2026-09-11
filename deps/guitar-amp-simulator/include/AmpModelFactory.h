@@ -34,6 +34,7 @@ public:
         JCM800Component    = 15,
         FriedmanBE100Component = 16,
         MesaMarkVComponent = 17,
+        MesaDualRectifierComponent = 18,
     };
 
     static constexpr int kNumModels = 14;
