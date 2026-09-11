@@ -35,6 +35,7 @@ public:
         FriedmanBE100Component = 16,
         MesaMarkVComponent = 17,
         MesaDualRectifierComponent = 18,
+        OrangeRockerverbComponent = 19,
     };
 
     static constexpr int kNumModels = 14;

@@ -528,7 +528,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-svt', m === 14);
         show(icon, 'amp', '.c-amp-reso', m === 2);
         // Component Model (Lab): amps that have a schematic-exact build.
-        show(icon, 'amp', '.c-amp-comp', m === 1 || m === 2 || m === 6 || m === 11 || m === 12);
+        show(icon, 'amp', '.c-amp-comp', m === 1 || m === 2 || m === 4 || m === 6 || m === 11 || m === 12);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);

@@ -27,7 +27,8 @@ enum class AmpModel {
     JCM800Comp,        // component-exact JCM800 2203 (Lab toggle)
     FriedmanBE100Comp, // component-exact Friedman BE-100 v2 (Lab toggle)
     MesaMarkVComp,     // component-exact Mesa Mark V, channel 3 (Lab toggle)
-    MesaDualRectifierComp   // component-exact Mesa Dual Rectifier Rev F (Lab toggle)
+    MesaDualRectifierComp,  // component-exact Mesa Dual Rectifier Rev F (Lab toggle)
+    RockerverbComp          // component-exact Orange Rockerverb 50 (Lab toggle)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.
