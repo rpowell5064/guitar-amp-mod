@@ -38,6 +38,17 @@ target_include_directories(hexforge_golden PRIVATE
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
 
+# Amp-cycle memory harness (2026-09-11): same plugin TU, cycles every amp model
+# with the Lab component toggle / Engine Quality / Rig B; build with ASan.
+add_executable(hexforge_ampcycle
+    "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_ampcycle.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge/hexforge_plugin.cpp")
+target_include_directories(hexforge_ampcycle PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+    ${HF_LV2_INCLUDE})
+target_link_libraries(hexforge_ampcycle PRIVATE GuitarAmpSim)
+
 # Desktop sample-rate converter verification (M3): SNR, image rejection,
 # streaming equivalence across ragged block sizes.
 add_executable(hf_resampler_test "${CMAKE_CURRENT_SOURCE_DIR}/hf_resampler_test.cpp")
