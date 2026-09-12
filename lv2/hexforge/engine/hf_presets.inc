@@ -156,8 +156,14 @@ static_assert(HF_AMP_SV_ULTRALO == HF_RB_LOCUT + 1 &&
               HF_RB_SV_ULTRALO  == HF_AMP_SV_MIDFREQ + 1 &&
               HF_RB_SV_ULTRAHI  == HF_RB_SV_ULTRALO + 1 &&
               HF_RB_SV_MIDFREQ  == HF_RB_SV_ULTRAHI + 1 &&
-              HF_RB_SV_MIDFREQ  == HF_SW_A - 1,
-              "v45: the Blue Liner six-port tail ends the param range");
+              HF_RB_SV_MIDFREQ  == HF_DR_B7K_BASS - 1,
+              "v45: the Blue Liner six-port tail");
+static_assert(HF_DR_B7K_BASS == HF_RB_SV_MIDFREQ + 1 && HF_DR_B7K_LOMID == HF_DR_B7K_BASS + 1 &&
+              HF_DR_B7K_HIMID == HF_DR_B7K_LOMID + 1 && HF_DR_B7K_TREBLE == HF_DR_B7K_HIMID + 1 &&
+              HF_DR_B7K_GRUNT == HF_DR_B7K_TREBLE + 1 && HF_DR_B7K_ATTACK == HF_DR_B7K_GRUNT + 1 &&
+              HF_DR2_B7K_BASS == HF_DR_B7K_ATTACK + 1 && HF_DR2_B7K_ATTACK == HF_DR2_B7K_BASS + 5 &&
+              HF_DR2_B7K_ATTACK == HF_SW_A - 1,
+              "v49: the Helsinki Grind twelve-port tail ends the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -326,6 +332,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float svdef[6] = {0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f};
     const bool svGap = (srcVer < 45);
     const int svAt = HF_AMP_SV_ULTRALO, svEnd = HF_AMP_SV_ULTRALO + 6;
+    // v49: Helsinki Grind (B7K) twelve-port tail: EQ knobs at NOON, Grunt Raw (1), Attack Flat (0), Drive 1 then Drive 2.
+    static const float b7kdef[12] = {0.5f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f};
+    const bool b7kGap = (srcVer < 49);
+    const int b7kAt = HF_DR_B7K_BASS, b7kEnd = HF_DR_B7K_BASS + 12;
 
     // v47 (2026-09-05): out_phase appended at the tail. Gap-fills to 1.0, NOT 0 —
     // output invert is ON by default (real amps invert; the reference rig ships inverted),
@@ -382,6 +392,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (smGap && i >= smAt && i < smEnd)        vals[i] = 0.0f;              // v43 SIR #34 stock
         else if (rlGap && i == rlAt)                     vals[i] = 0.0f;              // v44 rig-B low cut off
         else if (svGap && i >= svAt && i < svEnd)        vals[i] = svdef[i - svAt];   // v45 Blue Liner: Ultras off, mid 800 Hz
+        else if (b7kGap && i >= b7kAt && i < b7kEnd)     vals[i] = b7kdef[i - b7kAt]; // v49 Helsinki Grind panel: noon / Raw / Flat
         else if (opGap && i == opAt)                     vals[i] = 1.0f;             // v47 output phase INVERTED (matches real amps / the reference rig)
         else if (ecGap && i == ecAt)                     vals[i] = 0.0f;             // v48 component-EVH lab toggle OFF
         else                                             vals[i] = old[o++];
@@ -396,7 +407,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(48); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(49); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v49: + the Helsinki Grind twelve-port tail (B7K panel); v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -420,9 +431,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 48) return false;   // 48 = amp_evhcomp lab toggle
+    if (ver < 2 || ver > 49) return false;   // 49 = Helsinki Grind panel (B7K twelve-port tail)
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 48);  // ...v48 amp_evhcomp lab toggle
+    const bool needMigrate  = (ver < 49);  // ...v49 Helsinki Grind panel
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -1159,26 +1170,32 @@ static void seedFactoryPresets(HexForge* p) {
     // tone, the amp is the platform (same staging rule as Fuzz Wall). Bass
     // housekeeping inherited from Round Trip (low_cut 38, room OFF, Room voice);
     // the B7K's own squash replaces the comp. out_levels = golden-domain parity
-    // vs the .158 rms anchor (rev 127).
+    // vs the .158 rms anchor (rev 127; re-trimmed rev 144 on the component build).
     {
-        auto mkh = [&](int slot, const char* name, float drive, float tone, float mix,
+        auto mkh = [&](int slot, const char* name, float drive, float grunt, float mix,
                        const char* cab, float out) {
+            // the capture pack's panel as the harness found it (rev 144): Bass +8 dB, Lo Mids −4 dB, Hi Mids +9 dB, Treble flat
+            const float eqBass = 0.83f, eqLoMid = 0.33f, eqHiMid = 0.875f, eqTreble = 0.5f;
             Preset& pr = p->presets[19][slot];
             pr = p->presets[18][0];            // Round Trip = the clean Blue Liner + 810 platform
             std::snprintf(pr.name, sizeof(pr.name), "%s", name);
             pr.vals[HF_CP_ENABLE] = 0.0f;
             pr.vals[HF_AMP_GAIN]  = 0.30f;     // clean platform under the pedal
             pr.vals[HF_DR_ENABLE] = 1.0f;  pr.vals[HF_DR_MODEL] = 10.0f;   // Helsinki Grind
-            pr.vals[HF_DR_DRIVE]  = drive; pr.vals[HF_DR_TONE]  = tone;
+            pr.vals[HF_DR_DRIVE]  = drive; pr.vals[HF_DR_TONE]  = 0.5f;   // Tone is inert on the component build (rev 144)
             pr.vals[HF_DR_MIX]    = mix;   pr.vals[HF_DR_LEVEL] = 0.6f;
+            // The pedal's own panel (rev 144, component build): EQ noon, Attack flat, GRUNT from the
+            // capture (the old fat<->thin Tone lever mapped onto the real 3-way switch).
+            pr.vals[HF_DR_B7K_BASS] = eqBass; pr.vals[HF_DR_B7K_LOMID] = eqLoMid; pr.vals[HF_DR_B7K_HIMID] = eqHiMid; pr.vals[HF_DR_B7K_TREBLE] = eqTreble;
+            pr.vals[HF_DR_B7K_GRUNT] = grunt; pr.vals[HF_DR_B7K_ATTACK] = 0.0f;
             pr.vals[HF_DR_OCTAVE] = 0.0f;
             pr.vals[HF_OUT_LEVEL] = out;
             std::strncpy(pr.irPath, cab, kPathMax-1); pr.irPath[kPathMax-1] = '\0';
         };
-        mkh(0, "Helsinki Clean", 0.25f, 0.30f, 0.50f, "@bass810",  -25.2f);   // the B7K "Clean" capture
-        mkh(1, "Helsinki Rock",  0.75f, 0.05f, 0.95f, "@bass810",  -26.5f);   // "Hard Rock" (fat Grunt, near-full Blend)
-        mkh(2, "Helsinki Heavy", 1.00f, 0.80f, 0.85f, "@bass410h", -19.3f);   // "Heavy" (thin Grunt -- the tight djent grind)
-        mkh(3, "Helsinki Djent", 1.00f, 0.00f, 0.95f, "@bass410h", -20.7f);   // "Djent" (fat Grunt dimed, full Blend)
+        mkh(0, "Helsinki Clean", 0.25f, 1.0f, 0.50f, "@bass810",  -24.5f);   // the B7K "Clean" capture (Grunt Raw)
+        mkh(1, "Helsinki Rock",  0.75f, 0.0f, 0.95f, "@bass810",  -26.2f);   // "Hard Rock" (Grunt Fat, near-full Blend)
+        mkh(2, "Helsinki Heavy", 1.00f, 2.0f, 0.85f, "@bass410h", -19.3f);   // "Heavy" (Grunt Thin -- the tight djent grind)
+        mkh(3, "Helsinki Djent", 1.00f, 0.0f, 0.95f, "@bass410h", -20.6f);   // "Djent" (Grunt Fat dimed, full Blend)
     }
     // END BANK 20
 

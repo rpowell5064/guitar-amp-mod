@@ -246,6 +246,13 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->drive.setParameter("level",  *p->ports[HF_DR_LEVEL]);
     p->drive.setParameter("mix",    *p->ports[HF_DR_MIX]);
     p->drive.setParameter("octave", *p->ports[HF_DR_OCTAVE]);
+    // Helsinki Grind (model 10) panel — the other pedals ignore these ids.
+    p->drive.setParameter("b7k_bass",   *p->ports[HF_DR_B7K_BASS]);
+    p->drive.setParameter("b7k_lomid",  *p->ports[HF_DR_B7K_LOMID]);
+    p->drive.setParameter("b7k_himid",  *p->ports[HF_DR_B7K_HIMID]);
+    p->drive.setParameter("b7k_treble", *p->ports[HF_DR_B7K_TREBLE]);
+    p->drive.setParameter("b7k_grunt",  *p->ports[HF_DR_B7K_GRUNT]);
+    p->drive.setParameter("b7k_attack", *p->ports[HF_DR_B7K_ATTACK]);
     // Drive B — same pedal family, no NAM (one neural slot per instance); a NAM
     // selection arriving anyway (e.g. hand-edited pedalboard) falls back to model 0.
     p->drive2.setBypass(false);
@@ -258,6 +265,12 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->drive2.setParameter("level",  *p->ports[HF_DR2_LEVEL]);
     p->drive2.setParameter("mix",    *p->ports[HF_DR2_MIX]);
     p->drive2.setParameter("octave", *p->ports[HF_DR2_OCTAVE]);
+    p->drive2.setParameter("b7k_bass",   *p->ports[HF_DR2_B7K_BASS]);
+    p->drive2.setParameter("b7k_lomid",  *p->ports[HF_DR2_B7K_LOMID]);
+    p->drive2.setParameter("b7k_himid",  *p->ports[HF_DR2_B7K_HIMID]);
+    p->drive2.setParameter("b7k_treble", *p->ports[HF_DR2_B7K_TREBLE]);
+    p->drive2.setParameter("b7k_grunt",  *p->ports[HF_DR2_B7K_GRUNT]);
+    p->drive2.setParameter("b7k_attack", *p->ports[HF_DR2_B7K_ATTACK]);
     // Nail — industrial distortion (mode + drive/tone/texture/level)
     p->nail->setBypass(false);
     const int nailMode = clampi(*p->ports[HF_NAIL_MODE], 0, NailDistortion::kNumModes - 1);

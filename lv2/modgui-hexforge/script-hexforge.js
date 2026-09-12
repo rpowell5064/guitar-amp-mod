@@ -643,6 +643,8 @@ function (event, funcs) {
         show(icon, 'dr', '.c-dr-nam', nam);
         show(icon, 'dr', '.c-dr-alg', !nam);
         show(icon, 'dr', '.c-dr-int', !nam);
+        show(icon, 'dr', '.c-dr-b7k', !nam && m === 10);   // Helsinki Grind: its own EQ + switches
+        show(icon, 'dr', '.c-dr-tone', !nam && m !== 10);  // Tone is not a control on the B7K
         panelOf(icon, 'dr').find('[rata-role=drmodebtn]').each(function () {
             this.classList.toggle('hf-mode-on', this.getAttribute('data-mode') === (nam ? 'nam' : 'int'));
         });
@@ -662,6 +664,8 @@ function (event, funcs) {
         show(icon, 'dr2', '.c-dr-nam', nam);
         show(icon, 'dr2', '.c-dr-alg', !nam);
         show(icon, 'dr2', '.c-dr-int', !nam);
+        show(icon, 'dr2', '.c-dr-b7k', !nam && m === 10);
+        show(icon, 'dr2', '.c-dr-tone', !nam && m !== 10);
         panelOf(icon, 'dr2').find('[rata-role=dr2modebtn]').each(function () {
             this.classList.toggle('hf-mode-on', this.getAttribute('data-mode') === (nam ? 'nam' : 'int'));
         });
