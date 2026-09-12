@@ -79,6 +79,7 @@ public:
             case AmpModel::MesaMarkVComp:      fid = FID::MesaMarkVComponent;     break;
             case AmpModel::MesaDualRectifierComp: fid = FID::MesaDualRectifierComponent; break;
             case AmpModel::RockerverbComp:     fid = FID::OrangeRockerverbComponent;   break;
+            case AmpModel::VoxComp:            fid = FID::VoxAC30Component;            break;
             default:                            isExtended = false;              break;
         }
 

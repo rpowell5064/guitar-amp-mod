@@ -74,6 +74,16 @@ public:
         double imbalance  = 0.98;  // push/pull matching
         double gridFeedR  = 30e3;  // series R the grid conducts through
         double gridKneeV  = 0.0;   // output-tube grid-conduction knee width (0 = hard)
+        // AC-bypassed LTP tail (2026-09-11, Vox AC30: R15 47k under C8 8µ): the tail
+        // sets the DC point only; the AC tail term is dropped so the pair behaves as a
+        // common-cathode differential through ltpRk alone.
+        bool   ltpTailBypassed = false;
+        // Cathode bias for the output stage (2026-09-11, Vox AC30: R24 50 Ω ‖ C11 250µ
+        // shared by the quad). 0 = fixed bias. When set, the shared cathode voltage
+        // follows the averaged cathode current through R·C, so hard drive pushes the
+        // stage colder (the class-A → AB shift that is the AC30's compression).
+        double cathodeBiasR = 0.0;
+        double cathodeBiasC = 250e-6;
         double biasFeedR  = 220e3; // bias-network feed (grid-current charge path)
         double biasCap    = 10e-6; // bias reservoir
         double biasRecovR = 25e3;  // bias-network bleed (recovery)
@@ -131,6 +141,9 @@ public:
         solveLtpBias();
         solveOutputBias();
         buildLUT();
+        cathAlpha_ = (p_.cathodeBiasR > 0.0) ? 1.0 - std::exp(-1.0 / (p_.cathodeBiasR * p_.cathodeBiasC * fs_)) : 0.0;
+        cathIdle_  = 2.0 * outIdle_ * p_.tubesPerSide * (1.0 + p_.screenFrac);
+        cathAvg_   = cathIdle_;
         nfbStabLP_.setCoeffs(Filters::lowpass1pole(p_.nfbStabHz, fs_));
         nfbLoActive_ = p_.nfbLoDiv > 0.0 && p_.nfbLoHz > 0.0;
         if (nfbLoActive_) nfbLoShelf_.prepare(fs_, p_.nfbLoDiv, p_.nfbDiv, p_.nfbLoHz);
@@ -156,6 +169,7 @@ public:
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
         zRes_.reset(); zHF_.reset(); fluxLP_.reset();
         presShelf_.reset(); resoShelf_.reset(); nfbLoShelf_.reset();
+        cathAvg_ = cathIdle_; cathLast_ = cathIdle_;
         piCapA_.reset(); piCapB_.reset();
         c89HP_.reset(); c118HP_.reset(); c119HP_.reset();
     }
@@ -199,11 +213,20 @@ public:
             biasShift_ *= biasDecay_;
             if (biasShift_ > 12.0) biasShift_ = 12.0;
         }
-        gA = gridClamp(gA) - biasShift_;
-        gB = gridClamp(gB) - biasShift_;
+        double cathShift = 0.0;
+        if (p_.cathodeBiasR > 0.0) {
+            // averaged cathode current (both sides + screens) through R·C → bias shift
+            cathAvg_ += cathAlpha_ * (cathLast_ - cathAvg_);
+            cathShift = (cathAvg_ - cathIdle_) * p_.cathodeBiasR;
+            if (cathShift < 0.0) cathShift = 0.0;
+        }
+        gA = gridClamp(gA) - biasShift_ - cathShift;
+        gB = gridClamp(gB) - biasShift_ - cathShift;
 
         const double iP = lut(gA) * p_.imbalance;
         const double iN = lut(gB);
+        // physical cathode-current sum: class A keeps it constant, leaving class A raises it
+        cathLast_ = (2.0 * outIdle_ * p_.tubesPerSide + iP / std::max(1e-9, p_.imbalance) + iN) * (1.0 + p_.screenFrac);
 
         // Screen sag: droppers + reservoir, output following ~Vg2^1.5.
         {
@@ -263,7 +286,7 @@ private:
         Ia = std::clamp(Ia, 0.0, maxIa);
         for (int it = 0; it < 3; ++it) {
             const double dI = (Ia + Iother) - ltpIBiasTot_;
-            const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + dI * p_.ltpRtail;
+            const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iK, dg, dp;
             korenEval(ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
             const double f = Ia - iK;
@@ -351,6 +374,7 @@ private:
     double lut_[kLutN] = {};
     double lutScale_ = 1.0;
     double vBias_ = -52.0, outIdle_ = 0.06;
+    double cathAlpha_ = 0.0, cathIdle_ = 0.0, cathAvg_ = 0.0, cathLast_ = 0.0;
 
     float presence_ = 0.5f, resonance_ = 0.5f, sagDepth_ = 0.3f;
     ShelfV presShelf_, resoShelf_, nfbLoShelf_;
