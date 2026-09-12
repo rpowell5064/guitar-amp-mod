@@ -111,7 +111,6 @@ private:
     double loopA_ = 0.0, fbGain_ = 0.0;          // the R35 loop: open-loop A, β·Acl
     bool   paDirect_ = false;                    // fit24 (lab): input straight onto the PA grid
     double nfbSign_ = 1.0;                       // fit25 (lab): loop polarity probe
-    bool   adaaOn_ = true;                       // fit26 (lab): limiter anti-aliasing on/off
 
     LinearSmoother gainSmooth_;
 
@@ -144,7 +143,7 @@ private:
         evhcomp::ShelfV     nfbLead;    // R46 47k ‖ C7 120p
         BiquadFilter        nfbLP;
         DnrRolloff          dnr;
-        double              clampPrev = 0.0;   // ADAA state
+        double              clampV = 0.0;      // the clamp node, warm start
 
         static constexpr int kNTaps = 16;
         double tapAcc[kNTaps] = {};
@@ -154,16 +153,12 @@ private:
 
     // D1/D2 1N456 anti-parallel clamp behind the ~102k source, R2 470k leak:
     // the PA grid voltage for a given preamp source voltage (LUT, monotonic).
-    // The limiter turns tens of volts into 0.7 V: an edge a few us long that aliases
-    // even at 4x (the "bitcrusher" the user heard, 2026-09-13). Evaluated with
-    // first-order antiderivative anti-aliasing (ADAA): y = (F(x) - F(x1)) / (x - x1).
-    static constexpr int kClampN = 8192;
-    static constexpr double kClampSpan = 250.0;
-    std::array<double, kClampN> clampLut_{}, clampInt_{};
-    double clampGrid(double vs) const noexcept;
-    double clampInt(double vs) const noexcept;
-    double clampAdaa(double vs, double& prev) const noexcept;
-    void   buildClampLut() noexcept;
+    // D1/D2 1N456 anti-parallel clamp behind the ~102k source with R2 470k as the
+    // grid leak, solved per sample (Newton, warm-started). A lookup table was tried
+    // first: 61 mV steps across a 0.7 V knee gave quiet notes a piecewise-linear
+    // transfer — the "bitcrusher" the user heard (floor −22 dB at the PA grid at
+    // 3 mV in, −90 dB solved; 2026-09-13).
+    double clampGrid(double vs, double& warm) const noexcept;
 
     void buildStages() noexcept;
     void recalcPots() noexcept;
