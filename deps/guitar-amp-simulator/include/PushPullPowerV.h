@@ -204,7 +204,18 @@ public:
         double gA = c118HP_.process(float(p_.ltpVcc - IaA * p_.ltpRaA - ltpVpBiasA_));
         double gB = c119HP_.process(float(p_.ltpVcc - IaB * p_.ltpRaB - ltpVpBiasB_));
         if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
+        return driveOutput(gA, gB) * p_.outTrim;
+    }
 
+    // Externally driven output stage (2026-09-12, SVT: cathodyne + 12BH7 drivers
+    // replace the LTP). gA/gB = the two output-tube grid swings (V, about bias).
+    // Returns speaker-node volts; the caller closes its own feedback loop from
+    // lastSpk(). process() above is unchanged: same operations, same order.
+    double processDriven(double gA, double gB) noexcept { return driveOutput(gA, gB) * p_.outTrim; }
+    double lastSpk() const noexcept { return nfbPrev_; }
+
+private:
+    double driveOutput(double gA, double gB) noexcept {
         // Grid conduction charges the shared fixed-bias network colder.
         {
             const double lim = -vBias_ + 0.7;
@@ -247,8 +258,9 @@ public:
             spk = hi + p_.fluxLim * std::tanh(lo / p_.fluxLim);
         }
         nfbPrev_ = float(spk);
-        return spk * p_.outTrim;
+        return spk;
     }
+public:
 
     double ltpTailV()  const noexcept { return ltpTailV_; }
     double ltpTailmA() const noexcept { return ltpIBiasTot_ * 1e3; }

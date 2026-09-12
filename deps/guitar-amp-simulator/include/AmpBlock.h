@@ -29,7 +29,8 @@ enum class AmpModel {
     MesaMarkVComp,     // component-exact Mesa Mark V, channel 3 (Lab toggle)
     MesaDualRectifierComp,  // component-exact Mesa Dual Rectifier Rev F (Lab toggle)
     RockerverbComp,         // component-exact Orange Rockerverb 50 (Lab toggle)
-    VoxComp                 // component-exact Vox AC30 Top Boost (Lab toggle)
+    VoxComp,                // component-exact Vox AC30 Top Boost (Lab toggle)
+    SvtComp                 // component-exact Ampeg SVT (Lab toggle)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

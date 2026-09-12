@@ -80,6 +80,7 @@ public:
             case AmpModel::MesaDualRectifierComp: fid = FID::MesaDualRectifierComponent; break;
             case AmpModel::RockerverbComp:     fid = FID::OrangeRockerverbComponent;   break;
             case AmpModel::VoxComp:            fid = FID::VoxAC30Component;            break;
+            case AmpModel::SvtComp:            fid = FID::AmpegSVTComponent;           break;
             default:                            isExtended = false;              break;
         }
 

@@ -20,6 +20,7 @@
 #include "MesaDualRectifierComponentModel.h"
 #include "OrangeRockerverbComponentModel.h"
 #include "VoxAC30ComponentModel.h"
+#include "AmpegSVTComponentModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -44,6 +45,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::MesaDualRectifierComponent: return std::make_unique<MesaDualRectifierComponentModel>();
         case ModelID::OrangeRockerverbComponent: return std::make_unique<OrangeRockerverbComponentModel>();
         case ModelID::VoxAC30Component: return std::make_unique<VoxAC30ComponentModel>();
+        case ModelID::AmpegSVTComponent: return std::make_unique<AmpegSVTComponentModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -89,6 +91,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::MesaDualRectifierComponent: return "Mesa Dual Rectifier Component";
         case ModelID::OrangeRockerverbComponent: return "Orange Rockerverb 50 Component";
         case ModelID::VoxAC30Component: return "Vox AC30 Top Boost Component";
+        case ModelID::AmpegSVTComponent: return "Ampeg SVT Component";
         default:                           return "Unknown";
     }
 }
@@ -120,6 +123,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::MesaDualRectifierComponent: return 0;  // 6L6 quad (Rev F power amp sheet)
         case ModelID::OrangeRockerverbComponent: return 0;  // 6V6 quad as drawn (ORA-CD206)
         case ModelID::VoxAC30Component: return 3;  // EL84 quad, cathode biased
+        case ModelID::AmpegSVTComponent: return 5;  // 6550 sextet
         default:                           return 1;
     }
 }
@@ -167,5 +171,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Mesa Dual Rectifier Component") return ModelID::MesaDualRectifierComponent;
     if (name == "Orange Rockerverb 50 Component") return ModelID::OrangeRockerverbComponent;
     if (name == "Vox AC30 Top Boost Component") return ModelID::VoxAC30Component;
+    if (name == "Ampeg SVT Component") return ModelID::AmpegSVTComponent;
     return ModelID::SunnModelT;
 }

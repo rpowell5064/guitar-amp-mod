@@ -76,6 +76,35 @@ inline void korenEval(double Vgk, double Vpk,
     dIa_dVpk = dIa_dE1 * dE1_dVpk;
 }
 
+// Runtime Koren triode set for stages that are NOT 12AX7s (2026-09-12, SVT: the
+// 12BH7 drivers and the 6C4 line driver). Stages default to the compile-time 12AX7
+// path above (tube == nullptr), so every existing amp is bit-identical.
+struct KorenP { double mu, ex, kg1, kp, kvb; };
+inline void korenEvalP(const KorenP& T, double Vgk, double Vpk,
+                       double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
+    const double vpk   = std::max(1.0, Vpk);
+    const double denom = std::sqrt(T.kvb + vpk * vpk);
+    const double inner = T.kp * (1.0 / T.mu + Vgk / denom);
+    double E1, sig;
+    if (inner >= 12.0)       { E1 = vpk / T.kp * inner; sig = 1.0; }
+    else if (inner <= -80.0) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
+    else if (inner <= -12.0) { const double e = std::exp(inner); E1 = vpk / T.kp * e; sig = e; }
+    else { const double e = std::exp(inner); E1 = vpk / T.kp * std::log1p(e); sig = e / (1.0 + e); }
+    if (E1 <= 0.0) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
+    const double E1p = std::exp2(T.ex * std::log2(E1));
+    Ia = E1p / T.kg1;
+    const double dIa_dE1  = T.ex * E1p / (E1 * T.kg1);
+    const double dE1_dVgk = vpk / denom * sig;
+    const double dE1_dVpk = E1 / vpk - vpk * vpk * Vgk * sig / (denom * denom * denom);
+    dIa_dVgk = dIa_dE1 * dE1_dVgk;
+    dIa_dVpk = dIa_dE1 * dE1_dVpk;
+}
+inline void korenEvalT(const KorenP* T, double Vgk, double Vpk,
+                       double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
+    if (T) korenEvalP(*T, Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+    else   korenEval(Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+}
+
 // ── Common-cathode stage, volts in / volts out ───────────────────────────────
 class CCStageV {
 public:
@@ -108,6 +137,11 @@ public:
         // waveform whose harmonics reach past 190 kHz and alias even at 4x
         // (measured 2026-09-10 on the BE-100 HBE: sidebands at f*k +/- 400 Hz).
         double gridKneeV = 0.0;
+        // DC grid bias (V) when the grid leak returns to a node other than ground
+        // (SVT V3-B: R27 1M to the R29/R30 junction). 0 = grid at ground (bit-identical).
+        double VgBias = 0.0;
+        // Runtime tube set; nullptr = the compile-time 12AX7 (bit-identical).
+        const KorenP* tube = nullptr;
     };
     // Conducting grid-cathode diode resistance (tube physics, like kRp).
     static constexpr double kRgDiode = 2e3;
@@ -157,7 +191,7 @@ public:
         // swing exceeds Vk + kVgKnee. Above that the source divider (RgSrc vs
         // the conducting diode) absorbs the excess drive.
         if (p_.RgSrc > 0.0)
-            vgIn = clampGrid(vgIn, VkPrev_ + kVgKnee, kRgDiode / (kRgDiode + p_.RgSrc), p_.gridKneeV);
+            vgIn = clampGrid(vgIn, VkPrev_ - p_.VgBias + kVgKnee, kRgDiode / (kRgDiode + p_.RgSrc), p_.gridKneeV);
         const double Ia = solveIa(vgIn);
         const double Vk = (Ia + Ihist_) / Gk_;
         const double Vp = p_.Vcc - Ia * p_.Ra;
@@ -195,7 +229,7 @@ private:
         double Ia = 0.5e-3;
         for (int i = 0; i < 200; ++i) {
             double IaK, dg, dp;
-            korenEval(-Ia * p_.Rk, p_.Vcc - Ia * RaRk, IaK, dg, dp);
+            korenEvalT(p_.tube, p_.VgBias - Ia * p_.Rk, p_.Vcc - Ia * RaRk, IaK, dg, dp);
             const double f = Ia - IaK;
             if (std::abs(f) < 1e-12) break;
             const double fp = 1.0 + dg * p_.Rk + dp * RaRk;
@@ -221,8 +255,9 @@ private:
             double Vg = vgOrSrc;
             if (fb)   // grid node with plate feedback (ΔVp through RfbP)
                 Vg = (vgOrSrc / p_.RinFb + (Vp - VpBias_) / p_.RfbP) * invGfb_;
+            Vg += p_.VgBias;
             double IaK, dVgk, dVpk;
-            korenEval(Vg - Vk, Vp - Vk, IaK, dVgk, dVpk);
+            korenEvalT(p_.tube, Vg - Vk, Vp - Vk, IaK, dVgk, dVpk);
             const double f = Ia - IaK;
             if (std::abs(f) < kEps) break;
             double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
@@ -254,6 +289,14 @@ public:
         double VgBias;   // DC grid voltage set by the driving divider (V)
         double RgSrc = 0.0;   // Thevenin source R at the grid (grid conduction)
         double gridKneeV = 0.0;   // see CCStageV::Params
+        const KorenP* tube = nullptr;   // runtime tube set; nullptr = 12AX7 (bit-identical)
+        // Joint grid-conduction solve (2026-09-12, SVT V4-B: a 12AX7 follower whose
+        // load demands more current than the tube passes at Vgk <= 0, so it runs
+        // with the grid conducting at REST). The grid diode is then solved together
+        // with the cathode each sample (and at bias), which is what bootstraps the
+        // follower's input: Zin ~ rgk·(1 + gm·Rk) instead of rgk. Off = the original
+        // previous-sample clamp (bit-identical).
+        bool gridJoint = false;
     };
 
     void prepare(double /*fs*/, const Params& p) noexcept {
@@ -266,6 +309,11 @@ public:
     // vgIn: grid swing about VgBias. Returns cathode swing (V, non-inverting).
     double process(double vgIn) noexcept {
         double Vg = p_.VgBias + vgIn;
+        if (p_.gridJoint && p_.RgSrc > 0.0) {
+            const double Ia = solveIaJoint(Vg, IaOp_, kMaxIter);
+            IaOp_ = Ia; VkPrev_ = Ia * p_.Rk;
+            return VkPrev_ - VkBias_;
+        }
         if (p_.RgSrc > 0.0)
             Vg = CCStageV::clampGrid(Vg, VkPrev_ + CCStageV::kVgKnee,
                                      CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.RgSrc), p_.gridKneeV);
@@ -276,6 +324,19 @@ public:
 
     double biasVk() const noexcept { return VkBias_; }
     double biasIa() const noexcept { return IaBias_; }
+    // Small-signal cathode/grid gain at the bias point (the joint grid-conduction
+    // solve included when enabled) — for closed-loop bookkeeping in the models.
+    double smallSignalGain() noexcept {
+        if (p_.gridJoint && p_.RgSrc > 0.0) {
+            const double dv = 1e-3;
+            const double vkp = solveIaJoint(p_.VgBias + dv, IaBias_, 60) * p_.Rk;
+            const double vkm = solveIaJoint(p_.VgBias - dv, IaBias_, 60) * p_.Rk;
+            return (vkp - vkm) / (2.0 * dv);
+        }
+        double ia, gm, gp;
+        korenEvalT(p_.tube, p_.VgBias - VkBias_, p_.Vcc - VkBias_, ia, gm, gp);
+        return gm * p_.Rk / (1.0 + gm * p_.Rk + gp * p_.Rk);
+    }
 
 private:
     // A follower is far more linear than a gain stage (unity gain, huge local
@@ -283,13 +344,69 @@ private:
     static constexpr int    kMaxIter = 3;
     static constexpr double kEps     = 1e-9;
 
+    // Grid node with the grid-cathode diode conducting against RgSrc, solved
+    // together with the tube: Vg = vSrc − soft(vSrc − Vk − knee)·(1 − ratio).
+    // Residual of the joint grid/cathode equation at a trial Ia (monotonic in Ia).
+    void jointResidual(double vSrc, double Ia, double& f, double& fp) const noexcept {
+        const double ratio = CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.RgSrc);
+        const double Vk  = Ia * p_.Rk;
+        const double lim = Vk + CCStageV::kVgKnee;
+        double Vg, dVgdVk;
+        if (p_.gridKneeV <= 0.0) {
+            if (vSrc > lim) { Vg = lim + (vSrc - lim) * ratio; dVgdVk = 1.0 - ratio; }
+            else            { Vg = vSrc; dVgdVk = 0.0; }
+        } else {
+            const double over = (vSrc - lim) / p_.gridKneeV;
+            double soft, sig;
+            if (over > 30.0)       { soft = over; sig = 1.0; }
+            else if (over < -30.0) { soft = 0.0;  sig = 0.0; }
+            else { const double e = std::exp(over); soft = std::log1p(e); sig = e / (1.0 + e); }
+            Vg = vSrc - soft * p_.gridKneeV * (1.0 - ratio);
+            dVgdVk = sig * (1.0 - ratio);
+        }
+        double IaK, dg, dp;
+        korenEvalT(p_.tube, Vg - Vk, p_.Vcc - Vk, IaK, dg, dp);
+        f  = Ia - IaK;
+        fp = 1.0 + dg * (1.0 - dVgdVk) * p_.Rk + dp * p_.Rk;
+    }
+    double solveIaJoint(double vSrc, double Ia0, int iters) const noexcept {
+        const double maxIa = p_.Vcc / p_.Rk * 0.999;
+        double Ia = std::clamp(Ia0, 0.0, maxIa);
+        bool ok = false;
+        for (int it = 0; it < iters; ++it) {
+            double f, fp;
+            jointResidual(vSrc, Ia, f, fp);
+            if (std::abs(f) < kEps) { ok = true; break; }
+            if (std::abs(fp) < 1e-30) break;
+            const double step = f / fp;
+            Ia = std::clamp(Ia - step, 0.0, maxIa);
+            if (std::abs(step) < 1e-9) { ok = true; break; }
+        }
+        if (!ok) {
+            // Newton from a poor start bounces between the rails (a grid 40 V above
+            // the cathode is a wall); the residual is monotonic in Ia, so bisect.
+            double lo = 0.0, hi = maxIa, f, fp;
+            for (int i = 0; i < 80; ++i) {
+                Ia = 0.5 * (lo + hi);
+                jointResidual(vSrc, Ia, f, fp);
+                if (f > 0.0) hi = Ia; else lo = Ia;
+            }
+        }
+        return Ia;
+    }
+
     void solveBias() noexcept {
+        if (p_.gridJoint && p_.RgSrc > 0.0) {
+            const double Ia = solveIaJoint(p_.VgBias, 1.0e-3, 200);
+            IaBias_ = Ia; VkBias_ = Ia * p_.Rk;
+            return;
+        }
         const double maxIa = p_.Vcc / p_.Rk * 0.999;
         double Ia = 1.0e-3;
         for (int i = 0; i < 200; ++i) {
             const double Vk = Ia * p_.Rk;
             double IaK, dg, dp;
-            korenEval(p_.VgBias - Vk, p_.Vcc - Vk, IaK, dg, dp);
+            korenEvalT(p_.tube, p_.VgBias - Vk, p_.Vcc - Vk, IaK, dg, dp);
             const double f = Ia - IaK;
             if (std::abs(f) < 1e-12) break;
             const double fp = 1.0 + (dg + dp) * p_.Rk;
@@ -306,7 +423,7 @@ private:
         for (int it = 0; it < kMaxIter; ++it) {
             const double Vk = Ia * p_.Rk;
             double IaK, dVgk, dVpk;
-            korenEval(Vg - Vk, p_.Vcc - Vk, IaK, dVgk, dVpk);
+            korenEvalT(p_.tube, Vg - Vk, p_.Vcc - Vk, IaK, dVgk, dVpk);
             const double f = Ia - IaK;
             if (std::abs(f) < kEps) break;
             const double fp = 1.0 + (dVgk + dVpk) * p_.Rk;
@@ -325,6 +442,71 @@ private:
 
 // Series coupling cap into a resistive divider:
 //   src → C → [Rser] → out node with Rsh to ground.
+// ── Cathodyne (split-load) phase inverter, volts in / two volts out ─────────
+// (2026-09-12, SVT: V1-B 12AX7, R6 15k plate / R8 1k + R9 10k + VR3 cathode, the
+// grid leak R7 1M returned to the R8/R9 tap so the grid rides at Ia·RkTap.)
+class CathodyneV {
+public:
+    struct Params {
+        double Vcc;      // plate rail
+        double Ra;       // plate load
+        double Rk;       // total cathode load
+        double RkTap;    // the part of Rk below the grid-leak return (grid DC = Ia·RkTap)
+        double RgSrc = 0.0;
+        double gridKneeV = 0.0;
+        const KorenP* tube = nullptr;
+    };
+    void prepare(double /*fs*/, const Params& p) noexcept { p_ = p; solveBias(); reset(); }
+    void reset() noexcept { IaOp_ = IaBias_; VkPrev_ = VkBias_; plate_ = cath_ = 0.0; }
+    // vgIn: grid swing about its bias. Afterwards plateOut() / cathodeOut() hold
+    // the two swings (plate inverted, cathode in phase).
+    void process(double vgIn) noexcept {
+        if (p_.RgSrc > 0.0)
+            vgIn = CCStageV::clampGrid(vgIn, VkPrev_ - VgBias_ + CCStageV::kVgKnee,
+                                       CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.RgSrc), p_.gridKneeV);
+        const double Ia = solveIa(vgIn);
+        VkPrev_ = Ia * p_.Rk;
+        plate_  = (p_.Vcc - Ia * p_.Ra) - VpBias_;
+        cath_   = VkPrev_ - VkBias_;
+    }
+    double plateOut()   const noexcept { return plate_; }
+    double cathodeOut() const noexcept { return cath_; }
+    double biasVp() const noexcept { return VpBias_; }
+    double biasVk() const noexcept { return VkBias_; }
+    double biasIa() const noexcept { return IaBias_; }
+private:
+    void solveBias() noexcept {
+        const double RaRk = p_.Ra + p_.Rk, maxIa = p_.Vcc / RaRk * 0.999;
+        double Ia = 1e-3;
+        for (int i = 0; i < 200; ++i) {
+            double IaK, dg, dp;
+            korenEvalT(p_.tube, Ia * (p_.RkTap - p_.Rk), p_.Vcc - Ia * RaRk, IaK, dg, dp);
+            const double f = Ia - IaK; if (std::abs(f) < 1e-12) break;
+            const double fp = 1.0 + dg * (p_.Rk - p_.RkTap) + dp * RaRk; if (std::abs(fp) < 1e-30) break;
+            Ia = std::clamp(Ia - f / fp, 0.0, maxIa);
+        }
+        IaBias_ = Ia; VkBias_ = Ia * p_.Rk; VpBias_ = p_.Vcc - Ia * p_.Ra; VgBias_ = Ia * p_.RkTap;
+    }
+    double solveIa(double vgIn) noexcept {
+        const double RaRk = p_.Ra + p_.Rk, maxIa = p_.Vcc / RaRk * 0.99;
+        double Ia = std::clamp(IaOp_, 0.0, maxIa);
+        for (int it = 0; it < 5; ++it) {
+            const double Vk = Ia * p_.Rk, Vp = p_.Vcc - Ia * p_.Ra;
+            double IaK, dg, dp;
+            korenEvalT(p_.tube, VgBias_ + vgIn - Vk, Vp - Vk, IaK, dg, dp);
+            const double f = Ia - IaK; if (std::abs(f) < 1e-9) break;
+            const double fp = 1.0 + dg * p_.Rk + dp * RaRk; if (std::abs(fp) < 1e-30) break;
+            const double step = f / fp;
+            Ia = std::clamp(Ia - step, 0.0, maxIa);
+            if (std::abs(step) < 1e-6) break;
+        }
+        IaOp_ = Ia; return Ia;
+    }
+    Params p_{};
+    double IaBias_ = 0.0, VpBias_ = 0.0, VkBias_ = 0.0, VgBias_ = 0.0, IaOp_ = 0.0, VkPrev_ = 0.0;
+    double plate_ = 0.0, cath_ = 0.0;
+};
+
 // H = k·HP1(fc), k = Rsh/(Rser+Rsh), fc = 1/(2π·C·(Rser+Rsh)).
 struct RCDividerV {
     void prepare(double fs, double C, double Rser, double Rsh) noexcept {

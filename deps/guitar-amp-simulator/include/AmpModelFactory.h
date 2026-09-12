@@ -37,6 +37,7 @@ public:
         MesaDualRectifierComponent = 18,
         OrangeRockerverbComponent = 19,
         VoxAC30Component = 20,
+        AmpegSVTComponent = 21,
     };
 
     static constexpr int kNumModels = 14;
