@@ -111,6 +111,12 @@ private:
     double loopA_ = 0.0, fbGain_ = 0.0;          // the R35 loop: open-loop A, β·Acl
     bool   paDirect_ = false;                    // fit24 (lab): input straight onto the PA grid
     double nfbSign_ = 1.0;                       // fit25 (lab): loop polarity probe
+    // The stages that never leave their linear range by design (the limiter caps
+    // the power-amp drive; the 6C4 has 170 V of headroom) run as their small-
+    // signal gains: the 6C4 line driver, the cathodyne, the two 12BH7 followers.
+    // fit27 = 0 solves them (lab A/B: capture grid identical to 0.1, Pi CPU −25 %).
+    bool   linDrivers_ = true;
+    double gV5_ = 0.9, gPiPlate_ = -0.9, gPiCath_ = 0.9, gCfA_ = 0.85, gCfB_ = 0.85;
 
     LinearSmoother gainSmooth_;
 

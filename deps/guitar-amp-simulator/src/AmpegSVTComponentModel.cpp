@@ -213,6 +213,11 @@ void AmpegSVTComponentModel::buildStages() noexcept {
             }
             c.cfA.prepare(fs_, p); c.cfB.prepare(fs_, p);
         }
+        // small-signal gains of the linear-by-design drivers (see the header)
+        gV5_  = c.v5.smallSignalGain();
+        gCfA_ = c.cfA.smallSignalGain();
+        gCfB_ = c.cfB.smallSignalGain();
+        { c.pi.process(1e-3); gPiPlate_ = c.pi.plateOut() / 1e-3; gPiCath_ = c.pi.cathodeOut() / 1e-3; c.pi.reset(); }
         c.pa.prepare(fs_, svtPowerParams(railA_, railE_, otHfHz_, zHfDb_, zResHz_, zResDb_, idleMa_, raa_,
                                          nfbStabHz_, fluxLim_, kneeV_, iaScale_));
         c.pa.setSagDepth(sag_);
@@ -360,7 +365,7 @@ float AmpegSVTComponentModel::processSample(float x, int channel) noexcept {
     tap(7, v);
     v = c.mid.process(v);
     v = c.coup21.process(float(v));
-    v = c.v5.process(v);
+    v = linDrivers_ ? v * gV5_ : c.v5.process(v);
     tap(8, v);
 
     // ── the cable, the patch jacks and the D1/D2 limiter
@@ -373,15 +378,18 @@ float AmpegSVTComponentModel::processSample(float x, int channel) noexcept {
     double p = c.pv1a.process(vg + nfbSign_ * nfb);   // polarity: the loop measured NEGATIVE this way (svt_component_verify: the other sign rings at 17.5 kHz)
     tap(10, p);
     p = c.c2LP.process(c.pcoup1.process(float(p)));
-    c.pi.process(p);
-    tap(13, c.pi.plateOut());
-    double a = c.pcoup3.process(float(c.pi.plateOut()));
-    double b = c.pcoup4.process(float(c.pi.cathodeOut()));
+    double piP, piK;
+    if (linDrivers_) { piP = p * gPiPlate_; piK = p * gPiCath_; }
+    else             { c.pi.process(p); piP = c.pi.plateOut(); piK = c.pi.cathodeOut(); }
+    tap(13, piP);
+    double a = c.pcoup3.process(float(piP));
+    double b = c.pcoup4.process(float(piK));
     a = c.bh7a.process(a); b = c.bh7b.process(b);
     tap(14, a);
     a = c.pcoup5.process(float(a)); b = c.pcoup6.process(float(b));
     tap(15, a);
-    a = c.cfA.process(a); b = c.cfB.process(b);
+    if (linDrivers_) { a *= gCfA_; b *= gCfB_; }
+    else             { a = c.cfA.process(a); b = c.cfB.process(b); }
     tap(11, a);
     const double out = c.pa.processDriven(a, b);
     tap(12, out);
@@ -429,6 +437,7 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
     else if (id == "fit23")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "fit24")    { paDirect_ = value > 0.5f; }
     else if (id == "fit25")    { nfbSign_ = value < 0.0f ? -1.0 : 1.0; }
+    else if (id == "fit27")    { linDrivers_ = value > 0.5f; }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

@@ -438,7 +438,9 @@ private:
             if (std::abs(f) < kEps) break;
             const double fp = 1.0 + (dVgk + dVpk) * p_.Rk;
             if (std::abs(fp) < 1e-30) break;
-            Ia = std::clamp(Ia - f / fp, 0.0, maxIa);
+            const double step = f / fp;
+            Ia = std::clamp(Ia - step, 0.0, maxIa);
+            if (std::abs(step) < 1e-9) break;   // post-update step exit (2026-09-13): a converged warm start leaves after one evaluation
         }
         IaOp_ = Ia;
         return Ia;
@@ -508,7 +510,7 @@ private:
             const double fp = 1.0 + dg * p_.Rk + dp * RaRk; if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
             Ia = std::clamp(Ia - step, 0.0, maxIa);
-            if (std::abs(step) < 1e-6) break;
+            if (std::abs(step) < 1e-8) break;   // (1e-6 A was 0.45 V at a 15k plate load)
         }
         IaOp_ = Ia; return Ia;
     }
