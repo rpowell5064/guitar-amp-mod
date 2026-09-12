@@ -105,20 +105,43 @@ void AmpegSVTComponentModel::buildClampLut() noexcept {
     };
     for (int i = mid; i < kClampN; ++i) {
         const double vs = -kClampSpan + 2.0 * kClampSpan * i / double(kClampN - 1);
-        v = solve(vs, v); clampLut_[size_t(i)] = float(v);
+        v = solve(vs, v); clampLut_[size_t(i)] = v;
     }
     v = 0.0;
     for (int i = mid - 1; i >= 0; --i) {
         const double vs = -kClampSpan + 2.0 * kClampSpan * i / double(kClampN - 1);
-        v = solve(vs, v); clampLut_[size_t(i)] = float(v);
+        v = solve(vs, v); clampLut_[size_t(i)] = v;
     }
+    // antiderivative F(vs) of the limiter, trapezoidal over the table (F(-span) = 0)
+    const double dx = 2.0 * kClampSpan / double(kClampN - 1);
+    clampInt_[0] = 0.0;
+    for (int i = 1; i < kClampN; ++i)
+        clampInt_[size_t(i)] = clampInt_[size_t(i) - 1] + 0.5 * (clampLut_[size_t(i) - 1] + clampLut_[size_t(i)]) * dx;
+}
+
+double AmpegSVTComponentModel::clampInt(double vs) const noexcept {
+    const double xc = std::clamp(vs, -kClampSpan, kClampSpan);
+    const double x = (xc + kClampSpan) / (2.0 * kClampSpan) * double(kClampN - 1);
+    const int i = std::min(kClampN - 2, int(x));
+    const double fr = x - i;
+    const double F = clampInt_[size_t(i)] * (1.0 - fr) + clampInt_[size_t(i) + 1] * fr;
+    // beyond the table the limiter is flat: extend linearly
+    return F + (vs - xc) * (vs > 0.0 ? clampLut_[size_t(kClampN - 1)] : clampLut_[0]);
+}
+
+double AmpegSVTComponentModel::clampAdaa(double vs, double& prev) const noexcept {
+    const double d = vs - prev;
+    const double y = (std::abs(d) < 1e-4) ? clampGrid(0.5 * (vs + prev))
+                                          : (clampInt(vs) - clampInt(prev)) / d;
+    prev = vs;
+    return y;
 }
 
 double AmpegSVTComponentModel::clampGrid(double vs) const noexcept {
     const double x = std::clamp((vs + kClampSpan) / (2.0 * kClampSpan) * double(kClampN - 1), 0.0, double(kClampN - 1) - 1e-6);
     const int i = int(x);
     const double fr = x - i;
-    return double(clampLut_[size_t(i)]) * (1.0 - fr) + double(clampLut_[size_t(i) + 1]) * fr;
+    return clampLut_[size_t(i)] * (1.0 - fr) + clampLut_[size_t(i) + 1] * fr;
 }
 
 void AmpegSVTComponentModel::buildStages() noexcept {
@@ -321,7 +344,7 @@ void AmpegSVTComponentModel::reset() noexcept {
         c.mid.reset(); c.coup21.reset(); c.v5.reset();
         c.pv1a.reset(); c.pcoup1.reset(); c.c2LP.reset(); c.pi.reset(); c.pcoup3.reset(); c.pcoup4.reset();
         c.bh7a.reset(); c.bh7b.reset(); c.pcoup5.reset(); c.pcoup6.reset(); c.cfA.reset(); c.cfB.reset();
-        c.pa.reset(); c.nfbLead.reset(); c.nfbLP.reset(); c.dnr.reset();
+        c.pa.reset(); c.nfbLead.reset(); c.nfbLP.reset(); c.dnr.reset(); c.clampPrev = 0.0;
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -368,7 +391,7 @@ float AmpegSVTComponentModel::processSample(float x, int channel) noexcept {
     tap(8, v);
 
     // ── the cable, the patch jacks and the D1/D2 limiter
-    double vg = clampOn_ ? clampGrid(v) : v * 470.0 / 572.0;
+    double vg = clampOn_ ? (adaaOn_ ? clampAdaa(v, c.clampPrev) : clampGrid(v)) : v * 470.0 / 572.0;
     if (paDirect_) vg = double(x) * inVolts_;   // lab: the input IS the power-amp grid (the printed AC gate)
     tap(9, vg);
 
@@ -433,6 +456,7 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
     else if (id == "fit23")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "fit24")    { paDirect_ = value > 0.5f; }
     else if (id == "fit25")    { nfbSign_ = value < 0.0f ? -1.0 : 1.0; }
+    else if (id == "fit26")    { adaaOn_ = value > 0.5f; }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

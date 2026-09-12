@@ -310,7 +310,7 @@ public:
     double process(double vgIn) noexcept {
         double Vg = p_.VgBias + vgIn;
         if (p_.gridJoint && p_.RgSrc > 0.0) {
-            const double Ia = solveIaJoint(Vg, IaOp_, kMaxIter);
+            const double Ia = solveIaJoint(Vg, IaOp_, 8);   // warm-started; the step criterion exits in 2-4
             IaOp_ = Ia; VkPrev_ = Ia * p_.Rk;
             return VkPrev_ - VkBias_;
         }
@@ -380,13 +380,19 @@ private:
             if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
             Ia = std::clamp(Ia - step, 0.0, maxIa);
+            // NOT the CCStageV step criterion: deep in grid conduction the slope is
+            // ~1e3, so a 1 mA residual makes a 1 uA step (measured: CLEAN grid 6.55 -> 9.25).
             if (std::abs(step) < 1e-9) { ok = true; break; }
         }
         if (!ok) {
             // Newton from a poor start bounces between the rails (a grid 40 V above
             // the cathode is a wall); the residual is monotonic in Ia, so bisect.
+            // 2026-09-13: with 3 Newton steps and a 1e-9 exit this fallback ran on
+            // most driven samples at 80 evaluations a time — the SVT's CPU sink
+            // (84 % sine / 330 % noise on the Pi). Now rare: 30 halvings of 10 mA
+            // reach 10 pA.
             double lo = 0.0, hi = maxIa, f, fp;
-            for (int i = 0; i < 80; ++i) {
+            for (int i = 0; i < 30; ++i) {
                 Ia = 0.5 * (lo + hi);
                 jointResidual(vSrc, Ia, f, fp);
                 if (f > 0.0) hi = Ia; else lo = Ia;

@@ -91,10 +91,10 @@ private:
 
     // Level calibration.
     float inVolts_    = 1.00f;
-    float outScalePa_ = 0.0045f;   // loudness alignment vs the reference (harness makeup ×0.75 at the CLEAN fit)
+    float outScalePa_ = 0.0060f;   // (a 0.0045 loudness bake measured 2.6 points WORSE on the CLEAN grid: the decay darkener's thresholds are absolute)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  stackMid_  = 0.15f;   // fit0: VR5 / VR6 "log" law
-    double otHfHz_ = 60e3, zHfDb_ = 0.0, zResDb_ = 0.0, idleMa_ = 24.0, raa_ = 1900.0;   // fit1..fit5 (raa from the boxed 372 V RMS at 300 W; zRes/zHf 0: the reference is a load-box capture and carries no speaker impedance — the twin-T off / noon FR then sits within 1 dB of it 50-800 Hz)
+    double otHfHz_ = 60e3, zHfDb_ = 0.0, zResDb_ = 8.0, idleMa_ = 24.0, raa_ = 1900.0;   // fit1..fit5 (raa from the boxed 372 V RMS at 300 W; zRes 8 / zHf 0: the reference carries the ~60 Hz impedance hump — with it OFF the grid lost 2.4 points at its best knobs)
     double nfbStabHz_ = 60e3, fluxLim_ = 12.0;   // fit6 / fit7 (300 W transformer)
     double kneeV_ = 0.15;                        // fit8
     int    probeTap_ = -1;                       // fit9 (lab)
@@ -111,6 +111,7 @@ private:
     double loopA_ = 0.0, fbGain_ = 0.0;          // the R35 loop: open-loop A, β·Acl
     bool   paDirect_ = false;                    // fit24 (lab): input straight onto the PA grid
     double nfbSign_ = 1.0;                       // fit25 (lab): loop polarity probe
+    bool   adaaOn_ = true;                       // fit26 (lab): limiter anti-aliasing on/off
 
     LinearSmoother gainSmooth_;
 
@@ -143,6 +144,7 @@ private:
         evhcomp::ShelfV     nfbLead;    // R46 47k ‖ C7 120p
         BiquadFilter        nfbLP;
         DnrRolloff          dnr;
+        double              clampPrev = 0.0;   // ADAA state
 
         static constexpr int kNTaps = 16;
         double tapAcc[kNTaps] = {};
@@ -152,10 +154,15 @@ private:
 
     // D1/D2 1N456 anti-parallel clamp behind the ~102k source, R2 470k leak:
     // the PA grid voltage for a given preamp source voltage (LUT, monotonic).
-    static constexpr int kClampN = 4096;
+    // The limiter turns tens of volts into 0.7 V: an edge a few us long that aliases
+    // even at 4x (the "bitcrusher" the user heard, 2026-09-13). Evaluated with
+    // first-order antiderivative anti-aliasing (ADAA): y = (F(x) - F(x1)) / (x - x1).
+    static constexpr int kClampN = 8192;
     static constexpr double kClampSpan = 250.0;
-    std::array<float, kClampN> clampLut_{};
+    std::array<double, kClampN> clampLut_{}, clampInt_{};
     double clampGrid(double vs) const noexcept;
+    double clampInt(double vs) const noexcept;
+    double clampAdaa(double vs, double& prev) const noexcept;
     void   buildClampLut() noexcept;
 
     void buildStages() noexcept;
