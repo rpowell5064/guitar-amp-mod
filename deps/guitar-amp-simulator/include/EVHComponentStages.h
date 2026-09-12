@@ -376,6 +376,10 @@ private:
         for (int it = 0; it < iters; ++it) {
             double f, fp;
             jointResidual(vSrc, Ia, f, fp);
+            // The exit MUST stay at kEps (1 nA): any looser residual or step gate
+            // lets the warm start pass untouched for small grid signals — a dead
+            // zone that reads as crossover distortion (100 nA: CLEAN grid 6.9 -> 34;
+            // a 1 uA step: 6.9 -> 9.3). Measured 2026-09-13.
             if (std::abs(f) < kEps) { ok = true; break; }
             if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
