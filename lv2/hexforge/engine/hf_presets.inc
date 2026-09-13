@@ -2706,6 +2706,59 @@ static void seedFactoryPresets(HexForge* p) {
         trim(14, 1, -1.16f);   // Knights of Fuzz
     }
     // ═══ END REV 141 ═══
+
+    // ── rev 145: LOUDNESS LEVEL PASS (user: "try to get all of the presets to a
+    // similar volume"). Every factory preset measured through the full chain and
+    // trimmed to the .158 rms golden anchor. Measured with the Component Model
+    // toggle ON, which is how this rig plays: the component builds carry their own
+    // power section, so their level differs per preset and no per-amp constant can
+    // level all of them (kCompMakeup already removes the systematic part). With the
+    // toggle OFF the spread is what it has always been — this pass does not make it
+    // worse. Absolute dB added to out_level, clamped to the port range; idempotent
+    // per seed, and the LAST thing the seeder does so no earlier bake is undone.
+    {
+        static const float kLevelTrim[kBanks][kSlots] = {
+    { +0.0f, -3.1f, -7.0f, -4.2f },   // bank 01
+    { +1.9f, -10.0f, -2.9f, -7.9f },   // bank 02
+    { +1.4f, -3.4f, -2.9f, -0.7f },   // bank 03
+    { -0.8f, -6.4f, -2.3f, +0.2f },   // bank 04
+    { -5.6f, -1.1f, +0.6f, -7.3f },   // bank 05
+    { -3.2f, -6.1f, -7.9f, -4.3f },   // bank 06
+    { -5.9f, -4.6f, -8.0f, -8.1f },   // bank 07
+    { -1.3f, -10.0f, -6.7f, -6.0f },   // bank 08
+    { +0.1f, -5.4f, -7.6f, -7.1f },   // bank 09
+    { -6.9f, -7.2f, -0.3f, -2.7f },   // bank 10
+    { -5.6f, +6.0f, +0.8f, +5.5f },   // bank 11
+    { -0.6f, -6.8f, -1.0f, -4.7f },   // bank 12
+    { -9.8f, -7.5f, -8.0f, -6.0f },   // bank 13
+    { -4.7f, +1.9f, -2.6f, -8.6f },   // bank 14
+    { -6.8f, +1.0f, -2.7f, -6.2f },   // bank 15
+    { +1.2f, +0.2f, -3.0f, +2.5f },   // bank 16
+    { -8.7f, -7.2f, -4.6f, -3.6f },   // bank 17
+    { -0.1f, -3.8f, -1.8f, +0.1f },   // bank 18
+    { -1.4f, -0.1f, -0.7f, +0.2f },   // bank 19
+    { +0.9f, +1.0f, +1.3f, +2.9f },   // bank 20
+    { +3.1f, +1.2f, +1.5f, +3.0f },   // bank 21
+    { +2.5f, +1.3f, +2.0f, +3.0f },   // bank 22
+    { +1.9f, +1.2f, +2.4f, +3.2f },   // bank 23
+    { +1.6f, +1.0f, +2.7f, +3.2f },   // bank 24
+    { +1.3f, +1.3f, +2.9f, +2.9f },   // bank 25
+    { +1.3f, +1.6f, +3.0f, +2.3f },   // bank 26
+    { +1.3f, +2.0f, +3.1f, +1.9f },   // bank 27
+    { +1.1f, +2.4f, +3.2f, +1.5f },   // bank 28
+    { +1.1f, +2.8f, +3.1f, +1.2f },   // bank 29
+    { +1.3f, +3.0f, +2.8f, +1.2f },   // bank 30
+    { +1.7f, +3.0f, +2.2f, +1.2f },   // bank 31
+    { +2.1f, +3.1f, +1.8f, +1.1f },   // bank 32
+        };
+        for (int b = 0; b < kBanks; ++b)
+            for (int sl = 0; sl < kSlots; ++sl) {
+                Preset& pr = p->presets[b][sl];
+                if (!pr.used || kLevelTrim[b][sl] == 0.0f) continue;
+                pr.vals[HF_OUT_LEVEL] = std::max(-60.0f, std::min(12.0f,
+                                          pr.vals[HF_OUT_LEVEL] + kLevelTrim[b][sl]));
+            }
+    }
 }
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);

@@ -93,7 +93,12 @@ int main(int argc, char** argv) {
 #endif
 
     int maxPresets = 128;
-    if (argc > 1) { long v = strtol(argv[1], nullptr, 10); if (v >= 1 && v <= 128) maxPresets = (int)v; }
+    bool compOn = false;   // --comp: render with the Component Model toggle ON (a global
+                           // tail port, so preset recall never touches it)
+    for (int a = 1; a < argc; ++a) {
+        if (!strcmp(argv[a], "--comp")) { compOn = true; continue; }
+        long v = strtol(argv[a], nullptr, 10); if (v >= 1 && v <= 128) maxPresets = (int)v;
+    }
 
     const char* URI = "https://rpowell5064.github.io/guitaramp-suite/hexforge";
     const double RATE = 48000.0;
@@ -135,6 +140,7 @@ int main(int argc, char** argv) {
     inSeq(ctl); inSeq(midi); outSeq(notify);
 
     val[HF_PS_GOTO] = -1.0f;   // idle; per-preset recall below
+    if (compOn) val[HF_AMP_EVHCOMP] = 1.0f;
 
     for (int i = 0; i < HF_N_PORTS; ++i) {
         void* p;

@@ -309,13 +309,21 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kSvtIdx);
         const bool rbNamSel = (rbModel == kAmpNamIdx);   // Neural on the B side (v39)
         const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
+        // The Component Model toggle is global: Amp 2 gets the schematic-exact
+        // build too (2026-09-13 — it had been left on the shipped models, so the
+        // same amp sounded different on the two rigs, the rig-B divergence class
+        // the 2026-09-04 audit already caught once with gain tracking).
+        const bool rbCompOn = p->ports[HF_AMP_EVHCOMP] && *p->ports[HF_AMP_EVHCOMP] > 0.5f
+                              && hasComponentModel(rbModel);
         // amp2Requested guards the build-in-flight window: without it, !p->amp2
         // stays true until the crossfade swap lands and this scheduled a fresh
         // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
-        if (!rbNamSel && (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco || !p->amp2) && !p->amp2Requested) {
+        if (!rbNamSel && (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco
+                          || rbCompOn != p->lastAmp2Comp || !p->amp2) && !p->amp2Requested) {
             WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=rbModel; msg.eco=rbEco; msg.namSlot=1;
+            msg.evhComp = rbCompOn;
             if (p->worker->schedule(&msg, sizeof(msg)))
-                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->amp2Requested = true; }
+                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->lastAmp2Comp = rbCompOn; p->amp2Requested = true; }
         }
         const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, kRbCabMax);
         const bool ir2NoCab = (std::strcmp(p->ir2Path, "@nocab") == 0);   // unified picker's No Cab entry
@@ -442,7 +450,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 p->pa2.setParameter("tracklo", d2.trackLo); p->pa2.setParameter("trackhi", d2.trackHi);
             }
             p->pa2.setParameter("trackgain", *p->ports[HF_RB_GAIN]);   // tracking follows Rig B's own gain knob
-            p->pa2.setBypass((*p->ports[HF_RB_PAMP_BYPASS] > 0.5f) || rbM == kSunnIdx);
+            p->pa2.setBypass((*p->ports[HF_RB_PAMP_BYPASS] > 0.5f) || rbM == kSunnIdx
+                             || p->lastAmp2Comp);   // the component build carries its own power section
             // Full cab parity
             p->cab2.setParameter("lowCutHz",  *p->ports[HF_RB_LOWCUT]);
             p->cab2.setParameter("highCutHz", *p->ports[HF_RB_HIGHCUT]);
@@ -604,7 +613,19 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx)
                         || compOn;   // every component model carries its own PA (v48)
     p->pa.setBypass(paBypass);
-    const float ampMakeup = kAmpMakeup[ampAlgo];
+    // Component builds bypass the shared PA, so they miss both its makeup and the
+    // post-PA gain-tracking law, and their own dial-loudness curve differs. The
+    // parity row (kCompMakeup/kCompTrackLo/Hi) restores both so the Component Model
+    // toggle is loudness-neutral and one set of preset levels is right either way.
+    // the selector the parity row is indexed by: channel for EVH/Rockerverb/Friedman,
+    // the mode rotary for Cali V / Diamond Plate, nothing for the single-channel amps
+    const float compSel = (ampAlgo == 2 || ampAlgo == 4) ? *p->ports[HF_AMP_CHANNEL]
+                        : (ampAlgo == kFriedmanIdx)      ? *p->ports[HF_AMP_FR_CHANNEL]
+                        : (ampAlgo == kMesaIdx)          ? *p->ports[HF_AMP_MV_MODE]
+                        : (ampAlgo == kRectoIdx)         ? *p->ports[HF_AMP_RC_MODE] : 0.0f;
+    const float ampMakeup = kAmpMakeup[ampAlgo]
+                          * (compOn ? compParity(ampAlgo, *p->ports[HF_AMP_GAIN],
+                                                 *p->ports[HF_AMP_MASTER], compSel) : 1.0f);
     // Cab
     p->cab.setBypass(false);
     p->cab.setParameter("lowCutHz",  *p->ports[HF_CAB_LOWCUT]);
@@ -938,7 +959,13 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             p->pa2.process(io1, io1, len, 1);
             p->amp2->setExternalSag(p->pa2.getSagEnvNorm());
             const int rbAlgo = (p->lastAmp2Model < 0) ? 1 : ((p->lastAmp2Model == 5) ? 1 : p->lastAmp2Model);
-            const float mk2 = kAmpMakeup[rbAlgo];
+            const float sel2 = (rbAlgo == 2 || rbAlgo == 4) ? *p->ports[HF_RB_CHANNEL]
+                             : (rbAlgo == kFriedmanIdx)      ? *p->ports[HF_RB_FR_CHANNEL]
+                             : (rbAlgo == kMesaIdx)          ? *p->ports[HF_RB_MV_MODE]
+                             : (rbAlgo == kRectoIdx)         ? *p->ports[HF_RB_RC_MODE] : 0.0f;
+            const float mk2 = kAmpMakeup[rbAlgo]
+                            * (p->lastAmp2Comp ? compParity(rbAlgo, *p->ports[HF_RB_GAIN],
+                                                            *p->ports[HF_RB_MASTER], sel2) : 1.0f);
             if (mk2 != 1.0f) for (int i=0;i<len;++i) p->rigBBuf[i] *= mk2;
             }
             // Cab 2 only when it has been brought into the chain; otherwise rig B
