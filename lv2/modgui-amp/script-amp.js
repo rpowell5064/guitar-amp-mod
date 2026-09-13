@@ -34,6 +34,22 @@ function (event, funcs) {
         if (!ok[cur]) set_tab(icon, 'amp');
     }
 
+    // RULE (2026-09-13): the panel shows a knob only if the REAL amp has one.
+    //   0 Deluxe Reverb  no Middle / Presence / Master
+    //   4 Rockerverb     no Presence; its CLEAN channel also has no Middle / Master
+    //   8 AC30 Top Boost no Middle / Master (its Presence IS the Cut control)
+    //   9 Backstage Plus no Presence        10 Plexi  non-master amp
+    //  13 MT15           no Presence        14 SVT    no Presence / Master
+    // Neural (5) keeps all three: there they are our own post-capture EQ, not an amp's.
+    // Visibility only — the stored value still feeds the model, so presets are untouched.
+    function update_amp_ctls(icon) {
+        var m = icon.data('amp_model'); if (m == null) m = 0;
+        var rvClean = (m === 4 && (icon.data('amp_channel') || 0) > 0.5);
+        icon.find('[rata-role=midctl]').toggleClass('mod-hidden',  (m === 0 || m === 8 || rvClean));
+        icon.find('[rata-role=presctl]').toggleClass('mod-hidden', (m === 0 || m === 4 || m === 9 || m === 13 || m === 14));
+        icon.find('[rata-role=mastctl]').toggleClass('mod-hidden', (m === 0 || m === 8 || m === 10 || m === 14 || rvClean));
+    }
+
     function update_model(icon, value) {
         var m = parseInt(value, 10);
         var nam = (m === 5);
@@ -69,6 +85,7 @@ function (event, funcs) {
         var cur = icon.data('amp_tab') || 'amp';
         if (nam && cur !== 'nam') set_tab(icon, 'nam');
         else if (!nam && cur === 'nam') set_tab(icon, 'amp');
+        update_amp_ctls(icon);
     }
     // Write the model port (mode switch / tab click) + refresh the UI deterministically
     // (mod-ui doesn't reliably echo set_port_value back as a change event).
@@ -184,12 +201,16 @@ function (event, funcs) {
         // Seed model-aware visibility from START values (avoids a flash of all tabs).
         var map = {};
         (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
+        if ('channel' in map) icon.data('amp_channel', map.channel);
         if ('model' in map) update_model(icon, map.model);
         if ('pamp_auto' in map) update_pa_auto(icon, map.pamp_auto);
+        update_amp_ctls(icon);
     } else if (event.type == 'change') {
         if (event.symbol) syncSel(event.icon, event.symbol, event.value);
         if (event.symbol == 'model')
             update_model(event.icon, event.value);
+        else if (event.symbol == 'channel')
+            { event.icon.data('amp_channel', event.value); update_amp_ctls(event.icon); }
         else if (event.symbol == 'pamp_auto')
             update_pa_auto(event.icon, event.value);
         else if (event.symbol == 'mv_eqpreset' && event.value > 0)

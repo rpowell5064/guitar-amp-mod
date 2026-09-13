@@ -516,6 +516,24 @@ function (event, funcs) {
         pad.find('[rata-role=micposv]').text(pn);
         pad.find('[rata-role=micdistv]').text(dn);
     }
+    // ── Which controls does the REAL amp have? (2026-09-13) ──────────────────
+    // The panel shows a knob only if the original amp has one. Neural (5) keeps
+    // all of them: there the tone controls are our own post-capture EQ, not an
+    // amp's. Channel-dependent on the Rockerverb, whose clean channel has a fixed
+    // mid and no channel volume of its own.
+    //   0 Deluxe Reverb  no Middle / Presence / Master
+    //   4 Rockerverb     no Presence; clean channel also no Middle / Master
+    //   8 AC30 Top Boost no Middle / Master (Presence = the Cut control)
+    //   9 Backstage Plus no Presence        10 Plexi  non-master amp
+    //  13 MT15           no Presence        14 SVT    no Presence / Master
+    function ampCtlRule(m, ch) {
+        var rvClean = (m === 4 && ch > 0.5);
+        return {
+            mid:  !(m === 0 || m === 8 || rvClean),
+            pres: !(m === 0 || m === 4 || m === 9 || m === 13 || m === 14),
+            mast: !(m === 0 || m === 8 || m === 10 || m === 14 || rvClean)
+        };
+    }
     function applyAmp(icon) {
         var m = icon.data('hf_amp_m'); if (m == null) m = 1;
         var a = icon.data('hf_amp_auto'); if (a == null) a = true;
@@ -527,6 +545,10 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-mt15', m === 13);
         show(icon, 'amp', '.c-amp-svt', m === 14);
         show(icon, 'amp', '.c-amp-reso', m === 2);
+        var ar = ampCtlRule(m, icon.data('hf_amp_ch') || 0);
+        show(icon, 'amp', '.c-amp-mid',  ar.mid);
+        show(icon, 'amp', '.c-amp-pres', ar.pres);
+        show(icon, 'amp', '.c-amp-mast', ar.mast);
         // Component Model (Lab): amps that have a schematic-exact build.
         show(icon, 'amp', '.c-amp-comp', m === 1 || m === 2 || m === 4 || m === 6 || m === 8 || m === 11 || m === 12 || m === 14);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
@@ -566,6 +588,10 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-mt15', m === 13);
         show(icon, 'amp2', '.c-rb-svt', m === 14);
         show(icon, 'amp2', '.c-rb-reso', m === 2);
+        var rr = ampCtlRule(m, icon.data('hf_rb_ch') || 0);
+        show(icon, 'amp2', '.c-rb-mid',  rr.mid);
+        show(icon, 'amp2', '.c-rb-pres', rr.pres);
+        show(icon, 'amp2', '.c-rb-mast', rr.mast);
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
         show(icon, 'amp2', '.c-rb-jcm', m === 1);
         show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5);
@@ -902,6 +928,8 @@ function (event, funcs) {
                     else if (!want && inChain(icon, b)) { icon.find('.hf-palette').append(nodeOf(icon, b)); membership = true; }
                 }
             } else if (sym === 'amp_model')        icon.data('hf_amp_m', parseInt(val, 10));
+            else if (sym === 'amp_channel')        icon.data('hf_amp_ch', val);
+            else if (sym === 'rb_channel')         icon.data('hf_rb_ch', val);
             else if (sym === 'cab_micpos')         icon.data('hf_micpos', val);    // mod-ui doesn't echo set_port_value → sync the pad by hand
             else if (sym === 'cab_micdist')        icon.data('hf_micdist', val);
             else if (sym === 'rb_amp')             icon.data('hf_rb_m', parseInt(val, 10));
@@ -1070,6 +1098,8 @@ function (event, funcs) {
         var map = {};
         (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
         if ('amp_model' in map)     icon.data('hf_amp_m', parseInt(map.amp_model, 10));
+        if ('amp_channel' in map)   icon.data('hf_amp_ch', parseFloat(map.amp_channel));
+        if ('rb_channel' in map)    icon.data('hf_rb_ch', parseFloat(map.rb_channel));
         if ('amp_pamp_auto' in map) icon.data('hf_amp_auto', map.amp_pamp_auto > 0.5);
         if ('fz_pedal' in map)      icon.data('hf_fz_p', parseInt(map.fz_pedal, 10));
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
@@ -1320,6 +1350,10 @@ function (event, funcs) {
                 if (on && !isin) { nodeOf(icon, eb).removeClass('hf-byp'); icon.find('.hf-nodes').append(nodeOf(icon, eb)); resort(icon); renderPalette(icon); }
                 else if (!on && isin) { icon.find('.hf-palette').append(nodeOf(icon, eb)); resort(icon); renderPalette(icon); if (icon.data('hf_sel') === eb) selectNode(icon, 'it'); }
             }
+        } else if (s === 'amp_channel') {
+            icon.data('hf_amp_ch', event.value); applyAmp(icon);
+        } else if (s === 'rb_channel') {
+            icon.data('hf_rb_ch', event.value); applyRbAmp(icon);
         } else if (s === 'amp_model') {
             icon.data('hf_amp_m', parseInt(event.value, 10)); applyAmp(icon);
         } else if (s === 'amp_pamp_auto') {
