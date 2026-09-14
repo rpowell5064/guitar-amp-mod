@@ -2759,6 +2759,29 @@ static void seedFactoryPresets(HexForge* p) {
                                           pr.vals[HF_OUT_LEVEL] + kLevelTrim[b][sl]));
             }
     }
+
+    // ── rev 146: the eight BASS presets re-levelled after the Blue Liner component
+    // fix (2026-09-14). That build's mid-range network was taking its output from the
+    // R42/C20 midpoint instead of the R37/R36 junction — an 18 dB sub-100 Hz shelf —
+    // so the rev-145 pass levelled these presets around a low end that was never in
+    // the circuit; with it gone they sat up to 6.5 dB quiet (user: "all of the bass
+    // isn't audible", "breaks up too easily"). Re-measured with hexforge_golden
+    // --comp against the same .158 rms anchor; every boost checked against the peak
+    // (worst case 0.34 -> 0.73, still clear of the limiter). Banks 19/20 only —
+    // nothing else runs this amp.
+    {
+        static const float kBassRetrim[2][kSlots] = {
+            { +3.52f, +0.40f, +6.47f, +1.26f },   // bank 19  LOW END
+            { +0.65f, -1.09f, -1.01f, -2.58f },   // bank 20  Helsinki Grind
+        };
+        for (int b = 18; b <= 19; ++b)
+            for (int sl = 0; sl < kSlots; ++sl) {
+                Preset& pr = p->presets[b][sl];
+                if (!pr.used) continue;
+                pr.vals[HF_OUT_LEVEL] = std::max(-60.0f, std::min(12.0f,
+                                          pr.vals[HF_OUT_LEVEL] + kBassRetrim[b - 18][sl]));
+            }
+    }
 }
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);

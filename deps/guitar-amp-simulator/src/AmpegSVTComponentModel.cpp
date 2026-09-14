@@ -278,7 +278,20 @@ void AmpegSVTComponentModel::buildStack(ChState& c) noexcept {
 
 // V4-B's cathode network + the mid-range: R37 47k → P (R36 6.8k), R42 100k + C20 0.1
 // bridging the two, the tank hung on VR7 between P (R39 620 + C19 0.68) and ground
-// (R34 470 + C16 0.68), R38 220k across the hot end. Output = the R42/C20 node (C21).
+// (R34 470 + C16 0.68), R38 220k across the hot end.
+//
+// OUTPUT = P, the R37/R36 junction (fit26 = 1 takes the R42/C20 midpoint instead;
+// see the 2026-09-14 note in the audit). R42 + C20 is a DC-blocked AC bypass ACROSS
+// R37: for audio C20 0.1 is a short (16 Hz against R42), so R42 simply parallels
+// R37 — 47k‖100k = 32k, which lifts the AC level at P by 2.9 dB — while the DC
+// divider that biases the follower stays R37/R36 alone. Taking the output from the
+// R42/C20 midpoint instead makes the pair a first-order LF shelf (LF = the cathode
+// itself, HF = P: +18 dB of sub-100 Hz), which is what the model shipped with and
+// what buried the low end: it drove the flux limiter and the chain's ceiling on
+// every bass note. Two independent checks say P is the node: the printed source
+// impedance for C21 is R36-class (6.8k, which is what coup21 has always used, not
+// the 100k the midpoint would present), and the user's capture of the real amp
+// PEAKS at 55 Hz and rolls off below it where the midpoint reading keeps rising.
 void AmpegSVTComponentModel::buildMid(ChState& c) noexcept {
     const double m  = std::clamp(double(mid_), 0.0, 1.0);   // VR7 50k LIN
     const double f0 = midFreq_ <= 0 ? 220.0 : (midFreq_ == 1 ? 800.0 : 3000.0);
@@ -288,7 +301,7 @@ void AmpegSVTComponentModel::buildMid(ChState& c) noexcept {
     auto& n = c.mid;
     n.clear();
     n.addR(1, 2, 47e3); n.addR(2, 0, 6.8e3);
-    n.addR(1, 3, 100e3); n.addC(3, 2, 0.1e-6);
+    n.addR(1, 3, 100e3); n.addC(3, 2, 0.1e-6);   // R42 + C20 across R37
     n.addR(2, 4, 620.0); n.addC(4, 5, 0.68e-6); n.addR(5, 0, 220e3);
     n.addR(5, 6, (1.0 - m) * 50e3 + 1.0); n.addR(6, 7, m * 50e3 + 1.0);
     n.addC(7, 8, 0.68e-6); n.addR(8, 0, 470.0);
@@ -297,7 +310,7 @@ void AmpegSVTComponentModel::buildMid(ChState& c) noexcept {
     } else {               // series-resonant leg (mid notch at the hot end)
         n.addL(6, 9, L); n.addC(9, 10, C); n.addR(10, 0, std::max(10.0, w0 * L / midQ_));
     }
-    n.setOutput(3);
+    n.setOutput(midOutNode_ ? 3 : 2);
     n.prepare(fs_);
 }
 
@@ -446,6 +459,7 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
     else if (id == "fit23")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "fit24")    { paDirect_ = value > 0.5f; }
     else if (id == "fit25")    { nfbSign_ = value < 0.0f ? -1.0 : 1.0; }
+    else if (id == "fit26")    { const int o = value > 0.5f ? 1 : 0; if (o != midOutNode_) { midOutNode_ = o; if (fs_ > 0.0) for (auto& c : ch_) buildMid(c); } }   // lab: 0 = P (R37/R36), 1 = the R42/C20 midpoint
     else if (id == "fit27")    { linDrivers_ = value > 0.5f; }
     else if (id == "fit28")    { lutPoints_ = std::max(16, int(value)); if (fs_ > 0.0) buildStages(); }   // lab: output-tube LUT resolution
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }

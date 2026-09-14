@@ -42,7 +42,8 @@
 //     end; the wiper → L1 toroidal inductor 320821-1 with C17 0.033 / C18 0.15
 //     selected by SW5 (positions 1/2/3). L1 is unlabelled: the tank is an
 //     ESTIMATE tuned to the manual's 220 / 800 / 3000 Hz centres (see the audit).
-//   → the R37/R36 junction → R42/C20 → C21 0.02 → V5 6C4 cathode follower (R44
+//   → the R37/R36 junction (R42 100k + C20 0.1 bypass R37 for AC only; C20 blocks
+//     the follower's DC divider) → C21 0.02 → V5 6C4 cathode follower (R44
 //     1k + R45 47k, R43 1M to the tap; printed 300 V / 170 V) → C22 0.1 → R46 100k
 //     → P2-1 → the power-amp cable.
 // POWER AMP (591720):
@@ -90,7 +91,13 @@ private:
     int   ultraLo_ = 0, ultraHi_ = 0, midFreq_ = 1;
 
     // Level calibration.
-    float inVolts_    = 1.00f;
+    // 0.45 = "digital full scale is 450 mV at the NORMAL jack", the level a dug-in
+    // passive bass actually puts out. Measured, not assumed: at 1.00 the model sat
+    // 7 dB hot against BOTH references in the clean region (the shipped Blue Liner
+    // at the same knob, and the user's own capture), so every note arrived at the
+    // output stage 4 dB past the printed full power with no clean region left.
+    // svt_level_curve is the harness; see the 2026-09-14 note in the audit.
+    float inVolts_    = 0.45f;
     float outScalePa_ = 0.0060f;   // (a 0.0045 loudness bake measured 2.6 points WORSE on the CLEAN grid: the decay darkener's thresholds are absolute)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  stackMid_  = 0.15f;   // fit0: VR5 / VR6 "log" law
@@ -111,6 +118,7 @@ private:
     double vth3b_ = 0.0, voff4b_ = 0.0, v20_ = 20.0;   // the shared 20 V node (DC gate)
     double loopA_ = 0.0, fbGain_ = 0.0;          // the R35 loop: open-loop A, β·Acl
     bool   paDirect_ = false;                    // fit24 (lab): input straight onto the PA grid
+    int    midOutNode_ = 0;                      // fit26 (lab): 0 = P (the R37/R36 junction), 1 = the R42/C20 midpoint
     double nfbSign_ = 1.0;                       // fit25 (lab): loop polarity probe
     // The stages that never leave their linear range by design (the limiter caps
     // the power-amp drive; the 6C4 has 170 V of headroom) run as their small-
