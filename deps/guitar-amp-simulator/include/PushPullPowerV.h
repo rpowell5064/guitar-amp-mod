@@ -315,13 +315,15 @@ private:
             double iK, dg, dp;
             korenEval(ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
             const double f = Ia - iK;
-            if (std::abs(f) < 1e-10) break;
             const double dVk = p_.ltpRk + p_.ltpRtail;
             const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
             if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
             Ia = std::clamp(Ia - step, 0.0, maxIa);
-            if (std::abs(step) < 1e-8) break;   // step criterion, see CCStageV::kStepEps
+            // Correction applied BEFORE the convergence test (2026-09-14 dead-zone
+            // fix, see CCStageV::solveIa): an absolute residual gate checked first
+            // freezes the stage on quiet, low-pitched signals.
+            if (std::abs(f) < 1e-10 || std::abs(step) < 1e-8) break;   // step criterion, see CCStageV::kStepEps
         }
         return Ia;
     }

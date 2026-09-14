@@ -259,13 +259,25 @@ private:
             double IaK, dVgk, dVpk;
             korenEvalT(p_.tube, Vg - Vk, Vp - Vk, IaK, dVgk, dVpk);
             const double f = Ia - IaK;
-            if (std::abs(f) < kEps) break;
             double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
             if (fb) fp += dVgk * (p_.Ra / p_.RfbP) * invGfb_;
             if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
+            // ALWAYS apply the correction before testing convergence. Testing the
+            // residual first (the pre-2026-09-14 order) returned the warm start
+            // UNCHANGED whenever the previous sample already satisfied kEps, which
+            // is a dead zone: a band of input around the operating point that
+            // produces no output movement at all. Because kEps is an absolute
+            // current, the band is fixed while the signal is not, so the stage
+            // quantises harder the quieter it gets -- and how far the input moves
+            // between samples is proportional to FREQUENCY, so a bass note stalls
+            // about fifteen times more often than a guitar note at the same level
+            // (measured: 8.9% of samples at 41 Hz / 3 mV against 0.6% at 880 Hz).
+            // That is the bit crush reported on both bass amps. Applying the step
+            // first costs one divide on samples that used to exit early and leaves
+            // the exit conditions otherwise identical.
             Ia = std::clamp(Ia - step, 0.0, maxIa);
-            if (std::abs(step) < kStepEps) break;
+            if (std::abs(f) < kEps || std::abs(step) < kStepEps) break;
         }
         IaOp_ = Ia;
         return Ia;
@@ -380,13 +392,16 @@ private:
             // lets the warm start pass untouched for small grid signals — a dead
             // zone that reads as crossover distortion (100 nA: CLEAN grid 6.9 -> 34;
             // a 1 uA step: 6.9 -> 9.3). Measured 2026-09-13.
-            if (std::abs(f) < kEps) { ok = true; break; }
             if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
             Ia = std::clamp(Ia - step, 0.0, maxIa);
+            // Same dead-zone fix as CCStageV (2026-09-14): the correction is applied
+            // BEFORE the convergence test, so a good warm start can no longer freeze
+            // the stage. This follower was the worst case in the suite, quantising
+            // its own output to 12.8 bits across a +/-50 mV grid sweep.
             // NOT the CCStageV step criterion: deep in grid conduction the slope is
             // ~1e3, so a 1 mA residual makes a 1 uA step (measured: CLEAN grid 6.55 -> 9.25).
-            if (std::abs(step) < 1e-9) { ok = true; break; }
+            if (std::abs(f) < kEps || std::abs(step) < 1e-9) { ok = true; break; }
         }
         if (!ok) {
             // Newton from a poor start bounces between the rails (a grid 40 V above
@@ -435,12 +450,14 @@ private:
             double IaK, dVgk, dVpk;
             korenEvalT(p_.tube, Vg - Vk, p_.Vcc - Vk, IaK, dVgk, dVpk);
             const double f = Ia - IaK;
-            if (std::abs(f) < kEps) break;
             const double fp = 1.0 + (dVgk + dVpk) * p_.Rk;
             if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
             Ia = std::clamp(Ia - step, 0.0, maxIa);
-            if (std::abs(step) < 1e-9) break;   // post-update step exit (2026-09-13): a converged warm start leaves after one evaluation
+            // Correction applied BEFORE the convergence test (2026-09-14 dead-zone
+            // fix, see CCStageV::solveIa): testing the residual first froze the
+            // stage whenever the warm start already satisfied kEps.
+            if (std::abs(f) < kEps || std::abs(step) < 1e-9) break;
         }
         IaOp_ = Ia;
         return Ia;
@@ -506,11 +523,12 @@ private:
             const double Vk = Ia * p_.Rk, Vp = p_.Vcc - Ia * p_.Ra;
             double IaK, dg, dp;
             korenEvalT(p_.tube, VgBias_ + vgIn - Vk, Vp - Vk, IaK, dg, dp);
-            const double f = Ia - IaK; if (std::abs(f) < 1e-9) break;
+            const double f = Ia - IaK;
             const double fp = 1.0 + dg * p_.Rk + dp * RaRk; if (std::abs(fp) < 1e-30) break;
             const double step = f / fp;
             Ia = std::clamp(Ia - step, 0.0, maxIa);
-            if (std::abs(step) < 1e-8) break;   // (1e-6 A was 0.45 V at a 15k plate load)
+            // Correction first, then the test (2026-09-14 dead-zone fix).
+            if (std::abs(f) < 1e-9 || std::abs(step) < 1e-8) break;   // (1e-6 A was 0.45 V at a 15k plate load)
         }
         IaOp_ = Ia; return Ia;
     }
