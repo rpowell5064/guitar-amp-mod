@@ -58,7 +58,7 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     // v48: the Lab toggle swaps to that amp's component-exact build.
     na->setAmpModel((msg->evhComp && hasComponentModel(msg->modelIdx))
                         ? componentAmpFor(msg->modelIdx)
-                        : kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kSvtIdx)]);
+                        : kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kAmpModelMax)]);
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx; reply.namSlot = msg->namSlot;   // slot 1 = Rig B (forgetting this routed B builds into the MAIN amp)
     respond(handle, sizeof(reply), &reply);
     return true;

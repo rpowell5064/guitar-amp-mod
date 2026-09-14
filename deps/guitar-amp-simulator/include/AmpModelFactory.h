@@ -38,9 +38,13 @@ public:
         OrangeRockerverbComponent = 19,
         VoxAC30Component = 20,
         AmpegSVTComponent = 21,
+        // 2026-09-13: a NORMAL amp whose implementation is a schematic-exact
+        // component build (it carries its own power section, like the Sunn), so it
+        // is listed in getAllModelNames but keeps an out-of-line ID.
+        OrangeAD200B = 22,
     };
 
-    static constexpr int kNumModels = 14;
+    static constexpr int kNumModels = 15;
 
     // Returns ownership of a newly constructed model. Never returns null;
     // unknown IDs fall back to SunnModelT.

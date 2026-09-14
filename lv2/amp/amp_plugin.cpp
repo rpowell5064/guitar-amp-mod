@@ -32,7 +32,7 @@ static constexpr int kPathMax = 1024;
 // LV2 model index → AmpModel enum. Index 5 = NAM (handled separately). Beardo BE
 // (Friedman) is index 6, AFTER NAM, so existing saved boards (which store the model
 // index) keep their meaning — inserting it earlier would shift NAM and break them.
-static const AmpModel kModelMap[15] = {
+static const AmpModel kModelMap[16] = {
     AmpModel::FenderDeluxe,        // 0
     AmpModel::MarshallJCM800,      // 1
     AmpModel::EVH5150III,          // 2
@@ -48,8 +48,9 @@ static const AmpModel kModelMap[15] = {
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
     AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
     AmpModel::AmpegSVT,            // 14 = Blue Liner (Ampeg SVT: BASS — Ultra-Lo/Hi + 3-way mid)
+    AmpModel::OrangeAD200B,        // 15 = Citrus 200 (Orange AD200B Mark III: BASS — 4x 6550, one channel)
 };
-static const int kCanonical[15] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8, 11 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [9] Backline → clean PA; [8] Vox → its own EL84 case 9; [10] Plexi, [11] Mesa → FROZEN row 10 (since the 2026-08-20 JCM800 bake re-voiced row 1); [12] Recto → its own 6L6 case; [14] SVT → its own 6550 case 11)
+static const int kCanonical[16] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8, 11, 11 };  // LV2 idx → getDefaultsForModel idx ([7] Hiwatt, [9] Backline → clean PA; [8] Vox → its own EL84 case 9; [10] Plexi, [11] Mesa → FROZEN row 10 (since the 2026-08-20 JCM800 bake re-voiced row 1); [12] Recto → its own 6L6 case; [14] SVT → its own 6550 case 11; [15] Citrus 200 inert — PA force-bypassed, own power section)
 static constexpr int kSunnIdx     = 3;     // Sunn's LV2 model index
 static constexpr int kNamIdx      = 5;     // NAM slot
 static constexpr int kFriedmanIdx = 6;     // Beardo BE
@@ -57,18 +58,19 @@ static constexpr int kMesaIdx     = 11;    // Boojum V (Mesa Mark V)
 static constexpr int kRectoIdx    = 12;    // Diamond Plate (Mesa Dual Rectifier)
 static constexpr int kMt15Idx     = 13;    // Tremont 15 (PRS MT15)
 static constexpr int kSvtIdx      = 14;    // Blue Liner (Ampeg SVT — bass)
-static constexpr int kMaxModel    = 14;    // highest selectable model index (Blue Liner)
+static constexpr int kAd200Idx    = 15;    // Citrus 200 (Orange AD200B Mark III — bass; own power section)
+static constexpr int kMaxModel    = 15;    // highest selectable model index (Citrus 200)
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 
 // 2026-08-21 tube-correctness audit (mirrors hexforge kAmpTube): Fender→6V6(4),
 // EVH→6L6(0), Sunn→KT88(3, inert — PA force-bypassed). [6] Friedman EL34;
 // [7] Hiwatt EL34; [8] Vox EL84; [9] Backline solid-state (nominal, PA neutral);
 // [10] Plexi EL34; [11] Mesa 6L6 (Simul-Class, 6L6-dominant); [12] Recto 6L6
-static const int kModelTube[15] = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0, 5 };  // [14] SVT 6550
+static const int kModelTube[16] = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0, 5, 5 };  // [14] SVT 6550, [15] Citrus 200 6550 (inert: own PA)
 // Synced to hexforge kAmpMakeup for cross-plugin PARITY (2026-07-09): identical amp+power-amp DSP,
 // so the same makeup levels the standalone Amp (into a cab) exactly like Hex Forge. Distorted amps
 // -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
-static const float kModelMakeup[15] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f, 2.83f };  // [14] Blue Liner: measured 2026-08-28 (hexforge_amplevel −22.0 → the −13 clean parity target; standalone lands −5.2, in family)  // [0] Fender 5.20->4.89 (2026-08-21 tube audit, mirrors hexforge kAmpMakeup): correct 6V6 runs +0.54 dB hotter at the noon anchor. Previously bumped 3.78->5.20 (2026-07-28): the item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM than the old heuristic path (nam_compare loudness: old needed x1.38, new needs x1.90) -- this restores the SAME loudness parity the re-voice's own FR-matching work didn't otherwise change; [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
+static const float kModelMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f, 2.83f, 1.67f };  // [14] Blue Liner: measured 2026-08-28 (hexforge_amplevel −22.0 → the −13 clean parity target; standalone lands −5.2, in family)  // [0] Fender 5.20->4.89 (2026-08-21 tube audit, mirrors hexforge kAmpMakeup): correct 6V6 runs +0.54 dB hotter at the noon anchor. Previously bumped 3.78->5.20 (2026-07-28): the item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM than the old heuristic path (nam_compare loudness: old needed x1.38, new needs x1.90) -- this restores the SAME loudness parity the re-voice's own FR-matching work didn't otherwise change; [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
 
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -500,7 +502,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     p->pa.setParameter("shapertiltlo", PowerAmpProcessor::getDefaultsForModel(kCanonical[modelIdx]).shaperTiltLoDb);
     if (desiredTube != p->lastTube) { p->lastTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
 
-    const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx);
+    const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx)
+                       || (modelIdx == kAd200Idx);   // Citrus 200 carries its own power section
     p->pa.setBypass(paBypass);
 
     // Input hum comb + noise gate — BEFORE the amp's huge gain (the only place signal and its amplified

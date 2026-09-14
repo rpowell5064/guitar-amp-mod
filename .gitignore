@@ -12,6 +12,7 @@ install_manifest.txt
 
 # stale / out-of-tree build output
 build-tools/out/
+build-tools/out_asan/
 
 # Python bytecode cache (offline analysis tools under tools/)
 __pycache__/

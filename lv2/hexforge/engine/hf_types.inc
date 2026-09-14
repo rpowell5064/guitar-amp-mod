@@ -54,7 +54,7 @@ static inline bool isParamPort(int i) {
 }
 
 // ── Model maps (mirror the standalone amp / drive plugins) ────────────────────
-static const AmpModel kAmpMap[15] = {
+static const AmpModel kAmpMap[16] = {
     AmpModel::FenderDeluxe, AmpModel::MarshallJCM800, AmpModel::EVH5150III,
     AmpModel::SunnModelT,   AmpModel::OrangeRockerverb50,
     AmpModel::NeuralCustom,        // 5 = NAM (placeholder; not built as an algo amp)
@@ -67,8 +67,9 @@ static const AmpModel kAmpMap[15] = {
     AmpModel::MesaDualRectifier,   // 12 = Diamond Plate (Mesa Dual Rectifier, 8 modes, 6L6)
     AmpModel::PRSMT15,             // 13 = Tremont 15 (PRS MT15: Clean/Crunch/Lead + bright)
     AmpModel::AmpegSVT,            // 14 = Blue Liner (Ampeg SVT: BASS — Ultra-Lo/Hi + 3-way mid)
+    AmpModel::OrangeAD200B,        // 15 = Citrus 200 (Orange AD200B Mark III: BASS — 4x 6550, one channel)
 };
-static const int   kCanonical[15] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8, 11 }; // PowerAmp default lookup ([8] Vox -> its own EL84 case 9) ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa -> FROZEN row 10 since the 2026-08-20 JCM800 HG-round-2 bake re-voiced row 1) ([14] SVT -> its own 6550 case 11)
+static const int   kCanonical[16] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8, 11, 11 }; // PowerAmp default lookup ([8] Vox -> its own EL84 case 9) ([12] Recto -> its own 6L6 case) ([10] Plexi, [11] Mesa -> FROZEN row 10 since the 2026-08-20 JCM800 HG-round-2 bake re-voiced row 1) ([14] SVT -> its own 6550 case 11) ([15] Citrus 200 -> inert: its PA is force-bypassed, the model has its own power section)
 // ── Component-model programme (Lab toggle, v48+) ──────────────────────────────
 // Amps that have a schematic-exact component build. Keep in sync with the
 // c-amp-comp visibility rule in script-hexforge.js.
@@ -98,6 +99,12 @@ static constexpr int kMesaIdx     = 11;   // Cali V (Mesa Mark V)
 static constexpr int kRectoIdx    = 12;   // Diamond Plate (Mesa Dual Rectifier)
 static constexpr int kMt15Idx     = 13;   // Tremont 15 (PRS MT15)
 static constexpr int kSvtIdx      = 14;   // Blue Liner (Ampeg SVT — bass)
+// 2026-09-13: the suite's second bass amp. Unlike the Lab-toggle component amps this
+// one has no fitted twin — the schematic-exact build IS the model — so it carries its
+// own power section unconditionally (the shared PA is force-bypassed, as for the Sunn)
+// and hasComponentModel() stays false for it.
+static constexpr int kAd200Idx    = 15;   // Citrus 200 (Orange AD200B Mark III — bass)
+static constexpr int kAmpModelMax = kAd200Idx;   // the amp dropdown's clamp ceiling
 // rb_cab enum: 0-5 = the guitar sentinels, 6 = "No Cab (Direct)" (FROZEN — stored
 // presets reference it), 7-10 = the bass cabs (2026-08-28, appended AFTER No Cab
 // so nothing remaps). kRbCabMax = the last valid rb_cab index.
@@ -109,12 +116,12 @@ static constexpr int kRbCabMax    = 10;
 // section). Backline stays nominal 6L6 (solid-state; PA deliberately neutral,
 // capture-tuned through it). The rest verified correct: JCM800/Plexi/Hiwatt/
 // Rockerverb/Friedman EL34, Vox EL84, MarkV/Recto/MT15 6L6.
-static const int   kAmpTube[15]   = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0, 5 };  // [14] SVT 6550
+static const int   kAmpTube[16]   = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0, 5, 5 };  // [14] SVT 6550, [15] Citrus 200 6550 (inert: own PA)
 // Amp-level PARITY calibration (2026-07-09, build-tools/hexforge_amplevel measured @noon, cab on):
 // distorted amps → -16 dBFS RMS, clean amps (Fender/Hiwatt/Vox/Backline) → -13 dBFS (+3 dB perceptual
 // boost so cleans FEEL as loud as the denser distorted models). Re-leveled after the amp re-voicings
 // left Hiwatt -24 / CaliV -23 / Friedman -21.5 / Plexi -19 several dB quiet. makeup is linear post-amp gain.
-static const float kAmpMakeup[15] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f, 2.83f };  // [14] Blue Liner measured 2026-08-28 (−22.0 → −13 clean parity) // [0] Fender 5.20->4.89 (2026-08-21 tube audit): the correct 6V6 runs +0.54 dB hotter at the hf_amplevel noon anchor; x0.94 restores the -13 dBFS clean parity exactly. Previously bumped 3.78->5.20 (2026-07-28): item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM (nam_compare loudness: old x1.38, new x1.90) -- restores the loudness the FR re-voice didn't otherwise preserve; [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
+static const float kAmpMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f, 2.83f, 1.67f };  // [14] Blue Liner measured 2026-08-28 (−22.0 → −13 clean parity) // [0] Fender 5.20->4.89 (2026-08-21 tube audit): the correct 6V6 runs +0.54 dB hotter at the hf_amplevel noon anchor; x0.94 restores the -13 dBFS clean parity exactly. Previously bumped 3.78->5.20 (2026-07-28): item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM (nam_compare loudness: old x1.38, new x1.90) -- restores the loudness the FR re-voice didn't otherwise preserve; [5] NAM passthrough; [11] Cali V scales all 9 modes (per-mode makeup is inside the model)  // [7] Hiwatt was 4.9 (BUG: slammed the master limiter under any drive → mush + forced out_level to -27); high-headroom amp needs little makeup, loudness comes from out_level. [8] Vox [9] Backline (solid-state; model runs ~9 dB below the NAM, low crest so 2.5 is safe). [10] Plexi (Marshall EL34, like JCM800)
 // Component-model loudness parity (2026-09-13, user: "the output volume will have to
 // account for some of the amps losing volume"). The schematic-exact builds carry their
 // own power section, so they do NOT get the shared PA's makeup/drive/tracking — measured
@@ -133,8 +140,8 @@ static const float kAmpMakeup[15] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1
 // gain-0.3 / master-0.3 corner). See the lab audit for the method.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[15] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.40f, 0.0f, 0.0f, -4.85f, -1.42f, 0.0f, -3.77f };
-static const float kCompGainDb[15][7] = {
+static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.40f, 0.0f, 0.0f, -4.85f, -1.42f, 0.0f, -3.77f, 0.0f };   // [15] Citrus 200 has no Lab toggle
+static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.57f, 0.80f, 0.46f, -0.00f, -0.32f, -0.59f, -0.82f },
     { -2.48f, -0.71f, -0.14f, -0.00f, 0.04f, 0.01f, -0.05f },
@@ -150,8 +157,9 @@ static const float kCompGainDb[15][7] = {
     { 0.31f, 0.84f, 0.64f, -0.00f, 0.11f, 0.26f, 0.39f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -0.16f, -0.34f, -0.24f, -0.00f, 0.27f, 0.53f, 0.79f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };
-static const float kCompMasterDb[15][4] = {
+static const float kCompMasterDb[16][4] = {
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { 17.04f, 3.73f, -0.00f, -0.98f },
     { -8.34f, -2.77f, -0.00f, 0.85f },
@@ -167,6 +175,7 @@ static const float kCompMasterDb[15][4] = {
     { 14.10f, 2.86f, -0.00f, -0.02f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -7.89f, -3.15f, -0.00f, 1.17f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
 };
 
 // Third axis: the channel / mode selector. The component builds voice their channels
@@ -174,7 +183,7 @@ static const float kCompMasterDb[15][4] = {
 // shipped models by up to 8.4 dB (Cali V and Diamond Plate). dB offsets relative to the
 // reference setting (channel 0 / mode 6); rows are held flat past the amp's last value.
 // Tone knobs were measured too and move parity by at most 1.1 dB — not worth an axis.
-static const float kCompModeDb[15][9] = {
+static const float kCompModeDb[16][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -0.00f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f },
@@ -188,6 +197,7 @@ static const float kCompModeDb[15][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -3.27f, -2.08f, 4.98f, 2.58f, 2.72f, 2.24f, -0.00f, 1.51f, 0.29f },
     { -7.25f, -0.75f, -1.08f, 1.18f, -3.15f, -0.32f, -0.00f, -3.21f, -3.21f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };

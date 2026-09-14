@@ -46,7 +46,7 @@ function (event, funcs) {
         var m = icon.data('amp_model'); if (m == null) m = 0;
         var rvClean = (m === 4 && (icon.data('amp_channel') || 0) > 0.5);
         icon.find('[rata-role=midctl]').toggleClass('mod-hidden',  (m === 0 || m === 8 || rvClean));
-        icon.find('[rata-role=presctl]').toggleClass('mod-hidden', (m === 0 || m === 4 || m === 9 || m === 13 || m === 14));
+        icon.find('[rata-role=presctl]').toggleClass('mod-hidden', (m === 0 || m === 4 || m === 9 || m === 13 || m === 14 || m === 15));
         icon.find('[rata-role=mastctl]').toggleClass('mod-hidden', (m === 0 || m === 8 || m === 10 || m === 14 || rvClean));
     }
 

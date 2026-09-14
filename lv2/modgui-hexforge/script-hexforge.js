@@ -17,7 +17,7 @@ function (event, funcs) {
     // scalePoints (the source of truth). Scalar blocks bind their value via mod-role in
     // the HTML instead; these are the ones we can't (enumerated → would show a number).
     var NV = {
-        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner'],
+        amp: ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner','Citrus 200'],
         dr:  ['Green Man','New Dawn','Dear Rodent Boy','Neural','Grunge DS','Gilded Horse','Super Nova','Preamp 250','Echo Primer','Tube Chauffeur','Helsinki Grind','Treble Ranger'],
         fz:  ['Italian Hero','I Know It','Octavius','Fuzz Zachary'],
         md:  ['Lush-2','Uni-Verse','Phaser','Flanger','Tremolo','Rotary','Nevermind Chorus','Seasick Vibe','Script Phaser'],
@@ -530,7 +530,7 @@ function (event, funcs) {
         var rvClean = (m === 4 && ch > 0.5);
         return {
             mid:  !(m === 0 || m === 8 || rvClean),
-            pres: !(m === 0 || m === 4 || m === 9 || m === 13 || m === 14),
+            pres: !(m === 0 || m === 4 || m === 9 || m === 13 || m === 14 || m === 15),
             mast: !(m === 0 || m === 8 || m === 10 || m === 14 || rvClean)
         };
     }
@@ -553,13 +553,13 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-comp', m === 1 || m === 2 || m === 4 || m === 6 || m === 8 || m === 11 || m === 12 || m === 14);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
-        show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5);
-        show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && !a);
+        show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5 && m !== 15);
+        show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && m !== 15 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
         // Tab buttons: Voicing only for models with a channel/EQ chassis (Sunn 3 / Beardo 6 /
         // Cali V 11 / Diamond Plate 12); Power Amp hidden for Sunn (auto-bypassed) and NAM (capture has its own).
         var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13 || m === 14);
-        var showPower = (m !== 3 && m !== 5);
+        var showPower = (m !== 3 && m !== 5 && m !== 15);
         var p = panelOf(icon, 'amp');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
         p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);
@@ -594,10 +594,10 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-mast', rr.mast);
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
         show(icon, 'amp2', '.c-rb-jcm', m === 1);
-        show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5);
-        show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && !a);
+        show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5 && m !== 15);
+        show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && m !== 15 && !a);
         var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13 || m === 14);
-        var showPower = (m !== 3 && m !== 5);
+        var showPower = (m !== 3 && m !== 5 && m !== 15);
         var p = panelOf(icon, 'amp2');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
         p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);

@@ -280,9 +280,9 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->nail->setParameter("texture", *p->ports[HF_NAIL_TEXTURE]);
     p->nail->setParameter("level",   *p->ports[HF_NAIL_LEVEL]);
     // Amp
-    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kSvtIdx);
+    const int ampModel = clampi(*p->ports[HF_AMP_MODEL], 0, kAmpModelMax);
     const int ampAlgo  = (ampModel == 5) ? 1 : ampModel;   // NAM(5)→1 safe; 6=Beardo,7=Hiwatt,8=Vox identity
-    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx) || (ampModel == kSvtIdx);
+    const bool ampIsAlgo = (ampModel <= 4) || (ampModel == kFriedmanIdx) || (ampModel == kHiwattIdx) || (ampModel == kVoxIdx) || (ampModel == kBacklineIdx) || (ampModel == kPlexiIdx) || (ampModel == kMesaIdx) || (ampModel == kRectoIdx) || (ampModel == kMt15Idx) || (ampModel == kSvtIdx) || (ampModel == kAd200Idx);
     const bool ecoQ = *p->ports[HF_QUALITY] > 0.5f;
     // v48 lab toggle: amps with a component build swap to the schematic-exact
     // model (each carries its own power section; the shared PA is bypassed).
@@ -306,7 +306,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         }
     }
     if (rbOn) {
-        int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kSvtIdx);
+        int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kAmpModelMax);
         const bool rbNamSel = (rbModel == kAmpNamIdx);   // Neural on the B side (v39)
         const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
         // The Component Model toggle is global: Amp 2 gets the schematic-exact
@@ -450,7 +450,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 p->pa2.setParameter("tracklo", d2.trackLo); p->pa2.setParameter("trackhi", d2.trackHi);
             }
             p->pa2.setParameter("trackgain", *p->ports[HF_RB_GAIN]);   // tracking follows Rig B's own gain knob
-            p->pa2.setBypass((*p->ports[HF_RB_PAMP_BYPASS] > 0.5f) || rbM == kSunnIdx
+            p->pa2.setBypass((*p->ports[HF_RB_PAMP_BYPASS] > 0.5f) || rbM == kSunnIdx || rbM == kAd200Idx
                              || p->lastAmp2Comp);   // the component build carries its own power section
             // Full cab parity
             p->cab2.setParameter("lowCutHz",  *p->ports[HF_RB_LOWCUT]);
@@ -611,6 +611,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // (Recto capture-fit RETIRED 2026-09-03 - the reference rig-probe Modern bake lives in MesaDualRectifier.)
     if (desiredTube != p->lastAmpTube) { p->lastAmpTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
     const bool paBypass = (*p->ports[HF_AMP_PAMP_BYPASS] > 0.5f) || (ampModel == kSunnIdx)
+                        || (ampModel == kAd200Idx)   // Citrus 200: a schematic-exact build with its own power section
                         || compOn;   // every component model carries its own PA (v48)
     p->pa.setBypass(paBypass);
     // Component builds bypass the shared PA, so they miss both its makeup and the
@@ -939,7 +940,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         // Rig B: run amp2 -> pa2 -> cab2 on the tapped buffer and mix into L/R.
         // Called after the main CAB (or after the AMP when no cab is active).
         auto rigBMix = [&](void) {
-            const bool rbNamRun = (clampi(*p->ports[HF_RB_AMP], 0, kSvtIdx) == kAmpNamIdx)
+            const bool rbNamRun = (clampi(*p->ports[HF_RB_AMP], 0, kAmpModelMax) == kAmpNamIdx)
                                   && p->amp2Nam && p->amp2Nam->isLoaded();
             if (!p->rigBHeld || (!rbNamRun && !p->amp2)) return;
             p->rigBHeld = false;
