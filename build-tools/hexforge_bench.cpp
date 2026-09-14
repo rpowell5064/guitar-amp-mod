@@ -80,6 +80,10 @@ int main(int argc, char** argv){
     // swap (the ps_goto lesson, port-init edition).
     bool wantEco=false;
     for(int a=1;a<argc;++a) if(std::string(argv[a])=="eco") wantEco=true;
+    // "comp" benches with the Component Model toggle ON (the schematic-exact builds,
+    // which carry their own power section) — the state this rig plays in.
+    bool wantComp=false;
+    for(int a=1;a<argc;++a) if(std::string(argv[a])=="comp") wantComp=true;
     val[HF_BYPASS]=0; val[HF_OUT_AUTO]=1; val[HF_OUT_LEVEL]=-18; val[HF_PS_GOTO]=-1;
     val[HF_IT_ENABLE]=1; val[HF_IT_HUM]=1; val[HF_IT_HUMBK]=1; val[HF_IT_BOOST]=1;
     int ens[]={HF_GT_ENABLE,HF_CP_ENABLE,HF_FZ_ENABLE,HF_DR_ENABLE,HF_AMP_ENABLE,HF_CAB_ENABLE,HF_MD_ENABLE,HF_DL_ENABLE,HF_RV_ENABLE,HF_WH_ENABLE,HF_OC_ENABLE};
@@ -111,6 +115,7 @@ int main(int argc, char** argv){
     size_t pos=0;
     for(int s=0;s<20;++s) runBlock(pos);            // prime the watch state at Standard
     if(wantEco){ val[HF_QUALITY]=1.0f; for(int s=0;s<200;++s) runBlock(pos); }  // change-event -> ramp -> swap
+    if(wantComp){ val[HF_AMP_EVHCOMP]=1.0f; for(int s=0;s<200;++s) runBlock(pos); }   // same: set AFTER priming, then let the worker swap
     for(int m=0;m<15;++m){
         if(m==5) continue;                          // NAM = user file, skip
         val[HF_AMP_MODEL]=(float)m;
