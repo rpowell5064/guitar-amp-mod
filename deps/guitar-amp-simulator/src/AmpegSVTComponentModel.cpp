@@ -402,9 +402,16 @@ float AmpegSVTComponentModel::processSample(float x, int channel) noexcept {
 void AmpegSVTComponentModel::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")   { master_ = value; }                 // no master on the amp
-    else if (id == "bass")     { bass_ = value;   if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }
-    else if (id == "mid")      { mid_ = value;    if (fs_ > 0.0) for (auto& c : ch_) buildMid(c); }
-    else if (id == "treble")   { treble_ = value; if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }
+    // The host rewrites EVERY parameter on EVERY block, so these must do nothing
+    // unless the knob actually moved: buildStack/buildMid re-solve a LinNetV
+    // network, which is both expensive and (before 2026-09-14) wiped that
+    // network's state -- a discontinuity train at the block rate, 1500 Hz at 32
+    // frames, which is what the user heard as a bit crush. Same class as the
+    // 2026-09-10 Friedman bug, where re-sending the channel every block reset its
+    // relay stages and "sounded like a bit-crusher/ring-mod".
+    else if (id == "bass")     { if (value != bass_)   { bass_ = value;   if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); } }
+    else if (id == "mid")      { if (value != mid_)    { mid_ = value;    if (fs_ > 0.0) for (auto& c : ch_) buildMid(c); } }
+    else if (id == "treble")   { if (value != treble_) { treble_ = value; if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); } }
     else if (id == "presence") { presence_ = value; }               // no presence on the amp
     else if (id == "channel")  { }                                  // channel 1 only
     else if (id == "ultralo")  { const int u = value > 0.5f ? 1 : 0; if (u != ultraLo_) { ultraLo_ = u; if (fs_ > 0.0) for (auto& c : ch_) buildSelect(c); } }

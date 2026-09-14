@@ -118,7 +118,12 @@ public:
         }
         outIdx_ = uidx(outNode_);
         if (outIdx_ < 0 || outIdx_ >= K_) return false;
-        reset();
+        // Deliberately does NOT reset the state (2026-09-14). prepare() is how a
+        // model rebuilds this network when a tone pot moves, and the state vector
+        // is node voltages and inductor currents -- physically continuous across a
+        // pot rotation, so zeroing them puts a discontinuity in the audio. Every
+        // caller already clears the network from its own reset(), and a freshly
+        // constructed LinNetV starts zeroed, so nothing needs this to clear.
         return true;
     }
 

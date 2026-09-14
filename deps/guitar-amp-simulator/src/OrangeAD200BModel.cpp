@@ -189,9 +189,13 @@ float OrangeAD200BModel::processSample(float x, int channel) noexcept {
 void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
-    else if (id == "bass")     { bass_ = value;   if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }
-    else if (id == "mid")      { mid_ = value;    if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }
-    else if (id == "treble")   { treble_ = value; if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }
+    // Guarded on an actual change: the host rewrites every parameter every block,
+    // and buildStack re-solves the LinNetV tone network. See the note in
+    // AmpegSVTComponentModel::setParameter -- unguarded, this was a state reset at
+    // the block rate and it is what the bit-crush reports were.
+    else if (id == "bass")     { if (value != bass_)   { bass_ = value;   if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); } }
+    else if (id == "mid")      { if (value != mid_)    { mid_ = value;    if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); } }
+    else if (id == "treble")   { if (value != treble_) { treble_ = value; if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); } }
     else if (id == "presence") { presence_ = value; }          // the amp has no presence control
     else if (id == "channel")  { }                             // one channel
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
