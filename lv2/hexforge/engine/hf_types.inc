@@ -140,7 +140,13 @@ static const float kAmpMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1
 // gain-0.3 / master-0.3 corner). See the lab audit for the method.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.40f, 0.0f, 0.0f, -4.85f, -1.42f, 0.0f, -3.77f, 0.0f };   // [15] Citrus 200 has no Lab toggle
+// [11] Cali V -4.85 -> -2.92 and [12] Diamond Plate -1.42 -> +0.47 (2026-09-14): the
+// output-tube table's fill loop was a damped relaxation that never converged, and
+// correcting it dropped exactly those two amps 1.93 and 1.89 dB at this layer's own
+// reference point (gain 0.5 / master 0.7, comp_ref_level). Every other component amp
+// moved less than 0.01 dB. Adding the measured drop back keeps the toggle
+// loudness-neutral; the two amps' VOICING did move and needs a re-listen.
+static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.40f, 0.0f, 0.0f, -2.92f, 0.47f, 0.0f, -3.77f, 0.0f };   // [15] Citrus 200 has no Lab toggle
 static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.57f, 0.80f, 0.46f, -0.00f, -0.32f, -0.59f, -0.82f },

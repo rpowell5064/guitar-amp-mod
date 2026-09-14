@@ -30,7 +30,8 @@ const double kRnode  = par(kR30, kR35);               // 6.61k
 constexpr double kRcf4 = 47e3 + 6.8e3;
 
 PushPullPowerV::Params svtPowerParams(double railA, double railE, double otHfHz, double zHfDb, double zResHz, double zResDb,
-                                      double idleMa, double raa, double nfbStabHz, double fluxLim, double kneeV, double iaScale) {
+                                      double idleMa, double raa, double nfbStabHz, double fluxLim, double kneeV, double iaScale,
+                                      int lutPoints) {
     PushPullPowerV::Params p;
     // The LTP is unused (processDriven); harmless defaults keep its bias solve finite.
     p.ltpVcc = 300.0; p.ltpRaA = p.ltpRaB = 100e3; p.ltpRk = 1e3; p.ltpRtail = 47e3; p.ltpTailV = -1.0;
@@ -55,6 +56,7 @@ PushPullPowerV::Params svtPowerParams(double railA, double railE, double otHfHz,
     p.biasRecovR = 1e3;
     p.cathodeBiasR = 0.0;
     p.lutSpan    = 80.0;
+    p.lutPoints  = lutPoints;
 
     // ── The global loop closes OUTSIDE (into V1-A's cathode); nothing here.
     p.nfbDiv = 0.0; p.nfbLoDiv = -1.0; p.nfbLoHz = 0.0; p.nfbTap = 1.0;
@@ -219,7 +221,7 @@ void AmpegSVTComponentModel::buildStages() noexcept {
         gCfB_ = c.cfB.smallSignalGain();
         { c.pi.process(1e-3); gPiPlate_ = c.pi.plateOut() / 1e-3; gPiCath_ = c.pi.cathodeOut() / 1e-3; c.pi.reset(); }
         c.pa.prepare(fs_, svtPowerParams(railA_, railE_, otHfHz_, zHfDb_, zResHz_, zResDb_, idleMa_, raa_,
-                                         nfbStabHz_, fluxLim_, kneeV_, iaScale_));
+                                         nfbStabHz_, fluxLim_, kneeV_, iaScale_, lutPoints_));
         c.pa.setSagDepth(sag_);
         // Global loop: the 4 Ω tap → R46 47k ‖ C7 120p → the R4/R5 junction (R5 220 to ground).
         {
@@ -438,6 +440,7 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
     else if (id == "fit24")    { paDirect_ = value > 0.5f; }
     else if (id == "fit25")    { nfbSign_ = value < 0.0f ? -1.0 : 1.0; }
     else if (id == "fit27")    { linDrivers_ = value > 0.5f; }
+    else if (id == "fit28")    { lutPoints_ = std::max(16, int(value)); if (fs_ > 0.0) buildStages(); }   // lab: output-tube LUT resolution
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

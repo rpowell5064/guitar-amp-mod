@@ -97,6 +97,7 @@ private:
     double otHfHz_ = 60e3, zHfDb_ = 0.0, zResDb_ = 8.0, idleMa_ = 24.0, raa_ = 1900.0;   // fit1..fit5 (raa from the boxed 372 V RMS at 300 W; zRes 8 / zHf 0: the reference carries the ~60 Hz impedance hump — with it OFF the grid lost 2.4 points at its best knobs)
     double nfbStabHz_ = 60e3, fluxLim_ = 12.0;   // fit6 / fit7 (300 W transformer)
     double kneeV_ = 0.15;                        // fit8
+    int    lutPoints_ = 1024;   // fit28 (lab): output-tube LUT resolution
     int    probeTap_ = -1;                       // fit9 (lab)
     double iaScale_ = 1.4;                       // fit10: lands the printed −47 V bias at 24 mA
     double railPre_ = 300.0, railC_ = 362.0, railH_ = 375.0, railE_ = 350.0, railA_ = 660.0;   // fit11..fit15 (printed)

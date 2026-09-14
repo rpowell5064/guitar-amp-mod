@@ -19,7 +19,7 @@ inline double par(double a, double b) { return 1.0 / (1.0 / a + 1.0 / b); }
 PushPullPowerV::Params ad200PowerParams(double railV2, double railA, double railScreen,
                                         double otHfHz, double zHfDb, double zResHz, double zResDb,
                                         double idleMa, double raa, double nfbStabHz, double fluxLim,
-                                        double kneeV, double iaScale, double nfbScale) {
+                                        double kneeV, double iaScale, double nfbScale, int lutPoints) {
     PushPullPowerV::Params p;
     // -- RO7 / RO8 ECC83 long-tail pair -------------------------------------
     p.ltpVcc   = railV2;
@@ -47,6 +47,7 @@ PushPullPowerV::Params ad200PowerParams(double railV2, double railA, double rail
     p.biasRecovR   = 25e3;
     p.cathodeBiasR = 0.0;          // fixed bias
     p.lutSpan      = 80.0;
+    p.lutPoints    = lutPoints;
 
     // -- Global feedback: the 8 ohm tap -> R51 2k7 -> R40 1k -> the R37 100R node
     p.nfbDiv    = nfbScale * (100.0 / (2700.0 + 1000.0 + 100.0));
@@ -95,7 +96,7 @@ void OrangeAD200BModel::buildStages() noexcept {
         // C14 22n from the master wiper into the RO7 grid (R33 1M).
         c.coup14.prepare(fs_, 22e-9, 150e3, 1e6);
         c.pa.prepare(fs_, ad200PowerParams(railV2_, railA_, railScreen_, otHfHz_, zHfDb_, zResHz_, zResDb_,
-                                           idleMa_, raa_, nfbStabHz_, fluxLim_, kneeV_, iaScale_, nfbScale_));
+                                           idleMa_, raa_, nfbStabHz_, fluxLim_, kneeV_, iaScale_, nfbScale_, lutPoints_));
         c.pa.setSagDepth(sag_);
         c.dnr.prepare(fs_, 6000.0, 0.02f, 0.006f);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -214,6 +215,7 @@ void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcep
     else if (id == "fit15")    { probeTap_ = static_cast<int>(value); }
     else if (id == "fit16")    { iaScale_ = std::max(0.1f, value); if (fs_ > 0.0) buildStages(); }
     else if (id == "fit17")    { nfbScale_ = std::max(0.0f, value); if (fs_ > 0.0) buildStages(); }
+    else if (id == "fit18")    { lutPoints_ = std::max(16, int(value)); if (fs_ > 0.0) buildStages(); }   // lab: output-tube LUT resolution
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

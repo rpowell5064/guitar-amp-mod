@@ -91,6 +91,7 @@ private:
     double nfbStabHz_ = 60e3, fluxLim_ = 12.0;   // fit12 / fit13
     double kneeV_ = 0.15;                        // fit14
     int    probeTap_ = -1;                       // fit15 (lab)
+    int    lutPoints_ = 1024;                    // fit18 (lab): output-tube LUT resolution
     // fit16: the toolkit's transconductance scale. The SVT's 1.4 was fitted to that
     // amp's PRINTED bias point; the Mark III prints none, so this stays at the
     // toolkit's datasheet-default 3.0 — which is also the value that lands the amp's

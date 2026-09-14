@@ -108,15 +108,15 @@ int main(int argc, char** argv){
         if(g_haveResp){ if(g_worker&&g_worker->work_response) g_worker->work_response(inst,(uint32_t)g_resp.size(),g_resp.data()); g_haveResp=false; if(g_worker&&g_worker->end_run) g_worker->end_run(inst); }
     };
 
-    const char* names[15]={"Fender","JCM800","EVH5150","Sunn","Rockerverb","NAM(skip)","Friedman","Hiwatt",
-                           "Vox","Backline","Plexi","CaliV","Recto","Tremont","BlueLiner"};
+    const char* names[16]={"Fender","JCM800","EVH5150","Sunn","Rockerverb","NAM(skip)","Friedman","Hiwatt",
+                           "Vox","Backline","Plexi","CaliV","Recto","Tremont","BlueLiner","Citrus200"};
     printf("bench period: %u frames (deadline %.0f us)\n", NF, NF/RATE*1e6);
     printf("amp model        mean_us   max_us   load@NF  max@NF  load@128\n");
     size_t pos=0;
     for(int s=0;s<20;++s) runBlock(pos);            // prime the watch state at Standard
     if(wantEco){ val[HF_QUALITY]=1.0f; for(int s=0;s<200;++s) runBlock(pos); }  // change-event -> ramp -> swap
     if(wantComp){ val[HF_AMP_EVHCOMP]=1.0f; for(int s=0;s<200;++s) runBlock(pos); }   // same: set AFTER priming, then let the worker swap
-    for(int m=0;m<15;++m){
+    for(int m=0;m<16;++m){
         if(m==5) continue;                          // NAM = user file, skip
         val[HF_AMP_MODEL]=(float)m;
         for(int s=0;s<200;++s) runBlock(pos);       // settle + rebuild amp via worker

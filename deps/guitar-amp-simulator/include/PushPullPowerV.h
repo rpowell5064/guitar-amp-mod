@@ -119,6 +119,13 @@ public:
         double sagDepthMax = 0.35;
 
         double lutSpan = 80.0;      // output-tube LUT covers +/- this many grid volts
+        // Number of points across that span. 1024 (the historic value) is the
+        // default, so leaving it alone is bit-identical. Runtime rather than a
+        // compile-time constant so the table's resolution can be A/B'd inside ONE
+        // binary: resizing a constexpr and relinking only the harness silently
+        // measures the old table (2026-09-12, a resize test that reported
+        // byte-identical output and wrongly cleared the LUT of suspicion).
+        int    lutPoints = 1024;
         double outTrim = 1.35;      // residual level calibration vs service data
     };
 
@@ -262,6 +269,12 @@ private:
     }
 public:
 
+    // Lab read-out of the output-tube table (build-time artefact inspection).
+    int    lutSize() const noexcept { return lutN_; }
+    double lutAt(int i) const noexcept { return lut_[std::clamp(i, 0, lutN_ - 1)]; }
+    double lutVg(int i) const noexcept { return lutMin_ + (lutMax_ - lutMin_) * i / double(lutN_ - 1); }
+    double outBias()   const noexcept { return vBias_; }
+
     double ltpTailV()  const noexcept { return ltpTailV_; }
     double ltpTailmA() const noexcept { return ltpIBiasTot_ * 1e3; }
     double outIdlemA() const noexcept { return outIdle_ * 1e3; }
@@ -335,20 +348,34 @@ private:
 
     void buildLUT() noexcept {
         lutMin_ = -p_.lutSpan; lutMax_ = p_.lutSpan;
-        for (int i = 0; i < kLutN; ++i) {
-            const double vg = lutMin_ + (lutMax_ - lutMin_) * i / double(kLutN - 1);
-            double ia = outIdle_;
-            for (int it = 0; it < 24; ++it) {
+        lutN_ = std::clamp(p_.lutPoints, 16, kLutN);
+        // Each cell is a load-line intersection: find the ia that satisfies
+        //     ia = pentodeIa(vBias + vg, max(20, vb - (ia - idle) * raa/2))
+        // This was a 24-step damped relaxation with no convergence test, which
+        // left the table non-monotonic in 13 to 16 cells on most amps (measured
+        // 2026-09-14, pa_lut_shape) -- a transfer curve that briefly runs
+        // BACKWARDS, i.e. a fold in the amp's own nonlinearity. Raising ia
+        // lowers vpk and so lowers the pentode's current, making
+        //     g(ia) = pentodeIa(...) - ia
+        // strictly decreasing with exactly one root, so bisection converges on
+        // it unconditionally. Build time only; the per-sample lookup is
+        // unchanged.
+        const double iaHi = std::max(1e-3, 4.0 * p_.vb / std::max(1.0, p_.raa));
+        for (int i = 0; i < lutN_; ++i) {
+            const double vg = lutMin_ + (lutMax_ - lutMin_) * i / double(lutN_ - 1);
+            double lo = 0.0, hi = iaHi;
+            for (int it = 0; it < 60; ++it) {
+                const double ia = 0.5 * (lo + hi);
                 const double vpk = p_.vb - (ia - outIdle_) * (p_.raa / 2.0);
-                ia += 0.35 * (pentodeIa(vBias_ + vg, std::max(20.0, vpk)) - ia);
+                if (pentodeIa(vBias_ + vg, std::max(20.0, vpk)) > ia) lo = ia; else hi = ia;
             }
-            lut_[i] = (ia - outIdle_) * p_.tubesPerSide;
+            lut_[i] = (0.5 * (lo + hi) - outIdle_) * p_.tubesPerSide;
         }
-        lutScale_ = double(kLutN - 1) / (lutMax_ - lutMin_);
+        lutScale_ = double(lutN_ - 1) / (lutMax_ - lutMin_);
     }
 
     double lut(double vg) const noexcept {
-        const double x = std::clamp((vg - lutMin_) * lutScale_, 0.0, double(kLutN - 1) - 1e-6);
+        const double x = std::clamp((vg - lutMin_) * lutScale_, 0.0, double(lutN_ - 1) - 1e-6);
         const int i = int(x);
         const double fr = x - i;
         return lut_[i] * (1.0 - fr) + lut_[i + 1] * fr;
@@ -381,9 +408,16 @@ private:
     double ltpVpBiasA_ = 68.0, ltpVpBiasB_ = 23.0;
     double IaOpA_ = 2.5e-3, IaOpB_ = 2.5e-3;
 
-    static constexpr int kLutN = 1024;
+    // Capacity of the table. The ACTIVE count is lutN_ (Params::lutPoints), which
+    // defaults to 1024 and is clamped to this. Keep the capacity SMALL: the array
+    // is a member, so every PushPullPowerV carries it, models hold one per channel,
+    // and lab harnesses build models on the stack -- a 65536-entry capacity is
+    // 512 KB an instance and overflowed the stack outright (2026-09-14). 4096 is
+    // 32 KB, leaves headroom for a resolution A/B, and stays cache-friendly.
+    static constexpr int kLutN = 4096;
     double lutMin_ = -80.0, lutMax_ = 80.0;
     double lut_[kLutN] = {};
+    int    lutN_ = 1024;
     double lutScale_ = 1.0;
     double vBias_ = -52.0, outIdle_ = 0.06;
     double cathAlpha_ = 0.0, cathIdle_ = 0.0, cathAvg_ = 0.0, cathLast_ = 0.0;
