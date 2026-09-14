@@ -45,6 +45,8 @@ public:
         const float lp = lp_.process(y);          // always run: warm state across channel switches
         return engaged ? lp + d_ * (y - lp) : y;
     }
+    // Lab read-out of the blend control (0 = fully dark, 1 = fully bright).
+    float depth() const noexcept { return d_; }
 private:
     BiquadFilter lp_;
     float att_ = 0.01f, rel_ = 0.001f, env_ = 0.0f, d_ = 1.0f;
