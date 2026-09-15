@@ -1,81 +1,191 @@
 #include "TubeDriver.h"
 #include <algorithm>
+#include <cstdlib>
 
-// Starved-triode asymmetric soft clip: the positive half compresses late and
-// gently (grid-current limiting at the top of the swing), the negative half
-// reaches cutoff earlier and folds sooner. Both halves share unity slope at 0
-// (no small-signal gain step) and their own rail. The asymmetry generates the
-// even-order warmth a starved 12AX7 is loved for; the DC offset it creates is
-// blocked downstream.
-static inline double starvedTriode(double u, double railPos, double railNeg) noexcept {
-    if (u >= 0.0) return railPos * std::tanh(u / railPos);
-    return -railNeg * std::tanh(-u / railNeg);
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+// Component values are the printed values of US 5,022,305 FIG. 3 (see the header).
+// ESTIMATE marks what the drawing does not give.
+
+using namespace evhcomp;
+
+namespace {
+inline double par(double a, double b) { return 1.0 / (1.0 / a + 1.0 / b); }
+constexpr double kRin      = 1e3;                        // the drive stage's input resistor
+constexpr double kNodeDiv  = (1e3 * 22e3 / 23e3) / (1e3 + 1e3 * 22e3 / 23e3);   // 22K ‖ 1K against the series 1K
+}
+
+// Op-amp output stage: linear inside its swing, a smooth corner, flat outside.
+double TubeDriver::opClip(double x, double sw) noexcept {
+    constexpr double k = 0.1;
+    if (std::abs(x) <= sw - 30.0 * k) return x;                  // both corners below e^-30: identical
+    auto sp = [](double u) { return u > 30.0 ? u : (u < -30.0 ? 0.0 : std::log1p(std::exp(u))); };
+    return x - k * sp((x - sw) / k) + k * sp((-x - sw) / k);
+}
+
+// TUBE DRIVE: a 500K-A pot as the feedback rheostat.
+double TubeDriver::driveR() const noexcept {
+    return double(audioTaper(driveCur_, 0.15f)) * 500e3 + fit_[FitPotEnd];
+}
+
+void TubeDriver::updateDriveCoefs() noexcept {
+    const double R = rCur_ = driveR();
+    opGain_ = kNodeDiv * R / kRin;
+    const double fFb  = std::min(0.45 * fs_, 1.0 / (2.0 * M_PI * R * 120e-12));
+    const double fGbw = std::min(0.45 * fs_, fit_[FitGbw] / (1.0 + R / kRin));
+    const auto cFb = Filters::lowpass1pole(fFb, fs_);
+    const auto cGb = Filters::lowpass1pole(fGbw, fs_);
+    for (auto& c : ch_) { c.fbPole.setCoeffs(cFb); c.gbwPole.setCoeffs(cGb); }
+}
+
+void TubeDriver::buildStages() noexcept {
+    t1_.prepare(kVnode, 68e3);
+    t2_.prepare(kVnode, 100e3);
+    double ia, gm, gp;
+    // Grid 1: .1µ → 1.5K from the op-amp, 3.3K to ground.
+    gc1_.prepare(fs_, 0.1e-6, 1.5e3, 3.3e3, 0.0);
+    vp1Bias_ = t1_.eval(gc1_.Vg0);
+    korenEvalT(nullptr, gc1_.Vg0, vp1Bias_, ia, gm, gp);
+    rp1_ = gp > 1e-12 ? 1.0 / gp : 1e9;
+    // Grid 2: .047µ from plate 1 (its output impedance 68K ‖ rp), 470K up to the 8.5 V node.
+    gc2_.prepare(fs_, 0.047e-6, par(68e3, rp1_), 470e3, kVnode);
+    vp2Bias_ = t2_.eval(gc2_.Vg0);
+    korenEvalT(nullptr, gc2_.Vg0, vp2Bias_, ia, gm, gp);
+    rp2_ = gp > 1e-12 ? 1.0 / gp : 1e9;
+
+    for (auto& c : ch_) {
+        c.inNet.prepare(fs_, 0.047e-6, 1e3, 1e6);
+        // 2.2µ → 1K → node (22K to ground) → 1K → 2.2µ → the virtual ground, read as the
+        // current through a 1 Ω sense resistor (node 5 volts = amps).
+        auto& L = c.ladder;
+        L.clear();
+        L.addC(1, 2, 2.2e-6); L.addR(2, 3, 1e3); L.addR(3, 0, 22e3);
+        L.addR(3, 4, 1e3);    L.addC(4, 5, 2.2e-6); L.addR(5, 0, 1.0);
+        L.setOutput(5);
+        L.prepare(fs_);
+    }
+    updateDriveCoefs();
+    buildOut(true);
+}
+
+// 22K → .01µ → E.Q. 10K-B, whose far end reaches ground through .047µ; its wiper feeds
+// OUT LEVEL 100K-A, whose wiper drives the amp input.
+//   1 plate-2 source · 2 after the series R · 3 E.Q. top · 4 E.Q. wiper · 5 E.Q. far end
+//   6 OUT LEVEL wiper
+void TubeDriver::buildOut(bool force) noexcept {
+    if (fs_ <= 0.0) return;
+    const double t = std::clamp(double(tone_), 0.0, 1.0);                  // 1 = the bright end
+    const double l = double(audioTaper(level_, 0.15f));
+    if (!force && t == outTone_ && l == outLevel_) return;
+    outTone_ = t; outLevel_ = l;
+    const double zp2 = par(100e3, rp2_);
+    for (auto& c : ch_) {
+        auto& N = c.outNet;
+        N.clear();
+        N.addR(1, 2, zp2 + fit_[FitPlateSeries]);
+        N.addC(2, 3, 0.01e-6);
+        N.addR(3, 4, (1.0 - t) * 10e3 + 1.0);
+        N.addR(4, 5, t * 10e3 + 1.0);
+        N.addC(5, 0, 0.047e-6);
+        N.addR(4, 6, (1.0 - l) * 100e3 + 1.0);
+        N.addR(6, 0, par(l * 100e3 + 1.0, fit_[FitLoad]));
+        N.setOutput(6);
+        N.prepare(fs_);
+    }
 }
 
 void TubeDriver::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
     fs_ = oversampledFs;
     driveS_.reset(fs_, 0.005);
-    levelS_.reset(fs_, 0.005);
     driveS_.setCurrentAndTargetValue(drive_);
-    levelS_.setCurrentAndTargetValue(level_);
-    driveCur_ = drive_; levelCur_ = level_;
-    recalc();
+    driveCur_ = drive_;
+    buildStages();
     reset();
 }
 
 void TubeDriver::reset() noexcept {
-    for (auto& c : ch_) { c.inHP.reset(); c.stageLP.reset(); c.toneSh.reset(); c.outLP.reset(); c.dcBlk.reset(); }
     driveS_.setCurrentAndTargetValue(drive_);
-    levelS_.setCurrentAndTargetValue(level_);
-    driveCur_ = drive_; levelCur_ = level_;
+    driveCur_ = drive_;
+    for (auto& c : ch_) {
+        c.inNet.reset(); c.ladder.reset(); c.fbPole.reset(); c.gbwPole.reset();
+        gc1_.reset(c.g1); gc2_.reset(c.g2); c.outNet.reset();
+        for (auto& a : c.tapAcc) a = 0.0;
+        c.tapN = 0;
+    }
+    if (fs_ > 0.0) updateDriveCoefs();
 }
 
 void TubeDriver::advanceSmoothing() noexcept {
-    driveCur_ = driveS_.getNextValue();
-    levelCur_ = levelS_.getNextValue();
-}
-
-void TubeDriver::recalc() noexcept {
-    if (fs_ <= 0.0) return;
-    const auto inC = Filters::highpass(kInHPfc, 0.707, fs_);
-    const auto stC = Filters::lowpass(std::min(kStageLPfc, 0.45 * fs_), 0.707, fs_);
-    // Tone: a plain treble tilt (the real pedal's single passive Tone) — dark
-    // sweep kept musical: −9 dB (0) … +5 dB (1) at 1.8 kHz.
-    const double toneDb = -9.0 + static_cast<double>(tone_) * 14.0;
-    const auto toC  = Filters::highshelf(kToneFc, toneDb, fs_);
-    const auto outC = Filters::lowpass(std::min(kOutLPfc, 0.45 * fs_), 0.707, fs_);
-    const auto dcC  = Filters::highpass(12.0, 0.707, fs_);
-    for (auto& c : ch_) {
-        c.inHP  .setCoeffs(inC);
-        c.stageLP.setCoeffs(stC);
-        c.toneSh.setCoeffs(toC);
-        c.outLP .setCoeffs(outC);
-        c.dcBlk .setCoeffs(dcC);
+    const float d = driveS_.getNextValue();
+    if (d != driveCur_) {
+        driveCur_ = d;
+        if (--coefCountdown_ <= 0) { updateDriveCoefs(); coefCountdown_ = 16; }
+        else { rCur_ = driveR(); opGain_ = kNodeDiv * rCur_ / kRin; }
     }
 }
 
 float TubeDriver::processSample(float x, int chn) noexcept {
-    auto& s = ch_[chn];
-    const double v  = s.inHP.process(x);
-    const double g  = kGainFloor * std::pow(kGainMax / kGainFloor, static_cast<double>(driveCur_));
-    const double bw = s.stageLP.process(static_cast<float>(v * g));
-    const double tr = starvedTriode(bw, kRailPos, kRailNeg);
-    const double dc = s.dcBlk.process(static_cast<float>(tr));
-    const double tl = s.toneSh.process(static_cast<float>(dc));
-    const double out = s.outLP.process(static_cast<float>(tl));
-    return static_cast<float>(out * static_cast<double>(levelCur_) * kMakeup);
+    auto& c = ch_[chn];
+    auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; };
+    c.tapN++;
+    const double sw = fit_[FitOpSwing];
+
+    double v = double(x) * fit_[FitInVolts];
+    v = c.inNet.process(float(v));
+    v = opClip(v, sw);                                            // buffer
+    tap(0, v);
+    const double i = c.ladder.process(v);                         // amps into the virtual ground
+    double o = -i * rCur_;
+    o = c.gbwPole.process(float(c.fbPole.process(float(o))));
+    o = opClip(o, sw);                                            // drive stage output
+    tap(1, o);
+    const double g1 = gc1_.process(c.g1, o);
+    tap(2, g1 - gc1_.Vg0);
+    const double p1 = t1_.eval(g1) - vp1Bias_;                     // plate 1 swing
+    tap(3, p1);
+    const double g2 = gc2_.process(c.g2, p1);
+    tap(4, g2 - gc2_.Vg0);
+    const double p2 = t2_.eval(g2) - vp2Bias_;                     // plate 2 swing
+    tap(5, p2);
+    const double out = c.outNet.process(p2);
+    tap(6, out);
+    return float(out * fit_[FitOutScale]);
 }
 
 void TubeDriver::setParameter(const std::string& id, float value) noexcept {
-    const float c = std::clamp(value, 0.0f, 1.0f);
-    if      (id == "drive") { drive_ = c; driveS_.setTargetValue(c); }
-    else if (id == "tone")  { tone_  = c; recalc(); }
-    else if (id == "level") { level_ = c; levelS_.setTargetValue(c); }
+    const float cl = std::clamp(value, 0.0f, 1.0f);
+    if      (id == "drive") { drive_ = cl; driveS_.setTargetValue(cl); }
+    else if (id == "tone")  { if (cl != tone_)  { tone_ = cl;  buildOut(false); } }
+    else if (id == "level") { if (cl != level_) { level_ = cl; buildOut(false); } }
+    else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
+    else if (id.size() >= 4 && id.compare(0, 3, "fit") == 0) {
+        const int k = std::atoi(id.c_str() + 3);
+        if (k >= 0 && k < kNFit) { fit_[k] = value; if (fs_ > 0.0) { buildStages(); reset(); } }
+    }
 }
 
 float TubeDriver::getParameter(const std::string& id) const noexcept {
     if (id == "drive") return drive_;
     if (id == "tone")  return tone_;
     if (id == "level") return level_;
+    const auto& c = ch_[0];
+    if (id == "v1_vp")      return float(vp1Bias_);
+    if (id == "v1_ia_ua")   return float((kVnode - vp1Bias_) / 68e3 * 1e6);
+    if (id == "v2_vp")      return float(vp2Bias_);
+    if (id == "v2_ia_ua")   return float((kVnode - vp2Bias_) / 100e3 * 1e6);
+    if (id == "g1_rest")    return float(gc1_.Vg0);
+    if (id == "g2_rest")    return float(gc2_.Vg0);
+    if (id == "g2_vc")      return float(c.g2.Vc);
+    if (id == "g2_vg")      return float(c.g2.Vg);
+    if (id == "rp1")        return float(rp1_);
+    if (id == "rp2")        return float(rp2_);
+    if (id == "op_gain")    return float(opGain_);
+    if (id.size() >= 4 && id.compare(0, 3, "tap") == 0) {
+        const int k = std::atoi(id.c_str() + 3);
+        if (k >= 0 && k < Ch::kNTaps && c.tapN > 0) return float(std::sqrt(c.tapAcc[k] / double(c.tapN)));
+        return 0.0f;
+    }
     return 0.0f;
 }

@@ -2566,7 +2566,7 @@ static void seedFactoryPresets(HexForge* p) {
             q.vals[HF_CP_ATTACK] = 3.7750001f; q.vals[HF_CP_RELEASE] = 6.0250001f;
             q.vals[HF_CP_MAKEUP] = 5.4000001f; q.vals[HF_FZ_POS] = 9.0f;
             q.vals[HF_DR_POS] = 3.0f; q.vals[HF_DR_MODEL] = 9.0f;
-            q.vals[HF_DR_DRIVE] = 0.189999998f; q.vals[HF_DR_TONE] = 0.55250001f;
+            q.vals[HF_DR_DRIVE] = 0.225f; q.vals[HF_DR_TONE] = 0.55250001f;  // drive 0.19 on the behavioural Tube Chauffeur; 0.225 is its full-chain loudness on the circuit (2026-09-15)
             q.vals[HF_DR_LEVEL] = 0.752499998f; q.vals[HF_AMP_GAIN] = 0.307500005f;
             q.vals[HF_AMP_MASTER] = 0.762499988f; q.vals[HF_MD_POS] = 4.0f;
             q.vals[HF_MD_MIX] = 0.402500004f; q.vals[HF_DL_POS] = 7.0f;

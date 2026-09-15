@@ -15,10 +15,10 @@ P013 bank04B hash=683ca53bd9eaec85 peak=0.298103 rms=0.089974
 P014 bank04C hash=ce274f68b82e7004 peak=0.421133 rms=0.134882
 P015 bank04D hash=d9d21af79f25c59f peak=0.648411 rms=0.159533
 P016 bank05A hash=0ea7d119fa68d745 peak=0.544783 rms=0.157763
-P017 bank05B hash=8c1960be3c4fe825 peak=0.477621 rms=0.158797
-P018 bank05C hash=6fce4fbb6b5e3206 peak=0.570944 rms=0.158196
-P019 bank05D hash=2bb679885f8f114d peak=0.506151 rms=0.158070
-P020 bank06A hash=6d0a4f3f5dd12aa3 peak=0.505716 rms=0.157255
+P017 bank05B hash=158fa1865667b2a2 peak=0.496172 rms=0.162542
+P018 bank05C hash=ced4911dde0c5dba peak=0.570943 rms=0.158196
+P019 bank05D hash=f927416489ad6e4a peak=0.506151 rms=0.158070
+P020 bank06A hash=fc7fbb637b7d1d3c peak=0.505716 rms=0.157255
 P021 bank06B hash=bad2578e6f3dbdd1 peak=0.328950 rms=0.158153
 P022 bank06C hash=91e934091268f2a8 peak=0.317595 rms=0.157757
 P023 bank06D hash=9cf86ff848a5e0ed peak=0.546619 rms=0.183488
@@ -30,7 +30,7 @@ P028 bank08A hash=6cdd4a1f0f1b2c69 peak=0.661039 rms=0.210865
 P029 bank08B hash=4e14e7af7ffe8722 peak=0.581119 rms=0.166229
 P030 bank08C hash=0f545cd0f532bcef peak=0.428679 rms=0.134676
 P031 bank08D hash=9a750646406fc9e8 peak=0.407428 rms=0.127349
-P032 bank09A hash=fb34b178c4d725ce peak=0.738260 rms=0.240586
+P032 bank09A hash=cf1d021646faa8ec peak=0.738261 rms=0.240586
 P033 bank09B hash=b033a9f0ff773db1 peak=0.483706 rms=0.158232
 P034 bank09C hash=e39c1d48be1d0499 peak=0.773143 rms=0.158842
 P035 bank09D hash=4741824ed7d352a6 peak=0.659216 rms=0.158769
@@ -126,4 +126,4 @@ P124 bank32A hash=5ece95edb8f2943f peak=0.583487 rms=0.160329
 P125 bank32B hash=9202983d6a1cfaf7 peak=0.546684 rms=0.164702
 P126 bank32C hash=050f25df66b75b77 peak=0.513763 rms=0.159576
 P127 bank32D hash=a1f0fa78a12c3e8b peak=0.535058 rms=0.163009
-ALL  hash=6d0049f5bf9ce8eb presets=128
+ALL  hash=e8ac5765ab60c710 presets=128
