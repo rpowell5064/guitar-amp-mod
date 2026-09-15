@@ -16,21 +16,31 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
                                       double idleMa, double raa, double nfbStabHz, double fluxLim, double kneeV,
                                       double cathR, double cathC) {
     PushPullPowerV::Params p;
-    // ── V2 ECC83 long-tail pair (OS/065 prints 230 V plates, 56 V cathode node):
-    //    R18/R19 100k from the 290 V rail; cathodes joined → R16 1k2 → node → R15 47k
-    //    under C8 8µ (the AC tail is the 1k2 alone); R17 1M returns grid B to the node.
+    // ── V6 ECC83 long-tail pair (OS/065 prints 230 V plates, 56 V cathode node):
+    //    R52/R51 100k from the R54 22k / C35 10µ node (which lands on the printed
+    //    290 V); cathodes joined → R3 1k2 → tail node → R1 47k to ground. R4/R2 1M
+    //    return both grids to the tail node; C2 4n7 AC-grounds the cold one, which is
+    //    what the toolkit's vgB = 0 already models (nfbDiv is 0 on this amp).
     p.ltpVcc   = preV;
-    p.ltpRaA   = 100e3;            // R18
-    p.ltpRaB   = 100e3;            // R19
-    p.ltpRk    = 1.2e3;            // R16
-    p.ltpRtail = 47e3;             // R15
-    p.ltpTailBypassed = true;      // C8 8µ
+    p.ltpRaA   = 100e3;            // R52
+    p.ltpRaB   = 100e3;            // R51
+    p.ltpRk    = 1.2e3;            // R3
+    p.ltpRtail = 47e3;             // R1
+    // The reissue sheet draws NO capacitor across R1, so the pair runs as a true
+    // long-tail: the differential current works into the full 47k and the two sides
+    // stay balanced. (Bypassed — the previous source's C8 8µ — collapses the AC tail
+    // to R3 alone, which unbalances the pair and lifts the driven side's gain.)
+    // Measured 2026-09-15 (vox_stage_thd): bypassed, the power section reads 2.74 %
+    // THD at -60 dBFS in and 11 % at -48, from a phase inverter whose two sides no
+    // longer balance. Unbypassed it reads 0.19 % at -60 — a 15x reduction at the
+    // quiet end, and the sheet's own answer.
+    p.ltpTailBypassed = false;
     p.ltpTailV = -1.0;             // self-solved; the gate checks the printed 56 V
     p.piInDiv  = 1.0;
     p.piPlateCap = 0.0;
 
-    // ── 4× EL84, CATHODE BIASED: R24 50 Ω ‖ C11 250µ shared ("12.5 V at 30 W,
-    //    quiescent 10 V"), R25/R26/R29/R30 100 Ω screens from the 320 V HT.
+    // ── 4× EL84, CATHODE BIASED: R70 ‖ R71 (100R 5W each) = 50 Ω ‖ C47 220µ shared
+    //    (OS/065: "12.5 V at 30 W, quiescent 10 V"), 100 Ω screens from the 320 V HT.
     p.vb  = htV;
     p.vg2 = htV - 5.0;
     p.mu = 21.6; p.ex = 1.24; p.kg1 = 401.7; p.kp = 111.04; p.kvb = 17.9;   // Koren EL84 (published set)
@@ -39,10 +49,10 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.tubesPerSide = 2.0;
     p.raa        = raa;            // PRINTED: "primary impedance anode to anode 4k"
     p.otRatio    = std::sqrt(raa / 16.0);
-    p.gridFeedR  = 1.5e3;          // R22/R23/R27/R28
+    p.gridFeedR  = 1.5e3;          // the four 1k5 stoppers
     p.gridKneeV  = kneeV;
-    p.biasFeedR  = 220e3;          // R20/R21 grid leaks
-    p.biasCap    = 0.15e-6;        // C6/C9 coupling caps charge on grid conduction (no bias supply)
+    p.biasFeedR  = 220e3;          // R50/R53 grid leaks
+    p.biasCap    = 0.1e-6;         // C24/C25 100N charge on grid conduction (no bias supply)
     p.biasRecovR = 220e3;
     p.cathodeBiasR = cathR;
     p.cathodeBiasC = cathC;
@@ -84,26 +94,39 @@ void VoxAC30ComponentModel::buildStages() noexcept {
     const double zV1   = par(110e3, kRp * 0.5);        // the paralleled pair's plate impedance
     const double Zp100 = par(100e3, kRp);
     for (auto& c : ch_) {
-        // ── V1: both halves in parallel (R5 ‖ R6 220k, R4 1k5 ‖ C1 25µ shared) as ONE
+        // ── V8: both halves in parallel (R57 ‖ R58 220k, R10 1k5 ‖ C10 22µ shared) as ONE
         //    triode with 220k / 3k / 12.5µ — identical operating point (170 V / 1.6 V)
         //    and identical small-signal gain; the plate impedance is the pair's.
         c.v1.prepare(fs_, { preV_, 220e3, 3.0e3, 12.5e-6, 68e3, millerC(220e3), 68e3, 0.0, 0.0, 0.0, kneeV_ });
-        // C2 0.047µ → VOLUME VR1 470k log → R7 220k → V11-A grid
-        c.coup2.prepare(fs_, 0.047e-6, zV1, 470e3);
-        // ── V11-A: R74 100k from the R75 10k dropper (≈ preV − 15 V), R76 1k5 ‖ C46 32µ.
+        // C9 470pF → BRILLIANT VOLUME VR4 470k → V7-A grid. The small cap is the
+        // channel: 470pF into 470k is a high-pass at ~720 Hz, so the Top Boost stage
+        // is fed the bright half of the signal and its Bass control adds weight back.
+        c.coup2.prepare(fs_, 470e-12, zV1, 470e3);
+        // ── V7-A: R55 100k from the R56 10k dropper (≈ preV − 15 V), R9 1k5 ‖ C7 22µ.
         c.v11a.prepare(fs_, { preV_ - 15.0, 100e3, 1.5e3, 32e-6, 220e3, millerC(100e3), 220e3, 0.0, 0.0, 0.0, kneeV_ });
         // C42 25p "A" mod across V11-A (plate to grid): Miller-multiplied HF cut — a 1-pole
         // at 1 / (2π · 220k · 25p·(1+A)) with A ≈ 60.
         c.c42lp.prepare(fs_, 1.0, 0.0, 1.0 / (2.0 * M_PI * 220e3 * 25e-12 * 61.0));
-        // ── V11-B cathode follower, direct-coupled from the V11-A plate, R77 56k.
-        c.v11b.prepare(fs_, { preV_ - 15.0, 56e3, c.v11a.biasVp(), 100e3, kneeV_ });
-        // ── Top Boost stack on the follower: C43 47p, VR6 1M, R78 100k, C44/C45 22n,
-        //    VR7 1M, R79 10k fixed (no mid pot: the stack's "mid" is R79 at full).
+        // ── V7-B cathode follower, direct-coupled from the V7-A plate, R8 56k.
+        // It runs IN GRID CONDUCTION at rest, as drawn: a 56k cathode load at the
+        // V7-A plate's ~180 V would demand over 3 mA, which an ECC83 cannot pass, so
+        // the grid goes positive and its current loads the plate node down until the
+        // two balance. That has to be solved JOINTLY (grid diode with the cathode),
+        // exactly as the SVT's V4-B is — with the plain clamp path the bias solve
+        // ignores the clamp that process() then applies every sample, and the stage
+        // idles 1.4 V off its own bias. Being DC-coupled to the tone stack, that
+        // offset went straight onto the inverter grid and sat there (measured
+        // 2026-09-15, vox_tap_sweep: 1.4 V at the stack, 1.2 V at the PI grid, in
+        // silence). RgSrc is the V7-A plate's Thevenin impedance, which is what the
+        // grid current actually works into.
+        c.v11b.prepare(fs_, { preV_ - 15.0, 56e3, c.v11a.biasVp(), par(100e3, kRp), kneeV_, nullptr, true });
+        // ── Top Boost stack on the follower: C6 47pF, VR3 1M, R35 100k, C5/C4 22N,
+        //    VR2 1M, R7 10k fixed (no mid pot: the stack's "mid" is R7 at full).
         {
             YehSmithToneStack::CircuitParams p{ 47e-12, 22e-9, 22e-9, 1e6, 1e6, 10e3, 100e3 + 600.0 };
             c.ts.prepare(fs_, p);
         }
-        // treble wiper → R15 47k → V2 grid (R17 1M to the cathode node)
+        // treble wiper → R5 220k (R6 220k to ground) → C3 47N → the V6 grid (R4 1M leak)
         c.coup15.prepare(fs_, 1.0, 47e3 + 50e3, 1e6);
         // cut built in recalcPots()
         c.pa.prepare(fs_, voxPowerParams(preV_, htV_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
@@ -118,24 +141,33 @@ void VoxAC30ComponentModel::buildStages() noexcept {
 
 void VoxAC30ComponentModel::recalcPots() noexcept {
     if (fs_ <= 0.0) return;
-    const float t = audioTaper(treble_, stackMid_);  // VR6 1M log
-    const float b = audioTaper(bass_,   stackMid_);  // VR7 1M log
-    // CUT VR4 250k log + C10 0.0047µ across the inverter's two outputs: R shrinks as
-    // the knob is turned up; Zsrc = the pair's differential plate impedance.
-    const double R    = 250e3 * (1.0 - double(audioTaper(presence_, stackMid_)));
+    const float t = audioTaper(treble_, stackMid_);  // TREBLE VR3 A1M
+    const float b = audioTaper(bass_,   stackMid_);  // BASS VR2 A1M
+    // CUT TONE VR1 A220k + C1 4n7 across the inverter's two outputs: R shrinks as the
+    // knob is turned up; Zsrc = the pair's differential plate impedance.
+    const double R    = 220e3 * (1.0 - double(audioTaper(presence_, stackMid_)));
     const double zsrc = 2.0 * par(100e3, kRp);
     const double gHi  = R / (R + zsrc);
     const double fc   = 1.0 / (2.0 * M_PI * 4.7e-9 * (R + zsrc));
+    // C8 120pF from the VR4 top to its wiper: at HF the cap bypasses the pot's upper
+    // leg, so the treble arrives at the wiper's OWN level regardless of rotation.
+    // Shelf lift = the reciprocal of the wiper law, cornered on the pot's two legs
+    // in parallel (the same first-order treatment the other bright caps get).
+    const double v  = std::clamp(double(audioTaper(gain_, gainMid_)), 0.02, 1.0);
+    const double Rt = (1.0 - v) * 470e3 + 1.0, Rb = v * 470e3 + 1.0;
+    const double gBr = std::min(20.0, 1.0 / v);
+    const double fBr = 1.0 / (2.0 * M_PI * 120e-12 * par(Rt, Rb));
     for (auto& c : ch_) {
         c.ts.setTreble(t); c.ts.setBass(b); c.ts.setMid(1.0f);
         c.cut.prepare(fs_, 1.0, gHi, fc);
+        c.bright.prepare(fs_, 1.0, gBr, fBr);
     }
 }
 
 void VoxAC30ComponentModel::reset() noexcept {
     gainSmooth_.setCurrentAndTargetValue(gain_);
     for (auto& c : ch_) {
-        c.v1.reset(); c.coup2.reset(); c.v11a.reset(); c.c42lp.reset(); c.v11b.reset(); c.ts.reset();
+        c.v1.reset(); c.coup2.reset(); c.bright.reset(); c.v11a.reset(); c.c42lp.reset(); c.v11b.reset(); c.ts.reset();
         c.coup15.reset(); c.cut.reset(); c.pa.reset(); c.dnr.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
@@ -157,7 +189,8 @@ float VoxAC30ComponentModel::processSample(float x, int channel) noexcept {
     v = c.v1.process(v);
     tap(0, v);
     v = c.coup2.process(float(v));
-    v *= audioTaper(gainSmooth_.getCurrentValue(), gainMid_);   // VOLUME VR1 470k log
+    v *= audioTaper(gainSmooth_.getCurrentValue(), gainMid_);   // BRILLIANT VOLUME VR4 470k
+    v = c.bright.process(float(v));                             // C8 120pF across the pot's top leg
     tap(1, v);
     v = c.v11a.process(v);
     if (c42On_) v = c.c42lp.process(float(v));
@@ -177,7 +210,7 @@ float VoxAC30ComponentModel::processSample(float x, int channel) noexcept {
 }
 
 void VoxAC30ComponentModel::setParameter(const std::string& id, float value) noexcept {
-    if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); }
+    if      (id == "gain")     { gainSmooth_.setTargetValue(value); if (value != gain_) { gain_ = value; recalcPots(); } }   // the C8 bright cap tracks the wiper
     else if (id == "master")   { master_ = value; }                 // no master on the amp
     else if (id == "bass")     { bass_ = value;   recalcPots(); }
     else if (id == "mid")      { mid_ = value; }                    // no mid control on the amp

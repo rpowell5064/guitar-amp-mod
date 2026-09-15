@@ -12,40 +12,59 @@
 // (component-amp programme, amp #7, 2026-09-11; the shipped VoxAC30Model "Chime
 // Thirty" is untouched)
 //
-// Sources (voxac30.org.uk circuit-diagram page):
-//   * Vox Sound Ltd AC30 Top Boost circuit, 1971 (integrated top boost: V1, V11,
-//     tone controls, cut, EL84 quad, supply) — every value read from this sheet.
+// Sources — RETRACED 2026-09-15 to the user's chosen sheet:
+//   * **VOX AC30 TOP BOOST, DWG.No AC30-60-02 ISSUE 5** (Vox Amplification Ltd,
+//     drawn S.G. 18-8-92, ECOs to 06/12/94; model "AC30 REISSUE"), sheets 1 and 2,
+//     from drtube.com/schematics/vox/ac30-60-02-iss5.pdf. A CAD drawing with every
+//     designator and value legible — the primary source for TOPOLOGY and VALUES.
+//     It prints no voltages, so the DC gate below stays the JMI sheet's.
 //   * JMI OS/065 "VOX A.C.30.36 AMPLIFIER CIRCUIT NORMAL" (29-4-60, issue 4
-//     11-9-64) — the SAME V1 / phase inverter / EL84 / supply circuit with the
-//     factory DC voltages printed: V1 plates 170 V, cathode 1.6 V; PI plates
-//     230 V, cathode node 56 V; HT 320 V (choke) / 290 V (preamp); EL84 shared
-//     cathode "12.5 V at 30 watts, quiescent 10 V"; GZ34 rectifier. Those are
-//     the DC gate (vox_component_verify).
+//     11-9-64) — the same V1 / EL84 / supply circuit with the factory DC voltages
+//     printed: V1 plates 170 V, cathode 1.6 V; PI plates 230 V, cathode node 56 V;
+//     HT 320 V (choke) / 290 V (preamp); EL84 shared cathode "12.5 V at 30 watts,
+//     quiescent 10 V"; GZ34. Those remain the DC gate (vox_component_verify).
+//   * JMI OS/010 "VOX TOP BOOST MOD" (J. Bell 11-12-61, iss.3 15-1-65) — the
+//     original outboard Brilliance unit, read as a cross-check: the same gain
+//     stage + cathode follower + treble/bass network, at 1961 values.
+//   (A 1971 Vox Sound Ltd sheet was the previous source; see the 2026-09-15 audit
+//   for what it cost.)
 //
-// Top Boost channel:
-//   jack → R2/R3 68k mix → V1 ECC83, BOTH halves paralleled (R5 + R6 220k
-//     plates joined, shared R4 1k5 ‖ C1 25µ cathode; modelled as one triode
-//     with 220k / 3k / 12.5µ — the identical operating point and gain)
-//     → C2 0.047µ → VOLUME VR1 470k log → R7 220k → V11-A ECC83 (R74 100k from
-//       the R75 10k dropper; cathode R76 1k5 ‖ C46 32µ; C42 25p "A" mod)
-//     → direct-coupled V11-B cathode follower (R77 56k) → the Top Boost stack:
-//       C43 47p treble cap, TREBLE VR6 1M log, R78 100k slope, C44 / C45
-//       0.022µ, BASS VR7 1M log (rheostat), R79 10k
-//     → treble wiper → R15 47k → V2 ECC83 long-tail pair (R18/R19 100k from
-//       290 V; cathodes joined → R16 1k2 → node (56 V) → R15 47k tail UNDER C8
-//       8µ, so the AC tail is just the 1k2; R17 1M returns the second grid to
-//       the cathode node — NO negative feedback anywhere in this amp)
-//     → C6/C9 0.15µ → R20/R21 220k leaks; CUT VR4 250k log + C10 0.0047µ
-//       ACROSS the two grid lines (a variable HF shunt on the inverter output)
-//     → R22/R23/R27/R28 1k5 stoppers → 4× EL84, CATHODE BIASED through the
-//       shared R24 50 Ω ‖ C11 250µ (this is where the AC30 compresses: hard
-//       drive raises the average cathode current and the bias goes colder),
-//       R25/R26/R29/R30 100 Ω screens → OT (4k anode-to-anode, 16 / 8 Ω)
+// BRILLIANT channel = the Top Boost channel (reissue designators):
+//   JS4/JS1 jacks → R34/R33 68k mix, R32 1M leak → V8 ECC83, BOTH halves
+//     paralleled (R57 + R58 220k plates joined, shared R10 1k5 ‖ C10 22µ
+//     cathode; modelled as one triode with 220k / 3k / 12.5µ — the identical
+//     operating point and gain)
+//   → **C9 470pF SILVER MICA** → BRILLIANT VOLUME VR4 A470k, with C8 120pF
+//     silver mica from its top to the wiper (the bright cap).
+//     THE 470pF IS THE CHANNEL. Both channels hang off the same V8 plates and
+//     differ ONLY in that cap: NORMAL takes C11 47N (full range), BRILLIANT
+//     takes 470pF, a high-pass at ~720 Hz into the pot. That cut ahead of the
+//     Top Boost stage is why the channel is called Brilliant, and why its Bass
+//     control adds weight back rather than being flat with it. (Until 2026-09-15
+//     this model used 0.047µ here — the NORMAL channel's cap, 100x too big: the
+//     Top Boost stage ran full-range and mushed. See the audit.)
+//   → V7-A ECC83 (R55 100k plate, R9 1k5 ‖ C7 22µ cathode)
+//   → direct-coupled V7-B cathode follower (R8 56k) → the Top Boost stack:
+//     C6 47pF treble cap, TREBLE VR3 A1M, R35 100k slope, C5 / C4 22N,
+//     BASS VR2 A1M, R7 10k; the treble wiper → R5 220k (R6 220k to ground)
+//     → C3 47N → the inverter grid
+//   → V6 ECC83 long-tail pair (R52/R51 100k from the R54 22k / C35 10µ node;
+//     cathodes joined → R3 1k2 → tail node → **R1 47k, UNBYPASSED** — the
+//     reissue draws no cap across it, so the pair is a true long-tail; R4/R2 1M
+//     return both grids to the tail node and C2 4n7 AC-grounds the cold one.
+//     NO negative feedback anywhere in this amp)
+//   → C24/C25 100N → R50/R53 220k leaks; CUT TONE VR1 A220k + C1 4n7 ACROSS
+//     the two grid lines (a variable HF shunt on the inverter output)
+//   → four 1k5 stoppers → 4× EL84, CATHODE BIASED through the shared
+//     R70 ‖ R71 100R 5W = 50 Ω ‖ C47 220µ (this is where the AC30 compresses:
+//     hard drive raises the average cathode current and the bias goes colder),
+//     100 Ω screens → OT 784-413 (4k anode-to-anode, 16 / 8 Ω), GZ34 rectifier
 //
-// Knob map: gain = VR1 (TB volume), treble/bass = VR6/VR7, presence = the CUT
-// control (0 = cut pot fully anticlockwise = no cut), mid and master are INERT
-// — the amp has neither a mid control nor a master. Knobs are REAL pot
-// rotations. Normal / Brilliant channels and the vib/trem are phase 2.
+// Knob map: gain = VR4 (Brilliant volume), treble/bass = VR3/VR2, presence = the
+// CUT control (0 = cut pot fully anticlockwise = no cut), mid and master are
+// INERT — the amp has neither a mid control nor a master, on the reissue sheet
+// or on any JMI one. Knobs are REAL pot rotations. The Normal channel and the
+// vib/trem are phase 2.
 // ─────────────────────────────────────────────────────────────────────────────
 class VoxAC30ComponentModel final : public AmpModelBase {
 public:
@@ -78,7 +97,7 @@ private:
     double nfbStabHz_ = 60e3, fluxLim_ = 4.0;    // fit7 / fit8 (small OT)
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
-    double cathR_ = 50.0, cathC_ = 250e-6;       // fit11 / fit12: R24 ‖ C11 (printed; hooks for the dynamics)
+    double cathR_ = 50.0, cathC_ = 220e-6;       // fit11 / fit12: R70 ‖ R71 = 50 Ω, C47 220µ (hooks for the dynamics)
     double htV_ = 320.0, preV_ = 290.0;          // fit13 / fit14: printed rails
     bool   c42On_ = false;                       // fit15: the dashed "A" 25p across V11-A — an optional mod on the sheet, NOT fitted (the grids reject it)
 
@@ -86,7 +105,8 @@ private:
 
     struct ChState {
         evhcomp::CCStageV   v1;         // paralleled pair as one triode
-        evhcomp::RCDividerV coup2;      // C2 0.047µ → VR1 470k
+        evhcomp::RCDividerV coup2;      // C9 470pF → VR4 470k — the Brilliant channel's high-pass
+        evhcomp::ShelfV     bright;     // C8 120pF from the VR4 top to its wiper
         evhcomp::CCStageV   v11a;
         evhcomp::ShelfV     c42lp;      // C42 25p across V11-A (plate-to-grid "A" mod: a Miller-style HF cut)
         evhcomp::CFStageV   v11b;

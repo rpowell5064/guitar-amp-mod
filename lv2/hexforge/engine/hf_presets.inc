@@ -2782,6 +2782,33 @@ static void seedFactoryPresets(HexForge* p) {
                                           pr.vals[HF_OUT_LEVEL] + kBassRetrim[b - 18][sl]));
             }
     }
+
+    // ── rev 147: the AC30 presets re-levelled after the Vox Top Boost component
+    // retrace (2026-09-15). Feeding the Top Boost stage through the Brilliant
+    // channel's 470pF coupling cap instead of the Normal channel's 47N changes how
+    // much signal the stage sees, so the presets on that amp moved -1.6 to +2.5 dB
+    // around the .158 anchor once the parity row had taken out the flat part.
+    // Measured with hexforge_golden --comp; only the slots this change actually
+    // moved are touched, so the rev-145 pass is not re-litigated.
+    {
+        struct T { int bank, slot; float db; };
+        static const T kVoxRetrim[] = {
+            { 1,  0, -1.16f },   // bank02A
+            { 1,  3, +1.13f },   // bank02D
+            { 9,  1, +1.16f },   // bank10B
+            { 10, 0, +0.63f },   // bank11A
+            { 10, 2, -2.54f },   // bank11C
+            { 10, 3, -1.45f },   // bank11D
+            { 14, 1, +1.54f },   // bank15B
+            { 16, 0, -0.92f },   // bank17A
+            { 16, 1, +1.60f },   // bank17B
+        };
+        for (const T& t : kVoxRetrim) {
+            Preset& pr = p->presets[t.bank][t.slot];
+            if (!pr.used) continue;
+            pr.vals[HF_OUT_LEVEL] = std::max(-60.0f, std::min(12.0f, pr.vals[HF_OUT_LEVEL] + t.db));
+        }
+    }
 }
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);

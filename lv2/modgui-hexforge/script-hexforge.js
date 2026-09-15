@@ -523,7 +523,11 @@ function (event, funcs) {
     // mid and no channel volume of its own.
     //   0 Deluxe Reverb  no Middle / Presence / Master
     //   4 Rockerverb     no Presence; clean channel also no Middle / Master
-    //   8 AC30 Top Boost no Middle / Master (Presence = the Cut control)
+    //   8 AC30 Top Boost no Middle / Master (Presence = the Cut control; the first
+    //                    knob is the channel VOLUME -- the AC30 Top Boost has no
+    //                    master on any sheet: not the 1994 reissue AC30-60-02, whose
+    //                    only power-amp control is CUT, and not JMI OS/065 + OS/010.
+    //                    Checked 2026-09-15 against both.)
     //   9 Backstage Plus no Presence        10 Plexi  non-master amp
     //  13 MT15           no Presence        14 SVT    no Presence / Master
     function ampCtlRule(m, ch) {
@@ -570,7 +574,7 @@ function (event, funcs) {
         else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp', 'amp'); cur = 'amp'; }
         var ok = { amp: true, voice: showVoice, power: showPower, nam: true };
         if (!ok[cur]) setAmpTab(icon, 'amp', 'amp');
-        p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 5 ? 'Output' : 'Gain')));
+        p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 8 ? 'Volume' : (m === 5 ? 'Output' : 'Gain'))));
         setModelVal(icon, 'amp', m);
         applyAmpFace(icon, 'amp', m);
         applyMesa(icon);
@@ -607,7 +611,7 @@ function (event, funcs) {
         else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp2', 'amp'); cur = 'amp'; }
         var ok = { amp: true, voice: showVoice, power: showPower, nam: true, blend: true };
         if (!ok[cur]) setAmpTab(icon, 'amp2', 'amp');
-        p.find('[rata-role=lbl-rb_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 5 ? 'Output' : 'Gain')));
+        p.find('[rata-role=lbl-rb_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 8 ? 'Volume' : (m === 5 ? 'Output' : 'Gain'))));
         applyAmpFace(icon, 'amp2', m);
     }
     function setRbAmpModel(icon, m) {
