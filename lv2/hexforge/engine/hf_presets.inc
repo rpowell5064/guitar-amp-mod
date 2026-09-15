@@ -2597,9 +2597,16 @@ static void seedFactoryPresets(HexForge* p) {
             q.vals[HF_DR_TONE] = 0.644999981f; q.vals[HF_DR_LEVEL] = 0.670000017f;
             q.vals[HF_AMP_GAIN] = 0.262499988f; q.vals[HF_AMP_BASS] = 0.337500006f;
         }
+        {   // bank05-A  Dark Side Air
+            Preset& q = S(4, 0);
+            q.vals[HF_MD_RATE] = 0.608f;   // Uni-Verse circuit: 1.58 Hz, the rate 0.15 ran on the behavioural model (2026-09-15)
+            q.vals[HF_OUT_LEVEL] += 0.54f;  // the circuit reads 0.54 dB under the behavioural model here (golden rms)
+        }
         {   // bank09-A  Bridge Vibe
             Preset& q = S(8, 0);
             q.vals[HF_AMP_GAIN] = 0.670000017f;
+            q.vals[HF_MD_RATE] = 0.725f;   // Uni-Verse circuit: 2.26 Hz, the rate 0.28 ran on the behavioural model (2026-09-15)
+            q.vals[HF_OUT_LEVEL] += 0.35f;  // the circuit reads 0.35 dB under the behavioural model here (golden rms)
         }
         {   // bank10-A  Surf Splash
             Preset& q = S(9, 0);
