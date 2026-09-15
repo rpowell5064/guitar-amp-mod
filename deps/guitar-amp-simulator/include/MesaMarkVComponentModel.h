@@ -1,6 +1,7 @@
 #pragma once
 #include "AmpModelBase.h"
 #include "EVHComponentStages.h"
+#include "MarkVGraphicEqV.h"
 #include "PushPullPowerV.h"
 #include "YehSmithToneStack.h"
 #include "DnrRolloff.h"
@@ -20,7 +21,8 @@
 //
 // SCOPE (phase 1): channel 3 only — modes 6 Mark IIC+ (M7), 7 Mark IV (M8),
 // 8 Extreme (M9). Modes 0-5 are mapped onto mode 6 (documented, not modelled).
-// The 5-band graphic EQ passes flat, the effects loop is bypassed, and the
+// The 5-band graphic EQ is the sheet-6 circuit in slider mode (MarkVGraphicEqV);
+// the effects loop is bypassed, and the
 // power section is the shared PushPullPowerV in 4×6L6 FIXED-BIAS form — the
 // real amp's Simul-Class pair (V7/V9 cathode-biased through 360 Ω 7W, screens
 // zener-strapped to the plates) is NOT yet modelled (phase 2).
@@ -41,7 +43,7 @@
 //       ‖ C31 100µ ‖ C32 2µ2) → C33 0.047µ → R45 47k → R47 150k → R46 47k
 //       [M8: ‖ R48 47k + R49 4k7] → R210 3k3 → V6A (R63 120k; R62 1k ‖ C42
 //       15µ [M7: ‖ C104+C106 4µ4]; C44 120p) → C43 0.047µ → MASTER 100KA
-//     → EQ (flat; its +24 V discrete amplifier bounds the swing) → R78 470 →
+//     → EQ (sheet 6: five LC bands on a +24 V discrete amplifier) → R78 470 →
 //       V6B (D rail: R80 120k, R81 1k unbypassed, R79 47k leak) → R82 100k →
 //       C50 0.68µ → R83 220k → OUTPUT 1MA (fixed, ESTIMATE) → 4744 ×4 →
 //       R209 22k → C56 0.1µ
@@ -103,8 +105,10 @@ private:
     double presPot_ = 10e3;                      // fit11: CH3 presence rheostat (value not printed)
     double clampV_ = 10.0;                       // fit12: EQ amplifier swing limit (V, +24 V rail); 0 = off
     bool   c18On_ = true, bleedOn_ = true, liftOn_ = true;   // fit13/14/15 (lab: HF path bisection)
-    float  geqDb_[5] = {0, 0, 0, 0, 0};        // slider gains (dB)
-    int    eqPreset_ = 0;                        // 0 = sliders, 1..5 = baked curves (as shipped)
+    float  geqPos_[5] = {0.5f, 0.5f, 0.5f, 0.5f, 0.5f};   // slider travel (0.5 = centre = flat)
+    int    eqPreset_ = 0;                        // 0 = sliders, 1..5 = the plugin's curves as slider positions
+    double geqTaperMid_   = 0.10;               // fit18: slider taper (see MarkVGraphicEqV)
+    double geqReturnOhms_ = 150.0;              // fit19: J175SL + J175EQ on-resistance
     void   recalcGeq() noexcept;
 
     LinearSmoother gainSmooth_, masterSmooth_;
@@ -132,9 +136,7 @@ private:
         evhcomp::RCDividerV coup50;     // C50 → R83 + OUTPUT pot
         evhcomp::RCDividerV coup56;     // C56 → R99 100k (PI grid)
         evhcomp::ZenerStringV   clampEq, clampPi;   // 4744 ×4 at the EQ input and at the PI drive
-        BiquadFilter            geq[5];      // STAND-IN graphic EQ (the shipped Cali V's 5 peaking
-                                             // biquads at 80/240/750/2200/6600 Hz, Q 1.4, ±12 dB) until
-                                             // the MVEQ discrete LC circuit is modelled (phase 2)
+        evhcomp::MarkVGraphicEqV geq;         // sheet 6 graphic EQ, slider mode
         evhcomp::PushPullPowerV pa;
         DnrRolloff              dnr;    // shared decay darkener (rig conditioning, same as the shipped
                                         // high-gain amps — not a circuit element; keyed on the raw input)

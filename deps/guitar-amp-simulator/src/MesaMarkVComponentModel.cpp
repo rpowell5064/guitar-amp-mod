@@ -184,6 +184,10 @@ void MesaMarkVComponentModel::buildStages() noexcept {
         //    R209/C56. The J175M1/M4 FETs beside them are the RYMU mute switches.
         c.clampEq.vClamp = clampV_ > 0.0 ? clampV_ : 1e9; c.clampEq.resid = 0.02;
         c.clampPi.vClamp = 31.4; c.clampPi.resid = 0.02;
+        // ── Graphic EQ (sheet 6) — prepare() keeps the branch states.
+        c.geq.setTaperMid(geqTaperMid_);
+        c.geq.setReturnOhms(geqReturnOhms_);
+        c.geq.prepare(fs_);
         // ── Power section ──
         c.pa.prepare(fs_, markvPowerParams(otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                            fluxLim_, kneeV_, double(presence_) * presPot_));
@@ -195,19 +199,20 @@ void MesaMarkVComponentModel::buildStages() noexcept {
     }
 }
 
-// Graphic EQ stand-in: identical centres/Q/presets to the shipped MesaMarkV so the
-// plugin's geq0-4 / eqpreset ports behave the same on both builds.
-static const double kGeqFreq[5] = { 80.0, 240.0, 750.0, 2200.0, 6600.0 };
-static const float  kEqPresets[6][5] = {
+// Graphic EQ (sheet 6, MarkVGraphicEqV). The geq0-4 ports are slider travel. The
+// eqpreset curves belong to the plugin, not the amp: each is loaded as slider
+// positions by the same 0.5 + dB/24 rule the panel's preset buttons use, so a
+// recalled preset and the same curve loaded into the faders are one setting.
+static const float kEqPresets[6][5] = {
     {  0,  0,  0,  0,  0 }, {  0,  0,  0,  0,  0 }, { +4, +2, -6, +1, +5 },
     { +6, +1,-10, -2, +6 }, { -2, +2, +5, +3, -1 }, { -1, -2, -2, +3, +6 },
 };
 void MesaMarkVComponentModel::recalcGeq() noexcept {
-    if (fs_ <= 0.0) return;
-    const float* db = (eqPreset_ >= 1 && eqPreset_ <= 5) ? kEqPresets[eqPreset_] : geqDb_;
-    for (auto& c : ch_)
-        for (int i = 0; i < 5; ++i)
-            c.geq[i].setCoeffs(Filters::peaking(kGeqFreq[i], db[i], 1.4, fs_));
+    for (int i = 0; i < 5; ++i) {
+        const double t = (eqPreset_ >= 1 && eqPreset_ <= 5) ? 0.5 + double(kEqPresets[eqPreset_][i]) / 24.0
+                                                            : double(geqPos_[i]);
+        for (auto& c : ch_) c.geq.setSlider(i, t);
+    }
 }
 
 void MesaMarkVComponentModel::recalcPots() noexcept {
@@ -230,7 +235,7 @@ void MesaMarkVComponentModel::reset() noexcept {
         c.v5a.reset(); c.coup37.reset(); c.c38lp.reset(); c.v4b.reset(); c.coup28.reset();
         c.c27lift.reset(); c.n2lp.reset(); c.v3a.reset(); c.coup33.reset(); c.v6a.reset();
         c.coup43.reset(); c.v6b.reset(); c.coup50.reset(); c.coup56.reset(); c.pa.reset(); c.dnr.reset();
-        for (auto& g : c.geq) g.reset();
+        c.geq.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -282,8 +287,9 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
     tap(8, e);
     e = c.coup43.process(float(e));
     e *= audioTaper(masterSmooth_.getCurrentValue(), masterMid_);   // CH3 MASTER 100KA
-    e = c.clampEq.process(e);                                  // 4744 ×4 at EQ IN
-    for (auto& g : c.geq) e = g.process(float(e));             // graphic EQ (stand-in)
+    e = c.clampEq.process(e);                                  // EQ amplifier swing at its input (Q1)
+    e = c.geq.process(e);                                      // graphic EQ (sheet 6, slider mode)
+    if (!c.geq.flat()) e = c.clampEq.process(e);               // ...and at its output (Q4); flat is exact unity
     // → V6B loop driver → OUTPUT pot → PI.
     e = c.v6b.process(e);
     tap(9, e);
@@ -336,10 +342,12 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit15")    { liftOn_ = value > 0.5f; }
     else if (id == "fit16")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "fit17")    { masterMid_ = std::clamp(value, 0.02f, 0.9f); }
+    else if (id == "fit18")    { geqTaperMid_ = value;   for (auto& ch : ch_) ch.geq.setTaperMid(value); }
+    else if (id == "fit19")    { geqReturnOhms_ = value; for (auto& ch : ch_) ch.geq.setReturnOhms(value); }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     else if (id.size() == 4 && id.compare(0, 3, "geq") == 0) {
         const int b = id[3] - '0';
-        if (b >= 0 && b < 5) { geqDb_[b] = (value - 0.5f) * 24.0f; recalcGeq(); }
+        if (b >= 0 && b < 5) { geqPos_[b] = std::clamp(value, 0.0f, 1.0f); recalcGeq(); }
     }
     else if (id == "eqpreset") { eqPreset_ = std::clamp(static_cast<int>(value + 0.5f), 0, 5); recalcGeq(); }
 }
@@ -357,7 +365,7 @@ float MesaMarkVComponentModel::getParameter(const std::string& id) const noexcep
     if (id == "involts")  return inVolts_;
     if (id == "outscale") return outScalePa_;
     if (id == "ownpa")    return 1.0f;
-    if (id.size() == 4 && id.compare(0, 3, "geq") == 0) { const int b = id[3] - '0'; if (b >= 0 && b < 5) return geqDb_[b] / 24.0f + 0.5f; }
+    if (id.size() == 4 && id.compare(0, 3, "geq") == 0) { const int b = id[3] - '0'; if (b >= 0 && b < 5) return geqPos_[b]; }
     if (id == "eqpreset") return float(eqPreset_);
     if (id == "pa_idle_ma") return float(ch_[0].pa.outIdlemA());
     if (id == "pa_bias_v")  return float(ch_[0].pa.outBiasV());
