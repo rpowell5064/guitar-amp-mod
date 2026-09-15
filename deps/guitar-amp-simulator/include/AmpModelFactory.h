@@ -42,6 +42,7 @@ public:
         // component build (it carries its own power section, like the Sunn), so it
         // is listed in getAllModelNames but keeps an out-of-line ID.
         OrangeAD200B = 22,
+        MarshallPlexiComponent = 23,
     };
 
     static constexpr int kNumModels = 15;

@@ -114,7 +114,7 @@ A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory r
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 243 ;   # 243: AC30 Top Boost component build retraced to the 1994 reissue sheet (Brilliant-channel 470pF coupling, unbypassed inverter tail, cathode-follower grid conduction); nine AC30 presets re-levelled (rev 147).   # 242: Blue Liner component build — the mid-range network's output node (an 18 dB phantom sub-100 Hz shelf) and the un-padded input; the eight bass presets re-levelled (rev 146).
+    lv2:microVersion 244 ;   # 244: Plexiglass gains a component twin (Marshall 1987X Super Lead, DWG 1987-01-60-02 iss 4) behind the Component Model toggle; the toggle now shows on the Plexiglass panel
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;

@@ -31,9 +31,10 @@ enum class AmpModel {
     RockerverbComp,         // component-exact Orange Rockerverb 50 (Lab toggle)
     VoxComp,                // component-exact Vox AC30 Top Boost (Lab toggle)
     SvtComp,                // component-exact Ampeg SVT (Lab toggle)
-    OrangeAD200B            // Citrus 200 — the suite's second BASS amp (Orange AD200B
+    OrangeAD200B,           // Citrus 200 — the suite's second BASS amp (Orange AD200B
                             // Mark III, 4x 6550): a schematic-exact build with its own
                             // power section, so it is a normal amp, not a Lab toggle
+    PlexiComp               // component-exact Marshall 1987X Super Lead (Lab toggle)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

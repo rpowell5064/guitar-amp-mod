@@ -74,7 +74,7 @@ static const int   kCanonical[16] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8
 // Amps that have a schematic-exact component build. Keep in sync with the
 // c-amp-comp visibility rule in script-hexforge.js.
 static inline bool hasComponentModel(int ampModel) noexcept {
-    return ampModel == 1 || ampModel == 2 || ampModel == 4 || ampModel == 6 || ampModel == 8 || ampModel == 11 || ampModel == 12 || ampModel == 14;
+    return ampModel == 1 || ampModel == 2 || ampModel == 4 || ampModel == 6 || ampModel == 8 || ampModel == 10 || ampModel == 11 || ampModel == 12 || ampModel == 14;
 }
 static inline AmpModel componentAmpFor(int ampModel) noexcept {
     switch (ampModel) {
@@ -86,6 +86,7 @@ static inline AmpModel componentAmpFor(int ampModel) noexcept {
         case 4:  return AmpModel::RockerverbComp;
         case 8:  return AmpModel::VoxComp;
         case 14: return AmpModel::SvtComp;
+        case 10: return AmpModel::PlexiComp;
         default: return AmpModel::EVH5150Comp;
     }
 }
@@ -156,7 +157,11 @@ static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
 // the Normal channel's 47N, an unbypassed inverter tail, and a cathode follower that
 // no longer idles 1.4 V off its bias — which left it 0.49 dB quieter at this layer's
 // reference point (comp_ref_level, before/after).
-static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.89f, 0.0f, 0.0f, -2.92f, 0.47f, 0.0f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
+// [10] Plexiglass -> the Marshall 1987X component twin (2026-09-15): rendered on the
+// user DI against the shipped model through its shared power amp. The real LOUDNESS law
+// tracks the shipped gain law within 0.4 dB; the 1987X has no master, so the master axis
+// carries the shipped model's 5 dB master span.
+static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.89f, 0.0f, 5.18f, -2.92f, 0.47f, 0.0f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
 static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.57f, 0.80f, 0.46f, -0.00f, -0.32f, -0.59f, -0.82f },
@@ -168,7 +173,7 @@ static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -2.12f, -1.63f, -0.68f, -0.00f, 0.50f, 0.89f, 1.17f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -0.42f, 0.36f, 0.30f, -0.00f, -0.09f, -0.06f, 0.04f },
     { -1.81f, -0.51f, 0.07f, -0.00f, -0.11f, -0.17f, -0.21f },
     { 0.31f, 0.84f, 0.64f, -0.00f, 0.11f, 0.26f, 0.39f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
@@ -186,7 +191,7 @@ static const float kCompMasterDb[16][4] = {
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -3.57f, -1.34f, -0.00f, 0.49f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
-    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { -4.29f, -1.67f, -0.00f, 0.65f },
     { 6.96f, 1.42f, -0.00f, -0.25f },
     { 14.10f, 2.86f, -0.00f, -0.02f },
     { 0.00f, 0.00f, 0.00f, 0.00f },

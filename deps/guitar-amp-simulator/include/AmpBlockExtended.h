@@ -82,6 +82,7 @@ public:
             case AmpModel::VoxComp:            fid = FID::VoxAC30Component;            break;
             case AmpModel::SvtComp:            fid = FID::AmpegSVTComponent;           break;
             case AmpModel::OrangeAD200B:       fid = FID::OrangeAD200B;                break;
+            case AmpModel::PlexiComp:          fid = FID::MarshallPlexiComponent;      break;
             default:                            isExtended = false;              break;
         }
 
