@@ -204,6 +204,16 @@ public:
     double biasVk() const noexcept { return VkBias_; }
     double biasIa() const noexcept { return IaBias_; }
 
+    // Move the operating point to one solved elsewhere (a supply change, e.g. a variac)
+    // WITHOUT a reset: the cathode-cap history, the previous cathode voltage and the Newton
+    // warm start shift by the bias change, so the AC state of the stage carries straight
+    // through. Unused by any model that does not call it (additive, 2026-09-15).
+    void retune(double Vcc, double IaBias, double VkBias, double VpBias) noexcept {
+        const double dVk = VkBias - VkBias_, dIa = IaBias - IaBias_;
+        p_.Vcc = Vcc; IaBias_ = IaBias; VkBias_ = VkBias; VpBias_ = VpBias;
+        Ihist_ += Geq_ * dVk; VkPrev_ += dVk; IaOp_ += dIa;
+    }
+
 private:
     // Iteration cap / convergence epsilon. 5 @ 1e-9 was measured (2026-09-09,
     // Pi CPU pass) to give a ladder IDENTICAL to 8 @ 1e-10 to 3 decimals and
@@ -317,6 +327,12 @@ public:
         reset();
     }
     void reset() noexcept { IaOp_ = IaBias_; VkPrev_ = VkBias_; }
+    // Same as CCStageV::retune: a new solved operating point with the state carried through.
+    void retune(double Vcc, double VgBias, double IaBias, double VkBias) noexcept {
+        const double dVk = VkBias - VkBias_, dIa = IaBias - IaBias_;
+        p_.Vcc = Vcc; p_.VgBias = VgBias; IaBias_ = IaBias; VkBias_ = VkBias;
+        VkPrev_ += dVk; IaOp_ += dIa;
+    }
 
     // vgIn: grid swing about VgBias. Returns cathode swing (V, non-inverting).
     double process(double vgIn) noexcept {

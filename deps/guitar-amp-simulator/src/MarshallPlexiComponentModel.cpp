@@ -17,6 +17,7 @@ namespace {
 inline double par(double a, double b) { return 1.0 / (1.0 / a + 1.0 / b); }
 
 constexpr double kVariacMaxS = 170.0 / 120.0;   // the Plexiglass variac span
+constexpr double kGlideSec   = 0.020;           // a thrown switch lands in 20 ms
 
 // ── Global NFB + presence ────────────────────────────────────────────────────
 // 47k from the 16 Ω tap into the tail foot. The foot reaches ground through the
@@ -108,65 +109,111 @@ PushPullPowerV::Params plexiPowerParams(double railPI, double railB, double rail
 }
 } // namespace
 
-double MarshallPlexiComponentModel::variacS() const noexcept {
-    return 1.0 + (kVariacMaxS - 1.0) * double(variac_);
-}
-
-// Rails. The sheet prints none, so they come from the drawn chain: HT (OT centre
-// tap and screens) → 20k/1W → the PI plates → 10k/1W → V2 → 10k/1W → V1. Each
-// dropping resistor carries every stage downstream of it, and each stage's current
-// comes from its own bias solve, so the solve iterates to a fixed point.
-void MarshallPlexiComponentModel::solveRails() noexcept {
-    const double s = variacS();
+// Rails at mains scale s. The sheet prints none, so they come from the drawn chain:
+// HT (OT centre tap and screens) → 20k/1W → the PI plates → 10k/1W → V2 → 10k/1W
+// → V1. Each dropping resistor carries every stage downstream of it, and each
+// stage's current comes from its own bias solve, so the solve iterates to a fixed
+// point. Build time only.
+void MarshallPlexiComponentModel::solveRailsAt(double s, RailSet& r) const noexcept {
     const double fsB = fs_ > 0.0 ? fs_ : 192000.0;
-    railB_      = supplyV_ * s;
-    railScreen_ = railB_ - screenDropV_ * s;
-    railPI_ = railScreen_ - 50.0;
-    railV2_ = railPI_ - 25.0;
-    railV1_ = railV2_ - 15.0;
+    r.B      = supplyV_ * s;
+    r.screen = r.B - screenDropV_ * s;
+    r.PI = r.screen - 50.0;
+    r.V2 = r.PI - 25.0;
+    r.V1 = r.V2 - 15.0;
+    r.iV1 = 0.0; r.iV2 = 0.0; r.iPI = 2e-3;
     for (int it = 0; it < 16; ++it) {
-        CCStageV tb;  tb.prepare(fsB, v1Params(railV1_, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));
-        CCStageV tn;  tn.prepare(fsB, v1Params(railV1_, 820.0, 250e-6, kKneeV, millerC(100e3)));
-        CCStageV t2;  t2.prepare(fsB, v2aParams(railV2_, kKneeV));
-        CFStageV tcf; tcf.prepare(fsB, { railV2_, 100e3, t2.biasVp(), par(100e3, kRp), kKneeV });
-        const double i1  = (std::max(0.0, railV1_ - tb.biasVp()) + std::max(0.0, railV1_ - tn.biasVp())) / 100e3;
-        const double i2a = std::max(0.0, railV2_ - t2.biasVp()) / 100e3;
+        CCStageV tb;  tb.prepare(fsB, v1Params(r.V1, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));
+        CCStageV tn;  tn.prepare(fsB, v1Params(r.V1, 820.0, 250e-6, kKneeV, millerC(100e3)));
+        CCStageV t2;  t2.prepare(fsB, v2aParams(r.V2, kKneeV));
+        CFStageV tcf; tcf.prepare(fsB, { r.V2, 100e3, t2.biasVp(), par(100e3, kRp), kKneeV });
+        const double i1  = (std::max(0.0, r.V1 - tb.biasVp()) + std::max(0.0, r.V1 - tn.biasVp())) / 100e3;
+        const double i2a = std::max(0.0, r.V2 - t2.biasVp()) / 100e3;
         const double icf = std::max(0.0, tcf.biasVk()) / 100e3;
         // PI: each half sees Vgk = −470·I_tail = −940·I_half, its cathode sits
         // ~15.47k·I_tail up; a CC proxy with Rk 940 on the lifted rail gives I_half.
-        const double lift = 15.47e3 * iPI_;
-        CCStageV tp; tp.prepare(fsB, { railPI_ - lift, 91e3, 940.0, 0.0, 0.0, 0.0, 0.0 });
-        const double ihalf = std::max(0.0, (railPI_ - lift) - tp.biasVp()) / 91e3;
-        iPI_ = 2.0 * ihalf;
-        iV1_ = i1;
-        iV2_ = i2a + icf;
-        railPI_ = railScreen_ - 20e3 * (iV1_ + iV2_ + iPI_);
-        railV2_ = railPI_ - 10e3 * (iV1_ + iV2_);
-        railV1_ = railV2_ - 10e3 * iV1_;
+        const double lift = 15.47e3 * r.iPI;
+        CCStageV tp; tp.prepare(fsB, { r.PI - lift, 91e3, 940.0, 0.0, 0.0, 0.0, 0.0 });
+        const double ihalf = std::max(0.0, (r.PI - lift) - tp.biasVp()) / 91e3;
+        r.iPI = 2.0 * ihalf;
+        r.iV1 = i1;
+        r.iV2 = i2a + icf;
+        r.PI = r.screen - 20e3 * (r.iV1 + r.iV2 + r.iPI);
+        r.V2 = r.PI - 10e3 * (r.iV1 + r.iV2);
+        r.V1 = r.V2 - 10e3 * r.iV1;
     }
 }
 
+// Each preamp stage's operating point on a rail set, from the stages' own bias solves.
+void MarshallPlexiComponentModel::snapshotStages(GlideEnd& e) const noexcept {
+    const double fsB = fs_ > 0.0 ? fs_ : 192000.0;
+    CCStageV tb; tb.prepare(fsB, v1Params(e.r.V1, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));
+    CCStageV tn; tn.prepare(fsB, v1Params(e.r.V1, 820.0, 250e-6,  kKneeV, millerC(100e3)));
+    CCStageV t2; t2.prepare(fsB, v2aParams(e.r.V2, kKneeV));
+    CFStageV tf; tf.prepare(fsB, { e.r.V2, 100e3, t2.biasVp(), par(100e3, kRp), kKneeV });
+    e.v1b = { e.r.V1, tb.biasIa(), tb.biasVk(), tb.biasVp() };
+    e.v1a = { e.r.V1, tn.biasIa(), tn.biasVk(), tn.biasVp() };
+    e.v2a = { e.r.V2, t2.biasIa(), t2.biasVk(), t2.biasVp() };
+    e.v2b = { e.r.V2, t2.biasVp(), tf.biasIa(), tf.biasVk() };
+}
+
+// Build both variac positions off the audio path. The live stages are prepared at the
+// stock position (A); the variac's top (B) is kept as operating points plus one output
+// table per channel, and the glide moves between the two.
 void MarshallPlexiComponentModel::buildStages() noexcept {
-    solveRails();
-    const double s = variacS();
-    const double idle = idleMa_ * 1e-3 * std::pow(s, 1.5);   // every electrode voltage ×s → I ×s^1.5
+    solveRailsAt(1.0, endA_.r);
+    solveRailsAt(kVariacMaxS, endB_.r);
+    snapshotStages(endA_);
+    snapshotStages(endB_);
+    const double idleA = idleMa_ * 1e-3;
+    const double idleB = idleA * std::pow(kVariacMaxS, 1.5);   // every electrode voltage ×s → I ×s^1.5
     const double Zp = par(100e3, kRp);
-    for (auto& c : ch_) {
-        c.v1b.prepare(fs_, v1Params(railV1_, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));   // bright
-        c.v1a.prepare(fs_, v1Params(railV1_, 820.0, 250e-6,  kKneeV, millerC(100e3)));   // normal
-        c.v2a.prepare(fs_, v2aParams(railV2_, kKneeV));
-        c.v2b.prepare(fs_, { railV2_, 100e3, c.v2a.biasVp(), Zp, kKneeV });
+    const RailSet& ra = endA_.r;
+    const RailSet& rb = endB_.r;
+    for (int ci = 0; ci < kMaxCh; ++ci) {
+        auto& c = ch_[size_t(ci)];
+        c.v1b.prepare(fs_, v1Params(ra.V1, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));   // bright
+        c.v1a.prepare(fs_, v1Params(ra.V1, 820.0, 250e-6,  kKneeV, millerC(100e3)));   // normal
+        c.v2a.prepare(fs_, v2aParams(ra.V2, kKneeV));
+        c.v2b.prepare(fs_, { ra.V2, 100e3, c.v2a.biasVp(), Zp, kKneeV });
         {
             YehSmithToneStack::CircuitParams tp = { 500e-12, 22e-9, 22e-9, 250e3, 1e6, 25e3, 33e3 };
             tp.R4 += kZthStack;
             c.ts.prepare(fs_, tp);
         }
         c.coupPI.prepare(fs_, 22e-9, kZthStack + 33e3, 1e6);   // .022 into the 1M grid leak
-        c.pa.prepare(fs_, plexiPowerParams(railPI_, railB_, railScreen_, idle, raa_,
-                                           double(presence_)));
+        c.pa.prepare(fs_, plexiPowerParams(rb.PI, rb.B, rb.screen, idleB, raa_, double(presence_)));
+        if (ci == 0) endB_.pa = c.pa.opPoint();
+        c.pa.copyLut(c.lutB);
+        c.pa.prepare(fs_, plexiPowerParams(ra.PI, ra.B, ra.screen, idleA, raa_, double(presence_)));
+        if (ci == 0) endA_.pa = c.pa.opPoint();
         c.pa.setPresence(presence_);   // inert (presDepth 0): presence is the NFB split
         c.pa.setSagDepth(sag_);
     }
+    glideStep_ = 1.0 / (kGlideSec * fs_);
+    railB_ = ra.B; railScreen_ = ra.screen; railPI_ = ra.PI; railV2_ = ra.V2; railV1_ = ra.V1;
+    iV1_ = ra.iV1; iV2_ = ra.iV2; iPI_ = ra.iPI;
+    if (glideG_ > 0.0) applyGlide();
+}
+
+// Put every stage at glide position g between the two solved positions. Operating
+// points only: no solve, no reset, so it is cheap enough to run per sample while the
+// switch is moving, and the signal carries straight through.
+void MarshallPlexiComponentModel::applyGlide() noexcept {
+    const double g = glideG_;
+    auto L = [g](double a, double b) { return a + g * (b - a); };
+    const GlideEnd& A = endA_;
+    const GlideEnd& B = endB_;
+    for (auto& c : ch_) {
+        c.v1b.retune(L(A.v1b.Vcc, B.v1b.Vcc), L(A.v1b.Ia, B.v1b.Ia), L(A.v1b.Vk, B.v1b.Vk), L(A.v1b.Vp, B.v1b.Vp));
+        c.v1a.retune(L(A.v1a.Vcc, B.v1a.Vcc), L(A.v1a.Ia, B.v1a.Ia), L(A.v1a.Vk, B.v1a.Vk), L(A.v1a.Vp, B.v1a.Vp));
+        c.v2a.retune(L(A.v2a.Vcc, B.v2a.Vcc), L(A.v2a.Ia, B.v2a.Ia), L(A.v2a.Vk, B.v2a.Vk), L(A.v2a.Vp, B.v2a.Vp));
+        c.v2b.retune(L(A.v2b.Vcc, B.v2b.Vcc), L(A.v2b.VgBias, B.v2b.VgBias), L(A.v2b.Ia, B.v2b.Ia), L(A.v2b.Vk, B.v2b.Vk));
+        c.pa.setGlide(A.pa, B.pa, c.lutB, g);
+    }
+    railB_ = L(A.r.B, B.r.B); railScreen_ = L(A.r.screen, B.r.screen); railPI_ = L(A.r.PI, B.r.PI);
+    railV2_ = L(A.r.V2, B.r.V2); railV1_ = L(A.r.V1, B.r.V1);
+    iV1_ = L(A.r.iV1, B.r.iV1); iV2_ = L(A.r.iV2, B.r.iV2); iPI_ = L(A.r.iPI, B.r.iPI);
 }
 
 // The LOUDNESS pots and the 470k mixers, as drawn. Both V1 plates drive the same
@@ -231,6 +278,7 @@ void MarshallPlexiComponentModel::rebuildAll() noexcept {
 
 void MarshallPlexiComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*/) noexcept {
     fs_ = oversampledSampleRate;
+    glideG_ = glideTarget_;          // a fresh build sits where the switch already is
     rebuildAll();
     reset();
 }
@@ -242,14 +290,21 @@ void MarshallPlexiComponentModel::reset() noexcept {
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
+    processed_ = false;
 }
 
-void MarshallPlexiComponentModel::advanceSmoothing() noexcept {}
+void MarshallPlexiComponentModel::advanceSmoothing() noexcept {
+    if (glideG_ == glideTarget_) return;
+    glideG_ = glideG_ < glideTarget_ ? std::min(glideTarget_, glideG_ + glideStep_)
+                                     : std::max(glideTarget_, glideG_ - glideStep_);
+    applyGlide();
+}
 
 float MarshallPlexiComponentModel::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
     auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; };
     c.tapN++;
+    processed_ = true;
 
     // Jack → the 34k feed against the 1M grid leak.
     const double v = double(x) * inVolts_ * (1e6 / (34e3 + 1e6));
@@ -283,8 +338,15 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "variac")   {
+        // The switch only moves the glide target; advanceSmoothing() walks there.
+        // Before any audio has run (a preset recall, a fresh build) it lands directly.
         const float v = std::clamp(value, 0.0f, 1.0f);
-        if (v != variac_) { variac_ = v; rebuildAll(); }
+        variac_ = v;
+        glideTarget_ = double(v);
+        if (!processed_ && glideG_ != glideTarget_) {
+            glideG_ = glideTarget_;
+            if (fs_ > 0.0) applyGlide();
+        }
     }
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
@@ -308,6 +370,7 @@ float MarshallPlexiComponentModel::getParameter(const std::string& id) const noe
     if (id == "presence")  return presence_;
     if (id == "sag")       return sag_;
     if (id == "variac")    return variac_;
+    if (id == "variac_glide") return float(glideG_);
     if (id == "involts")   return inVolts_;
     if (id == "outscale")  return outScalePa_;
     if (id == "ownpa")     return 1.0f;

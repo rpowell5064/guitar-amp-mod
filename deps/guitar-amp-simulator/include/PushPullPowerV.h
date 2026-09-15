@@ -131,6 +131,7 @@ public:
 
     void prepare(double fs, const Params& p) noexcept {
         fs_ = fs; p_ = p;
+        lutB_ = nullptr; lutBlend_ = 0.0;   // a fresh prepare starts off any supply glide
         c118HP_.setCoeffs(Filters::highpass1pole(
             1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
         c119HP_.setCoeffs(Filters::highpass1pole(
@@ -220,6 +221,36 @@ public:
     // lastSpk(). process() above is unchanged: same operations, same order.
     double processDriven(double gA, double gB) noexcept { return driveOutput(gA, gB) * p_.outTrim; }
     double lastSpk() const noexcept { return nfbPrev_; }
+
+    // -- Supply glide (2026-09-15, Plexiglass variac) ------------------------------
+    // Two solved operating points of the SAME circuit at different supply voltages.
+    // A model prepare()s at point B, captures opPoint() and copyLut(), prepare()s at point A,
+    // then calls setGlide(a, b, lutB, g) to sit anywhere between them WITHOUT a reset: the
+    // scalar bias and supply values are interpolated, the output-valve table is blended with
+    // the second one, and every dynamic state (valve currents, bias-network charge, sag
+    // envelopes, filters) carries straight through. Never called = the original behaviour.
+    struct OpPoint {
+        double ltpVcc, ltpTailV, ltpIaBiasA, ltpIBiasTot, ltpVpBiasA, ltpVpBiasB;
+        double vb, vg2, idleTarget, vBias, outIdle, cathIdle, scrIdle;
+    };
+    static constexpr int kLutCapacity = 4096;
+    OpPoint opPoint() const noexcept {
+        return { p_.ltpVcc, ltpTailV_, ltpIaBiasA_, ltpIBiasTot_, ltpVpBiasA_, ltpVpBiasB_,
+                 p_.vb, p_.vg2, p_.idleTarget, vBias_, outIdle_, cathIdle_, scrIdle_ };
+    }
+    int copyLut(double* dst) const noexcept { for (int i = 0; i < lutN_; ++i) dst[i] = lut_[i]; return lutN_; }
+    void setGlide(const OpPoint& a, const OpPoint& b, const double* lutB, double g) noexcept {
+        auto L = [g](double x, double y) { return x + g * (y - x); };
+        p_.ltpVcc   = L(a.ltpVcc, b.ltpVcc);         ltpTailV_   = L(a.ltpTailV, b.ltpTailV);
+        ltpIaBiasA_ = L(a.ltpIaBiasA, b.ltpIaBiasA); ltpIBiasTot_ = L(a.ltpIBiasTot, b.ltpIBiasTot);
+        ltpVpBiasA_ = L(a.ltpVpBiasA, b.ltpVpBiasA); ltpVpBiasB_ = L(a.ltpVpBiasB, b.ltpVpBiasB);
+        p_.vb = L(a.vb, b.vb); p_.vg2 = L(a.vg2, b.vg2); p_.idleTarget = L(a.idleTarget, b.idleTarget);
+        vBias_ = L(a.vBias, b.vBias); outIdle_ = L(a.outIdle, b.outIdle);
+        const double ci = L(a.cathIdle, b.cathIdle), si = L(a.scrIdle, b.scrIdle);
+        cathAvg_ += ci - cathIdle_; cathIdle_ = ci;
+        scrEnv_  += si - scrIdle_;  scrIdle_  = si;
+        lutB_ = lutB; lutBlend_ = (lutB != nullptr) ? g : 0.0;
+    }
 
 private:
     double driveOutput(double gA, double gB) noexcept {
@@ -380,7 +411,10 @@ private:
         const double x = std::clamp((vg - lutMin_) * lutScale_, 0.0, double(lutN_ - 1) - 1e-6);
         const int i = int(x);
         const double fr = x - i;
-        return lut_[i] * (1.0 - fr) + lut_[i + 1] * fr;
+        const double va = lut_[i] * (1.0 - fr) + lut_[i + 1] * fr;
+        if (lutBlend_ <= 0.0) return va;                         // no glide: the original lookup
+        const double vbT = lutB_[i] * (1.0 - fr) + lutB_[i + 1] * fr;
+        return lutBlend_ >= 1.0 ? vbT : va + lutBlend_ * (vbT - va);
     }
 
     double gridClamp(double vg) const noexcept {
@@ -417,6 +451,9 @@ private:
     // 512 KB an instance and overflowed the stack outright (2026-09-14). 4096 is
     // 32 KB, leaves headroom for a resolution A/B, and stays cache-friendly.
     static constexpr int kLutN = 4096;
+    static_assert(kLutCapacity == kLutN, "kLutCapacity must match the table capacity");
+    const double* lutB_ = nullptr;   // supply glide: the second table (model-owned)
+    double lutBlend_ = 0.0;          // 0 = the original lookup
     double lutMin_ = -80.0, lutMax_ = 80.0;
     double lut_[kLutN] = {};
     int    lutN_ = 1024;

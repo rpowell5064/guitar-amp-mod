@@ -42,7 +42,11 @@
 // Knob map: gain = LOUDNESS I, vol2 = LOUDNESS II, bass / mid / treble = the stack,
 // presence = the 5k pot. The 1959 has no master volume, so master is inert here.
 // variac scales the mains (the Plexiglass span, 120 → 170 V): every rail and the
-// bias supply move with it, so idle current follows the three-halves law.
+// bias supply move with it, so idle current follows the three-halves law. Both
+// switch positions are solved when the model is built; throwing the switch while
+// playing glides between them over 20 ms with every valve's state carried through
+// (nothing is re-solved or reset on the audio path). Set before any audio has
+// been processed, it lands on the new position directly.
 // Knobs are REAL pot rotations.
 // ─────────────────────────────────────────────────────────────────────────────
 class MarshallPlexiComponentModel final : public AmpModelBase {
@@ -74,7 +78,23 @@ private:
     double idleMa_     = 35.0;      // per-EL34 idle at stock mains (fit5)
     double raa_        = 3400.0;    // output transformer primary (fit6)
 
-    // Solved at build time from the dropping chain.
+    // ── The two variac positions, solved at build time ───────────────────────
+    struct RailSet { double B, screen, PI, V2, V1, iV1, iV2, iPI; };
+    struct CCBias  { double Vcc, Ia, Vk, Vp; };
+    struct CFBias  { double Vcc, VgBias, Ia, Vk; };
+    struct GlideEnd {
+        RailSet r{};
+        CCBias v1b{}, v1a{}, v2a{};
+        CFBias v2b{};
+        evhcomp::PushPullPowerV::OpPoint pa{};
+    };
+    GlideEnd endA_{}, endB_{};             // A = stock mains, B = the variac's top
+    double glideG_ = 0.0;                  // 0 = A, 1 = B
+    double glideTarget_ = 0.0;
+    double glideStep_ = 0.0;               // per oversampled sample (20 ms end to end)
+    bool   processed_ = false;             // any audio since prepare / reset
+
+    // Live values for the lab read-outs (follow the glide).
     double railB_ = 470.0, railScreen_ = 470.0, railPI_ = 400.0, railV2_ = 370.0, railV1_ = 350.0;
     double iV1_ = 0.0, iV2_ = 0.0, iPI_ = 2e-3;
     double mixR1_ = -1.0, mixR2_ = -1.0;
@@ -90,6 +110,7 @@ private:
         YehSmithToneStack   ts;
         evhcomp::RCDividerV coupPI;     // .022 into the PI's 1M grid leak
         evhcomp::PushPullPowerV pa;
+        double lutB[evhcomp::PushPullPowerV::kLutCapacity] = {};   // output table at the variac's top
 
         static constexpr int kNTaps = 7;
         double tapAcc[kNTaps] = {};
@@ -97,9 +118,10 @@ private:
     };
     std::array<ChState, kMaxCh> ch_;
 
-    double variacS() const noexcept;
-    void   solveRails() noexcept;
+    void   solveRailsAt(double s, RailSet& r) const noexcept;
+    void   snapshotStages(GlideEnd& e) const noexcept;
     void   buildStages() noexcept;
+    void   applyGlide() noexcept;
     void   buildMix(evhcomp::LinNetV& n, bool brightDriven, double r1, double r2) const noexcept;
     void   recalcMix(bool force) noexcept;
     void   recalcTone() noexcept;
