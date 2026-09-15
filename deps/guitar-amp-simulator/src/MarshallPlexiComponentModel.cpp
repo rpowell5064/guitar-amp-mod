@@ -8,7 +8,7 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// Component values are direct reads of DWG 1987-01-60-02 issue 4 (see the header).
+// Component values are direct reads of drawing 70-6-11 rev B (see the header).
 // ESTIMATE marks what that sheet does not print, each with its basis.
 
 using namespace evhcomp;
@@ -19,17 +19,17 @@ inline double par(double a, double b) { return 1.0 / (1.0 / a + 1.0 / b); }
 constexpr double kVariacMaxS = 170.0 / 120.0;   // the Plexiglass variac span
 
 // ── Global NFB + presence ────────────────────────────────────────────────────
-// R21 100k from the 16 Ω terminal into the tail foot. The foot reaches ground
-// through VR8 5k B; C12 100n runs from the foot to the wiper. r is the part of
-// VR8 between wiper and ground: at HF C12 shorts the upper part, so the leg
-// shrinks to r·5k and the loop feeds back less treble as r falls.
+// 47k from the 16 Ω tap into the tail foot. The foot reaches ground through the
+// 5k PRESENCE pot, whose wiper carries a .1µ to ground. r is the part of the pot
+// between wiper and ground: the cap shorts that part at HF, so the leg shrinks to
+// (1−r)·5k and the loop feeds back less treble as r rises.
 double plexiNfbMag(double f, double r) {
     using C = std::complex<double>;
     const C jw(0.0, 2.0 * M_PI * f);
-    const C zc = C(1.0) / (jw * 100e-9);
+    const C zc = C(1.0) / (jw * 0.1e-6);
     const double up = (1.0 - r) * 5e3, lo = r * 5e3;
-    const C leg = C(lo) + (up > 0.0 ? C(up) * zc / (C(up) + zc) : C(0.0));
-    return std::abs(leg / (C(100e3) + leg));
+    const C leg = C(up) + (lo > 0.0 ? C(lo) * zc / (C(lo) + zc) : C(0.0));
+    return std::abs(leg / (C(47e3) + leg));
 }
 void plexiNfbSplit(double r, double& lo, double& hi, double& hz) {
     lo = plexiNfbMag(30.0, r);
@@ -43,15 +43,15 @@ void plexiNfbSplit(double r, double& lo, double& hi, double& hz) {
     hz = std::exp(0.5 * (a + b));
 }
 
-CCStageV::Params v1Params(double rail, double ck, double knee, double miller) {
-    // R7 / R8 100k, R1 / R2 820, 34k grid feed (the jumpered 68k pair), +10k pickup
-    // (ESTIMATE) in the conduction source.
-    return { rail, 100e3, 820.0, ck, 34e3, miller, 44e3, 0.0, 0.0, 0.0, knee };
+CCStageV::Params v1Params(double rail, double rk, double ck, double knee, double miller) {
+    // 100k plate, the jumpered 68k pair (34k) at the grid, +10k pickup (ESTIMATE) in
+    // the conduction source.
+    return { rail, 100e3, rk, ck, 34e3, miller, 44e3, 0.0, 0.0, 0.0, knee };
 }
 CCStageV::Params v2aParams(double rail, double knee) {
-    // 100k plate, R11 820 unbypassed; the mix node's Thevenin R is ~300k at mid
+    // 100k plate, 820 ‖ .68µ cathode; the mix node's Thevenin R is ~300k at mid
     // rotation (both 470k mixers into their wipers) — ESTIMATE-class, fixed.
-    return { rail, 100e3, 820.0, 0.0, 0.0, 0.0, 300e3, 0.0, 0.0, 0.0, knee };
+    return { rail, 100e3, 820.0, 0.68e-6, 0.0, 0.0, 300e3, 0.0, 0.0, 0.0, knee };
 }
 
 PushPullPowerV::Params plexiPowerParams(double railPI, double railB, double railScreen,
@@ -59,35 +59,35 @@ PushPullPowerV::Params plexiPowerParams(double railPI, double railB, double rail
     PushPullPowerV::Params p;
     // ── V3 ECC83 long-tail pair ─────────────────────────────────────────────
     p.ltpVcc   = railPI;           // solved from the dropping chain
-    p.ltpRaA   = 82e3;             // R22
-    p.ltpRaB   = 100e3;            // R25
-    p.ltpRk    = 470.0;            // R17
-    p.ltpRtail = 10e3 + 5e3;       // R20 + the VR8 leg to ground
+    p.ltpRaA   = 82e3;
+    p.ltpRaB   = 100e3;
+    p.ltpRk    = 470.0;
+    p.ltpRtail = 10e3 + 5e3;       // 10k tail + the presence leg to ground
     p.ltpTailV = -1.0;             // no test point: self-solved
-    p.piInDiv  = 1.0;              // C11 / R16 modelled by the caller
-    p.piPlateCap = 47e-12;         // C15
+    p.piInDiv  = 1.0;              // the .022 / 1M input is modelled by the caller
+    p.piPlateCap = 47e-12;
 
-    // ── 2× EL34 ─────────────────────────────────────────────────────────────
-    p.vb  = railB;                 // OT centre tap, before the choke
-    p.vg2 = railScreen;            // screens, after the choke
+    // ── 4× EL34 ─────────────────────────────────────────────────────────────
+    p.vb  = railB;                 // OT centre tap
+    p.vg2 = railScreen;            // screens off the same HT node (no choke)
     p.mu = 11.0; p.ex = 1.35; p.kg1 = 650.0; p.kp = 60.0; p.kvb = 24.0;   // Koren EL34 (JCM800 set)
     p.iaScale    = 2.2;
     p.idleTarget = idleA;          // ESTIMATE: the sheet gives a bias trimmer, not a current
-    p.tubesPerSide = 1.0;
-    p.raa        = raa;            // ESTIMATE: D2507 is unlabelled
+    p.tubesPerSide = 2.0;
+    p.raa        = raa;            // ESTIMATE: no transformer data (the JCM800 build's 100 W value)
     p.otRatio    = std::sqrt(raa / 16.0);
-    p.gridFeedR  = 1.5e3;          // R34 / R35
+    p.gridFeedR  = 5.6e3;          // the 5.6k stoppers
     p.gridKneeV  = 0.15;
-    p.biasFeedR  = 220e3;          // R23 / R24
-    p.biasCap    = 10e-6;          // C17
-    p.biasRecovR = 56e3;           // R28 into the VR1 trimmer
+    p.biasFeedR  = 220e3;          // bias feeds
+    p.biasCap    = 8e-6;           // the second 8µ
+    p.biasRecovR = 47e3;           // 47k into the 27k bias trimmer
     p.lutSpan    = 60.0;
 
     // ── NFB: the presence network is a frequency-dependent leg, so it lives in the
     //    LF/HF split; the PA's own shunt-presence mechanism is disabled.
     double lo, hi, hz;
     plexiNfbSplit(presR, lo, hi, hz);
-    p.nfbTap   = 1.0;              // R21 reads the 16 Ω terminal
+    p.nfbTap   = 1.0;              // the loop reads the 16 Ω tap
     p.nfbDiv   = hi;
     p.nfbLoDiv = lo;
     p.nfbLoHz  = hz;
@@ -96,12 +96,12 @@ PushPullPowerV::Params plexiPowerParams(double railPI, double railB, double rail
     p.presDepth = 0.0;
     p.resoCap  = 0.0;
 
-    // ── OT + speaker (ESTIMATE class, the JCM800 build's starting point) ─────
+    // ── OT + speaker (ESTIMATE class, the JCM800 build's 100 W values) ───────
     p.otLfHz = 30.0;  p.otHfHz = 22e3;
     p.zResHz = 110.0; p.zResDb = 11.0; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = 8.0;
     p.fluxHz = 120.0; p.fluxLim = 5.0;
-    p.screenR = 1e3;               // R36 / R37
+    p.screenR = 1e3;               // the 1k screen resistors
     p.screenAttS = 0.010; p.screenRelS = 0.200;
     p.outTrim = 1.0;
     return p;
@@ -112,24 +112,24 @@ double MarshallPlexiComponentModel::variacS() const noexcept {
     return 1.0 + (kVariacMaxS - 1.0) * double(variac_);
 }
 
-// Rails. The sheet prints none, so they come from the drawn chain: HT at the OT
-// centre tap (C20) → TX3 choke → C21 (the screens) → R27 10k → R26 10k → the PI
-// plates → R15 10k → V2 → R14 10k → V1 (C25). Each dropping resistor carries every
-// stage downstream of it, and each stage's current comes from its own bias solve,
-// so the solve iterates to a fixed point.
+// Rails. The sheet prints none, so they come from the drawn chain: HT (OT centre
+// tap and screens) → 20k/1W → the PI plates → 10k/1W → V2 → 10k/1W → V1. Each
+// dropping resistor carries every stage downstream of it, and each stage's current
+// comes from its own bias solve, so the solve iterates to a fixed point.
 void MarshallPlexiComponentModel::solveRails() noexcept {
     const double s = variacS();
     const double fsB = fs_ > 0.0 ? fs_ : 192000.0;
     railB_      = supplyV_ * s;
-    railScreen_ = railB_ - chokeDropV_ * s;
+    railScreen_ = railB_ - screenDropV_ * s;
     railPI_ = railScreen_ - 50.0;
     railV2_ = railPI_ - 25.0;
     railV1_ = railV2_ - 15.0;
     for (int it = 0; it < 16; ++it) {
-        CCStageV t1;  t1.prepare(fsB, v1Params(railV1_, 0.68e-6, kKneeV, millerC(100e3)));
+        CCStageV tb;  tb.prepare(fsB, v1Params(railV1_, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));
+        CCStageV tn;  tn.prepare(fsB, v1Params(railV1_, 820.0, 250e-6, kKneeV, millerC(100e3)));
         CCStageV t2;  t2.prepare(fsB, v2aParams(railV2_, kKneeV));
         CFStageV tcf; tcf.prepare(fsB, { railV2_, 100e3, t2.biasVp(), par(100e3, kRp), kKneeV });
-        const double i1  = 2.0 * std::max(0.0, railV1_ - t1.biasVp()) / 100e3;   // both V1 halves
+        const double i1  = (std::max(0.0, railV1_ - tb.biasVp()) + std::max(0.0, railV1_ - tn.biasVp())) / 100e3;
         const double i2a = std::max(0.0, railV2_ - t2.biasVp()) / 100e3;
         const double icf = std::max(0.0, tcf.biasVk()) / 100e3;
         // PI: each half sees Vgk = −470·I_tail = −940·I_half, its cathode sits
@@ -152,18 +152,18 @@ void MarshallPlexiComponentModel::buildStages() noexcept {
     const double idle = idleMa_ * 1e-3 * std::pow(s, 1.5);   // every electrode voltage ×s → I ×s^1.5
     const double Zp = par(100e3, kRp);
     for (auto& c : ch_) {
-        c.v1b.prepare(fs_, v1Params(railV1_, 0.68e-6, kKneeV, millerC(100e3)));   // C1 680n (bright)
-        c.v1a.prepare(fs_, v1Params(railV1_, 330e-6,  kKneeV, millerC(100e3)));   // C2 330µ (normal)
+        c.v1b.prepare(fs_, v1Params(railV1_, 2.7e3, 0.68e-6, kKneeV, millerC(100e3)));   // bright
+        c.v1a.prepare(fs_, v1Params(railV1_, 820.0, 250e-6,  kKneeV, millerC(100e3)));   // normal
         c.v2a.prepare(fs_, v2aParams(railV2_, kKneeV));
         c.v2b.prepare(fs_, { railV2_, 100e3, c.v2a.biasVp(), Zp, kKneeV });
         {
-            YehSmithToneStack::CircuitParams tp = { 470e-12, 22e-9, 22e-9, 250e3, 1e6, 25e3, 33e3 };
+            YehSmithToneStack::CircuitParams tp = { 500e-12, 22e-9, 22e-9, 250e3, 1e6, 25e3, 33e3 };
             tp.R4 += kZthStack;
             c.ts.prepare(fs_, tp);
         }
-        c.coup11.prepare(fs_, 22e-9, kZthStack + 33e3, 1e6);   // C11 into R16 1M
+        c.coupPI.prepare(fs_, 22e-9, kZthStack + 33e3, 1e6);   // .022 into the 1M grid leak
         c.pa.prepare(fs_, plexiPowerParams(railPI_, railB_, railScreen_, idle, raa_,
-                                           1.0 - double(presence_)));
+                                           double(presence_)));
         c.pa.setPresence(presence_);   // inert (presDepth 0): presence is the NFB split
         c.pa.setSagDepth(sag_);
     }
@@ -174,32 +174,32 @@ void MarshallPlexiComponentModel::buildStages() noexcept {
 // live and the normal plate at AC ground through its own output impedance, once
 // the other way, and the two outputs add. Pot rotation rebuilds it; LinNetV keeps
 // its state across a rebuild.
-//   1 source · 2 V1 pin-6 plate · 3 VR4 top · 4 VR4 wiper · 5 V2 grid (mix)
-//   6 VR3 wiper · 7 VR3 top · 8 V1 pin-1 plate
+//   1 source · 2 bright plate · 3 LOUDNESS I top · 4 LOUDNESS I wiper · 5 V2 grid (mix)
+//   6 LOUDNESS II wiper · 7 LOUDNESS II top · 8 normal plate
 void MarshallPlexiComponentModel::buildMix(LinNetV& n, bool brightDriven, double r1, double r2) const noexcept {
     const double Zp = par(100e3, kRp);
     n.clear();
     if (brightDriven) { n.addR(1, 2, Zp); n.addR(8, 0, Zp); }
     else              { n.addR(2, 0, Zp); n.addR(1, 8, Zp); }
-    n.addC(2, 3, 22e-9);                                      // C4
-    n.addR(3, 4, (1.0 - r1) * 1e6 + 1.0);                     // VR4 above the wiper
-    n.addC(3, 4, 4.7e-9);                                     // C5 bright cap
-    n.addR(4, 0, r1 * 1e6 + 1.0);                             // VR4 below the wiper
-    n.addR(4, 5, 470e3);                                      // R9
-    n.addC(4, 5, 470e-12);                                    // C6
+    n.addC(2, 3, 2.2e-9);                                     // .0022 bright coupling
+    n.addR(3, 4, (1.0 - r1) * 1e6 + 1.0);                     // LOUDNESS I above the wiper
+    n.addC(3, 4, 5e-9);                                       // .005 bright cap
+    n.addR(4, 0, r1 * 1e6 + 1.0);                             // LOUDNESS I below the wiper
+    n.addR(4, 5, 470e3);                                      // bright mixer
+    n.addC(4, 5, 500e-12);                                    // 500p across it
     n.addC(5, 0, millerC(100e3));                             // V2 grid, Miller
-    n.addR(5, 6, 470e3);                                      // R10
-    n.addR(6, 0, r2 * 1e6 + 1.0);                             // VR3 below the wiper
-    n.addR(6, 7, (1.0 - r2) * 1e6 + 1.0);                     // VR3 above the wiper
-    n.addC(7, 8, 22e-9);                                      // C3
+    n.addR(5, 6, 470e3);                                      // normal mixer
+    n.addR(6, 0, r2 * 1e6 + 1.0);                             // LOUDNESS II below the wiper
+    n.addR(6, 7, (1.0 - r2) * 1e6 + 1.0);                     // LOUDNESS II above the wiper
+    n.addC(7, 8, 22e-9);                                      // .022 normal coupling
     n.setOutput(5);
     n.prepare(fs_);
 }
 
 void MarshallPlexiComponentModel::recalcMix(bool force) noexcept {
     if (fs_ <= 0.0) return;
-    const double r1 = audioTaper(gain_, loudMid_);   // VR4 LOUDNESS 1, 1M log
-    const double r2 = audioTaper(vol2_, loudMid_);   // VR3 LOUDNESS 2, 1M log
+    const double r1 = audioTaper(gain_, loudMid_);   // LOUDNESS I, 1M
+    const double r2 = audioTaper(vol2_, loudMid_);   // LOUDNESS II, 1M
     if (!force && r1 == mixR1_ && r2 == mixR2_) return;
     mixR1_ = r1; mixR2_ = r2;
     for (auto& c : ch_) {
@@ -210,14 +210,14 @@ void MarshallPlexiComponentModel::recalcMix(bool force) noexcept {
 
 void MarshallPlexiComponentModel::recalcTone() noexcept {
     for (auto& c : ch_) {
-        c.ts.setTreble(treble_);                     // VR5 250k B
-        c.ts.setMid(mid_);                           // VR6 25k B
-        c.ts.setBass(audioTaper(bass_, 0.15f));      // VR7 1M A
+        c.ts.setTreble(treble_);                     // 250k
+        c.ts.setMid(mid_);                           // 25k
+        c.ts.setBass(audioTaper(bass_, 0.15f));      // 1M
     }
 }
 
 void MarshallPlexiComponentModel::recalcPresence() noexcept {
-    plexiNfbSplit(1.0 - double(presence_), nfbLo_, nfbHi_, nfbHz_);   // VR8 5k B
+    plexiNfbSplit(double(presence_), nfbLo_, nfbHi_, nfbHz_);   // 5k presence
     for (auto& c : ch_) c.pa.setNfbSplit(nfbLo_, nfbHi_, nfbHz_);
 }
 
@@ -238,7 +238,7 @@ void MarshallPlexiComponentModel::prepare(double oversampledSampleRate, int /*ma
 void MarshallPlexiComponentModel::reset() noexcept {
     for (auto& c : ch_) {
         c.v1b.reset(); c.v1a.reset(); c.mixB.reset(); c.mixA.reset();
-        c.v2a.reset(); c.v2b.reset(); c.ts.reset(); c.coup11.reset(); c.pa.reset();
+        c.v2a.reset(); c.v2b.reset(); c.ts.reset(); c.coupPI.reset(); c.pa.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -251,21 +251,21 @@ float MarshallPlexiComponentModel::processSample(float x, int channel) noexcept 
     auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; };
     c.tapN++;
 
-    // Jack → the 34k feed against R45 / R46 1M.
+    // Jack → the 34k feed against the 1M grid leak.
     const double v = double(x) * inVolts_ * (1e6 / (34e3 + 1e6));
     const double pb = c.v1b.process(v);                        // bright half
     const double pn = c.v1a.process(v);                        // normal half
     tap(0, pb); tap(1, pn);
-    double s = c.mixB.process(pb) + c.mixA.process(pn);        // LOUDNESS 1 / 2 + mixers
+    double s = c.mixB.process(pb) + c.mixA.process(pn);        // LOUDNESS I / II + mixers
     tap(2, s);
     s = c.v2a.process(s);
     tap(3, s);
     s = c.v2b.process(s);                                      // cathode follower
     tap(4, s);
-    s = c.ts.process(float(s));                                // TMB stack (loop card out)
+    s = c.ts.process(float(s));                                // TMB stack
     tap(5, s);
-    s = c.coup11.process(float(s));
-    s = c.pa.process(s);                                       // LTP + 2× EL34 + NFB + OT
+    s = c.coupPI.process(float(s));
+    s = c.pa.process(s);                                       // LTP + 4× EL34 + NFB + OT
     tap(6, s);
     return float(s * outScalePa_);
 }
@@ -273,7 +273,7 @@ float MarshallPlexiComponentModel::processSample(float x, int channel) noexcept 
 void MarshallPlexiComponentModel::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { if (value != gain_)   { gain_ = value;   recalcMix(false); } }
     else if (id == "vol2")     { if (value != vol2_)   { vol2_ = value;   recalcMix(false); } }
-    else if (id == "master")   { master_ = value; }            // no master volume on the 1987X
+    else if (id == "master")   { master_ = value; }            // no master volume on the 1959
     else if (id == "bass")     { if (value != bass_)   { bass_ = value;   recalcTone(); } }
     else if (id == "mid")      { if (value != mid_)    { mid_ = value;    recalcTone(); } }
     else if (id == "treble")   { if (value != treble_) { treble_ = value; recalcTone(); } }
@@ -291,10 +291,10 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit0")     { loudMid_ = std::clamp(value, 0.02f, 0.9f); recalcMix(true); }
     else if (id == "fit1")     { inVolts_ = std::max(1e-4f, value); }
     else if (id == "fit2")     { outScalePa_ = value; }
-    else if (id == "fit3")     { supplyV_ = value;    rebuildAll(); }
-    else if (id == "fit4")     { chokeDropV_ = value; rebuildAll(); }
-    else if (id == "fit5")     { idleMa_ = value;     rebuildAll(); }
-    else if (id == "fit6")     { raa_ = value;        rebuildAll(); }
+    else if (id == "fit3")     { supplyV_ = value;     rebuildAll(); }
+    else if (id == "fit4")     { screenDropV_ = value; rebuildAll(); }
+    else if (id == "fit5")     { idleMa_ = value;      rebuildAll(); }
+    else if (id == "fit6")     { raa_ = value;         rebuildAll(); }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

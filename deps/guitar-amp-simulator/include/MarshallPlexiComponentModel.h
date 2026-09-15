@@ -8,39 +8,39 @@
 #include <string>
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MarshallPlexiComponentModel — component-exact Marshall 1987X Super Lead
-// (50 W, 2× EL34): the component twin of the Plexiglass amp
+// MarshallPlexiComponentModel — component-exact Marshall 1959 Super Lead, 100 W,
+// 4× EL34, as of mid-1970: the component twin of the Plexiglass amp
 // (component-amp programme, 2026-09-15; the shipped MarshallPlexi1959 is untouched)
 //
-// Source: Marshall Amplification plc, CIRCUIT DIAG, model 1987X-01,
-// DWG 1987-01-60-02 issue 4 (drawn 5-3-02, ECO 2382 29-4-03). Every value below
-// is that sheet's. The earlier 87X-60-02 issue 6 (1993-94) differs in places
-// (220K/22K stack pots, a 2K7 V1b cathode, 5881 output valves); this build follows
-// issue 4, whose values are the classic Super Lead's.
-// The sheet prints no voltages, so the rails are solved from the drawn dropping
-// chain and the gate is self-consistency (lab: plexi_component_verify).
+// Source: "MARSHALL 1959", Unicord Incorporated, drawing 70-6-11 rev B, JULY 70
+// (the EL34 sheet; its companion "1959 MARK II" sheet is the same drawing with
+// 6550s and was used to cross-check legibility). Every value below is that sheet's.
+// Where it prints a bracketed alternative — 820 (1K), 47K (100K), 27K (22K) — the
+// primary value is used. It prints no voltages, so the rails are solved from the
+// drawn dropping chain and the gate is self-consistency (lab:
+// plexi_component_verify).
 //
 // Signal path, channels jumpered (each V1 grid then sees its two 68k in parallel):
-//   V1 pins 6-8  Inputs 1 → R5 ‖ R6 34k (R46 1M) → R8 100k, R1 820 ‖ C1 680n
-//                → C4 22n → VR4 LOUDNESS 1 1M log, C5 4n7 top-to-wiper
-//                → R9 470k ‖ C6 470p → mix node                (the bright channel)
-//   V1 pins 1-3  Inputs 2 → R3 ‖ R4 34k (R45 1M) → R7 100k, R2 820 ‖ C2 330µ
-//                → C3 22n → VR3 LOUDNESS 2 1M log → R10 470k → mix node
-//   mix node → V2 pins 6-8 (100k plate, R11 820 unbypassed)
-//   → V2 pins 1-3 cathode follower, grid on that plate (R12 100k)
-//   → stack: C8 470p, R13 33k, VR5 250k B treble, VR7 1M A bass, VR6 25k B middle,
-//     C9 / C10 22n (the effects-loop card sits after the treble wiper; switched out
-//     it is a wire)
-//   → C11 22n → V3 ECC83 long-tail pair: R16 / R19 1M grid leaks to the R17 470 /
-//     R20 10k junction, C13 100n from the second grid to the tail foot,
-//     R22 82k / R25 100k plates, C15 47p plate to plate
-//   → C14 / C16 22n → R23 / R24 220k bias feeds → R34 / R35 1k5 → 2× EL34,
-//     screens R36 / R37 1k from after the choke → output transformer D2507
-//   ← global NFB: R21 100k from the 16 Ω terminal into the tail foot, which reaches
-//     ground through VR8 PRESENCE 5k B, C12 100n from the foot to its wiper
+//   V1 bright half  Inputs I → 68k ‖ 68k (1M) → 100k plate, 2.7k ‖ .68µ cathode
+//                   → .0022µ → LOUDNESS I 1M, .005µ top-to-wiper
+//                   → 470k ‖ 500p → mix node
+//   V1 normal half  Inputs II → 68k ‖ 68k (1M) → 100k plate, 820 ‖ 250µ cathode
+//                   → .022µ → LOUDNESS II 1M → 470k → mix node
+//   mix node → V2 gain half (100k plate, 820 ‖ .68µ cathode)
+//   → V2 cathode follower, grid on that plate (100k)
+//   → stack: 500p, 33k, 250k treble, 1M bass, 25k middle, .022 / .022
+//   → .022 → V3 ECC83 long-tail pair: 1M grid leaks to the 470 / 10k junction,
+//     .1µ from the second grid to the tail foot, 82k / 100k plates, 47p across
+//   → .022 / .022 → 220k bias feeds → 5.6k stoppers → 4× EL34, 1k screens straight
+//     off the HT (this sheet has no choke) → output transformer, 16 Ω tap
+//   ← global NFB: 47k from the 16 Ω tap into the tail foot, which reaches ground
+//     through the 5k PRESENCE pot, a .1µ from its wiper to ground
+//   supply: HT → 20k/1W → PI plates (50µ) → 10k/1W → V2 (50µ) → 10k/1W → V1 (50µ)
+//   (the drawing prints one of the four grid stoppers as "56K"; the other three
+//   and the companion sheet's layout make it 5.6k, which is used)
 //
-// Knob map: gain = LOUDNESS 1, vol2 = LOUDNESS 2, bass / mid / treble = the stack,
-// presence = VR8. The 1987X has no master volume, so master is inert here.
+// Knob map: gain = LOUDNESS I, vol2 = LOUDNESS II, bass / mid / treble = the stack,
+// presence = the 5k pot. The 1959 has no master volume, so master is inert here.
 // variac scales the mains (the Plexiglass span, 120 → 170 V): every rail and the
 // bias supply move with it, so idle current follows the three-halves law.
 // Knobs are REAL pot rotations.
@@ -57,7 +57,7 @@ public:
     float getParameter(const std::string& id) const               noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 1; } // EL34
-    const char* modelName()           const noexcept override { return "Marshall 1987X Component"; }
+    const char* modelName()           const noexcept override { return "Marshall 1959 Super Lead Component"; }
 
 private:
     double fs_ = 0.0;
@@ -68,27 +68,27 @@ private:
     // ESTIMATE-class (the sheet prints no voltages and no transformer data):
     float  inVolts_    = 0.70f;     // jack volts per plugin unit (fit1)
     float  outScalePa_ = 0.0048f;   // speaker volts → plugin units (fit2)
-    float  loudMid_    = 0.15f;     // LOUDNESS 1M log law: fraction at half rotation (fit0)
+    float  loudMid_    = 0.15f;     // LOUDNESS 1M law: fraction at half rotation (fit0)
     double supplyV_    = 470.0;     // HT at the OT centre tap, idle (fit3)
-    double chokeDropV_ = 5.0;       // TX3 drop to the screen node (fit4)
+    double screenDropV_ = 0.0;      // HT to the screen node: no choke on this sheet (fit4)
     double idleMa_     = 35.0;      // per-EL34 idle at stock mains (fit5)
-    double raa_        = 3500.0;    // D2507 primary impedance (fit6)
+    double raa_        = 3400.0;    // output transformer primary (fit6)
 
     // Solved at build time from the dropping chain.
-    double railB_ = 470.0, railScreen_ = 465.0, railPI_ = 400.0, railV2_ = 370.0, railV1_ = 350.0;
+    double railB_ = 470.0, railScreen_ = 470.0, railPI_ = 400.0, railV2_ = 370.0, railV1_ = 350.0;
     double iV1_ = 0.0, iV2_ = 0.0, iPI_ = 2e-3;
     double mixR1_ = -1.0, mixR2_ = -1.0;
     double nfbLo_ = 0.0, nfbHi_ = 0.0, nfbHz_ = 0.0;
 
     struct ChState {
-        evhcomp::CCStageV   v1b;        // bright half (Inputs 1)
-        evhcomp::CCStageV   v1a;        // normal half (Inputs 2)
+        evhcomp::CCStageV   v1b;        // bright half (Inputs I)
+        evhcomp::CCStageV   v1a;        // normal half (Inputs II)
         evhcomp::LinNetV    mixB;       // volume + mixer network, bright plate driven
         evhcomp::LinNetV    mixA;       // the same network, normal plate driven (superposition)
         evhcomp::CCStageV   v2a;
         evhcomp::CFStageV   v2b;
         YehSmithToneStack   ts;
-        evhcomp::RCDividerV coup11;     // C11 into R16
+        evhcomp::RCDividerV coupPI;     // .022 into the PI's 1M grid leak
         evhcomp::PushPullPowerV pa;
 
         static constexpr int kNTaps = 7;

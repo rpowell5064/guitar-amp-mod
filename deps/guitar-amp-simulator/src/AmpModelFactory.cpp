@@ -97,7 +97,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::VoxAC30Component: return "Vox AC30 Top Boost Component";
         case ModelID::AmpegSVTComponent: return "Ampeg SVT Component";
         case ModelID::OrangeAD200B:      return "Citrus 200";
-        case ModelID::MarshallPlexiComponent: return "Marshall 1987X Component";
+        case ModelID::MarshallPlexiComponent: return "Marshall 1959 Super Lead Component";
         default:                           return "Unknown";
     }
 }
@@ -131,7 +131,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::VoxAC30Component: return 3;  // EL84 quad, cathode biased
         case ModelID::AmpegSVTComponent: return 5;  // 6550 sextet
         case ModelID::OrangeAD200B:      return 5;  // 6550 quad
-        case ModelID::MarshallPlexiComponent: return 1;  // 2x EL34 (1987-01-60-02 iss 4)
+        case ModelID::MarshallPlexiComponent: return 1;  // 4x EL34 (Unicord 70-6-11, July 1970)
         default:                           return 1;
     }
 }
@@ -182,6 +182,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Vox AC30 Top Boost Component") return ModelID::VoxAC30Component;
     if (name == "Ampeg SVT Component") return ModelID::AmpegSVTComponent;
     if (name == "Citrus 200")          return ModelID::OrangeAD200B;
-    if (name == "Marshall 1987X Component") return ModelID::MarshallPlexiComponent;
+    if (name == "Marshall 1959 Super Lead Component") return ModelID::MarshallPlexiComponent;
     return ModelID::SunnModelT;
 }

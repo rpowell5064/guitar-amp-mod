@@ -34,7 +34,7 @@ enum class AmpModel {
     OrangeAD200B,           // Citrus 200 — the suite's second BASS amp (Orange AD200B
                             // Mark III, 4x 6550): a schematic-exact build with its own
                             // power section, so it is a normal amp, not a Lab toggle
-    PlexiComp               // component-exact Marshall 1987X Super Lead (Lab toggle)
+    PlexiComp               // component-exact Marshall 1959 Super Lead, July 1970 (Lab toggle)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.
