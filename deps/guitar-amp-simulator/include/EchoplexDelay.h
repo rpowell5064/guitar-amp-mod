@@ -58,6 +58,7 @@ private:
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
 
     EchoplexPreamp preamp_;       // record-path JFET (dry path bypasses it)
+    float recTrim_ = 1.0f;        // inverts the JFET's linear gain (see applyPregain)
 
     struct ChannelState {
         std::vector<float> buf;

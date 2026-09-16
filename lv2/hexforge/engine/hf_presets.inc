@@ -1697,6 +1697,10 @@ static void seedFactoryPresets(HexForge* p) {
             std::strncpy(bs.ir2Path, "@greenback", kPathMax-1); bs.ir2Path[kPathMax-1]='\0';
             bs.ampNamPath[0]=bs.drNamPath[0]=bs.cabNamPath[0]=bs.amp2NamPath[0]=bs.dr2NamPath[0]='\0';
         }
+        // Echo Primer circuit: the EP-3 drive plus the tape record path read 1.98 dB lower
+        // here than the behavioural model did. Placed AFTER the verbatim bake above, which
+        // memcpy-overwrites the whole preset (2026-09-15).
+        p->presets[17][1].vals[HF_OUT_LEVEL] += 1.98f;
         // Berlin Wall Pulse (b4/1) = user's Gilmour "Wall/Pulse" preset baked VERBATIM
         // from the store, with the DRIVE FIXED: New Dawn (Life Pedal) is not a Gilmour
         // pedal -> Dear Rodent Boy (ProCo RAT), his actual OD. Preserves the user's preset
@@ -1859,6 +1863,7 @@ static void seedFactoryPresets(HexForge* p) {
             rsol.vals[HF_AMP_TREBLE] = 0.72f; rsol.vals[HF_AMP_MID] = 0.68f; rsol.vals[HF_AMP_PRESENCE] = 0.56f;
             rsol.vals[HF_DR_TONE] = 0.70f;    rsol.vals[HF_DL_TYPE] = 4.0f; rsol.vals[HF_DL_AGE] = 0.20f;
             rsol.vals[HF_DL_MIX] = 0.22f;     rsol.vals[HF_RV_MIX] = 0.22f;
+            rsol.vals[HF_OUT_LEVEL] += 0.36f;  // Echo Primer circuit in the EP-3 delay record path (2026-09-15)
         }
 
     // ── Green Man push restore (rev 114, 2026-08-21/22): the rev-109 pass

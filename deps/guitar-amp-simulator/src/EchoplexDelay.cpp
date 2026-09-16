@@ -71,7 +71,7 @@ float EchoplexDelay::processSample(float x, int ch) noexcept {
     const float twoPi  = 2.0f * static_cast<float>(M_PI);
 
     // ── Record head hears the JFET; the dry path never does ────────────────
-    const float pre = preamp_.processSample(x, ch);
+    const float pre = preamp_.processSample(x, ch) * recTrim_;
 
     // ── Transport: glided time + worn-transport wobble ─────────────────────
     float delaySamples = timeSmoother_.current() * fs / 1000.0f;
@@ -136,7 +136,11 @@ float EchoplexDelay::getParameter(const std::string& id) const noexcept {
 void EchoplexDelay::applyPregain() noexcept {
     preamp_.setParameter("drive", pregain_);
     const float gLin = std::pow(10.0f, pregain_ * 11.0f * (1.0f / 20.0f));
-    preamp_.setParameter("level", 0.5f / gLin);   // level 0.5 = x1 -> net unity
+    // The preamp's "level" is the ECHO VOLUME wiper, which in the real EP-3 sets the
+    // straight/echo blend at the OUTPUT and has nothing to do with the record path. So
+    // hold it at the stage's unity point and take the trim here instead.
+    preamp_.setParameter("level", 0.5f);
+    recTrim_ = 1.0f / gLin;
 }
 
 void EchoplexDelay::rebuildAge() noexcept {
