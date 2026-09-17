@@ -49,3 +49,6 @@ build-tools/tubehex_src.png
 desktop/out/
 anagram/dist/
 anagram/dist-staging/
+
+# WSL build tree (SAC-free lab/golden builds)
+build-tools/out_wsl/
