@@ -73,7 +73,7 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
     p.fluxHz = 120.0; p.fluxLim = fluxLim;
-    p.screenR = 100.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 100 Î© screens: little screen sag
+    p.screenR = 100.0; p.screenAttS = 0.010; p.screenRelS = 0.200; p.sagScale = 1.00f;   // 100R screens: little sag as drawn (AC30 stiff; not chasing FM9 bloom)
     p.outTrim = 1.0;
     return p;
 }

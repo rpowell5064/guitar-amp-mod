@@ -60,7 +60,7 @@ PushPullPowerV::Params jcmPowerParams() {
     p.zResHz = 110.0; p.zResDb = 11.0; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = 8.0;
     p.fluxHz = 120.0; p.fluxLim = 5.0;
-    p.screenR = 1e3;  p.screenAttS = 0.010; p.screenRelS = 0.200;
+    p.screenR = 1e3;  p.screenAttS = 0.010; p.screenRelS = 0.200;  p.sagScale = 0.62f;  // sag bloom fit: 4.06 -> REF 2.14 (r2)
     p.outTrim = 1.0;
     return p;
 }
