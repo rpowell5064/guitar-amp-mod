@@ -33,8 +33,14 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
 
 std::unique_ptr<OversamplingWrapper> OverdriveFactory::createOversampled(OverdriveType type, bool eco) {
     if (type == OverdriveType::NAM) return nullptr;  // NAM uses block path
-    // eco (2026-07-30 Engine Quality): 2x instead of the default 4x oversampling.
-    return std::make_unique<OversamplingWrapper>(create(type), eco ? 2 : 4);
+    // eco (2026-07-30 Engine Quality): half the base oversampling.
+    // The Tube Driver is a component build whose per-sample plate curves are far sharper
+    // than the other (smooth) overdrives, so their harmonics out-run 4x and fold back as
+    // audible aliasing ("scratchy/fuzzy"; measured -30 dB inharmonic at 4x cranked vs
+    // -41 dB at 8x, against -55..-68 dB for the smooth pre-component model). It runs at 8x
+    // (4x eco); every other pedal stays 4x (2x eco).
+    const int base = (type == OverdriveType::TubeDriver) ? 8 : 4;
+    return std::make_unique<OversamplingWrapper>(create(type), eco ? base / 2 : base);
 }
 
 std::unique_ptr<NamOverdrive> OverdriveFactory::createNam(const std::string& filePath) {

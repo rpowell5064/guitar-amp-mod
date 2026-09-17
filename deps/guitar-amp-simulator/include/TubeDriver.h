@@ -189,7 +189,8 @@ public:
 
 private:
     // ESTIMATE-class constants (lab hooks "fit0".."fitN").
-    enum Fit { FitInVolts = 0, FitOpSwing, FitPotEnd, FitOutScale, FitPlateSeries, FitGbw, FitLoad, kNFit };
+    enum Fit { FitInVolts = 0, FitOpSwing, FitPotEnd, FitOutScale, FitPlateSeries, FitGbw, FitLoad,
+               FitMillerG2, FitMillerOut, kNFit };
     static constexpr double kFitDefault[kNFit] = {
         0.50,     // input sensitivity: volts per full scale (the house pedal convention)
         2.9,      // 4558 output swing about the reference on the single 8.5 V rail (V)
@@ -198,9 +199,14 @@ private:
         22e3,     // series resistor from the second plate (reads 22K; 2.2K on one render)
         3.0e6,    // 4558 gain-bandwidth (Hz)
         1.0e6,    // the amp input the output drives (Ω)
+        24e3,     // grid-2 Miller pole (Hz): the 12AX7's Cgk+Cgp(1+A2)≈109pF against plate 1's
+                  // ~52kΩ source. The cascade's missing HF rolloff — without it the sharp plate
+                  // curves generate energy past Nyquist that folds back as aliasing (scratch).
+        40e3,     // plate-2 output pole (Hz): its output capacitance into the tone network.
     };
     double fit_[kNFit] = { kFitDefault[0], kFitDefault[1], kFitDefault[2], kFitDefault[3],
-                           kFitDefault[4], kFitDefault[5], kFitDefault[6] };
+                           kFitDefault[4], kFitDefault[5], kFitDefault[6], kFitDefault[7],
+                           kFitDefault[8] };
 
     static constexpr double kVnode = 8.5;      // the valves' and op-amps' supply node
 
@@ -223,6 +229,8 @@ private:
         evhcomp::LinNetV      ladder;     // 2.2µ → 1K → 22K ↓ → 1K → 2.2µ → virtual ground
         BiquadFilter          fbPole;     // 120p across the drive rheostat
         BiquadFilter          gbwPole;    // op-amp closed-loop bandwidth
+        BiquadFilter          millerG2;   // grid-2 Miller pole (12AX7 Cgp·(1+A2)) — the cascade's HF rolloff
+        BiquadFilter          millerOut;  // plate-2 output pole (its Cout into the tone network)
         GridCouplingV::State  g1, g2;
         evhcomp::LinNetV      outNet;     // 22K → .01µ → E.Q. 10K-B / .047µ → OUT LEVEL 100K-A
         static constexpr int kNTaps = 7;

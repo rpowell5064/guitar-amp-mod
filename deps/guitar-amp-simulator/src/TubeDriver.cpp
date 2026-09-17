@@ -65,6 +65,11 @@ void TubeDriver::buildStages() noexcept {
         L.addR(3, 4, 1e3);    L.addC(4, 5, 2.2e-6); L.addR(5, 0, 1.0);
         L.setOutput(5);
         L.prepare(fs_);
+        // Grid Miller poles between the sharp plate curves — the cascade's missing HF
+        // rolloff. Without them t1/t2's harmonics reach past Nyquist and fold back as
+        // aliasing (the "scratchy/fuzzy" report; measured -25 dB inharmonic vs -50+ with).
+        c.millerG2.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, fit_[FitMillerG2]), fs_));
+        c.millerOut.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, fit_[FitMillerOut]), fs_));
     }
     updateDriveCoefs();
     buildOut(true);
@@ -110,6 +115,7 @@ void TubeDriver::reset() noexcept {
     driveCur_ = drive_;
     for (auto& c : ch_) {
         c.inNet.reset(); c.ladder.reset(); c.fbPole.reset(); c.gbwPole.reset();
+        c.millerG2.reset(); c.millerOut.reset();
         gc1_.reset(c.g1); gc2_.reset(c.g2); c.outNet.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
@@ -145,11 +151,11 @@ float TubeDriver::processSample(float x, int chn) noexcept {
     tap(2, g1 - gc1_.Vg0);
     const double p1 = t1_.eval(g1) - vp1Bias_;                     // plate 1 swing
     tap(3, p1);
-    const double g2 = gc2_.process(c.g2, p1);
+    const double g2 = gc2_.process(c.g2, c.millerG2.process(float(p1)));   // grid-2 Miller rolloff
     tap(4, g2 - gc2_.Vg0);
     const double p2 = t2_.eval(g2) - vp2Bias_;                     // plate 2 swing
     tap(5, p2);
-    const double out = c.outNet.process(p2);
+    const double out = c.outNet.process(c.millerOut.process(float(p2)));   // plate-2 output rolloff
     tap(6, out);
     return float(out * fit_[FitOutScale]);
 }
