@@ -161,7 +161,7 @@ static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
 // (2026-09-15): rendered on the user DI against the shipped model through its shared
 // power amp. The real LOUDNESS law tracks the shipped gain law within 1 dB; the 1959 has
 // no master, so the master axis carries the shipped model's 5 dB master span.
-static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.89f, 0.0f, 4.93f, -2.92f, 0.47f, 0.0f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
+static const float kCompMkDb[16] = { 0.0f, 4.55f, 2.57f, 0.0f, 11.30f, 0.0f, 6.98f, 0.0f, 4.30f, 0.0f, 4.55f, -2.93f, 0.46f, 0.0f, -2.41f, -0.35f };   // datasheet-12AX7 re-parity 2026-09-17 (comp_ref_level, <=0.6 dB); [14] SVT pinned = 0; [15] Citrus now carries its own -0.35
 static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.57f, 0.80f, 0.46f, -0.00f, -0.32f, -0.59f, -0.82f },
