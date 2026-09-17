@@ -1,4 +1,4 @@
-#include "VoxAC30ComponentModel.h"
+﻿#include "VoxAC30ComponentModel.h"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
@@ -16,9 +16,9 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
                                       double idleMa, double raa, double nfbStabHz, double fluxLim, double kneeV,
                                       double cathR, double cathC) {
     PushPullPowerV::Params p;
-    // ── V6 ECC83 long-tail pair (OS/065 prints 230 V plates, 56 V cathode node):
-    //    R52/R51 100k from the R54 22k / C35 10µ node (which lands on the printed
-    //    290 V); cathodes joined → R3 1k2 → tail node → R1 47k to ground. R4/R2 1M
+    // â”€â”€ V6 ECC83 long-tail pair (OS/065 prints 230 V plates, 56 V cathode node):
+    //    R52/R51 100k from the R54 22k / C35 10Âµ node (which lands on the printed
+    //    290 V); cathodes joined â†’ R3 1k2 â†’ tail node â†’ R1 47k to ground. R4/R2 1M
     //    return both grids to the tail node; C2 4n7 AC-grounds the cold one, which is
     //    what the toolkit's vgB = 0 already models (nfbDiv is 0 on this amp).
     p.ltpVcc   = preV;
@@ -28,24 +28,24 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.ltpRtail = 47e3;             // R1
     // The reissue sheet draws NO capacitor across R1, so the pair runs as a true
     // long-tail: the differential current works into the full 47k and the two sides
-    // stay balanced. (Bypassed — the previous source's C8 8µ — collapses the AC tail
+    // stay balanced. (Bypassed â€” the previous source's C8 8Âµ â€” collapses the AC tail
     // to R3 alone, which unbalances the pair and lifts the driven side's gain.)
     // Measured 2026-09-15 (vox_stage_thd): bypassed, the power section reads 2.74 %
     // THD at -60 dBFS in and 11 % at -48, from a phase inverter whose two sides no
-    // longer balance. Unbypassed it reads 0.19 % at -60 — a 15x reduction at the
+    // longer balance. Unbypassed it reads 0.19 % at -60 â€” a 15x reduction at the
     // quiet end, and the sheet's own answer.
     p.ltpTailBypassed = false;
     p.ltpTailV = -1.0;             // self-solved; the gate checks the printed 56 V
     p.piInDiv  = 1.0;
     p.piPlateCap = 0.0;
 
-    // ── 4× EL84, CATHODE BIASED: R70 ‖ R71 (100R 5W each) = 50 Ω ‖ C47 220µ shared
-    //    (OS/065: "12.5 V at 30 W, quiescent 10 V"), 100 Ω screens from the 320 V HT.
+    // â”€â”€ 4Ã— EL84, CATHODE BIASED: R70 â€– R71 (100R 5W each) = 50 Î© â€– C47 220Âµ shared
+    //    (OS/065: "12.5 V at 30 W, quiescent 10 V"), 100 Î© screens from the 320 V HT.
     p.vb  = htV;
     p.vg2 = htV - 5.0;
     p.mu = 21.6; p.ex = 1.24; p.kg1 = 401.7; p.kp = 111.04; p.kvb = 17.9;   // Koren EL84 (published set)
     p.iaScale    = 1.0;
-    p.idleTarget = idleMa * 1e-3;  // ≈ 10 V / 50 Ω / 4 tubes less the screen share
+    p.idleTarget = idleMa * 1e-3;  // â‰ˆ 10 V / 50 Î© / 4 tubes less the screen share
     p.tubesPerSide = 2.0;
     p.raa        = raa;            // PRINTED: "primary impedance anode to anode 4k"
     p.otRatio    = std::sqrt(raa / 16.0);
@@ -58,7 +58,7 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.cathodeBiasC = cathC;
     p.lutSpan    = 40.0;
 
-    // ── NO negative feedback and no presence on this amp.
+    // â”€â”€ NO negative feedback and no presence on this amp.
     p.nfbDiv   = 0.0;
     p.nfbLoDiv = -1.0; p.nfbLoHz = 0.0;
     p.nfbTap   = 1.0;
@@ -68,12 +68,12 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.resoCap  = 0.0;
     p.nfbStabHz = nfbStabHz;
 
-    // ── OT + speaker (ESTIMATE class, hardware-calibrated) ─────────────────
+    // â”€â”€ OT + speaker (ESTIMATE class, hardware-calibrated) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     p.otLfHz = 40.0;  p.otHfHz = otHfHz;
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
     p.fluxHz = 120.0; p.fluxLim = fluxLim;
-    p.screenR = 100.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 100 Ω screens: little screen sag
+    p.screenR = 100.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 100 Î© screens: little screen sag
     p.outTrim = 1.0;
     return p;
 }
@@ -94,25 +94,25 @@ void VoxAC30ComponentModel::buildStages() noexcept {
     const double zV1   = par(110e3, kRp * 0.5);        // the paralleled pair's plate impedance
     const double Zp100 = par(100e3, kRp);
     for (auto& c : ch_) {
-        // ── V8: both halves in parallel (R57 ‖ R58 220k, R10 1k5 ‖ C10 22µ shared) as ONE
-        //    triode with 220k / 3k / 12.5µ — identical operating point (170 V / 1.6 V)
+        // â”€â”€ V8: both halves in parallel (R57 â€– R58 220k, R10 1k5 â€– C10 22Âµ shared) as ONE
+        //    triode with 220k / 3k / 12.5Âµ â€” identical operating point (170 V / 1.6 V)
         //    and identical small-signal gain; the plate impedance is the pair's.
         c.v1.prepare(fs_, { preV_, 220e3, 3.0e3, 12.5e-6, 68e3, millerC(220e3), 68e3, 0.0, 0.0, 0.0, kneeV_ });
-        // C9 470pF → BRILLIANT VOLUME VR4 470k → V7-A grid. The small cap is the
+        // C9 470pF â†’ BRILLIANT VOLUME VR4 470k â†’ V7-A grid. The small cap is the
         // channel: 470pF into 470k is a high-pass at ~720 Hz, so the Top Boost stage
         // is fed the bright half of the signal and its Bass control adds weight back.
         c.coup2.prepare(fs_, 470e-12, zV1, 470e3);
-        // ── V7-A: R55 100k from the R56 10k dropper (≈ preV − 15 V), R9 1k5 ‖ C7 22µ.
+        // â”€â”€ V7-A: R55 100k from the R56 10k dropper (â‰ˆ preV âˆ’ 15 V), R9 1k5 â€– C7 22Âµ.
         c.v11a.prepare(fs_, { preV_ - 15.0, 100e3, 1.5e3, 32e-6, 220e3, millerC(100e3), 220e3, 0.0, 0.0, 0.0, kneeV_ });
-        // C42 25p "A" mod across V11-A (plate to grid): Miller-multiplied HF cut — a 1-pole
-        // at 1 / (2π · 220k · 25p·(1+A)) with A ≈ 60.
+        // C42 25p "A" mod across V11-A (plate to grid): Miller-multiplied HF cut â€” a 1-pole
+        // at 1 / (2Ï€ Â· 220k Â· 25pÂ·(1+A)) with A â‰ˆ 60.
         c.c42lp.prepare(fs_, 1.0, 0.0, 1.0 / (2.0 * M_PI * 220e3 * 25e-12 * 61.0));
-        // ── V7-B cathode follower, direct-coupled from the V7-A plate, R8 56k.
+        // â”€â”€ V7-B cathode follower, direct-coupled from the V7-A plate, R8 56k.
         // It runs IN GRID CONDUCTION at rest, as drawn: a 56k cathode load at the
         // V7-A plate's ~180 V would demand over 3 mA, which an ECC83 cannot pass, so
         // the grid goes positive and its current loads the plate node down until the
         // two balance. That has to be solved JOINTLY (grid diode with the cathode),
-        // exactly as the SVT's V4-B is — with the plain clamp path the bias solve
+        // exactly as the SVT's V4-B is â€” with the plain clamp path the bias solve
         // ignores the clamp that process() then applies every sample, and the stage
         // idles 1.4 V off its own bias. Being DC-coupled to the tone stack, that
         // offset went straight onto the inverter grid and sat there (measured
@@ -120,14 +120,19 @@ void VoxAC30ComponentModel::buildStages() noexcept {
         // silence). RgSrc is the V7-A plate's Thevenin impedance, which is what the
         // grid current actually works into.
         c.v11b.prepare(fs_, { preV_ - 15.0, 56e3, c.v11a.biasVp(), par(100e3, kRp), kneeV_, nullptr, true });
-        // ── Top Boost stack on the follower: C6 47pF, VR3 1M, R35 100k, C5/C4 22N,
+        // â”€â”€ Top Boost stack on the follower: C6 47pF, VR3 1M, R35 100k, C5/C4 22N,
         //    VR2 1M, R7 10k fixed (no mid pot: the stack's "mid" is R7 at full).
         {
             YehSmithToneStack::CircuitParams p{ 47e-12, 22e-9, 22e-9, 1e6, 1e6, 10e3, 100e3 + 600.0 };
             c.ts.prepare(fs_, p);
         }
-        // treble wiper → R5 220k (R6 220k to ground) → C3 47N → the V6 grid (R4 1M leak)
-        c.coup15.prepare(fs_, 1.0, 47e3 + 50e3, 1e6);
+        // treble wiper â†’ R5 220k (R6 220k to ground) â†’ C3 47N â†’ the V6 grid (R4 1M leak).
+        // The values here were the SUPERSEDED 1971 sheet's (R15 47k + 50k against 1M, and
+        // C blanked to 1 F = no coupling at all) â€” the 2026-09-15 retrace to AC30-60-02
+        // Iss.5 rewrote this comment but not the code under it. As drawn the divider is
+        // R5 against R6 â€– R4, i.e. 0.45 rather than 0.91, so the phase inverter was being
+        // driven 6.1 dB hot and C3 47N was not in circuit at all.
+        c.coup15.prepare(fs_, 47e-9, 220e3, par(220e3, 1e6));
         // cut built in recalcPots()
         c.pa.prepare(fs_, voxPowerParams(preV_, htV_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                          fluxLim_, kneeV_, cathR_, cathC_));

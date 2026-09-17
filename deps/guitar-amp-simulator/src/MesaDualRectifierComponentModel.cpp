@@ -32,8 +32,12 @@ PushPullPowerV::Params rectoPowerParams(double railC, double railA, double otHfH
     //    C2 120p from C, C3 75p across the plates; cathodes → R341 470 → R353 10k
     //    → node Z → R372 4k7 → ground. The sheet prints 280 V plates / 48 V cathodes.
     p.ltpVcc   = railC;
-    p.ltpRaA   = 90e3;             // R104 (signal side, V5A's plate load) — see the header
-    p.ltpRaB   = 82e3;             // R281
+    // ltpRaA is the DRIVEN side and ltpRaB the NFB side (PushPullPowerV::Params).
+    // The signal arrives at V5B (C28 -> V5B grid) and the loop enters V5A (C40 -> V5A
+    // grid), so the driven plate is R281 82k and the NFB plate is R104 90k. These were
+    // the other way round.
+    p.ltpRaA   = 82e3;             // R281 (driven side, V5B's plate load)
+    p.ltpRaB   = 90e3;             // R104 (NFB side, V5A's plate load)
     p.ltpRk    = 470.0;            // R341
     p.ltpRtail = 10e3 + 4.7e3;     // R353 + R372
     p.ltpTailV = -1.0;             // self-solved (the gate checks the printed 48 V cathodes)
