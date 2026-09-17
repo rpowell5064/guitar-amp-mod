@@ -1,0 +1,3 @@
+# Shell scripts must stay LF: they run under bash (Pi deploys, WSL builds);
+# CRLF breaks bash and forced a sed 's/$/'/ workaround on the Pi.
+*.sh text eol=lf
