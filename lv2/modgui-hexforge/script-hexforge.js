@@ -477,6 +477,12 @@ function (event, funcs) {
         el.className = el.className.replace(/\bhf-face-m\d+\b/g, '').replace(/\s+/g, ' ').replace(/\s+$/, '');
         el.className += ' hf-face-m' + m;
         face.find('[rata-role=amp-badge]').text((NV.amp && NV.amp[m]) || '');
+        // Neon: start the colour cycle at a random point, ONCE per panel, so a session
+        // doesn't always open on red and the two amp slots never run in lockstep.
+        if (!el.getAttribute('data-neon-seeded')) {
+            el.setAttribute('data-neon-seeded', '1');
+            el.style.setProperty('--neon-delay', '-' + (Math.random() * 240).toFixed(2) + 's');
+        }
     }
     // ── Amp detail TABS (Amp / Voicing / Power Amp / Neural-or-Blend) ──
     function setAmpTab(icon, blk, name) {
@@ -853,7 +859,7 @@ function (event, funcs) {
         var showBanks = Math.min(Math.max(maxB + 2, ab + 2, icon.data('hf_addbanks') || 0), 32);
         var html = '';
         for (var b = 0; b < showBanks; b++) {
-            html += '<div class="hf-ps-bankrow"><span class="hf-ps-banknum">B' + (b + 1) + '</span>';
+            html += '<div class="hf-ps-bankrow" data-bank="' + b + '"><span class="hf-ps-banknum">B' + (b + 1) + '</span>';
             for (var s = 0; s < 4; s++) {
                 var flat = b * 4 + s, nm = names[flat] || '';
                 var active = (b === ab && s === as) ? ' hf-ps-active' : '';
@@ -883,13 +889,84 @@ function (event, funcs) {
         });
         psApplyFilter(icon);   // keep the current search filter across re-renders
     }
+
+    // ── GUITAR / BASS filter ────────────────────────────────────────────────
+    // What each list holds: the two bass amps (Blue Liner = Ampeg SVT, Citrus 200 =
+    // Orange AD200B), the four bass cabs (indices 7-10 and their @bass* IR entries),
+    // and the bass preset bank (bank 19, LOW END). Everything else is guitar. Neural
+    // (NAM) and No Cab belong to both, since they are whatever you load into them.
+    var RIG_BASS_AMPS = { 14: 1, 15: 1 };
+    var RIG_BOTH_AMPS = { 5: 1 };                       // Neural (NAM)
+    var RIG_BASS_CABS = { 7: 1, 8: 1, 9: 1, 10: 1 };
+    var RIG_BOTH_CABS = { 6: 1 };                       // No Cab (Direct)
+    var RIG_BASS_BANKS = { 18: 1 };                     // bank 19, zero-based
+    function rigOf(kind, idx) {
+        if (kind === 'amp') return RIG_BOTH_AMPS[idx] ? 'both' : (RIG_BASS_AMPS[idx] ? 'bass' : 'guitar');
+        if (kind === 'cab') return RIG_BOTH_CABS[idx] ? 'both' : (RIG_BASS_CABS[idx] ? 'bass' : 'guitar');
+        return RIG_BASS_BANKS[idx] ? 'bass' : 'guitar';
+    }
+    function rigShow(want, has) { return want === 'all' || has === 'both' || has === want; }
+    // Hide the options that do not belong to the chosen rig. The PORT is untouched: a
+    // preset that recalls a hidden model still sounds right, it just isn't in the list.
+    function applyRigFilter(icon, scope) {
+        var want = icon.data('hf_rig_' + scope) || 'all';
+        var pfx = scope === 'rb' ? 'rb' : 'amp';
+        var modelSym = scope === 'rb' ? 'rb_amp' : 'amp_model';
+        icon.find('[mod-widget=custom-select][mod-port-symbol="' + modelSym + '"] [mod-role=enumeration-option]').each(function () {
+            var v = parseInt(this.getAttribute('mod-port-value'), 10);
+            this.style.display = rigShow(want, rigOf('amp', v)) ? '' : 'none';
+        });
+        var cabSym = scope === 'rb' ? 'rb_cab' : 'cab_model';
+        icon.find('[mod-widget=custom-select][mod-port-symbol="' + cabSym + '"] [mod-role=enumeration-option]').each(function () {
+            var v = parseInt(this.getAttribute('mod-port-value'), 10);
+            this.style.display = rigShow(want, rigOf('cab', v)) ? '' : 'none';
+        });
+        // the IR pickers carry @bass* sentinels rather than indices
+        icon.find('[mod-widget=custom-select-path] [mod-role=enumeration-option]').each(function () {
+            var pv = this.getAttribute('mod-parameter-value') || '';
+            if (pv.charAt(0) !== '@') return;                       // a user IR file: always listed
+            var isBass = pv.indexOf('@bass') === 0;
+            this.style.display = rigShow(want, isBass ? 'bass' : 'guitar') ? '' : 'none';
+        });
+        icon.find('[rata-role=rigfilter][data-scope="' + scope + '"] .hf-rig-btn').each(function () {
+            this.classList.toggle('hf-rig-on', this.getAttribute('data-rig') === want);
+        });
+    }
+    function bindRigFilter(icon) {
+        icon.find('[rata-role=rigfilter]').each(function () {
+            var scope = this.getAttribute('data-scope') || 'amp';
+            Array.prototype.forEach.call(this.querySelectorAll('.hf-rig-btn'), function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    icon.data('hf_rig_' + scope, b.getAttribute('data-rig'));
+                    applyRigFilter(icon, scope);
+                });
+            });
+            applyRigFilter(icon, scope);
+        });
+        icon.find('[rata-role=psfilter] .hf-ps-fbtn').each(function () {
+            var b = this;
+            b.addEventListener('click', function (e) {
+                e.stopPropagation();
+                icon.data('hf_ps_rig', b.getAttribute('data-rig'));
+                icon.find('[rata-role=psfilter] .hf-ps-fbtn').each(function () {
+                    this.classList.toggle('hf-ps-fon', this === b);
+                });
+                psApplyFilter(icon);
+            });
+        });
+    }
     // Live preset search (menu header, between Later and Backup): hides non-matching
     // slots, bank rows with no hits, and (while searching) empty slots + "+ Add Bank".
     function psApplyFilter(icon) {
         var q = ('' + (icon.data('hf_ps_q') || '')).toLowerCase();
+        var rig = icon.data('hf_ps_rig') || 'all';
         var box = icon.find('[rata-role=pslist]'); if (!box.length) return;
         box.find('.hf-ps-bankrow').each(function () {
             var row = this, vis = 0;
+            // whole bank hidden when it belongs to the other rig
+            var bankIdx = parseInt(row.getAttribute('data-bank'), 10);
+            if (!isNaN(bankIdx) && !rigShow(rig, rigOf('bank', bankIdx))) { row.style.display = 'none'; return; }
             var items = row.querySelectorAll('.hf-ps-item');
             for (var k = 0; k < items.length; k++) {
                 var el = items[k];
@@ -1138,6 +1215,7 @@ function (event, funcs) {
         setModelVal(icon, 'eq2', parseInt(map.eq2_preset || 0, 10));
         eqScope(icon);
         buildSelMap(icon, map);   // every dropdown shows its selected value from load on
+        bindRigFilter(icon);      // GUITAR / BASS list filter (amp, cab, presets)
         icon.find('[mod-widget=custom-select][mod-port-symbol="eq_preset"] [mod-role=enumeration-option]').each(function () {
             var el = this;
             el.addEventListener('click', function () { loadEqBlockPreset(icon, el.getAttribute('mod-port-value'), 'eq'); });

@@ -76,8 +76,18 @@ function (event, funcs) {
         // Blue Liner (14): Ultra-Lo/Ultra-Hi + 3-position mid selector (bass)
         icon.find('[rata-role=svtgroup]').toggleClass('mod-hidden', m !== 14);
         // Per-model realistic faceplate skin + engraved badge (Forge parity)
-        icon.find('[rata-role=ampface]').attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 14) ? m : 1));
-        var NAMES = ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner'];
+        var faceEl = icon.find('[rata-role=ampface]');
+        faceEl.attr('class', 'hf-amp-face hf-face-m' + ((m >= 0 && m <= 15) ? m : 1));
+        // Neon: start the colour cycle at a random point, ONCE per panel, so a session
+        // doesn't always open on red.
+        if (faceEl.length) {
+            var fel = faceEl[0];
+            if (!fel.getAttribute('data-neon-seeded')) {
+                fel.setAttribute('data-neon-seeded', '1');
+                fel.style.setProperty('--neon-delay', '-' + (Math.random() * 240).toFixed(2) + 's');
+            }
+        }
+        var NAMES = ['Clean Meanie','Crunchy McCrunchFace','Gainzilla','Doom Daddy','Tangerang','Neural','Beardo BE','Hi-Volt','Chime Thirty','Backline Plus','Plexiglass','Cali V','Diamond Plate','Tremont 15','Blue Liner','Citrus 200'];
         icon.find('[rata-role=ampbadge]').text(NAMES[m] || 'AMP');
         // Which tabs make sense for this model, then keep the active tab in sync with the mode:
         // switching the model (via dropdown or preset recall) to/from Neural flips the tab too.
@@ -161,9 +171,40 @@ function (event, funcs) {
         icon.data('hx_selmap', m);
         (ports || []).forEach(function (p) { if (m[p.symbol]) syncSel(icon, p.symbol, p.value); });
     }
+    // ── GUITAR / BASS filter for the model list. The bass amps are Blue Liner (14) and
+    // Citrus 200 (15); Neural (5) is whatever you load into it, so it belongs to both.
+    // This hides LIST OPTIONS ONLY — the port value is never touched, so a preset that
+    // recalls a hidden model still sounds exactly right.
+    var RIG_BASS_AMPS = { 14: 1, 15: 1 };
+    var RIG_BOTH_AMPS = { 5: 1 };
+    function rigOf(idx) { return RIG_BOTH_AMPS[idx] ? 'both' : (RIG_BASS_AMPS[idx] ? 'bass' : 'guitar'); }
+    function rigShow(want, has) { return want === 'all' || has === 'both' || has === want; }
+    function applyRigFilter(icon) {
+        var want = icon.data('hf_rig_amp') || 'all';
+        icon.find('[mod-widget=custom-select][mod-port-symbol="model"] [mod-role=enumeration-option]').each(function () {
+            var v = parseInt(this.getAttribute('mod-port-value'), 10);
+            this.style.display = rigShow(want, rigOf(v)) ? '' : 'none';
+        });
+        icon.find('[rata-role=rigfilter] .hf-rig-btn').each(function () {
+            this.classList.toggle('hf-rig-on', this.getAttribute('data-rig') === want);
+        });
+    }
+    function bindRigFilter(icon) {
+        icon.find('[rata-role=rigfilter]').each(function () {
+            Array.prototype.forEach.call(this.querySelectorAll('.hf-rig-btn'), function (b) {
+                b.addEventListener('click', function (e) {
+                    e.stopPropagation();
+                    icon.data('hf_rig_amp', b.getAttribute('data-rig'));
+                    applyRigFilter(icon);
+                });
+            });
+        });
+        applyRigFilter(icon);
+    }
     if (event.type == 'start') {
         var icon = event.icon;
         buildSelMap(icon, event.ports);
+        bindRigFilter(icon);
         // Show the loaded NAM file immediately (2026-07-23): mod-ui applies the patch
         // write on option click but doesn't reliably echo a change event back.
         (event.parameters || []).forEach(function (pr) {

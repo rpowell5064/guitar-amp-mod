@@ -303,38 +303,176 @@
 /* Live control value readout (visible without advanced view) */
 .mod-pedal-guitaramp-amp{{{cns}}} .mod-knob .mod-knob-value { font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size:11px; font-weight:600; color:#19e0ff; text-align:center; display:block; margin-top:2px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
-/* ── AMP FACE: tolex cabinet + glowing tubes + per-model faceplate plate (Forge parity) ── */
+/* ── AMP HEAD (reference look): dark cabinet frame > recessed tube-bay window (glowing
+   tubes) > brushed per-model control plate holding the badge + knobs. ── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-face {
-    --acc:#19e0ff; --tint:rgba(0,0,0,0); --panel:none; --badge:#f3ead9;
-    position: relative; margin: 6px 16px 10px; padding: 10px;
-    border-radius: 14px; border: 1px solid rgba(255,255,255,.08);
+    --tint: rgba(0,0,0,0); --panel: none; --badge: #f3ead9;
+    /* per-model covering + welt piping (hf-face-mN sets these) */
+    --cov: url(/resources/tolex-m1.png{{{ns}}}); --pipe: #ded6c4; --covsize: 128px; --covbase: #2a2a2e;
+    position: relative; margin-top: 4px; padding: 26px 40px 46px;
+    border-radius: 14px 14px 10px 10px;
+    /* THE CABINET. Layers, front to back: key light from the upper left, warm floor
+       bounce, the rolled top edge catching the room, body falloff toward the bottom
+       right, then the covering material itself tiled over a dark carcass. */
+    background-color: #111113;
     background-image:
-        linear-gradient(180deg, rgba(255,255,255,.05) 0, rgba(0,0,0,.28) 62%, rgba(0,0,0,.5) 100%),
-        url(/resources/tolex.png{{{ns}}});
-    background-size: auto, cover; background-position: center, center; background-repeat: no-repeat, no-repeat;
+        radial-gradient(130% 95% at 16% -12%, rgba(255,255,255,.17), rgba(255,255,255,0) 48%),
+        radial-gradient(120% 70% at 50% 120%, rgba(255,186,116,.075), rgba(0,0,0,0) 62%),
+        linear-gradient(180deg, rgba(255,255,255,.34) 0 2px, rgba(255,255,255,.10) 3px 6px, rgba(0,0,0,.30) 7px 11px, rgba(255,255,255,0) 30px),
+        linear-gradient(192deg, rgba(0,0,0,0) 26%, rgba(0,0,0,.30) 74%, rgba(0,0,0,.46) 100%),
+        /* side returns: the left edge lit, the right edge turning away */
+        linear-gradient(90deg, rgba(255,255,255,.10) 0 10px, rgba(255,255,255,0) 26px),
+        linear-gradient(270deg, rgba(0,0,0,.34) 0 12px, rgba(0,0,0,0) 34px),
+        /* the bottom edge the head stands on */
+        linear-gradient(0deg, rgba(0,0,0,.42) 0 8px, rgba(0,0,0,0) 26px),
+        var(--cov);
+    background-size: auto, auto, auto, auto, auto, auto, auto, var(--covsize) var(--covsize);
+    background-position: center, center, top center, center, left, right, bottom, top left;
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+    border: 1px solid rgba(0,0,0,.78);
     box-shadow:
-        inset 0 0 0 1px rgba(46,205,255,.22), inset 0 4px 30px rgba(46,205,255,.10),
-        inset 0 1px 0 rgba(255,255,255,.06), inset 0 0 46px rgba(0,0,0,.55), 0 8px 22px rgba(0,0,0,.55);
+        inset 0 0 0 1px rgba(0,0,0,.55),
+        inset 0 3px 0 rgba(255,255,255,.10),
+        inset 0 -26px 46px rgba(0,0,0,.44),
+        inset 0 0 0 1px rgba(46,205,255,.09),
+        0 12px 28px rgba(0,0,0,.62), 0 2px 0 rgba(255,255,255,.04);
 }
-/* recessed tube bay — 4 real glowing tubes (tubes.png) breathing on the cabinet top */
+/* Metal corner protectors: four plates with a bolt, drawn as background layers so the
+   markup stays exactly as it was. */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-face::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 1;
+    background-image:
+        linear-gradient(135deg, rgba(214,219,228,.92), rgba(120,126,136,.86) 46%, rgba(52,56,62,.90)),
+        linear-gradient(225deg, rgba(214,219,228,.92), rgba(120,126,136,.86) 46%, rgba(52,56,62,.90)),
+        linear-gradient(45deg, rgba(214,219,228,.92), rgba(120,126,136,.86) 46%, rgba(52,56,62,.90)),
+        linear-gradient(315deg, rgba(214,219,228,.92), rgba(120,126,136,.86) 46%, rgba(52,56,62,.90));
+    background-size: 24px 24px, 24px 24px, 24px 24px, 24px 24px;
+    background-position: top left, top right, bottom left, bottom right;
+    background-repeat: no-repeat;
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,.6));
+    opacity: .9;
+}
+/* Tube-bay window: recessed, dark, 4 real glowing tubes (tubes.png) behind glass. The
+   soft amber inner pulse = a natural live glow. */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-tubes {
-    position: relative; height: 96px; margin: 2px 0 -10px; z-index: 2; overflow: visible; pointer-events: none;
-    background-image: url(/resources/tubes.png{{{ns}}});
-    background-size: auto 100%; background-repeat: no-repeat; background-position: center bottom;
+    /* NO box: the tubes + their soft baked glow (tubes.png) just sit on the dark cabinet and
+       fade in naturally — no border, no background rectangle, no gradient-in-a-box. */
+    position: relative; height: 92px; margin: 2px 0 -6px; z-index: 2; overflow: visible; pointer-events: none;
+    border-radius: 9px 9px 6px 6px;
+    /* the chassis opening the valves stand in: dark inside, lit from above, the covering's
+       shadow falling across the lip. The tube art and its glow animation are unchanged. */
+    background-image:
+        url(/resources/tubes.png{{{ns}}}),
+        radial-gradient(120% 130% at 50% 8%, rgba(255,255,255,.05), rgba(0,0,0,0) 52%),
+        linear-gradient(180deg, rgba(0,0,0,.86) 0, rgba(0,0,0,.44) 44%, rgba(0,0,0,.78) 100%);
+    background-size: auto 100%, auto, auto;
+    background-repeat: no-repeat, no-repeat, no-repeat;
+    background-position: center bottom, center, center;
+    box-shadow: inset 0 10px 22px rgba(0,0,0,.92), inset 0 -6px 14px rgba(0,0,0,.72),
+                inset 0 0 0 1px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.07);
+    /* pulse the glow's BRIGHTNESS so it breathes where the tubes actually are */
     animation: hf-tube-glow 3.2s ease-in-out infinite;
 }
-@keyframes hf-tube-glow { 0%,100% { filter: brightness(0.94); } 50% { filter: brightness(1.14); } }
-/* per-model brushed control plate (var(--panel) = faceplate-mN.png) */
+@keyframes hf-tube-glow {
+    0%, 100% { filter: brightness(0.94); }
+    50%      { filter: brightness(1.14); }
+}
+
+/* ── NEON STRIP: red -> blue -> purple -> green, with the faceplate catching the light ── */
+@keyframes hf-neon {
+    0% { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
+    18% { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
+    25% { background-color: #2f8bff; box-shadow: 0 0 6px #7ab6ff, 0 0 18px #2f8bff, 0 0 44px rgba(47,139,255,.75), 0 0 90px rgba(47,139,255,.40); }
+    43% { background-color: #2f8bff; box-shadow: 0 0 6px #7ab6ff, 0 0 18px #2f8bff, 0 0 44px rgba(47,139,255,.75), 0 0 90px rgba(47,139,255,.40); }
+    50% { background-color: #a44dff; box-shadow: 0 0 6px #c68cff, 0 0 18px #a44dff, 0 0 44px rgba(164,77,255,.75), 0 0 90px rgba(164,77,255,.40); }
+    68% { background-color: #a44dff; box-shadow: 0 0 6px #c68cff, 0 0 18px #a44dff, 0 0 44px rgba(164,77,255,.75), 0 0 90px rgba(164,77,255,.40); }
+    75% { background-color: #35e07a; box-shadow: 0 0 6px #86f0b0, 0 0 18px #35e07a, 0 0 44px rgba(53,224,122,.75), 0 0 90px rgba(53,224,122,.40); }
+    93% { background-color: #35e07a; box-shadow: 0 0 6px #86f0b0, 0 0 18px #35e07a, 0 0 44px rgba(53,224,122,.75), 0 0 90px rgba(53,224,122,.40); }
+    100%      { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
+}
+@keyframes hf-neon-ring {
+    0% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38), 0 5px 14px rgba(0,0,0,.6); }
+    18% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38), 0 5px 14px rgba(0,0,0,.6); }
+    25% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #2f8bff, 0 0 10px #7ab6ff, 0 0 26px rgba(47,139,255,.70), 0 0 56px rgba(47,139,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    43% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #2f8bff, 0 0 10px #7ab6ff, 0 0 26px rgba(47,139,255,.70), 0 0 56px rgba(47,139,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #a44dff, 0 0 10px #c68cff, 0 0 26px rgba(164,77,255,.70), 0 0 56px rgba(164,77,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    68% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #a44dff, 0 0 10px #c68cff, 0 0 26px rgba(164,77,255,.70), 0 0 56px rgba(164,77,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    75% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #35e07a, 0 0 10px #86f0b0, 0 0 26px rgba(53,224,122,.70), 0 0 56px rgba(53,224,122,.38), 0 5px 14px rgba(0,0,0,.6); }
+    93% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #35e07a, 0 0 10px #86f0b0, 0 0 26px rgba(53,224,122,.70), 0 0 56px rgba(53,224,122,.38), 0 5px 14px rgba(0,0,0,.6); }
+    100%      { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38), 0 5px 14px rgba(0,0,0,.6); }
+}
+@keyframes hf-neon-pool {
+    0% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
+    18% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
+    25% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(47,139,255,.55), rgba(47,139,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    43% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(47,139,255,.55), rgba(47,139,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    50% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(164,77,255,.55), rgba(164,77,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    68% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(164,77,255,.55), rgba(164,77,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    75% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(53,224,122,.55), rgba(53,224,122,.16) 42%, rgba(0,0,0,0) 72%); }
+    93% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(53,224,122,.55), rgba(53,224,122,.16) 42%, rgba(0,0,0,0) 72%); }
+    100%      { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
+}
+@keyframes hf-neon-spill {
+    0% { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
+    18% { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
+    25% { background-image: linear-gradient(180deg, rgba(47,139,255,.18), rgba(47,139,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    43% { background-image: linear-gradient(180deg, rgba(47,139,255,.18), rgba(47,139,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    50% { background-image: linear-gradient(180deg, rgba(164,77,255,.18), rgba(164,77,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    68% { background-image: linear-gradient(180deg, rgba(164,77,255,.18), rgba(164,77,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    75% { background-image: linear-gradient(180deg, rgba(53,224,122,.18), rgba(53,224,122,.06) 38%, rgba(0,0,0,0) 76%); }
+    93% { background-image: linear-gradient(180deg, rgba(53,224,122,.18), rgba(53,224,122,.06) 38%, rgba(0,0,0,0) 76%); }
+    100%      { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
+}
+/* the tube itself, across the top of the bay */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-tubes::before {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 9px;
+    border-radius: 2px; z-index: 3; pointer-events: none;
+    background-image: linear-gradient(180deg, rgba(255,255,255,.95) 0 2px, rgba(255,255,255,.35) 3px, rgba(255,255,255,0) 7px);
+    animation: hf-neon 240s linear infinite;
+    animation-delay: var(--neon-delay, 0s);
+}
+/* its light pooling down the inside of the bay */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-tubes::after {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 2; pointer-events: none;
+    mix-blend-mode: screen;
+    animation: hf-neon-pool 240s linear infinite;
+    animation-delay: var(--neon-delay, 0s);
+}
+/* and spilling onto the faceplate below */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate::before {
+    content: ""; position: absolute; left: 0; right: 0; top: 0; height: 46%;
+    border-radius: 7px 7px 0 0; z-index: 4; pointer-events: none;
+    mix-blend-mode: screen;
+    animation: hf-neon-spill 240s linear infinite;
+    animation-delay: var(--neon-delay, 0s);
+}
+/* (no boxed tube window any more — the tubes glow directly on the cabinet) */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-grille { display: none; }
+/* Brushed per-model control plate (var(--panel) = faceplate-mN.png; gold/cream/black/…) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate {
-    position: relative; z-index: 3; border-radius: 8px; padding: 16px 20px 30px;
+    position: relative; z-index: 3; padding: 12px 26px 16px;
+    /* No covering wrap: the faceplate is bare metal, and the PIPING around it is the neon
+       (hf-neon-ring animates the whole box-shadow, ring and depth together). */
+    border: 0; border-radius: 9px;
     background-color: #1b1815;
     background-image:
         linear-gradient(180deg, rgba(255,255,255,.09), rgba(0,0,0,.16)),
-        var(--panel), linear-gradient(155deg, var(--tint), rgba(0,0,0,0) 72%),
+        var(--panel),
+        linear-gradient(155deg, var(--tint), rgba(0,0,0,0) 72%),
         url(/resources/faceplate.png{{{ns}}});
-    background-size: auto, cover, auto, cover; background-position: center; background-repeat: no-repeat;
-    border: 1px solid rgba(0,0,0,.55);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -18px 40px rgba(0,0,0,.34), 0 3px 8px rgba(0,0,0,.5);
+    background-size: auto, 100% 100%, auto, cover;
+    background-position: center; background-repeat: no-repeat;
+    animation: hf-neon-ring 240s linear infinite;
+    animation-delay: var(--neon-delay, 0s);
+    filter: brightness(.90) saturate(1.06);
+}
+/* the faceplate screws are gone: the wrap holds the look together */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate .hf-screw { display: none; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate .mod-knob .mod-knob-image {
+    /* Per-model knob family (hf-face-mN sets --knob), falling back to the stock knob.
+       Only the IMAGE changes: the size stays with the panel's own knob rule above, so
+       the 101-frame sprite keeps stepping on the same geometry. */
+    background-image: var(--knob, url(/resources/knobs/knob.png{{{ns}}}));
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-badge {
     /* dark pill for legibility on any faceplate art (matches the Forge badge) */
@@ -355,24 +493,25 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-screw-bl { bottom: 8px; left: 8px; transform: rotate(67deg); }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-screw-br { bottom: 8px; right: 8px; transform: rotate(-11deg); }
 /* per-model faceplate art + tint + on-panel badge colour (original colours, not brand replicas) */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m0 { --panel:url(/resources/faceplate-m0.png{{{ns}}}); --tint:rgba(150,162,178,.16); --badge:#242a30; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m1 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --tint:rgba(150,112,28,.40); --badge:#201803; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m2 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(0,0,0,.50); --badge:#e6e9f0; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m3 { --panel:url(/resources/faceplate-m3.png{{{ns}}}); --tint:rgba(96,26,26,.44); --badge:#d8f2ff; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m4 { --panel:url(/resources/faceplate-m4.png{{{ns}}}); --tint:rgba(158,74,14,.44); --badge:#1c0e02; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m5 { --panel:url(/resources/faceplate-m5.png{{{ns}}}); --tint:rgba(22,96,116,.42); --badge:#c6f4ff; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m6 { --panel:url(/resources/faceplate-m6.png{{{ns}}}); --tint:rgba(142,112,52,.34); --badge:#e8eef6; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m7 { --panel:url(/resources/faceplate-m7.png{{{ns}}}); --tint:rgba(72,82,92,.30); --badge:#20262c; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m8 { --panel:url(/resources/faceplate-m8.png{{{ns}}}); --tint:rgba(150,112,60,.36); --badge:#241606; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m9 { --panel:url(/resources/faceplate-m9.png{{{ns}}}); --tint:rgba(46,96,150,.34); --badge:#dbe7f5; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m0 { --cov:url(/resources/tolex-m0.png{{{ns}}}); --covbase:#2e2e33; --pipe:#e8ddc0; --panel:url(/resources/faceplate-m0.png{{{ns}}}); --knob:url(/resources/knobs/knob-fender.png{{{ns}}}); --tint:rgba(150,162,178,.16); --badge:#242a30; } /* Clean Meanie - silverface silver */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m1 { --cov:url(/resources/tolex-m1.png{{{ns}}}); --covbase:#2a2a2e; --pipe:#ded6c4; --panel:url(/resources/faceplate-m1.png{{{ns}}}); --knob:url(/resources/knobs/knob-marshall.png{{{ns}}}); --tint:rgba(150,112,28,.40); --badge:#201803; } /* Crunchy - brushed gold */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m2 { --cov:url(/resources/tolex-m2.png{{{ns}}}); --covbase:#26262a; --pipe:#5a5f66; --panel:url(/resources/faceplate-m2.png{{{ns}}}); --knob:url(/resources/knobs/knob-mesa.png{{{ns}}}); --tint:rgba(0,0,0,.50); --badge:#e6e9f0; } /* Gainzilla - satin black + chrome */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m3 { --cov:url(/resources/tolex-m3.png{{{ns}}}); --covbase:#303034; --pipe:#6a6f77; --panel:url(/resources/faceplate-m3.png{{{ns}}}); --knob:url(/resources/knobs/knob-mesa.png{{{ns}}}); --tint:rgba(96,26,26,.44); --badge:#d8f2ff; } /* Doom Daddy - matte black */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m4 { --cov:url(/resources/tolex-m4.png{{{ns}}}); --covbase:#8f4210; --covsize:150px; --pipe:#f2ece0; --panel:url(/resources/faceplate-m4.png{{{ns}}}); --knob:url(/resources/knobs/knob-orange.png{{{ns}}}); --tint:rgba(158,74,14,.44); --badge:#1c0e02; } /* Tangerang - ivory panel, orange covering */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m5 { --cov:url(/resources/tolex-m5.png{{{ns}}}); --covbase:#30343c; --covsize:96px; --pipe:#2ecdff; --panel:url(/resources/faceplate-m5.png{{{ns}}}); --knob:url(/resources/knobs/knob-neural.png{{{ns}}}); --tint:rgba(22,96,116,.42); --badge:#c6f4ff; } /* Neural - carbon + cyan */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m6 { --cov:url(/resources/tolex-m6.png{{{ns}}}); --covbase:#28282c; --pipe:#4a4f57; --panel:url(/resources/faceplate-m6.png{{{ns}}}); --knob:url(/resources/knobs/knob-mesa.png{{{ns}}}); --tint:rgba(142,112,52,.34); --badge:#e8eef6; } /* Beardo BE - graphite */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m7 { --cov:url(/resources/tolex-m7.png{{{ns}}}); --covbase:#29292e; --pipe:#efe9dd; --panel:url(/resources/faceplate-m7.png{{{ns}}}); --knob:url(/resources/knobs/knob-fender.png{{{ns}}}); --tint:rgba(72,82,92,.30); --badge:#20262c; } /* Hi-Volt - polished silver, white piping */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m8 { --cov:url(/resources/tolex-m8.png{{{ns}}}); --covbase:#6e563a; --covsize:118px; --pipe:#4a3826; --panel:url(/resources/faceplate-m8.png{{{ns}}}); --knob:url(/resources/knobs/knob-vox.png{{{ns}}}); --tint:rgba(150,112,60,.36); --badge:#241606; } /* Chime Thirty - copper panel, fawn covering */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m9 { --cov:url(/resources/tolex-m9.png{{{ns}}}); --covbase:#2b2c31; --pipe:#5c626b; --panel:url(/resources/faceplate-m9.png{{{ns}}}); --knob:url(/resources/knobs/knob-fender.png{{{ns}}}); --tint:rgba(46,96,150,.34); --badge:#dbe7f5; } /* Backline Plus - slate + blue */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m10 { --cov:url(/resources/tolex-m10.png{{{ns}}}); --covbase:#28282c; --pipe:#e6dcc0; --panel:url(/resources/faceplate-m10.png{{{ns}}}); --knob:url(/resources/knobs/knob-marshall.png{{{ns}}}); --tint:rgba(196,158,66,.36); --badge:#1a1405; } /* Plexiglass - bright plexi gold */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m11 { --cov:url(/resources/tolex-m11.png{{{ns}}}); --covbase:#292a2d; --covsize:104px; --pipe:#5a5f66; --panel:url(/resources/faceplate-m11.png{{{ns}}}); --knob:url(/resources/knobs/knob-mesa.png{{{ns}}}); --tint:rgba(34,58,46,.40); --badge:#dfeae4; } /* Cali V - black + chrome */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m12 { --cov:url(/resources/tolex-m12.png{{{ns}}}); --covbase:#28282c; --pipe:#6b7079; --panel:url(/resources/faceplate-m12.png{{{ns}}}); --knob:url(/resources/knobs/knob-mesa.png{{{ns}}}); --tint:rgba(168,176,188,.30); --badge:#e9edf3; } /* Diamond Plate - bright chrome */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m13 { --cov:url(/resources/tolex-m13.png{{{ns}}}); --covbase:#2c2d32; --pipe:#566070; --panel:url(/resources/faceplate-m13.png{{{ns}}}); --knob:url(/resources/knobs/knob-fender.png{{{ns}}}); --tint:rgba(40,66,110,.40); --badge:#dce6f5; } /* Tremont 15 - small-format black */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m14 { --cov:url(/resources/tolex-m14.png{{{ns}}}); --covbase:#2a2b30; --pipe:#2f6fc0; --panel:url(/resources/faceplate-m14.png{{{ns}}}); --knob:url(/resources/knobs/knob-fender.png{{{ns}}}); --tint:rgba(38,84,150,.46); --badge:#e8f1ff; } /* Blue Liner - black + blue line */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m15 { --cov:url(/resources/tolex-m15.png{{{ns}}}); --covbase:#8d4010; --covsize:150px; --pipe:#f2ece0; --panel:url(/resources/faceplate-m15.png{{{ns}}}); --knob:url(/resources/knobs/knob-orange.png{{{ns}}}); --tint:rgba(214,109,26,.42); --badge:#1a1208; } /* Citrus 200 - ivory panel, orange covering */
 /* m10 Plexiglass (Marshall Super Lead) reuses the gold Marshall plate; m11 Cali V (Mesa) reuses the black plate w/ a green tint */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m10 { --panel:url(/resources/faceplate-m1.png{{{ns}}}); --tint:rgba(150,120,30,.42); --badge:#1c1503; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m11 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(20,74,52,.46); --badge:#d8f2e6; }
 /* m12 Diamond Plate (Mesa Dual Rectifier) reuses the black plate w/ a chrome diamond-plate silver tint */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m12 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(168,176,188,.30); --badge:#e9edf3; }
 /* m13 Tremont 15 (PRS MT15) reuses the black plate w/ a deep PRS blue tint */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m13 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(40,66,110,.40); --badge:#dce6f5; }
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-face-m14 { --panel:url(/resources/faceplate-m2.png{{{ns}}}); --tint:rgba(38,84,150,.46); --badge:#e8f1ff; } /* Blue Liner — SVT blue-line */
 /* grouped knob fieldsets on the plate */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 10px 14px 16px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }
@@ -416,3 +555,24 @@
 
 /* Self-contained base font — do NOT rely on MOD's page font (fixes serif fallback in offline renders + hardens the live UI). */
 .mod-pedal-guitaramp-amp{{{cns}}} { font-family: "Helvetica Neue",Helvetica,Arial,sans-serif; }
+
+/* ── GUITAR / BASS filter: a quiet segmented control above the model selector. It filters
+   the LIST only — never the stored value, so a recalled preset always sounds right. ── */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-rigfilter {
+    display: inline-flex; align-items: center; gap: 2px; margin: 0 10px 0 0;
+    padding: 2px; border-radius: 8px;
+    background: rgba(8,10,14,.62); border: 1px solid rgba(255,255,255,.10);
+    vertical-align: middle;
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-rig-btn {
+    appearance: none; border: 0; cursor: pointer;
+    padding: 4px 10px; border-radius: 6px;
+    background: transparent; color: #9aa3b2;
+    font-size: 9px; font-weight: 800; letter-spacing: 1.1px; text-transform: uppercase;
+    transition: background .14s ease, color .14s ease;
+}
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-rig-btn:hover { color: #e8edf5; background: rgba(255,255,255,.06); }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-rig-btn.hf-rig-on {
+    color: #061018; background: linear-gradient(180deg, #46d8ff, #19a8d8);
+    box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 1px 4px rgba(0,0,0,.5);
+}

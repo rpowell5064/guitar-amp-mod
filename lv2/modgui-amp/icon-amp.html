@@ -8,12 +8,17 @@
     <div class="hx-header">
         <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
         <div class="hx-title">AMP</div>
-        <div class="hx-tag">14 amp models · power-amp stage</div>
+        <div class="hx-tag">16 amp models · power-amp stage</div>
     </div>
 
     <!-- ── AMP MODEL selector (ABOVE the tabs so its dropdown is never clipped) ── -->
     <div class="mod-amp-modelrow">
         <span class="mod-section-label">AMP MODEL</span>
+        <div class="hf-rigfilter" rata-role="rigfilter" data-scope="amp" title="Show guitar or bass amps">
+            <button type="button" class="hf-rig-btn hf-rig-on" data-rig="all">ALL</button>
+            <button type="button" class="hf-rig-btn" data-rig="guitar">GUITAR</button>
+            <button type="button" class="hf-rig-btn" data-rig="bass">BASS</button>
+        </div>
         {{#controls.0}}
         <div class="mod-enumerated mod-model-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
             <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
@@ -38,7 +43,7 @@
 
         <!-- ══ AMP TAB: tolex cabinet top + glowing tubes + per-model faceplate control plate ══ -->
         <div class="hf-tabpanel hf-tab-active" rata-role="panel" data-tab="amp">
-            <div class="hf-amp-face" rata-role="ampface">
+            <div class="hf-amp-face hf-face-m0" rata-role="ampface">
                 <div class="hf-amp-tubes"></div>
                 <div class="hf-amp-plate">
                     <div class="hf-screw hf-screw-tl"></div>
