@@ -1,3 +1,5 @@
 # Shell scripts must stay LF: they run under bash (Pi deploys, WSL builds);
 # CRLF breaks bash and forced a sed 's/$/'/ workaround on the Pi.
 *.sh text eol=lf
+# Golden baselines are compared line-for-line against LF tool output; keep them LF.
+build-tools/golden/*.txt text eol=lf
