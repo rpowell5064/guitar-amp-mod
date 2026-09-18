@@ -74,6 +74,9 @@ private:
     float outScalePa_ = 0.0048f;
 
     float gainMid_ = 0.25f;   // VR1 1M log: fraction at half rotation (fit0 in the lab harness)
+    // Output-transformer low-resonance depth (dB) at ~110 Hz. Sets the low-mid weight;
+    // the printed value humped the low-mids, so it is a tuning lever. fit2 in the lab harness.
+    float zResDb_  = 6.0f;
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

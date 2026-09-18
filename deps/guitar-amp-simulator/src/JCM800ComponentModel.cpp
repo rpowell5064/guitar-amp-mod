@@ -109,7 +109,7 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             p.R4 += kZthStack;
             c.ts.prepare(fs_, p);
         }
-        c.pa.prepare(fs_, jcmPowerParams());
+        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; c.pa.prepare(fs_, pp); }
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -199,6 +199,8 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
+    else if (id == "fit2")     { zResDb_  = value;   // lab: OT low-resonance depth (dB)
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // The 2203 has no channel switch and no resonance control.
 }
