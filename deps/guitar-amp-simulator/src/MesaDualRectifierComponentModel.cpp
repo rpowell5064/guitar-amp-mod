@@ -114,6 +114,11 @@ void MesaDualRectifierComponentModel::prepare(double oversampledSampleRate, int 
 void MesaDualRectifierComponentModel::buildStages() noexcept {
     if (fs_ <= 0.0) return;
     const LdrState& L = kLdr[ldr_];
+    // RD-Modern open-loop voicing: lighter interstage Miller + an open-loop HF shelf,
+    // ONLY in this mode (the NFB loop is disconnected here). Set before any millerC() below.
+    const bool rdModern = (ldr_ == kRdModern);
+    voiceMiller_ = rdModern ? kModernMiller : 1.0;
+    const double zHfEff = zHfDb_ + (rdModern ? kModernZHfDb : 0.0);
     const double rs = railScale();
     const double railE = kRailE * rs, railD = kRailD * rs, railC = kRailC * rs, railA = kRailA * rs;
     const double Zp220 = par(220e3, kRp), Zp100 = par(100e3, kRp);
@@ -162,7 +167,7 @@ void MesaDualRectifierComponentModel::buildStages() noexcept {
         // bleed + master built in recalcPots() (presence-dependent)
         c.coup28.prepare(fs_, 0.02e-6, 250e3, 1e6);                        // C28 → R214 1M (master wiper source, ESTIMATE)
         // ── Power section ──
-        c.pa.prepare(fs_, rectoPowerParams(railC, railA, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
+        c.pa.prepare(fs_, rectoPowerParams(railC, railA, otHfHz_, zHfEff, zResDb_, idleMa_, raa_, nfbStabHz_,
                                            fluxLim_, kneeV_, biasCapUf_, L.feedback, L.moreFeedback));
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(std::min(1.0f, sag_ + (rectTube_ ? float(rectSag_) : 0.0f)));
@@ -235,7 +240,7 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
     tap(3, v);
     v = c.coup22.process(float(v));
     v = c.v2b.process(v);
-    if (c6On_) v = c.c6lp.process(float(v));
+    if (c6On_ && ldr_ != kRdModern) v = c.c6lp.process(float(v));   // C6 plate snubber lifted in RD Modern (redundant with the open NFB loop)
     tap(4, v);
     v = c.coup27.process(float(v));
     v = c.v3a.process(v);

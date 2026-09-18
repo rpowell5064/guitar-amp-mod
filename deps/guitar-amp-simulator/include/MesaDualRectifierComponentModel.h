@@ -102,6 +102,16 @@ private:
     double biasCapUf_ = 10.0;                    // fit15: bias reservoir (not on the PA sheet)
     bool   c6On_ = true;                         // fit17 (lab bisection): C6 across R202
     double millerScale_ = 1.0;                   // fit18 (lab bisection): scale on every Miller term
+    // RD-MODERN open-loop voicing: the Red Modern mode disconnects the NFB loop
+    // (LDR19 off), so its top-end is set by the open-loop Z-network rather than the
+    // closed-loop presence path. This mode therefore carries a brighter open-loop HF
+    // response and a lighter effective interstage Miller than the feedback modes.
+    // Applied ONLY in kRdModern (Clean/Vintage/Raw unaffected): a +12 dB open-loop
+    // HF shelf, a lighter interstage Miller (voiceMiller_ 0.2), and the V2B plate
+    // snubber C6 lifted (its rolloff is redundant with the open loop here).
+    double voiceMiller_ = 1.0;                    // per-mode Miller multiplier (1.0 except RD Modern)
+    static constexpr double kModernMiller  = 0.2;    // RD Modern interstage Miller scale
+    static constexpr double kModernZHfDb   = 12.0;   // RD Modern open-loop HF shelf (dB), added to zHfDb_
     bool   bleedOn_ = true;                      // fit19 (lab bisection): post-stack bleed network
     float  stackMid_ = 0.50f;                    // fit20: tone-pot law — linear (the sheet prints no taper; every grid take prefers it)
 
@@ -140,5 +150,5 @@ private:
     double railScale() const noexcept { return (rectTube_ ? rectRail_ : 1.0) * (spongy_ ? spongyRail_ : 1.0); }
     static constexpr double kRp = 62.5e3;
     static constexpr double kCgp = 1.7e-12, kCgk = 1.6e-12;
-    double millerC(double Ra) const noexcept { return millerScale_ * (kCgk + kCgp * (1.0 + 100.0 * Ra / (Ra + kRp))); }
+    double millerC(double Ra) const noexcept { return millerScale_ * voiceMiller_ * (kCgk + kCgp * (1.0 + 100.0 * Ra / (Ra + kRp))); }
 };
