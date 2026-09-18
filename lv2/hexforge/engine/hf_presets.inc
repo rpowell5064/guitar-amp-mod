@@ -2821,6 +2821,43 @@ static void seedFactoryPresets(HexForge* p) {
             pr.vals[HF_OUT_LEVEL] = std::max(-60.0f, std::min(12.0f, pr.vals[HF_OUT_LEVEL] + t.db));
         }
     }
+
+    // ── rev 148: component amps re-levelled after the Recto / Cali V / EVH / JCM
+    // voicing pass and the Recto/EVH gain-taper change. Measured with
+    // hexforge_golden --comp (the state this rig plays); only the slots this batch
+    // actually moved are touched, so the rev-145/147 passes are not re-litigated.
+    // Positive trims dominate: the gentler gain taper made the high-gain component
+    // presets quieter, so the boost restores the .158 loudness anchor without
+    // touching their gain character. Last thing the seeder does (no bake undone).
+    {
+        auto trim = [&](int b, int sl, float dB) {
+            Preset& pr = p->presets[b][sl];
+            if (pr.used) pr.vals[HF_OUT_LEVEL] = std::max(-60.0f, std::min(12.0f, pr.vals[HF_OUT_LEVEL] + dB));
+        };
+        trim( 0, 1, +2.69f);   // bank01B
+        trim( 3, 2, +4.07f);   // bank04C
+        trim( 3, 3, +1.88f);   // bank04D
+        trim( 6, 0, +2.29f);   // bank07A
+        trim( 6, 1, +0.65f);   // bank07B
+        trim( 6, 2, +2.65f);   // bank07C
+        trim( 7, 2, -1.46f);   // bank08C
+        trim( 7, 3, -1.44f);   // bank08D
+        trim( 8, 0, +3.47f);   // bank09A
+        trim(11, 0, +0.37f);   // bank12A
+        trim(11, 1, +2.63f);   // bank12B
+        trim(11, 2, -1.02f);   // bank12C
+        trim(11, 3, +2.05f);   // bank12D
+        trim(12, 0, +3.81f);   // bank13A
+        trim(12, 3, -1.42f);   // bank13D
+        trim(13, 0, +3.93f);   // bank14A
+        trim(13, 1, +1.04f);   // bank14B
+        trim(13, 3, +3.05f);   // bank14D
+        trim(14, 0, +3.19f);   // bank15A
+        trim(14, 1, +0.94f);   // bank15B
+        trim(15, 3, +0.47f);   // bank16D
+        trim(17, 0, +5.29f);   // bank18A
+        trim(17, 3, +2.72f);   // bank18D
+    }
 }
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);
