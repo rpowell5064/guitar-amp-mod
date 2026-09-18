@@ -106,6 +106,8 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
                            1.0 / (2.0 * M_PI * 0.01e-6 * (43e3 + 33e3)));
         // CH3 open-loop presence shelf: unity below ~1 kHz, +redHfDb_ above.
         c.redHf.prepare(fs_, 1.0, std::pow(10.0, redHfDb_ / 20.0), 1000.0);
+        // CH2 (Blue) presence shelf.
+        c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0);
         {
             YehSmithToneStack::CircuitParams p = YehSmithToneStack::kEVH5150IIICh3;
             p.R4 += kZthCh3;
@@ -257,7 +259,7 @@ void EVH5150ComponentModel::reset() noexcept {
         c.ch3Bright.reset(); c.v2a.reset(); c.d_v2ab.reset(); c.v2b.reset();
         c.v2bPole.reset(); c.d_v23.reset(); c.v3a.reset(); c.d_v3ab.reset();
         c.v3b.reset(); c.d_v34.reset(); c.v4a.reset();
-        c.v4b.reset(); c.ch3Shelf.reset(); c.redHf.reset(); c.ts3.reset();
+        c.v4b.reset(); c.ch3Shelf.reset(); c.redHf.reset(); c.blueHf.reset(); c.ts3.reset();
         c.v1b.reset(); c.v1bLoad.reset(); c.ch2Feed.reset(); c.v5a.reset();
         c.d_v56.reset(); c.v5b.reset(); c.v5bPole.reset(); c.d_v56b.reset();
         c.v6a.reset(); c.cfFeed12.reset(); c.v6b.reset(); c.ch12Shelf.reset();
@@ -349,8 +351,9 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(9, v);
         v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // CH1/2 VOL 1M-30A
         tap(10, v);
-        if (ownPa_) { v = c.pa.process(v * kPaBufGain); tap(11, v); return float(v * outScalePa_); }
-        return float(v * outScale_);
+        // Blue (CH2) presence restore, post power-amp; the CH1/Green relay state is left flat.
+        if (ownPa_) { v = c.pa.process(v * kPaBufGain); if (!greenLegs_) v = c.blueHf.process(float(v)); tap(11, v); return float(v * outScalePa_); }
+        return float((greenLegs_ ? v : c.blueHf.process(float(v))) * outScale_);
     }
 }
 
@@ -366,6 +369,8 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "fit2")    { inVolts_  = std::max(0.01f, value); }   // lab alias of involts
     else if (id == "fit3")    { redHfDb_  = value;   // lab: CH3 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.redHf.prepare(fs_, 1.0, std::pow(10.0, redHfDb_ / 20.0), 1000.0); }
+    else if (id == "fit4")    { blueHfDb_ = value;   // lab: CH2 presence shelf (dB)
+        if (fs_ > 0.0) for (auto& c : ch_) c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0); }
     else if (id == "involts") { inVolts_  = value; }
     else if (id == "outscale"){ outScale_ = value; }
     else if (id == "ownpa")   { ownPa_ = value >= 0.5f; }
