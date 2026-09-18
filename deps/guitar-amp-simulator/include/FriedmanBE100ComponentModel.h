@@ -118,7 +118,7 @@ private:
     // presence swing (|1+T|: 7.1/9.3/10.2/9.0 dB at 2k/3.1k/5k/8k) with the
     // lab friedman_loopgain probe; the JCM-era 22k/8 dB/20k set drove this
     // amp's stronger loop into a 15-20 kHz oscillation at presence 0.
-    double otHfHz_ = 80e3, zHfDb_ = 6.0, zResDb_ = 11.0, bplus_ = 470.0, idleMa_ = 35.0;
+    double otHfHz_ = 80e3, zHfDb_ = 12.0, zResDb_ = 11.0, bplus_ = 470.0, idleMa_ = 35.0;
     double nfbStabHz_ = 60e3, iaScale_ = 2.2;   // fit6 / fit7
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 10.0, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; 10 V = the 100 W core, 50 Hz −5.7→−3.7 dB)
