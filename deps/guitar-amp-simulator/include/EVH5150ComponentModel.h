@@ -91,6 +91,11 @@ private:
     // taper; what the knob has to reproduce is the reference rig's dial.
     float gainMidRed_ = 0.50f, gainMidBlue_ = 0.60f;
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
+    // Red (CH3) open-loop presence: the lead channel's power section runs with little
+    // global feedback, so its top decays through the cascaded interstage Miller with no
+    // presence loop to restore it. redHfDb_ is a bounded HF shelf on the CH3 path only
+    // (CH1/CH2 keep their own response). fit3 in the lab harness.
+    float redHfDb_  = 8.0f;    // CH3 presence-shelf gain (dB) above ~1 kHz
     float outScale_ = 0.20f;   // preamp-only mode: units per volt at the volume pot
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)
     float outScalePa_ = 0.0066f; // own-PA mode: units per SPEAKER volt
@@ -119,6 +124,7 @@ private:
         float               cfDiv3 = 0.282f;  // DC-coupled R59/R58 divider (C29 grounds R57)
         evhcomp::CFStageV   v4b;
         evhcomp::ShelfV     ch3Shelf;    // R61 43k + R83 33k/C43 .01 Thevenin shelf
+        evhcomp::ShelfV     redHf;       // CH3 open-loop presence shelf (redHfDb_ above ~1 kHz)
         YehSmithToneStack   ts3;
 
         // Blue / CH2
