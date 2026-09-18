@@ -2857,6 +2857,7 @@ static void seedFactoryPresets(HexForge* p) {
         trim(15, 3, +0.47f);   // bank16D
         trim(17, 0, +5.29f);   // bank18A
         trim(17, 3, +2.72f);   // bank18D
+        trim( 0, 2, -0.59f);   // bank01C — rev 149: EVH Blue presence + taper
     }
 }
 static void psInitDefaults(HexForge* p) {
