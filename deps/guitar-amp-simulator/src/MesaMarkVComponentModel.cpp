@@ -94,7 +94,7 @@ PushPullPowerV::Params markvPowerParams(double otHfHz, double zHfDb, double zRes
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
     p.fluxHz = 120.0; p.fluxLim = fluxLim;
-    p.screenR = 470.0; p.screenAttS = 0.010; p.screenRelS = 0.200;  p.sagScale = 0.25f;  // sag bloom fit: 1.24 -> REF 0.32 (r2)
+    p.screenR = 470.0; p.screenAttS = 0.010; p.screenRelS = 0.200;
     p.outTrim = 1.0;
     return p;
 }

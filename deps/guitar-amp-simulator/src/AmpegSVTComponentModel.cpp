@@ -20,11 +20,6 @@ const KorenP kKoren12BH7 { 16.5, 1.30, 1000.0, 45.0, 300.0 };
 // the cathode) is a 12AU7-class operating point — the era's 12DW7 sheet — not a
 // 12AX7's, which cannot pass 6 mA at −6 V.
 const KorenP kKoren12AU7 { 21.5, 1.30, 1180.0, 84.0, 300.0 };
-// The SVT's 12AX7 stages stay on the LEGACY textbook set: V3-B sits in the preamp's local
-// DC feedback loop (the shared 20 V node) and with the datasheet tube its plate sags 32%
-// below the print -- that loop bias needs a proper re-solve, not a silent change to a
-// capture-fit amp. Pinned here so the suite-wide tube fix cannot move this amp. TODO.
-static CCStageV::Params pin12(CCStageV::Params p) { p.tube = &kKoren12AX7Legacy; return p; }
 
 // The 20 V node: R30 7.5k to ground, fed by V3-B's cathode (R29 560) and by the
 // V4-B cathode through R35 56k. Thevenin of the R35/R30 pair seen from R29.
@@ -129,17 +124,17 @@ void AmpegSVTComponentModel::buildStages() noexcept {
     for (auto& c : ch_) {
         // ── PREAMP ─────────────────────────────────────────────────────────────
         // V1-A: NORMAL jack → R2 47k, R4 5.6M leak; R3 220k, R5 3.3k UNBYPASSED.
-        c.v1a.prepare(fs_, pin12({ railPre_, 220e3, 3.3e3, 0.0, 47e3, millerC(220e3), 47e3, 0.0, 0.0, 0.0, kneeV_ }));
+        c.v1a.prepare(fs_, { railPre_, 220e3, 3.3e3, 0.0, 47e3, millerC(220e3), 47e3, 0.0, 0.0, 0.0, kneeV_ });
         // V1-B cathode follower, direct-coupled, R6 220k.
-        c.v1b.prepare(fs_, { railPre_, 220e3, c.v1a.biasVp(), par(220e3, kRp), kneeV_, &kKoren12AX7Legacy, true });
+        c.v1b.prepare(fs_, { railPre_, 220e3, c.v1a.biasVp(), par(220e3, kRp), kneeV_, nullptr, true });
         buildSelect(c);
         // V3-A: R24 47k, R25 4.7k unbypassed; grid from the VR1 wiper (Miller pole in recalcPots).
-        c.v3a.prepare(fs_, pin12({ railPre_, 47e3, 4.7e3, 0.0, 0.0, 0.0, 250e3, 0.0, 0.0, 0.0, kneeV_ }));
+        c.v3a.prepare(fs_, { railPre_, 47e3, 4.7e3, 0.0, 0.0, 0.0, 250e3, 0.0, 0.0, 0.0, kneeV_ });
         buildStack(c);
         // V4-A: C15 0.01 → R31 1M; R32 470k, R33 3.3k unbypassed.
         c.coup15.prepare(fs_, 0.01e-6, par(220e3, kRp), 1e6);
         // (its Miller pole sits INSIDE the R35 loop, which flattens it: modelled in the loop gain below)
-        c.v4a.prepare(fs_, pin12({ railPre_, 470e3, 3.3e3, 0.0, par(1e6, par(220e3, kRp)), 0.0, par(1e6, par(220e3, kRp)), 0.0, 0.0, 0.0, kneeV_ }));
+        c.v4a.prepare(fs_, { railPre_, 470e3, 3.3e3, 0.0, par(1e6, par(220e3, kRp)), 0.0, par(1e6, par(220e3, kRp)), 0.0, 0.0, 0.0, kneeV_ });
         // V4-B follower + V3-B: the two share the 20 V node (R30 7.5k), so their DC
         // points are found together: V4-B's cathode feeds the node through R35 56k,
         // the node sets V3-B's cathode/grid reference, V3-B's current adds to it.
@@ -148,13 +143,13 @@ void AmpegSVTComponentModel::buildStages() noexcept {
             voff = v20 * kRcf4 / (kRcf4 + kR35) * 0.0 + v20 * par(kRcf4, kR35) / kR35;   // = v20·(Rk_eff / R35)
             // grid source = the V4-A plate's Thevenin (R32 ‖ rp): the follower runs in grid
             // conduction as drawn, and that source is what its grid current loads
-            c.v4b.prepare(fs_, { railPre_ - voff, par(kRcf4, kR35), c.v4a.biasVp() - voff, par(470e3, kRp), kneeV_, &kKoren12AX7Legacy, true });
+            c.v4b.prepare(fs_, { railPre_ - voff, par(kRcf4, kR35), c.v4a.biasVp() - voff, par(470e3, kRp), kneeV_, nullptr, true });
             const double vk4 = c.v4b.biasVk() + voff;
             vth = vk4 * kBetaFb;
             double vgb = 0.0;
             for (int i = 0; i < 30; ++i) {
                 CCStageV::Params p{ railPre_ - vth, 220e3, kR29 + kRnode, 0.0, 100e3, 0.0, 100e3, 0.0, 0.0, 0.0, kneeV_ };
-                p.VgBias = vgb; p.tube = &kKoren12AX7Legacy;
+                p.VgBias = vgb;
                 c.v3b.prepare(fs_, p);
                 vgb = c.v3b.biasIa() * kRnode;
             }
@@ -170,9 +165,9 @@ void AmpegSVTComponentModel::buildStages() noexcept {
         {
             double ia, gm, gp;
             const double ra3 = par(220e3, 1e6), rk3 = kR29 + kRnode;
-            korenEvalT(&kKoren12AX7Legacy, -c.v3b.biasIa() * kR29, c.v3b.biasVp() - c.v3b.biasVk(), ia, gm, gp);
+            korenEvalT(nullptr, -c.v3b.biasIa() * kR29, c.v3b.biasVp() - c.v3b.biasVk(), ia, gm, gp);
             const double A3 = gm * ra3 / (1.0 + gm * rk3 + gp * (ra3 + rk3));
-            korenEvalT(&kKoren12AX7Legacy, -c.v4a.biasVk(), c.v4a.biasVp() - c.v4a.biasVk(), ia, gm, gp);
+            korenEvalT(nullptr, -c.v4a.biasVk(), c.v4a.biasVp() - c.v4a.biasVk(), ia, gm, gp);
             const double A4 = gm * 470e3 / (1.0 + gm * 3.3e3 + gp * (470e3 + 3.3e3));
             const double A5 = c.v4b.smallSignalGain();   // the grid-conducting follower's real gain
             loopA_  = A3 * A4 * A5;
@@ -193,7 +188,7 @@ void AmpegSVTComponentModel::buildStages() noexcept {
         // ── POWER AMP ──────────────────────────────────────────────────────────
         // V1-A: R3 220k from C; R4 2.2k + R5 220 cathode (the loop enters at their
         // junction); R2 470k leak, ~102k source through the clamp.
-        c.pv1a.prepare(fs_, pin12({ railC_, 220e3, 2.2e3 + 220.0, 0.0, par(470e3, 102e3), millerC(220e3), par(470e3, 102e3), 0.0, 0.0, 0.0, kneeV_ }));
+        c.pv1a.prepare(fs_, { railC_, 220e3, 2.2e3 + 220.0, 0.0, par(470e3, 102e3), millerC(220e3), par(470e3, 102e3), 0.0, 0.0, 0.0, kneeV_ });
         c.pcoup1.prepare(fs_, 0.1e-6, par(220e3, kRp), 1e6);
         c.c2LP.setCoeffs(Filters::lowpass1pole(1.0 / (2.0 * M_PI * 120e-12 * par(par(220e3, kRp), 1e6)), fs_));
         // V1-B cathodyne: R6 15k, R8 1k + R9 10k + VR3 (set for balance ≈ 15k total), grid to the R8/R9 tap.

@@ -30,22 +30,12 @@
 
 namespace evhcomp {
 
-// Shared 12AX7, fitted to the tube's DATASHEET (2026-09-17). The textbook Koren set
-// (mu 100, Ex 1.4, Kg1 1060, Kp 600, Kvb 300) reads Ia 0.476 mA / gm 0.835 mA/V /
-// rp 107 k at the datasheet's Va 250 V, Vg -2 V point -- against the printed 1.2 mA /
-// 1.6 mA/V / 62.5 k: -60% / -48% / +72%. That under-current was the root of the
-// component amps' low DC bias, under-distortion and correction-EQ dependence. Kg1 and
-// Kp are re-solved to the anchor (lab tools/tube_fit.cpp); Kvb is HELD at the standard
-// 300 (one operating point cannot pin the low-Va knee -- a free 3-param fit runs it to
-// 19000) and Ex at 1.4. Residual at the anchor: Ia -4%, gm -7.5%, rp -12%. Validated
-// suite-wide: every component gate stays clean and 6 of 7 capture fits improve (JCM800
-// 18.1 -> 14.1). The SVT is pinned to kKoren12AX7Legacy until its V3-B loop bias is
-// re-solved against this tube.
+// Koren published 12AX7 parameters (shared by every stage).
 struct Koren12AX7 {
     static constexpr double mu  = 100.0;
     static constexpr double Ex  =   1.4;
-    static constexpr double Kg1 =  576.6;
-    static constexpr double Kp  =  388.4;
+    static constexpr double Kg1 = 1060.0;
+    static constexpr double Kp  =  600.0;
     static constexpr double Kvb =  300.0;
 };
 
@@ -90,8 +80,6 @@ inline void korenEval(double Vgk, double Vpk,
 // 12BH7 drivers and the 6C4 line driver). Stages default to the compile-time 12AX7
 // path above (tube == nullptr), so every existing amp is bit-identical.
 struct KorenP { double mu, ex, kg1, kp, kvb; };
-// The pre-2026-09-17 textbook 12AX7, for stages whose bias network was fitted around it.
-inline const KorenP kKoren12AX7Legacy { 100.0, 1.4, 1060.0, 600.0, 300.0 };
 inline void korenEvalP(const KorenP& T, double Vgk, double Vpk,
                        double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
     const double vpk   = std::max(1.0, Vpk);

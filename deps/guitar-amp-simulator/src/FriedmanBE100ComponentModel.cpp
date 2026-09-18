@@ -76,7 +76,7 @@ PushPullPowerV::Params friedmanPowerParams(double railPI, double otHfHz, double 
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
     p.fluxHz = 120.0; p.fluxLim = fluxLim;
-    p.screenR = 1e3;  p.screenAttS = 0.010; p.screenRelS = 0.200;  p.sagScale = 0.74f;  // sag bloom fit: 3.86 -> REF 2.42 (r2)
+    p.screenR = 1e3;  p.screenAttS = 0.010; p.screenRelS = 0.200;
     p.outTrim = 1.0;
     return p;
 }

@@ -142,8 +142,7 @@ public:
             // Relative to idle — the drawing's +485 V TP is measured WITH the
             // idle screen current already flowing.
             const double droop = std::min(200.0, std::max(0.0, scrEnv_ - 0.018) * 10e3)
-                               * (sagDepth_ / 0.3);   // stiff SS-bridge; kept as drawn -- forcing it
-                               // to the reference bloom (1.78) collapsed the sustain 8 dB (2026-09-17)
+                               * (sagDepth_ / 0.3);
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / kVg2), 1.5);
         }
         // Differential plate current into the OT primary → speaker volts.

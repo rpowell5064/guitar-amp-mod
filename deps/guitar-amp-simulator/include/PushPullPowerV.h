@@ -117,9 +117,6 @@ public:
         double screenR = 10e3, screenAttS = 0.010, screenRelS = 0.220;
         double screenFrac = 0.15;   // screen current as a fraction of cathode
         double sagDepthMax = 0.35;
-        double sagScale   = 1.0;    // per-amp sag-depth calibration to the reference bloom
-                                    // (2026-09-17; the -6 dBFS burst maxes screen current so
-                                    // the raw model bloom is per-amp wrong -- some deep, some shallow)
 
         double lutSpan = 80.0;      // output-tube LUT covers +/- this many grid volts
         // Number of points across that span. 1024 (the historic value) is the
@@ -286,7 +283,7 @@ private:
                                + 2.0 * outIdle_ * p_.tubesPerSide) * p_.screenFrac;
             scrEnv_ += (scrI > scrEnv_ ? (1.0 - sagAtk_) : (1.0 - sagRel_)) * (scrI - scrEnv_);
             const double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) * p_.screenR)
-                               * (sagDepth_ / 0.3) * p_.sagScale;
+                               * (sagDepth_ / 0.3);
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / p_.vg2), 1.5);
         }
 

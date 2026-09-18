@@ -59,7 +59,7 @@ PushPullPowerV::Params rockerverbPowerParams(double railC, double railA, double 
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
     p.fluxHz = 120.0; p.fluxLim = fluxLim;
-    p.screenR = 1000.0; p.screenAttS = 0.010; p.screenRelS = 0.200; p.sagScale = 0.10f;   // 1k 5W screens; sag bloom -> REF 0.42 (r3; resists)
+    p.screenR = 1000.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 1k 5W screens
     p.outTrim = 1.0;
     return p;
 }
