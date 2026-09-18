@@ -2858,6 +2858,13 @@ static void seedFactoryPresets(HexForge* p) {
         trim(17, 0, +5.29f);   // bank18A
         trim(17, 3, +2.72f);   // bank18D
         trim( 0, 2, -0.59f);   // bank01C — rev 149: EVH Blue presence + taper
+        // rev 150: Rockerverb low-resonance moved to 160 Hz
+        trim( 0, 3, -1.37f);   // bank01D
+        trim( 2, 0, +0.54f);   // bank03A
+        trim( 2, 2, -1.69f);   // bank03C
+        trim( 2, 3, -1.79f);   // bank03D
+        trim( 5, 3, -1.64f);   // bank06D
+        trim( 6, 1, -1.19f);   // bank07B
     }
 }
 static void psInitDefaults(HexForge* p) {
