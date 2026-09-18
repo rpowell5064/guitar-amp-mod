@@ -90,6 +90,7 @@ private:
     float  gainMidA_  = 0.15f;   // fit0: the A1M0 / 500KA audio law (printed "A")
     double railA_ = 400.0;       // fit1: rectified B+ (290-0-290 VAC, no TP printed)
     double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 25.0, raa_ = 4000.0;   // fit2..fit6
+    double zResHz_ = 160.0;   // fit14: OT low-resonance centre frequency (Hz) — the bump sits in the low-mids, not the sub-bass
     double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)

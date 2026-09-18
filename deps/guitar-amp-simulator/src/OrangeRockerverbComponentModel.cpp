@@ -124,8 +124,9 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
         c.coup6.prepare(fs_, 220e-9, Zp56 + 1e6, 1e6);                    // C6 → R9 1M → (R26 1M via C3)
         c.coup3.prepare(fs_, 47e-9, 1.0, 1e6);                             // C3 47n → R26 1M
         // ── Power section ──
-        c.pa.prepare(fs_, rockerverbPowerParams(railC, railA_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
-                                                fluxLim_, kneeV_, nfbSeriesR_));
+        { auto pp = rockerverbPowerParams(railC, railA_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
+                                          fluxLim_, kneeV_, nfbSeriesR_);
+          pp.zResHz = zResHz_; c.pa.prepare(fs_, pp); }
         c.pa.setSagDepth(sag_);
         c.dnr.prepare(fs_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -250,6 +251,7 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit11")    { nfbSeriesR_ = std::max(100.0f, value); if (fs_ > 0.0) buildStages(); }
     else if (id == "fit12")    { c42On_ = value > 0.5f; }
     else if (id == "fit13")    { railDropScale_ = std::max(0.0f, value); if (fs_ > 0.0) buildStages(); }
+    else if (id == "fit14")    { zResHz_ = std::max(40.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: OT resonance centre (Hz)
     else if (id == "fit16")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
