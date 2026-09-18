@@ -89,7 +89,7 @@ private:
     // law on THREE (0.50) and 0.60 on ONE/TWO match every take (Red 16.9/12.4/
     // 16.2/17.0, Blue g25 15.4 / noon 19.5). The real pots may well be audio
     // taper; what the knob has to reproduce is the reference rig's dial.
-    float gainMidRed_ = 0.50f, gainMidBlue_ = 0.60f;
+    float gainMidRed_ = 0.15f, gainMidBlue_ = 0.60f;   // Red: GAIN audio taper (linear crammed the usable range into the bottom sliver)
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
     // Red (CH3) open-loop presence: the lead channel's power section runs with little
     // global feedback, so its top decays through the cascaded interstage Miller with no

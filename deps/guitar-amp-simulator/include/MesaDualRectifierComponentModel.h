@@ -90,7 +90,7 @@ private:
     float inVolts_    = 1.00f;
     float outScalePa_ = 0.0030f;
     // ESTIMATE-class constants (lab hooks fit0..).
-    float  gainMid_   = 0.50f;   // fit0: GAIN 1M law — linear (the sheet prints no taper; the grids prefer it)
+    float  gainMid_   = 0.15f;   // fit0: GAIN 1M audio taper — a linear law crams the usable gain into the first sliver of travel
     float  masterMid_ = 0.15f;   // fit1: MASTER 1M law
     double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 40.0, raa_ = 4200.0;   // fit2..fit6
     double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
