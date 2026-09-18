@@ -1,6 +1,6 @@
 P000 bank01A hash=0e1848ef6c1a0ac0 peak=0.740591 rms=0.218719
 P001 bank01B hash=5d8dbf415bc01aa7 peak=0.464692 rms=0.152043
-P002 bank01C hash=3d220e6455c180dd peak=0.411161 rms=0.136699
+P002 bank01C hash=39d78872fe2c1cce peak=0.384160 rms=0.127722
 P003 bank01D hash=4573d131aaacac3a peak=0.408862 rms=0.126020
 P004 bank02A hash=7c71d90298d84b93 peak=1.176913 rms=0.286793
 P005 bank02B hash=2b29a2e55712836e peak=0.633232 rms=0.172545
@@ -126,4 +126,4 @@ P124 bank32A hash=d3f24c22d80f383b peak=0.583325 rms=0.160275
 P125 bank32B hash=8a661079766848a7 peak=0.546645 rms=0.164668
 P126 bank32C hash=b17cfcd0d361a113 peak=0.513640 rms=0.159535
 P127 bank32D hash=55e603e10940760b peak=0.534909 rms=0.162967
-ALL  hash=1de4409003a4db62 presets=128
+ALL  hash=30d34ce833b62ce0 presets=128
