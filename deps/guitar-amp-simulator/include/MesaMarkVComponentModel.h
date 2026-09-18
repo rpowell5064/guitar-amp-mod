@@ -98,7 +98,10 @@ private:
     float  gainMid_   = 0.15f;   // fit0: GAIN 1MA law
     float  masterMid_ = 0.15f;   // fit17: CH3 MASTER 100KA law
     float  outputPot_ = 0.5f;    // fit1: rear OUTPUT 1MA position (not a plugin knob)
-    double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 40.0, raa_ = 4200.0;   // fit2..fit6 (zHf 0: the 8 Ω tap drives a flat load in the reference)
+    // fit2..fit6. The Ch3 power section is lightly damped and presence-forward: the Z-network
+    // resonance sits low (zRes) so the low-mids stay tight rather than humped, and the open-loop
+    // top carries an HF shelf (zHf) so the presence band is not rolled off.
+    double otHfHz_ = 80e3, zHfDb_ = 7.0, zResDb_ = 2.0, idleMa_ = 40.0, raa_ = 4200.0;
     double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
