@@ -2914,6 +2914,8 @@ static void seedFactoryPresets(HexForge* p) {
         trim( 4, 1, +6.80f);   // bank05B
         // rev 156: Recto per-mode voicing (the non-Modern channels' presence restored)
         trim(15, 3, -2.79f);   // bank16D
+        // rev 157: Recto per-mode drive into the power amp
+        trim(15, 0, +0.36f);   // bank16A
     }
 }
 static void psInitDefaults(HexForge* p) {
