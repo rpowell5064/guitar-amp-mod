@@ -2876,6 +2876,8 @@ static void seedFactoryPresets(HexForge* p) {
         trim( 4, 1, -3.10f);   // bank05B
         // rev 153: Tube Driver second pass (drive tamed) — bank05B lost drive-stage output
         trim( 4, 1, +9.20f);   // bank05B
+        // rev 154: Tube Driver third pass (soft grid conduction raised small-signal gain)
+        trim( 4, 1, -4.79f);   // bank05B
     }
 }
 static void psInitDefaults(HexForge* p) {
