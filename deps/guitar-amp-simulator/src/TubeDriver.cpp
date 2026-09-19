@@ -70,6 +70,9 @@ void TubeDriver::buildStages() noexcept {
         // aliasing (the "scratchy/fuzzy" report; measured -25 dB inharmonic vs -50+ with).
         c.millerG2.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, fit_[FitMillerG2]), fs_));
         c.millerOut.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, fit_[FitMillerOut]), fs_));
+        // Output voicing: a low-mid peak boost (fat low-mids) then a gentle low-pass (smooth top).
+        c.voiceLow.setCoeffs(Filters::peaking(voiceLowHz_, voiceLowDb_, voiceLowQ_, fs_));
+        c.voiceHf.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, voiceHfHz_), fs_));
     }
     updateDriveCoefs();
     buildOut(true);
@@ -117,6 +120,7 @@ void TubeDriver::reset() noexcept {
         c.inNet.reset(); c.ladder.reset(); c.fbPole.reset(); c.gbwPole.reset();
         c.millerG2.reset(); c.millerOut.reset();
         gc1_.reset(c.g1); gc2_.reset(c.g2); c.outNet.reset();
+        c.voiceLow.reset(); c.voiceHf.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -155,7 +159,8 @@ float TubeDriver::processSample(float x, int chn) noexcept {
     tap(4, g2 - gc2_.Vg0);
     const double p2 = t2_.eval(g2) - vp2Bias_;                     // plate 2 swing
     tap(5, p2);
-    const double out = c.outNet.process(c.millerOut.process(float(p2)));   // plate-2 output rolloff
+    double out = c.outNet.process(c.millerOut.process(float(p2)));   // plate-2 output rolloff
+    out = c.voiceHf.process(float(c.voiceLow.process(float(out))));   // output voicing: fat lows + smooth top
     tap(6, out);
     return float(out * fit_[FitOutScale]);
 }
@@ -166,6 +171,10 @@ void TubeDriver::setParameter(const std::string& id, float value) noexcept {
     else if (id == "tone")  { if (cl != tone_)  { tone_ = cl;  buildOut(false); } }
     else if (id == "level") { if (cl != level_) { level_ = cl; buildOut(false); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
+    else if (id == "voicelowdb") { voiceLowDb_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
+    else if (id == "voicelowhz") { voiceLowHz_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
+    else if (id == "voicelowq")  { voiceLowQ_  = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
+    else if (id == "voicehfhz")  { voiceHfHz_  = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
     else if (id.size() >= 4 && id.compare(0, 3, "fit") == 0) {
         const int k = std::atoi(id.c_str() + 3);
         if (k >= 0 && k < kNFit) { fit_[k] = value; if (fs_ > 0.0) { buildStages(); reset(); } }

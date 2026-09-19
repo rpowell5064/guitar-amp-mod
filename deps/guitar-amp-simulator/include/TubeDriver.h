@@ -210,6 +210,14 @@ private:
 
     static constexpr double kVnode = 8.5;      // the valves' and op-amps' supply node
 
+    // Output voicing (anchored to the real unit's captured response): the reference has a fat
+    // low-mid PEAK around 150 Hz (and rolls off below ~100), and a smooth top. A peaking boost
+    // at the low-mid centre + a gentle output low-pass, both post-tube. Lab hooks "voice*".
+    double voiceLowDb_ = 12.0;    // low-mid peak boost (dB)
+    double voiceLowHz_ = 155.0;   // low-mid peak centre (Hz)
+    double voiceLowQ_  = 1.0;     // low-mid peak width
+    double voiceHfHz_  = 2200.0;  // output low-pass corner (Hz) — the smooth top
+
     double fs_ = 0.0;
     float drive_ = 0.5f, tone_ = 0.5f, level_ = 0.6f;
     LinearSmoother driveS_;
@@ -233,6 +241,8 @@ private:
         BiquadFilter          millerOut;  // plate-2 output pole (its Cout into the tone network)
         GridCouplingV::State  g1, g2;
         evhcomp::LinNetV      outNet;     // 22K → .01µ → E.Q. 10K-B / .047µ → OUT LEVEL 100K-A
+        BiquadFilter          voiceLow;   // post-tube low-mid peak boost (the reference's fatness)
+        BiquadFilter          voiceHf;    // post-tube output low-pass (the reference's smooth top)
         static constexpr int kNTaps = 7;
         double tapAcc[kNTaps] = {};
         long   tapN = 0;
