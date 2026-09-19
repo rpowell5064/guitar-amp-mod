@@ -13,6 +13,29 @@
 static std::string hfBackupDir() {
     return hfplat::configDir();
 }
+// ── Last-position cursor (survives a restart) ─────────────────────────────────
+// Written on every preset change (the same moment the LCD status file is written);
+// read on load and preferred over the State's cursor, which is only as fresh as the
+// last board save. A missing or invalid file, or one pointing at an empty slot,
+// leaves the cursor as it was (slot A of that bank is tried first).
+static void hfWriteCursorFile(HexForge* p) {
+    hfplat::ensureConfigDir();
+    const std::string path = hfBackupDir() + "/hexforge-cursor.txt";
+    FILE* f = std::fopen(path.c_str(), "w");
+    if (!f) return;
+    std::fprintf(f, "%d %d\n", p->curBank, p->curSlot);
+    std::fclose(f);
+}
+static void hfReadCursorFile(HexForge* p) {
+    const std::string path = hfBackupDir() + "/hexforge-cursor.txt";
+    FILE* f = std::fopen(path.c_str(), "r");
+    if (!f) return;
+    int b = -1, sl = -1; const int n = std::fscanf(f, "%d %d", &b, &sl); std::fclose(f);
+    if (n != 2 || b < 0 || b >= kBanks || sl < 0 || sl >= kSlots) return;
+    if (!p->presets[b][sl].used) sl = 0;
+    if (!p->presets[b][sl].used) return;
+    p->curBank = b; p->curSlot = sl;
+}
 // ── UI notification payload builders (M2: shared by the LV2 forge emitters and
 // the desktop webview bridge — one format, two hosts) ─────────────────────────
 // "bank|slot|name0|name1|...|name127" — drives the UI bank indicator + name list.
@@ -480,9 +503,17 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
             std::strncpy(pr.dr2NamPath,d2n,kPathMax-1); pr.dr2NamPath[kPathMax-1]='\0';
         }
     }
-    uint32_t cb=0, cs=0; getU32(cb); getU32(cs);   // (saved cursor read for byte alignment, then discarded)
-    p->curBank = 0; p->curSlot = 0;   // ALWAYS land on the first preset (Bank 1 / A) on load
+    // Land where the player left off: the saved cursor (bank + slot) is restored, so a
+    // restart picks up the bank they were on. Bank 1 / A remains the default only for a
+    // fresh instance with no saved state (psInitDefaults). A cursor that points at an
+    // empty slot falls back to slot A of that bank, then to Bank 1 / A.
+    uint32_t cb=0, cs=0; getU32(cb); getU32(cs);
+    int rb = static_cast<int>(cb) & (kBanks - 1), rs = static_cast<int>(cs) & (kSlots - 1);
+    if (!p->presets[rb][rs].used) rs = 0;
+    if (!p->presets[rb][rs].used) { rb = 0; rs = 0; }
+    p->curBank = rb; p->curSlot = rs;
     if (factoryRev < kFactoryRev) seedFactoryPresets(p);   // refresh updated factory slots (user slots kept)
+    hfReadCursorFile(p);   // the last position, if fresher than the State's cursor
     return true;
 }
 // Write the store to the backup file (atomic: tmp + rename). Called on every
@@ -530,6 +561,7 @@ static void psRecall(HexForge* p, int bank, int slot) {
     p->curSlot = slot & (kSlots - 1);
     const Preset& pr = p->presets[p->curBank][p->curSlot];
     p->host->statusDump();
+    hfWriteCursorFile(p);   // remember the last position across a restart
     if (pr.used) {
         for (int i = 0; i < HF_N_PORTS; ++i) if (isParamPort(i)) {
             p->eff[i] = pr.vals[i];
@@ -2887,6 +2919,7 @@ static void seedFactoryPresets(HexForge* p) {
 static void psInitDefaults(HexForge* p) {
     seedFactoryPresets(p);
     p->curBank = 0; p->curSlot = 0;
-    p->pendingRecall = true;   // a fresh instance starts on Bank 1 / A (Clean)
+    hfReadCursorFile(p);       // ...or the last position, when one was saved
+    p->pendingRecall = true;   // a fresh instance starts on Bank 1 / A (Clean) unless a last position exists
 }
 
