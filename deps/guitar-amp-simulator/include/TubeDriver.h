@@ -100,37 +100,42 @@ public:
     // component toolkit's grid model (conducts above 0.7 V with 2k slope, 0.15 V knee).
     struct GridCouplingV {
         static constexpr int    kN = 2048;
-        static constexpr double kOn = 0.7, kRgk = 2e3, kKnee = 0.15;
+        static constexpr double kOn = 0.7;
         static constexpr double kULo = -30.0, kUHi = 20.0;   // table span, in knee widths
         struct State { double Vc = 0.0, Ic = 0.0, Vg = 0.0; };
+
+        // Grid-diode shape. The toolkit default (2k slope, 0.15 V knee) is a fully-heated
+        // cathode. This pedal runs its heaters off the 9 V supply, well under nominal, so the
+        // cathode under-emits and grid conduction sets in more gradually — set before prepare().
+        double rgk = 2e3, knee = 0.15;
 
         double h = 0.0, gS = 0.0, gB = 0.0, Vb = 0.0, G = 1.0, sG = 0.0, bB = 0.0;
         double aHi = 0.0, aDen = 1.0, Vg0 = 0.0;
         HermiteLut<kN> lut;
 
-        static void diode(double v, double& i, double& di) noexcept {
-            const double u = (v - kOn) / kKnee;
+        void diode(double v, double& i, double& di) const noexcept {
+            const double u = (v - kOn) / knee;
             double sp, sg;
             if (u > 30.0)       { sp = u;   sg = 1.0; }
             else if (u < -30.0) { sp = 0.0; sg = 0.0; }
             else { const double e = std::exp(u); sp = std::log1p(e); sg = e / (1.0 + e); }
-            i = kKnee / kRgk * sp; di = sg / kRgk;
+            i = knee / rgk * sp; di = sg / rgk;
         }
-        static double xOf(double v, double g) noexcept { double i, di; diode(v, i, di); return v + i / g; }
+        double xOf(double v, double g) const noexcept { double i, di; diode(v, i, di); return v + i / g; }
 
         void prepare(double fs, double C, double Rs, double Rb, double vb) noexcept {
             h = 1.0 / (2.0 * C * fs); gS = 1.0 / (Rs + h); gB = 1.0 / Rb; Vb = vb;
             G = gS + gB; sG = gS / G; bB = Vb * gB / G;
-            const double vlo = kOn + kULo * kKnee, vhi = kOn + kUHi * kKnee, g = G;
-            lut.build(xOf(vlo, g), xOf(vhi, g), [g, vlo, vhi](double x, double& v, double& dv) {
+            const double vlo = kOn + kULo * knee, vhi = kOn + kUHi * knee, g = G;
+            lut.build(xOf(vlo, g), xOf(vhi, g), [this, g, vlo, vhi](double x, double& v, double& dv) {
                 double lo = vlo - 1.0, hi = vhi + 1.0;
                 for (int k = 0; k < 64; ++k) { const double m = 0.5 * (lo + hi); if (xOf(m, g) < x) lo = m; else hi = m; }
                 v = 0.5 * (lo + hi);
                 double i, di; diode(v, i, di);
                 dv = 1.0 / (1.0 + di / g);
             });
-            // Past the table the diode is its 2k asymptote: v + (v − kOn)/(kRgk·G) = x.
-            aHi = kOn / (kRgk * G); aDen = 1.0 / (1.0 + 1.0 / (kRgk * G));
+            // Past the table the diode is its rgk asymptote: v + (v − kOn)/(rgk·G) = x.
+            aHi = kOn / (rgk * G); aDen = 1.0 / (1.0 + 1.0 / (rgk * G));
             double lo = -5.0, hi = vb + 1.0;   // rest: (Vb − Vg)/Rb = Ig(Vg)
             for (int i = 0; i < 80; ++i) {
                 const double m = 0.5 * (lo + hi);
@@ -223,6 +228,18 @@ private:
     // breakup by ~7 o'clock. Higher = the range spreads and noon is a musical, tube-led overdrive.
     double driveTaperMid_ = 0.15;   // (kept at the pot's audio law)
     double driveMaxR_ = 120e3;      // TUBE DRIVE pot scale: the real unit is a smooth overdrive, not a fuzz — the full 500k slammed the op-amp rail into hard clipping (harsh). A smaller span keeps the tube the dominant, softer clipper.
+
+    // Grid-diode shape for BOTH valve halves (heaters run off the 9 V supply, well under
+    // nominal: the cathode under-emits, so grid conduction sets in gradually and clips
+    // softly rather than clamping). Lab hooks gridknee / gridrgk.
+    // Per stage: stage 1 sits at ground bias (its rest point is insensitive to the diode shape,
+    // so its conduction can be softened freely); stage 2 is the enhanced-bias stage whose rest
+    // point is SET by the diode/470K balance — soften it only with care (a wide knee there drives
+    // the rest point deep into conduction, saturates the starved plate, and mutes low drive).
+    double gridKnee1_ = 0.15, gridRgk1_ = 2e3;   // stage 1 (fit9 / fit10): toolkit default, insensitive here
+    double gridKnee2_ = 0.30, gridRgk2_ = 5e3;   // stage 2 (fit13 / fit14): the under-heated cathode's gentle
+                                                  // conduction — turns the clamp's hard, even-harmonic clip into
+                                                  // a balanced even/odd soft clip, and keeps the rest point stable
 
     double fs_ = 0.0;
     float drive_ = 0.5f, tone_ = 0.5f, level_ = 0.6f;

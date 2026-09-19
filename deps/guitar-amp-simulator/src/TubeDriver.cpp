@@ -45,11 +45,13 @@ void TubeDriver::buildStages() noexcept {
     t2_.prepare(kVnode, 100e3);
     double ia, gm, gp;
     // Grid 1: .1µ → 1.5K from the op-amp, 3.3K to ground.
+    gc1_.knee = gridKnee1_; gc1_.rgk = gridRgk1_;   // stage 1 grid conduction shape
     gc1_.prepare(fs_, 0.1e-6, 1.5e3, 3.3e3, 0.0);
     vp1Bias_ = t1_.eval(gc1_.Vg0);
     korenEvalT(nullptr, gc1_.Vg0, vp1Bias_, ia, gm, gp);
     rp1_ = gp > 1e-12 ? 1.0 / gp : 1e9;
     // Grid 2: .047µ from plate 1 (its output impedance 68K ‖ rp), 470K up to the 8.5 V node.
+    gc2_.knee = gridKnee2_; gc2_.rgk = gridRgk2_;   // stage 2 (enhanced-bias) grid conduction shape
     gc2_.prepare(fs_, 0.047e-6, par(68e3, rp1_), 470e3, kVnode);
     vp2Bias_ = t2_.eval(gc2_.Vg0);
     korenEvalT(nullptr, gc2_.Vg0, vp2Bias_, ia, gm, gp);
@@ -177,6 +179,12 @@ void TubeDriver::setParameter(const std::string& id, float value) noexcept {
     else if (id == "voicehfhz")  { voiceHfHz_  = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
     else if (id == "drivetapermid") { driveTaperMid_ = value; if (fs_ > 0.0) { updateDriveCoefs(); } }   // lab
     else if (id == "drivemaxr")     { driveMaxR_ = value;     if (fs_ > 0.0) { updateDriveCoefs(); } }   // lab
+    else if (id == "gridknee1" || id == "fit9")  { gridKnee1_ = std::max(0.01f, value);  if (fs_ > 0.0) { buildStages(); reset(); } }   // lab: stage-1 knee (fit9)
+    else if (id == "gridrgk1"  || id == "fit10") { gridRgk1_  = std::max(100.0f, value); if (fs_ > 0.0) { buildStages(); reset(); } }   // lab: stage-1 slope (fit10)
+    else if (id == "gridknee2" || id == "fit13") { gridKnee2_ = std::max(0.01f, value);  if (fs_ > 0.0) { buildStages(); reset(); } }   // lab: stage-2 knee (fit13)
+    else if (id == "gridrgk2"  || id == "fit14") { gridRgk2_  = std::max(100.0f, value); if (fs_ > 0.0) { buildStages(); reset(); } }   // lab: stage-2 slope (fit14)
+    else if (id == "fit11")                     { driveMaxR_ = value; if (fs_ > 0.0) { updateDriveCoefs(); } }                        // lab alias of drivemaxr
+    else if (id == "fit12")                     { voiceHfHz_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }                    // lab alias of voicehfhz
     else if (id.size() >= 4 && id.compare(0, 3, "fit") == 0) {
         const int k = std::atoi(id.c_str() + 3);
         if (k >= 0 && k < kNFit) { fit_[k] = value; if (fs_ > 0.0) { buildStages(); reset(); } }
