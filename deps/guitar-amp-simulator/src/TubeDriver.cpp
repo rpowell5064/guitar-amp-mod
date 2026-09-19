@@ -27,7 +27,7 @@ double TubeDriver::opClip(double x, double sw) noexcept {
 
 // TUBE DRIVE: a 500K-A pot as the feedback rheostat.
 double TubeDriver::driveR() const noexcept {
-    return double(audioTaper(driveCur_, 0.15f)) * 500e3 + fit_[FitPotEnd];
+    return double(audioTaper(driveCur_, float(driveTaperMid_))) * driveMaxR_ + fit_[FitPotEnd];
 }
 
 void TubeDriver::updateDriveCoefs() noexcept {
@@ -175,6 +175,8 @@ void TubeDriver::setParameter(const std::string& id, float value) noexcept {
     else if (id == "voicelowhz") { voiceLowHz_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
     else if (id == "voicelowq")  { voiceLowQ_  = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
     else if (id == "voicehfhz")  { voiceHfHz_  = value; if (fs_ > 0.0) { buildStages(); reset(); } }   // lab
+    else if (id == "drivetapermid") { driveTaperMid_ = value; if (fs_ > 0.0) { updateDriveCoefs(); } }   // lab
+    else if (id == "drivemaxr")     { driveMaxR_ = value;     if (fs_ > 0.0) { updateDriveCoefs(); } }   // lab
     else if (id.size() >= 4 && id.compare(0, 3, "fit") == 0) {
         const int k = std::atoi(id.c_str() + 3);
         if (k >= 0 && k < kNFit) { fit_[k] = value; if (fs_ > 0.0) { buildStages(); reset(); } }

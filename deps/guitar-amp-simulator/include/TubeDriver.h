@@ -217,6 +217,12 @@ private:
     double voiceLowHz_ = 155.0;   // low-mid peak centre (Hz)
     double voiceLowQ_  = 1.0;     // low-mid peak width
     double voiceHfHz_  = 2200.0;  // output low-pass corner (Hz) — the smooth top
+    // TUBE DRIVE taper: fraction of full pot resistance at half rotation. The BK Butler's audio
+    // pot spreads the gain across the sweep; a very low mid crams all the drive into the first
+    // eighth of travel (noon already slams the op-amp rail — harsh) and reaches the unit's smooth
+    // breakup by ~7 o'clock. Higher = the range spreads and noon is a musical, tube-led overdrive.
+    double driveTaperMid_ = 0.15;   // (kept at the pot's audio law)
+    double driveMaxR_ = 120e3;      // TUBE DRIVE pot scale: the real unit is a smooth overdrive, not a fuzz — the full 500k slammed the op-amp rail into hard clipping (harsh). A smaller span keeps the tube the dominant, softer clipper.
 
     double fs_ = 0.0;
     float drive_ = 0.5f, tone_ = 0.5f, level_ = 0.6f;
