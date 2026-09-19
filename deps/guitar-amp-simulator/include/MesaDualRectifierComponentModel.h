@@ -109,9 +109,26 @@ private:
     // Applied ONLY in kRdModern (Clean/Vintage/Raw unaffected): a +12 dB open-loop
     // HF shelf, a lighter interstage Miller (voiceMiller_ 0.2), and the V2B plate
     // snubber C6 lifted (its rolloff is redundant with the open loop here).
-    double voiceMiller_ = 1.0;                    // per-mode Miller multiplier (1.0 except RD Modern)
-    static constexpr double kModernMiller  = 0.2;    // RD Modern interstage Miller scale
-    static constexpr double kModernZHfDb   = 12.0;   // RD Modern open-loop HF shelf (dB), added to zHfDb_
+    double voiceMiller_ = 1.0;                    // per-mode Miller multiplier (set from kModeMiller)
+    // Per-MODE voicing (plugin modes 0..7: CH1 Clean, CH1 Pushed, CH2 Raw, CH2 Vintage, CH2 Modern,
+    // CH3 Raw, CH3 Vintage, CH3 Modern). Two modes can share an LDR state yet the amp's panel
+    // positions differ audibly (CH2 Raw vs CH2 Modern), so the voicing is keyed on the mode, not
+    // the state. Modern modes run with the NFB loop OPEN (LDR19 off): their top comes back through
+    // an open-loop HF shelf, a lighter interstage Miller and the V2B snubber C6 lifted. The closed-
+    // loop states take a smaller shelf inside the loop -- above ~+20 dB the loop goes unstable
+    // (measured: +22 degrades, +24 oscillates), so those are capped at +18. The low-resonance
+    // offsets set each mode's low-mid weight (the Red Vintage state sits thin, Clean sits heavy).
+    // The Orange-Normal state (CH1 Pushed, CH2 Vintage) needs ~+18 dB, which its closed loop
+    // cannot carry: in-loop it is stable at noon but OSCILLATES at presence 0 / master near 0
+    // (measured E ~100 %, output louder than at full master). Its restore therefore sits AFTER
+    // the power amp (kModePostHfDb), where no loop can go unstable; in-loop it takes 0.
+    static constexpr double kModeZHfDb[8]    = { -26.0,  0.0, 13.0,  0.0, 22.0,  6.0,  6.0, 12.0 };   // in-loop shelf, added to zHfDb_
+    static constexpr double kModePostHfDb[8] = {   0.0, 12.0,  0.0, 12.0,  0.0,  0.0,  0.0,  0.0 };   // post-power-amp shelf (dB above ~3 kHz; +12 here matches what +18 in-loop had given)
+    static constexpr double kModeZResDb[8]   = {  -9.0,  0.0,  0.0,  0.0,  0.0,  8.0,  4.0,  0.0 };   // added to zResDb_
+    static constexpr double kModeMiller[8]   = {   1.0,  1.0,  0.2,  1.0,  0.2,  1.0,  1.0,  0.2 };   // interstage Miller scale
+    static constexpr bool   kModeC6[8]       = {  true, true,false, true,false, true, true,false };   // V2B plate snubber in circuit
+    double postHfHz_    = 3000.0;    // post-PA shelf corner (Hz) — matches the in-loop Z-network shelf's corner (fit22)
+    double postHfDbOvr_ = -999.0;    // lab: overrides the current mode's kModePostHfDb when > -900 (fit21)
     bool   bleedOn_ = true;                      // fit19 (lab bisection): post-stack bleed network
     float  stackMid_ = 0.50f;                    // fit20: tone-pot law — linear (the sheet prints no taper; every grid take prefers it)
 
@@ -133,6 +150,7 @@ private:
         evhcomp::ShelfV     bleed;      // R254/C8/PRESENCE (red) or R263/C7/R354 (orange)
         evhcomp::RCDividerV coup28;     // C28 → R214 1M (PI grid)
         evhcomp::PushPullPowerV pa;
+        evhcomp::ShelfV         postHf;   // per-mode post-power-amp presence shelf (kModePostHfDb)
         DnrRolloff              dnr;
 
         static constexpr int kNTaps = 10;

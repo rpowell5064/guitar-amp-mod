@@ -114,11 +114,11 @@ void MesaDualRectifierComponentModel::prepare(double oversampledSampleRate, int 
 void MesaDualRectifierComponentModel::buildStages() noexcept {
     if (fs_ <= 0.0) return;
     const LdrState& L = kLdr[ldr_];
-    // RD-Modern open-loop voicing: lighter interstage Miller + an open-loop HF shelf,
-    // ONLY in this mode (the NFB loop is disconnected here). Set before any millerC() below.
-    const bool rdModern = (ldr_ == kRdModern);
-    voiceMiller_ = rdModern ? kModernMiller : 1.0;
-    const double zHfEff = zHfDb_ + (rdModern ? kModernZHfDb : 0.0);
+    // Per-mode voicing (see the tables in the header). Set before any millerC() below.
+    const int mi = std::clamp(mode_, 0, 7);
+    voiceMiller_ = kModeMiller[mi];
+    const double zHfEff  = zHfDb_  + kModeZHfDb[mi];
+    const double zResEff = zResDb_ + kModeZResDb[mi];
     const double rs = railScale();
     const double railE = kRailE * rs, railD = kRailD * rs, railC = kRailC * rs, railA = kRailA * rs;
     const double Zp220 = par(220e3, kRp), Zp100 = par(100e3, kRp);
@@ -167,9 +167,10 @@ void MesaDualRectifierComponentModel::buildStages() noexcept {
         // bleed + master built in recalcPots() (presence-dependent)
         c.coup28.prepare(fs_, 0.02e-6, 250e3, 1e6);                        // C28 → R214 1M (master wiper source, ESTIMATE)
         // ── Power section ──
-        c.pa.prepare(fs_, rectoPowerParams(railC, railA, otHfHz_, zHfEff, zResDb_, idleMa_, raa_, nfbStabHz_,
+        c.pa.prepare(fs_, rectoPowerParams(railC, railA, otHfHz_, zHfEff, zResEff, idleMa_, raa_, nfbStabHz_,
                                            fluxLim_, kneeV_, biasCapUf_, L.feedback, L.moreFeedback));
         c.pa.setPresence(presence_);
+        c.postHf.prepare(fs_, 1.0, std::pow(10.0, (postHfDbOvr_ > -900.0 ? postHfDbOvr_ : kModePostHfDb[mi]) / 20.0), postHfHz_);   // post-PA presence (closed-loop modes)
         c.pa.setSagDepth(std::min(1.0f, sag_ + (rectTube_ ? float(rectSag_) : 0.0f)));
         c.dnr.prepare(fs_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -208,7 +209,7 @@ void MesaDualRectifierComponentModel::reset() noexcept {
     for (auto& c : ch_) {
         c.v1a.reset(); c.coup21.reset(); c.pad.reset(); c.bright.reset(); c.v2a.reset(); c.coup22.reset();
         c.v2b.reset(); c.c6lp.reset(); c.coup27.reset(); c.v3a.reset(); c.v3b.reset(); c.ts.reset();
-        c.bleed.reset(); c.coup28.reset(); c.pa.reset(); c.dnr.reset();
+        c.bleed.reset(); c.coup28.reset(); c.pa.reset(); c.postHf.reset(); c.dnr.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -240,7 +241,7 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
     tap(3, v);
     v = c.coup22.process(float(v));
     v = c.v2b.process(v);
-    if (c6On_ && ldr_ != kRdModern) v = c.c6lp.process(float(v));   // C6 plate snubber lifted in RD Modern (redundant with the open NFB loop)
+    if (c6On_ && kModeC6[std::clamp(mode_, 0, 7)]) v = c.c6lp.process(float(v));   // C6 plate snubber lifted in the open-loop Modern modes
     tap(4, v);
     v = c.coup27.process(float(v));
     v = c.v3a.process(v);
@@ -253,7 +254,8 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
     if (!L.orMasterBypass) v *= audioTaper(masterSmooth_.getCurrentValue(), masterMid_);
     v = c.coup28.process(float(v));
     tap(7, v);
-    const double out = c.pa.process(v);
+    double out = c.pa.process(v);
+    out = c.postHf.process(float(out));   // per-mode post-PA presence (unity where the table is 0)
     tap(8, out);
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
     return c.dnr.process(float(out * outScalePa_), ldr_ != kOrClean);
@@ -273,8 +275,8 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
     else if (id == "mode")     {
         const int nm = std::clamp(static_cast<int>(value + 0.5f), 0, 7);
         const int nl = ldrFor(nm);
-        mode_ = nm;
-        if (nl != ldr_) { ldr_ = nl; if (fs_ > 0.0) buildStages(); }
+        // Voicing is per MODE (two modes can share an LDR state), so any mode change rebuilds.
+        if (nm != mode_ || nl != ldr_) { mode_ = nm; ldr_ = nl; if (fs_ > 0.0) buildStages(); }
     }
     else if (id == "rect")     { const bool t = value > 0.5f; if (t != rectTube_) { rectTube_ = t; if (fs_ > 0.0) buildStages(); } }
     else if (id == "variac")   { const bool s = value > 0.5f; if (s != spongy_)   { spongy_ = s;   if (fs_ > 0.0) buildStages(); } }
@@ -301,6 +303,8 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
     else if (id == "fit18")    { millerScale_ = std::max(0.0f, value); if (fs_ > 0.0) buildStages(); }
     else if (id == "fit19")    { bleedOn_ = value > 0.5f; }
     else if (id == "fit20")    { stackMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }
+    else if (id == "fit21")    { postHfDbOvr_ = value; if (fs_ > 0.0) buildStages(); }   // lab: post-PA shelf gain override (dB)
+    else if (id == "fit22")    { postHfHz_ = std::max(200.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: post-PA shelf corner (Hz)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 
