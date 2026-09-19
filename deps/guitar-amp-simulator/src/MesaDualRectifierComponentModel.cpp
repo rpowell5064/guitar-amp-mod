@@ -254,7 +254,8 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
     if (!L.orMasterBypass) v *= audioTaper(masterSmooth_.getCurrentValue(), masterMid_);
     v = c.coup28.process(float(v));
     tap(7, v);
-    double out = c.pa.process(v);
+    const int mo = std::clamp(mode_, 0, 7);
+    double out = c.pa.process(v * (paDriveOvr_ > 0.0 ? paDriveOvr_ : kModePaDrive[mo]));   // per-mode drive into the power amp
     out = c.postHf.process(float(out));   // per-mode post-PA presence (unity where the table is 0)
     tap(8, out);
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
@@ -305,6 +306,7 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
     else if (id == "fit20")    { stackMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }
     else if (id == "fit21")    { postHfDbOvr_ = value; if (fs_ > 0.0) buildStages(); }   // lab: post-PA shelf gain override (dB)
     else if (id == "fit22")    { postHfHz_ = std::max(200.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: post-PA shelf corner (Hz)
+    else if (id == "fit23")    { paDriveOvr_ = value; }   // lab: drive into the power amp (linear) override
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

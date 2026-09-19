@@ -129,6 +129,16 @@ private:
     static constexpr bool   kModeC6[8]       = {  true, true,false, true,false, true, true,false };   // V2B plate snubber in circuit
     double postHfHz_    = 3000.0;    // post-PA shelf corner (Hz) — matches the in-loop Z-network shelf's corner (fit22)
     double postHfDbOvr_ = -999.0;    // lab: overrides the current mode's kModePostHfDb when > -900 (fit21)
+    // Drive into the power amp, per mode (linear). At a normal master the closed-loop modes'
+    // power amp was clipping hard on every transient the low-gain preamp left uncompressed --
+    // a closed loop squares the clip off (7th/9th harmonics three times the unit's, the 2nd
+    // gone: dark, fuzzy, "blown speaker"), where the open-loop Modern modes clip softly and get
+    // away with the same drive. The unit's Raw/Vintage modes reach their power amp gentler.
+    // Clean (master bypassed by LDR16, so its power amp otherwise runs flat out) and the
+    // Orange-Normal state take the deepest cut; Red Vintage and the open-loop CH2 modes a
+    // milder one; Red Modern is the reference and stays at unity.
+    static constexpr double kModePaDrive[8] = { 0.35, 0.30, 0.50, 0.30, 0.50, 0.50, 0.50, 1.0 };
+    double paDriveOvr_ = 0.0;        // lab: overrides the current mode's kModePaDrive when > 0 (fit23)
     bool   bleedOn_ = true;                      // fit19 (lab bisection): post-stack bleed network
     float  stackMid_ = 0.50f;                    // fit20: tone-pot law — linear (the sheet prints no taper; every grid take prefers it)
 
