@@ -2865,6 +2865,13 @@ static void seedFactoryPresets(HexForge* p) {
         trim( 2, 3, -1.79f);   // bank03D
         trim( 5, 3, -1.64f);   // bank06D
         trim( 6, 1, -1.19f);   // bank07B
+        // rev 151: Rockerverb dirty presence lift (dirtyHf)
+        trim( 0, 3, -0.85f);   // bank01D
+        trim( 2, 1, -0.59f);   // bank03B
+        trim( 2, 2, -0.82f);   // bank03C
+        trim( 2, 3, -1.25f);   // bank03D
+        trim( 5, 3, -0.77f);   // bank06D
+        trim( 6, 1, -0.61f);   // bank07B
     }
 }
 static void psInitDefaults(HexForge* p) {
