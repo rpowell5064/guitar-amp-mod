@@ -91,6 +91,9 @@ private:
     double railA_ = 400.0;       // fit1: rectified B+ (290-0-290 VAC, no TP printed)
     double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 25.0, raa_ = 4000.0;   // fit2..fit6
     double zResHz_ = 160.0;   // fit14: OT low-resonance centre frequency (Hz) — the bump sits in the low-mids, not the sub-bass
+    // Dirty-channel presence: the OD channel sits darker than the rest of the amp roster in the
+    // rig, so it carries its own post-power-amp HF shelf (dirty only; the clean channel is flat).
+    float  dirtyHfDb_ = 7.0f;   // fit15: DIRTY presence-shelf gain (dB) above ~1.2 kHz
     double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
@@ -128,6 +131,7 @@ private:
         evhcomp::RCDividerV coup6;      // C6 → R9 1M / R26 1M
         evhcomp::RCDividerV coup3;      // C3 47n → R26 1M
         evhcomp::PushPullPowerV pa;
+        evhcomp::ShelfV         dirtyHf;   // DIRTY-only presence shelf (dirtyHfDb_ above ~1.2 kHz)
         DnrRolloff              dnr;
 
         static constexpr int kNTaps = 10;

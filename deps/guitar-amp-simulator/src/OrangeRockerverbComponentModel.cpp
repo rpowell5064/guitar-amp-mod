@@ -128,6 +128,7 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
                                           fluxLim_, kneeV_, nfbSeriesR_);
           pp.zResHz = zResHz_; c.pa.prepare(fs_, pp); }
         c.pa.setSagDepth(sag_);
+        c.dirtyHf.prepare(fs_, 1.0, std::pow(10.0, dirtyHfDb_ / 20.0), 1200.0);   // DIRTY presence shelf
         c.dnr.prepare(fs_);
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
@@ -160,7 +161,7 @@ void OrangeRockerverbComponentModel::reset() noexcept {
         c.coup23.reset(); c.v8a.reset(); c.c19lp.reset(); c.coup32.reset(); c.v8b.reset(); c.tsDirty.reset();
         c.v10a.reset(); c.coup30.reset(); c.brightC.reset(); c.v10b.reset(); c.tsClean.reset();
         c.coup4.reset(); c.v7a.reset(); c.coup5.reset(); c.v7b.reset(); c.coup6.reset(); c.coup3.reset();
-        c.pa.reset(); c.dnr.reset();
+        c.pa.reset(); c.dirtyHf.reset(); c.dnr.reset();
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -220,7 +221,8 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
     v = c.coup6.process(float(v));
     v = c.coup3.process(float(v));
     tap(7, v);
-    const double out = c.pa.process(v);
+    double out = c.pa.process(v);
+    if (!clean_) out = c.dirtyHf.process(float(out));   // DIRTY-only presence restore (post power-amp)
     tap(8, out);
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
     return c.dnr.process(float(out * outScalePa_), !clean_ && gain_ > 0.4f);
@@ -252,6 +254,7 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit12")    { c42On_ = value > 0.5f; }
     else if (id == "fit13")    { railDropScale_ = std::max(0.0f, value); if (fs_ > 0.0) buildStages(); }
     else if (id == "fit14")    { zResHz_ = std::max(40.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: OT resonance centre (Hz)
+    else if (id == "fit15")    { dirtyHfDb_ = value; if (fs_ > 0.0) for (auto& c : ch_) c.dirtyHf.prepare(fs_, 1.0, std::pow(10.0, dirtyHfDb_ / 20.0), 1200.0); }   // lab: DIRTY presence shelf (dB)
     else if (id == "fit16")    { inVolts_ = std::max(1e-4f, value); }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
