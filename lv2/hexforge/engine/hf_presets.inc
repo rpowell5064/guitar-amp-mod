@@ -2878,6 +2878,8 @@ static void seedFactoryPresets(HexForge* p) {
         trim( 4, 1, +9.20f);   // bank05B
         // rev 154: Tube Driver third pass (soft grid conduction raised small-signal gain)
         trim( 4, 1, -4.79f);   // bank05B
+        // rev 155: Tube Driver fourth pass (linear path corrected; drive span reduced again)
+        trim( 4, 1, +6.80f);   // bank05B
     }
 }
 static void psInitDefaults(HexForge* p) {
