@@ -2872,6 +2872,8 @@ static void seedFactoryPresets(HexForge* p) {
         trim( 2, 3, -1.25f);   // bank03D
         trim( 5, 3, -0.77f);   // bank06D
         trim( 6, 1, -0.61f);   // bank07B
+        // rev 152: Tube Driver re-voice (low-mid peak + top rolloff)
+        trim( 4, 1, -3.10f);   // bank05B
     }
 }
 static void psInitDefaults(HexForge* p) {
