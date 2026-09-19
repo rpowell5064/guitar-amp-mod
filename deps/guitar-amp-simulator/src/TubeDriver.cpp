@@ -46,7 +46,7 @@ void TubeDriver::buildStages() noexcept {
     double ia, gm, gp;
     // Grid 1: .1µ → 1.5K from the op-amp, 3.3K to ground.
     gc1_.knee = gridKnee1_; gc1_.rgk = gridRgk1_;   // stage 1 grid conduction shape
-    gc1_.prepare(fs_, 0.1e-6, 1.5e3, 3.3e3, 0.0);
+    gc1_.prepare(fs_, 0.1e-6, 1.5e3, gridRb1_, 0.0);
     vp1Bias_ = t1_.eval(gc1_.Vg0);
     korenEvalT(nullptr, gc1_.Vg0, vp1Bias_, ia, gm, gp);
     rp1_ = gp > 1e-12 ? 1.0 / gp : 1e9;
@@ -74,7 +74,7 @@ void TubeDriver::buildStages() noexcept {
         c.millerOut.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, fit_[FitMillerOut]), fs_));
         // Output voicing: a low-mid peak boost (fat low-mids) then a gentle low-pass (smooth top).
         c.voiceLow.setCoeffs(Filters::peaking(voiceLowHz_, voiceLowDb_, voiceLowQ_, fs_));
-        c.voiceHf.setCoeffs(Filters::lowpass1pole(std::min(0.45 * fs_, voiceHfHz_), fs_));
+        c.voiceHf.setCoeffs(Filters::highshelf(std::min(0.45 * fs_, voiceHfHz_), voiceHfDb_, fs_));   // presence shelf after the (dark) E.Q. network
     }
     updateDriveCoefs();
     buildOut(true);
@@ -96,9 +96,9 @@ void TubeDriver::buildOut(bool force) noexcept {
         N.clear();
         N.addR(1, 2, zp2 + fit_[FitPlateSeries]);
         N.addC(2, 3, 0.01e-6);
-        N.addR(3, 4, (1.0 - t) * 10e3 + 1.0);
-        N.addR(4, 5, t * 10e3 + 1.0);
-        N.addC(5, 0, 0.047e-6);
+        N.addR(3, 4, (1.0 - t) * eqPotOhms_ + 1.0);
+        N.addR(4, 5, t * eqPotOhms_ + 1.0);
+        N.addC(5, 0, eqShuntF_);
         N.addR(4, 6, (1.0 - l) * 100e3 + 1.0);
         N.addR(6, 0, par(l * 100e3 + 1.0, fit_[FitLoad]));
         N.setOutput(6);
@@ -185,6 +185,11 @@ void TubeDriver::setParameter(const std::string& id, float value) noexcept {
     else if (id == "gridrgk2"  || id == "fit14") { gridRgk2_  = std::max(100.0f, value); if (fs_ > 0.0) { buildStages(); reset(); } }   // lab: stage-2 slope (fit14)
     else if (id == "fit11")                     { driveMaxR_ = value; if (fs_ > 0.0) { updateDriveCoefs(); } }                        // lab alias of drivemaxr
     else if (id == "fit12")                     { voiceHfHz_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }                    // lab alias of voicehfhz
+    else if (id == "fit15")                     { voiceLowDb_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }                   // lab alias of voicelowdb
+    else if (id == "gridrb1"  || id == "fit16") { gridRb1_   = std::max(100.0f, value); if (fs_ > 0.0) { buildStages(); reset(); } }   // lab: grid-1 load
+    else if (id == "eqpot"    || id == "fit17") { eqPotOhms_ = std::max(100.0f, value); if (fs_ > 0.0) { buildOut(true); reset(); } }  // lab: E.Q. pot
+    else if (id == "eqshunt"  || id == "fit18") { eqShuntF_  = std::max(1e-10f, value); if (fs_ > 0.0) { buildOut(true); reset(); } } // lab: E.Q. shunt cap
+    else if (id == "voicehfdb" || id == "fit19") { voiceHfDb_ = value; if (fs_ > 0.0) { buildStages(); reset(); } }                    // lab: presence shelf gain
     else if (id.size() >= 4 && id.compare(0, 3, "fit") == 0) {
         const int k = std::atoi(id.c_str() + 3);
         if (k >= 0 && k < kNFit) { fit_[k] = value; if (fs_ > 0.0) { buildStages(); reset(); } }

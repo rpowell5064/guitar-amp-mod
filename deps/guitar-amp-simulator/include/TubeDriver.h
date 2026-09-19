@@ -218,16 +218,22 @@ private:
     // Output voicing (anchored to the real unit's captured response): the reference has a fat
     // low-mid PEAK around 150 Hz (and rolls off below ~100), and a smooth top. A peaking boost
     // at the low-mid centre + a gentle output low-pass, both post-tube. Lab hooks "voice*".
-    double voiceLowDb_ = 12.0;    // low-mid peak boost (dB)
+    // (The low-mid peak is retired at 0 dB: it had been compensating a 10x-misread grid-1 load,
+    // see gridRb1_. The former output LOW-pass is replaced by a presence SHELF: the E.Q. network
+    // as drawn is darker than the unit at every setting, so the top is restored after it.)
+    double voiceLowDb_ = 0.0;     // low-mid peak boost (dB) — retired
     double voiceLowHz_ = 155.0;   // low-mid peak centre (Hz)
     double voiceLowQ_  = 1.0;     // low-mid peak width
-    double voiceHfHz_  = 2200.0;  // output low-pass corner (Hz) — the smooth top
+    double voiceHfHz_  = 2500.0;  // presence shelf corner (Hz)
+    double voiceHfDb_  = 10.0;    // presence shelf gain (dB) above the corner (a compromise: the linear
+                                  // deficit wants ~16, but at drive the distortion products fill the top
+                                  // and a larger shelf reads fizzy; the tone knob covers the clean top)
     // TUBE DRIVE taper: fraction of full pot resistance at half rotation. The BK Butler's audio
     // pot spreads the gain across the sweep; a very low mid crams all the drive into the first
     // eighth of travel (noon already slams the op-amp rail — harsh) and reaches the unit's smooth
     // breakup by ~7 o'clock. Higher = the range spreads and noon is a musical, tube-led overdrive.
     double driveTaperMid_ = 0.15;   // (kept at the pot's audio law)
-    double driveMaxR_ = 120e3;      // TUBE DRIVE pot scale: the real unit is a smooth overdrive, not a fuzz — the full 500k slammed the op-amp rail into hard clipping (harsh). A smaller span keeps the tube the dominant, softer clipper.
+    double driveMaxR_ = 25e3;       // TUBE DRIVE pot scale: the real unit is a smooth overdrive, not a fuzz — the full 500k slammed the op-amp rail into hard clipping (harsh). With the input's full low end restored (gridRb1_) the stage is driven harder still, so the span is set for noon to be a moderate, tube-led breakup.
 
     // Grid-diode shape for BOTH valve halves (heaters run off the 9 V supply, well under
     // nominal: the cathode under-emits, so grid conduction sets in gradually and clips
@@ -236,6 +242,16 @@ private:
     // so its conduction can be softened freely); stage 2 is the enhanced-bias stage whose rest
     // point is SET by the diode/470K balance — soften it only with care (a wide knee there drives
     // the rest point deep into conduction, saturates the starved plate, and mutes low drive).
+    // Linear-path values the drawing leaves ambiguous, anchored to the unit's measured response
+    // (lab hooks fit16 / fit17 / fit18). As drawn (3.3K grid-1 load; 10K E.Q. pot with a .047µF
+    // shunt driven from ~50K of plate impedance) the network is a 480 Hz high-pass into a
+    // 60K:10K divider that loses ~17 dB of top at EVERY E.Q. setting -- far darker and thinner
+    // than the unit, with only ~6 dB of E.Q. range.
+    double gridRb1_   = 33e3;       // grid-1 load to ground (sets the input high-pass). The drawing reads
+                                    // 3.3K, a 480 Hz high-pass that cuts the unit's whole low end; 33K
+                                    // (48 Hz) matches its measured bass -- a 10x misread.
+    double eqPotOhms_ = 10e3;       // E.Q. pot
+    double eqShuntF_  = 0.047e-6;   // E.Q. far-end shunt cap
     double gridKnee1_ = 0.15, gridRgk1_ = 2e3;   // stage 1 (fit9 / fit10): toolkit default, insensitive here
     double gridKnee2_ = 0.30, gridRgk2_ = 5e3;   // stage 2 (fit13 / fit14): the under-heated cathode's gentle
                                                   // conduction — turns the clamp's hard, even-harmonic clip into
