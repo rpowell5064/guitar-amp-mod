@@ -2880,6 +2880,8 @@ static void seedFactoryPresets(HexForge* p) {
         trim( 4, 1, -4.79f);   // bank05B
         // rev 155: Tube Driver fourth pass (linear path corrected; drive span reduced again)
         trim( 4, 1, +6.80f);   // bank05B
+        // rev 156: Recto per-mode voicing (the non-Modern channels' presence restored)
+        trim(15, 3, -2.79f);   // bank16D
     }
 }
 static void psInitDefaults(HexForge* p) {
