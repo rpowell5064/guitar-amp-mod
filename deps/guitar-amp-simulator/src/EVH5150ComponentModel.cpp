@@ -377,6 +377,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "presence"){ presence_ = value; for (auto& c : ch_) c.pa.setPresence(value); }
     else if (id == "resonance"){ resonance_ = value; for (auto& c : ch_) c.pa.setResonance(value); }
     else if (id == "sag")     { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "greenlegs") { greenLegs_ = value >= 0.5f; prepare(fs_, 0); }   // CH1 relay state (A/B)
     else if (id == "tapreset") {
         for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; }
@@ -392,6 +393,7 @@ float EVH5150ComponentModel::getParameter(const std::string& id) const noexcept 
     if (id == "channel") return red_ ? 1.0f : 0.0f;
     if (id == "involts") return inVolts_;
     if (id == "outscale")return outScale_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "ownpa")   return ownPa_ ? 1.0f : 0.0f;
     if (id == "presence") return presence_;
     if (id == "resonance") return resonance_;

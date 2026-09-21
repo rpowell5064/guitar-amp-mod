@@ -1,4 +1,5 @@
 #include "OrangeAD200BModel.h"
+#include "CabModels.h"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
@@ -97,6 +98,7 @@ void OrangeAD200BModel::buildStages() noexcept {
         c.coup14.prepare(fs_, 22e-9, 150e3, 1e6);
         c.pa.prepare(fs_, ad200PowerParams(railV2_, railA_, railScreen_, otHfHz_, zHfDb_, zResHz_, zResDb_,
                                            idleMa_, raa_, nfbStabHz_, fluxLim_, kneeV_, iaScale_, nfbScale_, lutPoints_));
+        c.pa.setSpeakerRow(CabModels::speakerFor("@bass810"));   // Phase 5: the cab this amp drives
         c.pa.setSagDepth(sag_);
         c.dnr.prepare(fs_, 6000.0, 0.02f, 0.006f);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -199,6 +201,7 @@ void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcep
     else if (id == "presence") { presence_ = value; }          // the amp has no presence control
     else if (id == "channel")  { }                             // one channel
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); }
@@ -231,6 +234,7 @@ float OrangeAD200BModel::getParameter(const std::string& id) const noexcept {
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "involts")  return inVolts_;
     if (id == "outscale") return outScalePa_;
     if (id == "ownpa")    return 1.0f;

@@ -72,6 +72,7 @@ private:
     // VR1 pot law only helped below noon.
     float inVolts_    = 0.70f;
     float outScalePa_ = 0.0048f;
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
 
     float gainMid_ = 0.25f;   // VR1 1M log: fraction at half rotation (fit0 in the lab harness)
     // Output-transformer low-resonance depth (dB) at ~110 Hz. Sets the low-mid weight;

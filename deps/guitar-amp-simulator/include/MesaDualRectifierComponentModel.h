@@ -89,6 +89,7 @@ private:
     // Level calibration.
     float inVolts_    = 1.00f;
     float outScalePa_ = 0.0030f;
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  gainMid_   = 0.15f;   // fit0: GAIN 1M audio taper — a linear law crams the usable gain into the first sliver of travel
     float  masterMid_ = 0.15f;   // fit1: MASTER 1M law

@@ -185,8 +185,14 @@ static_assert(HF_DR_B7K_BASS == HF_RB_SV_MIDFREQ + 1 && HF_DR_B7K_LOMID == HF_DR
               HF_DR_B7K_HIMID == HF_DR_B7K_LOMID + 1 && HF_DR_B7K_TREBLE == HF_DR_B7K_HIMID + 1 &&
               HF_DR_B7K_GRUNT == HF_DR_B7K_TREBLE + 1 && HF_DR_B7K_ATTACK == HF_DR_B7K_GRUNT + 1 &&
               HF_DR2_B7K_BASS == HF_DR_B7K_ATTACK + 1 && HF_DR2_B7K_ATTACK == HF_DR2_B7K_BASS + 5 &&
-              HF_DR2_B7K_ATTACK == HF_SW_A - 1,
-              "v49: the Helsinki Grind twelve-port tail ends the param range");
+              HF_DR2_B7K_ATTACK == HF_CAB_MIC2TYPE - 1,
+              "v49: the Helsinki Grind twelve-port tail");
+static_assert(HF_CAB_MIC2TYPE == HF_DR2_B7K_ATTACK + 1 && HF_CAB_MIC2POS == HF_CAB_MIC2TYPE + 1 &&
+              HF_CAB_MIC2DIST == HF_CAB_MIC2POS + 1 && HF_CAB_MIC2LVL == HF_CAB_MIC2DIST + 1 &&
+              HF_CAB_MIC2ALIGN == HF_CAB_MIC2LVL + 1 && HF_CAB_MIC2POL == HF_CAB_MIC2ALIGN + 1 &&
+              HF_RB_CABMIC2TYPE == HF_CAB_MIC2POL + 1 && HF_RB_CABMIC2POL == HF_RB_CABMIC2TYPE + 5 &&
+              HF_RB_CABMIC2POL == HF_SW_A - 1,
+              "v50: the Cab Mic 2 twelve-port tail ends the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -359,6 +365,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float b7kdef[12] = {0.5f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f, 0.5f, 0.5f, 0.5f, 0.5f, 1.0f, 0.0f};
     const bool b7kGap = (srcVer < 49);
     const int b7kAt = HF_DR_B7K_BASS, b7kEnd = HF_DR_B7K_BASS + 12;
+    // v50: Cab Mic 2 twelve-port tail: Type Off, Pos/Dist 0, Blend 0.35, Align/Polarity off; Cab 1 then Rig B.
+    static const float m2def[12] = {0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f};
+    const bool m2Gap = (srcVer < 50);
+    const int m2At = HF_CAB_MIC2TYPE, m2End = HF_CAB_MIC2TYPE + 12;
 
     // v47 (2026-09-05): out_phase appended at the tail. Gap-fills to 1.0, NOT 0 —
     // output invert is ON by default (real amps invert; the reference rig ships inverted),
@@ -370,6 +380,8 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // shipped capture-fitted EVH (bit-identical).
     const bool ecGap = (srcVer < 48);
     const int  ecAt  = HF_AMP_EVHCOMP;
+    const bool dynGap = (srcVer < 51);   // v51: amp_dynload global tail toggle, OFF
+    const int  dynAt  = HF_AMP_DYNLOAD;
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
     int o = 0;
@@ -416,8 +428,10 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (rlGap && i == rlAt)                     vals[i] = 0.0f;              // v44 rig-B low cut off
         else if (svGap && i >= svAt && i < svEnd)        vals[i] = svdef[i - svAt];   // v45 Blue Liner: Ultras off, mid 800 Hz
         else if (b7kGap && i >= b7kAt && i < b7kEnd)     vals[i] = b7kdef[i - b7kAt]; // v49 Helsinki Grind panel: noon / Raw / Flat
+        else if (m2Gap && i >= m2At && i < m2End)        vals[i] = m2def[i - m2At];   // v50 Cab Mic 2: Off, blend 0.35
         else if (opGap && i == opAt)                     vals[i] = 1.0f;             // v47 output phase INVERTED (matches real amps / the reference rig)
         else if (ecGap && i == ecAt)                     vals[i] = 0.0f;             // v48 component-EVH lab toggle OFF
+        else if (dynGap && i == dynAt)                   vals[i] = 0.0f;             // v51 dynamic-load lab toggle OFF
         else                                             vals[i] = old[o++];
     }
 }
@@ -430,7 +444,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(49); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v49: + the Helsinki Grind twelve-port tail (B7K panel); v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(51); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v51: + amp_dynload tail; v50: + the Cab Mic 2 twelve-port tail; v49: + the Helsinki Grind twelve-port tail (B7K panel); v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -454,9 +468,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 49) return false;   // 49 = Helsinki Grind panel (B7K twelve-port tail)
+    if (ver < 2 || ver > 51) return false;   // 51 = amp_dynload tail (50 = Cab Mic 2 twelve-port tail)
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 49);  // ...v49 Helsinki Grind panel
+    const bool needMigrate  = (ver < 51);  // ...v51 dynamic-load tail
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
@@ -1260,6 +1274,17 @@ static void seedFactoryPresets(HexForge* p) {
     for (int b = 0; b < kBanks; ++b)
         for (int sl = 0; sl < kSlots; ++sl)
             if (p->presets[b][sl].used) p->presets[b][sl].vals[HF_FZ_GVOL] = 1.0f;
+
+    // Cab Mic 2 Blend = 0.35 on every preset (rev 158, 2026-09-21): same
+    // older-layout-literal zero-fill as FZ_GVOL above — the blend's default is
+    // 0.35, not 0, so an engaged Mic 2 is audible the moment a type is chosen.
+    // Type itself gap-fills Off, so no preset's sound moves.
+    for (int b = 0; b < kBanks; ++b)
+        for (int sl = 0; sl < kSlots; ++sl)
+            if (p->presets[b][sl].used) {
+                p->presets[b][sl].vals[HF_CAB_MIC2LVL]   = 0.35f;
+                p->presets[b][sl].vals[HF_RB_CABMIC2LVL] = 0.35f;
+            }
 
     // JCM800 gain bump (rev 72, user request after the 2026-07-28 fuzzy-fix
     // re-voice): the stage-2 duty-collapse cap tamed that stage's drive

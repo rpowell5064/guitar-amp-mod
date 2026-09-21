@@ -40,7 +40,8 @@ enum CabPorts {
     P_ROOMON, P_ROOMMIX, P_ROOMAMT,  // room ambience (2026-07-14): toggle + wet mix + size/decay; off = bit-identical
     P_VOICE,                   // cab voice (2026-07-22): 0 Room (untouched legacy path) / 1 Studio (recorded chain)
     P_ROOMDENSE,               // room density (2026-07-23): 0 Classic 4-comb / 1 Dense 6-comb+2AP
-    P_SPKDRIVE,                // speaker drive (item #40, 2026-07-28): 0 Off / 1 Subtle / 2 Full
+    P_SPKDRIVE,                // speaker drive (item #40, 2026-07-28): 0 Off / 1 Subtle / 2 Full / 3 Physical
+    P_MIC2TYPE, P_MIC2POS, P_MIC2DIST, P_MIC2LVL, P_MIC2ALIGN, P_MIC2POL,   // Cab Mic 2 (Phase 3, 2026-09-21)
 #ifdef HEXCHAIN_ANAGRAM
     P_ENABLED, P_RESET,        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the
                                // atoms (mod-host breaks if control ports follow them)
@@ -214,12 +215,14 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == WORK_IR) {
         std::vector<float> L, R;
-        if (const char* sent = cabSentinel(msg->path))            // built-in synthetic cab (@vox2x12, @bass810, …; basename-detected — see cabSentinel)
+        const char* sent = cabSentinel(msg->path);
+        if (sent)                                                  // built-in synthetic cab (@vox2x12, @bass810, …; basename-detected — see cabSentinel)
             p->dsp.setIR(CabModels::generate(sent, p->rate));
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
             p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
         else
             p->dsp.setIR(CabModels::generate("@factory", p->rate));   // empty/@factory → enriched Factory Cab
+        p->dsp.setSpeakerParams(CabModels::speakerFor(sent ? sent : ""));   // physical speaker row (2026-09-21)
         return LV2_WORKER_SUCCESS;
     }
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
@@ -351,11 +354,22 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         // Full) maps to CabinetBlock's two internal params -- Subtle/Full chosen
         // conservatively (0.35/0.75) since this is a brand-new, not-yet-user-tuned
         // character feature; the internal API stays continuous for future tuning.
+        // 3 = Physical (2026-09-21): the state-based driver; standalone has no amp
+        // calibration, so it runs at the nominal 150 V/unit.
         {
-            const int spk = static_cast<int>(*p->ports[P_SPKDRIVE] + 0.5f);
-            p->dsp.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
-            p->dsp.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
+            int spk = static_cast<int>(*p->ports[P_SPKDRIVE] + 0.5f);
+            if (spk < 0) spk = 0; else if (spk > 3) spk = 3;
+            p->dsp.setParameter("spkmodel",    spk == 3 ? 1.0f : 0.0f);
+            p->dsp.setParameter("spkdrive",    (spk == 1 || spk == 2) ? 1.0f : 0.0f);
+            p->dsp.setParameter("spkdriveamt", spk == 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
         }
+        // Cab Mic 2 (Phase 3, 2026-09-21): Type 0 = Off = bit-identical
+        p->dsp.setParameter("mic2type",  *p->ports[P_MIC2TYPE]);
+        p->dsp.setParameter("mic2pos",   *p->ports[P_MIC2POS]);
+        p->dsp.setParameter("mic2dist",  *p->ports[P_MIC2DIST]);
+        p->dsp.setParameter("mic2lvl",   *p->ports[P_MIC2LVL]);
+        p->dsp.setParameter("mic2align", *p->ports[P_MIC2ALIGN]);
+        p->dsp.setParameter("mic2pol",   *p->ports[P_MIC2POL]);
         float* ins[2]  = { inL,  inR  };
         float* outs[2] = { outL, outR };
         p->dsp.process(ins, outs, static_cast<int>(n), 2);

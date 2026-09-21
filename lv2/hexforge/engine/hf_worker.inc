@@ -34,12 +34,14 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
             else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
                 p->cab2.setIR(L, R.empty()?nullptr:&R);
             else p->cab2.setIR(CabModels::generate("@factory", p->rate));
+            p->cab2.setSpeakerParams(CabModels::speakerFor(sent ? sent : ""));   // physical speaker row (2026-09-21)
             return true;
         }
         if (sent)                                                         // built-in synthetic cab
             p->cab.setIR(CabModels::generate(sent, p->rate));
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
         else p->cab.setIR(CabModels::generate("@factory", p->rate));   // empty path = clear to (enriched) Factory Cab
+        p->cab.setSpeakerParams(CabModels::speakerFor(sent ? sent : ""));   // physical speaker row (user IRs: factory row)
         return true;
     }
     if (msg->type == W_NAM_LOAD) {

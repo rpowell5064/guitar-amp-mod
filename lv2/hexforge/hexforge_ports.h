@@ -415,6 +415,18 @@ enum HexForgePort {
     HF_DR2_B7K_TREBLE,
     HF_DR2_B7K_GRUNT,
     HF_DR2_B7K_ATTACK,
+    HF_CAB_MIC2TYPE,
+    HF_CAB_MIC2POS,
+    HF_CAB_MIC2DIST,
+    HF_CAB_MIC2LVL,
+    HF_CAB_MIC2ALIGN,
+    HF_CAB_MIC2POL,
+    HF_RB_CABMIC2TYPE,
+    HF_RB_CABMIC2POS,
+    HF_RB_CABMIC2DIST,
+    HF_RB_CABMIC2LVL,
+    HF_RB_CABMIC2ALIGN,
+    HF_RB_CABMIC2POL,
     HF_SW_A,
     HF_SW_B,
     HF_SW_C,
@@ -476,10 +488,11 @@ enum HexForgePort {
     HF_FV_FIZZ,
     HF_OUT_PHASE,
     HF_AMP_EVHCOMP,
+    HF_AMP_DYNLOAD,
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 481, "port count drift");
+static_assert(HF_N_PORTS == 494, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -551,7 +564,9 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "dl_age", "dl2_age", "amp_sir34", "rb_sir34", "rb_locut", "amp_sv_ultralo",
     "amp_sv_ultrahi", "amp_sv_midfreq", "rb_sv_ultralo", "rb_sv_ultrahi", "rb_sv_midfreq", "dr_b7k_bass",
     "dr_b7k_lomid", "dr_b7k_himid", "dr_b7k_treble", "dr_b7k_grunt", "dr_b7k_attack", "dr2_b7k_bass",
-    "dr2_b7k_lomid", "dr2_b7k_himid", "dr2_b7k_treble", "dr2_b7k_grunt", "dr2_b7k_attack", "sw_a",
+    "dr2_b7k_lomid", "dr2_b7k_himid", "dr2_b7k_treble", "dr2_b7k_grunt", "dr2_b7k_attack", "cab_mic2type",
+    "cab_mic2pos", "cab_mic2dist", "cab_mic2lvl", "cab_mic2align", "cab_mic2pol", "rb_cabmic2type",
+    "rb_cabmic2pos", "rb_cabmic2dist", "rb_cabmic2lvl", "rb_cabmic2align", "rb_cabmic2pol", "sw_a",
     "sw_b", "sw_c", "sw_d", "ps_bank_up", "ps_bank_dn", "ps_save",
     "ps_move_up", "ps_move_dn", "ps_backup", "ps_restore", "ps_goto", "ps_bank",
     "ps_slot", "out_auto", "in_meter", "out_meter", "out_mono", "tuner_on",
@@ -562,5 +577,5 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "cpu_dl2", "cpu_rv2", "cpu_wh2", "cpu_oc2", "cpu_eq2", "cpu_cab2",
     "cal_cmd", "cal_trim_offs", "cal_floor_offs", "cal_state", "cal_progress", "out_voice",
     "fv_locut", "fv_prox", "fv_pres", "fv_fizz", "out_phase", "amp_evhcomp",
-    "midi_in",
+    "amp_dynload", "midi_in",
 };

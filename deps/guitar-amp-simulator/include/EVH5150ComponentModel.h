@@ -102,6 +102,7 @@ private:
     float outScale_ = 0.20f;   // preamp-only mode: units per volt at the volume pot
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)
     float outScalePa_ = 0.0066f; // own-PA mode: units per SPEAKER volt
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)
 
     LinearSmoother gainSmooth_, masterSmooth_;

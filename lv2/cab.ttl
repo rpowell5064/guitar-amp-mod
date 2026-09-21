@@ -50,7 +50,7 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 47 ;   # 47: FOUR bass cabs (@bass810/@bass410h/@bass210/@bass115, longer IRs + 45 Hz macro bands) + the @sentinel basename fix (mod-ui path-mangling — the hexforge 2026-08-21 incident, latent here). 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
+    lv2:microVersion 50 ;   # 50: Room Density option 2 = Space (geometric image-source room). 49: Cab Mic 2 (type / blend / pos / dist / align / polarity, ports 18-23; atoms moved to 24/25). 48: Speaker Drive option 3 = Physical (state-based large-signal driver, SpeakerModel.h). 47: FOUR bass cabs (@bass810/@bass410h/@bass210/@bass115, longer IRs + 45 Hz macro bands) + the @sentinel basename fix (mod-ui path-mangling — the hexforge 2026-08-21 incident, latent here). 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
 
     # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -136,9 +136,10 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 16 ; lv2:symbol "room_density" ; lv2:name "Room Density" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0 ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 2.0 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0.0 ] ;
-        lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1.0 ]
+        lv2:scalePoint [ rdfs:label "Dense"   ; rdf:value 1.0 ] ;
+        lv2:scalePoint [ rdfs:label "Space"   ; rdf:value 2.0 ]
     ] , [
         # ── Speaker Drive (item #40, 2026-07-28): PRE-convolution phenomenological
         # cone/coil response -- program compression + LF soft-sat + slow thermal HF
@@ -148,24 +149,60 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 17 ; lv2:symbol "spk_drive" ; lv2:name "Speaker Drive" ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 2.0 ;
-        lv2:scalePoint [ rdfs:label "Off"    ; rdf:value 0.0 ] ;
-        lv2:scalePoint [ rdfs:label "Subtle" ; rdf:value 1.0 ] ;
-        lv2:scalePoint [ rdfs:label "Full"   ; rdf:value 2.0 ]
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 3.0 ;
+        lv2:scalePoint [ rdfs:label "Off"      ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Subtle"   ; rdf:value 1.0 ] ;
+        lv2:scalePoint [ rdfs:label "Full"     ; rdf:value 2.0 ] ;
+        lv2:scalePoint [ rdfs:label "Physical" ; rdf:value 3.0 ]
+    ] , [
+        # ── Cab Mic 2 (Phase 3, 2026-09-21): a second virtual microphone on the
+        # same convolution — type curves relative to the IR's own mic, own placement,
+        # blend, coherent align, polarity. Off = bit-identical. ──
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 18 ; lv2:symbol "mic2_type" ; lv2:name "Mic 2 Type" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 4.0 ;
+        lv2:scalePoint [ rdfs:label "Off"         ; rdf:value 0.0 ] ;
+        lv2:scalePoint [ rdfs:label "Dynamic 57"  ; rdf:value 1.0 ] ;
+        lv2:scalePoint [ rdfs:label "Dynamic 421" ; rdf:value 2.0 ] ;
+        lv2:scalePoint [ rdfs:label "Ribbon"      ; rdf:value 3.0 ] ;
+        lv2:scalePoint [ rdfs:label "Condenser"   ; rdf:value 4.0 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 19 ; lv2:symbol "mic2_pos" ; lv2:name "Mic 2 Pos" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 20 ; lv2:symbol "mic2_dist" ; lv2:name "Mic 2 Dist" ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 21 ; lv2:symbol "mic2_lvl" ; lv2:name "Mic 2 Blend" ;
+        lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 22 ; lv2:symbol "mic2_align" ; lv2:name "Mic 2 Align" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 23 ; lv2:symbol "mic2_pol" ; lv2:name "Mic 2 Polarity" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 18 ; lv2:symbol "control" ; lv2:name "Control"
+        lv2:index 24 ; lv2:symbol "control" ; lv2:name "Control"
     ] , [
         a lv2:OutputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 19 ; lv2:symbol "notify" ; lv2:name "Notify"
+        lv2:index 25 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
@@ -211,5 +248,17 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
             lv2:index 12 ; lv2:symbol "room_density" ; lv2:name "Room Density"
         ] , [
             lv2:index 13 ; lv2:symbol "spk_drive" ; lv2:name "Speaker Drive"
+        ] , [
+            lv2:index 14 ; lv2:symbol "mic2_type" ; lv2:name "Mic 2 Type"
+        ] , [
+            lv2:index 15 ; lv2:symbol "mic2_lvl" ; lv2:name "Mic 2 Blend"
+        ] , [
+            lv2:index 16 ; lv2:symbol "mic2_pos" ; lv2:name "Mic 2 Pos"
+        ] , [
+            lv2:index 17 ; lv2:symbol "mic2_dist" ; lv2:name "Mic 2 Dist"
+        ] , [
+            lv2:index 18 ; lv2:symbol "mic2_align" ; lv2:name "Mic 2 Align"
+        ] , [
+            lv2:index 19 ; lv2:symbol "mic2_pol" ; lv2:name "Mic 2 Polarity"
         ]
     ] .

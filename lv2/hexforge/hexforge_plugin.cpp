@@ -372,7 +372,7 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
         putU32(len); putBytes(s, len);
         if (ap) free(ap);
     };
-    putU32(49);                 // version (49: + the Helsinki Grind twelve-port tail (B7K panel, per-preset); 48: + amp_evhcomp lab toggle; 47: + out_phase tail port, gap-fills INVERTED; 46: Cali V Ch3 knob-law value transform (no layout change); 45: + the Blue Liner six-port tail — STAMP FIXED 2026-08-31: 08-28..08-31 builds saved the 45 layout stamped 44; 44: + rb_locut; 43: + SIR #34 pair; 42: + EP-3 Age pair; 41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
+    putU32(51);                 // version (51: + amp_dynload global tail toggle; 50: + the Cab Mic 2 twelve-port tail (per-preset); 49: + the Helsinki Grind twelve-port tail (B7K panel, per-preset); 48: + amp_evhcomp lab toggle; 47: + out_phase tail port, gap-fills INVERTED; 46: Cali V Ch3 knob-law value transform (no layout change); 45: + the Blue Liner six-port tail — STAMP FIXED 2026-08-31: 08-28..08-31 builds saved the 45 layout stamped 44; 44: + rb_locut; 43: + SIR #34 pair; 42: + EP-3 Age pair; 41: + Plexi Variac; 40: + fuzz/nail Eco + Drive 2 NAM; 39: + Amp 2 NAM trims/path + Cab 2 IR path; 38: + X2 clone families; 37: + Cab 2 presence; 36: + Rig B full parity; 35: + Rig B dual amp/cab; 34: + Drive B block; 33: + Drive Eco; 32: + Engine Quality; 31: + CPU meter outputs; 30: + fuzz guitar vol; 29: + tremolo shape; 28: + speaker drive; 27: + ambient bloom; 26: + reverb type / room density; 25: + reverb density; 24: + pickup load / coupling; 19: + NAM gain/level trims; 18: + Mod Center Delay; 17: + Cali V EQ preset; 16: + Cali V graphic EQ; 15: + Cali V Mesa mode; 14: + Octave shimmer; 13: + tempo-sync; 12: + Nail; 11: + factory rev; 10: + Output Mono Sum; 9: + per-block bypass; 8: + Wah/Octave; 7: + Seraph; 6: + Boost; 5: + HB Model; 4: + HB voicing; 3: dB; 2: linear)
     putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
@@ -457,12 +457,12 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
             else { std::strncpy(dst, tmp, kPathMax-1); dst[kPathMax-1]='\0'; }
         };
         uint32_t ver=0, nb=0, ns=0, np=0; getU32(ver); getU32(nb); getU32(ns);
-        if (ver < 2 || ver > 49) return LV2_STATE_SUCCESS;    // unknown layout — start fresh (49 = Helsinki Grind panel)
+        if (ver < 2 || ver > 51) return LV2_STATE_SUCCESS;    // unknown layout — start fresh (51 = dynamic-load tail)
         const bool migrateOutDb = (ver == 2);     // v2 stored out_level as 0..1 linear
         getU32(np);
         if (ver == 36 && np >= 318) ver = 37;     // deployed v36 stamps already carry rb_cab2on (318-param layout)
         if (ver == 44 && np >= 467) ver = 45;     // 2026-08-31: 08-28..08-31 builds stamped the 45 layout (467 params) as 44 (putU32 missed) — precedent: v36/np
-        const bool needMigrate  = (ver < 49);     // ...v49 Helsinki Grind panel (computed AFTER the np disambiguations)                                 // param-port count at save time
+        const bool needMigrate  = (ver < 51);     // ...v51 dynamic-load tail (computed AFTER the np disambiguations)                                 // param-port count at save time
         uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision
         const uint32_t npc = np < (uint32_t)HF_N_PORTS ? np : (uint32_t)HF_N_PORTS;
         for (uint32_t b=0;b<nb;++b) for (uint32_t s=0;s<ns;++s) {

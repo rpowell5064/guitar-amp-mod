@@ -72,6 +72,7 @@ private:
     // ESTIMATE-class (the sheet prints no voltages and no transformer data):
     float  inVolts_    = 0.70f;     // jack volts per plugin unit (fit1)
     float  outScalePa_ = 0.0048f;   // speaker volts → plugin units (fit2)
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     float  loudMid_    = 0.15f;     // LOUDNESS 1M law: fraction at half rotation (fit0)
     double supplyV_    = 470.0;     // HT at the OT centre tap, idle (fit3)
     double screenDropV_ = 0.0;      // HT to the screen node: no choke on this sheet (fit4)

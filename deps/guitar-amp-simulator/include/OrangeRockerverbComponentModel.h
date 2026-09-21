@@ -86,6 +86,7 @@ private:
     // Level calibration.
     float inVolts_    = 1.00f;
     float outScalePa_ = 0.0030f;
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  gainMidA_  = 0.15f;   // fit0: the A1M0 / 500KA audio law (printed "A")
     double railA_ = 400.0;       // fit1: rectified B+ (290-0-290 VAC, no TP printed)

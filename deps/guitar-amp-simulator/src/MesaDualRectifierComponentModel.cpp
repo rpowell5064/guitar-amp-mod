@@ -273,6 +273,7 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
         if (p != presence_) { presence_ = p; for (auto& c : ch_) c.pa.setPresence(p); recalcPots(); }
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(std::min(1.0f, sag_ + (rectTube_ ? float(rectSag_) : 0.0f))); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "mode")     {
         const int nm = std::clamp(static_cast<int>(value + 0.5f), 0, 7);
         const int nl = ldrFor(nm);
@@ -318,6 +319,7 @@ float MesaDualRectifierComponentModel::getParameter(const std::string& id) const
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "mode")     return float(mode_);
     if (id == "rect")     return rectTube_ ? 1.0f : 0.0f;
     if (id == "variac")   return spongy_ ? 1.0f : 0.0f;

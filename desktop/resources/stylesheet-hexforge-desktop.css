@@ -842,50 +842,62 @@
 
 /* ── NEON STRIP: red -> blue -> purple -> green, with the faceplate catching the light ── */
 @keyframes hf-neon {
-    0%,  100% { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
-    25%       { background-color: #2f8bff; box-shadow: 0 0 6px #7ab6ff, 0 0 18px #2f8bff, 0 0 44px rgba(47,139,255,.75), 0 0 90px rgba(47,139,255,.40); }
-    50%       { background-color: #a44dff; box-shadow: 0 0 6px #c68cff, 0 0 18px #a44dff, 0 0 44px rgba(164,77,255,.75), 0 0 90px rgba(164,77,255,.40); }
-    75%       { background-color: #35e07a; box-shadow: 0 0 6px #86f0b0, 0 0 18px #35e07a, 0 0 44px rgba(53,224,122,.75), 0 0 90px rgba(53,224,122,.40); }
+    0% { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
+    18% { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
+    25% { background-color: #2f8bff; box-shadow: 0 0 6px #7ab6ff, 0 0 18px #2f8bff, 0 0 44px rgba(47,139,255,.75), 0 0 90px rgba(47,139,255,.40); }
+    43% { background-color: #2f8bff; box-shadow: 0 0 6px #7ab6ff, 0 0 18px #2f8bff, 0 0 44px rgba(47,139,255,.75), 0 0 90px rgba(47,139,255,.40); }
+    50% { background-color: #a44dff; box-shadow: 0 0 6px #c68cff, 0 0 18px #a44dff, 0 0 44px rgba(164,77,255,.75), 0 0 90px rgba(164,77,255,.40); }
+    68% { background-color: #a44dff; box-shadow: 0 0 6px #c68cff, 0 0 18px #a44dff, 0 0 44px rgba(164,77,255,.75), 0 0 90px rgba(164,77,255,.40); }
+    75% { background-color: #35e07a; box-shadow: 0 0 6px #86f0b0, 0 0 18px #35e07a, 0 0 44px rgba(53,224,122,.75), 0 0 90px rgba(53,224,122,.40); }
+    93% { background-color: #35e07a; box-shadow: 0 0 6px #86f0b0, 0 0 18px #35e07a, 0 0 44px rgba(53,224,122,.75), 0 0 90px rgba(53,224,122,.40); }
+    100%      { background-color: #ff2f4a; box-shadow: 0 0 6px #ff6b7e, 0 0 18px #ff2f4a, 0 0 44px rgba(255,47,74,.75), 0 0 90px rgba(255,47,74,.40); }
 }
 @keyframes hf-neon-ring {
-    0%,  100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34),
-                            0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38),
-                            0 5px 14px rgba(0,0,0,.6); }
-    25%       { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34),
-                            0 0 0 4px #2f8bff, 0 0 10px #7ab6ff, 0 0 26px rgba(47,139,255,.70), 0 0 56px rgba(47,139,255,.38),
-                            0 5px 14px rgba(0,0,0,.6); }
-    50%       { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34),
-                            0 0 0 4px #a44dff, 0 0 10px #c68cff, 0 0 26px rgba(164,77,255,.70), 0 0 56px rgba(164,77,255,.38),
-                            0 5px 14px rgba(0,0,0,.6); }
-    75%       { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34),
-                            0 0 0 4px #35e07a, 0 0 10px #86f0b0, 0 0 26px rgba(53,224,122,.70), 0 0 56px rgba(53,224,122,.38),
-                            0 5px 14px rgba(0,0,0,.6); }
+    0% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38), 0 5px 14px rgba(0,0,0,.6); }
+    18% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38), 0 5px 14px rgba(0,0,0,.6); }
+    25% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #2f8bff, 0 0 10px #7ab6ff, 0 0 26px rgba(47,139,255,.70), 0 0 56px rgba(47,139,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    43% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #2f8bff, 0 0 10px #7ab6ff, 0 0 26px rgba(47,139,255,.70), 0 0 56px rgba(47,139,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    50% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #a44dff, 0 0 10px #c68cff, 0 0 26px rgba(164,77,255,.70), 0 0 56px rgba(164,77,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    68% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #a44dff, 0 0 10px #c68cff, 0 0 26px rgba(164,77,255,.70), 0 0 56px rgba(164,77,255,.38), 0 5px 14px rgba(0,0,0,.6); }
+    75% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #35e07a, 0 0 10px #86f0b0, 0 0 26px rgba(53,224,122,.70), 0 0 56px rgba(53,224,122,.38), 0 5px 14px rgba(0,0,0,.6); }
+    93% { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #35e07a, 0 0 10px #86f0b0, 0 0 26px rgba(53,224,122,.70), 0 0 56px rgba(53,224,122,.38), 0 5px 14px rgba(0,0,0,.6); }
+    100%      { box-shadow: inset 0 1px 0 rgba(255,255,255,.14), inset 0 -16px 34px rgba(0,0,0,.34), 0 0 0 4px #ff2f4a, 0 0 10px #ff6b7e, 0 0 26px rgba(255,47,74,.70), 0 0 56px rgba(255,47,74,.38), 0 5px 14px rgba(0,0,0,.6); }
 }
 @keyframes hf-neon-pool {
-    0%,  100% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
-    25%       { background-image: radial-gradient(130% 160% at 50% 108%, rgba(47,139,255,.55), rgba(47,139,255,.16) 42%, rgba(0,0,0,0) 72%); }
-    50%       { background-image: radial-gradient(130% 160% at 50% 108%, rgba(164,77,255,.55), rgba(164,77,255,.16) 42%, rgba(0,0,0,0) 72%); }
-    75%       { background-image: radial-gradient(130% 160% at 50% 108%, rgba(53,224,122,.55), rgba(53,224,122,.16) 42%, rgba(0,0,0,0) 72%); }
+    0% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
+    18% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
+    25% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(47,139,255,.55), rgba(47,139,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    43% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(47,139,255,.55), rgba(47,139,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    50% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(164,77,255,.55), rgba(164,77,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    68% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(164,77,255,.55), rgba(164,77,255,.16) 42%, rgba(0,0,0,0) 72%); }
+    75% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(53,224,122,.55), rgba(53,224,122,.16) 42%, rgba(0,0,0,0) 72%); }
+    93% { background-image: radial-gradient(130% 160% at 50% 108%, rgba(53,224,122,.55), rgba(53,224,122,.16) 42%, rgba(0,0,0,0) 72%); }
+    100%      { background-image: radial-gradient(130% 160% at 50% 108%, rgba(255,47,74,.55), rgba(255,47,74,.16) 42%, rgba(0,0,0,0) 72%); }
 }
 @keyframes hf-neon-spill {
-    0%,  100% { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
-    25%       { background-image: linear-gradient(180deg, rgba(47,139,255,.18), rgba(47,139,255,.06) 38%, rgba(0,0,0,0) 76%); }
-    50%       { background-image: linear-gradient(180deg, rgba(164,77,255,.18), rgba(164,77,255,.06) 38%, rgba(0,0,0,0) 76%); }
-    75%       { background-image: linear-gradient(180deg, rgba(53,224,122,.18), rgba(53,224,122,.06) 38%, rgba(0,0,0,0) 76%); }
+    0% { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
+    18% { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
+    25% { background-image: linear-gradient(180deg, rgba(47,139,255,.18), rgba(47,139,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    43% { background-image: linear-gradient(180deg, rgba(47,139,255,.18), rgba(47,139,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    50% { background-image: linear-gradient(180deg, rgba(164,77,255,.18), rgba(164,77,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    68% { background-image: linear-gradient(180deg, rgba(164,77,255,.18), rgba(164,77,255,.06) 38%, rgba(0,0,0,0) 76%); }
+    75% { background-image: linear-gradient(180deg, rgba(53,224,122,.18), rgba(53,224,122,.06) 38%, rgba(0,0,0,0) 76%); }
+    93% { background-image: linear-gradient(180deg, rgba(53,224,122,.18), rgba(53,224,122,.06) 38%, rgba(0,0,0,0) 76%); }
+    100%      { background-image: linear-gradient(180deg, rgba(255,47,74,.18), rgba(255,47,74,.06) 38%, rgba(0,0,0,0) 76%); }
 }
 /* the tube itself, across the top of the bay */
 .mod-pedal-guitaramp-hexforge .hf-amp-tubes::before {
     content: ""; position: absolute; left: 0; right: 0; bottom: 4px; height: 9px;
     border-radius: 2px; z-index: 3; pointer-events: none;
     background-image: linear-gradient(180deg, rgba(255,255,255,.95) 0 2px, rgba(255,255,255,.35) 3px, rgba(255,255,255,0) 7px);
-    animation: hf-neon 32s ease-in-out infinite;
+    animation: hf-neon 240s linear infinite;
     animation-delay: var(--neon-delay, 0s);
 }
 /* its light pooling down the inside of the bay */
 .mod-pedal-guitaramp-hexforge .hf-amp-tubes::after {
     content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: 2; pointer-events: none;
     mix-blend-mode: screen;
-    animation: hf-neon-pool 32s ease-in-out infinite;
+    animation: hf-neon-pool 240s linear infinite;
     animation-delay: var(--neon-delay, 0s);
 }
 /* and spilling onto the faceplate below */
@@ -893,7 +905,7 @@
     content: ""; position: absolute; left: 0; right: 0; top: 0; height: 46%;
     border-radius: 7px 7px 0 0; z-index: 4; pointer-events: none;
     mix-blend-mode: screen;
-    animation: hf-neon-spill 32s ease-in-out infinite;
+    animation: hf-neon-spill 240s linear infinite;
     animation-delay: var(--neon-delay, 0s);
 }
 /* (no boxed tube window any more — the tubes glow directly on the cabinet) */
@@ -912,7 +924,7 @@
         url(/resources/faceplate.png);
     background-size: auto, 100% 100%, auto, cover;
     background-position: center; background-repeat: no-repeat;
-    animation: hf-neon-ring 32s ease-in-out infinite;
+    animation: hf-neon-ring 240s linear infinite;
     animation-delay: var(--neon-delay, 0s);
     filter: brightness(.90) saturate(1.06);
 }
@@ -1443,3 +1455,19 @@
 .mod-pedal-guitaramp-hexforge .hf-palette.hf-dropok {
     outline: 1px dashed rgba(255, 90, 120, .65); outline-offset: -3px;
 }
+
+/* ── RIG selector (Phase 6, 2026-09-21): a port-less dropdown in the IR picker's clothes.
+   The list opens on a JS-toggled .open (mod-ui's custom-select opens its own lists). ── */
+.mod-pedal-guitaramp-hexforge .hf-rig { position: relative; }
+.mod-pedal-guitaramp-hexforge .hf-rigsel .hf-rigcur { position: relative; z-index: 50; border-radius: 4px; padding: 0 8px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-pedal-guitaramp-hexforge .hf-rigsel .hf-rigcur::after { content: "\25BE"; float: right; opacity: .6; }
+.mod-pedal-guitaramp-hexforge .hf-riglist {
+    display: none; background: rgba(0,0,0,.95); color: #fff; width: 100%; min-width: 64px;
+    max-height: 240px; overflow: auto; position: absolute; left: 0; z-index: 9000 !important;
+    border: 1px solid var(--acc); border-radius: 0 0 4px 4px;
+}
+.mod-pedal-guitaramp-hexforge .hf-rig.open .hf-riglist { display: block; }
+.mod-pedal-guitaramp-hexforge .hf-riglist > div { padding: 3px 9px; font-weight: 700; }
+.mod-pedal-guitaramp-hexforge .hf-riglist > div > span { display: block; font-size: 9px; font-weight: 400; color: #c2cad8; letter-spacing: .3px; }
+.mod-pedal-guitaramp-hexforge .hf-riglist > div:hover { background: rgba(255,255,255,.2); cursor: pointer; }
+.mod-pedal-guitaramp-hexforge .hf-riglist > div.hf-rig-on { color: var(--acc); }

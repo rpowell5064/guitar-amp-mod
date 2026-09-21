@@ -103,6 +103,28 @@
                 </div>
                 {{/controls.12}}
             </div>
+            <!-- Cab Mic 2 (Phase 3, 2026-09-21): a second virtual microphone on the same
+                 convolution. Type select on its own row (the Speaker pattern), then Blend /
+                 Pos / Dist knobs; Align + Polarity are toggles rendered as knobs like Room. -->
+            <div class="hf-agroup">
+                <span class="hf-agroup-title">Mic 2</span>
+                {{#controls.14}}
+                <div class="hf-voice-row" title="{{name}}">
+                    <span class="hf-voice-label">Type</span>
+                    <div class="mod-enumerated hf-voice-sel" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                </div>
+                {{/controls.14}}
+                <div class="hf-agroup-body">
+                    {{#controls.15}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
+                    {{#controls.16}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.16}}
+                    {{#controls.17}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.17}}
+                    {{#controls.18}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.18}}
+                    {{#controls.19}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
+                </div>
+            </div>
             </div>
             <div class="hf-cab-right">
                 <!-- Same darker fieldset box as Cabinet/Room (hf-agroup); the column stretches so

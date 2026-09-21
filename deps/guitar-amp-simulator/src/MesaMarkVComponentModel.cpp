@@ -316,6 +316,7 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
         for (auto& c : ch_) c.pa.setNfbSplit(lo, hi, hz);
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "mode")     {
         int nm = std::clamp(static_cast<int>(value + 0.5f), 0, 8);
         if (nm < 6) nm = 6;                       // phase 1: channel 3 only
@@ -360,6 +361,7 @@ float MesaMarkVComponentModel::getParameter(const std::string& id) const noexcep
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "mode")     return float(mode_);
     if (id == "bright")   return bright_ ? 1.0f : 0.0f;
     if (id == "involts")  return inVolts_;

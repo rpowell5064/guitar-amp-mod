@@ -2,6 +2,7 @@
 #include "AudioBlock.h"
 #include "BiquadFilter.h"
 #include "OlaConvolver.h"
+#include "SpeakerModel.h"
 #include <array>
 #include <atomic>
 #include <vector>
@@ -39,6 +40,11 @@ public:
 
     void setIR(const std::vector<float>& irLeft,
                const std::vector<float>* irRight = nullptr);
+    // Physical speaker model (2026-09-21): per-cab driver row, message thread
+    // (double-buffered + atomic publish like setIR; the audio thread re-derives
+    // its coefficients — pure arithmetic — when it sees a new row).
+    void setSpeakerParams(const SpeakerParams& sp);
+    const SpeakerModel& speaker(int ch) const noexcept { return spk_[ch]; }
     // Clear all running state: convolver tails, room combs, EQ + glue (2026-07-23,
     // seamless switching). IR spectra/coefficients are untouched.
     void reset() noexcept;
@@ -72,6 +78,16 @@ private:
     // 1-allpass room every preset was voiced on (bit-identical), 1 = 6 combs +
     // 2 allpasses — smoother "amp in the room" wash, level-matched.
     bool  roomDense_ = false;
+    // Room mode (Phase 4, 2026-09-21): the Room Density selector grows a third
+    // option. 0 Classic / 1 Dense = the two Schroeder banks above, untouched.
+    // 2 Space = a GEOMETRIC room: image-source early reflections in a shoebox
+    // (source = the cab on the floor by a wall, receivers = a spaced stereo
+    // pair a few metres back, orders 0–2 → 25 taps per ear, wall absorption +
+    // per-bounce HF loss), the late field from the dense bank with its feedback
+    // set from the room's Sabine RT60. Room Size scales the box AND pulls the
+    // pair back, so the direct sound sinks into the reflections as the room
+    // grows — one knob, the documented "ambience mic" behaviour.
+    int   roomMode_  = 0;
     // Cab Voice (2026-07-22): 0 = Room (bit-identical legacy path), 1 = Studio — the
     // "recorded" sound: a second fixed virtual mic (darker ribbon-at-edge character)
     // blended 35% against the primary mic path, bracketing HPF/LPF (78 Hz / 10.5 kHz),
@@ -95,6 +111,29 @@ private:
     // is bit-identical -- the per-channel state below is only touched when on.
     bool  spkDriveOn_  = false;
     float spkDriveAmt_ = 0.5f;   // [0,1] overall depth of all three sub-mechanisms
+    // Physical speaker model (2026-09-21, "spkmodel"): the state-based large-
+    // signal driver in SpeakerModel.h, PRE-convolution, in place of the three
+    // heuristics above (mutually exclusive: when it is on, spkDriveTick is not
+    // run). Small-signal transparent by construction; ABSOLUTE calibration via
+    // "spkvolts" (volts per signal unit, set by the host from the amp's known
+    // output scale) and "spkrout" (amp source resistance). Off = bit-identical.
+    bool   spkModel_  = false;
+    double spkVolts_  = 150.0;
+    double spkRout_   = 0.5;
+
+    // Mic 2 (Phase 3, 2026-09-21): a second virtual microphone on the SAME
+    // convolution. The IR carries the cab as heard by its own close mic (a
+    // dynamic-57 class on the built-ins), so a mic TYPE here is the difference
+    // between that mic and the chosen one; position/distance morph exactly like
+    // the primary's; distance also adds real time-of-flight, so two mics at
+    // different distances comb honestly (Align = coherent, the old Studio
+    // convention). Type 0 = Off = every legacy path bit-identical. In Studio
+    // voice an engaged Mic 2 replaces the fixed ribbon and its 35 % blend.
+    int   mic2Type_  = 0;        // 0 Off / 1 Dynamic (57) / 2 Dynamic (421) / 3 Ribbon / 4 Condenser
+    float mic2Pos_   = 0.0f, mic2Dist_ = 0.0f, mic2Lvl_ = 0.35f;
+    bool  mic2Align_ = false, mic2Pol_ = false;
+    int   mic2Delay_ = 0;        // samples; recomputed in rebuildEQ
+    bool  mic2PosOn_ = false;    // position LP only when moved off the cap (like the primary)
 
     static constexpr int kMaxCh    = 2;
     static constexpr int kNumSlots = 2;  // double-buffer: front / back
@@ -140,6 +179,21 @@ private:
     };
     std::array<EQState, kMaxCh> eqState_;
 
+    struct Mic2State {
+        BiquadFilter tA, tB, tC, tD;                 // type curve (relative to the IR's own mic)
+        BiquadFilter pLP, pBite, pBody, dProx, dAir; // position / distance morphs
+        std::array<float, EQState::kDlyLen> ring{};  // time of flight
+        int w = 0;
+        void reset() noexcept {
+            tA.reset(); tB.reset(); tC.reset(); tD.reset();
+            pLP.reset(); pBite.reset(); pBody.reset(); dProx.reset(); dAir.reset();
+            ring.fill(0.0f); w = 0;
+        }
+    };
+    std::array<Mic2State, kMaxCh> mic2_;
+    // one sample of Mic 2 from the bracketed base signal, delayed, polarity applied
+    float mic2Tick(Mic2State& m, float base) noexcept;
+
     // Item #40 pre-convolution speaker-drive state (per channel).
     struct SpkDriveState {
         float compEnv = 0.0f, compRef = 0.0f;      // 1.2:1 program compression (fast vs ~1.5s ref)
@@ -149,6 +203,12 @@ private:
         float thermalEnv = 0.0f, thermalRef = 0.0f; // seconds-scale envelope vs tens-of-seconds baseline
     };
     std::array<SpkDriveState, kMaxCh> spkState_;
+    std::array<SpeakerModel, kMaxCh> spk_;
+    SpeakerParams     spkParams_[kNumSlots];      // [front] read by audio, [back] written by message thread
+    std::atomic<int>  spkParamFront_{0};
+    int               spkParamSeen_ = -1;          // audio-thread: last front index prepared
+    bool              spkNeedPrep_  = true;        // audio-thread: rout/sr changed → re-derive
+    void spkPrepareIfNeeded() noexcept;
     // Coefficients (set in prepare()): reuses compAtt_/compRel_/compSlow_ (30 ms /
     // 180 ms / 1.5 s, already tuned for the Studio-voice glue) for the program
     // compressor; the LF-band and thermal envelopes get their own, purpose-scaled
@@ -174,6 +234,24 @@ private:
     float roomFb_ = 0.6f;
     void  rebuildRoom();
     float roomTick(RoomState& rs, float x) noexcept;
+    // the Schroeder bank with explicit settings (roomTick = the legacy call)
+    float bankTick(RoomState& rs, float x, int nCombs, float norm, float fb, bool twoAp) noexcept;
+
+    struct SpaceState {                       // per receiver (L / R of the pair)
+        static constexpr int kRing = 8192, kMask = kRing - 1, kMaxTaps = 27;
+        std::vector<float> ring;
+        int   w = 0, nTaps = 0;
+        int   dly[kMaxTaps] = {};
+        float gain[kMaxTaps] = {};
+        int   order[kMaxTaps] = {};
+        BiquadFilter lp1, lp2;                // per-bounce HF loss, order 1 / order 2
+    };
+    std::array<SpaceState, kMaxCh> space_;
+    float spaceFb_   = 0.5f;                  // late-bank feedback from the Sabine RT60
+    float spaceLate_ = 0.6f;                  // late-field level against the reflections
+    void  rebuildSpace();
+    float spaceTick(int c, float x) noexcept;
+    float roomOut(int c, float x) noexcept { return roomMode_ == 2 ? spaceTick(c, x) : roomTick(room_[c], x); }
 
     float compAtt_ = 0.0f, compRel_ = 0.0f, compSlow_ = 0.0f;   // bus glue coeffs (set in prepare)
     // Item #41: inter-mic time offsets in samples (recomputed in rebuildEQ).

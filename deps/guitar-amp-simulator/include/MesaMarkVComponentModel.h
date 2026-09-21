@@ -94,6 +94,7 @@ private:
     // Without it a −58 dBFS rig hum floor rails the channel at 60 Hz.
     float inVolts_    = 0.003f;
     float outScalePa_ = 0.0030f;
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..):
     float  gainMid_   = 0.15f;   // fit0: GAIN 1MA law
     float  masterMid_ = 0.15f;   // fit17: CH3 MASTER 100KA law

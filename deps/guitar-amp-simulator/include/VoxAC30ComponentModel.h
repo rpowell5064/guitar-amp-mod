@@ -89,6 +89,7 @@ private:
     // Level calibration.
     float inVolts_    = 1.00f;
     float outScalePa_ = 0.0060f;
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  gainMid_   = 0.50f;   // fit0: VOLUME VR1 law — LINEAR lands the grids (printed "log"; ESTIMATE, see the audit)
     float  stackMid_  = 0.15f;   // fit1: TREBLE / BASS / CUT law (printed "log")

@@ -1,6 +1,7 @@
 #pragma once
 #include "BiquadFilter.h"
 #include "DefaultCabIR.h"
+#include "SpeakerModel.h"
 #include <vector>
 #include <cmath>
 #include <string>
@@ -367,6 +368,67 @@ inline std::vector<float> generate(const std::string& id, double sr, bool enrich
         for (float& v : ir) v *= g;
     }
     return ir;
+}
+
+// ── Per-cab driver rows for the large-signal speaker model (2026-09-21) ──────
+// Datasheet-CLASS Thiele–Small values for the driver family each synthetic cab
+// imitates (rounded, not measured here — the small-signal part is divided back
+// out inside SpeakerModel, so these rows only shape the LARGE-signal behaviour:
+// where the cone runs out of linear travel, how the box loads it, how hot the
+// coil gets). vDriver = the fraction of the amp's speaker volts across ONE cone
+// for the cab's wiring. Unknown/user IRs get the Factory row (a V30-class 4x12).
+inline const SpeakerParams& speakerFor(const std::string& id) {
+    static const SpeakerParams kFactory{};   // = SpeakerParams defaults: ceramic 12", sealed 4x12
+    static const SpeakerParams kGreenbk = [] { SpeakerParams p;            // lighter cone, softer suspension
+        p.fs=75; p.qes=0.55; p.qms=6.5; p.vas=0.080; p.re=6.6; p.le=0.5e-3; p.xmax=1.0e-3;
+        p.vb=0.028; p.vDriver=0.5; p.blDroop=0.25; p.kStiff=0.60;
+        p.pRated=25; p.brkF[0]=1200; p.brkF[1]=2000; p.brkF[2]=3000; p.brkDb=3.0;
+        p.cryF[0]=1700; p.cryF[1]=2500; p.cryMix=0.18; return p; }();
+    static const SpeakerParams kAmerOB  = [] { SpeakerParams p;            // American 12", open back
+        p.fs=95; p.qes=0.70; p.qms=4.5; p.vas=0.040; p.re=5.7; p.le=0.45e-3; p.xmax=1.0e-3;
+        p.vb=0.0; p.vDriver=0.7071;
+        p.pRated=30; p.brkF[0]=1500; p.brkF[1]=2500; p.brkF[2]=3800;
+        p.cryF[0]=2200; p.cryF[1]=3100; return p; }();
+    static const SpeakerParams kVox     = [] { SpeakerParams p;            // alnico 12", open back
+        p.fs=85; p.qes=0.75; p.qms=5.0; p.vas=0.050; p.re=6.5; p.le=0.5e-3; p.xmax=1.0e-3;
+        p.vb=0.0; p.vDriver=0.7071; p.rout=4.0;                               // paired with a low-NFB amp
+        p.pRated=15; p.brkF[0]=1600; p.brkF[1]=2600; p.brkF[2]=4000; p.brkDb=3.0;   // alnico: cries readily
+        p.cryF[0]=2400; p.cryF[1]=3300; p.cryMix=0.20; return p; }();
+    static const SpeakerParams kHiwatt  = [] { SpeakerParams p;            // heavy-duty 12", sealed 4x12
+        p.fs=70; p.qes=0.50; p.qms=6.0; p.vas=0.060; p.re=6.4; p.le=0.9e-3; p.xmax=2.0e-3;
+        p.vb=0.030; p.vDriver=0.5; p.blDroop=0.15;
+        p.pRated=75; p.brkDb=1.5; p.brkComp=0.25; p.cryMix=0.06; return p; }();   // stiff cone
+    static const SpeakerParams kDoom    = [] { SpeakerParams p;            // big-magnet 12", sealed 4x12
+        p.fs=65; p.qes=0.45; p.qms=6.0; p.vas=0.090; p.re=6.2; p.le=1.0e-3; p.xmax=2.5e-3;
+        p.vb=0.032; p.vDriver=0.5;
+        p.pRated=75; p.brkF[0]=1000; p.brkF[1]=1800; p.brkF[2]=2800; p.brkDb=2.0;
+        p.cryF[0]=1500; p.cryF[1]=2200; p.cryMix=0.08; return p; }();
+    static const SpeakerParams kBass810 = [] { SpeakerParams p;            // 10" bass cone, sealed 8x10
+        p.fs=55; p.qes=0.60; p.qms=6.0; p.vas=0.030; p.re=6.0; p.le=0.8e-3; p.sd=0.035; p.xmax=3.0e-3;
+        p.vb=0.020; p.vDriver=0.35; p.blDroop=0.15; p.kStiff=0.40;
+        p.pRated=100; p.brkF[0]=800; p.brkF[1]=1400; p.brkF[2]=2200; p.brkDb=1.5; p.brkComp=0.3; p.cryMix=0.0; return p; }();
+    static const SpeakerParams kBass410 = [] { SpeakerParams p;            // 10" bass cone, ported 4x10
+        p.fs=45; p.qes=0.45; p.qms=6.5; p.vas=0.045; p.re=6.0; p.le=0.9e-3; p.sd=0.035; p.xmax=4.0e-3;
+        p.vb=0.030; p.vDriver=0.5; p.blDroop=0.12; p.kStiff=0.35;
+        p.pRated=150; p.brkF[0]=800; p.brkF[1]=1400; p.brkF[2]=2200; p.brkDb=1.5; p.brkComp=0.3; p.cryMix=0.0; return p; }();
+    static const SpeakerParams kBass210 = [] { SpeakerParams p;
+        p.fs=50; p.qes=0.50; p.qms=6.0; p.vas=0.040; p.re=6.0; p.le=0.9e-3; p.sd=0.035; p.xmax=4.0e-3;
+        p.vb=0.025; p.vDriver=0.7071; p.blDroop=0.12; p.kStiff=0.35;
+        p.pRated=150; p.brkF[0]=800; p.brkF[1]=1400; p.brkF[2]=2200; p.brkDb=1.5; p.brkComp=0.3; p.cryMix=0.0; return p; }();
+    static const SpeakerParams kBass115 = [] { SpeakerParams p;            // 15" bass cone, ported 1x15
+        p.fs=40; p.qes=0.40; p.qms=5.5; p.vas=0.150; p.re=5.8; p.le=1.2e-3; p.sd=0.088; p.xmax=5.0e-3;
+        p.vb=0.090; p.vDriver=1.0; p.blDroop=0.12; p.kStiff=0.35;
+        p.pRated=200; p.brkF[0]=600; p.brkF[1]=1100; p.brkF[2]=1800; p.brkDb=1.5; p.brkComp=0.3; p.cryMix=0.0; return p; }();
+    if (id == "@vox2x12")     return kVox;
+    if (id == "@american-ob") return kAmerOB;
+    if (id == "@greenback")   return kGreenbk;
+    if (id == "@hiwatt")      return kHiwatt;
+    if (id == "@doom")        return kDoom;
+    if (id == "@bass810")     return kBass810;
+    if (id == "@bass410h")    return kBass410;
+    if (id == "@bass210")     return kBass210;
+    if (id == "@bass115")     return kBass115;
+    return kFactory;
 }
 
 // A '@' path that is NOT the factory sentinel → one of our extra synthetic cabs.

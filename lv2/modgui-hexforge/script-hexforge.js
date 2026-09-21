@@ -507,6 +507,73 @@ function (event, funcs) {
     // cone. Position is acoustically SYMMETRIC, so the marker keeps whichever SIDE of the cap
     // the user dragged to (hf_micside) instead of snapping above centre — no "jump" at the cap.
     // Parameterized by panel block ('cab' | 'cab2'): Cab 2 has its own pad + data keys.
+
+    // ── RIGS (Phase 6, 2026-09-21): named cab-stage setups. Each rig is the IR plus a
+    // value for every per-preset cab port; applying one writes the ports through
+    // set_port_value (mod-ui does not echo those as change events, so the pad and
+    // dropdown labels are synced by hand) and clicks the IR picker's built-in option.
+    // The result is stored by presets exactly as hand-dialled values are; the label
+    // shows the last rig chosen and drops to "Custom" on any hand edit or recall.
+    // Values: [lowcut, highcut, mix, micpos, micdist, roomon, roommix, roomamt, roomdense,
+    //          voice, spkdrive, mic2type, mic2pos, mic2dist, mic2lvl, mic2align, mic2pol]
+    var RIG_SYMS = {
+        cab:  ['cab_lowcut', 'cab_highcut', 'cab_mix', 'cab_micpos', 'cab_micdist', 'cab_roomon', 'cab_roommix',
+               'cab_roomamt', 'cab_roomdense', 'cab_voice', 'cab_spkdrive', 'cab_mic2type', 'cab_mic2pos',
+               'cab_mic2dist', 'cab_mic2lvl', 'cab_mic2align', 'cab_mic2pol'],
+        cab2: ['rb_lowcut', 'rb_highcut', 'rb_cabmix', 'rb_cabmicpos', 'rb_cabmicdist', 'rb_cabroomon', 'rb_cabroommix',
+               'rb_cabroomamt', 'rb_cabroomdense', 'rb_cabvoice', 'rb_cabspkdrive', 'rb_cabmic2type', 'rb_cabmic2pos',
+               'rb_cabmic2dist', 'rb_cabmic2lvl', 'rb_cabmic2align', 'rb_cabmic2pol']
+    };
+    var RIGS = [
+        //  name              note                                 ir             lc   hc     mix pos  dist ron mix  amt  mode v  spk m2t m2p  m2d  m2l  al pol
+        ['Tight 57',         'V30 4x12, single 57 on the cap',     '@factory',    80, 16000, 1, 0.05, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,   0.35, 0, 0],
+        ['57 + Ribbon',      'the classic pair, honest offset',    '@factory',    80, 16000, 1, 0.15, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.3, 0.15, 0.40, 0, 0],
+        ['Studio Pair',      'aligned 57 + ribbon, console chain', '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
+        ['Greenback Room',   'Greenbacks, off-cap, small space',   '@greenback',  80, 16000, 1, 0.25, 0.20, 1, 0.18, 0.35, 2, 0, 3, 0, 0,   0,   0.35, 0, 0],
+        ['Chime Pair',       'alnico 2x12, 57 + far condenser',    '@vox2x12',    80, 16000, 1, 0.30, 0.20, 1, 0.15, 0.30, 2, 0, 3, 4, 0,   0.60, 0.35, 0, 0],
+        ['Open-Back Air',    'American 2x12, backed off, roomy',   '@american-ob',80, 16000, 1, 0.30, 0.35, 1, 0.20, 0.45, 2, 0, 3, 0, 0,   0,   0.35, 0, 0],
+        ['Hi-Volt Wall',     'Fane 4x12, 57 + 421 aligned',        '@hiwatt',     80, 16000, 1, 0.20, 0.10, 0, 0.12, 0.35, 0, 0, 3, 2, 0.2, 0.10, 0.35, 1, 0],
+        ['Doom Cave',        'big dark 4x12 in a large room',      '@doom',       80, 16000, 1, 0.40, 0.30, 1, 0.25, 0.80, 2, 0, 3, 0, 0,   0,   0.35, 0, 0],
+        ['Live Room Pair',   '57 + far ribbon, live room',         '@factory',    80, 16000, 1, 0.20, 0.15, 1, 0.30, 0.60, 2, 0, 3, 3, 0.2, 0.50, 0.40, 0, 0],
+        ['Fridge Close',     '8x10, 57 tight, dry',                '@bass810',    40, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,   0.35, 0, 0],
+        ['Flip-Top Room',    '1x15 reflex, backed off, room',      '@bass115',    40, 16000, 1, 0.30, 0.20, 1, 0.15, 0.40, 2, 0, 3, 0, 0,   0,   0.35, 0, 0]
+    ];
+    function rigBox(icon, scope) { return icon.find('[rata-role=rig][data-scope=' + scope + ']'); }
+    function rigLabel(icon, scope, name) { rigBox(icon, scope).find('[rata-role=rigname]').text(name); }
+    function rigApply(icon, scope, idx) {
+        var r = RIGS[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
+        var syms = RIG_SYMS[scope];
+        icon.data('hf_rig_busy', true);
+        for (var i = 0; i < syms.length; ++i) { funcs.set_port_value(syms[i], r[3 + i]); syncSel(icon, syms[i], r[3 + i]); }
+        // mic pad: set_port_value is not echoed, sync by hand (same reason as preset recall)
+        if (scope === 'cab') { icon.data('hf_micpos', r[6]); icon.data('hf_micdist', r[7]); micPadUpdate(icon, 'cab'); }
+        else                 { icon.data('hf_rb_micpos', r[6]); icon.data('hf_rb_micdist', r[7]); micPadUpdate(icon, 'cab2'); }
+        // IR: click the picker's own built-in option so mod-ui sends the patch message
+        var rata = scope === 'cab' ? 'Ir' : 'Ir2';
+        var opt = icon.find('[rata-role=' + rata + ']').closest('.mod-enumerated')
+                      .find('[mod-role=enumeration-option][mod-parameter-value="' + r[2] + '"]').first();
+        if (opt.length) opt.click();
+        rigLabel(icon, scope, r[0]);
+        rigBox(icon, scope).find('[rata-role=riglist] > div').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
+        setTimeout(function () { icon.data('hf_rig_busy', false); }, 250);
+    }
+    function rigBuild(icon) {
+        ['cab', 'cab2'].forEach(function (scope) {
+            var box = rigBox(icon, scope); if (!box.length) return;
+            var list = box.find('[rata-role=riglist]'); list.empty();
+            RIGS.forEach(function (r, i) {
+                $('<div/>').text(r[0]).append($('<span/>').text(r[1])).appendTo(list)
+                    .on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, scope, i); });
+            });
+            box.find('[rata-role=rigname]').on('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                var open = box.hasClass('open');
+                icon.find('.hf-rig').removeClass('open');
+                if (!open) box.addClass('open');
+            });
+        });
+        $(document).on('click.hfrig', function () { icon.find('.hf-rig').removeClass('open'); });
+    }
     function micPadUpdate(icon, blk) {
         blk = blk || 'cab';
         var K = blk === 'cab2' ? { pos: 'hf_rb_micpos', dist: 'hf_rb_micdist', side: 'hf_rb_micside' }
@@ -1037,6 +1104,7 @@ function (event, funcs) {
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
         micPadUpdate(icon, 'cab'); micPadUpdate(icon, 'cab2');
+        rigLabel(icon, 'cab', 'Custom'); rigLabel(icon, 'cab2', 'Custom');   // Phase 6: a recall is a hand-dialled set
         eqScope(icon);
         applyAmp(icon); applyRbAmp(icon); applyFuzz(icon); applyDelay(icon);
         if (drm != null) applyDrive(icon, drm);
@@ -1192,6 +1260,7 @@ function (event, funcs) {
         if ('rb_amp' in map)        icon.data('hf_rb_m', parseInt(map.rb_amp, 10));
         if ('rb_cab' in map)        icon.data('hf_rb_cab', parseInt(map.rb_cab, 10));
         setIr2Label(icon);
+        rigLabel(icon, 'cab', 'Custom'); rigLabel(icon, 'cab2', 'Custom');   // Phase 6: a recall is a hand-dialled set
         if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
         if ('out_voice' in map) icon.find('.hf-outvoice').toggleClass('hf-ov-on', map.out_voice > 0.5);   // seed FRFR knob visibility
         icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
@@ -1362,6 +1431,7 @@ function (event, funcs) {
         if ('ps_bank' in map) icon.data('ps_bank', parseInt(map.ps_bank, 10));
         if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));
         psBankLabel(icon); psRenderList(icon, funcs);
+        rigBuild(icon);   // Phase 6 rig selectors (Cab 1 + Cab 2)
         // ── Cab mic pads: drag the mic across the cone (Pos) / away from the grille
         // (Dist). One pad per cab panel — Cabinet 1 (cab_micpos/micdist) and Cab 2
         // (rb_cabmicpos/rb_cabmicdist), each with its own data keys.
@@ -1410,6 +1480,10 @@ function (event, funcs) {
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
         if (s) syncSel(icon, s, event.value);   // dropdown labels track every change
+        if (s && !icon.data('hf_rig_busy')) {   // Phase 6: any hand edit of a cab port = a custom rig
+            if (/^cab_/.test(s)) rigLabel(icon, 'cab', 'Custom');
+            else if (/^rb_(cab|lowcut|highcut)/.test(s)) rigLabel(icon, 'cab2', 'Custom');
+        }
         if (s && /_pos$/.test(s)) {
             // NEVER write ports from a change echo (2026-08-23): a host-clamped
             // write (eq_pos max was a stale 13 with 24 slots) echoed back a

@@ -1,4 +1,5 @@
 ﻿#include "VoxAC30ComponentModel.h"
+#include "CabModels.h"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
@@ -136,6 +137,8 @@ void VoxAC30ComponentModel::buildStages() noexcept {
         // cut built in recalcPots()
         c.pa.prepare(fs_, voxPowerParams(preV_, htV_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                          fluxLim_, kneeV_, cathR_, cathC_));
+        { SpeakerParams sp = CabModels::speakerFor("@vox2x12"); sp.srcR = 6.0;   // Phase 5: the cab this amp drives (open-back alnico); its 85 Hz peak sits on musical difference tones, so it is damped like the NFB amps despite the AC30 having no loop
+          c.pa.setSpeakerRow(sp); }
         c.pa.setSagDepth(sag_);
         c.dnr.prepare(fs_, 6000.0, 0.02f, 0.006f);   // AC30: rig hiss at the higher gain law
         for (auto& a : c.tapAcc) a = 0.0;
@@ -222,6 +225,7 @@ void VoxAC30ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "treble")   { treble_ = value; recalcPots(); }
     else if (id == "presence") { const float p = std::clamp(value, 0.0f, 1.0f); if (p != presence_) { presence_ = p; recalcPots(); } }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }
@@ -252,6 +256,7 @@ float VoxAC30ComponentModel::getParameter(const std::string& id) const noexcept 
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "involts")  return inVolts_;
     if (id == "outscale") return outScalePa_;
     if (id == "ownpa")    return 1.0f;

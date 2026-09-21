@@ -380,6 +380,7 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "treble")   { treble_ = value; recalcPots(); }
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.pa.setPresence(value); }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "channel")  {
         const int nc = std::clamp(static_cast<int>(value + 0.5f), 0, 2);
         if (nc != channel_) { channel_ = nc; if (fs_ > 0.0) prepSwitches(); }
@@ -420,6 +421,7 @@ float FriedmanBE100ComponentModel::getParameter(const std::string& id) const noe
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "channel")  return float(channel_);
     if (id == "fat")      return fat_ ? 1.0f : 0.0f;
     if (id == "c45")      return c45_ ? 1.0f : 0.0f;

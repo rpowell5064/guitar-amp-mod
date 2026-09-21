@@ -374,6 +374,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             a2->setParameter("presence",  *p->ports[HF_RB_PRESENCE]);
             a2->setParameter("master",    *p->ports[HF_RB_MASTER]);
             a2->setParameter("sag",       *p->ports[HF_RB_SAG]);
+            a2->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 (shared global toggle)
             if (rbM != kFriedmanIdx) a2->setParameter("channel", *p->ports[HF_RB_CHANNEL]);   // Friedman: own port below (see main rig)
             a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
             if (rbM == kFriedmanIdx) {
@@ -464,9 +465,16 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             p->cab2.setParameter("roomdense", *p->ports[HF_RB_CABROOMDENSE]);
             p->cab2.setParameter("voice",     *p->ports[HF_RB_CABVOICE]);
             p->cab2.setParameter("monoroom",  (p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f) ? 1.0f : 0.0f);
-            { const int spk = clampi(*p->ports[HF_RB_CABSPKDRIVE], 0, 2);
-              p->cab2.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
-              p->cab2.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f)); }
+            { const int spk = clampi(*p->ports[HF_RB_CABSPKDRIVE], 0, 3);   // 3 = Physical (2026-09-21)
+              p->cab2.setParameter("spkmodel",    spk == 3 ? 1.0f : 0.0f);   // nominal 150 V/unit on Rig B
+              p->cab2.setParameter("spkdrive",    (spk == 1 || spk == 2) ? 1.0f : 0.0f);
+              p->cab2.setParameter("spkdriveamt", spk == 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f)); }
+            p->cab2.setParameter("mic2type",  *p->ports[HF_RB_CABMIC2TYPE]);    // Cab Mic 2 (v50)
+            p->cab2.setParameter("mic2pos",   *p->ports[HF_RB_CABMIC2POS]);
+            p->cab2.setParameter("mic2dist",  *p->ports[HF_RB_CABMIC2DIST]);
+            p->cab2.setParameter("mic2lvl",   *p->ports[HF_RB_CABMIC2LVL]);
+            p->cab2.setParameter("mic2align", *p->ports[HF_RB_CABMIC2ALIGN]);
+            p->cab2.setParameter("mic2pol",   *p->ports[HF_RB_CABMIC2POL]);
             // No Cab (Direct): the player may run rig A into a real power amp +
             // physical cab -- rig B then skips speaker sim too.
             p->cab2.setBypass((std::strcmp(p->ir2Path, "@nocab") == 0)
@@ -496,6 +504,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     amp->setParameter("presence",  *p->ports[HF_AMP_PRESENCE]);
     amp->setParameter("master",    *p->ports[HF_AMP_MASTER]);
     amp->setParameter("sag",       *p->ports[HF_AMP_SAG]);
+    amp->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 lab toggle (global tail)
     // The Friedman takes its channel from its OWN port below; sending the generic
     // amp_channel first made the component build (which re-prepares its relay-
     // switched stages on every real change) flip 0->HBE EVERY BLOCK = a 1.5 kHz
@@ -653,12 +662,29 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
     p->reverb.setParameter("bloom",   *p->ports[HF_RV_BLOOM]);         // Hex Ambient bloom (v27)
     p->cab.setParameter("roomdense",  *p->ports[HF_CAB_ROOMDENSE]);    // classic / dense room (v26)
-    {   // Speaker Drive (item #40, v28): 0 Off/1 Subtle/2 Full -> CabinetBlock's two
-        // internal params. Subtle/Full (0.35/0.75) chosen conservatively for a brand-
-        // new, not-yet-user-tuned character feature.
-        const int spk = static_cast<int>(*p->ports[HF_CAB_SPKDRIVE] + 0.5f);
-        p->cab.setParameter("spkdrive",    spk > 0 ? 1.0f : 0.0f);
-        p->cab.setParameter("spkdriveamt", spk >= 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
+    {   // Speaker Drive: 0 Off / 1 Subtle / 2 Full (item #40 envelope heuristics,
+        // 0.35/0.75) / 3 Physical (2026-09-21: the state-based large-signal driver
+        // in SpeakerModel.h — excursion, back-EMF, inductance, coil heating). The
+        // physical model is calibrated in VOLTS: volts-per-unit at the cab =
+        // kCompVoltsPerUnit[amp] / ampMakeup (see hf_types.inc).
+        const int  spk  = clampi(*p->ports[HF_CAB_SPKDRIVE], 0, 3);
+        const bool phys = (spk == 3);
+        p->cab.setParameter("spkmodel",    phys ? 1.0f : 0.0f);
+        p->cab.setParameter("spkdrive",    (spk == 1 || spk == 2) ? 1.0f : 0.0f);
+        p->cab.setParameter("spkdriveamt", spk == 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
+        if (phys) {
+            const bool  ownPa = compOn || (ampModel == kAd200Idx);
+            const float vpu   = (ownPa ? kCompVoltsPerUnit[ampAlgo] : 150.0f) / std::max(ampMakeup, 1e-3f);
+            p->cab.setParameter("spkvolts", vpu);
+        }
+    }
+    {   // Cab Mic 2 (Phase 3, v50): second virtual mic; Type 0 = Off = bit-identical
+        p->cab.setParameter("mic2type",  *p->ports[HF_CAB_MIC2TYPE]);
+        p->cab.setParameter("mic2pos",   *p->ports[HF_CAB_MIC2POS]);
+        p->cab.setParameter("mic2dist",  *p->ports[HF_CAB_MIC2DIST]);
+        p->cab.setParameter("mic2lvl",   *p->ports[HF_CAB_MIC2LVL]);
+        p->cab.setParameter("mic2align", *p->ports[HF_CAB_MIC2ALIGN]);
+        p->cab.setParameter("mic2pol",   *p->ports[HF_CAB_MIC2POL]);
     }
     {   // EQ block: preset base curve + slider offsets + level (rebuilds only on change)
         const float eqDb[GraphicEQ::kBands] = {

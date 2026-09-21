@@ -1,6 +1,7 @@
 #pragma once
 #include "EVHComponentStages.h"
 #include "BiquadFilter.h"
+#include "SpeakerModel.h"
 #include <cmath>
 #include <algorithm>
 
@@ -127,6 +128,12 @@ public:
         // byte-identical output and wrongly cleared the LUT of suspicion).
         int    lutPoints = 1024;
         double outTrim = 1.35;      // residual level calibration vs service data
+        // Dynamic speaker load (Phase 5, 2026-09-21): replace the two static
+        // impedance biquads above with the large-signal driver, current-driven
+        // (SpeakerModel::loadVolts). Off = bit-identical. The row is the cab the
+        // amp naturally drives (default: a sealed 4x12 of V30-class cones).
+        bool          dynLoad = false;
+        SpeakerParams spk;
     };
 
     void prepare(double fs, const Params& p) noexcept {
@@ -161,6 +168,7 @@ public:
         zRes_.setCoeffs(Filters::peaking(p_.zResHz, p_.zResDb, p_.zResQ, fs_));
         zHF_.setCoeffs(Filters::highshelf(p_.zHfHz, p_.zHfDb, fs_));
         fluxLP_.setCoeffs(Filters::lowpass1pole(p_.fluxHz, fs_));
+        spkZ_.prepare(fs_, p_.spk); dynLoad_ = p_.dynLoad;
         sagAtk_    = std::exp(-1.0 / (p_.screenAttS * fs_));
         sagRel_    = std::exp(-1.0 / (p_.screenRelS * fs_));
         biasDecay_ = std::exp(-1.0 / (p_.biasRecovR * p_.biasCap * fs_));
@@ -175,7 +183,7 @@ public:
         scrFactor_ = 1.0;
         biasShift_ = 0.0;
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
-        zRes_.reset(); zHF_.reset(); fluxLP_.reset();
+        zRes_.reset(); zHF_.reset(); fluxLP_.reset(); spkZ_.reset();
         presShelf_.reset(); resoShelf_.reset(); nfbLoShelf_.reset();
         cathAvg_ = cathIdle_; cathLast_ = cathIdle_;
         piCapA_.reset(); piCapB_.reset();
@@ -193,6 +201,11 @@ public:
     }
     void setResonance(float v) noexcept { resonance_ = std::clamp(v, 0.0f, 1.0f); recalcNfb(); }
     void setSagDepth (float v) noexcept { sagDepth_  = std::clamp(v, 0.0f, 1.0f); }
+    // Phase 5: runtime toggle of the dynamic load (the driver state is cleared on
+    // engage so it starts at rest) and the cab row the amp is driving.
+    void setDynLoad(bool on) noexcept { if (on && !dynLoad_) spkZ_.reset(); dynLoad_ = on; }
+    bool dynLoad() const noexcept { return dynLoad_; }
+    void setSpeakerRow(const SpeakerParams& sp) noexcept { p_.spk = sp; if (fs_ > 0.0) spkZ_.prepare(fs_, p_.spk); }
 
     // vin: PI input volts. Returns speaker-node volts.
     double process(double vin) noexcept {
@@ -288,7 +301,8 @@ private:
         }
 
         double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
-        spk = zHF_.process(zRes_.process(float(spk)));
+        if (dynLoad_) spk = spkZ_.loadVolts(spk, p_.spk.vDriver);   // Phase 5: the driver IS the load
+        else          spk = zHF_.process(zRes_.process(float(spk)));
         spk = otLP_.process(otHP_.process(float(spk)));
         {
             const float lo = fluxLP_.process(float(spk));
@@ -468,6 +482,8 @@ private:
     bool   piCapActive_ = false;
     BiquadFilter nfbStabLP_, otHP_, otLP_, c89HP_, c118HP_, c119HP_;
     BiquadFilter zRes_, zHF_, fluxLP_;
+    SpeakerModel spkZ_;          // Phase 5 dynamic load (current-driven)
+    bool         dynLoad_ = false;
     float  nfbPrev_ = 0.0f;
     double scrEnv_ = 0.018, scrIdle_ = 0.018, scrFactor_ = 1.0;
     double sagAtk_ = 0.0, sagRel_ = 0.0;

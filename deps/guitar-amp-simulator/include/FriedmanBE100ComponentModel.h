@@ -108,6 +108,7 @@ private:
     // 31.9/27.2/22.8 -> 20.6/16.9/20.3 %, HBE 25.5/17.0/16.5 -> 17.2/14.0/16.9 %.
     float inVolts_    = 1.00f;
     float outScalePa_ = 0.0054f;   // loudness parity vs the FM9 grids (BE +1.9 / HBE +0.1 dB split)
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants exposed to the lab harness as fit0..fit5 so the
     // hardware-grid calibration can sweep them without a rebuild. Defaults =
     // the baked values. (fit0 gain-pot mid fraction, fit1 OT HF corner, fit2

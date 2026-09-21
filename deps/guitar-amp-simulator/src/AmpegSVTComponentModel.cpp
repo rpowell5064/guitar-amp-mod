@@ -1,4 +1,5 @@
 #include "AmpegSVTComponentModel.h"
+#include "CabModels.h"
 #include <cmath>
 #include <cstdlib>
 #include <algorithm>
@@ -222,6 +223,7 @@ void AmpegSVTComponentModel::buildStages() noexcept {
         { c.pi.process(1e-3); gPiPlate_ = c.pi.plateOut() / 1e-3; gPiCath_ = c.pi.cathodeOut() / 1e-3; c.pi.reset(); }
         c.pa.prepare(fs_, svtPowerParams(railA_, railE_, otHfHz_, zHfDb_, zResHz_, zResDb_, idleMa_, raa_,
                                          nfbStabHz_, fluxLim_, kneeV_, iaScale_, lutPoints_));
+        c.pa.setSpeakerRow(CabModels::speakerFor("@bass810"));   // Phase 5: the cab this amp drives
         c.pa.setSagDepth(sag_);
         // Global loop: the 4 Ω tap → R46 47k ‖ C7 120p → the R4/R5 junction (R5 220 to ground).
         {
@@ -431,6 +433,7 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
     else if (id == "ultrahi")  { const int u = value > 0.5f ? 1 : 0; if (u != ultraHi_) { ultraHi_ = u; recalcPots(); } }
     else if (id == "midfreq")  { const int m = std::clamp(int(std::lround(value)), 0, 2); if (m != midFreq_) { midFreq_ = m; if (fs_ > 0.0) for (auto& c : ch_) buildMid(c); } }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { stackMid_ = std::clamp(value, 0.02f, 0.9f); if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }
@@ -476,6 +479,7 @@ float AmpegSVTComponentModel::getParameter(const std::string& id) const noexcept
     if (id == "ultrahi")  return float(ultraHi_);
     if (id == "midfreq")  return float(midFreq_);
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "involts")  return inVolts_;
     if (id == "outscale") return outScalePa_;
     if (id == "ownpa")    return 1.0f;

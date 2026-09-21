@@ -236,6 +236,7 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "treble")   { treble_ = value; recalcPots(); }
     else if (id == "presence") { presence_ = value; }                // no presence control on this amp
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "channel")  { const bool cl = value > 0.5f; if (cl != clean_) { clean_ = cl; reset(); } }
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
@@ -267,6 +268,7 @@ float OrangeRockerverbComponentModel::getParameter(const std::string& id) const 
     if (id == "treble")   return treble_;
     if (id == "presence") return presence_;
     if (id == "sag")      return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "channel")  return clean_ ? 1.0f : 0.0f;
     if (id == "involts")  return inVolts_;
     if (id == "outscale") return outScalePa_;

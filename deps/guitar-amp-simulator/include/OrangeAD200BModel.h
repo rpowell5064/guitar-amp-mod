@@ -82,6 +82,7 @@ private:
     // ad200b_verify) lands at 0.69 = -3.2 dBFS, so a dimed amp sits just under
     // full scale with headroom for the cab.
     float outScalePa_ = 0.0175f;
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  gainMid_   = 0.15f;   // fit0: P1 500k LOG law
     float  bassMid_   = 0.15f;   // fit1: P4 500k LOG law (treble/mid/master are LIN — printed)

@@ -99,6 +99,7 @@ private:
     // svt_level_curve is the harness; see the 2026-09-14 note in the audit.
     float inVolts_    = 0.45f;
     float outScalePa_ = 0.0060f;   // (a 0.0045 loudness bake measured 2.6 points WORSE on the CLEAN grid: the decay darkener's thresholds are absolute)
+    bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  stackMid_  = 0.15f;   // fit0: VR5 / VR6 "log" law
     double otHfHz_ = 60e3, zHfDb_ = 0.0, zResDb_ = 8.0, idleMa_ = 24.0, raa_ = 1900.0;   // fit1..fit5 (raa from the boxed 372 V RMS at 300 W; zRes 8 / zHf 0: the reference carries the ~60 Hz impedance hump — with it OFF the grid lost 2.4 points at its best knobs)

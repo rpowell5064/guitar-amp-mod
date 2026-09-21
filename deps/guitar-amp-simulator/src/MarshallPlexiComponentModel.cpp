@@ -337,6 +337,7 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
         if (v != presence_) { presence_ = v; recalcPresence(); }
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
+    else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
     else if (id == "variac")   {
         // The switch only moves the glide target; advanceSmoothing() walks there.
         // Before any audio has run (a preset recall, a fresh build) it lands directly.
@@ -369,6 +370,7 @@ float MarshallPlexiComponentModel::getParameter(const std::string& id) const noe
     if (id == "treble")    return treble_;
     if (id == "presence")  return presence_;
     if (id == "sag")       return sag_;
+    if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "variac")    return variac_;
     if (id == "variac_glide") return float(glideG_);
     if (id == "involts")   return inVolts_;

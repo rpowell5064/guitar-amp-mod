@@ -1455,3 +1455,19 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-palette.hf-dropok {
     outline: 1px dashed rgba(255, 90, 120, .65); outline-offset: -3px;
 }
+
+/* ── RIG selector (Phase 6, 2026-09-21): a port-less dropdown in the IR picker's clothes.
+   The list opens on a JS-toggled .open (mod-ui's custom-select opens its own lists). ── */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-rig { position: relative; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-rigsel .hf-rigcur { position: relative; z-index: 50; border-radius: 4px; padding: 0 8px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-rigsel .hf-rigcur::after { content: "\25BE"; float: right; opacity: .6; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist {
+    display: none; background: rgba(0,0,0,.95); color: #fff; width: 100%; min-width: 64px;
+    max-height: 240px; overflow: auto; position: absolute; left: 0; z-index: 9000 !important;
+    border: 1px solid var(--acc); border-radius: 0 0 4px 4px;
+}
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-rig.open .hf-riglist { display: block; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div { padding: 3px 9px; font-weight: 700; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div > span { display: block; font-size: 9px; font-weight: 400; color: #c2cad8; letter-spacing: .3px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div:hover { background: rgba(255,255,255,.2); cursor: pointer; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div.hf-rig-on { color: var(--acc); }
