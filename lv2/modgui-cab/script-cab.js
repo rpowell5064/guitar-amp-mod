@@ -3,6 +3,7 @@ function (event, funcs) {
     // source toggle was removed 2026-07-13). This just renders the loaded IR's label.
     function set_irfile(icon, value) {
         var box = icon.find('[rata-role=Ir]');
+        icon.data('cab_ir_cur', (value == null || value == 'None' || value == '') ? '@factory' : value);
         if (value == null || value == 'None' || value == '' || value == '@factory') {
             box.text('Factory Cab (built-in)');
             return;
@@ -99,31 +100,78 @@ function (event, funcs) {
         return (t || ir).replace(/ \(.*\)$/, '');
     }
     function rigDisplayName(icon, r) { return rigCabName(icon, r[2]) + ' \u00b7 ' + r[0]; }
+    var RIGS_URI = 'https://rpowell5064.github.io/guitaramp-suite/cab#rigs';
+    // User rigs live ON THE DEVICE (the plugin's #rigs string parameter, State + cab-rigs.json).
+    // Shape: {"v":1,"rigs":[{"n":"name","ir":"@factory","v":[17 values in RIG_SYMS order]}]}
+    function userRigs(icon) { return icon.data('cab_urigs') || []; }
+    function rigAll(icon) { var all = RIGS.slice(); userRigs(icon).forEach(function (u) { all.push([u.n, 'my rig', u.ir].concat(u.v)); }); return all; }
+    function rigStore(icon, list) {
+        icon.data('cab_urigs', list);
+        if (funcs && typeof funcs.patch_set === 'function') funcs.patch_set(RIGS_URI, 's', JSON.stringify({ v: 1, rigs: list }));
+        rigBuild(icon);
+    }
+    function rigParse(icon, text) {
+        var list = [];
+        try { var o = JSON.parse(text || ''); if (o && o.rigs && o.rigs.length) list = o.rigs.filter(function (u) { return u && u.n && u.ir && u.v && u.v.length === 17; }); } catch (x) {}
+        icon.data('cab_urigs', list);
+        rigBuild(icon);
+    }
     function rigLabel(icon, name) { icon.find('[rata-role=rigname]').text(name); }
     function rigApply(icon, idx) {
-        var r = RIGS[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
+        var r = rigAll(icon)[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
+        var pvm = icon.data('cab_portv') || {};
         icon.data('cab_rig_busy', true);
         if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI, 'p', r[2]);
         set_irfile(icon, r[2]);
-        for (var i = 0; i < RIG_SYMS.length; ++i) { funcs.set_port_value(RIG_SYMS[i], r[3 + i]); syncSel(icon, RIG_SYMS[i], r[3 + i]); }
+        for (var i = 0; i < RIG_SYMS.length; ++i) { funcs.set_port_value(RIG_SYMS[i], r[3 + i]); syncSel(icon, RIG_SYMS[i], r[3 + i]); pvm[RIG_SYMS[i]] = r[3 + i]; }
         icon.data('cab_micpos', r[6]); icon.data('cab_micdist', r[7]);
         icon.data('cab_m2pos', r[15]); icon.data('cab_m2dist', r[16]);
         micPadUpdate(icon);
         rigLabel(icon, rigDisplayName(icon, r));
-        icon.find('[rata-role=riglist] > div').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
+        icon.find('[rata-role=riglist] > div.hf-rig-row').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
         setTimeout(function () { icon.data('cab_rig_busy', false); }, 250);
+    }
+    function rigSaveCurrent(icon, name) {
+        var pvm = icon.data('cab_portv') || {}, vals = [];
+        for (var i = 0; i < RIG_SYMS.length; ++i) { var x = parseFloat(pvm[RIG_SYMS[i]]); vals.push(isNaN(x) ? 0 : Math.round(x * 1000) / 1000); }
+        var ir = icon.data('cab_ir_cur') || '@factory';
+        var list = userRigs(icon).slice();
+        name = (name || '').replace(/^\s+|\s+$/g, '').substring(0, 24);
+        if (!name) return;
+        for (var k = list.length - 1; k >= 0; --k) if (list[k].n === name && list[k].ir === ir) list.splice(k, 1);
+        list.push({ n: name, ir: ir, v: vals });
+        rigStore(icon, list);
+        rigLabel(icon, rigCabName(icon, ir) + ' \u00b7 ' + name);
     }
     function rigBuild(icon) {
         var box = icon.find('[rata-role=rig]'); if (!box.length) return;
         var list = box.find('[rata-role=riglist]'); list.empty();
-        RIGS.forEach(function (r, i) {
-            $('<div/>').text(rigDisplayName(icon, r)).append($('<span/>').text(r[1])).appendTo(list)
-                .on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, i); });
+        var all = rigAll(icon), nFactory = RIGS.length;
+        all.forEach(function (r, i) {
+            var row = $('<div class="hf-rig-row"/>').text(rigDisplayName(icon, r)).append($('<span/>').text(r[1]));
+            if (i === nFactory) $('<div class="hf-rig-div"/>').text('MY RIGS').insertBefore(row.appendTo(list)); else row.appendTo(list);
+            row.on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, i); });
+            if (i >= nFactory) {
+                row.addClass('hf-rig-user');
+                $('<i class="hf-rig-x" title="Delete (tap twice)">\u00d7</i>').appendTo(row).on('click', function (e) {
+                    e.preventDefault(); e.stopPropagation();
+                    if (!row.hasClass('hf-rig-del')) { row.addClass('hf-rig-del'); setTimeout(function () { row.removeClass('hf-rig-del'); }, 2500); return; }
+                    var l = userRigs(icon).slice(); l.splice(i - nFactory, 1); rigStore(icon, l);
+                });
+            }
         });
-        box.find('[rata-role=rigname]').on('click', function (e) {
-            e.preventDefault(); e.stopPropagation(); box.toggleClass('open');
+        var save = $('<div class="hf-rig-save"/>').text('\u2795 Save current as\u2026').appendTo(list);
+        var inp  = $('<div class="hf-rig-in"/>').append($('<input type="text" maxlength="24" placeholder="rig name" spellcheck="false"/>'))
+                       .append($('<span/>').text('Enter saves the cab stage as it stands \u00b7 Esc cancels')).appendTo(list);
+        save.on('click', function (e) { e.preventDefault(); e.stopPropagation(); inp.addClass('on'); inp.find('input').val('')[0].focus(); });
+        inp.on('click', function (e) { e.stopPropagation(); });
+        inp.find('input').on('keydown', function (e) {
+            e.stopPropagation();
+            if (e.key === 'Enter')  { e.preventDefault(); var n = this.value; inp.removeClass('on'); box.removeClass('open'); rigSaveCurrent(icon, n); }
+            if (e.key === 'Escape') { e.preventDefault(); inp.removeClass('on'); }
         });
-        $(document).on('click.hxcabrig', function () { box.removeClass('open'); });
+        box.find('[rata-role=rigname]').off('click.hxrig').on('click.hxrig', function (e) { e.preventDefault(); e.stopPropagation(); box.toggleClass('open'); });
+        $(document).off('click.hxcabrig').on('click.hxcabrig', function () { box.removeClass('open'); box.find('.hf-rig-in').removeClass('on'); });
     }
     if (event.type == 'start') {
         var icon = event.icon;
@@ -133,8 +181,10 @@ function (event, funcs) {
         // when an option is clicked but does NOT reliably echo it back as a change
         // event, so the label sat on the old value. Update it ourselves on click,
         // and seed from the current parameter value at load.
+        var pvm = {}; (event.ports || []).forEach(function (p) { pvm[p.symbol] = p.value; }); icon.data('cab_portv', pvm);   // live port values (user rigs read them back)
         (event.parameters || []).forEach(function (pr) {
             if (pr.uri && pr.uri.indexOf('#irfile') >= 0) set_irfile(icon, pr.value);
+            if (pr.uri && pr.uri.indexOf('#rigs') >= 0 && pr.value) rigParse(icon, pr.value);   // saved rigs from the device
         });
         icon.find('[mod-role=input-parameter] [mod-role=enumeration-option]').each(function () {
             var el = this;
@@ -166,6 +216,7 @@ function (event, funcs) {
                     funcs.set_port_value(K.posSym,  pos);
                     funcs.set_port_value(K.distSym, dist);
                 }
+                var pvm = icon.data('cab_portv'); if (pvm) { pvm[K.posSym] = pos; pvm[K.distSym] = dist; }
                 micPadUpdate(icon);
             };
             var apply = function (e) {
@@ -195,8 +246,9 @@ function (event, funcs) {
         }
         micPadUpdate(icon);
     } else if (event.type == 'change') {
-        if (event.symbol) syncSel(event.icon, event.symbol, event.value);
-        if ((event.symbol || event.uri) && !event.icon.data('cab_rig_busy')) rigLabel(event.icon, 'Custom');   // any hand edit = a custom rig
+        if (event.symbol) { syncSel(event.icon, event.symbol, event.value); var pvm = event.icon.data('cab_portv'); if (pvm) pvm[event.symbol] = parseFloat(event.value); }
+        if (event.uri && event.uri.indexOf('#rigs') >= 0) rigParse(event.icon, event.value);   // saved rigs from the device
+        else if ((event.symbol || event.uri) && !event.icon.data('cab_rig_busy')) rigLabel(event.icon, 'Custom');   // any hand edit = a custom rig
         if (event.uri == 'https://rpowell5064.github.io/guitaramp-suite/cab#irfile')
             set_irfile(event.icon, event.value);
         else if (event.symbol === 'mic_pos')  { event.icon.data('cab_micpos',  parseFloat(event.value)); micPadUpdate(event.icon); }

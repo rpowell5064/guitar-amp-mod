@@ -24,10 +24,17 @@
 #include <cmath>
 #include <vector>
 #include <fstream>
+#include <string>
+#include <cstdio>
+#include <cstdlib>
+#ifndef _WIN32
+#include <sys/stat.h>
+#endif
 
 #define CAB_URI     "https://rpowell5064.github.io/guitaramp-suite/cab"
 #define CAB_IR_URI  CAB_URI "#irfile"
 #define CAB_NAM_URI CAB_URI "#namfile"
+#define CAB_RIGS_URI CAB_URI "#rigs"   // user-saved rigs, a JSON string (2026-09-22)
 
 static constexpr int kPathMax  = 1024;
 static constexpr int kMaxBlock = 512;
@@ -51,9 +58,9 @@ enum CabPorts {
 };
 
 struct URIs {
-    LV2_URID atom_Object, atom_Path, atom_URID;
+    LV2_URID atom_Object, atom_Path, atom_URID, atom_String;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID ir_file, nam_file;
+    LV2_URID ir_file, nam_file, rigs;
 };
 
 enum WorkType { WORK_IR, WORK_NAM_LOAD, WORK_NAM_FREE };
@@ -70,6 +77,12 @@ struct CabPlugin {
 
     char irPath[kPathMax]  = {0};
     char namPath[kPathMax] = {0};
+    // User-saved rigs (2026-09-22): opaque JSON the modgui keeps its MY RIGS list in.
+    // Saved in State, mirrored to ~/.config/hexchain/cab-rigs.json, pushed to the host
+    // once when the notify port is live (mod-ui only records host feedback).
+    static constexpr int kRigsMax = 6000;   // < the 8 KB notify port
+    char rigsJson[kRigsMax] = {0};
+    bool rigsPushed = false;
     float namIn[kMaxBlock], namOut[kMaxBlock];
 #ifdef HEXCHAIN_ANAGRAM
     bool resetLatch = false;   // kx:Reset edge detect
@@ -162,12 +175,14 @@ static void mapURIs(CabPlugin* p) {
     p->uris.atom_Object    = m->map(m->handle, LV2_ATOM__Object);
     p->uris.atom_Path      = m->map(m->handle, LV2_ATOM__Path);
     p->uris.atom_URID      = m->map(m->handle, LV2_ATOM__URID);
+    p->uris.atom_String    = m->map(m->handle, LV2_ATOM__String);
     p->uris.patch_Set      = m->map(m->handle, LV2_PATCH__Set);
     p->uris.patch_Get      = m->map(m->handle, LV2_PATCH__Get);
     p->uris.patch_property = m->map(m->handle, LV2_PATCH__property);
     p->uris.patch_value    = m->map(m->handle, LV2_PATCH__value);
     p->uris.ir_file        = m->map(m->handle, CAB_IR_URI);
     p->uris.nam_file       = m->map(m->handle, CAB_NAM_URI);
+    p->uris.rigs           = m->map(m->handle, CAB_RIGS_URI);
 }
 
 static void writeFileToNotify(CabPlugin* p, LV2_URID prop, const char* path) {
@@ -182,6 +197,44 @@ static void writeFileToNotify(CabPlugin* p, LV2_URID prop, const char* path) {
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
+static void writeStringToNotify(CabPlugin* p, LV2_URID prop, const char* s) {
+    LV2_Atom_Forge_Frame frame;
+    lv2_atom_forge_frame_time(&p->forge, 0);
+    lv2_atom_forge_object(&p->forge, &frame, 0, p->uris.patch_Set);
+    lv2_atom_forge_key(&p->forge, p->uris.patch_property);
+    lv2_atom_forge_urid(&p->forge, prop);
+    lv2_atom_forge_key(&p->forge, p->uris.patch_value);
+    lv2_atom_forge_string(&p->forge, s, static_cast<uint32_t>(std::strlen(s)));
+    lv2_atom_forge_pop(&p->forge, &frame);
+}
+
+// User rigs mirror (2026-09-22): cab-rigs.json in the shared hexchain config dir.
+static std::string cabRigsPath() {
+    const char* home = std::getenv("HOME");
+    std::string dir = std::string(home && home[0] ? home : "/tmp") + "/.config/hexchain";
+#ifndef _WIN32
+    ::mkdir((std::string(home && home[0] ? home : "/tmp") + "/.config").c_str(), 0755);
+    ::mkdir(dir.c_str(), 0755);
+#endif
+    return dir + "/cab-rigs.json";
+}
+static void cabWriteRigs(CabPlugin* p) {
+    const std::string path = cabRigsPath(), tmp = path + ".tmp";
+    FILE* f = std::fopen(tmp.c_str(), "wb");
+    if (!f) return;
+    std::fwrite(p->rigsJson, 1, std::strlen(p->rigsJson), f);
+    std::fclose(f);
+    std::rename(tmp.c_str(), path.c_str());
+}
+static void cabLoadRigs(CabPlugin* p) {
+    FILE* f = std::fopen(cabRigsPath().c_str(), "rb");
+    if (!f) return;
+    const size_t n = std::fread(p->rigsJson, 1, CabPlugin::kRigsMax - 1, f);
+    std::fclose(f);
+    p->rigsJson[n] = '\0';
+}
+
+// ── Lifecycle ────────────────────────────────────────
 static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
                                   const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) CabPlugin;
@@ -191,6 +244,7 @@ static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
     if (!p->map || !p->schedule) { delete p; return nullptr; }
     mapURIs(p);
     lv2_atom_forge_init(&p->forge, p->map);
+    cabLoadRigs(p);   // user rigs (State restore may replace them)
 
     p->rate = rate;
     p->dsp.prepare(rate, kMaxBlock, 2);
@@ -276,6 +330,9 @@ static void cab_run(LV2_Handle h, uint32_t n) {
     if (haveNotify) {
         lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), p->notify->atom.size);
         lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
+        // push the saved rigs once per instance: mod-ui records a parameter value only from
+        // host feedback and hands the last one it saw to the modgui at every GUI open
+        if (!p->rigsPushed) { p->rigsPushed = true; writeStringToNotify(p, u.rigs, p->rigsJson); }
     }
     if (p->control) {
         LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
@@ -284,7 +341,17 @@ static void cab_run(LV2_Handle h, uint32_t n) {
             if (obj->body.otype == u.patch_Set) {
                 const LV2_Atom *prop = nullptr, *val = nullptr;
                 lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
-                if (!prop || prop->type != u.atom_URID || !val || val->type != u.atom_Path) continue;
+                if (!prop || prop->type != u.atom_URID || !val) continue;
+                if (val->type == u.atom_String) {   // user rigs JSON from the modgui
+                    if (reinterpret_cast<const LV2_Atom_URID*>(prop)->body == u.rigs) {
+                        const char* js = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                        std::strncpy(p->rigsJson, js, CabPlugin::kRigsMax - 1); p->rigsJson[CabPlugin::kRigsMax - 1] = '\0';
+                        cabWriteRigs(p);
+                        if (haveNotify) writeStringToNotify(p, u.rigs, p->rigsJson);   // echo so mod-ui records it
+                    }
+                    continue;
+                }
+                if (val->type != u.atom_Path) continue;
                 const LV2_URID which = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
                 const char* path = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
                 if (which == u.ir_file) {
@@ -303,6 +370,7 @@ static void cab_run(LV2_Handle h, uint32_t n) {
             } else if (obj->body.otype == u.patch_Get && haveNotify) {
                 writeFileToNotify(p, u.ir_file, p->irPath);
                 writeFileToNotify(p, u.nam_file, p->namPath);
+                writeStringToNotify(p, u.rigs, p->rigsJson);
             }
         }
     }
@@ -399,6 +467,9 @@ static LV2_State_Status cab_save(LV2_Handle h, LV2_State_Store_Function store,
     };
     saveOne(p->uris.ir_file,  p->irPath);
     saveOne(p->uris.nam_file, p->namPath);
+    if (p->rigsJson[0])   // user rigs travel with the board (2026-09-22)
+        store(handle, p->uris.rigs, p->rigsJson, std::strlen(p->rigsJson) + 1, p->uris.atom_String,
+              flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
     return LV2_STATE_SUCCESS;
 }
 
@@ -424,6 +495,14 @@ static LV2_State_Status cab_restore(LV2_Handle h, LV2_State_Retrieve_Function re
         if (mapPath && path != ap) free(path);
     }
 
+    {   // user rigs (2026-09-22)
+        const void* rv = retrieve(handle, p->uris.rigs, &size, &type, &vflags);
+        if (rv && type == p->uris.atom_String && size > 0) {
+            const size_t n = size < (size_t)(CabPlugin::kRigsMax - 1) ? size : (size_t)(CabPlugin::kRigsMax - 1);
+            std::memcpy(p->rigsJson, rv, n); p->rigsJson[n] = '\0';
+            cabWriteRigs(p);
+        }
+    }
     const void* nv = retrieve(handle, p->uris.nam_file, &size, &type, &vflags);
     if (nv && type == p->uris.atom_Path) {
         const char* ap = static_cast<const char*>(nv);

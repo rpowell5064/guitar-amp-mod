@@ -209,3 +209,16 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div > span { display: block; font-size: 9px; font-weight: 400; color: #c2cad8; letter-spacing: .3px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div:hover { background: rgba(255,255,255,.2); cursor: pointer; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-on { color: #56aaff; }
+
+/* ── user rigs (2026-09-22): MY RIGS section, delete glyph, inline save row ── */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-div { font-size: 9px; letter-spacing: .6px; color: #8b96a8; padding: 5px 9px 2px; cursor: default; border-top: 1px solid rgba(255,255,255,.12); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-div:hover { background: none; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-user { position: relative; padding-right: 26px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig-x { position: absolute; right: 8px; top: 3px; font-size: 12px; line-height: 1; color: #8b96a8; padding: 1px 4px; border-radius: 3px; font-style: normal; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig-x:hover { color: #fff; background: rgba(255,80,110,.35); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-del { background: rgba(255,80,110,.25); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-save { color: #56aaff; border-top: 1px solid rgba(255,255,255,.12); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig-in { display: none; padding: 4px 9px 6px; border-top: 1px solid rgba(255,255,255,.12); }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig-in.on { display: block; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig-in input { width: 100%; box-sizing: border-box; background: rgba(0,0,0,.6); color: #fff; border: 1px solid #56aaff; border-radius: 3px; font: inherit; font-size: 12px; padding: 3px 6px; outline: none; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig-in span { display: block; font-size: 9px; color: #8b96a8; margin-top: 3px; }
