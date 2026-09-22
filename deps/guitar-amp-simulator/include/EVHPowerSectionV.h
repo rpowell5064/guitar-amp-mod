@@ -60,6 +60,7 @@ public:
         zRes_.setCoeffs(Filters::peaking(120.0, 12.5, 0.9, fs_));
         zHF_.setCoeffs(Filters::highshelf(4000.0, 4.5, fs_));
         fluxLP_.setCoeffs(Filters::lowpass1pole(120.0, fs_));
+        spkP_.leRp = spkP_.re * (std::pow(10.0, 4.5 / 20.0) - 1.0);   // plateau at the anchored +4.5 dB shelf (2026-09-22)
         spkZ_.prepare(fs_, spkP_);   // Phase 5 dynamic load (off by default)
         // B+ droop: fast reservoir + slow chain (estimates, mild — the EVH
         // runs a solid-state bridge; the audible "swell" is LF-path, not sag).

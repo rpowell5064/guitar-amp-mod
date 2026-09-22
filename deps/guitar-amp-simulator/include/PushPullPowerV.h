@@ -168,7 +168,7 @@ public:
         zRes_.setCoeffs(Filters::peaking(p_.zResHz, p_.zResDb, p_.zResQ, fs_));
         zHF_.setCoeffs(Filters::highshelf(p_.zHfHz, p_.zHfDb, fs_));
         fluxLP_.setCoeffs(Filters::lowpass1pole(p_.fluxHz, fs_));
-        spkZ_.prepare(fs_, p_.spk); dynLoad_ = p_.dynLoad;
+        spkZ_.prepare(fs_, loadRow()); dynLoad_ = p_.dynLoad;
         sagAtk_    = std::exp(-1.0 / (p_.screenAttS * fs_));
         sagRel_    = std::exp(-1.0 / (p_.screenRelS * fs_));
         biasDecay_ = std::exp(-1.0 / (p_.biasRecovR * p_.biasCap * fs_));
@@ -205,7 +205,18 @@ public:
     // engage so it starts at rest) and the cab row the amp is driving.
     void setDynLoad(bool on) noexcept { if (on && !dynLoad_) spkZ_.reset(); dynLoad_ = on; }
     bool dynLoad() const noexcept { return dynLoad_; }
-    void setSpeakerRow(const SpeakerParams& sp) noexcept { p_.spk = sp; if (fs_ > 0.0) spkZ_.prepare(fs_, p_.spk); }
+    void setSpeakerRow(const SpeakerParams& sp) noexcept { p_.spk = sp; if (fs_ > 0.0) spkZ_.prepare(fs_, loadRow()); }
+    // The dynamic load keeps THIS amp's anchored HF tilt (2026-09-22): the static
+    // load shelf zHfDb was tuned per amp against the reference takes, so the
+    // driver's inductance loss is set to plateau at the same height —
+    // Re + Rp = Re·10^(zHfDb/20) — and only the dynamic behaviour (excursion,
+    // heating, resonance shift) is new. One shared +10 dB plateau read as
+    // 5–8 dB of extra top on the low-feedback amps and let the Plexi loop ring.
+    SpeakerParams loadRow() const noexcept {
+        SpeakerParams sp = p_.spk;
+        sp.leRp = std::clamp(sp.re * (std::pow(10.0, p_.zHfDb / 20.0) - 1.0), 0.5, 30.0);
+        return sp;
+    }
 
     // vin: PI input volts. Returns speaker-node volts.
     double process(double vin) noexcept {
