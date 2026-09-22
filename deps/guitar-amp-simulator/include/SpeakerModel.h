@@ -74,8 +74,10 @@ struct SpeakerParams {
     double vas  = 0.066;     // equivalent compliance volume [m^3]
     double re   = 6.3;       // DC resistance [ohm]
     double le   = 0.7e-3;    // voice-coil inductance [H]
-    double leRp = 25.0;      // loss resistance in parallel with Le [ohm]: eddy currents in the pole piece make a
-                             // real coil SEMI-inductive — |Z| stops climbing at Re + leRp instead of rising 6 dB/oct forever
+    double leRp = 14.0;      // loss resistance in parallel with Le [ohm]: eddy currents in the pole piece make a
+                             // real coil SEMI-inductive — |Z| stops climbing at Re + leRp instead of rising 6 dB/oct
+                             // forever. 14 Ω puts the plateau at ~3.2·Re (+10 dB), where published 12" curves sit
+                             // (25 Ω gave +14 dB and read as a high-pass on the high-gain amps, 2026-09-22).
     double sd   = 0.053;     // effective piston area [m^2] (12" cone)
     double xmax = 1.5e-3;    // linear excursion limit [m]
     double vb   = 0.028;     // enclosure volume PER DRIVER [m^3]; 0 = open back (default: sealed 4x12)
@@ -160,9 +162,11 @@ public:
         {
             const double wp = p.leRp / l0_;                    // rad/s corner of L || Rp
             lpA_ = 1.0 - std::exp(-wp / sampleRate);
-            const double w1k = 2.0 * M_PI * 1000.0;
-            const double xl  = w1k * l0_ * p.leRp / std::sqrt(p.leRp * p.leRp + w1k * w1k * l0_ * l0_);   // |jwL || Rp|
-            zMidNorm_ = std::sqrt(re0_ * re0_ + xl * xl) / re0_;
+            // Level reference = the coil resistance (the bottom of the impedance curve), the
+            // same unity the static load filters had in the bass. A 1 kHz match was tried
+            // first (2026-09-22): the inductance already lifts 1 kHz by ~2 dB, so matching
+            // there pushed the whole low end down and the toggle read as a high-pass.
+            zMidNorm_ = 1.0;
             vL_ = 0.0;
         }
         // ── exact small-signal inverse (see header) ─────────────────────────
