@@ -69,6 +69,7 @@
 # Declared writable so mod-ui delivers their patch:Set notify messages to the
 # custom modgui exactly like the file-picker params (alphabetical indices:
 # amp2nam=0 ampnam=1 cabnam=2 dr2nam=3 drnam=4 ir2file=5 irfile=6 meters=7 ps_apply=8 ps_index=9 ps_name=10).
+#   rigs     : UI<->plugin — the user's saved cab rigs (JSON), kept in State + mirrored to disk (2026-09-22; sorts last: rigs=11).
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name>
     a lv2:Parameter ;
     rdfs:label "Preset Name" ;
@@ -87,6 +88,11 @@
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#meters>
     a lv2:Parameter ;
     rdfs:label "Level Meters" ;
+    rdfs:range atom:String .
+
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#rigs>
+    a lv2:Parameter ;
+    rdfs:label "Saved Rigs" ;
     rdfs:range atom:String .
 
 <https://rpowell5064.github.io/guitaramp-suite/hexforge>
@@ -114,7 +120,7 @@ A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory r
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 256 ;
+    lv2:microVersion 262 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -123,7 +129,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
 
     patch:writable <https://rpowell5064.github.io/guitaramp-suite/hexforge#irfile> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ampnam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#drnam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#cabnam> ,
                    <https://rpowell5064.github.io/guitaramp-suite/hexforge#amp2nam> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ir2file> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#dr2nam> ,
-                   <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_index> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_apply> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#meters> ;
+                   <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_index> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_apply> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#meters> , <https://rpowell5064.github.io/guitaramp-suite/hexforge#rigs> ;
 
     lv2:port [
         a lv2:AudioPort, lv2:InputPort ;

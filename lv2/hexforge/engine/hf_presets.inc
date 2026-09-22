@@ -544,6 +544,26 @@ static void hfWriteBackup(HexForge* p) {
     std::fclose(f);
     std::rename(tmp.c_str(), path.c_str());
 }
+// User rigs mirror (2026-09-22): hexforge-rigs.json beside the preset backup.
+static void hfWriteRigs(HexForge* p) {
+    std::string dir = hfBackupDir();
+    hfplat::ensureConfigDir();
+    const std::string path = dir + "/hexforge-rigs.json";
+    const std::string tmp  = path + ".tmp";
+    FILE* f = hfplat::fopenBinary(tmp.c_str(), "wb");
+    if (!f) return;
+    std::fwrite(p->rigsJson, 1, std::strlen(p->rigsJson), f);
+    std::fclose(f);
+    std::rename(tmp.c_str(), path.c_str());
+}
+static void hfLoadRigs(HexForge* p) {
+    const std::string path = hfBackupDir() + "/hexforge-rigs.json";
+    FILE* f = hfplat::fopenBinary(path.c_str(), "rb");
+    if (!f) return;
+    const size_t n = std::fread(p->rigsJson, 1, HexForge::kRigsMax - 1, f);
+    std::fclose(f);
+    p->rigsJson[n] = '\0';
+}
 // Load the store from the backup file into presets[]. Returns true on success.
 static bool hfLoadBackup(HexForge* p) {
     const std::string path = hfBackupDir() + "/hexforge-presets.dat";

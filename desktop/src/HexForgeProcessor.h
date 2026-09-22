@@ -99,6 +99,7 @@ public:
     static const char* suffixFor(int prop) {
         switch (prop) {
             case HFP_PS_NAME:  return "#ps_name";
+            case HFP_RIGS:     return "#rigs";
             case HFP_METERS:   return "#meters";
             case HFP_TUNER:    return "#tuner";
             case HFP_CAL:      return "#cal";

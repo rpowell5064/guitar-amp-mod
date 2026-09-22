@@ -544,6 +544,28 @@ function (event, funcs) {
         ['Close',          '57 tight, dry',                       '@bass810',    40, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
         ['Room',           'backed off, room',                    '@bass115',    40, 16000, 1, 0.30, 0.20, 1, 0.15, 0.40, 2, 0, 3, 0, 0,   0,    0.35, 0, 0]
     ];
+    var RIGS_URI = 'https://rpowell5064.github.io/guitaramp-suite/hexforge#rigs';   // literal: PS_NAME_URI is declared further down (var hoisting would give undefined here)
+    // User rigs live ON THE DEVICE: the modgui keeps them as JSON in the plugin's #rigs
+    // string parameter (State + hexforge-rigs.json), pushed back on patch:Get. Shape:
+    // {"v":1,"rigs":[{"n":"name","ir":"@factory","v":[17 values in RIG_SYMS order]}]}
+    function userRigs(icon) { return icon.data('hf_urigs') || []; }
+    function rigAll(icon) {   // factory rows + user rows, one flat index space
+        var all = RIGS.slice();
+        userRigs(icon).forEach(function (u) { all.push([u.n, 'my rig', u.ir].concat(u.v)); });
+        return all;
+    }
+    function rigStore(icon, list) {
+        icon.data('hf_urigs', list);
+        if (funcs && typeof funcs.patch_set === 'function')
+            funcs.patch_set(RIGS_URI, 's', JSON.stringify({ v: 1, rigs: list }));
+        rigBuild(icon);
+    }
+    function rigParse(icon, text) {
+        var list = [];
+        try { var o = JSON.parse(text || ''); if (o && o.rigs && o.rigs.length) list = o.rigs.filter(function (u) { return u && u.n && u.ir && u.v && u.v.length === 17; }); } catch (x) {}
+        icon.data('hf_urigs', list);
+        rigBuild(icon);
+    }
     function rigBox(icon, scope) { return icon.find('[rata-role=rig][data-scope=' + scope + ']'); }
     function rigLabel(icon, scope, name) { rigBox(icon, scope).find('[rata-role=rigname]').text(name); }
     // the cab name exactly as the IR picker shows it (falls back to the CAB_NAMES map)
@@ -556,8 +578,8 @@ function (event, funcs) {
     }
     function rigDisplayName(icon, scope, r) { return rigCabName(icon, scope, r[2]) + ' \u00b7 ' + r[0]; }
     function rigApply(icon, scope, idx) {
-        var r = RIGS[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
-        var syms = RIG_SYMS[scope];
+        var r = rigAll(icon)[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
+        var syms = RIG_SYMS[scope], pvm = icon.data('hf_portv') || {};
         icon.data('hf_rig_busy', true);
         // the cab first: a direct patch message on the IR path parameter
         if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI[scope], 'p', r[2]);
@@ -568,30 +590,65 @@ function (event, funcs) {
             if (opt.length) opt.click();
         }
         if (scope === 'cab') setIr(icon, r[2]); else { icon.data('hf_ir2', r[2]); setIr2Label(icon); }
-        for (var i = 0; i < syms.length; ++i) { funcs.set_port_value(syms[i], r[3 + i]); syncSel(icon, syms[i], r[3 + i]); }
+        for (var i = 0; i < syms.length; ++i) { funcs.set_port_value(syms[i], r[3 + i]); syncSel(icon, syms[i], r[3 + i]); pvm[syms[i]] = r[3 + i]; }
         // mic pad: set_port_value is not echoed, sync by hand (same reason as preset recall)
         if (scope === 'cab') { icon.data('hf_micpos', r[6]); icon.data('hf_micdist', r[7]); icon.data('hf_m2pos', r[15]); icon.data('hf_m2dist', r[16]); micPadUpdate(icon, 'cab'); }
         else                 { icon.data('hf_rb_micpos', r[6]); icon.data('hf_rb_micdist', r[7]); icon.data('hf_rb_m2pos', r[15]); icon.data('hf_rb_m2dist', r[16]); micPadUpdate(icon, 'cab2'); }
         rigLabel(icon, scope, rigDisplayName(icon, scope, r));
-        rigBox(icon, scope).find('[rata-role=riglist] > div').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
+        rigBox(icon, scope).find('[rata-role=riglist] > div.hf-rig-row').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
         setTimeout(function () { icon.data('hf_rig_busy', false); }, 250);
+    }
+    // Save the cab stage as it stands (every port from the live map + the current IR).
+    function rigSaveCurrent(icon, scope, name) {
+        var pvm = icon.data('hf_portv') || {}, syms = RIG_SYMS[scope], vals = [];
+        for (var i = 0; i < syms.length; ++i) { var x = parseFloat(pvm[syms[i]]); vals.push(isNaN(x) ? 0 : Math.round(x * 1000) / 1000); }
+        var ir = scope === 'cab' ? (icon.data('hf_ir_cur') || '@factory') : (icon.data('hf_ir2') || '@factory');
+        if (!ir || ir === '' || ir === '@builtin') ir = '@factory';
+        var list = userRigs(icon).slice();
+        name = (name || '').replace(/^\s+|\s+$/g, '').substring(0, 24);
+        if (!name) return;
+        for (var k = list.length - 1; k >= 0; --k) if (list[k].n === name && list[k].ir === ir) list.splice(k, 1);   // same name on the same cab = overwrite
+        list.push({ n: name, ir: ir, v: vals });
+        rigStore(icon, list);
+        rigLabel(icon, scope, rigCabName(icon, scope, ir) + ' \u00b7 ' + name);
     }
     function rigBuild(icon) {
         ['cab', 'cab2'].forEach(function (scope) {
             var box = rigBox(icon, scope); if (!box.length) return;
             var list = box.find('[rata-role=riglist]'); list.empty();
-            RIGS.forEach(function (r, i) {
-                $('<div/>').text(rigDisplayName(icon, scope, r)).append($('<span/>').text(r[1])).appendTo(list)
-                    .on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, scope, i); });
+            var all = rigAll(icon), nFactory = RIGS.length;
+            all.forEach(function (r, i) {
+                var row = $('<div class="hf-rig-row"/>').text(rigDisplayName(icon, scope, r)).append($('<span/>').text(r[1]));
+                if (i === nFactory) $('<div class="hf-rig-div"/>').text('MY RIGS').insertBefore(row.appendTo(list)); else row.appendTo(list);
+                row.on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, scope, i); });
+                if (i >= nFactory) {
+                    row.addClass('hf-rig-user');
+                    $('<i class="hf-rig-x" title="Delete (tap twice)">\u00d7</i>').appendTo(row).on('click', function (e) {
+                        e.preventDefault(); e.stopPropagation();
+                        if (!row.hasClass('hf-rig-del')) { row.addClass('hf-rig-del'); setTimeout(function () { row.removeClass('hf-rig-del'); }, 2500); return; }
+                        var l = userRigs(icon).slice(); l.splice(i - nFactory, 1); rigStore(icon, l);
+                    });
+                }
             });
-            box.find('[rata-role=rigname]').on('click', function (e) {
+            // save row + inline name field (no browser prompt: mod-ui's page must never block)
+            var save = $('<div class="hf-rig-save"/>').text('\u2795 Save current as\u2026').appendTo(list);
+            var inp  = $('<div class="hf-rig-in"/>').append($('<input type="text" maxlength="24" placeholder="rig name" spellcheck="false"/>'))
+                           .append($('<span/>').text('Enter saves the cab stage as it stands \u00b7 Esc cancels')).appendTo(list);
+            save.on('click', function (e) { e.preventDefault(); e.stopPropagation(); inp.addClass('on'); inp.find('input').val('')[0].focus(); });
+            inp.on('click', function (e) { e.stopPropagation(); });
+            inp.find('input').on('keydown', function (e) {
+                e.stopPropagation();
+                if (e.key === 'Enter')  { e.preventDefault(); var n = this.value; inp.removeClass('on'); box.removeClass('open'); rigSaveCurrent(icon, scope, n); }
+                if (e.key === 'Escape') { e.preventDefault(); inp.removeClass('on'); }
+            });
+            box.find('[rata-role=rigname]').off('click.hfrig').on('click.hfrig', function (e) {
                 e.preventDefault(); e.stopPropagation();
                 var open = box.hasClass('open');
                 icon.find('.hf-rig').removeClass('open');
                 if (!open) box.addClass('open');
             });
         });
-        $(document).on('click.hfrig', function () { icon.find('.hf-rig').removeClass('open'); });
+        $(document).off('click.hfrig').on('click.hfrig', function () { icon.find('.hf-rig').removeClass('open').find('.hf-rig-in').removeClass('on'); });
     }
     // data keys of the mic the pad is showing (MIC 1 / MIC 2 tab, 2026-09-22)
     function micKeys(icon, blk) {
@@ -839,6 +896,7 @@ function (event, funcs) {
     }
     function setIr(icon, value) {
         if (value == null || value === 'None' || value === '') value = '@factory';
+        icon.data('hf_ir_cur', value);
         if (CAB_NAMES[value]) {                      // built-in synthetic cab
             setFile(icon, 'Ir', value, CAB_NAMES[value]);
             setNodeVal(icon, 'cab', CAB_NAMES[value].replace(/ \(.*\)$/, ''));
@@ -1162,6 +1220,7 @@ function (event, funcs) {
         }
         (event.parameters || []).forEach(function (pr) {
             if (pr.uri) fileLabel(pr.uri, pr.value);
+            if (pr.uri && pr.uri.indexOf('#rigs') >= 0 && pr.value) rigParse(icon, pr.value);   // saved rigs: mod-ui hands the last value it saw at GUI start
         });
         icon.find('[mod-role=input-parameter]').each(function () {
             var picker = this, uri = picker.getAttribute('mod-parameter-uri') || '';
@@ -1277,6 +1336,7 @@ function (event, funcs) {
         // Seed conditional visibility, membership, bypass + slot order from START values.
         var map = {};
         (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
+        icon.data('hf_portv', map);   // live copy of every port value (user rigs read it back)
         if ('amp_model' in map)     icon.data('hf_amp_m', parseInt(map.amp_model, 10));
         if ('amp_channel' in map)   icon.data('hf_amp_ch', parseFloat(map.amp_channel));
         if ('rb_channel' in map)    icon.data('hf_rb_ch', parseFloat(map.rb_channel));
@@ -1463,6 +1523,9 @@ function (event, funcs) {
         if ('ps_slot' in map) icon.data('ps_slot', parseInt(map.ps_slot, 10));
         psBankLabel(icon); psRenderList(icon, funcs);
         rigBuild(icon);   // Phase 6 rig selectors (Cab 1 + Cab 2)
+        // pull the device's saved rigs (and every other pushed string) on GUI load: the plugin
+        // answers any patch:Get with its full sync (paths, preset name, index, rigs)
+        if (funcs && typeof funcs.patch_get === 'function') funcs.patch_get(RIGS_URI);
         // ── Cab mic pads: drag the mic across the cone (Pos) / away from the grille
         // (Dist). One pad per cab panel — Cabinet 1 (cab_micpos/micdist) and Cab 2
         // (rb_cabmicpos/rb_cabmicdist), each with its own data keys.
@@ -1523,7 +1586,8 @@ function (event, funcs) {
         });
     } else if (event.type == 'change') {
         var icon = event.icon, s = event.symbol;
-        if (s) syncSel(icon, s, event.value);   // dropdown labels track every change
+        if (s) { syncSel(icon, s, event.value);   // dropdown labels track every change
+                 var pvm = icon.data('hf_portv'); if (pvm) pvm[s] = parseFloat(event.value); }
         if (s && !icon.data('hf_rig_busy')) {   // Phase 6: any hand edit of a cab port = a custom rig
             if (/^cab_/.test(s)) rigLabel(icon, 'cab', 'Custom');
             else if (/^rb_(cab|lowcut|highcut)/.test(s)) rigLabel(icon, 'cab2', 'Custom');
@@ -1690,6 +1754,8 @@ function (event, funcs) {
                 psBankLabel(icon); psRenderList(icon, funcs);
                 psSetName(icon, parts[2 + pb * 4 + ps]);
             }
+        } else if (event.uri && event.uri.indexOf('#rigs') >= 0) {
+            rigParse(icon, event.value);   // user rigs from the device
         } else if (event.uri && event.uri.indexOf('#ps_name') >= 0) {
             psSetName(icon, event.value);
         } else if (event.uri && event.uri.indexOf('#ps_apply') >= 0) {

@@ -1465,6 +1465,7 @@ static bool hfEngineInit(HexForge* p, double rate) {
     p->dblApA.assign(size_t(rate * 0.0053) + 2, 0.0f);  // mono-blend phase diffusers
     p->dblApB.assign(size_t(rate * 0.0089) + 2, 0.0f);
     psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)
+    hfLoadRigs(p);       // user rigs JSON (State restore may replace it)
     hfLoadBackup(p);     // recover the user's full preset store across delete/re-add + updates
     return true;
 }

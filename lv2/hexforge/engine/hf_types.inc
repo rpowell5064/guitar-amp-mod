@@ -506,6 +506,7 @@ enum HfProp {   // host-visible properties (the wrapper maps these to URIDs)
     HFP_PS_NAME, HFP_METERS, HFP_TUNER, HFP_CAL,
     HFP_IR_FILE, HFP_AMP_NAM, HFP_DR_NAM, HFP_CAB_NAM,
     HFP_AMP2_NAM, HFP_IR2_FILE, HFP_DR2_NAM,
+    HFP_RIGS,       // user-saved cab rigs, a JSON string (2026-09-22): UI<->plugin, saved in State + mirrored to disk
 };
 struct HfWorkerIface {  // async off-RT work (NAM parse, amp rebuild, IR load)
     virtual bool schedule(const void* msg, uint32_t size) = 0;
@@ -714,6 +715,12 @@ struct HexForge {
     int64_t lastTapSample[4]  = {-100000000,-100000000,-100000000,-100000000};
     int64_t lastEdgeSample[4] = {-100000000,-100000000,-100000000,-100000000};  // sw debounce
 
+    // user-saved cab rigs (2026-09-22): the JSON the modgui keeps its "MY RIGS" list in.
+    // Opaque to the DSP — stored in State (per board), mirrored to the config dir so
+    // it survives delete/re-add like the preset store, pushed to the UI on patch:Get.
+    static constexpr int kRigsMax = 6000;   // < the 16 KB notify port, ~40 rigs
+    char rigsJson[kRigsMax]   = {0};
+    bool rigsPushed = false;            // rigs JSON pushed to the host once (see the LV2 run cycle)
     // file-load state
     char irPath[kPathMax]     = {0};
     char ir2Path[kPathMax]    = {0};    // Cab 2 user IR override (v39)

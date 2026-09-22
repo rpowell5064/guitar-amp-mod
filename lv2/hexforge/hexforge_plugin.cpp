@@ -45,6 +45,7 @@ struct URIs {
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
     LV2_URID ir_file, amp_nam, dr_nam, cab_nam, amp2_nam, ir2_file, dr2_nam;
     LV2_URID ps_name, ps_index, ps_apply, preset_blob, meters, tuner, cal;
+    LV2_URID rigs;   // user-saved cab rigs (JSON string, 2026-09-22)
     LV2_URID midi_MidiEvent;
     LV2_URID time_Position, time_bpm, atom_Float;   // host tempo (tap-tempo / MIDI clock sync)
 };
@@ -79,6 +80,7 @@ static void mapURIs(HexForgeLv2* p) {
     p->uris.ps_index      = m->map(m->handle, HEXFORGE_URI "#ps_index");
     p->uris.ps_apply      = m->map(m->handle, HEXFORGE_URI "#ps_apply");
     p->uris.preset_blob   = m->map(m->handle, HEXFORGE_URI "#preset_blob");
+    p->uris.rigs          = m->map(m->handle, HEXFORGE_URI "#rigs");
     p->uris.meters        = m->map(m->handle, HEXFORGE_URI "#meters");
     p->uris.tuner         = m->map(m->handle, HEXFORGE_URI "#tuner");
     p->uris.cal           = m->map(m->handle, HEXFORGE_URI "#cal");
@@ -150,6 +152,7 @@ struct Lv2Host final : HfHostIface {
     LV2_URID uridFor(int prop) const {
         switch (prop) {
             case HFP_PS_NAME:  return p->uris.ps_name;
+            case HFP_RIGS:     return p->uris.rigs;
             case HFP_METERS:   return p->uris.meters;
             case HFP_TUNER:    return p->uris.tuner;
             case HFP_CAL:      return p->uris.cal;
@@ -236,6 +239,11 @@ static void hf_run(LV2_Handle h, uint32_t n) {
     if (haveNotify) {
         lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), p->notify->atom.size);
         lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
+        // Push the saved rigs ONCE per instance as soon as the notify port is live
+        // (2026-09-22): mod-ui records a parameter value only from host feedback and
+        // hands the last one it saw to the modgui at every GUI open (event.parameters),
+        // so this single push is what makes MY RIGS appear on a fresh page load.
+        if (!p->rigsPushed) { p->rigsPushed = true; p->host->stringSet(HFP_RIGS, p->rigsJson); }
     }
     if (p->control) {
         LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
@@ -257,6 +265,13 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                         if (haveNotify) p->host->emitIndex();
                         p->host->statusDump();
                         hfWriteBackup(p);
+                    } else if (which == u.rigs) {
+                        // User rigs JSON from the modgui: keep it, mirror it to disk
+                        // (same user-triggered file I/O tradeoff as the preset backup).
+                        const char* s = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
+                        std::strncpy(p->rigsJson, s, HexForge::kRigsMax - 1); p->rigsJson[HexForge::kRigsMax - 1] = '\0';
+                        hfWriteRigs(p);
+                        if (haveNotify) p->host->stringSet(HFP_RIGS, p->rigsJson);   // echo so mod-ui records the new value
                     }
                     continue;
                 }
@@ -299,6 +314,7 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                 p->host->fileSet(HFP_IR2_FILE, p->ir2Path);
                 p->host->fileSet(HFP_DR2_NAM, p->dr2NamPath);
                 p->host->stringSet(HFP_PS_NAME, p->presets[p->curBank][p->curSlot].name);
+                p->host->stringSet(HFP_RIGS, p->rigsJson);   // the UI's "MY RIGS" list
                 p->host->emitIndex();
                 p->host->emitApply();   // sync knobs to the active preset's effective values
             } else if (obj->body.otype == u.time_Position) {
@@ -387,6 +403,9 @@ static LV2_State_Status hf_save(LV2_Handle h, LV2_State_Store_Function store,
     putU32(static_cast<uint32_t>(p->curSlot));
     store(handle, p->uris.preset_blob, blob.data(), blob.size(), p->uris.atom_Chunk,
           flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+    if (p->rigsJson[0])   // user rigs travel with the board (2026-09-22)
+        store(handle, p->uris.rigs, p->rigsJson, std::strlen(p->rigsJson) + 1, p->uris.atom_String,
+              flags | LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
     hfWriteBackup(p);   // mirror the store to the off-instance backup on every board save
     return LV2_STATE_SUCCESS;
 }
@@ -442,6 +461,15 @@ static LV2_State_Status hf_restore(LV2_Handle h, LV2_State_Retrieve_Function ret
         }
     }
 
+    // ── User rigs (2026-09-22) ──
+    {
+        const void* rv = retrieve(handle, p->uris.rigs, &size, &type, &vflags);
+        if (rv && type == p->uris.atom_String && size > 0) {
+            const size_t n = std::min<size_t>(size, HexForge::kRigsMax - 1);
+            std::memcpy(p->rigsJson, rv, n); p->rigsJson[n] = '\0';
+            hfWriteRigs(p);
+        }
+    }
     // ── Preset store ──
     const void* bv = retrieve(handle, p->uris.preset_blob, &size, &type, &vflags);
     if (bv && type == p->uris.atom_Chunk && size >= 12) {

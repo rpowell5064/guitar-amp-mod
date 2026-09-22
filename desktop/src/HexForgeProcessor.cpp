@@ -307,6 +307,11 @@ void HexForgeProcessor::requestParamSet(const juce::String& uri, const juce::Str
     const int prop = propForUri(uri);
     if (prop < 0) {
         if (uri.endsWith("#ps_name")) requestPresetRename(value);
+        else if (uri.endsWith("#rigs")) {   // user rigs JSON (2026-09-22): opaque to the DSP, mirrored to disk
+            const std::string v = value.toStdString();
+            std::strncpy(eng->rigsJson, v.c_str(), HexForge::kRigsMax - 1); eng->rigsJson[HexForge::kRigsMax - 1] = '\0';
+            hfWriteRigs(eng);
+        }
         return;
     }
     juce::String v = value;
