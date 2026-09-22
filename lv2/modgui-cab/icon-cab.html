@@ -103,35 +103,18 @@
                 </div>
                 {{/controls.12}}
             </div>
-            <!-- Cab Mic 2 (Phase 3, 2026-09-21): a second virtual microphone on the same
-                 convolution. Type select on its own row (the Speaker pattern), then Blend /
-                 Pos / Dist knobs; Align + Polarity are toggles rendered as knobs like Room. -->
-            <div class="hf-agroup">
-                <span class="hf-agroup-title">Mic 2</span>
-                {{#controls.14}}
-                <div class="hf-voice-row" title="{{name}}">
-                    <span class="hf-voice-label">Type</span>
-                    <div class="mod-enumerated hf-voice-sel" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
-                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
-                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
-                    </div>
-                </div>
-                {{/controls.14}}
-                <div class="hf-agroup-body">
-                    {{#controls.15}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
-                    {{#controls.16}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.16}}
-                    {{#controls.17}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.17}}
-                    {{#controls.18}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.18}}
-                    {{#controls.19}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
-                </div>
-            </div>
             </div>
             <div class="hf-cab-right">
                 <!-- Same darker fieldset box as Cabinet/Room (hf-agroup); the column stretches so
                      the box's bottom edge aligns exactly with the Room group's. viewBox 140x150 =
                      the 140x84 side-view stretched x1.786 vertically (centre 75, mic travel +-50). -->
-                <div class="hf-agroup hf-micpad" rata-role="micpad"><span class="hf-agroup-title">Mic Placement</span>
+                <!-- MIC 1 / MIC 2 tabs (2026-09-22, mirrors Hex Forge): one pad bound to whichever
+                     mic is on top; Mic 2's Type / Blend / Align / Polarity sit under the pad on its tab. -->
+                <div class="hf-agroup hf-micpad" rata-role="micpad" data-mic="1"><span class="hf-agroup-title">Mic Placement</span>
                     <div class="hf-agroup-body">
+                    <div class="hf-mp-tabs" rata-role="mictabs">
+                        <span class="hf-mp-tab on" data-mic="1" title="Primary mic: the IR's own">MIC 1</span>
+                        <span class="hf-mp-tab" data-mic="2" title="Second virtual mic on the same cab">MIC 2</span></div>
                     <svg viewBox="0 0 140 150" class="hf-mp-svg" rata-role="micsvg">
                         <title>Drag the mic — double-click resets</title>
                         <text x="30" y="11" class="hf-mp-ro"><tspan class="hf-mp-ro-l">POS&#160;&#160;</tspan><tspan rata-role="micposv">CAP EDGE</tspan></text>
@@ -162,9 +145,27 @@
                             <rect x="8.2" y="-1.2" width="4.6" height="2.4" rx="1" class="hf-mp-micband"/>
                         </g>
                     </svg>
+                    <div class="hf-mp-m2" rata-role="micm2">
+                    {{#controls.14}}
+                    <div class="hf-voice-row" title="{{name}}">
+                        <span class="hf-voice-label">Mic 2</span>
+                        <div class="mod-enumerated hf-voice-sel" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                        </div>
+                    </div>
+                    {{/controls.14}}
+                    <div class="hf-mp-m2row">
+                    {{#controls.15}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Blend</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
+                    {{#controls.18}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Align</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.18}}
+                    {{#controls.19}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Polarity</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
+                    </div>
+                    </div>
                     <div class="hf-mp-hidden">
                     {{#controls.6}}<div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.6}}
                     {{#controls.7}}<div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.7}}
+                    {{#controls.16}}<div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.16}}
+                    {{#controls.17}}<div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.17}}
                     </div>
                     </div>
                 </div>

@@ -17,11 +17,19 @@ function (event, funcs) {
     }
 
     // ── Mic pad (2026-07-14): drag the mic across the cone (Pos) / away from the grille (Dist) ──
+    // MIC 1 / MIC 2 tabs (2026-09-22): the pad shows whichever mic is on top
+    function micKeys(icon) {
+        return icon.data('cab_mictab') === 2
+            ? { pos: 'cab_m2pos', dist: 'cab_m2dist', side: 'cab_m2side', posSym: 'mic2_pos', distSym: 'mic2_dist' }
+            : { pos: 'cab_micpos', dist: 'cab_micdist', side: 'cab_micside', posSym: 'mic_pos', distSym: 'mic_dist' };
+    }
     function micPadUpdate(icon) {
         var pad = icon.find('[rata-role=micpad]'); if (!pad.length) return;
-        var pos  = parseFloat(icon.data('cab_micpos'))  || 0;
-        var dist = parseFloat(icon.data('cab_micdist')) || 0;
-        var side = icon.data('cab_micside') === -1 ? -1 : 1;
+        var K = micKeys(icon);
+        pad.attr('data-mic', icon.data('cab_mictab') === 2 ? '2' : '1');
+        var pos  = parseFloat(icon.data(K.pos))  || 0;
+        var dist = parseFloat(icon.data(K.dist)) || 0;
+        var side = icon.data(K.side) === -1 ? -1 : 1;
         var x = 28 + dist * 94, y = 75 - side * pos * 50;   // viewBox 140x150: centre 75, travel ±50
         pad.find('[rata-role=micdot]').attr('transform', 'translate(' + x.toFixed(1) + ',' + y.toFixed(1) + ')');
         var pn = pos < 0.12 ? 'CAP EDGE' : pos < 0.5 ? 'CONE' : pos < 0.85 ? 'CONE EDGE' : 'SURROUND';
@@ -74,16 +82,28 @@ function (event, funcs) {
             });
         });
         (event.ports || []).forEach(function (p) {
-            if (p.symbol === 'mic_pos')  icon.data('cab_micpos',  parseFloat(p.value));
-            if (p.symbol === 'mic_dist') icon.data('cab_micdist', parseFloat(p.value));
+            if (p.symbol === 'mic_pos')   icon.data('cab_micpos',  parseFloat(p.value));
+            if (p.symbol === 'mic_dist')  icon.data('cab_micdist', parseFloat(p.value));
+            if (p.symbol === 'mic2_pos')  icon.data('cab_m2pos',   parseFloat(p.value));
+            if (p.symbol === 'mic2_dist') icon.data('cab_m2dist',  parseFloat(p.value));
+        });
+        icon.find('[rata-role=mictabs] .hf-mp-tab').each(function () {
+            var tab = this;
+            tab.addEventListener('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                icon.data('cab_mictab', tab.getAttribute('data-mic') === '2' ? 2 : 1);
+                icon.find('[rata-role=mictabs] .hf-mp-tab').removeClass('on'); tab.classList.add('on');
+                micPadUpdate(icon);
+            });
         });
         var svg = icon.find('[rata-role=micsvg]')[0];
         if (svg) {
             var write = function (pos, dist) {
-                icon.data('cab_micpos', pos); icon.data('cab_micdist', dist);
+                var K = micKeys(icon);
+                icon.data(K.pos, pos); icon.data(K.dist, dist);
                 if (funcs && typeof funcs.set_port_value === 'function') {
-                    funcs.set_port_value('mic_pos',  pos);
-                    funcs.set_port_value('mic_dist', dist);
+                    funcs.set_port_value(K.posSym,  pos);
+                    funcs.set_port_value(K.distSym, dist);
                 }
                 micPadUpdate(icon);
             };
@@ -94,7 +114,7 @@ function (event, funcs) {
                 var off  = 75 - vy;
                 var dist = Math.max(0, Math.min(1, (vx - 28) / 94));
                 var pos  = Math.max(0, Math.min(1, Math.abs(off) / 50));
-                icon.data('cab_micside', off < 0 ? -1 : 1);
+                icon.data(micKeys(icon).side, off < 0 ? -1 : 1);
                 if (pos < 0.05) pos = 0;
                 write(pos, dist);
             };
@@ -108,7 +128,7 @@ function (event, funcs) {
             svg.addEventListener('pointerup',     function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
             svg.addEventListener('pointercancel', function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
             svg.addEventListener('dblclick', function (e) {
-                icon.data('cab_micside', 1); write(0, 0);
+                icon.data(micKeys(icon).side, 1); write(0, 0);
                 e.preventDefault(); e.stopPropagation();
             });
         }
@@ -119,5 +139,7 @@ function (event, funcs) {
             set_irfile(event.icon, event.value);
         else if (event.symbol === 'mic_pos')  { event.icon.data('cab_micpos',  parseFloat(event.value)); micPadUpdate(event.icon); }
         else if (event.symbol === 'mic_dist') { event.icon.data('cab_micdist', parseFloat(event.value)); micPadUpdate(event.icon); }
+        else if (event.symbol === 'mic2_pos')  { event.icon.data('cab_m2pos',  parseFloat(event.value)); micPadUpdate(event.icon); }
+        else if (event.symbol === 'mic2_dist') { event.icon.data('cab_m2dist', parseFloat(event.value)); micPadUpdate(event.icon); }
     }
 }
