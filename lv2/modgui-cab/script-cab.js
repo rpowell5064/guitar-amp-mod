@@ -65,9 +65,70 @@ function (event, funcs) {
         icon.data('hx_selmap', m);
         (ports || []).forEach(function (p) { if (m[p.symbol]) syncSel(icon, p.symbol, p.value); });
     }
+
+    // ── RIGS (2026-09-22, mirrors Hex Forge): named cab-stage setups. Each rig is the
+    // cab IR plus a value for every control; applying one writes the ports through
+    // set_port_value (not echoed as change events, so labels/pad are synced by hand)
+    // and sets the IR with the host's patch_set on the #irfile path parameter. The
+    // list shows each rig under the SAME cab name the IR picker uses. The label drops
+    // to "Custom" on any hand edit.
+    // Values: [lowcut, highcut, mix, micpos, micdist, roomon, roommix, roomamt, roomdense,
+    //          voice, spkdrive, mic2type, mic2pos, mic2dist, mic2lvl, mic2align, mic2pol]
+    var RIG_SYMS = ['low_cut_hz', 'high_cut_hz', 'mix', 'mic_pos', 'mic_dist', 'room_on', 'room_mix',
+                    'room_amt', 'room_density', 'voice', 'spk_drive', 'mic2_type', 'mic2_pos',
+                    'mic2_dist', 'mic2_lvl', 'mic2_align', 'mic2_pol'];
+    var RIG_IR_URI = 'https://rpowell5064.github.io/guitaramp-suite/cab#irfile';
+    var RIGS = [
+        ['Tight 57',       'single 57 on the cap, dry',          '@factory',    80, 16000, 1, 0.05, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['57 + Ribbon',    'the classic pair, honest offset',     '@factory',    80, 16000, 1, 0.15, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.3, 0.15, 0.40, 0, 0],
+        ['Studio Pair',    'aligned 57 + ribbon, console chain',  '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
+        ['Live Room Pair', '57 + far ribbon, live room',          '@factory',    80, 16000, 1, 0.20, 0.15, 1, 0.30, 0.60, 2, 0, 3, 3, 0.2, 0.50, 0.40, 0, 0],
+        ['Chime Pair',     '57 + far condenser, small room',      '@vox2x12',    80, 16000, 1, 0.30, 0.20, 1, 0.15, 0.30, 2, 0, 3, 4, 0,   0.60, 0.35, 0, 0],
+        ['Open-Back Air',  'backed off, roomy',                   '@american-ob',80, 16000, 1, 0.30, 0.35, 1, 0.20, 0.45, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Room',           'off-cap, small space',                '@greenback',  80, 16000, 1, 0.25, 0.20, 1, 0.18, 0.35, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Wall',           '57 + 421 aligned, dry',               '@hiwatt',     80, 16000, 1, 0.20, 0.10, 0, 0.12, 0.35, 0, 0, 3, 2, 0.2, 0.10, 0.35, 1, 0],
+        ['Cave',           'off-axis, large room',                '@doom',       80, 16000, 1, 0.40, 0.30, 1, 0.25, 0.80, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Close',          '57 tight, dry',                       '@bass810',    40, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Room',           'backed off, room',                    '@bass115',    40, 16000, 1, 0.30, 0.20, 1, 0.15, 0.40, 2, 0, 3, 0, 0,   0,    0.35, 0, 0]
+    ];
+    function rigCabName(icon, ir) {
+        var t = null;
+        icon.find('[mod-role=input-parameter] [mod-role=enumeration-option]').each(function () {
+            if (t == null && this.getAttribute('mod-parameter-value') == ir) t = (this.textContent || '').replace(/^\s+|\s+$/g, '');
+        });
+        return (t || ir).replace(/ \(.*\)$/, '');
+    }
+    function rigDisplayName(icon, r) { return rigCabName(icon, r[2]) + ' \u00b7 ' + r[0]; }
+    function rigLabel(icon, name) { icon.find('[rata-role=rigname]').text(name); }
+    function rigApply(icon, idx) {
+        var r = RIGS[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
+        icon.data('cab_rig_busy', true);
+        if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI, 'p', r[2]);
+        set_irfile(icon, r[2]);
+        for (var i = 0; i < RIG_SYMS.length; ++i) { funcs.set_port_value(RIG_SYMS[i], r[3 + i]); syncSel(icon, RIG_SYMS[i], r[3 + i]); }
+        icon.data('cab_micpos', r[6]); icon.data('cab_micdist', r[7]);
+        icon.data('cab_m2pos', r[15]); icon.data('cab_m2dist', r[16]);
+        micPadUpdate(icon);
+        rigLabel(icon, rigDisplayName(icon, r));
+        icon.find('[rata-role=riglist] > div').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
+        setTimeout(function () { icon.data('cab_rig_busy', false); }, 250);
+    }
+    function rigBuild(icon) {
+        var box = icon.find('[rata-role=rig]'); if (!box.length) return;
+        var list = box.find('[rata-role=riglist]'); list.empty();
+        RIGS.forEach(function (r, i) {
+            $('<div/>').text(rigDisplayName(icon, r)).append($('<span/>').text(r[1])).appendTo(list)
+                .on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, i); });
+        });
+        box.find('[rata-role=rigname]').on('click', function (e) {
+            e.preventDefault(); e.stopPropagation(); box.toggleClass('open');
+        });
+        $(document).on('click.hxcabrig', function () { box.removeClass('open'); });
+    }
     if (event.type == 'start') {
         var icon = event.icon;
         buildSelMap(icon, event.ports);
+        rigBuild(icon);
         // Show the loaded IR immediately (2026-07-23): mod-ui applies the patch write
         // when an option is clicked but does NOT reliably echo it back as a change
         // event, so the label sat on the old value. Update it ourselves on click,
@@ -135,6 +196,7 @@ function (event, funcs) {
         micPadUpdate(icon);
     } else if (event.type == 'change') {
         if (event.symbol) syncSel(event.icon, event.symbol, event.value);
+        if ((event.symbol || event.uri) && !event.icon.data('cab_rig_busy')) rigLabel(event.icon, 'Custom');   // any hand edit = a custom rig
         if (event.uri == 'https://rpowell5064.github.io/guitaramp-suite/cab#irfile')
             set_irfile(event.icon, event.value);
         else if (event.symbol === 'mic_pos')  { event.icon.data('cab_micpos',  parseFloat(event.value)); micPadUpdate(event.icon); }

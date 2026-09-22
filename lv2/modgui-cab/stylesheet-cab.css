@@ -198,3 +198,14 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-mp-m2row { display: flex; justify-content: space-between; align-items: flex-start; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad[data-mic="2"] .hf-mp-micband { fill: #ffb547; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-micpad[data-mic="2"] .hf-mp-tab[data-mic="2"] { border-bottom-color: #ffb547; }
+
+/* ── RIG selector (2026-09-22): a port-less dropdown in the picker's clothes ── */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig { position: relative; margin-top: 6px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rigsel .hf-rigcur { position: relative; z-index: 50; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rigsel .hf-rigcur::after { content: "\25BE"; float: right; opacity: .6; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist { display: none; background-color: rgba(0,0,0,.92); color: #fff; width: 100%; max-height: 240px; overflow: auto; position: absolute; left: 0; z-index: 9000 !important; border: 1px solid #56aaff; border-radius: 0 0 4px 4px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rig.open .hf-riglist { display: block; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div { padding: 3px 9px; font-weight: 700; text-align: left; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div > span { display: block; font-size: 9px; font-weight: 400; color: #c2cad8; letter-spacing: .3px; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div:hover { background: rgba(255,255,255,.2); cursor: pointer; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist > div.hf-rig-on { color: #56aaff; }

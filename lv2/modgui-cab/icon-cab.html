@@ -51,6 +51,13 @@
                     </div>
                     {{/path}}
                     {{/effect.parameters.0}}
+                    <!-- RIG (2026-09-22, mirrors Hex Forge): a UI macro over the whole cab stage — the
+                         IR plus every control below. No port; the table lives in script-cab.js. -->
+                    <div class="hf-sel-wrap hf-sel-wide hf-rig" rata-role="rig">
+                        <span class="hf-sel-label">Rig</span>
+                        <div class="hf-sel hf-rigsel"><div class="mod-enumerated-selected hf-rigcur" rata-role="rigname">Custom</div>
+                        <div class="hf-riglist" rata-role="riglist"></div></div>
+                    </div>
                 </div>
             </div>
             <!-- Two columns: CABINET over ROOM left, mic pad right -->
