@@ -89,6 +89,16 @@ struct SpeakerParams {
     // Fraction of the amp's speaker-node volts that reaches ONE driver
     // (a 4x12 in series-parallel puts V/2 across each cone).
     double vDriver = 0.5;    // default: 4x12 series-parallel
+    // Amp-side small-signal match (2026-09-22): loadVolts() runs its own exact
+    // 3rd-order inverse of the driver's SMALL-SIGNAL impedance, so at low level
+    // it returns exactly what went in and the power section's anchored static
+    // load curve (resonance peak + HF shelf, tuned per amp against the reference
+    // takes) stays in series. Only the large-signal behaviour — Bl droop, box
+    // stiffening, inductance drop, coil heating, resonance shift — is then new.
+    // Before this the toggle moved every amp's low end (the driver row's own
+    // resonance, ~137 Hz and narrow, replaced each amp's anchored ~120 Hz
+    // +12.5 dB / Q 0.9 peak): the 5150 III lost ~4 dB at 100 Hz and read thin.
+    bool loadMatch = false;
     // Large-signal shape, as fractions of change at xmax
     double blDroop = 0.20;   // Bl(xmax) = (1 − blDroop)·Bl0
     double kStiff  = 0.50;   // K(xmax)  = (1 + kStiff)·K0
@@ -169,6 +179,25 @@ public:
             zMidNorm_ = 1.0;
             vL_ = 0.0;
         }
+        // ── amp-side small-signal match: exact inverse of Z(s)/Re ───────────
+        //   Z(s) = Re + sL·Rp/(sL+Rp) + Bl²s/(M s² + R s + K),  R = Rms + Bl²/(Re+srcR)
+        //   1/(Z/Re) = Re(M s²+R s+K)(L s+Rp) / [Re(M s²+R s+K)(L s+Rp) + Bl²s(L s+Rp) + L Rp s(M s²+R s+K)]
+        //   (Z is a passive impedance, so its zeros are in the left half-plane: stable.)
+        loadMatch_ = p.loadMatch;
+        if (loadMatch_) {
+            const double M = mms_, K = kt_, L = l0_, Rp = p.leRp, Re = re0_, B2 = bl0_ * bl0_;
+            const double R = rms_ + B2 / (re0_ + p.srcR);
+            double n[4], d[4];
+            n[3] = Re * M * L;
+            n[2] = Re * (M * Rp + R * L);
+            n[1] = Re * (R * Rp + K * L);
+            n[0] = Re * K * Rp;
+            d[3] = n[3] + L * Rp * M;
+            d[2] = n[2] + B2 * L + L * Rp * R;
+            d[1] = n[1] + B2 * Rp + L * Rp * K;
+            d[0] = n[0];
+            bilinear3(n, d, 2.0 * sampleRate, lm_.b, lm_.a);
+        }
         // ── exact small-signal inverse (see header) ─────────────────────────
         {
             double n[4], d[4];
@@ -189,7 +218,7 @@ public:
 
     void reset() noexcept {
         x_ = u_ = i_ = 0.0; dT_ = 0.0; vL_ = 0.0;
-        inv_.reset();
+        inv_.reset(); lm_.reset();
         xoLp_.reset(); env_ = 0.0;
         for (auto& b : brk_) b.reset();
         for (auto& c : cry_) { c.y1 = c.y2 = 0.0; }
@@ -322,7 +351,8 @@ public:
         dT_ += (h_ / cth_) * (iNew * iNew * re - dT_ / p_.rth);
         i_ = iNew;
         if (!(std::isfinite(x_) && std::isfinite(u_) && std::isfinite(i_) && std::isfinite(dT_))) reset();
-        return v / (vDriver * zMidNorm_);   // level-matched to a resistive load at 1 kHz (A/B fairness)
+        const double out = v / (vDriver * zMidNorm_);   // unity at Re (the bottom of the impedance curve)
+        return loadMatch_ ? lm_.process(out) : out;      // small-signal exactly transparent when matched
     }
 
     // Read-outs (harness / meters)
@@ -389,6 +419,7 @@ private:
     double x_ = 0, u_ = 0, i_ = 0, dT_ = 0;
     double vL_ = 0, lpA_ = 1.0, zMidNorm_ = 1.0;   // amp-side lossy inductance + level norm
     Iir3 inv_;
+    Iir3 lm_; bool loadMatch_ = false;             // amp-side small-signal match
     // Phase 2 state
     static constexpr int kHop = 32;
     double fs_ = 48000.0, vRated_ = 19.0;

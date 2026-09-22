@@ -61,6 +61,7 @@ public:
         zHF_.setCoeffs(Filters::highshelf(4000.0, 4.5, fs_));
         fluxLP_.setCoeffs(Filters::lowpass1pole(120.0, fs_));
         spkP_.leRp = spkP_.re * (std::pow(10.0, 4.5 / 20.0) - 1.0);   // plateau at the anchored +4.5 dB shelf (2026-09-22)
+        spkP_.loadMatch = true;      // small-signal transparent; the anchored zRes/zHF curve stays in series (see PushPullPowerV::loadRow)
         spkZ_.prepare(fs_, spkP_);   // Phase 5 dynamic load (off by default)
         // B+ droop: fast reservoir + slow chain (estimates, mild — the EVH
         // runs a solid-state bridge; the audible "swell" is LF-path, not sag).
@@ -157,8 +158,8 @@ public:
         // speaker-typical estimates (the reference recordings ran the Axe's
         // PA speaker-impedance modeling, cab off — same convention).
         double spk = (iP - iN) * (kRaa / 4.0) / kOtRatio * scrFactor_;
-        if (dynLoad_) spk = spkZ_.loadVolts(spk, spkP_.vDriver);   // Phase 5: the driver IS the load
-        else          spk = zHF_.process(zRes_.process(float(spk)));
+        if (dynLoad_) spk = spkZ_.loadVolts(spk, spkP_.vDriver);   // Phase 5: the driver's large-signal behaviour (small-signal matched out)
+        spk = zHF_.process(zRes_.process(float(spk)));             // the amp's anchored reflected-impedance curve, both ways
 
         spk = otLP_.process(otHP_.process(float(spk)));
         // OT CORE SATURATION: flux scales with V/f, so the low band drives

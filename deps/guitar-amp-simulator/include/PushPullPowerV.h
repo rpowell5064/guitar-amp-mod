@@ -212,9 +212,16 @@ public:
     // Re + Rp = Re·10^(zHfDb/20) — and only the dynamic behaviour (excursion,
     // heating, resonance shift) is new. One shared +10 dB plateau read as
     // 5–8 dB of extra top on the low-feedback amps and let the Plexi loop ring.
+    // 2026-09-22 (second pass, user: the 5150 III read thin/bright with the load
+    // on): the driver's small-signal impedance is now cancelled inside
+    // loadVolts() (SpeakerParams::loadMatch) and the amp's anchored static curve
+    // — zRes peak AND zHf shelf — stays in series, so the toggle is exactly
+    // transparent at small signal on every amp; only the large-signal driver
+    // behaviour comes through as deviations from the anchored curve.
     SpeakerParams loadRow() const noexcept {
         SpeakerParams sp = p_.spk;
         sp.leRp = std::clamp(sp.re * (std::pow(10.0, p_.zHfDb / 20.0) - 1.0), 0.5, 30.0);
+        sp.loadMatch = true;
         return sp;
     }
 
@@ -312,8 +319,8 @@ private:
         }
 
         double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
-        if (dynLoad_) spk = spkZ_.loadVolts(spk, p_.spk.vDriver);   // Phase 5: the driver IS the load
-        else          spk = zHF_.process(zRes_.process(float(spk)));
+        if (dynLoad_) spk = spkZ_.loadVolts(spk, p_.spk.vDriver);   // Phase 5: the driver's large-signal behaviour (small-signal matched out)
+        spk = zHF_.process(zRes_.process(float(spk)));               // the amp's anchored reflected-impedance curve, both ways
         spk = otLP_.process(otHP_.process(float(spk)));
         {
             const float lo = fluxLP_.process(float(spk));
