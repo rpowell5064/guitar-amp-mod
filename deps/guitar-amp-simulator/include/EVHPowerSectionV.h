@@ -250,7 +250,7 @@ private:
             const double dI = (Ia + Iother) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (Ia + Iother) * kLtpRk + dI * kLtpRt;
             double iK, dg, dp;
-            korenEval(ltpTailV_ + vg - vK, (kLtpVcc - Ia * Ra) - vK, iK, dg, dp);
+            korenEvalT(nullptr, ltpTailV_ + vg - vK, (kLtpVcc - Ia * Ra) - vK, iK, dg, dp);
             const double f = Ia - iK;
             if (std::abs(f) < 1e-10) break;
             const double dVk = kLtpRk + kLtpRt;   // ∂Vk/∂Ia (this side)

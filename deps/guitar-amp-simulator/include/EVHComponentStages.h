@@ -99,10 +99,114 @@ inline void korenEvalP(const KorenP& T, double Vgk, double Vpk,
     dIa_dVgk = dIa_dE1 * dE1_dVgk;
     dIa_dVpk = dIa_dE1 * dE1_dVpk;
 }
+// ── Table-driven 12AX7 evaluation (2026-09-22 CPU pass) ─────────────────────
+// korenEval() above costs four transcendentals (exp, log1p, exp2, log2) and
+// eight divisions per call, and the component amps call it one to three times
+// per stage per oversampled sample inside a Newton loop — so what matters on
+// the Pi's A76 is the LATENCY of one call, not its instruction count. This
+// path keeps the same formula but factors it so the dependency chain is short:
+//   E1^Ex = (vpk/Kp)^Ex * softplus(inner)^Ex
+// and looks the two factors up in separate cubic HERMITE tables (value + slope
+// at each node: C1-continuous, fourth-order accurate — no kinks to alias):
+//   A over x = inner in [-12, 12]: sigmoid, softplus^Ex (+ its slope), 1/softplus
+//     — the reciprocal turns every remaining division into a multiply
+//   C over vpk in [1, 513]: (vpk/Kp)^Ex — depends on vpk only, so it runs in
+//     parallel with the sqrt/divide that produce inner
+//   B over t = sqrt(E1/64): E1^Ex, used only above x = 12 (grid conduction)
+// Below x = -12 the current is under 40 pA (< 4 uV at a 100k plate) and the
+// call returns zero; above vpk 513 or E1 64 it falls back to exp2/log2.
+// Measured vs korenEval: ~5e-6 relative on Ia over the plane; every component
+// amp's rendered output differs by less than its own response to a -120 dB
+// noise floor (lab koren_lut_verify). korenFastFlag() defaults ON; korenEvalP
+// (the runtime-tube stages) stays exact.
+struct KorenTables {
+    static constexpr int    NA = 2560, NB = 1024, NC = 1024;
+    static constexpr double xLo = -12.0, xHi = 12.0, e1Max = 64.0, vLo = 1.0, vHi = 513.0;
+    struct A { float sig, s14, d14, invS; };   // sigmoid, S^Ex, d(S^Ex)/dx, 1/S   (S = softplus)
+    struct B { float p, dp; };                 // E1^Ex and d/dt on the sqrt grid
+    struct C { float c, dc; };                 // (v/Kp)^Ex and d/dv
+    A a[NA + 1]; B b[NB + 1]; C c[NC + 1];
+    KorenTables() noexcept {
+        using T = Koren12AX7;
+        for (int i = 0; i <= NA; ++i) {
+            const double x = xLo + (xHi - xLo) * i / NA;
+            const double S = std::log1p(std::exp(x)), sg = 1.0 / (1.0 + std::exp(-x));
+            a[i].sig = float(sg); a[i].s14 = float(std::pow(S, T::Ex));
+            a[i].d14 = float(T::Ex * std::pow(S, T::Ex - 1.0) * sg); a[i].invS = float(1.0 / S);
+        }
+        for (int i = 0; i <= NB; ++i) {
+            const double t = double(i) / NB, e1 = e1Max * t * t;
+            b[i].p = float(std::pow(e1, T::Ex));
+            b[i].dp = float(i == 0 ? 0.0 : T::Ex * std::pow(e1, T::Ex - 1.0) * 2.0 * e1Max * t);
+        }
+        for (int i = 0; i <= NC; ++i) {
+            const double v = vLo + (vHi - vLo) * i / NC;
+            c[i].c = float(std::pow(v / T::Kp, T::Ex));
+            c[i].dc = float(T::Ex / T::Kp * std::pow(v / T::Kp, T::Ex - 1.0));
+        }
+    }
+};
+inline const KorenTables kKorenTables{};
+inline bool& korenFastFlag() noexcept { static bool on = true; return on; }
+
+inline void korenEvalFast(double Vgk, double Vpk,
+                          double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
+    using T  = Koren12AX7;
+    using KT = KorenTables;
+    constexpr double kInvKp = 1.0 / T::Kp, kInvKg1 = 1.0 / T::Kg1;
+    constexpr double hA = (KT::xHi - KT::xLo) / KT::NA, hB = 1.0 / KT::NB, hC = (KT::vHi - KT::vLo) / KT::NC;
+    const KT& K = kKorenTables;
+    const double vpk      = std::max(1.0, Vpk);
+    const double invVpk   = 1.0 / vpk;                                 // off the critical path
+    const double invDenom = 1.0 / std::sqrt(T::Kvb + vpk * vpk);      // the chain: sqrt -> div -> inner -> A
+    const double inner    = T::Kp * (1.0 / T::mu + Vgk * invDenom);
+    if (inner < KT::xLo) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
+    // (vpk/Kp)^Ex — table C, independent of inner
+    double c14;
+    if (vpk < KT::vHi) {
+        const double u = (vpk - KT::vLo) * (1.0 / hC);
+        const int i = int(u);
+        const double f = u - i, f2 = f * f, f3 = f2 * f;
+        const KT::C& n0 = K.c[i]; const KT::C& n1 = K.c[i + 1];
+        c14 = (2 * f3 - 3 * f2 + 1) * n0.c + ((f3 - 2 * f2 + f) * hC) * n0.dc + (-2 * f3 + 3 * f2) * n1.c + ((f3 - f2) * hC) * n1.dc;
+    } else c14 = std::exp2(T::Ex * std::log2(vpk * kInvKp));
+    double sig, invS;
+    if (inner < KT::xHi) {
+        const double u = (inner - KT::xLo) * (1.0 / hA);
+        const int i = int(u);
+        const double f = u - i, f2 = f * f, f3 = f2 * f;
+        const double h00 = 2 * f3 - 3 * f2 + 1, h10 = (f3 - 2 * f2 + f) * hA, h01 = -2 * f3 + 3 * f2, h11 = (f3 - f2) * hA;
+        const KT::A& n0 = K.a[i]; const KT::A& n1 = K.a[i + 1];
+        const double g0 = n0.sig, g1 = n1.sig, r0 = n0.invS, r1 = n1.invS;
+        const double s14 = h00 * n0.s14 + h10 * n0.d14 + h01 * n1.s14 + h11 * n1.d14;
+        sig  = h00 * g0 + h10 * (g0 * (1.0 - g0)) + h01 * g1 + h11 * (g1 * (1.0 - g1));
+        invS = h00 * r0 + h10 * (-g0 * r0 * r0)   + h01 * r1 + h11 * (-g1 * r1 * r1);
+        Ia = c14 * s14 * kInvKg1;
+    } else {
+        // grid conduction: softplus(x) = x, so E1 = vpk x / Kp and the sqrt-grid table B gives E1^Ex
+        sig = 1.0; invS = 1.0 / inner;
+        const double E1 = vpk * kInvKp * inner;
+        double P;
+        if (E1 < KT::e1Max) {
+            const double u = std::sqrt(E1 * (1.0 / KT::e1Max)) * KT::NB;
+            int i = int(u); if (i >= KT::NB) i = KT::NB - 1;
+            const double f = u - i, f2 = f * f, f3 = f2 * f;
+            const KT::B& n0 = K.b[i]; const KT::B& n1 = K.b[i + 1];
+            P = (2 * f3 - 3 * f2 + 1) * n0.p + ((f3 - 2 * f2 + f) * hB) * n0.dp + (-2 * f3 + 3 * f2) * n1.p + ((f3 - f2) * hB) * n1.dp;
+        } else P = std::exp2(T::Ex * std::log2(E1));
+        Ia = P * kInvKg1;
+    }
+    // dIa/dE1 = Ex Ia / E1 with 1/E1 = Kp invS / vpk — no division left
+    const double k = T::Ex * Ia * invS * T::Kp;
+    dIa_dVgk = k * invDenom * sig;
+    dIa_dVpk = T::Ex * Ia * invVpk - k * vpk * Vgk * sig * (invDenom * invDenom * invDenom);
+}
+
 inline void korenEvalT(const KorenP* T, double Vgk, double Vpk,
                        double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
-    if (T) korenEvalP(*T, Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
-    else   korenEval(Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+    if (T)                     korenEvalP(*T, Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+    else if (korenFastFlag())  korenEvalFast(Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+    else                       korenEval(Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
 }
 
 // ── Common-cathode stage, volts in / volts out ───────────────────────────────

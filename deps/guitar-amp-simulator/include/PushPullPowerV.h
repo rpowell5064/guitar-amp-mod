@@ -369,7 +369,7 @@ private:
             const double dI = (Ia + Iother) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iK, dg, dp;
-            korenEval(ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
+            korenEvalT(nullptr, ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
             const double f = Ia - iK;
             const double dVk = p_.ltpRk + p_.ltpRtail;
             const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
