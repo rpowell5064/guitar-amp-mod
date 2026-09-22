@@ -534,7 +534,7 @@ function (event, funcs) {
     var RIGS = [
         ['Tight 57',       'single 57 on the cap, dry',          '@factory',    80, 16000, 1, 0.05, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
         ['57 + Ribbon',    'the classic pair, honest offset',     '@factory',    80, 16000, 1, 0.15, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.3, 0.15, 0.40, 0, 0],
-        ['Studio Pair',    'aligned 57 + ribbon, console chain',  '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
+        ['Studio Pair',    'aligned 57 + ribbon, console chain',  '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
         ['Live Room Pair', '57 + far ribbon, live room',          '@factory',    80, 16000, 1, 0.20, 0.15, 1, 0.30, 0.60, 2, 0, 3, 3, 0.2, 0.50, 0.40, 0, 0],
         ['Chime Pair',     '57 + far condenser, small room',      '@vox2x12',    80, 16000, 1, 0.30, 0.20, 1, 0.15, 0.30, 2, 0, 3, 4, 0,   0.60, 0.35, 0, 0],
         ['Open-Back Air',  'backed off, roomy',                   '@american-ob',80, 16000, 1, 0.30, 0.35, 1, 0.20, 0.45, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
@@ -544,6 +544,7 @@ function (event, funcs) {
         ['Close',          '57 tight, dry',                       '@bass810',    40, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
         ['Room',           'backed off, room',                    '@bass115',    40, 16000, 1, 0.30, 0.20, 1, 0.15, 0.40, 2, 0, 3, 0, 0,   0,    0.35, 0, 0]
     ];
+    RIGS = RIGS.filter(function (r) { if (r.length === 20) return true; if (window.console) console.warn('rig row skipped (needs 3 + 17 entries):', r[0]); return false; });
     var RIGS_URI = 'https://rpowell5064.github.io/guitaramp-suite/hexforge#rigs';   // literal: PS_NAME_URI is declared further down (var hoisting would give undefined here)
     // User rigs live ON THE DEVICE: the modgui keeps them as JSON in the plugin's #rigs
     // string parameter (State + hexforge-rigs.json), pushed back on patch:Get. Shape:
