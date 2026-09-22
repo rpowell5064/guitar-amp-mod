@@ -1162,7 +1162,7 @@
 /* column flex: the pad fills the stretched hf-cab-right so its bottom edge aligns
    with the ROOM group; the svg centres in whatever slack is left */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-micpad { display: flex; flex-direction: column; box-sizing: border-box; text-align: center; }
-.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-micpad .hf-agroup-body { flex: 1 1 auto; padding: 8px 12px 9px; align-items: center; justify-content: center; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-micpad .hf-agroup-body { flex: 1 1 auto; padding: 8px 12px 9px; align-items: center; justify-content: center; flex-direction: column; }   /* column: tabs above the pad, Mic 2 controls below (2026-09-22) */
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-svg { width: 238px; height: 212px; display: block; margin: 0 auto; cursor: grab; touch-action: none; background: radial-gradient(120% 90% at 30% 35%, rgba(16,19,26,.9), rgba(5,6,9,.96)); border: 1px solid rgba(255,255,255,.09); border-radius: 10px; box-shadow: inset 0 1px 0 rgba(255,255,255,.05), inset 0 -10px 24px rgba(0,0,0,.35); }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-svg.hf-mp-live { cursor: grabbing; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-wall   { fill: rgba(255,255,255,.10); }
@@ -1471,3 +1471,16 @@
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div > span { display: block; font-size: 9px; font-weight: 400; color: #c2cad8; letter-spacing: .3px; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div:hover { background: rgba(255,255,255,.2); cursor: pointer; }
 .mod-pedal-guitaramp-hexforge{{{cns}}} .hf-riglist > div.hf-rig-on { color: var(--acc); }
+
+/* ── MIC 1 / MIC 2 tabs on the mic pad (2026-09-22) ── */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-tabs { display: flex; justify-content: center; gap: 18px; margin: -3px 0 6px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-tab { font-size: 9px; font-weight: 700; letter-spacing: .6px; color: #8b96a8; cursor: pointer; padding: 1px 2px 3px; border-bottom: 1px solid transparent; user-select: none; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-tab:hover { color: #d6dce8; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-tab.on { color: #fff; border-bottom-color: var(--acc); }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-m2 { display: none; width: 238px; margin: 8px auto 0; text-align: left; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-micpad[data-mic="2"] .hf-mp-m2 { display: block; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-m2 .hf-sel-wrap { width: 100%; margin: 0 0 4px; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-mp-m2row { display: flex; justify-content: space-between; align-items: flex-start; }
+/* the second mic's marker: same mic, its own accent band, so the pad says which one you hold */
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-micpad[data-mic="2"] .hf-mp-micband { fill: #ffb547; }
+.mod-pedal-guitaramp-hexforge{{{cns}}} .hf-micpad[data-mic="2"] .hf-mp-tab[data-mic="2"] { border-bottom-color: #ffb547; }

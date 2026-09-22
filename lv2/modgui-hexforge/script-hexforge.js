@@ -508,10 +508,14 @@ function (event, funcs) {
     // the user dragged to (hf_micside) instead of snapping above centre — no "jump" at the cap.
     // Parameterized by panel block ('cab' | 'cab2'): Cab 2 has its own pad + data keys.
 
-    // ── RIGS (Phase 6, 2026-09-21): named cab-stage setups. Each rig is the IR plus a
-    // value for every per-preset cab port; applying one writes the ports through
-    // set_port_value (mod-ui does not echo those as change events, so the pad and
-    // dropdown labels are synced by hand) and clicks the IR picker's built-in option.
+    // ── RIGS (Phase 6, 2026-09-21; cab-named 2026-09-22): named cab-stage setups.
+    // Each rig is a cab IR plus a value for every per-preset cab port. Applying one
+    // writes the ports through set_port_value (mod-ui does not echo those as change
+    // events, so the pad and dropdown labels are synced by hand) and sets the IR
+    // with the host's patch_set on the #irfile / #ir2file path parameter — the
+    // same message the picker sends, without depending on the picker widget being
+    // enabled (its option click is refused otherwise). The list shows each rig
+    // under the SAME cab name the IR picker uses, so the cab it selects is obvious.
     // The result is stored by presets exactly as hand-dialled values are; the label
     // shows the last rig chosen and drops to "Custom" on any hand edit or recall.
     // Values: [lowcut, highcut, mix, micpos, micdist, roomon, roommix, roomamt, roomdense,
@@ -524,36 +528,51 @@ function (event, funcs) {
                'rb_cabroomamt', 'rb_cabroomdense', 'rb_cabvoice', 'rb_cabspkdrive', 'rb_cabmic2type', 'rb_cabmic2pos',
                'rb_cabmic2dist', 'rb_cabmic2lvl', 'rb_cabmic2align', 'rb_cabmic2pol']
     };
+    var RIG_IR_URI = { cab: 'https://rpowell5064.github.io/guitaramp-suite/hexforge#irfile',
+                       cab2: 'https://rpowell5064.github.io/guitaramp-suite/hexforge#ir2file' };
+    // [variant, note, ir, ...values]; grouped by cab, in the picker's order
     var RIGS = [
-        //  name              note                                 ir             lc   hc     mix pos  dist ron mix  amt  mode v  spk m2t m2p  m2d  m2l  al pol
-        ['Tight 57',         'V30 4x12, single 57 on the cap',     '@factory',    80, 16000, 1, 0.05, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,   0.35, 0, 0],
-        ['57 + Ribbon',      'the classic pair, honest offset',    '@factory',    80, 16000, 1, 0.15, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.3, 0.15, 0.40, 0, 0],
-        ['Studio Pair',      'aligned 57 + ribbon, console chain', '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
-        ['Greenback Room',   'Greenbacks, off-cap, small space',   '@greenback',  80, 16000, 1, 0.25, 0.20, 1, 0.18, 0.35, 2, 0, 3, 0, 0,   0,   0.35, 0, 0],
-        ['Chime Pair',       'alnico 2x12, 57 + far condenser',    '@vox2x12',    80, 16000, 1, 0.30, 0.20, 1, 0.15, 0.30, 2, 0, 3, 4, 0,   0.60, 0.35, 0, 0],
-        ['Open-Back Air',    'American 2x12, backed off, roomy',   '@american-ob',80, 16000, 1, 0.30, 0.35, 1, 0.20, 0.45, 2, 0, 3, 0, 0,   0,   0.35, 0, 0],
-        ['Hi-Volt Wall',     'Fane 4x12, 57 + 421 aligned',        '@hiwatt',     80, 16000, 1, 0.20, 0.10, 0, 0.12, 0.35, 0, 0, 3, 2, 0.2, 0.10, 0.35, 1, 0],
-        ['Doom Cave',        'big dark 4x12 in a large room',      '@doom',       80, 16000, 1, 0.40, 0.30, 1, 0.25, 0.80, 2, 0, 3, 0, 0,   0,   0.35, 0, 0],
-        ['Live Room Pair',   '57 + far ribbon, live room',         '@factory',    80, 16000, 1, 0.20, 0.15, 1, 0.30, 0.60, 2, 0, 3, 3, 0.2, 0.50, 0.40, 0, 0],
-        ['Fridge Close',     '8x10, 57 tight, dry',                '@bass810',    40, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,   0.35, 0, 0],
-        ['Flip-Top Room',    '1x15 reflex, backed off, room',      '@bass115',    40, 16000, 1, 0.30, 0.20, 1, 0.15, 0.40, 2, 0, 3, 0, 0,   0,   0.35, 0, 0]
+        ['Tight 57',       'single 57 on the cap, dry',          '@factory',    80, 16000, 1, 0.05, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['57 + Ribbon',    'the classic pair, honest offset',     '@factory',    80, 16000, 1, 0.15, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.3, 0.15, 0.40, 0, 0],
+        ['Studio Pair',    'aligned 57 + ribbon, console chain',  '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
+        ['Live Room Pair', '57 + far ribbon, live room',          '@factory',    80, 16000, 1, 0.20, 0.15, 1, 0.30, 0.60, 2, 0, 3, 3, 0.2, 0.50, 0.40, 0, 0],
+        ['Chime Pair',     '57 + far condenser, small room',      '@vox2x12',    80, 16000, 1, 0.30, 0.20, 1, 0.15, 0.30, 2, 0, 3, 4, 0,   0.60, 0.35, 0, 0],
+        ['Open-Back Air',  'backed off, roomy',                   '@american-ob',80, 16000, 1, 0.30, 0.35, 1, 0.20, 0.45, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Room',           'off-cap, small space',                '@greenback',  80, 16000, 1, 0.25, 0.20, 1, 0.18, 0.35, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Wall',           '57 + 421 aligned, dry',               '@hiwatt',     80, 16000, 1, 0.20, 0.10, 0, 0.12, 0.35, 0, 0, 3, 2, 0.2, 0.10, 0.35, 1, 0],
+        ['Cave',           'off-axis, large room',                '@doom',       80, 16000, 1, 0.40, 0.30, 1, 0.25, 0.80, 2, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Close',          '57 tight, dry',                       '@bass810',    40, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
+        ['Room',           'backed off, room',                    '@bass115',    40, 16000, 1, 0.30, 0.20, 1, 0.15, 0.40, 2, 0, 3, 0, 0,   0,    0.35, 0, 0]
     ];
     function rigBox(icon, scope) { return icon.find('[rata-role=rig][data-scope=' + scope + ']'); }
     function rigLabel(icon, scope, name) { rigBox(icon, scope).find('[rata-role=rigname]').text(name); }
+    // the cab name exactly as the IR picker shows it (falls back to the CAB_NAMES map)
+    function rigCabName(icon, scope, ir) {
+        var rata = scope === 'cab' ? 'Ir' : 'Ir2';
+        var opt = icon.find('[rata-role=' + rata + ']').closest('.mod-enumerated')
+                      .find('[mod-role=enumeration-option][mod-parameter-value="' + ir + '"]').first();
+        var t = opt.length ? (opt.text() || '').replace(/^\s+|\s+$/g, '') : (CAB_NAMES[ir] || ir);
+        return t.replace(/ \(.*\)$/, '');
+    }
+    function rigDisplayName(icon, scope, r) { return rigCabName(icon, scope, r[2]) + ' \u00b7 ' + r[0]; }
     function rigApply(icon, scope, idx) {
         var r = RIGS[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
         var syms = RIG_SYMS[scope];
         icon.data('hf_rig_busy', true);
+        // the cab first: a direct patch message on the IR path parameter
+        if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI[scope], 'p', r[2]);
+        else {
+            var rata = scope === 'cab' ? 'Ir' : 'Ir2';
+            var opt = icon.find('[rata-role=' + rata + ']').closest('.mod-enumerated')
+                          .find('[mod-role=enumeration-option][mod-parameter-value="' + r[2] + '"]').first();
+            if (opt.length) opt.click();
+        }
+        if (scope === 'cab') setIr(icon, r[2]); else { icon.data('hf_ir2', r[2]); setIr2Label(icon); }
         for (var i = 0; i < syms.length; ++i) { funcs.set_port_value(syms[i], r[3 + i]); syncSel(icon, syms[i], r[3 + i]); }
         // mic pad: set_port_value is not echoed, sync by hand (same reason as preset recall)
-        if (scope === 'cab') { icon.data('hf_micpos', r[6]); icon.data('hf_micdist', r[7]); micPadUpdate(icon, 'cab'); }
-        else                 { icon.data('hf_rb_micpos', r[6]); icon.data('hf_rb_micdist', r[7]); micPadUpdate(icon, 'cab2'); }
-        // IR: click the picker's own built-in option so mod-ui sends the patch message
-        var rata = scope === 'cab' ? 'Ir' : 'Ir2';
-        var opt = icon.find('[rata-role=' + rata + ']').closest('.mod-enumerated')
-                      .find('[mod-role=enumeration-option][mod-parameter-value="' + r[2] + '"]').first();
-        if (opt.length) opt.click();
-        rigLabel(icon, scope, r[0]);
+        if (scope === 'cab') { icon.data('hf_micpos', r[6]); icon.data('hf_micdist', r[7]); icon.data('hf_m2pos', r[15]); icon.data('hf_m2dist', r[16]); micPadUpdate(icon, 'cab'); }
+        else                 { icon.data('hf_rb_micpos', r[6]); icon.data('hf_rb_micdist', r[7]); icon.data('hf_rb_m2pos', r[15]); icon.data('hf_rb_m2dist', r[16]); micPadUpdate(icon, 'cab2'); }
+        rigLabel(icon, scope, rigDisplayName(icon, scope, r));
         rigBox(icon, scope).find('[rata-role=riglist] > div').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
         setTimeout(function () { icon.data('hf_rig_busy', false); }, 250);
     }
@@ -562,7 +581,7 @@ function (event, funcs) {
             var box = rigBox(icon, scope); if (!box.length) return;
             var list = box.find('[rata-role=riglist]'); list.empty();
             RIGS.forEach(function (r, i) {
-                $('<div/>').text(r[0]).append($('<span/>').text(r[1])).appendTo(list)
+                $('<div/>').text(rigDisplayName(icon, scope, r)).append($('<span/>').text(r[1])).appendTo(list)
                     .on('click', function (e) { e.preventDefault(); e.stopPropagation(); box.removeClass('open'); rigApply(icon, scope, i); });
             });
             box.find('[rata-role=rigname]').on('click', function (e) {
@@ -574,11 +593,19 @@ function (event, funcs) {
         });
         $(document).on('click.hfrig', function () { icon.find('.hf-rig').removeClass('open'); });
     }
+    // data keys of the mic the pad is showing (MIC 1 / MIC 2 tab, 2026-09-22)
+    function micKeys(icon, blk) {
+        var two = icon.data('hf_mictab_' + blk) === 2;
+        if (blk === 'cab2') return two ? { pos: 'hf_rb_m2pos', dist: 'hf_rb_m2dist', side: 'hf_rb_m2side', posSym: 'rb_cabmic2pos', distSym: 'rb_cabmic2dist' }
+                                       : { pos: 'hf_rb_micpos', dist: 'hf_rb_micdist', side: 'hf_rb_micside', posSym: 'rb_cabmicpos', distSym: 'rb_cabmicdist' };
+        return two ? { pos: 'hf_m2pos', dist: 'hf_m2dist', side: 'hf_m2side', posSym: 'cab_mic2pos', distSym: 'cab_mic2dist' }
+                   : { pos: 'hf_micpos', dist: 'hf_micdist', side: 'hf_micside', posSym: 'cab_micpos', distSym: 'cab_micdist' };
+    }
     function micPadUpdate(icon, blk) {
         blk = blk || 'cab';
-        var K = blk === 'cab2' ? { pos: 'hf_rb_micpos', dist: 'hf_rb_micdist', side: 'hf_rb_micside' }
-                               : { pos: 'hf_micpos', dist: 'hf_micdist', side: 'hf_micside' };
+        var K = micKeys(icon, blk);
         var pad = panelOf(icon, blk).find('[rata-role=micpad]'); if (!pad.length) return;
+        pad.attr('data-mic', icon.data('hf_mictab_' + blk) === 2 ? '2' : '1');
         var pos  = parseFloat(icon.data(K.pos))  || 0;
         var dist = parseFloat(icon.data(K.dist)) || 0;
         var side = icon.data(K.side) === -1 ? -1 : 1;
@@ -1080,6 +1107,10 @@ function (event, funcs) {
             else if (sym === 'rb_channel')         icon.data('hf_rb_ch', val);
             else if (sym === 'cab_micpos')         icon.data('hf_micpos', val);    // mod-ui doesn't echo set_port_value → sync the pad by hand
             else if (sym === 'cab_micdist')        icon.data('hf_micdist', val);
+            else if (sym === 'cab_mic2pos')        icon.data('hf_m2pos', val);      // MIC 2 tab (2026-09-22)
+            else if (sym === 'cab_mic2dist')       icon.data('hf_m2dist', val);
+            else if (sym === 'rb_cabmic2pos')      icon.data('hf_rb_m2pos', val);
+            else if (sym === 'rb_cabmic2dist')     icon.data('hf_rb_m2dist', val);
             else if (sym === 'rb_amp')             icon.data('hf_rb_m', parseInt(val, 10));
             else if (sym === 'rb_cab')             { icon.data('hf_rb_cab', parseInt(val, 10)); setIr2Label(icon); }
             else if (sym === 'rb_cabmicpos')       icon.data('hf_rb_micpos', val);
@@ -1436,18 +1467,31 @@ function (event, funcs) {
         // (Dist). One pad per cab panel — Cabinet 1 (cab_micpos/micdist) and Cab 2
         // (rb_cabmicpos/rb_cabmicdist), each with its own data keys.
         [{ blk: 'cab',  posSym: 'cab_micpos',    distSym: 'cab_micdist',
-           posKey: 'hf_micpos',    distKey: 'hf_micdist',    sideKey: 'hf_micside' },
+           posKey: 'hf_micpos',    distKey: 'hf_micdist',    sideKey: 'hf_micside',
+           pos2Sym: 'cab_mic2pos', dist2Sym: 'cab_mic2dist', pos2Key: 'hf_m2pos', dist2Key: 'hf_m2dist' },
          { blk: 'cab2', posSym: 'rb_cabmicpos',  distSym: 'rb_cabmicdist',
-           posKey: 'hf_rb_micpos', distKey: 'hf_rb_micdist', sideKey: 'hf_rb_micside' }
+           posKey: 'hf_rb_micpos', distKey: 'hf_rb_micdist', sideKey: 'hf_rb_micside',
+           pos2Sym: 'rb_cabmic2pos', dist2Sym: 'rb_cabmic2dist', pos2Key: 'hf_rb_m2pos', dist2Key: 'hf_rb_m2dist' }
         ].forEach(function (mp) {
             var svg = panelOf(icon, mp.blk).find('[rata-role=micsvg]')[0]; if (!svg) return;
-            if (mp.posSym  in map) icon.data(mp.posKey,  parseFloat(map[mp.posSym]));
-            if (mp.distSym in map) icon.data(mp.distKey, parseFloat(map[mp.distSym]));
+            if (mp.posSym   in map) icon.data(mp.posKey,   parseFloat(map[mp.posSym]));
+            if (mp.distSym  in map) icon.data(mp.distKey,  parseFloat(map[mp.distSym]));
+            if (mp.pos2Sym  in map) icon.data(mp.pos2Key,  parseFloat(map[mp.pos2Sym]));
+            if (mp.dist2Sym in map) icon.data(mp.dist2Key, parseFloat(map[mp.dist2Sym]));
+            // MIC 1 / MIC 2 tabs: the pad binds to whichever mic is on top
+            panelOf(icon, mp.blk).find('[rata-role=mictabs] .hf-mp-tab').on('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                var t = parseInt($(this).attr('data-mic'), 10) === 2 ? 2 : 1;
+                icon.data('hf_mictab_' + mp.blk, t);
+                $(this).siblings('.hf-mp-tab').removeClass('on'); $(this).addClass('on');
+                micPadUpdate(icon, mp.blk);
+            });
             function write(pos, dist) {
-                icon.data(mp.posKey, pos); icon.data(mp.distKey, dist);
+                var K = micKeys(icon, mp.blk);
+                icon.data(K.pos, pos); icon.data(K.dist, dist);
                 if (funcs && typeof funcs.set_port_value === 'function') {
-                    funcs.set_port_value(mp.posSym,  pos);
-                    funcs.set_port_value(mp.distSym, dist);
+                    funcs.set_port_value(K.posSym,  pos);
+                    funcs.set_port_value(K.distSym, dist);
                 }
                 micPadUpdate(icon, mp.blk);
             }
@@ -1458,7 +1502,7 @@ function (event, funcs) {
                 var off  = 63 - vy;                                        // signed: + above cap, - below
                 var dist = Math.max(0, Math.min(1, (vx - 28) / 94));
                 var pos  = Math.max(0, Math.min(1, Math.abs(off) / 42));
-                icon.data(mp.sideKey, off < 0 ? -1 : 1);                   // marker follows the pointer's side
+                icon.data(micKeys(icon, mp.blk).side, off < 0 ? -1 : 1);   // marker follows the pointer's side
                 if (pos < 0.05) pos = 0;                                   // gentle snap onto the cap axis
                 write(pos, dist);
             }
@@ -1472,7 +1516,7 @@ function (event, funcs) {
             svg.addEventListener('pointerup',     function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
             svg.addEventListener('pointercancel', function ()  { drag = false; svg.classList.remove('hf-mp-live'); });
             svg.addEventListener('dblclick', function (e) {                // double-click = back to the voiced spot
-                icon.data(mp.sideKey, 1); write(0, 0);
+                icon.data(micKeys(icon, mp.blk).side, 1); write(0, 0);
                 e.preventDefault(); e.stopPropagation();
             });
             micPadUpdate(icon, mp.blk);
@@ -1546,6 +1590,14 @@ function (event, funcs) {
             icon.data('hf_rb_micpos', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
         } else if (s === 'rb_cabmicdist') {
             icon.data('hf_rb_micdist', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
+        } else if (s === 'cab_mic2pos') {
+            icon.data('hf_m2pos', parseFloat(event.value)); micPadUpdate(icon, 'cab');
+        } else if (s === 'cab_mic2dist') {
+            icon.data('hf_m2dist', parseFloat(event.value)); micPadUpdate(icon, 'cab');
+        } else if (s === 'rb_cabmic2pos') {
+            icon.data('hf_rb_m2pos', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
+        } else if (s === 'rb_cabmic2dist') {
+            icon.data('hf_rb_m2dist', parseFloat(event.value)); micPadUpdate(icon, 'cab2');
         } else if (s === 'oc_micro') {
             nodeOf(icon, 'oc').toggleClass('hf-oc-micro', parseFloat(event.value) > 0.0001);
         } else if (s === 'rb_cab') {
