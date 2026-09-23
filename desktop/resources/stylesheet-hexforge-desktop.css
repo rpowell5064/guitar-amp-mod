@@ -1190,6 +1190,13 @@
 /* ── Cab panel: two columns — CABINET over ROOM left, mic pad right ──────────── */
 /* stretch: the mic-pad box grows to exactly the CABINET+ROOM column height */
 .mod-pedal-guitaramp-hexforge .hf-cab-cols { display: flex; gap: 14px; align-items: stretch; justify-content: center; }
+/* Cab panel tabs (2026-09-23): CABINET = basics for any IR; MIC & ROOM = speaker model, mic pad, room. */
+.mod-pedal-guitaramp-hexforge .hf-cabtabs { display: flex; justify-content: center; gap: 22px; margin: 2px 0 8px; }
+.mod-pedal-guitaramp-hexforge .hf-cabtab { font-size: 9px; font-weight: 700; letter-spacing: .7px; color: #8b96a8; cursor: pointer; padding: 1px 2px 3px; border-bottom: 1px solid transparent; user-select: none; }
+.mod-pedal-guitaramp-hexforge .hf-cabtab:hover { color: #d6dce8; }
+.mod-pedal-guitaramp-hexforge .hf-cabtab.on { color: #fff; border-bottom-color: var(--acc); }
+.mod-pedal-guitaramp-hexforge .hf-cab-cols[data-cabtab="cab"] .c-cabt-shape, .mod-pedal-guitaramp-hexforge .hf-cab-cols[data-cabtab="cab"] .hf-cab-right { display: none; }
+.mod-pedal-guitaramp-hexforge .hf-cab-cols[data-cabtab="shape"] .c-cabt-basic { display: none; }
 .mod-pedal-guitaramp-hexforge .hf-cab-left .hf-agroups { display: flex; flex-direction: column; gap: 8px; }
 .mod-pedal-guitaramp-hexforge .hf-cab-right { display: flex; align-items: stretch; }
 .mod-pedal-guitaramp-hexforge .hf-cab-right .hf-micpad { margin: 0; }

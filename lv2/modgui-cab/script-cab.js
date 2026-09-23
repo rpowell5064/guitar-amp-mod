@@ -1,6 +1,13 @@
 function (event, funcs) {
     // Cabinets load IMPULSE RESPONSES only (NAM models amps/pedals, not cabinets — the Neural
     // source toggle was removed 2026-07-13). This just renders the loaded IR's label.
+    // Cab tabs (2026-09-23): CABINET | MIC & ROOM; a user IR lands on CABINET.
+    function cabTabSet(icon, name) {
+        icon.find('[rata-role=cabview]').attr('data-cabtab', name);
+        icon.find('[rata-role=cabtabs] .hf-cabtab').each(function () {
+            this.classList.toggle('on', this.getAttribute('data-cabtab') === name);
+        });
+    }
     function set_irfile(icon, value) {
         var box = icon.find('[rata-role=Ir]');
         icon.data('cab_ir_cur', (value == null || value == 'None' || value == '') ? '@factory' : value);
@@ -15,6 +22,7 @@ function (event, funcs) {
         });
         if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
         box.text(label);
+        if (('' + value).charAt(0) !== '@') cabTabSet(icon, 'cab');   // a user IR: show the basics
     }
 
     // ── Mic pad (2026-07-14): drag the mic across the cone (Pos) / away from the grille (Dist) ──
@@ -206,6 +214,13 @@ function (event, funcs) {
                 icon.data('cab_mictab', tab.getAttribute('data-mic') === '2' ? 2 : 1);
                 icon.find('[rata-role=mictabs] .hf-mp-tab').removeClass('on'); tab.classList.add('on');
                 micPadUpdate(icon);
+            });
+        });
+        icon.find('[rata-role=cabtabs] .hf-cabtab').each(function () {
+            var tab = this;
+            tab.addEventListener('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                cabTabSet(icon, tab.getAttribute('data-cabtab') === 'shape' ? 'shape' : 'cab');
             });
         });
         var svg = icon.find('[rata-role=micsvg]')[0];

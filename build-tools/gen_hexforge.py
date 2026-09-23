@@ -1192,6 +1192,9 @@ def render_ctrl(c):
 # MIC 1 / MIC 2 tabs (2026-09-22, user: "combine the mic one and two interfaces"): one
 # pad, bound to whichever mic's Pos/Dist the active tab names; Mic 2's Type / Blend /
 # Align / Polarity sit under the pad on its tab. All six Mic 2 ports keep their symbols.
+# Cab panel tab strip (CABINET | MIC & ROOM), see BLOCK_GROUPS["cab"].
+CABTABS = ('<div class="hf-cabtabs" rata-role="cabtabs"><span class="hf-cabtab on" data-cabtab="cab" title="The controls every cab needs, IR or built-in">CABINET</span><span class="hf-cabtab" data-cabtab="shape" title="Speaker model, mic placement and the room">MIC &amp; ROOM</span></div>')
+
 MICPAD = (
     '<div class="hf-agroup hf-micpad" rata-role="micpad" data-mic="1"><span class="hf-agroup-title">MIC PLACEMENT</span>'
     '<div class="hf-agroup-body">'
@@ -1513,10 +1516,10 @@ def cab2_body():
     # selector up top, then the same two-column layout as Cabinet 1 (CABINET over
     # ROOM on the left, the draggable mic pad on the right). Symbols map
     # cab_X -> rb_cabX except lowcut/highcut (rb_lowcut/rb_highcut, pre-parity).
-    def agroup(title, syms):
-        return ('<div class="hf-agroup"><span class="hf-agroup-title">%s</span>'
+    def agroup(title, syms, cls):
+        return ('<div class="hf-agroup %s"><span class="hf-agroup-title">%s</span>'
                 '<div class="hf-agroup-body">%s</div></div>'
-                % (title, "".join(render_ctrl(CTRL_BY_SYM[sy]) for sy in syms)))
+                % (cls, title, "".join(render_ctrl(CTRL_BY_SYM[sy]) for sy in syms)))
     # ONE Impulse Response picker, mirroring Cabinet 1's exactly (user 2026-07-30:
     # "I want it to match cab 1. we need to be consistent") -- the built-in cabs,
     # a No Cab (Direct) entry, and the user's IR files in a single list on the
@@ -1542,13 +1545,16 @@ def cab2_body():
            '</div>{{/path}}{{/effect.parameters.5}}</div>')
     selrow = ('<div class="hf-dselects clearfix">%s%s%s</div>'
               % (render_ctrl(CTRL_BY_SYM["rb_cab2on"]), ir2, rig_sel("cab2")))
-    groups = (agroup("CABINET", ["rb_cabvoice", "rb_lowcut", "rb_highcut", "rb_cabmix", "rb_cabspkdrive"])
-              + agroup("ROOM", ["rb_cabroomon", "rb_cabroommix", "rb_cabroomamt", "rb_cabroomdense"]))
+    groups = ('<div class="hf-agroups">'
+              + agroup("CABINET", ["rb_cabvoice", "rb_lowcut", "rb_highcut", "rb_cabmix"], "c-cabt-basic")
+              + agroup("SPEAKER", ["rb_cabspkdrive"], "c-cabt-shape")
+              + agroup("ROOM", ["rb_cabroomon", "rb_cabroommix", "rb_cabroomamt", "rb_cabroomdense"], "c-cabt-shape")
+              + '</div>')
     pad = MICPAD % (render_ctrl(CTRL_BY_SYM["rb_cabmic2type"]), render_ctrl(CTRL_BY_SYM["rb_cabmic2lvl"]),
                     render_ctrl(CTRL_BY_SYM["rb_cabmic2align"]), render_ctrl(CTRL_BY_SYM["rb_cabmic2pol"]),
                     render_ctrl(CTRL_BY_SYM["rb_cabmicpos"]), render_ctrl(CTRL_BY_SYM["rb_cabmicdist"]),
                     render_ctrl(CTRL_BY_SYM["rb_cabmic2pos"]), render_ctrl(CTRL_BY_SYM["rb_cabmic2dist"]))
-    caba = '<div class="hf-cab-cols"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
+    caba = CABTABS + '<div class="hf-cab-cols" rata-role="cabview" data-cabtab="cab"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
     return SCREWS + selrow + caba
 
 # ── Shared "module plate" design for EVERY block ──────────────────────────────
@@ -1588,8 +1594,14 @@ BLOCK_GROUPS = {
             ("PERFORMANCE", None, ["eco"])],
     "nail":[("NAIL", None, ["mode", "drive", "tone", "texture", "level"]),
             ("PERFORMANCE", None, ["eco"])],
-    "cab": [("CABINET", None, ["voice", "lowcut", "highcut", "mix", "spkdrive"]),
-            ("ROOM", None, ["roomon", "roommix", "roomamt", "roomdense"])],   # both mics render on the MICPAD widget (tabs), not as knobs
+    # Cab panel tabs (user 2026-09-23: IR users don't want all the shaping and mic
+    # selection in their face): CABINET = the basics every cab needs; MIC & ROOM =
+    # speaker model, mic pad, room. Classes c-cabt-* are toggled by the strip
+    # (script-hexforge.js cabTabSet) via data-cabtab on .hf-cab-cols; a user IR
+    # auto-selects CABINET. Both mics render on the MICPAD widget (tabs), not as knobs.
+    "cab": [("CABINET", "c-cabt-basic", ["voice", "lowcut", "highcut", "mix"]),
+            ("SPEAKER", "c-cabt-shape", ["spkdrive"]),
+            ("ROOM", "c-cabt-shape", ["roomon", "roommix", "roomamt", "roomdense"])],
     "md":  [("MODULATION", None, ["type", "rate", "depth", "mix", "width", "offset", "shape"]),
             ("CLOCK SYNC", None, ["sync", "div"])],
     "dl":  [("DELAY", None, ["type", "time", "feedback", "mix", "width"]),
@@ -1714,7 +1726,7 @@ def panel(pfx, title, accent, keys):
                             render_ctrl(CTRL_BY_SYM["cab_mic2align"]), render_ctrl(CTRL_BY_SYM["cab_mic2pol"]),
                             render_ctrl(CTRL_BY_SYM["cab_micpos"]), render_ctrl(CTRL_BY_SYM["cab_micdist"]),
                             render_ctrl(CTRL_BY_SYM["cab_mic2pos"]), render_ctrl(CTRL_BY_SYM["cab_mic2dist"]))
-            caba = '<div class="hf-cab-cols"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
+            caba = CABTABS + '<div class="hf-cab-cols" rata-role="cabview" data-cabtab="cab"><div class="hf-cab-left">%s</div><div class="hf-cab-right">%s</div></div>' % (groups, pad)
             # Rig B cab tab (2026-07-30 redesign): the CABINET panel hosts the B
             # cab's full interface behind a tab, mirroring the Amp panel's tabs.
             inner += caba

@@ -894,6 +894,18 @@ function (event, funcs) {
         }
         if (CAB_NAMES[v]) { setFile(icon, 'Ir2', v, CAB_NAMES[v]); return; }
         setFile(icon, 'Ir2', v, 'Factory Cab (built-in)');
+        if (v !== '@builtin') cabTabSet(icon, 'cab2', 'cab');   // a user IR on Cab 2: show the basics
+    }
+    // Cab panel tabs (2026-09-23): CABINET (voice, cuts, mix) | MIC & ROOM (speaker
+    // model, mic pad, room). A user IR lands on CABINET — IR users get the basics
+    // without the shaping in their face; the shaping stays one tap away.
+    function cabTabSet(icon, blk, name) {
+        var p = panelOf(icon, blk);
+        p.find('[rata-role=cabview]').attr('data-cabtab', name);
+        p.find('[rata-role=cabtabs] .hf-cabtab').each(function () {
+            this.classList.toggle('on', this.getAttribute('data-cabtab') === name);
+        });
+        icon.data('hf_cabtab_' + blk, name);
     }
     function setIr(icon, value) {
         if (value == null || value === 'None' || value === '') value = '@factory';
@@ -905,6 +917,7 @@ function (event, funcs) {
         }
         setFile(icon, 'Ir', value, null);            // user .wav → basename
         setNodeVal(icon, 'cab', icon.find('[rata-role=Ir]').first().text());
+        cabTabSet(icon, 'cab', 'cab');               // a user IR: show the basics
     }
     // Level meters: the plugin sends in_meter/out_meter as 0..1 (dB-scaled); set the bar width.
     // Hot path (~14 Hz) — cache the raw DOM node (no jQuery .find() per tick) and skip sub-1%
@@ -1549,6 +1562,11 @@ function (event, funcs) {
                 icon.data('hf_mictab_' + mp.blk, t);
                 $(this).siblings('.hf-mp-tab').removeClass('on'); $(this).addClass('on');
                 micPadUpdate(icon, mp.blk);
+            });
+            // CABINET | MIC & ROOM strip on the cab panel
+            panelOf(icon, mp.blk).find('[rata-role=cabtabs] .hf-cabtab').on('click', function (e) {
+                e.preventDefault(); e.stopPropagation();
+                cabTabSet(icon, mp.blk, this.getAttribute('data-cabtab') === 'shape' ? 'shape' : 'cab');
             });
             function write(pos, dist) {
                 var K = micKeys(icon, mp.blk);
