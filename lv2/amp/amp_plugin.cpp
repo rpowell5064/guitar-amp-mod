@@ -72,6 +72,102 @@ static const int kModelTube[16] = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0, 5,
 // -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
 static const float kModelMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f, 2.83f, 1.77f };  // [14] Blue Liner: measured 2026-08-28 (hexforge_amplevel −22.0 → the −13 clean parity target; standalone lands −5.2, in family)  // [0] Fender 5.20->4.89 (2026-08-21 tube audit, mirrors hexforge kAmpMakeup): correct 6V6 runs +0.54 dB hotter at the noon anchor. Previously bumped 3.78->5.20 (2026-07-28): the item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM than the old heuristic path (nam_compare loudness: old needed x1.38, new needs x1.90) -- this restores the SAME loudness parity the re-voice's own FR-matching work didn't otherwise change; [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
 
+// ── Component builds (2026-09-23, mirrors Hex Forge v48+) ───────────────────
+// Amps that have a schematic-exact twin. Keep in sync with HAS_COMP in script-amp.js.
+static inline bool hasComponentModel(int m) noexcept {
+    return m == 1 || m == 2 || m == 4 || m == 6 || m == 8 || m == 10 || m == 11 || m == 12 || m == 14;
+}
+static inline AmpModel componentAmpFor(int m) noexcept {
+    switch (m) {
+        case 1:  return AmpModel::JCM800Comp;
+        case 2:  return AmpModel::EVH5150Comp;
+        case 4:  return AmpModel::RockerverbComp;
+        case 6:  return AmpModel::FriedmanBE100Comp;
+        case 8:  return AmpModel::VoxComp;
+        case 10: return AmpModel::PlexiComp;
+        case 11: return AmpModel::MesaMarkVComp;
+        case 12: return AmpModel::MesaDualRectifierComp;
+        case 14: return AmpModel::SvtComp;
+        default: return AmpModel::EVH5150Comp;
+    }
+}
+// Loudness parity for a component build (same rows as Hex Forge): the twins carry
+// their own power section and bypass the shared PA, so they miss its makeup and
+// their dial-loudness curves differ. These put a twin where the shipped model sat
+// at the same knobs, so the Component Build switch is loudness-neutral.
+static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
+static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
+static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.89f, 0.0f, 4.93f, -2.92f, 0.47f, 0.0f, -2.41f, 0.0f };
+static const float kCompGainDb[16][7] = {
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.57f, 0.80f, 0.46f, -0.00f, -0.32f, -0.59f, -0.82f },
+    { -2.48f, -0.71f, -0.14f, -0.00f, 0.04f, 0.01f, -0.05f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -16.98f, -9.36f, -4.23f, -0.00f, 0.68f, 0.86f, 0.89f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 4.30f, 1.79f, 0.71f, -0.00f, -1.52f, -2.51f, -3.19f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -2.12f, -1.63f, -0.68f, -0.00f, 0.50f, 0.89f, 1.17f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.90f, 0.99f, 0.49f, -0.00f, -0.19f, -0.24f, -0.23f },
+    { -1.81f, -0.51f, 0.07f, -0.00f, -0.11f, -0.17f, -0.21f },
+    { 0.31f, 0.84f, 0.64f, -0.00f, 0.11f, 0.26f, 0.39f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.77f, 0.13f, -0.02f, -0.00f, 0.06f, 0.12f, 0.15f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+};
+static const float kCompMasterDb[16][4] = {
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { 17.04f, 3.73f, -0.00f, -0.98f },
+    { -8.34f, -2.77f, -0.00f, 0.85f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { 7.64f, 0.84f, -0.00f, 0.05f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { -2.74f, -1.05f, -0.00f, 0.40f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { -3.57f, -1.34f, -0.00f, 0.49f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { -4.29f, -1.67f, -0.00f, 0.65f },
+    { 6.96f, 1.42f, -0.00f, -0.25f },
+    { 14.10f, 2.86f, -0.00f, -0.02f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { -7.89f, -3.15f, -0.00f, 1.17f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },
+};
+static const float kCompModeDb[16][9] = {
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -0.00f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f, -0.93f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -0.00f, -1.70f, -1.70f, -1.70f, -1.70f, -1.70f, -1.70f, -1.70f, -1.70f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -0.00f, -3.92f, -4.68f, -4.68f, -4.68f, -4.68f, -4.68f, -4.68f, -4.68f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -3.27f, -2.08f, 4.98f, 2.58f, 2.72f, 2.24f, -0.00f, 1.51f, 0.29f },
+    { -7.25f, -0.75f, -1.08f, 1.18f, -3.15f, -0.32f, -0.00f, -3.21f, -3.21f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+};
+static inline float compLerp(const float* xs, const float* ys, int n, float x) noexcept {
+    if (x <= xs[0])     return ys[0];
+    if (x >= xs[n - 1]) return ys[n - 1];
+    int i = 0; while (i < n - 2 && x > xs[i + 1]) ++i;
+    const float t = (x - xs[i]) / (xs[i + 1] - xs[i]);
+    return ys[i] + t * (ys[i + 1] - ys[i]);
+}
+static inline float compParity(int algo, float gainKnob, float masterKnob, float sel) noexcept {
+    const int si = (int)(sel + 0.5f);
+    const float db = kCompMkDb[algo]
+                   + compLerp(kCompGainKnob,   kCompGainDb[algo],   7, gainKnob)
+                   + compLerp(kCompMasterKnob, kCompMasterDb[algo], 4, masterKnob)
+                   + kCompModeDb[algo][si < 0 ? 0 : (si > 8 ? 8 : si)];
+    return (db == 0.0f) ? 1.0f : std::pow(10.0f, db / 20.0f);
+}
+
 enum AmpPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
     P_MODEL, P_GAIN, P_BASS, P_MID, P_TREBLE, P_PRES, P_MASTER, P_SAG,
@@ -89,6 +185,8 @@ enum AmpPorts {
     P_PL_VARIAC,                                               // Plexiglass Variac (brown sound, v46, default 0 = stock)
     P_JCM_SIR34,                                               // Crunchy (JCM800) SIR #34 mod (v47, default 0 = stock)
     P_SV_ULTRALO, P_SV_ULTRAHI, P_SV_MIDFREQ,                  // Blue Liner (SVT): Ultra-Lo/Ultra-Hi + 3-way mid select (0/1/2 = 220/800/3k, default 1)
+    P_COMP, P_DYNLOAD, P_ECO,                                  // 2026-09-23 (v62): Component Build (schematic-exact twin, own power section),
+                                                               // Dynamic Load (the driver as the power section's load), Engine Quality (4x / 2x)
 #ifdef HEXCHAIN_ANAGRAM
     P_ENABLED, P_RESET,                                        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the atoms (mod-host breaks if control ports follow them)
 #endif
@@ -103,6 +201,8 @@ struct WorkMsg {
     AmpBlockExtended* amp = nullptr;   // amp LOAD reply / FREE target
     NamModel*         nam = nullptr;   // NAM LOAD reply / FREE target
     int               modelIdx = 0;
+    bool              comp = false;    // build the component twin (when the model has one)
+    bool              eco  = false;    // Engine Quality: 2x instead of 4x oversampling
     char              path[kPathMax] = {0};
 };
 
@@ -137,6 +237,8 @@ struct AmpPlugin {
 
     int  lastModel = -1;
     int  lastTube  = -1;
+    bool lastComp  = false;   // component build the loaded amp was built with
+    bool lastEco   = false;
     char namPath[kPathMax] = {0};
     float mono[kMaxBlock], monoOut[kMaxBlock];
     float gbufL[kMaxBlock], gbufR[kMaxBlock];   // gated-input scratch (avoids writing host input buffers)
@@ -176,7 +278,11 @@ static void writeNamToNotify(AmpPlugin* p) {
 
 static LV2_Worker_Status scheduleRebuild(AmpPlugin* p, int modelIdx) {
     WorkMsg msg; msg.type = WORK_LOAD; msg.modelIdx = modelIdx;
-    return p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+    msg.comp = p->ctrl[P_COMP] && *p->ctrl[P_COMP] > 0.5f;
+    msg.eco  = p->ctrl[P_ECO]  && *p->ctrl[P_ECO]  > 0.5f;
+    const LV2_Worker_Status st = p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+    if (st == LV2_WORKER_SUCCESS) { p->lastComp = msg.comp; p->lastEco = msg.eco; }
+    return st;
 }
 
 // ── Lifecycle ──────────────────────────────────────────────────────────────
@@ -238,7 +344,11 @@ static LV2_Worker_Status amp_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     auto* na = new(std::nothrow) AmpBlockExtended;
     if (!na) return LV2_WORKER_ERR_NO_SPACE;
     na->prepare(p->rate, kMaxBlock, 2);
-    na->setAmpModel(kModelMap[clampIdx(static_cast<float>(msg->modelIdx), 0, kMaxModel)]);
+    na->setEco(msg->eco);   // Engine Quality: must precede setAmpModel (the oversampling wrapper is built there)
+    {   // Component Build swaps in the schematic-exact twin (own power section)
+        const int idx = clampIdx(static_cast<float>(msg->modelIdx), 0, kMaxModel);
+        na->setAmpModel((msg->comp && hasComponentModel(idx)) ? componentAmpFor(idx) : kModelMap[idx]);
+    }
     WorkMsg reply; reply.type = WORK_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
     return LV2_WORKER_SUCCESS;
@@ -384,7 +494,9 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     AmpBlockExtended* amp = p->amp;
     amp->setBypass(false);
 
-    if (modelIdx != p->lastModel) {
+    const bool compOn = hasComponentModel(modelIdx) && *p->ctrl[P_COMP] > 0.5f;
+    const bool ecoOn  = *p->ctrl[P_ECO] > 0.5f;
+    if (modelIdx != p->lastModel || compOn != p->lastComp || ecoOn != p->lastEco) {
         if (scheduleRebuild(p, modelIdx) == LV2_WORKER_SUCCESS) p->lastModel = modelIdx;
     }
 
@@ -411,6 +523,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("sag",      *p->ctrl[P_SAG]);
     amp->setParameter("channel",  *p->ctrl[P_CHANNEL]);
     amp->setParameter("resonance",*p->ctrl[P_RESON]);
+    amp->setParameter("dynload",  *p->ctrl[P_DYNLOAD]);   // component builds only: the driver as the PA's load (small-signal transparent)
 
     // Beardo BE (Friedman) — its own 3-way channel (Clean/BE/HBE) + voicing toggles.
     if (modelIdx == kFriedmanIdx) {
@@ -503,7 +616,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     if (desiredTube != p->lastTube) { p->lastTube = desiredTube; p->pa.setTubeType(static_cast<TubeType>(desiredTube)); }
 
     const bool paBypass = (*p->ctrl[P_PA_BYPASS] > 0.5f) || (modelIdx == kSunnIdx)
-                       || (modelIdx == kAd200Idx);   // Citrus 200 carries its own power section
+                       || (modelIdx == kAd200Idx)   // Citrus 200 carries its own power section
+                       || compOn;                   // every component twin carries its own
     p->pa.setBypass(paBypass);
 
     // Input hum comb + noise gate — BEFORE the amp's huge gain (the only place signal and its amplified
@@ -548,7 +662,14 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         // Voicing constants below are fitted values; the derivation is not public.
         amp->setExternalSag(p->pa.getSagEnvNorm());
     }
-    const float mk = kModelMakeup[modelIdx];
+    // the selector the parity row is indexed by: channel for EVH/Rockerverb, BE channel
+    // for Beardo, the mode rotary for Cali V / Diamond Plate, nothing for the rest
+    const float compSel = (modelIdx == 2 || modelIdx == 4) ? *p->ctrl[P_CHANNEL]
+                        : (modelIdx == kFriedmanIdx)       ? *p->ctrl[P_FR_CHANNEL]
+                        : (modelIdx == kMesaIdx)           ? *p->ctrl[P_MV_MODE]
+                        : (modelIdx == kRectoIdx)          ? *p->ctrl[P_RC_MODE] : 0.0f;
+    const float mk = kModelMakeup[modelIdx]
+                   * (compOn ? compParity(modelIdx, *p->ctrl[P_GAIN], *p->ctrl[P_MASTER], compSel) : 1.0f);
     if (mk != 1.0f) for (uint32_t i = 0; i < n; ++i) { outL[i] *= mk; outR[i] *= mk; }
 
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);

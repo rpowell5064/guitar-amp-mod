@@ -230,6 +230,24 @@
 
         <!-- ══ POWER AMP TAB: its own chassis panel (hidden for Sunn / NAM via the tab) ══ -->
         <div class="hf-tabpanel" rata-role="panel" data-tab="power">
+            <!-- ENGINE (2026-09-23): Component Build = the schematic-exact twin (own power section,
+                 shown only for models that have one); Dynamic Load + Engine Quality apply to the twin. -->
+            <div rata-role="compgroup" class="hf-agroup hf-engine mod-hidden">
+                <span class="hf-agroup-title">Engine</span>
+                <div class="hf-agroup-body hf-engine-body">
+                    {{#controls.52}}<div class="mod-switch pa-sw" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.52}}
+                    <span rata-role="compctls" class="amp-cond mod-hidden">
+                    {{#controls.53}}<div class="mod-switch pa-sw" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.53}}
+                    {{#controls.54}}
+                    <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                    <span class="mod-inline-label">{{name}}</span>
+                    {{/controls.54}}
+                    </span>
+                </div>
+            </div>
             <div rata-role="pagroup" class="hf-pa-face">
                 <div class="hf-pa-title">Power Amp</div>
                 <!-- top rail: PA Bypass + PA Auto switches + manual Power Tube selector -->

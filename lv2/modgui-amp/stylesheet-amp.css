@@ -576,3 +576,9 @@
     color: #061018; background: linear-gradient(180deg, #46d8ff, #19a8d8);
     box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 1px 4px rgba(0,0,0,.5);
 }
+
+/* ENGINE group (2026-09-23): Component Build / Dynamic Load / Engine Quality on the Power Amp tab */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-engine { margin-bottom: 8px; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-engine-body { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-engine-body [rata-role=compctls] { display: inline-flex; align-items: center; gap: 18px; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-engine-body [rata-role=compctls].mod-hidden { display: none; }

@@ -96,6 +96,7 @@ function (event, funcs) {
         if (nam && cur !== 'nam') set_tab(icon, 'nam');
         else if (!nam && cur === 'nam') set_tab(icon, 'amp');
         update_amp_ctls(icon);
+        update_comp(icon);
     }
     // Write the model port (mode switch / tab click) + refresh the UI deterministically
     // (mod-ui doesn't reliably echo set_port_value back as a change event).
@@ -106,6 +107,18 @@ function (event, funcs) {
     function update_pa_auto(icon, value) {
         var auto = value > 0.5;
         icon.find('[rata-role=pamanual]').toggleClass('mod-hidden', auto);
+    }
+    // Component Build (2026-09-23): the ENGINE group shows only for models with a
+    // schematic-exact twin (keep HAS_COMP in sync with hasComponentModel in amp_plugin.cpp);
+    // with the twin on, its own power section runs and the shared Power Amp face hides.
+    var HAS_COMP = { 1: 1, 2: 1, 4: 1, 6: 1, 8: 1, 10: 1, 11: 1, 12: 1, 14: 1 };
+    function update_comp(icon) {
+        var m = icon.data('amp_model'); if (m == null) m = 0;
+        var has = !!HAS_COMP[m];
+        var on = has && (icon.data('amp_comp') || 0) > 0.5;
+        icon.find('[rata-role=compgroup]').toggleClass('mod-hidden', !has);
+        icon.find('[rata-role=compctls]').toggleClass('mod-hidden', !on);
+        icon.find('[rata-role=pagroup]').toggleClass('mod-hidden', on);
     }
     // Show the loaded NAM file name (fires on user pick AND on pedalboard load).
     function set_nam(icon, value) {
@@ -243,6 +256,7 @@ function (event, funcs) {
         var map = {};
         (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
         if ('channel' in map) icon.data('amp_channel', map.channel);
+        if ('comp' in map) icon.data('amp_comp', map.comp);
         if ('model' in map) update_model(icon, map.model);
         if ('pamp_auto' in map) update_pa_auto(icon, map.pamp_auto);
         update_amp_ctls(icon);
@@ -254,6 +268,8 @@ function (event, funcs) {
             { event.icon.data('amp_channel', event.value); update_amp_ctls(event.icon); }
         else if (event.symbol == 'pamp_auto')
             update_pa_auto(event.icon, event.value);
+        else if (event.symbol == 'comp')
+            { event.icon.data('amp_comp', event.value); update_comp(event.icon); }
         else if (event.symbol == 'mv_eqpreset' && event.value > 0)
             apply_eq_preset(event.value);
         else if (event.uri && event.uri.indexOf('#nammodel') >= 0)

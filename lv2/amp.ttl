@@ -57,7 +57,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 61 ;   # 61: KNOB INDICATOR FIX - the generated knob sprites were rotated 180 degrees from the stock MOD convention (frame 50 aimed straight DOWN instead of straight UP), so every knob pointer showed the wrong value. Regenerated, all six families. 60: AMP HEAD ART, ported from the Hex Forge panel: the head is a covered cabinet (per-model tolex, rolled top edge, side returns, corner protectors) with the faceplate set into it; the PIPING around the faceplate is a neon tube that cycles red -> blue -> purple -> green and casts its light on the panel, with a matching strip where the valves stand, each panel seeding a random start. Per-model faceplates for all 16 models (the skin table stopped at 14 and several amps borrowed other plates, so Citrus 200 had no skin at all) and per-model knob families. Screws removed. New GUITAR / BASS filter on the model list (bass = 14/15, Neural = both): it hides list entries only, never a stored value. Header model count corrected 14 -> 16. Markup and art only: no port moved, no preset changed, no DSP touched. 59: Citrus 200 (model 15) - the suite's SECOND bass amp: an Orange AD200B Mark III built schematic-exact from the Mark III drawings (two ECC83 gain stages, the FMV stack solved as a network, an ECC83 long-tail pair with the global loop into its tail, 4x 6550, 200 W). It carries its own power section, so the shared power amp is force-bypassed on it (as on the Sunn) and it has no Presence control. 58: Blue Liner (Ampeg SVT) — the suite's first BASS amp (model 14): Ultra-Lo/Ultra-Hi + 3-way mid selector ports (54-56, atoms move to 57/58), new 6550 power tube (enum 5), PA row 11 (SS-rectifier tight sag, 60 Hz mains, deepest OT). 56: tube-correctness audit — Fender 6V6 (new TubeType 4, real AB763), EVH 6L6 (real 5150III), Sunn KT88 (inert, PA bypassed); Power Tube enum gains 6V6. 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
+    lv2:microVersion 62 ;   # 62: COMPONENT BUILD on the standalone amp (ports 57-59 comp/dynload/eco; atoms move to 60/61): the schematic-exact twins that Hex Forge has carried since v48 (Crunchy, Gainzilla, Tangerang, Beardo BE, Chime Thirty, Plexiglass, Cali V, Diamond Plate, Blue Liner), with their own power sections, the loudness-parity layer, the Dynamic Load switch and an Engine Quality (4x/2x) choice, from an ENGINE group on the Power Amp tab. 61: KNOB INDICATOR FIX - the generated knob sprites were rotated 180 degrees from the stock MOD convention (frame 50 aimed straight DOWN instead of straight UP), so every knob pointer showed the wrong value. Regenerated, all six families. 60: AMP HEAD ART, ported from the Hex Forge panel: the head is a covered cabinet (per-model tolex, rolled top edge, side returns, corner protectors) with the faceplate set into it; the PIPING around the faceplate is a neon tube that cycles red -> blue -> purple -> green and casts its light on the panel, with a matching strip where the valves stand, each panel seeding a random start. Per-model faceplates for all 16 models (the skin table stopped at 14 and several amps borrowed other plates, so Citrus 200 had no skin at all) and per-model knob families. Screws removed. New GUITAR / BASS filter on the model list (bass = 14/15, Neural = both): it hides list entries only, never a stored value. Header model count corrected 14 -> 16. Markup and art only: no port moved, no preset changed, no DSP touched. 59: Citrus 200 (model 15) - the suite's SECOND bass amp: an Orange AD200B Mark III built schematic-exact from the Mark III drawings (two ECC83 gain stages, the FMV stack solved as a network, an ECC83 long-tail pair with the global loop into its tail, 4x 6550, 200 W). It carries its own power section, so the shared power amp is force-bypassed on it (as on the Sunn) and it has no Presence control. 58: Blue Liner (Ampeg SVT) — the suite's first BASS amp (model 14): Ultra-Lo/Ultra-Hi + 3-way mid selector ports (54-56, atoms move to 57/58), new 6550 power tube (enum 5), PA row 11 (SS-rectifier tight sag, 60 Hz mains, deepest OT). 56: tube-correctness audit — Fender 6V6 (new TubeType 4, real AB763), EVH 6L6 (real 5150III), Sunn KT88 (inert, PA bypassed); Power Tube enum gains 6V6. 55: Recto CH3-Modern capture-fit baked at user blend 1.0 (RectoCaptureFit.h post-PA + mode-7 satDrive 1.84/tightHP 200, loudness-parity makeup, trusted northern_fox ladder). 54: HG round 2 bake (JCM800 padrive 1.72 + knee 0.36, Tremont tilt 2.88/6.84, Plexi/MarkV frozen row 10; user blend 0.72). 53: EVH capture-fit voicing baked (post-PA 5-biquad fit at ear-chosen blend 0.8875, loudness-neutral -- EvhCaptureFit.h). 52: v1.17 -- even-harmonic power-amp warmth (Tremont 15/Diamond Plate/Chime Thirty via push-pull duty; Beardo BE/Tangerang via post-distortion even exciter, loudness-neutral); Beardo BE re-voice (HBE collapse fix + steps up, flat consistent gain, darker decay hiss). 51: Plexi variac -> OVERVOLT (up = louder/more saturated/tighter, tuned to a real variac'd-Plexi capture set); Gainzilla Blue channel 4th stage + level match, Red dynamic sag, cranked-bass stutter fix. 50: per-amp PA drive/makeup applied (EVH/Rockerverb/Vox un-over-driven). 49: REVERTED the Fender PA re-voice (48). 47: SIR #34 mod toggle on the JCM800
 
     # Analog model switches rebuild the amp off the audio thread (they allocate an
     # OversamplingWrapper), so the Worker extension is required. NAM/neural loading
@@ -348,19 +348,43 @@ Free and open source (GPL-3).""" ;
         lv2:scalePoint [ rdfs:label "800 Hz"  ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "3 kHz"   ; rdf:value 2 ]
     ] , [
+        # ── Component Build (2026-09-23, v62): swap the model for its schematic-exact twin ──
+        # Available on Crunchy, Gainzilla, Tangerang, Beardo BE, Chime Thirty, Plexiglass,
+        # Cali V, Diamond Plate and Blue Liner. The twin carries its own power section
+        # (the shared Power Amp is bypassed) and is loudness-matched to the shipped model.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 57 ; lv2:symbol "comp" ; lv2:name "Component Build" ;
+        lv2:portProperty lv2:toggled, lv2:integer ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        # Dynamic Load: the twin's power section drives a large-signal speaker model as
+        # its load instead of a fixed impedance curve (transparent at small signal).
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 58 ; lv2:symbol "dynload" ; lv2:name "Dynamic Load" ;
+        lv2:portProperty lv2:toggled, lv2:integer ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        # Engine Quality for the twin: Standard = 4x oversampling, Eco = 2x (about half the CPU).
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 59 ; lv2:symbol "eco" ; lv2:name "Engine Quality" ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "Standard" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Eco"      ; rdf:value 1 ]
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 57 ; lv2:symbol "control" ; lv2:name "Control"
+        lv2:index 60 ; lv2:symbol "control" ; lv2:name "Control"
     ] , [
         a lv2:OutputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports patch:Message ;
         lv2:designation lv2:control ;
         rsz:minimumSize 8192 ;
-        lv2:index 58 ; lv2:symbol "notify" ; lv2:name "Notify"
+        lv2:index 61 ; lv2:symbol "notify" ; lv2:name "Notify"
     ] , [
         # ── Cali V (Mesa Mark V) controls (used only when Model = Cali V) ──
         # 9 modes across 3 channels + a 5-band graphic EQ (geq 0.5 = flat, ±12 dB).
@@ -532,5 +556,11 @@ Free and open source (GPL-3).""" ;
             lv2:index 50 ; lv2:symbol "sv_ultrahi"     ; lv2:name "Ultra-Hi"
         ] , [
             lv2:index 51 ; lv2:symbol "sv_midfreq"     ; lv2:name "Mid Freq"
+        ] , [
+            lv2:index 52 ; lv2:symbol "comp"           ; lv2:name "Component Build"
+        ] , [
+            lv2:index 53 ; lv2:symbol "dynload"        ; lv2:name "Dynamic Load"
+        ] , [
+            lv2:index 54 ; lv2:symbol "eco"            ; lv2:name "Engine Quality"
         ]
     ] .
