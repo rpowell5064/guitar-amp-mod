@@ -46,12 +46,21 @@ jobs:
           Test-Path "$dir\Eigen\Dense" | Out-Null
           "EIGEN_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: WebView2 SDK (NuGet, the version JUCE's FindWebView2 pins)
+        shell: pwsh
+        run: |
+          nuget install Microsoft.Web.WebView2 -Version 1.0.1901.177 -OutputDirectory nuget -NonInteractive
+          $dir = (Resolve-Path "nuget").Path
+          Get-ChildItem $dir
+          Test-Path "$dir\Microsoft.Web.WebView2.1.0.1901.177\build\native\include\WebView2.h" | Out-Null
+          "WEBVIEW2_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
       - name: Configure (Release, x64)
         shell: pwsh
         run: |
           $ok = $false
           foreach ($attempt in 1..4) {
-            cmake -S desktop -B desktop/out -G "Visual Studio 17 2022" -A x64 -DGAS_EIGEN_DIR="$env:EIGEN_DIR"
+            cmake -S desktop -B desktop/out -G "Visual Studio 17 2022" -A x64 -DGAS_EIGEN_DIR="$env:EIGEN_DIR" -DJUCE_WEBVIEW2_PACKAGE_LOCATION="$env:WEBVIEW2_DIR"
             if ($LASTEXITCODE -eq 0) { $ok = $true; break }
             Write-Host "::warning::configure attempt $attempt failed (transient fetch?) - retrying"
             Remove-Item -Recurse -Force desktop/out/_deps/neuralampmodelercore-* -ErrorAction SilentlyContinue
