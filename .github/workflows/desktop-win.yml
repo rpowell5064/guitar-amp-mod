@@ -1,0 +1,102 @@
+# Hex Forge desktop plugin — Windows x64 (VST3 + Standalone).
+#
+# Mirrors desktop-mac.yml: same engine, same JUCE project, same Eigen override
+# (a header-only GitHub mirror instead of NAM's gitlab.com submodule, which has
+# killed runs before). Builds Release with the Visual Studio generator, runs
+# pluginval on the VST3, and uploads both artefacts zipped.
+name: Desktop plugin (Windows)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'desktop/**'
+      - 'lv2/hexforge/**'
+      - 'lv2/common/**'
+      - 'lv2/modgui-hexforge/**'
+      - 'deps/guitar-amp-simulator/**'
+      - '.github/workflows/desktop-win.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+
+      - name: Toolchain info
+        shell: pwsh
+        run: |
+          cmake --version | Select-Object -First 1
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property displayName
+
+      - name: Eigen (header-only, GitHub mirror)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/eigen-mirror/eigen/archive/refs/tags/3.4.0.zip" -OutFile eigen.zip
+          Expand-Archive eigen.zip -DestinationPath eigen
+          $dir = (Resolve-Path "eigen\eigen-3.4.0").Path
+          Test-Path "$dir\Eigen\Dense" | Out-Null
+          "EIGEN_DIR=$dir" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Configure (Release, x64)
+        shell: pwsh
+        run: |
+          $ok = $false
+          foreach ($attempt in 1..4) {
+            cmake -S desktop -B desktop/out -G "Visual Studio 17 2022" -A x64 -DGAS_EIGEN_DIR="$env:EIGEN_DIR"
+            if ($LASTEXITCODE -eq 0) { $ok = $true; break }
+            Write-Host "::warning::configure attempt $attempt failed (transient fetch?) - retrying"
+            Remove-Item -Recurse -Force desktop/out/_deps/neuralampmodelercore-* -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds ($attempt * 45)
+          }
+          if (-not $ok) { exit 1 }
+
+      - name: Build
+        shell: pwsh
+        run: cmake --build desktop/out --config Release --parallel 4 --target HexForge_VST3 HexForge_Standalone
+
+      - name: Locate artefacts
+        id: art
+        shell: pwsh
+        run: |
+          $vst3 = Get-ChildItem -Path desktop/out/HexForge_artefacts/Release/VST3 -Filter "*.vst3" -Directory | Select-Object -First 1
+          $exe  = Get-ChildItem -Path desktop/out/HexForge_artefacts/Release/Standalone -Filter "*.exe" | Select-Object -First 1
+          if (-not $vst3 -or -not $exe) { throw "artefacts missing" }
+          "vst3=$($vst3.FullName)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          "exe=$($exe.FullName)"   | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+          Get-ChildItem -Recurse $vst3.FullName | Select-Object FullName, Length
+          Get-Item $exe.FullName | Select-Object FullName, Length
+
+      - name: pluginval (VST3, strictness 8)
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_Windows.zip" -OutFile pluginval.zip
+          Expand-Archive pluginval.zip -DestinationPath pluginval
+          $pv = Get-ChildItem -Recurse pluginval -Filter "pluginval.exe" | Select-Object -First 1
+          & $pv.FullName --strictness-level 8 --validate-in-process --validate "${{ steps.art.outputs.vst3 }}" 2>&1 | Tee-Object -FilePath pluginval.log | Select-Object -Last 60
+          if ($LASTEXITCODE -ne 0) { throw "pluginval failed" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          $sha = (git rev-parse --short HEAD).Trim()
+          Compress-Archive -Path "${{ steps.art.outputs.vst3 }}" -DestinationPath "dist/HexForge-win-x64-VST3-$sha.zip"
+          Compress-Archive -Path "${{ steps.art.outputs.exe }}"  -DestinationPath "dist/HexForge-win-x64-Standalone-$sha.zip"
+          Copy-Item pluginval.log dist/ -ErrorAction SilentlyContinue
+          Get-ChildItem dist
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hexforge-windows-x64
+          path: dist/
+          if-no-files-found: error
