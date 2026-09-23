@@ -369,6 +369,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "fit2")    { inVolts_  = std::max(0.01f, value); }   // lab alias of involts
     else if (id == "fit3")    { redHfDb_  = value;   // lab: CH3 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.redHf.prepare(fs_, 1.0, std::pow(10.0, redHfDb_ / 20.0), 1000.0); }
+    else if (id == "fit5")    { for (auto& c : ch_) c.pa.setFluxLim(value); }   // lab: OT flux limit (speaker-node volts)
     else if (id == "fit4")    { blueHfDb_ = value;   // lab: CH2 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0); }
     else if (id == "involts") { inVolts_  = value; }

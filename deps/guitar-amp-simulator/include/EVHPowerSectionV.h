@@ -170,7 +170,7 @@ public:
         {
             const float lo = fluxLP_.process(float(spk));
             const double hi = spk - lo;
-            spk = hi + kFluxLim * std::tanh(lo / kFluxLim);
+            spk = hi + fluxLim_ * std::tanh(lo / fluxLim_);
         }
         nfbPrev_ = float(spk);
         // Small residual level trim vs the TP47-derived speaker targets (the
@@ -324,11 +324,26 @@ private:
         const double presDepth = 0.85 * presence_;   // fraction of HF removed from NFB
         presShelf_.prepare(fs_, 1.0, 1.0 - presDepth,
                            1.0 / (2.0 * M_PI * 0.136e-6 * (10e3 * std::max(0.05f, presence_))));
-        // Resonance: C120 .0068 + R208 1M — resonance UP removes LF from the
-        // feedback (LF boost at the speaker).
-        const double resoDepth = 0.85 * resonance_;
-        resoShelf_.prepare(fs_, 1.0 - resoDepth, 1.0,
-                           1.0 / (2.0 * M_PI * 0.0068e-6 * (1e6 * std::max(0.05f, resonance_))));
+        // Resonance (sheet 2, re-read 2026-09-23): R208 1M-A sits IN PARALLEL with
+        // C120 .0068 uF, and that pair is IN SERIES with the feedback path from the
+        // speaker (ORG/BRN wires) into R162 39k -> the R159/C89 node ahead of the
+        // LTP tail. Below the pot's corner the pot resistance divides the feedback
+        // against the 39k + node impedance (~10.7k); above it the cap shorts the
+        // pot and full feedback returns. So the control is a first-order LF cut of
+        // the FEEDBACK — CW = more resistance = less low-frequency feedback = the
+        // speaker's own resonance and the OT's LF back at the output. At noon
+        // (audio taper, ~100k) the feedback is down ~10 dB below ~230 Hz.
+        // The previous 0.85-depth shelf with the corner at 1/(2*pi*C*R) had the
+        // corner an octave too low and no divider action — the control did ~0.4 dB
+        // and the Red channel read thin against the reference capture.
+        {
+            const double Rp  = 1e6 * (std::pow(10.0, 2.0 * resonance_) - 1.0) / 99.0;   // 1M audio taper (noon ~ 90k)
+            const double Zn  = 39e3 + 10.7e3;                                             // R162 + (R159 -> tail node)
+            const double C   = 0.0068e-6;
+            const double gLo = Zn / (Zn + Rp);                                            // feedback left below the corner
+            const double fp  = (Rp > 1.0) ? (Zn + Rp) / (2.0 * M_PI * Zn * Rp * C) : 20e3; // pole (zero = fp * gLo)
+            resoShelf_.prepare(fs_, gLo, 1.0, std::min(fp, 20e3));
+        }
     }
 
     double fs_ = 192000.0;
@@ -356,10 +371,20 @@ private:
     bool          dynLoad_ = false;
 public:
     void setDynLoad(bool on) noexcept { if (on && !dynLoad_) spkZ_.reset(); dynLoad_ = on; }
+    void setFluxLim(double v) noexcept { fluxLim_ = std::max(0.1, v); }
     bool dynLoad() const noexcept { return dynLoad_; }
 private:
-    static constexpr double kFluxLim = 4.0;   // flux limit, speaker-node volts (estimate,
-                                              // set by the hardware 111 Hz THD floor)
+    double fluxLim_ = kFluxLim;               // runtime copy (lab hook setFluxLim)
+    // OT core saturation threshold, speaker-node volts, applied to the band below
+    // fluxHz. Was 4.0 (2026-09-09), fitted to a reference modeler's flat 22 % THD
+    // floor at 111 Hz — but 4 V at the 16 ohm node is ~1 W, i.e. the 50 W
+    // transformer saturating at bedroom level, and it was clamping everything
+    // below 120 Hz by 8-14 dB under drive. Against a real Red-channel capture
+    // (2026-09-23) the amp reads 9-16 % THD at 110 Hz, rising gently with drive,
+    // and carries +4..+8 dB more 80-315 Hz than the model did: the limiter was the
+    // largest part of "thin". 20 V = flux saturation starting near 25 W at the
+    // lowest notes, where a real 50 W OT lives. Lab hook fit5 (setFluxLim).
+    static constexpr double kFluxLim = 20.0;
     float  nfbPrev_ = 0.0f;
     double sagEnv_ = 0.0, sagAtk_ = 0.0, sagRel_ = 0.0;
     double scrEnv_ = 0.018, scrFactor_ = 1.0;    // screen-node droop state
