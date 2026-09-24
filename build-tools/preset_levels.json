@@ -6,18 +6,18 @@
  },
  "Apache Echo": {
   "idx": 37,
-  "peak": -11.32,
-  "rms": -25.25
+  "peak": -11.47,
+  "rms": -24.81
  },
  "Berlin Wall Pulse": {
   "idx": 17,
-  "peak": -2.18,
+  "peak": -2.19,
   "rms": -26.08
  },
  "Blackwing Rise": {
   "idx": 60,
-  "peak": -0.43,
-  "rms": -13.71
+  "peak": -0.58,
+  "rms": -13.55
  },
  "Bottle Jangle": {
   "idx": 33,
@@ -66,8 +66,8 @@
  },
  "Clean": {
   "idx": 0,
-  "peak": -1.85,
-  "rms": -18.27
+  "peak": -1.31,
+  "rms": -18.75
  },
  "Come As Water": {
   "idx": 7,
@@ -86,8 +86,8 @@
  },
  "Dark Side Air": {
   "idx": 16,
-  "peak": -0.81,
-  "rms": -21.1
+  "peak": -0.8,
+  "rms": -21.09
  },
  "Desert Robot": {
   "idx": 38,
@@ -141,8 +141,8 @@
  },
  "Gravity Lead": {
   "idx": 19,
-  "peak": -1.68,
-  "rms": -16.74
+  "peak": -0.83,
+  "rms": -16.81
  },
  "Grunge Drop": {
   "idx": 55,
@@ -191,8 +191,8 @@
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 4.15,
-  "rms": -11.26
+  "peak": 4.09,
+  "rms": -11.92
  },
  "Imperial Lead": {
   "idx": 13,
@@ -261,12 +261,12 @@
  },
  "Nevermind Wall": {
   "idx": 6,
-  "peak": 2.02,
-  "rms": -10.14
+  "peak": 3.32,
+  "rms": -10.28
  },
  "Numb Sustain": {
   "idx": 18,
-  "peak": -2.23,
+  "peak": -2.22,
   "rms": -14.87
  },
  "Plug-In Junior": {
@@ -296,8 +296,8 @@
  },
  "Retro Poland": {
   "idx": 58,
-  "peak": -11.43,
-  "rms": -31.37
+  "peak": -11.19,
+  "rms": -31.36
  },
  "Rhythm": {
   "idx": 2,
@@ -376,8 +376,8 @@
  },
  "Surf Splash": {
   "idx": 36,
-  "peak": -7.57,
-  "rms": -26.88
+  "peak": -7.32,
+  "rms": -27.27
  },
  "Sweet Dispersion": {
   "idx": 64,

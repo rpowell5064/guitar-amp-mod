@@ -674,7 +674,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->cab.setParameter("spkdriveamt", spk == 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
         if (phys) {
             const bool  ownPa = compOn || (ampModel == kAd200Idx);
-            const float vpu   = (ownPa ? kCompVoltsPerUnit[ampAlgo] : 150.0f) / std::max(ampMakeup, 1e-3f);
+            const float vpu   = (ownPa ? kCompVoltsPerUnit[ampAlgo] : kShipVoltsPerUnit[ampAlgo]) / std::max(ampMakeup, 1e-3f);
             p->cab.setParameter("spkvolts", vpu);
         }
     }

@@ -130,6 +130,17 @@ static const float kAmpMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1
 // Indexed like kAmpMakeup.
 static const float kCompVoltsPerUnit[16] = { 150.f, 208.f, 151.f, 150.f, 333.f, 150.f, 185.f, 150.f,
                                              167.f, 150.f, 208.f, 333.f, 333.f, 150.f, 167.f, 57.f };
+// The shared-PA models (no component twin) get the same calibration from each model's
+// measured full-knob clip ceiling (raw units, before makeup) against the real amp's rated
+// power into 8 Ω, plus ~1.5 dB for the squash past onset (2026-09-24). Until now every
+// shared-PA model stood in at the 150 V/unit nominal, so the 22 W Deluxe-class clean amp
+// drove the 30 W open-back cone at 1.4–4.6× its rating on the reference take — the cone
+// sat past its excursion limit through the decay of every low note (the "distorted tail"
+// on the Open-Back Air rig). Ceilings: Deluxe 0.385 (22 W → 18.8 Vpk → 58), Backline
+// 0.272 (35 W → 104), Tremont 15 0.19 (15 W → 98), Hiwatt 0.33 (100 W → 145). The Sunn
+// keeps the nominal: a 150 W head plays through walls of cabs, not one sealed 4x12.
+static const float kShipVoltsPerUnit[16] = { 58.f, 150.f, 150.f, 150.f, 150.f, 150.f, 150.f, 145.f,
+                                             150.f, 104.f, 150.f, 150.f, 150.f, 98.f, 150.f, 150.f };
 // Component-model loudness parity (2026-09-13, user: "the output volume will have to
 // account for some of the amps losing volume"). The schematic-exact builds carry their
 // own power section, so they do NOT get the shared PA's makeup/drive/tracking — measured
