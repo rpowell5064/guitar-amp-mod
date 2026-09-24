@@ -52,6 +52,7 @@ struct URIs {
 struct HexForgeLv2 : HexForge {
     const LV2_Atom_Sequence* control = nullptr;
     const LV2_Atom_Sequence* midiIn  = nullptr;   // footswitch CCs (pi-Stomp)
+    int64_t ccOnClock[4] = { -1, -1, -1, -1 };    // sample clock of the last value>=64 message per preset switch
     LV2_Atom_Sequence*       notify  = nullptr;
     LV2_URID_Map*        map      = nullptr;
     LV2_Worker_Schedule* schedule = nullptr;
@@ -337,9 +338,15 @@ static void hf_run(LV2_Handle h, uint32_t n) {
             if (ev->body.type != u.midi_MidiEvent || ev->body.size < 3) continue;
             const uint8_t* m = static_cast<const uint8_t*>(LV2_ATOM_BODY_CONST(&ev->body));
             if ((m[0] & 0xF0) != 0xB0) continue;            // Control Change, any channel
-            if (m[2] < 64) continue;                        // press-down only (ignore the release = value 0)
             const int sw = static_cast<int>(m[1]) - kMidiBaseCC;
-            if (sw >= 0 && sw <= 3 && nSw < 16) swPresses[nSw++] = sw;
+            if (sw < 0 || sw > 3) continue;
+            // Any value is a press. A controller that alternates 127/0 per press (the stock
+            // pi-Stomp footswitch toggle, 2026-09-24) still gets every press; a momentary
+            // controller's release (0 right after 127) is ignored inside 300 ms.
+            const int64_t now = p->sampleClock + static_cast<int64_t>(ev->time.frames);
+            if (m[2] >= 64) p->ccOnClock[sw] = now;
+            else if (p->ccOnClock[sw] >= 0 && now - p->ccOnClock[sw] < static_cast<int64_t>(0.3 * p->rate)) continue;
+            if (nSw < 16) swPresses[nSw++] = sw;
         }
     }
 
