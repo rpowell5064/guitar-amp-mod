@@ -240,11 +240,13 @@ def bank_psych():
            amp={"model": "Chime Thirty", "gain": 0.45, "bass": 0.62, "mid": 0.5, "treble": 0.45, "presence": 0.1, "master": 0.75, "sag": 0.45},
            cab={"lowcut": 90, "highcut": 9000}, rv=plate(0.12, 1.6, 20), gt=gate(-55), rb={"enable": 0, "cab2on": 0})
     # D Regal Solo — May's lead: same cranked AC30 + booster; the Brighton Rock canon = 800 ms + 1600 ms Echoplexes.
-    preset(10, 3, "Regal Solo", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "dl2", "rv"], rig=CHIME,
+    #   2026-09-24 (user): the second Echoplex (Delay 2 at 1600 ms) is gone — it kept repeating with the main
+    #   delay switched off and the long tape repeats read as noise. One tape echo, a single 800 ms slap.
+    preset(10, 3, "Regal Solo", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=CHIME,
            dr={"model": "Treble Ranger", "drive": 1.0, "tone": 0.5, "level": 1.0, "mix": 1.0},
            amp={"model": "Chime Thirty", "gain": 0.95, "bass": 0.5, "mid": 0.55, "treble": 0.4, "presence": 0.05, "master": 1.0, "sag": 0.65},
            cab={"lowcut": 100, "highcut": 9000},
-           dl=tape(800, 0.4, 0.5, 1.0), dl2=tape(1600, 0.3, 0.45, 1.0), rv=plate(0.15, 1.8, 30), gt=gate(-55))
+           dl=tape(800, 0.3, 0.3, 0.6), rv=plate(0.15, 1.8, 30), gt=gate(-55))
 
 # ═══ Bank 12 (index 11) — NINE INCH NAILS (the Nail block carries each era) ═══
 def bank_nin():

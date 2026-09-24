@@ -190,6 +190,29 @@ def apply_levels():
         hit += 1
     print("levels applied: %d, unmeasured: %d" % (hit, miss))
 
+# ── user saves (2026-09-24) ──────────────────────────────────────────────
+# Slots the user dialled in and SAVED on the device are baked VERBATIM (name, every
+# port, both IRs, their own out_level) from build-tools/preset_user_saves.json — a
+# capture of the device store — so a factory reseed keeps them. They override the
+# rework row and the level pass; re-capture the store to update them.
+def apply_user_saves():
+    path = os.path.join(HERE, "preset_user_saves.json")
+    if not os.path.exists(path):
+        return
+    us = json.load(open(path))
+    assert us["syms"] == SYMS, "preset_user_saves.json was captured at a different port layout — re-capture it"
+    for k, pr in us["presets"].items():
+        bank, slot = (int(x) for x in k.split(","))
+        key = (bank, slot)
+        row = PRESETS.get(key)
+        if row is None:
+            print("user save %s at %d/%d has no factory row — skipped" % (pr["name"], bank, slot)); continue
+        row["name"] = pr["name"]; row["vals"] = list(pr["vals"])
+        ir, ir2 = pr.get("ir", "") or "", pr.get("ir2", "") or ""
+        row["ir"]  = "" if ir  in ("@factory", "@builtin") else ir
+        row["ir2"] = "" if ir2 in ("@factory", "@builtin") else ir2
+    print("user saves baked verbatim: %s" % ", ".join(p["name"] for p in us["presets"].values()))
+
 # ── checks + emit ────────────────────────────────────────────────────────────
 def _range_violations(vals):
     bad = []
@@ -242,6 +265,7 @@ if __name__ == "__main__":
         bad = M._range_violations(p["vals"])
         assert not bad, "%s has out-of-range params: %s" % (p["name"], bad)
     M.apply_levels()
+    M.apply_user_saves()   # the user's saved slots, verbatim, LAST
     if M.SANITISED:
         from collections import Counter
         cnt = Counter(x.split(" ", 1)[1].split("=")[0] for x in M.SANITISED)
