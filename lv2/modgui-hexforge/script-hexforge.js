@@ -1242,6 +1242,7 @@ function (event, funcs) {
         if (membership) renderPalette(icon);
         micPadUpdate(icon, 'cab'); micPadUpdate(icon, 'cab2');
         rigDetect(icon, 'cab'); rigDetect(icon, 'cab2');   // a recall lands on its rig (or Custom)
+        setTimeout(function () { rigDetect(icon, 'cab'); rigDetect(icon, 'cab2'); }, 500);   // again once the recalled IR path has arrived (it follows the ports)
         eqScope(icon);
         applyAmp(icon); applyRbAmp(icon); applyFuzz(icon); applyDelay(icon);
         if (drm != null) applyDrive(icon, drm);
@@ -1401,6 +1402,7 @@ function (event, funcs) {
         if ('rb_cab' in map)        icon.data('hf_rb_cab', parseInt(map.rb_cab, 10));
         setIr2Label(icon);
         rigDetect(icon, 'cab'); rigDetect(icon, 'cab2');   // a recall lands on its rig (or Custom)
+        setTimeout(function () { rigDetect(icon, 'cab'); rigDetect(icon, 'cab2'); }, 500);   // again once the recalled IR path has arrived (it follows the ports)
         if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
         if ('out_voice' in map) icon.find('.hf-outvoice').toggleClass('hf-ov-on', map.out_voice > 0.5);   // seed FRFR knob visibility
         icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
