@@ -262,8 +262,14 @@ function watchSize() {
     var root = icon[0];
     var lastW = 0, lastH = 0;
     sizeReport = function () {
-        var rr = root.getBoundingClientRect();          // already scaled by `zoom`
-        var nw = rr.width / zoom + 28, nh = rr.height / zoom + 28;   // natural size
+        // NATURAL size = the element's layout size (offsetWidth/Height), which no
+        // engine scales by the body's CSS `zoom`. The earlier read used
+        // getBoundingClientRect() / zoom: Chromium (WebView2) returns the zoomed
+        // rect, so that was right on Windows, but WebKit returns the unzoomed
+        // one — dividing inflated the "natural" size every tick, the zoom shrank
+        // to fit the inflated number, and the macOS editor collapsed to a few
+        // floating components (2026-09-24).
+        var nw = root.offsetWidth + 28, nh = root.offsetHeight + 28;
         var z = Math.min(1, avail.w / nw, avail.h / nh);
         if (Math.abs(z - zoom) > 0.01) {
             zoom = z;
