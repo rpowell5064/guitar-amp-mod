@@ -186,6 +186,9 @@
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cab-cols { display: flex; gap: 18px; align-items: stretch; justify-content: center; }
 /* Cab tabs (2026-09-23): CABINET = basics for any IR; MIC & ROOM = speaker model, mic pad, room. */
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cabtabs { display: flex; justify-content: center; gap: 22px; margin: 2px 0 8px; }
+/* A user .wav: the basics only — the rig picker and the MIC & ROOM tab belong to the built-in cabs (user 2026-09-24) */
+.hf-ir-user .mod-pedal-guitaramp-cab{{{cns}}} .hf-cabtabs, .hf-ir-user .mod-pedal-guitaramp-cab{{{cns}}} [rata-role=rig],
+.mod-pedal-guitaramp-cab{{{cns}}}.hf-ir-user .hf-cabtabs, .mod-pedal-guitaramp-cab{{{cns}}}.hf-ir-user [rata-role=rig] { display: none; }   /* mod-ui tags the outer .mod-pedal wrapper (event.icon); a bare render tags the root */
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cabtab { font-size: 10px; font-weight: 700; letter-spacing: .7px; color: #8b96a8; cursor: pointer; padding: 1px 2px 3px; border-bottom: 1px solid transparent; user-select: none; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cabtab:hover { color: #d6dce8; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-cabtab.on { color: #fff; border-bottom-color: #56aaff; }
