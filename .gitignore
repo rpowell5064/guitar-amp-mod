@@ -52,3 +52,5 @@ anagram/dist-staging/
 
 # WSL build tree (SAC-free lab/golden builds)
 build-tools/out_wsl/
+build-tools/out_wsl_asan/
+build-tools/out_wsl_tsan/
