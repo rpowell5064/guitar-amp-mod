@@ -19,7 +19,7 @@ on:
       - '.github/workflows/desktop-win.yml'
 
 permissions:
-  contents: read
+  contents: write   # rolling "desktop-latest" pre-release upload
 
 jobs:
   build:
@@ -109,3 +109,27 @@ jobs:
           name: hexforge-windows-x64
           path: dist/
           if-no-files-found: error
+
+      # Same rolling pre-release as the macOS workflow: current builds on the Releases page.
+      - name: Publish to the rolling "desktop-latest" pre-release
+        if: github.ref == 'refs/heads/main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $sha = (git rev-parse --short HEAD).Trim()
+          New-Item -ItemType Directory -Force rel | Out-Null
+          Copy-Item "dist/HexForge-win-x64-VST3-$sha.zip"       rel/HexForge-win-x64-VST3.zip
+          Copy-Item "dist/HexForge-win-x64-Standalone-$sha.zip" rel/HexForge-win-x64-Standalone.zip
+          "Windows x64 build of commit $sha ($((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mmZ')))" | Out-File -Encoding ascii rel/HexForge-win-BUILD.txt
+          gh release view desktop-latest 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create desktop-latest --prerelease --title "Hex Forge desktop - latest main" --notes "Rolling build of main. Replaced on every push that touches the engine or the desktop plugin."
+            if ($LASTEXITCODE -ne 0) {   # the macOS job may have created it at the same moment
+              Start-Sleep -Seconds 10
+              gh release view desktop-latest 2>$null
+              if ($LASTEXITCODE -ne 0) { throw "release create failed" }
+            }
+          }
+          gh release upload desktop-latest (Get-ChildItem rel | ForEach-Object { $_.FullName }) --clobber
+          if ($LASTEXITCODE -ne 0) { throw "release upload failed" }

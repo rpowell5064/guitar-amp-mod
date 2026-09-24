@@ -22,7 +22,7 @@ on:
       - '.github/workflows/desktop-mac.yml'
 
 permissions:
-  contents: read
+  contents: write   # rolling "desktop-latest" pre-release upload
 
 jobs:
   build:
@@ -120,3 +120,23 @@ jobs:
           name: hexforge-macos-universal
           path: dist/
           if-no-files-found: error
+
+      # The builds also land on the Releases page under a rolling pre-release, so
+      # nobody has to dig through workflow runs to find the current plugin.
+      - name: Publish to the rolling "desktop-latest" pre-release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          mkdir -p rel
+          cp "dist/HexForge-macOS-universal-AU-$SHA.zip"         rel/HexForge-macOS-universal-AU.zip
+          cp "dist/HexForge-macOS-universal-VST3-$SHA.zip"       rel/HexForge-macOS-universal-VST3.zip
+          cp "dist/HexForge-macOS-universal-Standalone-$SHA.zip" rel/HexForge-macOS-universal-Standalone.zip
+          # the Windows job may create the release at the same moment: tolerate a lost race
+          gh release view desktop-latest >/dev/null 2>&1 || \
+            gh release create desktop-latest --prerelease --title "Hex Forge desktop — latest main" \
+              --notes "Rolling build of main. Replaced on every push that touches the engine or the desktop plugin." || \
+            gh release view desktop-latest >/dev/null
+          echo "macOS universal build of commit $SHA ($(date -u +%Y-%m-%dT%H:%MZ))" > rel/HexForge-macOS-BUILD.txt
+          gh release upload desktop-latest rel/* --clobber

@@ -55,6 +55,11 @@ juce_add_plugin(HexForge
     IS_MIDI_EFFECT           FALSE
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD  FALSE
+    # macOS refuses audio INPUT to any app without a microphone usage description,
+    # and it fails silently — the Standalone ran with a dead input (2026-09-24).
+    # This writes NSMicrophoneUsageDescription and asks at first launch.
+    MICROPHONE_PERMISSION_ENABLED TRUE
+    MICROPHONE_PERMISSION_TEXT "Hex Forge needs your audio interface's input to hear the guitar."
 )
 
 juce_generate_juce_header(HexForge)
