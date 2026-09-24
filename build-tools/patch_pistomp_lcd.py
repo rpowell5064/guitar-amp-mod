@@ -45,22 +45,42 @@ rep("""                        if toggle:
 """, "MidiCcEffect toggle")
 
 # A footswitch bound (through MOD-UI's MIDI learn) to one of the four Hex Forge preset switch
-# ports: the press still flips the toggle (the port alternates 1/0 and the plugin recalls on
-# either edge), but its LED is not the toggle — it follows the active preset (radio, below).
+# ports. Stock: a toggle — the port alternates 1/0 with the switch's own notion of its state,
+# and when that notion drifts from the port (value feedback, a latched port, the radio LEDs
+# below) a press writes the value the port already holds and the plugin sees nothing. Here a
+# press is a PULSE: 1 now, 0 over MIDI ~30 ms later. The plugin recalls on the first edge it
+# sees (rise, or the fall if the port was already 1) and ignores the other inside its debounce.
+# The LED and the LCD dot are not the toggle — they follow the active preset (radio, below).
 rep("""                    if fs is not None:
                         new_toggled = not fs.toggled
                         fs.toggled = new_toggled
                         fs.set_led(new_toggled)
                         if fs.midi_CC is not None:
                             self._emit_midi(fs, 127 if new_toggled else 0)
-""", """                    if fs is not None:
+                        if fs.parameter is not None:
+                            fs.parameter.preview(fs.value_for(new_toggled))
+                        self.update_lcd_fs(footswitch=fs)
+""", """                    if fs is not None and fs.parameter is not None and getattr(fs.parameter, "symbol", "") in HEXFORGE_SW_SYMS:
+                        if fs.midi_CC is not None:
+                            self._emit_midi(fs, 127)
+                        fs.parameter.preview(fs.value_for(True))
+                        def _hexforge_release(f=fs, h=self):
+                            try:
+                                if f.midi_CC is not None:
+                                    h._emit_midi(f, 0)
+                            except Exception:
+                                pass
+                        threading.Timer(0.03, _hexforge_release).start()
+                    elif fs is not None:
                         new_toggled = not fs.toggled
                         fs.toggled = new_toggled
-                        if not (fs.parameter is not None and getattr(fs.parameter, "symbol", "") in HEXFORGE_SW_SYMS):
-                            fs.set_led(new_toggled)
+                        fs.set_led(new_toggled)
                         if fs.midi_CC is not None:
                             self._emit_midi(fs, 127 if new_toggled else 0)
-""", "ParamEffect toggle")
+                        if fs.parameter is not None:
+                            fs.parameter.preview(fs.value_for(new_toggled))
+                        self.update_lcd_fs(footswitch=fs)
+""", "ParamEffect pulse")
 
 # ── 2. LCD title + radio LEDs, polled with the LCD ───────────────────────────
 rep("""    def poll_lcd_updates(self):
@@ -126,7 +146,10 @@ if i < 0:
     print("ERROR: no class definition found"); sys.exit(1)
 s = s[:i] + "\n# Hex Forge preset footswitches (pi-Stomp default config: footswitch 0..3 = CC 60..63)\n" \
     + "HEXFORGE_PRESET_CCS = (60, 61, 62, 63)\nHEXFORGE_SW_SYMS = ('sw_a', 'sw_b', 'sw_c', 'sw_d')\nHEXFORGE_STATUS_FILE = '/tmp/hexforge_status'\n" + s[i:]
-if "import os" not in s.split("\nclass ")[0]:
+head = s.split("\nclass ")[0]
+if "import os" not in head:
     s = "import os\n" + s
+if "import threading" not in head:
+    s = "import threading\n" + s
 open(P, "w", encoding="utf-8").write(s)
 print("patched modhandler.py: Hex Forge LCD title + radio LEDs + momentary preset switches")
