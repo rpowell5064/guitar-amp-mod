@@ -69,10 +69,12 @@ def bank_stock():
     preset(0, 0, "Clean", cls="clean", chain=["gt", "cp", "amp", "cab", "rv"], rig=OPENBACK,
            amp={"model": "Clean Meanie", "gain": 0.5, "bass": 0.55, "mid": 0.5, "treble": 0.6, "presence": 0.5, "master": 0.85, "sag": 0.35},
            cp=comp("Once76", -24, "4:1", MED, MED), cab={"highcut": 9000}, rv=spring(0.18, 2.0), gt=gate(-60))
-    preset(0, 1, "Crunch", cls="dirty", chain=["gt", "dr", "amp", "cab", "rv"], rig=PAIR57R,
+    preset(0, 1, "Crunch", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=PAIR57R,
            dr={"model": "Green Man", "drive": 0.1, "tone": 0.5, "level": 0.6, "mix": 1.0},
            amp={"model": "Crunchy McCrunchFace", "gain": 0.55, "bass": 0.5, "mid": 0.6, "treble": 0.6, "presence": 0.5, "master": 0.55, "sag": 0.35, "sir34": 0},
-           cab={"highcut": 8000}, rv=plate(0.1, 1.2), gt=gate(-52))
+           cab={"highcut": 8000},
+           dl={"type": "Seraph", "pattern": "Unison", "time": 450, "feedback": 0.3, "mix": 0.25, "width": 0.6},   # Seraph at 450 ms before the reverb (user 2026-09-24)
+           rv=plate(0.1, 1.2), gt=gate(-52))
     preset(0, 2, "Rhythm", cls="dirty", chain=["gt", "dr", "amp", "cab"], rig=STUDIO,
            dr={"model": "Green Man", "drive": 0.0, "tone": 0.55, "level": 0.6, "mix": 1.0},
            amp={"model": "Gainzilla", "channel": 1, "gain": 0.5, "bass": 0.5, "mid": 0.55, "treble": 0.55, "presence": 0.55, "resonance": 0.5, "master": 0.45, "sag": 0.3},
@@ -132,7 +134,7 @@ def bank_ghost_impera():
     # A Imperial Rhythm — Åkesson: Friedman BE-100 + MXR Sugar Drive (Klon-style) "a lot" (A); rhythm packs of 8, dry.
     preset(3, 0, "Imperial Rhythm", cls="dirty", chain=["gt", "dr", "amp", "cab", "eq"], rig=STUDIO,
            dr={"model": "Gilded Horse", "drive": 0.25, "tone": 0.5, "level": 0.65, "mix": 1.0},
-           amp={"model": "Beardo BE", "fr_channel": "BE", "fr_fat": 0, "fr_c45": 0, "fr_sat": 0,
+           amp={"model": "Beardo BE", "fr_channel": "HBE", "fr_fat": 0, "fr_c45": 0, "fr_sat": 0,   # HBE: BE alone is short of gain here (user 2026-09-24)
                 "gain": 0.55, "bass": 0.5, "mid": 0.55, "treble": 0.6, "presence": 0.55, "master": 0.5, "sag": 0.3},
            cab={"highcut": 8000}, eq=eqm(**{"100": 1, "200": -1, "400": 0, "800": 0, "1k6": 0, "3k2": 1.5, "level": 0}), gt=gate(-48))
     # B Imperial Lead — "for most of the solos I borrowed an old DOD Preamp 250" into "late-'50s Marshall Plexis" (A).
@@ -516,7 +518,7 @@ def bank_classic():
     # D Jungle Sleaze — the Welcome to the Jungle INTRO: the S.I.R. Levi-modded 1959 (A, Clink → SIR mod ON) through the
     #   cascading echo (the SRV-2000's delay mode on the record): a quarter note at 124 BPM, three-four repeats, wet.
     preset(17, 3, "Jungle Sleaze", cls="dirty", chain=["gt", "amp", "cab", "dl", "rv"], rig=TIGHT57,
-           amp={"model": "Crunchy McCrunchFace", "sir34": 1, "gain": 0.7, "bass": 0.6, "mid": 0.65, "treble": 0.6, "presence": 0.55, "master": 0.7, "sag": 0.5},
+           amp={"model": "Crunchy McCrunchFace", "sir34": 1, "gain": 0.85, "bass": 0.6, "mid": 0.65, "treble": 0.6, "presence": 0.55, "master": 0.7, "sag": 0.5},   # gain .7 -> .85 (user 2026-09-24: needs more)
            cab={"lowcut": 75, "highcut": 8500}, dl=dig(quarter(124), 0.5, 0.45, 0.6), rv=plate(0.1, 1.4, 25), gt=gate(-55))
 
 # ═══ Bank 19 (index 18) — LOW END: the Blue Liner (Ampeg SVT twin) ═══════════

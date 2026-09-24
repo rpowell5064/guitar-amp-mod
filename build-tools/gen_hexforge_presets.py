@@ -125,6 +125,7 @@ def preset(bank, slot, name, cls="dirty", base=True, chain=None, rig=None, rig2=
     ir2 = (src["paths"]["i2"] if src else "") or ""
     if not src:
         v[SYM_IDX["it_enable"]] = 1.0; v[SYM_IDX["amp_enable"]] = 1.0; v[SYM_IDX["cab_enable"]] = 1.0; v[SYM_IDX["gt_enable"]] = 1.0
+    v[SYM_IDX["out_doubler"]] = 0.0   # no factory preset ships the output doubler (user 2026-09-24); a block may still opt in
     if chain is not None:
         # Positions are 1-based over the 13 movable blocks (input trim has none);
         # every movable block keeps a unique position even when disabled, and the
