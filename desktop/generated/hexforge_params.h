@@ -600,7 +600,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 488, "fv_pres", "FRFR Pres Dip", "Output Voice", 0.0f, 6.0f, 3.225f, "db", HFD_SETTING, nullptr, 0 },
     { 489, "fv_fizz", "FRFR Fizz Tilt", "Output Voice", 0.0f, 6.0f, 2.7f, "db", HFD_SETTING, nullptr, 0 },
     { 490, "out_phase", "Output Phase Invert", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 491, "amp_evhcomp", "Component Model (Lab)", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 492, "amp_dynload", "Dynamic Load (Lab)", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 491, "amp_evhcomp", "Component Model", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 492, "amp_dynload", "Dynamic Load", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));

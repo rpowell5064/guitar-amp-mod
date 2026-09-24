@@ -793,13 +793,13 @@ ctrl.append(mkport("OUT_PHASE", "out_phase", "Output Phase Invert", "t", 0, 1, 1
 # component preamp + sheet-2 LTP/2x6L6GC/NFB power section; the shared
 # PowerAmp is force-bypassed while ON, the Sunn pattern). GLOBAL tail port,
 # never preset-captured; default OFF = bit-identical shipped voicing.
-ctrl.append(mkport("AMP_EVHCOMP", "amp_evhcomp", "Component Model (Lab)", "t", 0, 1, 0, None, "Component"))
+ctrl.append(mkport("AMP_EVHCOMP", "amp_evhcomp", "Component Model", "t", 0, 1, 1, None, "Component"))   # default ON since the 2026-09-24 preset rework (presets are voiced on the twins)
 # DYNAMIC LOAD (Phase 5, 2026-09-21, lab): the component power sections drive the
 # large-signal speaker model as their load (current-driven) instead of the two
 # static impedance biquads — box resonance, inductive rise, excursion detuning
 # and hot-coil damping loss all inside the feedback loop. Same GLOBAL-tail
 # pattern as the Component toggle; default OFF = bit-identical. Migrated v51.
-ctrl.append(mkport("AMP_DYNLOAD", "amp_dynload", "Dynamic Load (Lab)", "t", 0, 1, 0, None, "Dyn Load"))
+ctrl.append(mkport("AMP_DYNLOAD", "amp_dynload", "Dynamic Load", "t", 0, 1, 1, None, "Dyn Load"))   # default ON (small-signal transparent since ef1fd0c)
 # (The 2026-08-22 dbg_evhfit re-tune LAB lived here for mv195 only; CANCELED
 # unused by the user — the EVH keeps the 2026-08-19 baked blend 0.8875.)
 

@@ -8,6 +8,7 @@
 #include "hexforge_ports.h"
 #include <dlfcn.h>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cstdint>
 #include <cmath>
@@ -60,6 +61,11 @@ int main(int argc,char** argv){
     inSeq(ctl);inSeq(midi);outSeq(notify);
 
     val[HF_OUT_AUTO]=0.0f;   // disable peak limiter -> linear measurement
+    // Global settings as shipped (2026-09-24): the component twins and the dynamic
+    // load are the default sound the presets are voiced for. HFMEAS_COMP=0 /
+    // HFMEAS_DYNLOAD=0 in the environment measure the shipped models instead.
+    val[HF_AMP_EVHCOMP]=(getenv("HFMEAS_COMP")&&!strcmp(getenv("HFMEAS_COMP"),"0"))?0.0f:1.0f;
+    val[HF_AMP_DYNLOAD]=(getenv("HFMEAS_DYNLOAD")&&!strcmp(getenv("HFMEAS_DYNLOAD"),"0"))?0.0f:1.0f;
     val[HF_PS_GOTO]=-1.0f; val[HF_PS_BACKUP]=0.0f;
     for(int i=0;i<HF_N_PORTS;++i){ void* p;
         if(i==HF_IN_L)p=ain_l.data(); else if(i==HF_IN_R)p=ain_r.data();

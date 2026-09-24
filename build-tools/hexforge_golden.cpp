@@ -93,10 +93,12 @@ int main(int argc, char** argv) {
 #endif
 
     int maxPresets = 128;
-    bool compOn = false;   // --comp: render with the Component Model toggle ON (a global
+    bool compOn = true;    // shipped default since 2026-09-24 (--nocomp renders the shipped models); --comp kept for old scripts
+                           // (the Component Model toggle is a global
                            // tail port, so preset recall never touches it)
     for (int a = 1; a < argc; ++a) {
-        if (!strcmp(argv[a], "--comp")) { compOn = true; continue; }
+        if (!strcmp(argv[a], "--comp"))   { compOn = true;  continue; }
+        if (!strcmp(argv[a], "--nocomp")) { compOn = false; continue; }
         long v = strtol(argv[a], nullptr, 10); if (v >= 1 && v <= 128) maxPresets = (int)v;
     }
 
@@ -140,7 +142,7 @@ int main(int argc, char** argv) {
     inSeq(ctl); inSeq(midi); outSeq(notify);
 
     val[HF_PS_GOTO] = -1.0f;   // idle; per-preset recall below
-    if (compOn) val[HF_AMP_EVHCOMP] = 1.0f;
+    if (compOn) { val[HF_AMP_EVHCOMP] = 1.0f; val[HF_AMP_DYNLOAD] = 1.0f; }
 
     for (int i = 0; i < HF_N_PORTS; ++i) {
         void* p;

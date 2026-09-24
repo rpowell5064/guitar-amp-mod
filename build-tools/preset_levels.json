@@ -1,0 +1,402 @@
+{
+ "Anyone Can Play Guitar": {
+  "idx": 49,
+  "peak": -1.78,
+  "rms": -17.36
+ },
+ "Apache Echo": {
+  "idx": 37,
+  "peak": -11.55,
+  "rms": -24.84
+ },
+ "Berlin Wall Pulse": {
+  "idx": 17,
+  "peak": -1.97,
+  "rms": -25.68
+ },
+ "Blackwing Rise": {
+  "idx": 60,
+  "peak": -0.43,
+  "rms": -13.71
+ },
+ "Bottle Jangle": {
+  "idx": 33,
+  "peak": -2.95,
+  "rms": -16.31
+ },
+ "Boxed Bones": {
+  "idx": 63,
+  "peak": -8.02,
+  "rms": -20.95
+ },
+ "Bridge Vibe": {
+  "idx": 32,
+  "peak": -6.59,
+  "rms": -20.4
+ },
+ "Broken Crush": {
+  "idx": 46,
+  "peak": 6.57,
+  "rms": -8.08
+ },
+ "Brown Sound '84": {
+  "idx": 69,
+  "peak": -1.98,
+  "rms": -14.7
+ },
+ "Candlelit Clean": {
+  "idx": 8,
+  "peak": -9.32,
+  "rms": -25.58
+ },
+ "Cardinal Lead": {
+  "idx": 15,
+  "peak": -6.63,
+  "rms": -18.64
+ },
+ "Cardinal Rhythm": {
+  "idx": 14,
+  "peak": -6.71,
+  "rms": -18.56
+ },
+ "Castaway Groove": {
+  "idx": 51,
+  "peak": 1.18,
+  "rms": -13.0
+ },
+ "Clean": {
+  "idx": 0,
+  "peak": -1.85,
+  "rms": -18.27
+ },
+ "Come As Water": {
+  "idx": 7,
+  "peak": -10.95,
+  "rms": -24.76
+ },
+ "Con Molars": {
+  "idx": 47,
+  "peak": -5.68,
+  "rms": -16.69
+ },
+ "Crunch": {
+  "idx": 1,
+  "peak": -6.19,
+  "rms": -18.86
+ },
+ "Dark Side Air": {
+  "idx": 16,
+  "peak": -0.81,
+  "rms": -21.1
+ },
+ "Desert Robot": {
+  "idx": 38,
+  "peak": 5.1,
+  "rms": -6.49
+ },
+ "Disco Chuck": {
+  "idx": 35,
+  "peak": 2.0,
+  "rms": -19.41
+ },
+ "Dreamlit Shimmer": {
+  "idx": 29,
+  "peak": 0.11,
+  "rms": -18.99
+ },
+ "Flatliner": {
+  "idx": 30,
+  "peak": -1.57,
+  "rms": -16.82
+ },
+ "Forest Wash": {
+  "idx": 34,
+  "peak": 3.08,
+  "rms": -16.83
+ },
+ "Frayed Justice": {
+  "idx": 68,
+  "peak": -5.73,
+  "rms": -19.02
+ },
+ "Freedom Scratch": {
+  "idx": 62,
+  "peak": -6.96,
+  "rms": -22.41
+ },
+ "Fridge Grind": {
+  "idx": 73,
+  "peak": -0.5,
+  "rms": -17.0
+ },
+ "Fuzz Wall": {
+  "idx": 75,
+  "peak": -9.85,
+  "rms": -22.95
+ },
+ "Glide Wall": {
+  "idx": 41,
+  "peak": -5.19,
+  "rms": -18.41
+ },
+ "Gravity Lead": {
+  "idx": 19,
+  "peak": -1.68,
+  "rms": -16.74
+ },
+ "Grunge Drop": {
+  "idx": 55,
+  "peak": -9.41,
+  "rms": -22.05
+ },
+ "Hand in Cloud": {
+  "idx": 66,
+  "peak": -0.49,
+  "rms": -18.64
+ },
+ "Hazy Solo": {
+  "idx": 21,
+  "peak": -4.36,
+  "rms": -19.32
+ },
+ "Helsinki Clean": {
+  "idx": 76,
+  "peak": -3.23,
+  "rms": -20.84
+ },
+ "Helsinki Djent": {
+  "idx": 79,
+  "peak": -6.21,
+  "rms": -19.29
+ },
+ "Helsinki Heavy": {
+  "idx": 78,
+  "peak": -8.17,
+  "rms": -21.01
+ },
+ "Helsinki Rock": {
+  "idx": 77,
+  "peak": -0.75,
+  "rms": -13.07
+ },
+ "Holy Smoke": {
+  "idx": 23,
+  "peak": -3.1,
+  "rms": -15.36
+ },
+ "Homesick Saucer": {
+  "idx": 65,
+  "peak": -3.43,
+  "rms": -24.32
+ },
+ "I Saw a Deer": {
+  "idx": 67,
+  "peak": 4.15,
+  "rms": -11.26
+ },
+ "Imperial Lead": {
+  "idx": 13,
+  "peak": -5.96,
+  "rms": -21.52
+ },
+ "Imperial Rhythm": {
+  "idx": 12,
+  "peak": -4.23,
+  "rms": -20.52
+ },
+ "Innerspeaker Swirl": {
+  "idx": 40,
+  "peak": -12.36,
+  "rms": -23.9
+ },
+ "Jungle Sleaze": {
+  "idx": 71,
+  "peak": -8.37,
+  "rms": -23.65
+ },
+ "Knights of Fuzz": {
+  "idx": 57,
+  "peak": 2.37,
+  "rms": -12.6
+ },
+ "Lead": {
+  "idx": 3,
+  "peak": -0.05,
+  "rms": -13.5
+ },
+ "Little Feather": {
+  "idx": 22,
+  "peak": -5.0,
+  "rms": -20.74
+ },
+ "March Stabs": {
+  "idx": 44,
+  "peak": 3.03,
+  "rms": -11.08
+ },
+ "Marionette Master": {
+  "idx": 52,
+  "peak": -5.86,
+  "rms": -20.25
+ },
+ "Mauve Haze": {
+  "idx": 20,
+  "peak": -3.88,
+  "rms": -18.3
+ },
+ "Moondust Glam": {
+  "idx": 39,
+  "peak": -2.37,
+  "rms": -15.56
+ },
+ "Motor City": {
+  "idx": 74,
+  "peak": -2.44,
+  "rms": -17.93
+ },
+ "Nevermind Verse": {
+  "idx": 5,
+  "peak": -2.85,
+  "rms": -23.75
+ },
+ "Nevermind Wall": {
+  "idx": 6,
+  "peak": 2.02,
+  "rms": -10.14
+ },
+ "Numb Sustain": {
+  "idx": 18,
+  "peak": -2.23,
+  "rms": -14.87
+ },
+ "Plug-In Junior": {
+  "idx": 56,
+  "peak": -9.8,
+  "rms": -23.48
+ },
+ "Prayer Djent": {
+  "idx": 31,
+  "peak": -7.78,
+  "rms": -21.86
+ },
+ "Quarter-Tone Lead": {
+  "idx": 48,
+  "peak": -2.84,
+  "rms": -16.85
+ },
+ "Regal Solo": {
+  "idx": 43,
+  "peak": -4.66,
+  "rms": -17.12
+ },
+ "Regal Sustain": {
+  "idx": 4,
+  "peak": -6.74,
+  "rms": -18.95
+ },
+ "Retro Poland": {
+  "idx": 58,
+  "peak": -11.43,
+  "rms": -31.37
+ },
+ "Rhythm": {
+  "idx": 2,
+  "peak": -3.21,
+  "rms": -16.35
+ },
+ "Round Trip": {
+  "idx": 72,
+  "peak": -1.36,
+  "rms": -17.16
+ },
+ "Sermon Crunch": {
+  "idx": 9,
+  "peak": -7.95,
+  "rms": -21.27
+ },
+ "Sermon Rhythm": {
+  "idx": 10,
+  "peak": 0.56,
+  "rms": -13.76
+ },
+ "Sermon Solo": {
+  "idx": 11,
+  "peak": 0.52,
+  "rms": -14.95
+ },
+ "Sister's Singer": {
+  "idx": 70,
+  "peak": 2.95,
+  "rms": -11.83
+ },
+ "Skye (No Mod)": {
+  "idx": 25,
+  "peak": -5.78,
+  "rms": -17.01
+ },
+ "Skye Crusher": {
+  "idx": 24,
+  "peak": -10.52,
+  "rms": -22.27
+ },
+ "Skye Soar": {
+  "idx": 26,
+  "peak": -9.57,
+  "rms": -23.23
+ },
+ "Solar Monolith": {
+  "idx": 27,
+  "peak": 1.61,
+  "rms": -13.45
+ },
+ "Spectrum Lead": {
+  "idx": 54,
+  "peak": -6.4,
+  "rms": -18.53
+ },
+ "Spectrum Rhythm": {
+  "idx": 53,
+  "peak": 2.03,
+  "rms": -12.56
+ },
+ "Spiral Out": {
+  "idx": 61,
+  "peak": -4.19,
+  "rms": -15.35
+ },
+ "Stockholm Riff": {
+  "idx": 59,
+  "peak": -1.96,
+  "rms": -14.81
+ },
+ "Streets Chime": {
+  "idx": 42,
+  "peak": -9.49,
+  "rms": -21.63
+ },
+ "Surf Splash": {
+  "idx": 36,
+  "peak": -7.57,
+  "rms": -26.88
+ },
+ "Sweet Dispersion": {
+  "idx": 64,
+  "peak": -8.2,
+  "rms": -21.27
+ },
+ "Vanishing Drive": {
+  "idx": 28,
+  "peak": -4.17,
+  "rms": -21.32
+ },
+ "Winterborn": {
+  "idx": 50,
+  "peak": 0.34,
+  "rms": -13.19
+ },
+ "World Went Away": {
+  "idx": 45,
+  "peak": -8.34,
+  "rms": -21.84
+ }
+}

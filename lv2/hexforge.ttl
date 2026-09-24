@@ -3340,14 +3340,14 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 491 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model (Lab)" ;
+        lv2:index 491 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 492 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load (Lab)" ;
+        lv2:index 492 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load" ;
         lv2:portProperty lv2:toggled ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
@@ -4266,8 +4266,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         ] , [
             lv2:index 448 ; lv2:symbol "out_phase" ; lv2:name "Output Phase Invert"
         ] , [
-            lv2:index 449 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model (Lab)"
+            lv2:index 449 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model"
         ] , [
-            lv2:index 450 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load (Lab)"
+            lv2:index 450 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load"
         ]
     ] .
