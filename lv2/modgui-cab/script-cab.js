@@ -22,7 +22,7 @@ function (event, funcs) {
         });
         if (!label) { var s = '' + value; s = s.substring(s.lastIndexOf('/') + 1); s = s.substring(s.lastIndexOf('\\') + 1); label = s; }
         box.text(label);
-        if (('' + value).charAt(0) !== '@') cabTabSet(icon, 'cab');   // a user IR: show the basics
+        // (2026-09-24) a user IR no longer switches the tab: MIC & ROOM and the rigs stay where the player left them
     }
 
     // ── Mic pad (2026-07-14): drag the mic across the cone (Pos) / away from the grille (Dist) ──
@@ -131,9 +131,10 @@ function (event, funcs) {
     function rigDetect(icon) {
         var pvm = icon.data('cab_portv') || {};
         var ir = icon.data('cab_ir_cur') || '@factory'; if (ir === '' || ir === 'None') ir = '@factory';
+        var userIr = ir.charAt(0) !== '@';   // a user IR matches a rig by its settings alone
         var rigs = rigAll(icon), hit = -1;
         for (var k = 0; k < rigs.length && hit < 0; ++k) {
-            var r = rigs[k]; if (!r || r[2] !== ir) continue;
+            var r = rigs[k]; if (!r || (!userIr && r[2] !== ir)) continue;
             var ok = true;
             for (var i = 3; i < RIG_SYMS.length && ok; ++i) {
                 var v = pvm[RIG_SYMS[i]];
@@ -141,7 +142,7 @@ function (event, funcs) {
             }
             if (ok) hit = k;
         }
-        rigLabel(icon, hit >= 0 ? rigDisplayName(icon, rigs[hit]) : 'Custom');
+        rigLabel(icon, hit < 0 ? 'Custom' : (userIr ? rigCabName(icon, ir) + ' \u00b7 ' + rigs[hit][0] : rigDisplayName(icon, rigs[hit])));
         var rows = icon.find('[rata-role=riglist] > div.hf-rig-row');
         rows.removeClass('hf-rig-on'); if (hit >= 0) rows.eq(hit).addClass('hf-rig-on');
     }
@@ -149,13 +150,18 @@ function (event, funcs) {
         var r = rigAll(icon)[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
         var pvm = icon.data('cab_portv') || {};
         icon.data('cab_rig_busy', true);
-        if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI, 'p', r[2]);
-        set_irfile(icon, r[2]);
+        // A user IR stays: the rig then applies its mic placement, room and speaker settings to
+        // the player's own cab (2026-09-24). A built-in cab is swapped for the rig's cab as before.
+        var curIr = icon.data('cab_ir_cur') || '@factory', userIr = curIr !== '' && curIr.charAt(0) !== '@';
+        if (!userIr) {
+            if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI, 'p', r[2]);
+            set_irfile(icon, r[2]);
+        }
         for (var i = 0; i < RIG_SYMS.length; ++i) { funcs.set_port_value(RIG_SYMS[i], r[3 + i]); syncSel(icon, RIG_SYMS[i], r[3 + i]); pvm[RIG_SYMS[i]] = r[3 + i]; }
         icon.data('cab_micpos', r[6]); icon.data('cab_micdist', r[7]);
         icon.data('cab_m2pos', r[15]); icon.data('cab_m2dist', r[16]);
         micPadUpdate(icon);
-        rigLabel(icon, rigDisplayName(icon, r));
+        rigLabel(icon, userIr ? rigCabName(icon, curIr) + ' \u00b7 ' + r[0] : rigDisplayName(icon, r));
         icon.find('[rata-role=riglist] > div.hf-rig-row').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
         setTimeout(function () { icon.data('cab_rig_busy', false); }, 250);
     }

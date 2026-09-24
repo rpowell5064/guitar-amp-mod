@@ -11,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 640px;  /* 586 -> 640 (2026-07-25): Voice/Density moved to their own rows */
+    height: 660px;  /* 640 -> 660 (2026-09-24): measured live, the MIC & ROOM plate reached the panel edge; the plate now fills both tabs */
     width: 660px;   /* 600 -> 660 (2026-07-25): the two-column body was overflowing the plate */
     position: absolute;
     border-radius: 12px;
@@ -34,7 +34,7 @@
 
 /* ── Control plate (brushed enclosure + corner screws) ── */
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-plate {
-    position: relative; z-index: 5; box-sizing: border-box; min-height: 294px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
+    position: relative; z-index: 5; box-sizing: border-box; min-height: 564px;   /* both tabs: one plate size (CABINET centres its group) */ display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
     background-image:
         linear-gradient(180deg, rgba(255,255,255,.15) 0, rgba(255,255,255,0) 20%, rgba(0,0,0,.24) 100%),
         linear-gradient(158deg, var(--encl1), var(--encl2));

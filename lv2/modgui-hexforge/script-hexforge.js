@@ -590,9 +590,10 @@ function (event, funcs) {
             ir = RBCAB_SENT[rc];
         }
         if (ir === '' || ir === 'None') ir = '@factory';
+        var userIr = ir.charAt(0) !== '@';   // a user IR matches a rig by its settings alone
         var rigs = rigAll(icon), hit = -1;
         for (var k = 0; k < rigs.length && hit < 0; ++k) {
-            var r = rigs[k]; if (!r || r[2] !== ir) continue;
+            var r = rigs[k]; if (!r || (!userIr && r[2] !== ir)) continue;
             var ok = true;
             for (var i = 3; i < syms.length && ok; ++i) {           // i = 0..2 are lowcut / highcut / mix
                 var v = pvm[syms[i]];
@@ -600,7 +601,7 @@ function (event, funcs) {
             }
             if (ok) hit = k;
         }
-        rigLabel(icon, scope, hit >= 0 ? rigDisplayName(icon, scope, rigs[hit]) : 'Custom');
+        rigLabel(icon, scope, hit < 0 ? 'Custom' : (userIr ? rigCabName(icon, scope, ir) + ' \u00b7 ' + rigs[hit][0] : rigDisplayName(icon, scope, rigs[hit])));
         var rows = rigBox(icon, scope).find('[rata-role=riglist] > div.hf-rig-row');
         rows.removeClass('hf-rig-on'); if (hit >= 0) rows.eq(hit).addClass('hf-rig-on');
     }
@@ -608,20 +609,26 @@ function (event, funcs) {
         var r = rigAll(icon)[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
         var syms = RIG_SYMS[scope], pvm = icon.data('hf_portv') || {};
         icon.data('hf_rig_busy', true);
-        // the cab first: a direct patch message on the IR path parameter
-        if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI[scope], 'p', r[2]);
-        else {
-            var rata = scope === 'cab' ? 'Ir' : 'Ir2';
-            var opt = icon.find('[rata-role=' + rata + ']').closest('.mod-enumerated')
-                          .find('[mod-role=enumeration-option][mod-parameter-value="' + r[2] + '"]').first();
-            if (opt.length) opt.click();
+        // A user IR stays: the rig then applies its mic placement, room and speaker settings to
+        // the player's own cab (2026-09-24). A built-in cab is swapped for the rig's cab as before.
+        var curIr = scope === 'cab' ? (icon.data('hf_ir_cur') || '@factory') : (icon.data('hf_ir2') || '@builtin');
+        var userIr = curIr !== '' && curIr.charAt(0) !== '@';
+        if (!userIr) {
+            // the cab first: a direct patch message on the IR path parameter
+            if (typeof funcs.patch_set === 'function') funcs.patch_set(RIG_IR_URI[scope], 'p', r[2]);
+            else {
+                var rata = scope === 'cab' ? 'Ir' : 'Ir2';
+                var opt = icon.find('[rata-role=' + rata + ']').closest('.mod-enumerated')
+                              .find('[mod-role=enumeration-option][mod-parameter-value="' + r[2] + '"]').first();
+                if (opt.length) opt.click();
+            }
+            if (scope === 'cab') setIr(icon, r[2]); else { icon.data('hf_ir2', r[2]); setIr2Label(icon); }
         }
-        if (scope === 'cab') setIr(icon, r[2]); else { icon.data('hf_ir2', r[2]); setIr2Label(icon); }
         for (var i = 0; i < syms.length; ++i) { funcs.set_port_value(syms[i], r[3 + i]); syncSel(icon, syms[i], r[3 + i]); pvm[syms[i]] = r[3 + i]; }
         // mic pad: set_port_value is not echoed, sync by hand (same reason as preset recall)
         if (scope === 'cab') { icon.data('hf_micpos', r[6]); icon.data('hf_micdist', r[7]); icon.data('hf_m2pos', r[15]); icon.data('hf_m2dist', r[16]); micPadUpdate(icon, 'cab'); }
         else                 { icon.data('hf_rb_micpos', r[6]); icon.data('hf_rb_micdist', r[7]); icon.data('hf_rb_m2pos', r[15]); icon.data('hf_rb_m2dist', r[16]); micPadUpdate(icon, 'cab2'); }
-        rigLabel(icon, scope, rigDisplayName(icon, scope, r));
+        rigLabel(icon, scope, userIr ? rigCabName(icon, scope, curIr) + ' \u00b7 ' + r[0] : rigDisplayName(icon, scope, r));
         rigBox(icon, scope).find('[rata-role=riglist] > div.hf-rig-row').removeClass('hf-rig-on').eq(idx).addClass('hf-rig-on');
         setTimeout(function () { icon.data('hf_rig_busy', false); }, 250);
     }
@@ -920,7 +927,7 @@ function (event, funcs) {
         }
         if (CAB_NAMES[v]) { setFile(icon, 'Ir2', v, CAB_NAMES[v]); return; }
         setFile(icon, 'Ir2', v, 'Factory Cab (built-in)');
-        if (v !== '@builtin') cabTabSet(icon, 'cab2', 'cab');   // a user IR on Cab 2: show the basics
+        // (2026-09-24) a user IR on Cab 2 no longer switches its tab
     }
     // Cab panel tabs (2026-09-23): CABINET (voice, cuts, mix) | MIC & ROOM (speaker
     // model, mic pad, room). A user IR lands on CABINET — IR users get the basics
@@ -943,7 +950,7 @@ function (event, funcs) {
         }
         setFile(icon, 'Ir', value, null);            // user .wav → basename
         setNodeVal(icon, 'cab', icon.find('[rata-role=Ir]').first().text());
-        cabTabSet(icon, 'cab', 'cab');               // a user IR: show the basics
+        // (2026-09-24) a user IR no longer switches the tab: MIC & ROOM and the rigs stay available
     }
     // Level meters: the plugin sends in_meter/out_meter as 0..1 (dB-scaled); set the bar width.
     // Hot path (~14 Hz) — cache the raw DOM node (no jQuery .find() per tick) and skip sub-1%

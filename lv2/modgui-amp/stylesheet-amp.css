@@ -12,7 +12,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 600px;   /* FIXED height. Taller so the tallest tab panel's controls have comfortable bottom padding inside the plate (were jammed at the plate edge) + tolex footroom. */
+    height: 750px;   /* FIXED height (600 -> 750, 2026-09-24: measured live, the AMP tab face reaches 729 px on the models with a switch row - it hung 129 px off the panel).  Taller so the tallest tab panel's controls have comfortable bottom padding inside the plate (were jammed at the plate edge) + tolex footroom. */
     width: 820px;
     position: absolute;
     border-radius: 12px;
@@ -310,6 +310,7 @@
     /* per-model covering + welt piping (hf-face-mN sets these) */
     --cov: url(/resources/tolex-m1.png{{{ns}}}); --pipe: #ded6c4; --covsize: 128px; --covbase: #2a2a2e;
     position: relative; margin-top: 4px; padding: 26px 40px 46px;
+    min-height: 556px; display: flex; flex-direction: column;   /* fills the 750 px panel on every model; the plate stretches, its groups sit centred */
     border-radius: 14px 14px 10px 10px;
     /* THE CABINET. Layers, front to back: key light from the upper left, warm floor
        bounce, the rolled top edge catching the room, body falloff toward the bottom
@@ -451,6 +452,7 @@
 /* Brushed per-model control plate (var(--panel) = faceplate-mN.png; gold/cream/black/…) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate {
     position: relative; z-index: 3; padding: 12px 26px 16px;
+    flex: 1 1 auto; display: flex; flex-direction: column;
     /* No covering wrap: the faceplate is bare metal, and the PIPING around it is the neon
        (hf-neon-ring animates the whole box-shadow, ring and depth together). */
     border: 0; border-radius: 9px;
@@ -513,7 +515,7 @@
 /* m12 Diamond Plate (Mesa Dual Rectifier) reuses the black plate w/ a chrome diamond-plate silver tint */
 /* m13 Tremont 15 (PRS MT15) reuses the black plate w/ a deep PRS blue tint */
 /* grouped knob fieldsets on the plate */
-.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-agroups { margin-top: auto; margin-bottom: auto; display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup { flex: 0 1 auto; padding: 10px 14px 16px; border-radius: 10px; background: rgba(6,7,10,.42); border: 1px solid rgba(255,255,255,.10); }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-title { display: block; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--acc); margin-bottom: 6px; text-shadow: 0 0 8px rgba(0,0,0,.5); text-align: center; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-agroup-body { display: flex; flex-wrap: nowrap; gap: 4px 8px; justify-content: center; }
@@ -523,7 +525,7 @@
 /* ── POWER AMP: its own tolex chassis panel (matches the faceplate/cabinet) ── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-face {
     --acc:#19e0ff;
-    position: relative; margin: 6px 16px 10px; padding: 14px 18px 26px;
+    position: relative; margin: 6px 16px 10px; padding: 14px 18px 26px; min-height: 556px; box-sizing: border-box;
     border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
     background-color: #14161c;
     background-image:

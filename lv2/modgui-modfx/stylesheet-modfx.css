@@ -11,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 430px;
+    height: 490px;   /* 430 -> 490 (2026-09-24): the plate measured 477 px live */
     width: 460px;
     position: absolute;
     border-radius: 12px;
