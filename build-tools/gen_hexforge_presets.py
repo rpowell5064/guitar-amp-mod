@@ -166,7 +166,8 @@ def preset(bank, slot, name, cls="dirty", base=True, chain=None, rig=None, rig2=
 # ── loudness ─────────────────────────────────────────────────────────────────
 # Targets (dBFS RMS on the reference DI, out_level forced to -20 during measurement):
 TARGET = {"dirty": -12.5, "clean": -13.0, "sunn": -11.5, "bass": -13.0}
-PEAK_CAP = -1.0
+PEAK_CAP = {"dirty": -1.0, "clean": -1.0, "sunn": -1.0, "bass": 5.0}   # bass: the guitar DI's pick thump is
+                                                                        # not bass programme; the output limiter covers it
 def apply_levels():
     path = os.path.join(HERE, "preset_levels.json")
     if not os.path.exists(path):
@@ -180,8 +181,9 @@ def apply_levels():
             miss += 1; continue
         cls = CLASSES[key]
         out = -20.0 + (TARGET[cls] - m["rms"])
-        if m["peak"] + (out + 20.0) > PEAK_CAP:          # peak cap wins
-            out = -20.0 + (PEAK_CAP - m["peak"])
+        cap = PEAK_CAP[cls]
+        if m["peak"] + (out + 20.0) > cap:               # peak cap wins
+            out = -20.0 + (cap - m["peak"])
         out = max(-60.0, min(12.0, out))
         p["vals"][SYM_IDX["out_level"]] = round(out, 2)
         hit += 1

@@ -578,6 +578,32 @@ function (event, funcs) {
         return t.replace(/ \(.*\)$/, '');
     }
     function rigDisplayName(icon, scope, r) { return rigCabName(icon, scope, r[2]) + ' \u00b7 ' + r[0]; }
+    // Recognise the current cab as one of the rigs (factory or user) by its MICS, ROOM and
+    // speaker fields (2026-09-24). The low/high cuts and the cab mix are per-preset tone, not
+    // part of a rig, so they are ignored — a factory preset built on "Studio Pair" with its
+    // own high cut still reads "Factory 4x12 · Studio Pair" instead of "Custom".
+    function rigDetect(icon, scope) {
+        var pvm = icon.data('hf_portv') || {}, syms = RIG_SYMS[scope];
+        var ir = scope === 'cab' ? (icon.data('hf_ir_cur') || '@factory') : (icon.data('hf_ir2') || '@builtin');
+        if (scope === 'cab2' && (ir === '@builtin' || ir === '')) {
+            var rc = parseInt(icon.data('hf_rb_cab'), 10); if (isNaN(rc) || rc < 0 || rc > 10) rc = 0;
+            ir = RBCAB_SENT[rc];
+        }
+        if (ir === '' || ir === 'None') ir = '@factory';
+        var rigs = rigAll(icon), hit = -1;
+        for (var k = 0; k < rigs.length && hit < 0; ++k) {
+            var r = rigs[k]; if (!r || r[2] !== ir) continue;
+            var ok = true;
+            for (var i = 3; i < syms.length && ok; ++i) {           // i = 0..2 are lowcut / highcut / mix
+                var v = pvm[syms[i]];
+                if (v == null || Math.abs(parseFloat(v) - r[3 + i]) > 0.011) ok = false;
+            }
+            if (ok) hit = k;
+        }
+        rigLabel(icon, scope, hit >= 0 ? rigDisplayName(icon, scope, rigs[hit]) : 'Custom');
+        var rows = rigBox(icon, scope).find('[rata-role=riglist] > div.hf-rig-row');
+        rows.removeClass('hf-rig-on'); if (hit >= 0) rows.eq(hit).addClass('hf-rig-on');
+    }
     function rigApply(icon, scope, idx) {
         var r = rigAll(icon)[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
         var syms = RIG_SYMS[scope], pvm = icon.data('hf_portv') || {};
@@ -1160,6 +1186,7 @@ function (event, funcs) {
             var i = kv.indexOf('='); if (i < 0) return;
             var sym = kv.substring(0, i), val = parseFloat(kv.substring(i + 1));
             if (!sym || isNaN(val)) return;
+            { var _pv = icon.data('hf_portv'); if (_pv) _pv[sym] = val; }   // keep the live port map current (set_port_value is not echoed)
             if (/_pos$/.test(sym)) {
                 nodeOf(icon, sym.replace(/_pos$/, '')).attr('data-pos', val); sawPos = true;
             } else if (/_bypass$/.test(sym)) {
@@ -1207,7 +1234,7 @@ function (event, funcs) {
         if (sawPos || membership) resort(icon);
         if (membership) renderPalette(icon);
         micPadUpdate(icon, 'cab'); micPadUpdate(icon, 'cab2');
-        rigLabel(icon, 'cab', 'Custom'); rigLabel(icon, 'cab2', 'Custom');   // Phase 6: a recall is a hand-dialled set
+        rigDetect(icon, 'cab'); rigDetect(icon, 'cab2');   // a recall lands on its rig (or Custom)
         eqScope(icon);
         applyAmp(icon); applyRbAmp(icon); applyFuzz(icon); applyDelay(icon);
         if (drm != null) applyDrive(icon, drm);
@@ -1222,7 +1249,7 @@ function (event, funcs) {
         // NAM labels sat stale. Dispatch by the picker's parameter URI; also seed
         // the labels from the current parameter values at load.
         function fileLabel(uri, value) {
-            if (uri.indexOf('#irfile') >= 0)      setIr(icon, value);
+            if (uri.indexOf('#irfile') >= 0)      { setIr(icon, value); rigDetect(icon, 'cab'); }
             else if (uri.indexOf('#ampnam') >= 0) setFile(icon, 'AmpNam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#drnam') >= 0)  setFile(icon, 'DrNam', value, '-- choose a NAM file --');
             else if (uri.indexOf('#amp2nam') >= 0) setFile(icon, 'Amp2Nam', value, '-- choose a NAM file --');
@@ -1351,6 +1378,7 @@ function (event, funcs) {
         var map = {};
         (event.ports || []).forEach(function (p) { map[p.symbol] = p.value; });
         icon.data('hf_portv', map);   // live copy of every port value (user rigs read it back)
+        setTimeout(function () { rigDetect(icon, 'cab'); rigDetect(icon, 'cab2'); }, 300);   // after the IR labels have been seeded
         if ('amp_model' in map)     icon.data('hf_amp_m', parseInt(map.amp_model, 10));
         if ('amp_channel' in map)   icon.data('hf_amp_ch', parseFloat(map.amp_channel));
         if ('rb_channel' in map)    icon.data('hf_rb_ch', parseFloat(map.rb_channel));
@@ -1365,7 +1393,7 @@ function (event, funcs) {
         if ('rb_amp' in map)        icon.data('hf_rb_m', parseInt(map.rb_amp, 10));
         if ('rb_cab' in map)        icon.data('hf_rb_cab', parseInt(map.rb_cab, 10));
         setIr2Label(icon);
-        rigLabel(icon, 'cab', 'Custom'); rigLabel(icon, 'cab2', 'Custom');   // Phase 6: a recall is a hand-dialled set
+        rigDetect(icon, 'cab'); rigDetect(icon, 'cab2');   // a recall lands on its rig (or Custom)
         if ('rb_pamp_auto' in map)  icon.data('hf_rb_auto', map.rb_pamp_auto > 0.5);
         if ('out_voice' in map) icon.find('.hf-outvoice').toggleClass('hf-ov-on', map.out_voice > 0.5);   // seed FRFR knob visibility
         icon.find('[data-target=amp2]').toggleClass('hf-subnode-off', !(map.rb_enable > 0.5));
@@ -1608,8 +1636,8 @@ function (event, funcs) {
         if (s) { syncSel(icon, s, event.value);   // dropdown labels track every change
                  var pvm = icon.data('hf_portv'); if (pvm) pvm[s] = parseFloat(event.value); }
         if (s && !icon.data('hf_rig_busy')) {   // Phase 6: any hand edit of a cab port = a custom rig
-            if (/^cab_/.test(s)) rigLabel(icon, 'cab', 'Custom');
-            else if (/^rb_(cab|lowcut|highcut)/.test(s)) rigLabel(icon, 'cab2', 'Custom');
+            if (/^cab_/.test(s)) rigDetect(icon, 'cab');
+            else if (/^rb_(cab|lowcut|highcut)/.test(s)) rigDetect(icon, 'cab2');
         }
         if (s && /_pos$/.test(s)) {
             // NEVER write ports from a change echo (2026-08-23): a host-clamped

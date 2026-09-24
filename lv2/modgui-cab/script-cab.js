@@ -126,6 +126,25 @@ function (event, funcs) {
         rigBuild(icon);
     }
     function rigLabel(icon, name) { icon.find('[rata-role=rigname]').text(name); }
+    // Recognise the current cab as a rig by its mics, room and speaker fields (the low/high
+    // cuts and mix are per-preset tone) — mirrors Hex Forge (2026-09-24).
+    function rigDetect(icon) {
+        var pvm = icon.data('cab_portv') || {};
+        var ir = icon.data('cab_ir_cur') || '@factory'; if (ir === '' || ir === 'None') ir = '@factory';
+        var rigs = rigAll(icon), hit = -1;
+        for (var k = 0; k < rigs.length && hit < 0; ++k) {
+            var r = rigs[k]; if (!r || r[2] !== ir) continue;
+            var ok = true;
+            for (var i = 3; i < RIG_SYMS.length && ok; ++i) {
+                var v = pvm[RIG_SYMS[i]];
+                if (v == null || Math.abs(parseFloat(v) - r[3 + i]) > 0.011) ok = false;
+            }
+            if (ok) hit = k;
+        }
+        rigLabel(icon, hit >= 0 ? rigDisplayName(icon, rigs[hit]) : 'Custom');
+        var rows = icon.find('[rata-role=riglist] > div.hf-rig-row');
+        rows.removeClass('hf-rig-on'); if (hit >= 0) rows.eq(hit).addClass('hf-rig-on');
+    }
     function rigApply(icon, idx) {
         var r = rigAll(icon)[idx]; if (!r || !funcs || typeof funcs.set_port_value !== 'function') return;
         var pvm = icon.data('cab_portv') || {};
@@ -195,6 +214,7 @@ function (event, funcs) {
             if (pr.uri && pr.uri.indexOf('#irfile') >= 0) set_irfile(icon, pr.value);
             if (pr.uri && pr.uri.indexOf('#rigs') >= 0 && pr.value) rigParse(icon, pr.value);   // saved rigs from the device
         });
+        rigDetect(icon);
         icon.find('[mod-role=input-parameter] [mod-role=enumeration-option]').each(function () {
             var el = this;
             el.addEventListener('click', function () {
@@ -264,7 +284,10 @@ function (event, funcs) {
     } else if (event.type == 'change') {
         if (event.symbol) { syncSel(event.icon, event.symbol, event.value); var pvm = event.icon.data('cab_portv'); if (pvm) pvm[event.symbol] = parseFloat(event.value); }
         if (event.uri && event.uri.indexOf('#rigs') >= 0) rigParse(event.icon, event.value);   // saved rigs from the device
-        else if ((event.symbol || event.uri) && !event.icon.data('cab_rig_busy')) rigLabel(event.icon, 'Custom');   // any hand edit = a custom rig
+        else if ((event.symbol || event.uri) && !event.icon.data('cab_rig_busy')) {   // re-recognise the rig once the edits settle
+            var _ic = event.icon; clearTimeout(_ic.data('cab_rig_t'));
+            _ic.data('cab_rig_t', setTimeout(function () { rigDetect(_ic); }, 150));
+        }
         if (event.uri == 'https://rpowell5064.github.io/guitaramp-suite/cab#irfile')
             set_irfile(event.icon, event.value);
         else if (event.symbol === 'mic_pos')  { event.icon.data('cab_micpos',  parseFloat(event.value)); micPadUpdate(event.icon); }

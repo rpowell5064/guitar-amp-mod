@@ -35,7 +35,7 @@ B115     = ("@bass115",     "Room")
 # purpose (sustain beats hiss there).
 def gate(thresh, attack=1.5, hold=120, release=250, hyst=8):
     return {"thresh": thresh, "attack": attack, "hold": hold, "release": release, "hyst": hyst}
-FAST, MED, SLOW = 2, 5, 8           # the compressor's 0..10 attack / release scales
+FAST, MED, SLOW = 8, 5, 2           # the compressor's 0..10 attack / release scales (10 = FASTEST)
 def comp(type_, thresh, ratio, attack=MED, release=MED, knee=3, makeup=None):
     # CompressorBlock semantics (measured 2026-09-24: textbook thresholds cost 20-30 dB):
     #   Once76 (1176) — "threshold" is INPUT DRIVE (0 dBFS = barely, -60 = full); no auto makeup.
@@ -513,17 +513,23 @@ def bank_classic():
            rv=plate(0.15, 1.6, 10), gt=gate(-55))
     # C Sister's Singer — the user's cranked non-master Plexi, on Greenbacks in the room.
     preset(17, 2, "Sister's Singer", cls="dirty", rig=GBROOM, cab={"highcut": 8000})
-    # D Jungle Sleaze — Appetite: the S.I.R. Levi-modded 1959 (A, Clink) → the SIR mod switch ON; bone dry, small plate.
-    preset(17, 3, "Jungle Sleaze", cls="dirty", chain=["gt", "amp", "cab", "rv"], rig=TIGHT57,
+    # D Jungle Sleaze — the Welcome to the Jungle INTRO: the S.I.R. Levi-modded 1959 (A, Clink → SIR mod ON) through the
+    #   cascading echo (the SRV-2000's delay mode on the record): a quarter note at 124 BPM, three-four repeats, wet.
+    preset(17, 3, "Jungle Sleaze", cls="dirty", chain=["gt", "amp", "cab", "dl", "rv"], rig=TIGHT57,
            amp={"model": "Crunchy McCrunchFace", "sir34": 1, "gain": 0.7, "bass": 0.6, "mid": 0.65, "treble": 0.6, "presence": 0.55, "master": 0.7, "sag": 0.5},
-           cab={"lowcut": 75, "highcut": 8500}, rv=plate(0.06, 1.2, 25), gt=gate(-55))
+           cab={"lowcut": 75, "highcut": 8500}, dl=dig(quarter(124), 0.5, 0.45, 0.6), rv=plate(0.1, 1.4, 25), gt=gate(-55))
 
 # ═══ Bank 19 (index 18) — LOW END: the Blue Liner (Ampeg SVT twin) ═══════════
 def bank_low_end():
+    # A Round Trip — SVT clean and round: light comp, 8x10 close-miked, dry. (The Orange twin on clean pick
+    #   attacks passes a sub-ms transient 20 dB over its RMS that no block catches — it lives on the presets
+    #   whose front end already squashes the pick: Fuzz Wall and the Helsinki B7K pair.)
     preset(18, 0, "Round Trip", cls="bass", chain=["gt", "cp", "amp", "cab"], rig=B810,
            amp={"model": "Blue Liner", "gain": 0.35, "bass": 0.55, "mid": 0.5, "treble": 0.45, "master": 0.62,
                 "sv_ultralo": 0, "sv_ultrahi": 0, "sv_midfreq": "800 Hz"},
            cab={"lowcut": 38, "highcut": 9000}, cp=comp("5 Creature Amp", -20, "4:1", MED, MED), gt=gate(-50))
+    # B Fridge Grind — driven SVT, Ultra-Hi, 220 Hz mid push; the twin's own power section grinds. (The Orange twin
+    #   driven past ~0.4 spikes 20 dB over its RMS on the test DI, so it takes the clean bass presets instead.)
     preset(18, 1, "Fridge Grind", cls="bass", chain=["gt", "amp", "cab"], rig=B810,
            amp={"model": "Blue Liner", "gain": 0.72, "bass": 0.5, "mid": 0.65, "treble": 0.5, "master": 0.78,
                 "sv_ultralo": 0, "sv_ultrahi": 1, "sv_midfreq": "220 Hz"},
@@ -532,10 +538,10 @@ def bank_low_end():
            amp={"model": "Blue Liner", "gain": 0.30, "bass": 0.6, "mid": 0.45, "treble": 0.28, "master": 0.62,
                 "sv_ultralo": 1, "sv_ultrahi": 0, "sv_midfreq": "220 Hz"},
            cab={"lowcut": 40, "highcut": 6500, "roomon": 0}, cp=comp("5 Creature Amp", -18, "8:1", MED, SLOW), gt=gate(-50))
+    # D Fuzz Wall — Muff into a CLEAN Citrus 200 (the fuzz is line-hot; the Orange stays a clean platform), 4x10 + horn.
     preset(18, 3, "Fuzz Wall", cls="bass", chain=["gt", "fz", "amp", "cab"], cab_ir="@bass410h",
-           amp={"model": "Blue Liner", "gain": 0.25, "bass": 0.5, "mid": 0.5, "treble": 0.45, "master": 0.62,
-                "sv_ultralo": 0, "sv_ultrahi": 0, "sv_midfreq": "800 Hz"},
-           cab={"lowcut": 40, "highcut": 9000, "spkdrive": "Physical", "micpos": 0.05, "micdist": 0.05},
+           amp={"model": "Citrus 200", "gain": 0.35, "bass": 0.5, "mid": 0.5, "treble": 0.45, "master": 0.7, "sag": 0.4},
+           cab={"lowcut": 50, "highcut": 9000, "spkdrive": "Physical", "micpos": 0.05, "micdist": 0.05},
            gt=gate(-50))
 
 # ═══ Bank 20 (index 19) — HELSINKI: the Darkglass B7K into a clean Blue Liner ═══
@@ -543,12 +549,14 @@ def bank_helsinki():
     common = dict(amp={"model": "Blue Liner", "gain": 0.30, "bass": 0.55, "mid": 0.5, "treble": 0.45, "master": 0.62,
                        "sv_ultralo": 0, "sv_ultrahi": 0, "sv_midfreq": "800 Hz"},
                   gt=gate(-50))
+    # Clean + Rock ride a clean Citrus 200 (Orange AD200B twin) — the B7K's own squash tames the pick, the Orange adds the girth.
+    citrus = dict(amp={"model": "Citrus 200", "gain": 0.35, "bass": 0.5, "mid": 0.5, "treble": 0.45, "master": 0.7, "sag": 0.4}, gt=gate(-50))
     preset(19, 0, "Helsinki Clean", cls="bass", chain=["gt", "dr", "amp", "cab"], rig=B810,
            dr={"model": "Helsinki Grind", "drive": 0.25, "tone": 0.5, "level": 0.6},
-           cab={"lowcut": 38, "highcut": 9000}, **common)
+           cab={"lowcut": 45, "highcut": 9000}, **citrus)
     preset(19, 1, "Helsinki Rock", cls="bass", chain=["gt", "dr", "amp", "cab"], rig=B810,
            dr={"model": "Helsinki Grind", "drive": 0.75, "tone": 0.5, "level": 0.6},
-           cab={"lowcut": 38, "highcut": 9000}, **common)
+           cab={"lowcut": 45, "highcut": 9000}, **citrus)
     preset(19, 2, "Helsinki Heavy", cls="bass", chain=["gt", "dr", "amp", "cab"], cab_ir="@bass410h",
            dr={"model": "Helsinki Grind", "drive": 1.0, "tone": 0.5, "level": 0.6},
            cab={"lowcut": 38, "highcut": 9000, "spkdrive": "Physical", "micpos": 0.05, "micdist": 0.05}, **common)

@@ -6,13 +6,13 @@
  },
  "Apache Echo": {
   "idx": 37,
-  "peak": -11.55,
-  "rms": -24.84
+  "peak": -11.32,
+  "rms": -25.25
  },
  "Berlin Wall Pulse": {
   "idx": 17,
-  "peak": -1.97,
-  "rms": -25.68
+  "peak": -2.18,
+  "rms": -26.08
  },
  "Blackwing Rise": {
   "idx": 60,
@@ -22,7 +22,7 @@
  "Bottle Jangle": {
   "idx": 33,
   "peak": -2.95,
-  "rms": -16.31
+  "rms": -16.32
  },
  "Boxed Bones": {
   "idx": 63,
@@ -31,8 +31,8 @@
  },
  "Bridge Vibe": {
   "idx": 32,
-  "peak": -6.59,
-  "rms": -20.4
+  "peak": -6.6,
+  "rms": -20.34
  },
  "Broken Crush": {
   "idx": 46,
@@ -41,13 +41,13 @@
  },
  "Brown Sound '84": {
   "idx": 69,
-  "peak": -1.98,
-  "rms": -14.7
+  "peak": -4.12,
+  "rms": -15.3
  },
  "Candlelit Clean": {
   "idx": 8,
-  "peak": -9.32,
-  "rms": -25.58
+  "peak": -9.39,
+  "rms": -25.94
  },
  "Cardinal Lead": {
   "idx": 15,
@@ -96,13 +96,13 @@
  },
  "Disco Chuck": {
   "idx": 35,
-  "peak": 2.0,
-  "rms": -19.41
+  "peak": 1.94,
+  "rms": -19.36
  },
  "Dreamlit Shimmer": {
   "idx": 29,
   "peak": 0.11,
-  "rms": -18.99
+  "rms": -18.65
  },
  "Flatliner": {
   "idx": 30,
@@ -111,7 +111,7 @@
  },
  "Forest Wash": {
   "idx": 34,
-  "peak": 3.08,
+  "peak": 3.07,
   "rms": -16.83
  },
  "Frayed Justice": {
@@ -131,8 +131,8 @@
  },
  "Fuzz Wall": {
   "idx": 75,
-  "peak": -9.85,
-  "rms": -22.95
+  "peak": -7.66,
+  "rms": -22.13
  },
  "Glide Wall": {
   "idx": 41,
@@ -151,8 +151,8 @@
  },
  "Hand in Cloud": {
   "idx": 66,
-  "peak": -0.49,
-  "rms": -18.64
+  "peak": -0.46,
+  "rms": -18.96
  },
  "Hazy Solo": {
   "idx": 21,
@@ -161,8 +161,8 @@
  },
  "Helsinki Clean": {
   "idx": 76,
-  "peak": -3.23,
-  "rms": -20.84
+  "peak": 0.85,
+  "rms": -20.49
  },
  "Helsinki Djent": {
   "idx": 79,
@@ -176,17 +176,17 @@
  },
  "Helsinki Rock": {
   "idx": 77,
-  "peak": -0.75,
-  "rms": -13.07
+  "peak": 4.47,
+  "rms": -15.21
  },
  "Holy Smoke": {
   "idx": 23,
-  "peak": -3.1,
+  "peak": -3.11,
   "rms": -15.36
  },
  "Homesick Saucer": {
   "idx": 65,
-  "peak": -3.43,
+  "peak": -3.45,
   "rms": -24.32
  },
  "I Saw a Deer": {
@@ -206,13 +206,13 @@
  },
  "Innerspeaker Swirl": {
   "idx": 40,
-  "peak": -12.36,
-  "rms": -23.9
+  "peak": -12.67,
+  "rms": -24.32
  },
  "Jungle Sleaze": {
   "idx": 71,
-  "peak": -8.37,
-  "rms": -23.65
+  "peak": -7.54,
+  "rms": -22.42
  },
  "Knights of Fuzz": {
   "idx": 57,
@@ -227,7 +227,7 @@
  "Little Feather": {
   "idx": 22,
   "peak": -5.0,
-  "rms": -20.74
+  "rms": -20.71
  },
  "March Stabs": {
   "idx": 44,
@@ -252,7 +252,7 @@
  "Motor City": {
   "idx": 74,
   "peak": -2.44,
-  "rms": -17.93
+  "rms": -17.98
  },
  "Nevermind Verse": {
   "idx": 5,
@@ -371,8 +371,8 @@
  },
  "Streets Chime": {
   "idx": 42,
-  "peak": -9.49,
-  "rms": -21.63
+  "peak": -9.29,
+  "rms": -22.23
  },
  "Surf Splash": {
   "idx": 36,
@@ -381,8 +381,8 @@
  },
  "Sweet Dispersion": {
   "idx": 64,
-  "peak": -8.2,
-  "rms": -21.27
+  "peak": -7.83,
+  "rms": -21.78
  },
  "Vanishing Drive": {
   "idx": 28,
@@ -391,8 +391,8 @@
  },
  "Winterborn": {
   "idx": 50,
-  "peak": 0.34,
-  "rms": -13.19
+  "peak": 0.33,
+  "rms": -13.2
  },
  "World Went Away": {
   "idx": 45,
