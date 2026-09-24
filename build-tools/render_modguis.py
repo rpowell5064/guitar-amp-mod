@@ -13,7 +13,7 @@ THUMB_W = 280
 
 # pedal -> (ttl basename, width, height). Sizes are the .mod-pedal root w/h in each stylesheet.
 PEDALS = {
-    "amp":    ("amp.ttl",     820, 750),   # 2026-09-24: sized from live measurement (amp/cab/modfx/nail)
+    "amp":    ("amp.ttl",     820, 780),   # 2026-09-24: sized from live measurement (amp/cab/modfx/nail)
     "cab":    ("cab.ttl",     660, 660),   # widened 2026-07-25 (Voice/Density rows)
     "drive":  ("drive.ttl",   500, 430),
     "delay":  ("delay.ttl",   540, 576),

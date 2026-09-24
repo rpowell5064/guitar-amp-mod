@@ -12,7 +12,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 750px;   /* FIXED height (600 -> 750, 2026-09-24: measured live, the AMP tab face reaches 729 px on the models with a switch row - it hung 129 px off the panel).  Taller so the tallest tab panel's controls have comfortable bottom padding inside the plate (were jammed at the plate edge) + tolex footroom. */
+    height: 780px;   /* FIXED height (750 -> 780, 2026-09-24: on the two-row models (Gainzilla) the control groups sat on the plate's bottom edge, touching the tolex strip; 600 -> 750 earlier: measured live, the AMP tab face reaches 729 px on the models with a switch row - it hung 129 px off the panel).  Taller so the tallest tab panel's controls have comfortable bottom padding inside the plate (were jammed at the plate edge) + tolex footroom. */
     width: 820px;
     position: absolute;
     border-radius: 12px;
@@ -309,8 +309,8 @@
     --tint: rgba(0,0,0,0); --panel: none; --badge: #f3ead9;
     /* per-model covering + welt piping (hf-face-mN sets these) */
     --cov: url(/resources/tolex-m1.png{{{ns}}}); --pipe: #ded6c4; --covsize: 128px; --covbase: #2a2a2e;
-    position: relative; margin-top: 4px; padding: 26px 40px 46px;
-    min-height: 556px; display: flex; flex-direction: column;   /* fills the 750 px panel on every model; the plate stretches, its groups sit centred */
+    position: relative; margin-top: 4px; padding: 26px 40px 38px;
+    min-height: 586px; display: flex; flex-direction: column;   /* fills the 780 px panel on every model; the plate stretches, its groups sit centred */
     border-radius: 14px 14px 10px 10px;
     /* THE CABINET. Layers, front to back: key light from the upper left, warm floor
        bounce, the rolled top edge catching the room, body falloff toward the bottom
@@ -451,7 +451,7 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-grille { display: none; }
 /* Brushed per-model control plate (var(--panel) = faceplate-mN.png; gold/cream/black/…) */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-amp-plate {
-    position: relative; z-index: 3; padding: 12px 26px 16px;
+    position: relative; z-index: 3; padding: 12px 26px 24px;
     flex: 1 1 auto; display: flex; flex-direction: column;
     /* No covering wrap: the faceplate is bare metal, and the PIPING around it is the neon
        (hf-neon-ring animates the whole box-shadow, ring and depth together). */
@@ -525,7 +525,7 @@
 /* ── POWER AMP: its own tolex chassis panel (matches the faceplate/cabinet) ── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-pa-face {
     --acc:#19e0ff;
-    position: relative; margin: 6px 16px 10px; padding: 14px 18px 26px; min-height: 556px; box-sizing: border-box;
+    position: relative; margin: 6px 16px 10px; padding: 14px 18px 26px; min-height: 586px; box-sizing: border-box;
     border-radius: 12px; border: 1px solid rgba(255,255,255,.08);
     background-color: #14161c;
     background-image:
