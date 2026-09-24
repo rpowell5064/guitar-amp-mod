@@ -67,6 +67,14 @@ file(GLOB HF_MODGUI_ART "${HF_MODGUI}/*.png" "${HF_MODGUI}/*.jpg")
 list(REMOVE_ITEM HF_MODGUI_ART
     "${HF_MODGUI}/screenshot-hexforge.png"
     "${HF_MODGUI}/thumbnail-hexforge.png")
+# The knob and switch sprites live in subfolders; embed the WHOLE folders. Only
+# knobs/knob.png was listed before, so the six per-model knob families the
+# stylesheet references (knob-fender/-marshall/-mesa/-orange/-vox/-neural.png)
+# were missing from release builds — the macOS plugin drew no knobs (2026-09-24).
+# The Windows dev machine never showed it: with the repo checkout present the
+# editor serves the live files instead of BinaryData.
+file(GLOB HF_MODGUI_KNOBS    "${HF_MODGUI}/knobs/*.png")
+file(GLOB HF_MODGUI_SWITCHES "${HF_MODGUI}/switches/*.png")
 juce_add_binary_data(HexForgeAssets SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/icon-hexforge-desktop.html"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/stylesheet-hexforge-desktop.css"
@@ -74,8 +82,8 @@ juce_add_binary_data(HexForgeAssets SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/hexforge-ports.js"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/vendor/jquery.min.js"
     "${HF_MODGUI}/script-hexforge.js"
-    "${HF_MODGUI}/knobs/knob.png"
-    "${HF_MODGUI}/switches/powerswitch.png"
+    ${HF_MODGUI_KNOBS}
+    ${HF_MODGUI_SWITCHES}
     ${HF_MODGUI_ART}
 )
 
