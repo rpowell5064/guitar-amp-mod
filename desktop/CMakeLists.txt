@@ -9,7 +9,7 @@
 #   cmake --build desktop/out --config Release
 # ─────────────────────────────────────────────────────────────────────────────
 cmake_minimum_required(VERSION 3.22)
-project(HexForgeDesktop VERSION 0.1.0 LANGUAGES C CXX)
+project(HexForgeDesktop VERSION 1.19.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -42,7 +42,7 @@ if(WIN32)
     set(HF_PLATFORM_PLUGIN_ARGS NEEDS_WEBVIEW2 TRUE)
 endif()
 juce_add_plugin(HexForge
-    VERSION                  0.1.0
+    VERSION                  1.19.0
     COMPANY_NAME             "Hex Chain"
     PRODUCT_NAME             "Hex Forge"
     PLUGIN_MANUFACTURER_CODE "HxCh"

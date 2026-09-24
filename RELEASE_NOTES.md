@@ -1,5 +1,45 @@
 # Hex Chain Release Notes
 
+## v1.19.0 — 2026-09-24
+
+The component update. Nine amps are now built as circuits from their own drawings and run
+that way by default, the cabinet stage becomes a physical speaker with a second mic, a
+room and a rig selector, every factory preset was rebuilt for the new engine, the amp
+panels got real cabinet artwork, and the suite runs on Windows and macOS as a plugin and a
+standalone app.
+
+### Added
+
+- **Component builds for nine amps.** Gainzilla, Crunchy McCrunchFace, Beardo BE, Cali V, Diamond Plate, Tangerang, Chime Thirty, Blue Liner and Plexiglass each gain a second engine traced stage by stage from the amp's own schematic — every tube, coupling cap, tone network and the power section with its output transformer — instead of a fitted model. The **Component Build** switch is on by default in Hex Forge and the standalone amp; switch it off to get the previous models. An **Engine Quality** choice (Standard 4× oversampling / Eco 2×) trades a little top-end cleanliness for about half the CPU, and the shared triode evaluation is table-driven, which took 25–40 % off the component amps' CPU on a Pi.
+- **Dynamic Load.** The component power sections can drive a large-signal speaker model as their load instead of a fixed impedance curve: the cone's excursion, back-EMF, inductance and coil heating pull on the output stage the way a real cab does. Transparent at small signal; on by default.
+- **Citrus 200** (amp model 16) — the suite's second bass amp: a 200-watt British bass head with four 6550s and a long-tail-pair phase splitter, built from its drawings and carrying its own power section.
+- **Three pedals rebuilt as circuits.** The Tube Chauffeur is the tube-driver circuit as drawn in its patent; the Uni-Verse is the photocell phase-shifter from the original 1969 unit's schematic (the stages are not all-pass filters, and the LFO shape falls out of the lamp); the Echo Primer is the tape echo's input preamp from its service manual.
+- **The cabinet is a speaker now.** Speaker Drive gains a **Physical** mode — a state-based driver with excursion limits, suspension stiffening, cone breakup and cone cry, calibrated in volts against each amp's real output — plus **Cab Mic 2** (a second virtual mic with its own type, position, distance, blend, time alignment and polarity), a **Space** room density (an image-source room with early reflections), and a **Rig** selector: eleven factory rigs (mic pair, room and speaker settings per built-in cab) and your own rigs, saved on the device. The cab panel splits into CABINET | MIC & ROOM; when you load your own IR file the panel shows the basics only.
+- **Amp head artwork.** Each amp model has its own covered cabinet — tolex, rolled edge, corner protectors — with the faceplate set into it, per-model knob families, and neon piping that cycles colour and lights the panel, in Hex Forge and the standalone amp.
+- **Windows and macOS builds.** Hex Forge now ships as a VST3 (and AU on macOS) plus a standalone app, built by CI into a rolling "desktop-latest" pre-release on every push. The macOS app asks for microphone access so it can hear the interface.
+- **Hex Forge lands on the last preset after a restart.** The cursor is remembered across power cycles.
+- **The standalone amp** gets the Component Build, Dynamic Load and Engine Quality controls in an ENGINE group on its Power Amp tab.
+- **pi-Stomp integration** (installer in build-tools): the LCD title shows the Hex Forge bank and preset name, the four footswitch LEDs follow the active preset, and each footswitch press selects its preset reliably. The hook re-applies itself after pi-Stomp updates.
+
+### Changed
+
+- **Every factory preset was rebuilt** for the component engines, the dynamic load and the cab rigs, from per-song rig research and then measured and loudness-levelled on the device. The high-gain Diamond Plate presets all use its Modern channel 3. Second amps and cabs are gone from every preset. The old nu-metal bank is now **MODERN ROCK**; Jungle Sleaze is the famous delayed intro; Regal Solo runs one tape echo; the output doubler is off everywhere. **This refresh rewrites the 80 factory slots** (banks 1–20). Presets you saved in those slots are replaced — save copies into banks 21–32 or take a backup before updating.
+- **The amps were re-voiced against real-amp captures**: the 5150-class Red and Blue channels' presence and gain taper, the 2203-class low-mid hump, the Cali V channel 3 low-mids, per-mode voicing and power-amp drive on the Diamond Plate, the Tangerang's low resonance and dirty presence, the Beardo BE's presence shelf, four passes on the Tube Chauffeur, the Chime Thirty's Top Boost coupling (it had been wired to the Normal channel's cap), the Blue Liner's low end (a network traced to the wrong node), and the Plexiglass variac, which now glides instead of rebuilding the amp.
+- **The Cali V graphic EQ is the real slider circuit**, not five peaking filters.
+- **Standalone panels** were measured live and resized so nothing hangs off its plate: the amp is taller with the control groups centred on the faceplate, the cab fits MIC 2 open, modulation and nail grew, the rig selector and group titles are readable.
+- **The standalone amp defaults Component Build and Dynamic Load to on**, matching Hex Forge.
+
+### Fixed
+
+- **A crash in the audio host.** Loading a cabinet while the audio thread was under an xrun burst could put the loader and the audio thread on the same convolver, corrupting memory; the host died with "double free or corruption". The cab now hands IRs and speaker rows across with a three-slot lock-free scheme. The same change cures a related bug where the physical speaker could keep the previous cabinet's cone on some presets.
+- **A distorted tail on clean amps into the open-back cab.** The clean amps had no volts calibration of their own for the physical speaker and were driving a 30-watt open-back cone like a 210-watt head. Each shared-power-amp model now carries its measured calibration.
+- **Aliasing and "ring modulator" artefacts** on several component builds (a missing Miller capacitance, an input limiter that had been a lookup table, oversampling that had been halved), the tone network being wiped every audio block on one amp, a bass-amp follower solve that fell into bisection under load, and the Tube Chauffeur's scratchiness.
+- **Preset recalls read their rig once the IR lands**, and a blank or unchanged rename is ignored (a pedalboard snapshot could blank a preset's name).
+- **Reverb in mono rigs** keeps its voiced wet/dry balance.
+- **The preset compressor helper had attack and release backwards** on the generator side; every compressed preset was re-measured.
+
+---
+
 ## v1.18.0 — 2026-09-05
 
 The bass update — and a deep re-voice pass on the guitar side. The suite grows a
