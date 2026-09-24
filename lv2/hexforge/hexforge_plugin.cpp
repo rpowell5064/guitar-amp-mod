@@ -260,6 +260,9 @@ static void hf_run(LV2_Handle h, uint32_t n) {
                     if (which == u.ps_name) {
                         const char* s = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
                         Preset& pr = p->presets[p->curBank][p->curSlot];
+                        // A blank or unchanged name is never a rename (2026-09-24: Bank 1 A came
+                        // up "(empty)" after a stray empty ps_name replay blanked "Clean").
+                        if (s[0] == '\0' || std::strcmp(s, pr.name) == 0) continue;
                         std::strncpy(pr.name, s, sizeof(pr.name)-1); pr.name[sizeof(pr.name)-1]='\0';
                         for (char* c=pr.name; *c; ++c) if (*c=='|') *c=' ';   // keep index delimiter clean
                         pr.used = true;

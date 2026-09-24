@@ -1542,8 +1542,9 @@ function (event, funcs) {
             var el = this;
             el.addEventListener('mousedown', function (e) { e.stopPropagation(); });
             var commit = function () {
-                if (funcs && typeof funcs.patch_set === 'function')
-                    funcs.patch_set(PS_NAME_URI, 's', el.value.replace(/\|/g, ' '));
+                var nm = el.value.replace(/\|/g, ' ').replace(/^\s+|\s+$/g, '');
+                if (nm && funcs && typeof funcs.patch_set === 'function')   // never send a blank name (2026-09-24)
+                    funcs.patch_set(PS_NAME_URI, 's', nm);
                 el.blur();
             };
             el.addEventListener('change', commit);
