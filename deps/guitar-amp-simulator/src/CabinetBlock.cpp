@@ -74,7 +74,7 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
             for (int c = 0; c < kMaxCh; ++c)
                 convolvers_[s][c].setIR(&impulse, 1);
     }
-    frontSlot_.store(0, std::memory_order_relaxed);
+    irSt_.clear();
 }
 
 void CabinetBlock::setIR(const std::vector<float>& irLeft,
@@ -84,12 +84,10 @@ void CabinetBlock::setIR(const std::vector<float>& irLeft,
     storedIR_.ch[1] = (irRight && !irRight->empty()) ? *irRight : irLeft;
     storedIR_.valid = true;
 
-    // Write to the back slot (audio thread never reads the back slot).
-    const int back = 1 - frontSlot_.load(std::memory_order_relaxed);
-    loadIRIntoSlot(back);
-
-    // Publish: next audio block sees the new IR.
-    frontSlot_.store(back, std::memory_order_release);
+    // Write a slot the audio thread is neither on nor about to claim, then publish.
+    const int w = irSt_.freeSlot();
+    loadIRIntoSlot(w);
+    irSt_.publish(w);
 }
 
 void CabinetBlock::loadIRIntoSlot(int slot) {
@@ -100,15 +98,15 @@ void CabinetBlock::loadIRIntoSlot(int slot) {
 }
 
 void CabinetBlock::setSpeakerParams(const SpeakerParams& sp) {
-    const int back = 1 - spkParamFront_.load(std::memory_order_relaxed);
-    spkParams_[back] = sp;
-    spkParamFront_.store(back, std::memory_order_release);
+    const int w = spkSt_.freeSlot();
+    spkParams_[w] = sp;
+    spkSt_.publish(w);
 }
 
 // Audio thread: (re)derive the speaker model when a new row was published or
 // the source resistance / sample rate changed. Pure arithmetic, no allocation.
 void CabinetBlock::spkPrepareIfNeeded() noexcept {
-    const int front = spkParamFront_.load(std::memory_order_acquire);
+    const int front = spkSt_.claim();
     if (front == spkParamSeen_ && !spkNeedPrep_) return;
     spkParamSeen_ = front; spkNeedPrep_ = false;
     SpeakerParams sp = spkParams_[front];
@@ -284,13 +282,13 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     if (bypassed) { copyBlock(in, out, numSamples, nCh); return; }
 
     // Load front slot once — consistent L/R for the whole block, never blocks.
-    const int slot    = frontSlot_.load(std::memory_order_acquire);
+    const int slot    = irSt_.claim();
     const int chCount = std::min(nCh, kMaxCh);
     if (monoActive_ && chCount > 1) {
         // Returning to true stereo after the mono fast path: ch1's conv/EQ state
         // is stale — clear it (one-time; transitions coincide with user edits).
         monoActive_ = false;
-        for (int sl = 0; sl < kNumSlots; ++sl) convolvers_[sl][1].reset();
+        convolvers_[slot][1].reset();   // only the claimed slot: the others may be mid-load on the message thread
         spk_[1].reset();
         mic2_[1].reset();
         auto& e = eqState_[1];
@@ -449,8 +447,10 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
 }
 
 void CabinetBlock::reset() noexcept {
-    for (int s = 0; s < kNumSlots; ++s)
-        for (int c = 0; c < kMaxCh; ++c) convolvers_[s][c].reset();
+    // Only the slot this thread owns. A slot the message thread is loading resets itself
+    // at the end of setIR(); sweeping every slot here raced that load (2026-09-24).
+    { const int s = irSt_.claim();
+      for (int c = 0; c < kMaxCh; ++c) convolvers_[s][c].reset(); }
     for (auto& e : eqState_) {
         e.lowCut.reset(); e.highCut.reset();
         e.micLP.reset(); e.micBite.reset(); e.micBody.reset();
@@ -484,7 +484,7 @@ void CabinetBlock::reset() noexcept {
 // identical channels through process() at roughly half the cost.
 void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexcept {
     if (bypassed) { std::copy(L, L + numSamples, R); return; }
-    const int slot = frontSlot_.load(std::memory_order_acquire);
+    const int slot = irSt_.claim();
     monoActive_ = true;
 
     std::copy(L, L + numSamples, dryBuf_.begin());

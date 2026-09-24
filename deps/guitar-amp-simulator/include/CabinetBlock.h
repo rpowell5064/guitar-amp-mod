@@ -136,12 +136,36 @@ private:
     bool  mic2PosOn_ = false;    // position LP only when moved off the cap (like the primary)
 
     static constexpr int kMaxCh    = 2;
-    static constexpr int kNumSlots = 2;  // double-buffer: front / back
+    // Lock-free handoff from the message thread to the audio thread (2026-09-24).
+    // The old two-slot scheme wrote "1 - front" and assumed the audio thread had
+    // already picked up the previous publish; two loads inside one (long, xrun-ing)
+    // audio block, or the audio thread's reset() sweeping every slot, put both
+    // threads on the same convolver — glibc's "double free or corruption (out)" in
+    // mod-host, twice on 2026-09-24. Three slots and one packed word: `front` is the
+    // latest publish, `inUse` the slot the audio thread claimed at block start. The
+    // writer picks the slot that is neither; the reader claims front and inUse in one
+    // CAS, so the writer can never pick the slot the reader is on or about to be on.
+    struct SlotState {
+        std::atomic<uint32_t> st{0};                         // front | (inUse << 8)
+        int  claim() noexcept {                              // audio thread, block start: inUse = front
+            uint32_t s = st.load(std::memory_order_acquire);
+            for (;;) { const uint32_t n = (s & 0xffu) | ((s & 0xffu) << 8);
+                       if (n == s || st.compare_exchange_weak(s, n, std::memory_order_acq_rel)) return int(n & 0xffu); } }
+        int  peek() const noexcept { return int(st.load(std::memory_order_acquire) & 0xffu); }
+        int  freeSlot() const noexcept {                     // message thread: a slot the reader cannot be on
+            const uint32_t s = st.load(std::memory_order_acquire); const int f = int(s & 0xffu), u = int((s >> 8) & 0xffu);
+            for (int i = 0; i < 3; ++i) if (i != f && i != u) return i;
+            return f; }
+        void publish(int w) noexcept {                       // message thread, after the slot is fully written
+            uint32_t s = st.load(std::memory_order_acquire);
+            for (;;) { const uint32_t n = (s & ~0xffu) | uint32_t(w);
+                       if (st.compare_exchange_weak(s, n, std::memory_order_acq_rel)) return; } }
+        void clear() noexcept { st.store(0, std::memory_order_release); }
+    };
+    static constexpr int kNumSlots = 3;
 
-    // Double-buffered convolvers: audio thread reads [frontSlot_][ch],
-    // message thread writes [1 - frontSlot_][ch] then swaps the index.
     OlaConvolver            convolvers_[kNumSlots][kMaxCh];
-    std::atomic<int>        frontSlot_{0};
+    SlotState               irSt_;
 
     // Stored raw IR for re-applying when prepare() is called (e.g. sample-rate change).
     struct StoredIR {
@@ -204,8 +228,8 @@ private:
     };
     std::array<SpkDriveState, kMaxCh> spkState_;
     std::array<SpeakerModel, kMaxCh> spk_;
-    SpeakerParams     spkParams_[kNumSlots];      // [front] read by audio, [back] written by message thread
-    std::atomic<int>  spkParamFront_{0};
+    SpeakerParams     spkParams_[kNumSlots];      // same three-slot handoff as the IR
+    SlotState         spkSt_;
     int               spkParamSeen_ = -1;          // audio-thread: last front index prepared
     bool              spkNeedPrep_  = true;        // audio-thread: rout/sr changed → re-derive
     void spkPrepareIfNeeded() noexcept;
