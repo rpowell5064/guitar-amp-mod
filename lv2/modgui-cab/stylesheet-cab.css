@@ -11,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 660px;  /* 640 -> 660 (2026-09-24): measured live, the MIC & ROOM plate reached the panel edge; the plate now fills both tabs */
+    height: 790px;  /* 660 -> 790 (2026-09-24): measured live with MIC 2 open on the mic pad, the plate reaches 775 px; the plate fills both tabs */
     width: 660px;   /* 600 -> 660 (2026-07-25): the two-column body was overflowing the plate */
     position: absolute;
     border-radius: 12px;
@@ -34,7 +34,7 @@
 
 /* ── Control plate (brushed enclosure + corner screws) ── */
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-plate {
-    position: relative; z-index: 5; box-sizing: border-box; min-height: 564px;   /* both tabs: one plate size (CABINET centres its group) */ display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
+    position: relative; z-index: 5; box-sizing: border-box; min-height: 694px;   /* both tabs: one plate size, sized for MIC & ROOM with MIC 2 open (CABINET centres its group) */ display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
     background-image:
         linear-gradient(180deg, rgba(255,255,255,.15) 0, rgba(255,255,255,0) 20%, rgba(0,0,0,.24) 100%),
         linear-gradient(158deg, var(--encl1), var(--encl2));
@@ -211,7 +211,9 @@
 
 /* ── RIG selector (2026-09-22): a port-less dropdown in the picker's clothes ── */
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-rig { position: relative; margin-top: 6px; }
-.mod-pedal-guitaramp-cab{{{cns}}} .hf-rigsel .hf-rigcur { position: relative; z-index: 50; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* The rig selector is not a .mod-enumerated (no port behind it), so it takes the dropdown box look here — it was bare, near-invisible text (user 2026-09-24) */
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-sel.hf-rigsel { background-color: rgba(0,0,0,.5); border: 1px solid rgba(86,170,255,.55); border-radius: 4px; font-family:"Helvetica Neue",Helvetica,Arial,sans-serif; font-size: 13px; font-weight: bold; color: #fff; line-height: 1.9; position: relative; overflow: visible; text-align: left; }
+.mod-pedal-guitaramp-cab{{{cns}}} .hf-rigsel .hf-rigcur { position: relative; z-index: 50; padding: 0 9px; color: #fff; opacity: 1; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-rigsel .hf-rigcur::after { content: "\25BE"; float: right; opacity: .6; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-riglist { display: none; background-color: rgba(0,0,0,.92); color: #fff; width: 100%; max-height: 240px; overflow: auto; position: absolute; left: 0; z-index: 9000 !important; border: 1px solid #56aaff; border-radius: 0 0 4px 4px; }
 .mod-pedal-guitaramp-cab{{{cns}}} .hf-rig.open .hf-riglist { display: block; }
