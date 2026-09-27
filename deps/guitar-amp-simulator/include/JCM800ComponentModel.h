@@ -77,7 +77,13 @@ private:
     float gainMid_ = 0.25f;   // VR1 1M log: fraction at half rotation (fit0 in the lab harness)
     // Output-transformer low-resonance depth (dB) at ~110 Hz. Sets the low-mid weight;
     // the printed value humped the low-mids, so it is a tuning lever. fit2 in the lab harness.
-    float zResDb_  = 6.0f;
+    // zResDb REVISED 2026-09-26, AFTER the OT saturation stage was corrected. The two belong
+    // together: the old stage soft-limited the low band at a fixed few volts, so a large LF
+    // resonance boost was needed to claw the lows back. With saturation modelled properly in
+    // the flux domain that boost is excessive, and far less of it is right.
+    // (derivation kept out of the public tree)
+    float zResDb_  = 2.0f;
+    double fluxSatV_ = 56.6;   // fit3: OT core saturation, peak volts at 40 Hz (100 W into 16 ohms)
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

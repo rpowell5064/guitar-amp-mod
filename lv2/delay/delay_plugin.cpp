@@ -24,8 +24,10 @@ enum DelayPorts {
     P_MODDEP  = 15,   // Seraph: modulation depth
     P_MODRATE = 16,   // Seraph: modulation rate
     P_AGE     = 17,   // EP-3: worn-transport / oxide age (ignored by others)
+    P_ENABLED,            // lv2:designation lv2:enabled — the host's block enable.
+                          // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+    P_RESET,              // KosmOS: kx:Reset trigger
 #endif
     P_N_PORTS
 };
@@ -54,9 +56,9 @@ static LV2_Handle delay_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) DelayPlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 2);
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
-    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
     p->ports[P_RESET]   = nullptr;
 #endif
     return p;
@@ -78,12 +80,11 @@ static void delay_run(LV2_Handle h, uint32_t n) {
             p->lastType = -1;   // re-apply the delay type below
         }
     } else p->resetLatch = false;
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+#endif
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
                      (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
-#else
-    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
-#endif
 
     const int type = static_cast<int>(*p->ports[P_TYPE] + 0.5f);
     if (type != p->lastType) {

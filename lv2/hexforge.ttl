@@ -11,6 +11,7 @@
 @prefix urid:  <http://lv2plug.in/ns/ext/urid#> .
 @prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix midi:  <http://lv2plug.in/ns/ext/midi#> .
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
@@ -95,6 +96,106 @@
     rdfs:label "Saved Rigs" ;
     rdfs:range atom:String .
 
+# ── Port groups: one pg:Group per chain block (generic-UI hosts page by these) ──
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master>
+    a pg:Group ; lv2:symbol "g_master" ; lv2:name "Master" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it>
+    a pg:Group ; lv2:symbol "g_it" ; lv2:name "Input Trim" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt>
+    a pg:Group ; lv2:symbol "g_gt" ; lv2:name "Gate" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp>
+    a pg:Group ; lv2:symbol "g_cp" ; lv2:name "Comp" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz>
+    a pg:Group ; lv2:symbol "g_fz" ; lv2:name "Fuzz" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore>
+    a pg:Group ; lv2:symbol "g_fzmore" ; lv2:name "Fuzz More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr>
+    a pg:Group ; lv2:symbol "g_dr" ; lv2:name "Drive" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore>
+    a pg:Group ; lv2:symbol "g_drmore" ; lv2:name "Drive More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp>
+    a pg:Group ; lv2:symbol "g_amp" ; lv2:name "Amp" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore>
+    a pg:Group ; lv2:symbol "g_ampmore" ; lv2:name "Amp More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa>
+    a pg:Group ; lv2:symbol "g_amppa" ; lv2:name "Amp Power Amp" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab>
+    a pg:Group ; lv2:symbol "g_cab" ; lv2:name "Cabinet" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md>
+    a pg:Group ; lv2:symbol "g_md" ; lv2:name "Mod FX" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore>
+    a pg:Group ; lv2:symbol "g_mdmore" ; lv2:name "Mod FX More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl>
+    a pg:Group ; lv2:symbol "g_dl" ; lv2:name "Delay" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore>
+    a pg:Group ; lv2:symbol "g_dlmore" ; lv2:name "Delay More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv>
+    a pg:Group ; lv2:symbol "g_rv" ; lv2:name "Reverb" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore>
+    a pg:Group ; lv2:symbol "g_rvmore" ; lv2:name "Reverb More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh>
+    a pg:Group ; lv2:symbol "g_wh" ; lv2:name "Wah" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc>
+    a pg:Group ; lv2:symbol "g_oc" ; lv2:name "Octave" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore>
+    a pg:Group ; lv2:symbol "g_cabmore" ; lv2:name "Cabinet More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail>
+    a pg:Group ; lv2:symbol "g_nail" ; lv2:name "Nail" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq>
+    a pg:Group ; lv2:symbol "g_eq" ; lv2:name "EQ" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2>
+    a pg:Group ; lv2:symbol "g_dr2" ; lv2:name "Drive 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more>
+    a pg:Group ; lv2:symbol "g_dr2more" ; lv2:name "Drive 2 More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2>
+    a pg:Group ; lv2:symbol "g_amp2" ; lv2:name "Amp 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more>
+    a pg:Group ; lv2:symbol "g_amp2more" ; lv2:name "Amp 2 More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2>
+    a pg:Group ; lv2:symbol "g_cab2" ; lv2:name "Cab 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa>
+    a pg:Group ; lv2:symbol "g_amp2pa" ; lv2:name "Amp 2 Power Amp" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2>
+    a pg:Group ; lv2:symbol "g_gt2" ; lv2:name "Gate 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2>
+    a pg:Group ; lv2:symbol "g_cp2" ; lv2:name "Comp 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2>
+    a pg:Group ; lv2:symbol "g_fz2" ; lv2:name "Fuzz 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more>
+    a pg:Group ; lv2:symbol "g_fz2more" ; lv2:name "Fuzz 2 More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2>
+    a pg:Group ; lv2:symbol "g_nail2" ; lv2:name "Nail 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2>
+    a pg:Group ; lv2:symbol "g_md2" ; lv2:name "Mod FX 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more>
+    a pg:Group ; lv2:symbol "g_md2more" ; lv2:name "Mod FX 2 More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2>
+    a pg:Group ; lv2:symbol "g_dl2" ; lv2:name "Delay 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more>
+    a pg:Group ; lv2:symbol "g_dl2more" ; lv2:name "Delay 2 More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2>
+    a pg:Group ; lv2:symbol "g_rv2" ; lv2:name "Reverb 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more>
+    a pg:Group ; lv2:symbol "g_rv2more" ; lv2:name "Reverb 2 More" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2>
+    a pg:Group ; lv2:symbol "g_wh2" ; lv2:name "Wah 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2>
+    a pg:Group ; lv2:symbol "g_oc2" ; lv2:name "Octave 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2>
+    a pg:Group ; lv2:symbol "g_eq2" ; lv2:name "EQ 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch>
+    a pg:Group ; lv2:symbol "g_footswitch" ; lv2:name "Footswitches" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets>
+    a pg:Group ; lv2:symbol "g_presets" ; lv2:name "Presets" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner>
+    a pg:Group ; lv2:symbol "g_tuner" ; lv2:name "Tuner" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu>
+    a pg:Group ; lv2:symbol "g_cpu" ; lv2:name "CPU Meters" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate>
+    a pg:Group ; lv2:symbol "g_calibrate" ; lv2:name "Calibration" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice>
+    a pg:Group ; lv2:symbol "g_outvoice" ; lv2:name "Output Voice" .
+
 <https://rpowell5064.github.io/guitaramp-suite/hexforge>
     a lv2:Plugin, lv2:AmplifierPlugin ;
     rdfs:label "Hex Chain — Hex Forge" ;
@@ -104,7 +205,7 @@
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
-    rdfs:comment """Your entire guitar AND bass rig in one plugin — 14 amps (incl. a classic all-tube bass head), 11 drives, 4 fuzzes, mod/delay/3-type reverb/EQ/wah/octave, cab mic + room, 60+ song-inspired presets, footswitch recall, and a full node-chain UI.
+    rdfs:comment """Your entire guitar AND bass rig in one plugin — 15 amps (incl. two all-tube bass heads), 11 drives, 4 fuzzes, mod/delay/3-type reverb/EQ/wah/octave, cab mic + room, 60+ song-inspired presets, footswitch recall, and a full node-chain UI.
 
 Hex Forge is the flagship — the whole Hex Chain signal chain in a SINGLE plugin, rebuilt around a modern node-chain interface: every block is a card you tap to edit, drag to reorder, and click to bypass, with per-model faceplates, live tone readouts and a built-in strobe tuner.
 
@@ -120,7 +221,7 @@ A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory r
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 267 ;
+    lv2:microVersion 269 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -161,49 +262,59 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "out_level" ; lv2:name "Output Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         units:unit units:db ;
         lv2:default -20.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 8 ; lv2:symbol "clip" ; lv2:name "Clip" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 9 ; lv2:symbol "it_enable" ; lv2:name "Input Trim Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "it_gain" ; lv2:name "IT Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "it_phase" ; lv2:name "IT Phase" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 12 ; lv2:symbol "it_hum" ; lv2:name "IT Hum Filter" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 13 ; lv2:symbol "it_humbk" ; lv2:name "IT Humbucker" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 14 ; lv2:symbol "it_hbamt" ; lv2:name "IT HB Amount" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 15 ; lv2:symbol "it_hbmodel" ; lv2:name "IT HB Model" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "'59 Bucker" ; rdf:value 0 ] ;
@@ -212,16 +323,19 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 16 ; lv2:symbol "it_boost" ; lv2:name "IT Boost" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 17 ; lv2:symbol "it_boostamt" ; lv2:name "IT Boost Amt" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         units:unit units:db ;
         lv2:default 4.0 ; lv2:minimum 0.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 18 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -251,36 +365,43 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 19 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 20 ; lv2:symbol "gt_thresh" ; lv2:name "Gate Threshold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         units:unit units:db ;
         lv2:default -60.0 ; lv2:minimum -80.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 21 ; lv2:symbol "gt_attack" ; lv2:name "Gate Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         units:unit units:ms ;
         lv2:default 2.0 ; lv2:minimum 0.1 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 22 ; lv2:symbol "gt_hold" ; lv2:name "Gate Hold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         units:unit units:ms ;
         lv2:default 120.0 ; lv2:minimum 0.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 23 ; lv2:symbol "gt_release" ; lv2:name "Gate Release" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         units:unit units:ms ;
         lv2:default 250.0 ; lv2:minimum 10.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 24 ; lv2:symbol "gt_hyst" ; lv2:name "Gate Hysteresis" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         units:unit units:db ;
         lv2:default 8.0 ; lv2:minimum 0.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 25 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 2 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -310,11 +431,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 26 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 27 ; lv2:symbol "cp_type" ; lv2:name "Comp Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "5 Creature Amp" ; rdf:value 0 ] ;
@@ -322,11 +445,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 28 ; lv2:symbol "cp_thresh" ; lv2:name "Comp Threshold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         units:unit units:db ;
         lv2:default -18.0 ; lv2:minimum -60.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 29 ; lv2:symbol "cp_ratio" ; lv2:name "Comp Ratio" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "2:1" ; rdf:value 0 ] ;
@@ -337,22 +462,27 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 30 ; lv2:symbol "cp_attack" ; lv2:name "Comp Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 31 ; lv2:symbol "cp_release" ; lv2:name "Comp Release" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 32 ; lv2:symbol "cp_knee" ; lv2:name "Comp Knee" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:default 3.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 33 ; lv2:symbol "cp_makeup" ; lv2:name "Comp Makeup" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 34 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 3 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -382,11 +512,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 35 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 36 ; lv2:symbol "fz_pedal" ; lv2:name "Fuzz Pedal" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Italian Hero" ; rdf:value 0 ] ;
@@ -396,6 +528,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 37 ; lv2:symbol "fz_mode" ; lv2:name "Fuzz Variant" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Delta" ; rdf:value 0 ] ;
@@ -407,30 +540,37 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 38 ; lv2:symbol "fz_sustain" ; lv2:name "Fuzz Sustain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 39 ; lv2:symbol "fz_tone" ; lv2:name "Fuzz Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 40 ; lv2:symbol "fz_volume" ; lv2:name "Fuzz Volume" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:default 0.65 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 41 ; lv2:symbol "fz_bias" ; lv2:name "Fuzz Bias" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 42 ; lv2:symbol "fz_inputtrim" ; lv2:name "Fuzz Input Trim" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 43 ; lv2:symbol "fz_getemp" ; lv2:name "Fuzz Ge Temp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 44 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 4 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -460,11 +600,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 45 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 46 ; lv2:symbol "dr_model" ; lv2:name "Drive Model" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 11 ;
         lv2:scalePoint [ rdfs:label "Green Man" ; rdf:value 0 ] ;
@@ -482,26 +624,32 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 47 ; lv2:symbol "dr_drive" ; lv2:name "Drive Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 48 ; lv2:symbol "dr_tone" ; lv2:name "Drive Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 49 ; lv2:symbol "dr_level" ; lv2:name "Drive Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 50 ; lv2:symbol "dr_mix" ; lv2:name "Drive Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 51 ; lv2:symbol "dr_octave" ; lv2:name "Drive Octave" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 52 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 5 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -531,11 +679,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 53 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 54 ; lv2:symbol "amp_model" ; lv2:name "Amp Model" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 15 ;
         lv2:scalePoint [ rdfs:label "Clean Meanie" ; rdf:value 0 ] ;
@@ -557,47 +707,58 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 55 ; lv2:symbol "amp_gain" ; lv2:name "Amp Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 56 ; lv2:symbol "amp_bass" ; lv2:name "Amp Bass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 57 ; lv2:symbol "amp_mid" ; lv2:name "Amp Mid" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 58 ; lv2:symbol "amp_treble" ; lv2:name "Amp Treble" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 59 ; lv2:symbol "amp_presence" ; lv2:name "Amp Presence" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 60 ; lv2:symbol "amp_master" ; lv2:name "Amp Master" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 61 ; lv2:symbol "amp_sag" ; lv2:name "Amp Sag" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 62 ; lv2:symbol "amp_channel" ; lv2:name "Amp Channel" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 63 ; lv2:symbol "amp_resonance" ; lv2:name "Amp Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 64 ; lv2:symbol "amp_sunn_vol2" ; lv2:name "Amp Brite Vol" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 65 ; lv2:symbol "amp_sunn_link" ; lv2:name "Amp Ch Link" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Independent" ; rdf:value 0 ] ;
@@ -606,11 +767,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 66 ; lv2:symbol "amp_pamp_bypass" ; lv2:name "Amp PA Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 67 ; lv2:symbol "amp_pamp_tube" ; lv2:name "Amp Power Tube" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
@@ -622,62 +785,76 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 68 ; lv2:symbol "amp_pamp_presence" ; lv2:name "Amp PA Presence" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 69 ; lv2:symbol "amp_pamp_depth" ; lv2:name "Amp PA Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.18 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 70 ; lv2:symbol "amp_pamp_sag" ; lv2:name "Amp PA Sag" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.33 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 71 ; lv2:symbol "amp_pamp_master" ; lv2:name "Amp PA Master" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.62 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 72 ; lv2:symbol "amp_pamp_nfb" ; lv2:name "Amp PA NFB" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.42 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 73 ; lv2:symbol "amp_pamp_resonance" ; lv2:name "Amp PA Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 74 ; lv2:symbol "amp_pamp_airfeel" ; lv2:name "Amp Air Feel" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 75 ; lv2:symbol "amp_pamp_auto" ; lv2:name "Amp PA Auto" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 76 ; lv2:symbol "amp_sunn_bass2" ; lv2:name "Amp Brite Bass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 77 ; lv2:symbol "amp_sunn_mid2" ; lv2:name "Amp Brite Mid" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 78 ; lv2:symbol "amp_sunn_treble2" ; lv2:name "Amp Brite Treble" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 79 ; lv2:symbol "amp_sunn_bright1" ; lv2:name "Amp Bright I" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 80 ; lv2:symbol "amp_sunn_bright2" ; lv2:name "Amp Bright II" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 81 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -707,25 +884,30 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 82 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 83 ; lv2:symbol "cab_lowcut" ; lv2:name "Cabinet Low Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab> ;
         units:unit units:hz ;
         lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 84 ; lv2:symbol "cab_highcut" ; lv2:name "Cabinet High Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab> ;
         units:unit units:hz ;
         lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 85 ; lv2:symbol "cab_mix" ; lv2:name "Cabinet Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 86 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 7 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -755,11 +937,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 87 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 88 ; lv2:symbol "md_type" ; lv2:name "Modulation Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Lush-2" ; rdf:value 0 ] ;
@@ -774,22 +958,27 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 89 ; lv2:symbol "md_rate" ; lv2:name "Modulation Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 90 ; lv2:symbol "md_depth" ; lv2:name "Modulation Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 91 ; lv2:symbol "md_mix" ; lv2:name "Modulation Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 92 ; lv2:symbol "md_width" ; lv2:name "Modulation Width" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 93 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 8 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -819,11 +1008,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 94 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 95 ; lv2:symbol "dl_type" ; lv2:name "Delay Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Digital" ; rdf:value 0 ] ;
@@ -834,31 +1025,38 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 96 ; lv2:symbol "dl_time" ; lv2:name "Delay Time" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         units:unit units:ms ;
         lv2:default 250.0 ; lv2:minimum 1.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 97 ; lv2:symbol "dl_feedback" ; lv2:name "Delay Feedback" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 0.98
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 98 ; lv2:symbol "dl_mix" ; lv2:name "Delay Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 99 ; lv2:symbol "dl_width" ; lv2:name "Delay Width" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 100 ; lv2:symbol "dl_wow" ; lv2:name "Delay Wow" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.003 ; lv2:minimum 0.0 ; lv2:maximum 0.05
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 101 ; lv2:symbol "dl_flutter" ; lv2:name "Delay Flutter" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.001 ; lv2:minimum 0.0 ; lv2:maximum 0.02
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 102 ; lv2:symbol "dl_heads" ; lv2:name "Delay Heads" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 10 ; lv2:minimum 0 ; lv2:maximum 11 ;
         lv2:scalePoint [ rdfs:label "1: Head 1" ; rdf:value 0 ] ;
@@ -876,6 +1074,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 103 ; lv2:symbol "dl_pattern" ; lv2:name "Delay Pattern" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Unison" ; rdf:value 0 ] ;
@@ -885,18 +1084,22 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 104 ; lv2:symbol "dl_ducking" ; lv2:name "Delay Ducking" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 105 ; lv2:symbol "dl_moddepth" ; lv2:name "Delay Mod Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 106 ; lv2:symbol "dl_modrate" ; lv2:name "Delay Mod Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 107 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 9 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -926,36 +1129,44 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 108 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 109 ; lv2:symbol "rv_predelay" ; lv2:name "Reverb Pre-Delay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         units:unit units:ms ;
         lv2:default 10.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 110 ; lv2:symbol "rv_decay" ; lv2:name "Reverb Decay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv> ;
         lv2:default 1.5 ; lv2:minimum 0.1 ; lv2:maximum 8.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 111 ; lv2:symbol "rv_damping" ; lv2:name "Reverb Damping" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 0.99
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 112 ; lv2:symbol "rv_moddepth" ; lv2:name "Reverb Mod Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 113 ; lv2:symbol "rv_modrate" ; lv2:name "Reverb Mod Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         lv2:default 0.8 ; lv2:minimum 0.01 ; lv2:maximum 5.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 114 ; lv2:symbol "rv_mix" ; lv2:name "Reverb Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv> ;
         lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 115 ; lv2:symbol "wh_pos" ; lv2:name "Wah Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 10 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -985,11 +1196,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 116 ; lv2:symbol "wh_enable" ; lv2:name "Wah Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 117 ; lv2:symbol "wh_type" ; lv2:name "Wah Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Auto" ; rdf:value 0 ] ;
@@ -997,26 +1210,32 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 118 ; lv2:symbol "wh_freq" ; lv2:name "Wah Freq" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 119 ; lv2:symbol "wh_depth" ; lv2:name "Wah Range" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 120 ; lv2:symbol "wh_sens" ; lv2:name "Wah Sens" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 121 ; lv2:symbol "wh_q" ; lv2:name "Wah Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:default 0.6 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 122 ; lv2:symbol "wh_mix" ; lv2:name "Wah Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 123 ; lv2:symbol "oc_pos" ; lv2:name "Octave Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 11 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -1046,23 +1265,28 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 124 ; lv2:symbol "oc_enable" ; lv2:name "Octave Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 125 ; lv2:symbol "oc_up" ; lv2:name "Octave Octave Up" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 126 ; lv2:symbol "oc_down" ; lv2:name "Octave Sub Octave" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 127 ; lv2:symbol "oc_dry" ; lv2:name "Octave Dry" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 128 ; lv2:symbol "amp_fr_channel" ; lv2:name "Amp BE Chan" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -1071,76 +1295,91 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 129 ; lv2:symbol "amp_fr_fat" ; lv2:name "Amp Fat" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 130 ; lv2:symbol "amp_fr_c45" ; lv2:name "Amp C45" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 131 ; lv2:symbol "amp_fr_sat" ; lv2:name "Amp Sat" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 132 ; lv2:symbol "gt_bypass" ; lv2:name "Gate Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 133 ; lv2:symbol "cp_bypass" ; lv2:name "Comp Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 134 ; lv2:symbol "fz_bypass" ; lv2:name "Fuzz Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 135 ; lv2:symbol "dr_bypass" ; lv2:name "Drive Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 136 ; lv2:symbol "amp_bypass" ; lv2:name "Amp Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 137 ; lv2:symbol "cab_bypass" ; lv2:name "Cabinet Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 138 ; lv2:symbol "md_bypass" ; lv2:name "Modulation Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 139 ; lv2:symbol "dl_bypass" ; lv2:name "Delay Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 140 ; lv2:symbol "rv_bypass" ; lv2:name "Reverb Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 141 ; lv2:symbol "wh_bypass" ; lv2:name "Wah Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 142 ; lv2:symbol "oc_bypass" ; lv2:name "Octave Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 143 ; lv2:symbol "nail_pos" ; lv2:name "Nail Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 12 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -1170,11 +1409,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 144 ; lv2:symbol "nail_enable" ; lv2:name "Nail Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 145 ; lv2:symbol "nail_mode" ; lv2:name "Nail Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Broke" ; rdf:value 0 ] ;
@@ -1185,32 +1426,39 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 146 ; lv2:symbol "nail_drive" ; lv2:name "Nail Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:default 0.6 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 147 ; lv2:symbol "nail_tone" ; lv2:name "Nail Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 148 ; lv2:symbol "nail_texture" ; lv2:name "Nail Texture" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 149 ; lv2:symbol "nail_level" ; lv2:name "Nail Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 150 ; lv2:symbol "nail_bypass" ; lv2:name "Nail Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 151 ; lv2:symbol "dl_sync" ; lv2:name "Delay Clock Sync" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 152 ; lv2:symbol "dl_div" ; lv2:name "Delay Division" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 5 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "1/2" ; rdf:value 0 ] ;
@@ -1224,11 +1472,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 153 ; lv2:symbol "md_sync" ; lv2:name "Mod Clock Sync" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 154 ; lv2:symbol "md_div" ; lv2:name "Mod Division" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "1/2" ; rdf:value 0 ] ;
@@ -1242,10 +1492,12 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 155 ; lv2:symbol "oc_micro" ; lv2:name "Octave Microtonal" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 156 ; lv2:symbol "oc_interval" ; lv2:name "Octave Interval" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "1/4 Up" ; rdf:value 0 ] ;
@@ -1257,6 +1509,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 157 ; lv2:symbol "amp_mv_mode" ; lv2:name "Amp Mesa Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 6 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -1271,26 +1524,32 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 158 ; lv2:symbol "amp_mv_geq0" ; lv2:name "Amp EQ 80" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 159 ; lv2:symbol "amp_mv_geq1" ; lv2:name "Amp EQ 240" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 160 ; lv2:symbol "amp_mv_geq2" ; lv2:name "Amp EQ 750" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 161 ; lv2:symbol "amp_mv_geq3" ; lv2:name "Amp EQ 2.2k" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 162 ; lv2:symbol "amp_mv_geq4" ; lv2:name "Amp EQ 6.6k" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 163 ; lv2:symbol "amp_mv_eqpreset" ; lv2:name "Amp EQ Preset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Custom" ; rdf:value 0 ] ;
@@ -1302,66 +1561,80 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 164 ; lv2:symbol "md_offset" ; lv2:name "Mod Center Delay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore> ;
         units:unit units:ms ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 165 ; lv2:symbol "amp_nam_gain" ; lv2:name "Amp NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 166 ; lv2:symbol "amp_nam_vol" ; lv2:name "Amp NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 167 ; lv2:symbol "dr_nam_gain" ; lv2:name "Drive NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 168 ; lv2:symbol "dr_nam_vol" ; lv2:name "Drive NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 169 ; lv2:symbol "cab_nam_gain" ; lv2:name "Cab NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 170 ; lv2:symbol "cab_nam_vol" ; lv2:name "Cab NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 171 ; lv2:symbol "amp_pl_vol2" ; lv2:name "Amp Vol II" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 172 ; lv2:symbol "cab_micpos" ; lv2:name "Cab Mic Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 173 ; lv2:symbol "cab_micdist" ; lv2:name "Cab Mic Distance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 174 ; lv2:symbol "cab_roomon" ; lv2:name "Cab Room" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 175 ; lv2:symbol "cab_roommix" ; lv2:name "Cab Room Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.12 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 176 ; lv2:symbol "cab_roomamt" ; lv2:name "Cab Room Amount" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 177 ; lv2:symbol "amp_rc_mode" ; lv2:name "Amp Recto Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 7 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "CH1 Clean" ; rdf:value 0 ] ;
@@ -1375,6 +1648,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 178 ; lv2:symbol "amp_rc_variac" ; lv2:name "Amp Recto Variac" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Bold" ; rdf:value 0 ] ;
@@ -1382,6 +1656,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 179 ; lv2:symbol "amp_rc_rect" ; lv2:name "Amp Recto Rectifier" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Silicon" ; rdf:value 0 ] ;
@@ -1389,6 +1664,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 180 ; lv2:symbol "amp_mt_mode" ; lv2:name "Amp MT Channel" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -1397,6 +1673,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 181 ; lv2:symbol "amp_mt_bright" ; lv2:name "Amp MT Bright" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
@@ -1404,6 +1681,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 182 ; lv2:symbol "cab_voice" ; lv2:name "Cab Voice" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Room" ; rdf:value 0 ] ;
@@ -1411,11 +1689,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 183 ; lv2:symbol "out_doubler" ; lv2:name "Output Doubler" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 184 ; lv2:symbol "eq_pos" ; lv2:name "EQ Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -1445,11 +1725,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 185 ; lv2:symbol "eq_enable" ; lv2:name "EQ Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 186 ; lv2:symbol "eq_preset" ; lv2:name "EQ Preset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 6 ;
         lv2:scalePoint [ rdfs:label "Manual" ; rdf:value 0 ] ;
@@ -1462,54 +1744,65 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 187 ; lv2:symbol "eq_100" ; lv2:name "EQ 100 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 188 ; lv2:symbol "eq_200" ; lv2:name "EQ 200 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 189 ; lv2:symbol "eq_400" ; lv2:name "EQ 400 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 190 ; lv2:symbol "eq_800" ; lv2:name "EQ 800 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 191 ; lv2:symbol "eq_1k6" ; lv2:name "EQ 1.6 kHz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 192 ; lv2:symbol "eq_3k2" ; lv2:name "EQ 3.2 kHz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 193 ; lv2:symbol "eq_level" ; lv2:name "EQ Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 194 ; lv2:symbol "eq_bypass" ; lv2:name "EQ Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 195 ; lv2:symbol "it_load" ; lv2:name "IT Pickup Load" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 196 ; lv2:symbol "amp_pamp_coupl" ; lv2:name "Amp Speaker Coupling" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amppa> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 197 ; lv2:symbol "rv_density" ; lv2:name "Reverb Density" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
@@ -1517,6 +1810,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 198 ; lv2:symbol "rv_type" ; lv2:name "Reverb Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Plate" ; rdf:value 0 ] ;
@@ -1525,6 +1819,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 199 ; lv2:symbol "cab_roomdense" ; lv2:name "Cab Room Density" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
@@ -1533,10 +1828,12 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 200 ; lv2:symbol "rv_bloom" ; lv2:name "Reverb Bloom" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rvmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 201 ; lv2:symbol "cab_spkdrive" ; lv2:name "Cab Speaker Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
@@ -1546,6 +1843,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 202 ; lv2:symbol "md_shape" ; lv2:name "Tremolo Shape" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_mdmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Bias" ; rdf:value 0 ] ;
@@ -1554,20 +1852,24 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 203 ; lv2:symbol "fz_gvol" ; lv2:name "Guitar Vol" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore> ;
         lv2:default 1.0 ; lv2:minimum 0.05 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 204 ; lv2:symbol "quality" ; lv2:name "Amp Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 205 ; lv2:symbol "dr_eco" ; lv2:name "Drive Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 206 ; lv2:symbol "dr2_pos" ; lv2:name "Drive 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 14 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -1597,11 +1899,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 207 ; lv2:symbol "dr2_enable" ; lv2:name "Drive 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 208 ; lv2:symbol "dr2_model" ; lv2:name "Drive 2 Model" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "Green Man" ; rdf:value 0 ] ;
@@ -1616,42 +1920,51 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 209 ; lv2:symbol "dr2_drive" ; lv2:name "Drive 2 Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 210 ; lv2:symbol "dr2_tone" ; lv2:name "Drive 2 Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 211 ; lv2:symbol "dr2_level" ; lv2:name "Drive 2 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 212 ; lv2:symbol "dr2_mix" ; lv2:name "Drive 2 Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 213 ; lv2:symbol "dr2_octave" ; lv2:name "Drive 2 Octave" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 214 ; lv2:symbol "dr2_eco" ; lv2:name "Drive 2 Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 215 ; lv2:symbol "dr2_bypass" ; lv2:name "Drive 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 216 ; lv2:symbol "rb_enable" ; lv2:name "Amp 2 In Chain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 217 ; lv2:symbol "rb_amp" ; lv2:name "Rig B Amp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 15 ;
         lv2:scalePoint [ rdfs:label "Clean Meanie" ; rdf:value 0 ] ;
@@ -1673,44 +1986,54 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 218 ; lv2:symbol "rb_gain" ; lv2:name "Rig B Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 219 ; lv2:symbol "rb_bass" ; lv2:name "Rig B Bass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 220 ; lv2:symbol "rb_mid" ; lv2:name "Rig B Mid" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 221 ; lv2:symbol "rb_treble" ; lv2:name "Rig B Treble" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 222 ; lv2:symbol "rb_presence" ; lv2:name "Rig B Presence" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 223 ; lv2:symbol "rb_master" ; lv2:name "Rig B Master" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 224 ; lv2:symbol "rb_sag" ; lv2:name "Rig B Sag" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 225 ; lv2:symbol "rb_channel" ; lv2:name "Rig B Channel" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 226 ; lv2:symbol "rb_eco" ; lv2:name "Rig B Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 227 ; lv2:symbol "rb_cab" ; lv2:name "Rig B Cab" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 10 ;
         lv2:scalePoint [ rdfs:label "Factory 4x12 (Thirty-Something)" ; rdf:value 0 ] ;
@@ -1727,38 +2050,46 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 228 ; lv2:symbol "rb_lowcut" ; lv2:name "Rig B Cab Low Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         units:unit units:hz ;
         lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 229 ; lv2:symbol "rb_highcut" ; lv2:name "Rig B Cab High Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         units:unit units:hz ;
         lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 230 ; lv2:symbol "rb_blend" ; lv2:name "Rig B Blend A/B" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 231 ; lv2:symbol "rb_level" ; lv2:name "Rig B B Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 232 ; lv2:symbol "rb_pol" ; lv2:name "Rig B B Invert" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 233 ; lv2:symbol "rb_resonance" ; lv2:name "Rig B Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 234 ; lv2:symbol "rb_sunn_vol2" ; lv2:name "Rig B Brite Vol" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 235 ; lv2:symbol "rb_sunn_link" ; lv2:name "Rig B Ch Link" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Independent" ; rdf:value 0 ] ;
@@ -1767,28 +2098,34 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 236 ; lv2:symbol "rb_sunn_bass2" ; lv2:name "Rig B Brite Bass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 237 ; lv2:symbol "rb_sunn_mid2" ; lv2:name "Rig B Brite Mid" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 238 ; lv2:symbol "rb_sunn_treble2" ; lv2:name "Rig B Brite Treble" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 239 ; lv2:symbol "rb_sunn_bright1" ; lv2:name "Rig B Bright I" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 240 ; lv2:symbol "rb_sunn_bright2" ; lv2:name "Rig B Bright II" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 241 ; lv2:symbol "rb_fr_channel" ; lv2:name "Rig B BE Chan" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -1797,21 +2134,25 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 242 ; lv2:symbol "rb_fr_fat" ; lv2:name "Rig B Fat" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 243 ; lv2:symbol "rb_fr_c45" ; lv2:name "Rig B C45" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 244 ; lv2:symbol "rb_fr_sat" ; lv2:name "Rig B Sat" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 245 ; lv2:symbol "rb_mv_mode" ; lv2:name "Rig B Mesa Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 6 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -1826,26 +2167,32 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 246 ; lv2:symbol "rb_mv_geq0" ; lv2:name "Rig B EQ 80" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 247 ; lv2:symbol "rb_mv_geq1" ; lv2:name "Rig B EQ 240" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 248 ; lv2:symbol "rb_mv_geq2" ; lv2:name "Rig B EQ 750" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 249 ; lv2:symbol "rb_mv_geq3" ; lv2:name "Rig B EQ 2.2k" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 250 ; lv2:symbol "rb_mv_geq4" ; lv2:name "Rig B EQ 6.6k" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 251 ; lv2:symbol "rb_mv_eqpreset" ; lv2:name "Rig B EQ Preset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Custom" ; rdf:value 0 ] ;
@@ -1857,6 +2204,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 252 ; lv2:symbol "rb_rc_mode" ; lv2:name "Rig B Recto Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 7 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "CH1 Clean" ; rdf:value 0 ] ;
@@ -1870,6 +2218,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 253 ; lv2:symbol "rb_rc_variac" ; lv2:name "Rig B Recto Variac" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Bold" ; rdf:value 0 ] ;
@@ -1877,6 +2226,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 254 ; lv2:symbol "rb_rc_rect" ; lv2:name "Rig B Recto Rectifier" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Silicon" ; rdf:value 0 ] ;
@@ -1884,6 +2234,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 255 ; lv2:symbol "rb_mt_mode" ; lv2:name "Rig B MT Channel" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Clean" ; rdf:value 0 ] ;
@@ -1892,6 +2243,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 256 ; lv2:symbol "rb_mt_bright" ; lv2:name "Rig B MT Bright" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
@@ -1899,20 +2251,24 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 257 ; lv2:symbol "rb_pl_vol2" ; lv2:name "Rig B Vol II" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 258 ; lv2:symbol "rb_pamp_bypass" ; lv2:name "Rig B PA Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 259 ; lv2:symbol "rb_pamp_auto" ; lv2:name "Rig B PA Auto" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 260 ; lv2:symbol "rb_pamp_tube" ; lv2:name "Rig B Power Tube" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "6L6GC" ; rdf:value 0 ] ;
@@ -1924,64 +2280,79 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 261 ; lv2:symbol "rb_pamp_presence" ; lv2:name "Rig B PA Presence" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 262 ; lv2:symbol "rb_pamp_depth" ; lv2:name "Rig B PA Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.18 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 263 ; lv2:symbol "rb_pamp_sag" ; lv2:name "Rig B PA Sag" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.33 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 264 ; lv2:symbol "rb_pamp_master" ; lv2:name "Rig B PA Master" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.62 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 265 ; lv2:symbol "rb_pamp_nfb" ; lv2:name "Rig B PA NFB" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.42 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 266 ; lv2:symbol "rb_pamp_resonance" ; lv2:name "Rig B PA Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 267 ; lv2:symbol "rb_pamp_coupl" ; lv2:name "Rig B Speaker Coupling" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 268 ; lv2:symbol "rb_pamp_airfeel" ; lv2:name "Rig B Air Feel" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2pa> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 269 ; lv2:symbol "rb_cabmix" ; lv2:name "Rig B Cabinet Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 270 ; lv2:symbol "rb_cabmicpos" ; lv2:name "Rig B Mic Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 271 ; lv2:symbol "rb_cabmicdist" ; lv2:name "Rig B Mic Distance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 272 ; lv2:symbol "rb_cabroomon" ; lv2:name "Rig B Room" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 273 ; lv2:symbol "rb_cabroommix" ; lv2:name "Rig B Room Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.12 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 274 ; lv2:symbol "rb_cabroomamt" ; lv2:name "Rig B Room Amount" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 275 ; lv2:symbol "rb_cabroomdense" ; lv2:name "Rig B Room Density" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
@@ -1990,6 +2361,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 276 ; lv2:symbol "rb_cabvoice" ; lv2:name "Rig B Voice" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Room" ; rdf:value 0 ] ;
@@ -1997,6 +2369,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 277 ; lv2:symbol "rb_cabspkdrive" ; lv2:name "Rig B Speaker Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
@@ -2006,11 +2379,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 278 ; lv2:symbol "rb_cab2on" ; lv2:name "Cab 2 In Chain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 279 ; lv2:symbol "gt2_pos" ; lv2:name "Gate 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 15 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2040,41 +2415,49 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 280 ; lv2:symbol "gt2_enable" ; lv2:name "Gate 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 281 ; lv2:symbol "gt2_thresh" ; lv2:name "Gate 2 Threshold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         units:unit units:db ;
         lv2:default -60.0 ; lv2:minimum -80.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 282 ; lv2:symbol "gt2_attack" ; lv2:name "Gate 2 Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         units:unit units:ms ;
         lv2:default 2.0 ; lv2:minimum 0.1 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 283 ; lv2:symbol "gt2_hold" ; lv2:name "Gate 2 Hold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         units:unit units:ms ;
         lv2:default 120.0 ; lv2:minimum 0.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 284 ; lv2:symbol "gt2_release" ; lv2:name "Gate 2 Release" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         units:unit units:ms ;
         lv2:default 250.0 ; lv2:minimum 10.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 285 ; lv2:symbol "gt2_hyst" ; lv2:name "Gate 2 Hysteresis" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         units:unit units:db ;
         lv2:default 8.0 ; lv2:minimum 0.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 286 ; lv2:symbol "gt2_bypass" ; lv2:name "Gate 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 287 ; lv2:symbol "cp2_pos" ; lv2:name "Comp 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 16 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2104,11 +2487,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 288 ; lv2:symbol "cp2_enable" ; lv2:name "Comp 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 289 ; lv2:symbol "cp2_type" ; lv2:name "Comp 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "5 Creature Amp" ; rdf:value 0 ] ;
@@ -2116,11 +2501,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 290 ; lv2:symbol "cp2_thresh" ; lv2:name "Comp 2 Threshold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         units:unit units:db ;
         lv2:default -18.0 ; lv2:minimum -60.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 291 ; lv2:symbol "cp2_ratio" ; lv2:name "Comp 2 Ratio" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "2:1" ; rdf:value 0 ] ;
@@ -2131,27 +2518,33 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 292 ; lv2:symbol "cp2_attack" ; lv2:name "Comp 2 Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 293 ; lv2:symbol "cp2_release" ; lv2:name "Comp 2 Release" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 294 ; lv2:symbol "cp2_knee" ; lv2:name "Comp 2 Knee" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:default 3.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 295 ; lv2:symbol "cp2_makeup" ; lv2:name "Comp 2 Makeup" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 296 ; lv2:symbol "cp2_bypass" ; lv2:name "Comp 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 297 ; lv2:symbol "fz2_pos" ; lv2:name "Fuzz 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 17 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2181,11 +2574,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 298 ; lv2:symbol "fz2_enable" ; lv2:name "Fuzz 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 299 ; lv2:symbol "fz2_pedal" ; lv2:name "Fuzz 2 Pedal" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Italian Hero" ; rdf:value 0 ] ;
@@ -2195,6 +2590,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 300 ; lv2:symbol "fz2_mode" ; lv2:name "Fuzz 2 Variant" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Delta" ; rdf:value 0 ] ;
@@ -2206,39 +2602,48 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 301 ; lv2:symbol "fz2_sustain" ; lv2:name "Fuzz 2 Sustain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 302 ; lv2:symbol "fz2_tone" ; lv2:name "Fuzz 2 Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 303 ; lv2:symbol "fz2_volume" ; lv2:name "Fuzz 2 Volume" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:default 0.65 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 304 ; lv2:symbol "fz2_bias" ; lv2:name "Fuzz 2 Bias" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 305 ; lv2:symbol "fz2_inputtrim" ; lv2:name "Fuzz 2 Input Trim" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 306 ; lv2:symbol "fz2_getemp" ; lv2:name "Fuzz 2 Ge Temp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 307 ; lv2:symbol "fz2_gvol" ; lv2:name "Fuzz 2 Guitar Vol" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more> ;
         lv2:default 1.0 ; lv2:minimum 0.05 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 308 ; lv2:symbol "fz2_bypass" ; lv2:name "Fuzz 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 309 ; lv2:symbol "nail2_pos" ; lv2:name "Nail 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 18 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2268,11 +2673,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 310 ; lv2:symbol "nail2_enable" ; lv2:name "Nail 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 311 ; lv2:symbol "nail2_mode" ; lv2:name "Nail 2 Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Broke" ; rdf:value 0 ] ;
@@ -2283,27 +2690,33 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 312 ; lv2:symbol "nail2_drive" ; lv2:name "Nail 2 Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:default 0.6 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 313 ; lv2:symbol "nail2_tone" ; lv2:name "Nail 2 Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 314 ; lv2:symbol "nail2_texture" ; lv2:name "Nail 2 Texture" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 315 ; lv2:symbol "nail2_level" ; lv2:name "Nail 2 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 316 ; lv2:symbol "nail2_bypass" ; lv2:name "Nail 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 317 ; lv2:symbol "md2_pos" ; lv2:name "Modulation 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 19 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2333,11 +2746,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 318 ; lv2:symbol "md2_enable" ; lv2:name "Modulation 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 319 ; lv2:symbol "md2_type" ; lv2:name "Modulation 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Lush-2" ; rdf:value 0 ] ;
@@ -2352,27 +2767,33 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 320 ; lv2:symbol "md2_rate" ; lv2:name "Modulation 2 Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 321 ; lv2:symbol "md2_depth" ; lv2:name "Modulation 2 Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 322 ; lv2:symbol "md2_mix" ; lv2:name "Modulation 2 Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 323 ; lv2:symbol "md2_width" ; lv2:name "Modulation 2 Width" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 324 ; lv2:symbol "md2_sync" ; lv2:name "Modulation 2 Sync" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 325 ; lv2:symbol "md2_div" ; lv2:name "Modulation 2 Div" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "1/2" ; rdf:value 0 ] ;
@@ -2386,11 +2807,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 326 ; lv2:symbol "md2_offset" ; lv2:name "Modulation 2 Center Delay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more> ;
         units:unit units:ms ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 327 ; lv2:symbol "md2_shape" ; lv2:name "Modulation 2 Shape" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Bias" ; rdf:value 0 ] ;
@@ -2399,11 +2822,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 328 ; lv2:symbol "md2_bypass" ; lv2:name "Modulation 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 329 ; lv2:symbol "dl2_pos" ; lv2:name "Delay 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 20 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2433,11 +2858,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 330 ; lv2:symbol "dl2_enable" ; lv2:name "Delay 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 331 ; lv2:symbol "dl2_type" ; lv2:name "Delay 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Digital" ; rdf:value 0 ] ;
@@ -2448,31 +2875,38 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 332 ; lv2:symbol "dl2_time" ; lv2:name "Delay 2 Time" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         units:unit units:ms ;
         lv2:default 250.0 ; lv2:minimum 1.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 333 ; lv2:symbol "dl2_feedback" ; lv2:name "Delay 2 Feedback" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 0.98
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 334 ; lv2:symbol "dl2_mix" ; lv2:name "Delay 2 Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 335 ; lv2:symbol "dl2_width" ; lv2:name "Delay 2 Width" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 336 ; lv2:symbol "dl2_wow" ; lv2:name "Delay 2 Wow" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.003 ; lv2:minimum 0.0 ; lv2:maximum 0.05
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 337 ; lv2:symbol "dl2_flutter" ; lv2:name "Delay 2 Flutter" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.001 ; lv2:minimum 0.0 ; lv2:maximum 0.02
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 338 ; lv2:symbol "dl2_heads" ; lv2:name "Delay 2 Heads" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 10 ; lv2:minimum 0 ; lv2:maximum 11 ;
         lv2:scalePoint [ rdfs:label "1: Head 1" ; rdf:value 0 ] ;
@@ -2490,6 +2924,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 339 ; lv2:symbol "dl2_pattern" ; lv2:name "Delay 2 Pattern" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Unison" ; rdf:value 0 ] ;
@@ -2499,23 +2934,28 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 340 ; lv2:symbol "dl2_ducking" ; lv2:name "Delay 2 Ducking" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 341 ; lv2:symbol "dl2_moddepth" ; lv2:name "Delay 2 Mod Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 342 ; lv2:symbol "dl2_modrate" ; lv2:name "Delay 2 Mod Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 343 ; lv2:symbol "dl2_sync" ; lv2:name "Delay 2 Sync" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 344 ; lv2:symbol "dl2_div" ; lv2:name "Delay 2 Div" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 5 ; lv2:minimum 0 ; lv2:maximum 7 ;
         lv2:scalePoint [ rdfs:label "1/2" ; rdf:value 0 ] ;
@@ -2529,11 +2969,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 345 ; lv2:symbol "dl2_bypass" ; lv2:name "Delay 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 346 ; lv2:symbol "rv2_pos" ; lv2:name "Reverb 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 21 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2563,36 +3005,44 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 347 ; lv2:symbol "rv2_enable" ; lv2:name "Reverb 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 348 ; lv2:symbol "rv2_predelay" ; lv2:name "Reverb 2 Pre-Delay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         units:unit units:ms ;
         lv2:default 10.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 349 ; lv2:symbol "rv2_decay" ; lv2:name "Reverb 2 Decay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2> ;
         lv2:default 1.5 ; lv2:minimum 0.1 ; lv2:maximum 8.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 350 ; lv2:symbol "rv2_damping" ; lv2:name "Reverb 2 Damping" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 0.99
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 351 ; lv2:symbol "rv2_moddepth" ; lv2:name "Reverb 2 Mod Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 352 ; lv2:symbol "rv2_modrate" ; lv2:name "Reverb 2 Mod Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         lv2:default 0.8 ; lv2:minimum 0.01 ; lv2:maximum 5.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 353 ; lv2:symbol "rv2_mix" ; lv2:name "Reverb 2 Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2> ;
         lv2:default 0.15 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 354 ; lv2:symbol "rv2_density" ; lv2:name "Reverb 2 Density" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0 ] ;
@@ -2600,6 +3050,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 355 ; lv2:symbol "rv2_type" ; lv2:name "Reverb 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Plate" ; rdf:value 0 ] ;
@@ -2608,15 +3059,18 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 356 ; lv2:symbol "rv2_bloom" ; lv2:name "Reverb 2 Bloom" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 357 ; lv2:symbol "rv2_bypass" ; lv2:name "Reverb 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 358 ; lv2:symbol "wh2_pos" ; lv2:name "Wah 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 22 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2646,11 +3100,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 359 ; lv2:symbol "wh2_enable" ; lv2:name "Wah 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 360 ; lv2:symbol "wh2_type" ; lv2:name "Wah 2 Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Auto" ; rdf:value 0 ] ;
@@ -2658,31 +3114,38 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 361 ; lv2:symbol "wh2_freq" ; lv2:name "Wah 2 Freq" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 362 ; lv2:symbol "wh2_depth" ; lv2:name "Wah 2 Range" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 363 ; lv2:symbol "wh2_sens" ; lv2:name "Wah 2 Sens" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 364 ; lv2:symbol "wh2_q" ; lv2:name "Wah 2 Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:default 0.6 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 365 ; lv2:symbol "wh2_mix" ; lv2:name "Wah 2 Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 366 ; lv2:symbol "wh2_bypass" ; lv2:name "Wah 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 367 ; lv2:symbol "oc2_pos" ; lv2:name "Octave 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 23 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2712,27 +3175,33 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 368 ; lv2:symbol "oc2_enable" ; lv2:name "Octave 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 369 ; lv2:symbol "oc2_up" ; lv2:name "Octave 2 Octave Up" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 370 ; lv2:symbol "oc2_down" ; lv2:name "Octave 2 Sub Octave" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 371 ; lv2:symbol "oc2_dry" ; lv2:name "Octave 2 Dry" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 372 ; lv2:symbol "oc2_micro" ; lv2:name "Octave 2 Micro" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 373 ; lv2:symbol "oc2_interval" ; lv2:name "Octave 2 Interval" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "1/4 Up" ; rdf:value 0 ] ;
@@ -2744,11 +3213,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 374 ; lv2:symbol "oc2_bypass" ; lv2:name "Octave 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 375 ; lv2:symbol "eq2_pos" ; lv2:name "EQ 2 Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 24 ; lv2:minimum 1 ; lv2:maximum 24 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -2778,11 +3249,13 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 376 ; lv2:symbol "eq2_enable" ; lv2:name "EQ 2 Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 377 ; lv2:symbol "eq2_preset" ; lv2:name "EQ 2 Preset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 6 ;
         lv2:scalePoint [ rdfs:label "Manual" ; rdf:value 0 ] ;
@@ -2795,129 +3268,155 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 378 ; lv2:symbol "eq2_100" ; lv2:name "EQ 2 100 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 379 ; lv2:symbol "eq2_200" ; lv2:name "EQ 2 200 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 380 ; lv2:symbol "eq2_400" ; lv2:name "EQ 2 400 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 381 ; lv2:symbol "eq2_800" ; lv2:name "EQ 2 800 Hz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 382 ; lv2:symbol "eq2_1k6" ; lv2:name "EQ 2 1.6 kHz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 383 ; lv2:symbol "eq2_3k2" ; lv2:name "EQ 2 3.2 kHz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 384 ; lv2:symbol "eq2_level" ; lv2:name "EQ 2 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 385 ; lv2:symbol "eq2_bypass" ; lv2:name "EQ 2 Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 386 ; lv2:symbol "rb_nam_gain" ; lv2:name "Rig B NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 387 ; lv2:symbol "rb_nam_vol" ; lv2:name "Rig B NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 388 ; lv2:symbol "fz_eco" ; lv2:name "Fuzz Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fzmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 389 ; lv2:symbol "nail_eco" ; lv2:name "Nail Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 390 ; lv2:symbol "fz2_eco" ; lv2:name "Fuzz 2 Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 391 ; lv2:symbol "nail2_eco" ; lv2:name "Nail 2 Eco (2x OS)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 392 ; lv2:symbol "dr2_nam_gain" ; lv2:name "Drive 2 NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 393 ; lv2:symbol "dr2_nam_vol" ; lv2:name "Drive 2 NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 394 ; lv2:symbol "amp_pl_variac" ; lv2:name "Amp Variac (Brown)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 395 ; lv2:symbol "rb_pl_variac" ; lv2:name "Rig B Variac (Brown)" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 396 ; lv2:symbol "dl_age" ; lv2:name "Delay Vintage Age" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dlmore> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 397 ; lv2:symbol "dl2_age" ; lv2:name "Delay 2 Vintage Age" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2more> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 398 ; lv2:symbol "amp_sir34" ; lv2:name "Amp SIR #34 Mod" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 399 ; lv2:symbol "rb_sir34" ; lv2:name "Rig B SIR #34 Mod" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 400 ; lv2:symbol "rb_locut" ; lv2:name "Rig B Low Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         units:unit units:hz ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 400.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 401 ; lv2:symbol "amp_sv_ultralo" ; lv2:name "Amp Ultra-Lo" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 402 ; lv2:symbol "amp_sv_ultrahi" ; lv2:name "Amp Ultra-Hi" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 403 ; lv2:symbol "amp_sv_midfreq" ; lv2:name "Amp Mid Freq" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "220 Hz" ; rdf:value 0 ] ;
@@ -2926,16 +3425,19 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 404 ; lv2:symbol "rb_sv_ultralo" ; lv2:name "Rig B Ultra-Lo" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 405 ; lv2:symbol "rb_sv_ultrahi" ; lv2:name "Rig B Ultra-Hi" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 406 ; lv2:symbol "rb_sv_midfreq" ; lv2:name "Rig B Mid Freq" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "220 Hz" ; rdf:value 0 ] ;
@@ -2944,22 +3446,27 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 407 ; lv2:symbol "dr_b7k_bass" ; lv2:name "Drive B7K Bass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 408 ; lv2:symbol "dr_b7k_lomid" ; lv2:name "Drive B7K Lo Mids" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 409 ; lv2:symbol "dr_b7k_himid" ; lv2:name "Drive B7K Hi Mids" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 410 ; lv2:symbol "dr_b7k_treble" ; lv2:name "Drive B7K Treble" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 411 ; lv2:symbol "dr_b7k_grunt" ; lv2:name "Drive B7K Grunt" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Fat" ; rdf:value 0 ] ;
@@ -2968,6 +3475,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 412 ; lv2:symbol "dr_b7k_attack" ; lv2:name "Drive B7K Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_drmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Flat" ; rdf:value 0 ] ;
@@ -2976,22 +3484,27 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 413 ; lv2:symbol "dr2_b7k_bass" ; lv2:name "Drive 2 B7K Bass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 414 ; lv2:symbol "dr2_b7k_lomid" ; lv2:name "Drive 2 B7K Lo Mids" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 415 ; lv2:symbol "dr2_b7k_himid" ; lv2:name "Drive 2 B7K Hi Mids" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 416 ; lv2:symbol "dr2_b7k_treble" ; lv2:name "Drive 2 B7K Treble" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 417 ; lv2:symbol "dr2_b7k_grunt" ; lv2:name "Drive 2 B7K Grunt" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Fat" ; rdf:value 0 ] ;
@@ -3000,6 +3513,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 418 ; lv2:symbol "dr2_b7k_attack" ; lv2:name "Drive 2 B7K Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Flat" ; rdf:value 0 ] ;
@@ -3008,6 +3522,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 419 ; lv2:symbol "cab_mic2type" ; lv2:name "Cab Mic 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
@@ -3018,28 +3533,34 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 420 ; lv2:symbol "cab_mic2pos" ; lv2:name "Cab Mic 2 Pos" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 421 ; lv2:symbol "cab_mic2dist" ; lv2:name "Cab Mic 2 Dist" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 422 ; lv2:symbol "cab_mic2lvl" ; lv2:name "Cab Mic 2 Blend" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 423 ; lv2:symbol "cab_mic2align" ; lv2:name "Cab Mic 2 Align" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 424 ; lv2:symbol "cab_mic2pol" ; lv2:name "Cab Mic 2 Polarity" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cabmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 425 ; lv2:symbol "rb_cabmic2type" ; lv2:name "Rig B Cab Mic 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Off" ; rdf:value 0 ] ;
@@ -3050,310 +3571,385 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 426 ; lv2:symbol "rb_cabmic2pos" ; lv2:name "Rig B Cab Mic 2 Pos" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 427 ; lv2:symbol "rb_cabmic2dist" ; lv2:name "Rig B Cab Mic 2 Dist" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 428 ; lv2:symbol "rb_cabmic2lvl" ; lv2:name "Rig B Cab Mic 2 Blend" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 429 ; lv2:symbol "rb_cabmic2align" ; lv2:name "Rig B Cab Mic 2 Align" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 430 ; lv2:symbol "rb_cabmic2pol" ; lv2:name "Rig B Cab Mic 2 Polarity" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 431 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 432 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 433 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 434 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 435 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 436 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 437 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 438 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 439 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 440 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 441 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 442 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 127
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 443 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 31
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 444 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 445 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 446 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 447 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 448 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 449 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 450 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 451 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:portProperty lv2:integer ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 11
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 452 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:default 0.0 ; lv2:minimum -50.0 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 453 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 454 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 455 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 456 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 457 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 458 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 459 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 460 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 461 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 462 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 463 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 464 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 465 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 466 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 467 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 468 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 469 ; lv2:symbol "cpu_gt2" ; lv2:name "CPU Gate 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 470 ; lv2:symbol "cpu_cp2" ; lv2:name "CPU Comp 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 471 ; lv2:symbol "cpu_fz2" ; lv2:name "CPU Fuzz 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 472 ; lv2:symbol "cpu_nail2" ; lv2:name "CPU Nail 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 473 ; lv2:symbol "cpu_md2" ; lv2:name "CPU Modulation 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 474 ; lv2:symbol "cpu_dl2" ; lv2:name "CPU Delay 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 475 ; lv2:symbol "cpu_rv2" ; lv2:name "CPU Reverb 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 476 ; lv2:symbol "cpu_wh2" ; lv2:name "CPU Wah 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 477 ; lv2:symbol "cpu_oc2" ; lv2:name "CPU Octave 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 478 ; lv2:symbol "cpu_eq2" ; lv2:name "CPU EQ 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 479 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 480 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 481 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 482 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 483 ; lv2:symbol "cal_state" ; lv2:name "Cal State" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 484 ; lv2:symbol "cal_progress" ; lv2:name "Cal Progress" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 485 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 486 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:hz ;
         lv2:default 100.75 ; lv2:minimum 40.0 ; lv2:maximum 140.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 487 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:db ;
         lv2:default 1.815 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 488 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:db ;
         lv2:default 3.225 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 489 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:db ;
         lv2:default 2.7 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 490 ; lv2:symbol "out_phase" ; lv2:name "Output Phase Invert" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 491 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 492 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 493 ; lv2:symbol "it_mains" ; lv2:name "IT Mains" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "60 Hz" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "50 Hz" ; rdf:value 1 ]
     ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 493 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 494 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -4269,5 +4865,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
             lv2:index 449 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model"
         ] , [
             lv2:index 450 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load"
+        ] , [
+            lv2:index 451 ; lv2:symbol "it_mains" ; lv2:name "IT Mains"
         ]
     ] .

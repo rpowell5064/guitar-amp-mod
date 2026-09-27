@@ -11,8 +11,10 @@ enum OctavePorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
     P_UP, P_DOWN, P_DRY,
     P_BYPASS, P_MICRO, P_INTERVAL,
+    P_ENABLED,            // lv2:designation lv2:enabled — the host's block enable.
+                          // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+    P_RESET,              // KosmOS: kx:Reset trigger
 #endif
     P_N_PORTS
 };
@@ -31,9 +33,9 @@ static LV2_Handle octave_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) OctavePlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 2);
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
-    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
     p->ports[P_RESET]   = nullptr;
 #endif
     return p;
@@ -50,12 +52,11 @@ static void octave_run(LV2_Handle h, uint32_t n) {
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) { p->resetLatch = true; p->dsp.prepare(p->sampleRate, 512, 2); }
     } else p->resetLatch = false;
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+#endif
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
                      (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
-#else
-    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
-#endif
     p->dsp.setParameter("up",       *p->ports[P_UP]);
     p->dsp.setParameter("down",     *p->ports[P_DOWN]);
     p->dsp.setParameter("dry",      *p->ports[P_DRY]);

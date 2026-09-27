@@ -89,7 +89,7 @@ private:
     double railV1_ = 300.0, railV2_ = 380.0, railA_ = 600.0, railScreen_ = 320.0;  // fit2..fit5 (no TPs printed)
     double otHfHz_ = 55e3, zHfDb_ = 0.0, zResDb_ = 8.0, zResHz_ = 60.0;  // fit6..fit9
     double idleMa_ = 35.0, raa_ = 1700.0;        // fit10 / fit11 (4x 6550 at 200 W)
-    double nfbStabHz_ = 60e3, fluxLim_ = 12.0;   // fit12 / fit13
+    double nfbStabHz_ = 60e3, fluxLim_ = 56.6;   // fit12 / fit13
     double kneeV_ = 0.15;                        // fit14
     int    probeTap_ = -1;                       // fit15 (lab)
     int    lutPoints_ = 1024;                    // fit18 (lab): output-tube LUT resolution

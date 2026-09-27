@@ -277,7 +277,7 @@ void EVH5150ComponentModel::advanceSmoothing() noexcept {
 
 float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
-    auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; };
+    auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; c.tapLast[i] = v; };
 
     // Input jack → volts. V1-A (CH3) and V1-B (CH1/2) are PARALLEL first
     // stages off the jack — verified by the drawing's AC ladder (TP1 → TP3 is
@@ -370,6 +370,9 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "fit3")    { redHfDb_  = value;   // lab: CH3 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.redHf.prepare(fs_, 1.0, std::pow(10.0, redHfDb_ / 20.0), 1000.0); }
     else if (id == "fit5")    { for (auto& c : ch_) c.pa.setFluxLim(value); }   // lab: OT flux limit (speaker-node volts)
+    else if (id == "fit6")    { zResHz_ = value; applyZRes(); }   // lab: reflected-impedance peak centre (Hz)
+    else if (id == "fit7")    { zResQ_  = value; applyZRes(); }   // lab: its Q (how much survives at 50-80 Hz)
+    else if (id == "fit8")    { zResDb_ = value; applyZRes(); }   // lab: its height (dB)
     else if (id == "fit4")    { blueHfDb_ = value;   // lab: CH2 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0); }
     else if (id == "involts") { inVolts_  = value; }
@@ -400,6 +403,12 @@ float EVH5150ComponentModel::getParameter(const std::string& id) const noexcept 
     if (id == "resonance") return resonance_;
     if (id == "pa_idle_ma") return float(ch_[0].pa.outIdlemA());
     if (id == "pa_tail_v")  return float(ch_[0].pa.ltpTailV());
+    // Debug taps: the most recent sample at a tap point (waveform capture) — must be
+    // tested before the "tap" RMS prefix below, which would otherwise swallow it.
+    if (id.size() >= 8 && id.compare(0, 7, "taplast") == 0) {
+        const int i = std::atoi(id.c_str() + 7);
+        return (i >= 0 && i < ChState::kNTaps) ? float(ch_[0].tapLast[i]) : 0.0f;
+    }
     // Debug taps: RMS volts at the tap points (channel-0 state).
     if (id.size() >= 4 && id.compare(0, 3, "tap") == 0) {
         const int i = std::atoi(id.c_str() + 3);

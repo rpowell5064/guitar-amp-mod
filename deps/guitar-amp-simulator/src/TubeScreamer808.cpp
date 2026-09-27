@@ -11,20 +11,35 @@ namespace {
     // feedback network is Rf = 51k + drive·500k over Ri = 4.7k, so the op-amp
     // holds a ×11.85 (+21.5 dB) mid-band floor even at drive 0 — the old law
     // (1 + 34·d) collapsed to UNITY there and the boost trick did nothing.
-    // New law: gain = kGainFloor + kGainSpan·d² — crosses the old law's value
-    // EXACTLY at d = 0.5 (18.0, the capture-tuned anchor: ts808-od5t2 verifies
-    // bit-true) and reaches 36.45 at dimed (vs old 35, +0.35 dB — inaudible,
-    // well past the diode rail). Real gain is still ~100×; like kGainSpan
-    // before it, the floor is scaled to the fitted touch/THD curve (11.85 =
-    // the real 51k/4.7k ratio happens to sit right in the fitted family).
+    //
+    // 2026-09-27 the floor stands, the OUTPUT LEVEL was the fault (user: "the tube
+    // screamer appears to add too much boost even at the 0 drive"). A 2026-09-25
+    // attempt rescaled the floor to 3.655 on the theory that the raw circuit ratio
+    // did not belong in a law whose other terms are scaled proxies. That is wrong
+    // twice over. At drive 0 the pedal is genuinely on the diode rail and carries a
+    // lot of harmonic energy, so a lower floor costs the top octave. And the reason
+    // drive 0 sounded like too much boost was not gain at all: the level ran
+    // uniformly too loud at EVERY drive setting, which a gain-law change cannot
+    // explain and cannot fix. The floor is therefore back at the circuit's 11.85
+    // with the original pure-quadratic law, and kLevelSpan carries the trim.
+    // (derivation kept out of the public tree)
     constexpr float kGainFloor = 11.85f;
+    constexpr float kGainLin   = 0.0f;
     constexpr float kGainSpan  = 24.6f;
-    // Diode rail (soft-clip threshold).  Bounds output amplitude so loudness
-    // stays ~constant across the Drive knob, like the real pedal.
-    constexpr float kClip     = 0.55f;
+    // Diode rail (soft-clip threshold).  Bounds the clipped band so loudness stays
+    // ~constant across the Drive knob, like the real pedal.  Revised 0.55 -> 0.40
+    // when the circuit-accurate clean path became the default: with the clean input
+    // no longer passing through the tanh, 0.55 left the pedal over-saturated (its
+    // mid-band THD ran well high).  0.40 tracks the reference mid-band THD across
+    // the Drive knob and centres the level error; lower rails trade THD and level
+    // away for a marginal frequency-response gain.
+    // (derivation kept out of the public tree)
+    constexpr float kClip     = 0.40f;
     // Output level mapping: wetGain = level * kLevelSpan.  Set so Level≈0.6
-    // lands near the captured output level (~-19 dBFS from a -18 dBFS drive).
-    constexpr float kLevelSpan = 1.05f;
+    // lands on the reference output level.  1.05 ran uniformly hot at every Drive
+    // setting; 0.77 centres it without touching the frequency response, which is
+    // level-normalised and so unchanged by this constant.
+    constexpr float kLevelSpan = 0.77f;
 }
 
 void TubeScreamer808::prepare(double oversampledFs, int /*maxBlockSize*/) noexcept {
@@ -73,7 +88,7 @@ float TubeScreamer808::processSample(float x, int ch) noexcept {
     // amplified and driven into the diodes.  That is the real "mid-hump": full
     // lows + boosted, clipped mids/treble — NOT a bass-cut of the whole signal.
     const float hp   = s.inputHP.process(x);
-    const float gain = kGainFloor + kGainSpan * driveCur_ * driveCur_;
+    const float gain = kGainFloor + (kGainLin + kGainSpan * driveCur_) * driveCur_;
 
     // Symmetric soft clip: anti-parallel 1N4148 pair in the feedback loop →
     // odd-harmonic (TS-808 signature, not the asymmetric MXR/DS-1 kind).
@@ -88,9 +103,12 @@ float TubeScreamer808::processSample(float x, int ch) noexcept {
         // The clean input passes at UNITY (uncompressed even when dimed); only the
         // amplified high-passed band is driven into the diodes. This preserves the
         // low end and dynamics at high drive — the TS's whole identity. Enabling it
-        // shifts levels/THD, so kGainSpan/kClip/kLevelSpan get re-fit to the captures
-        // in a Phase-2 nam_compare pass; OFF by default until then. [ElectroSmash
-        // TS analysis; Yeh & Smith DAFx-07 clean + clipped-feedback structure.]
+        // shifted levels/THD, so kClip and kLevelSpan were revised on 2026-09-27 and
+        // this is now the default path.  It is better on every axis that carries
+        // energy: the low-mid shortfall around 125-200 Hz roughly halves because the
+        // lows no longer go through the tanh, broadband error drops, and mid-band THD
+        // stops running hot.  [ElectroSmash TS analysis; Yeh & Smith DAFx-07 clean +
+        // clipped-feedback structure.]
         wet = x + kClip * std::tanh((gain - 1.0f) * hp * (1.0f / kClip));
     }
 
@@ -135,7 +153,9 @@ void TubeScreamer808::recalcFilters() noexcept {
     if (fs <= 0.0) return;
 
     // Input HP: 720 Hz (R=4.7kΩ, C=47nF) — sets the boosted/clipped band only
-    // (lows bypass it clean in processSample).
+    // (lows bypass it clean in processSample).  The circuit value is also the best
+    // by measurement: moving the corner up to 1.0-2.0 kHz is worse on frequency
+    // response and breaks the low-frequency THD behaviour.
     const auto hpC = Filters::highpass1pole(720.0, fs);
 
     // Output LP: post-clip rolloff.  The real TS808 rolls off hard above ~1 kHz;

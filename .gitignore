@@ -54,3 +54,10 @@ anagram/dist-staging/
 build-tools/out_wsl/
 build-tools/out_wsl_asan/
 build-tools/out_wsl_tsan/
+
+# Root-level scratch build trees (2026-09-27): WSL/Linux builds of the plugins, the
+# Anagram variant and the build-tools golden harness. Never committed.
+/out_wsl/
+/out_plug/
+/out_anagram/
+/out_golden_pi/

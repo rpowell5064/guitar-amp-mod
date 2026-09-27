@@ -86,6 +86,8 @@ private:
     static constexpr double kOff   = 0.40;  // drive-scaled input offset (duty asymmetry → evens)
     static constexpr double kCin       =  22.0e-9;  //  22 nF  (input coupling cap)
     static constexpr double kRfiltMax  = 100.0e3;   // 100 kΩ  (filter pot range)
+    static constexpr double kFiltDarkExt = 3.0;      // dark-end range extension
+                                                    // (f³ term; see recalcFilters)
     static constexpr double kCfilt     = 560.0e-12; // 560 pF  (filter cap)
     static constexpr double kIs        =  2.52e-9;  // 1N4148 reverse saturation current
     static constexpr double kN         =  1.752;    // 1N4148 ideality factor

@@ -164,11 +164,57 @@ def preset(bank, slot, name, cls="dirty", base=True, chain=None, rig=None, rig2=
     CLASSES[key] = cls
     return PRESETS[key]
 
+# ── legacy slots: ship the CAPTURE, not a rework row ─────────────────────────
+# Some slots the user prefers exactly as they played before the 2026-09-24 rework.
+# legacy() emits that slot's row from preset_base.json verbatim — name, every param,
+# its IRs and its own out_level (already loudness-levelled when it was captured), so
+# the level pass leaves it alone. Restoring one is a one-line change here, and it
+# reads in preset_rework.py as "this bank is the original".
+KEEP_LEVEL = set()      # (bank, slot) whose out_level the level pass must not touch
+
+def legacy(bank, slot, cls="clean", keep_level=True):
+    """Ship a slot exactly as it was captured. keep_level=False keeps every TONE value
+    verbatim but lets the loudness pass set out_level, so a restored preset does not jump
+    out against the rest of the set (it needs a fresh hfmeas row to have anything to fold)."""
+    key = (bank, slot)
+    src = BASE.get(key)
+    assert src and src.get("used"), "legacy(%d,%d): preset_base.json has no captured preset there" % (bank, slot)
+    v = list(src["vals"])
+    for i, c in enumerate(CTRL):        # same range sanitising as preset()
+        x = v[NFIXED + i]
+        if x < c["mn"] - 1e-6 or x > c["mx"] + 1e-6:
+            v[NFIXED + i] = float(c["df"])
+            SANITISED.append("%s %s=%g -> %g" % (src["name"], c["sym"], x, c["df"]))
+    ir  = (src["paths"]["ir"] or "")
+    ir2 = (src["paths"]["i2"] or "")
+    PRESETS[key] = dict(bank=bank, slot=slot, name=src["name"], vals=v,
+                        ir="" if ir  in ("@factory", "@builtin") else ir,
+                        ir2="" if ir2 in ("@factory", "@builtin") else ir2)
+    CLASSES[key] = cls
+    if keep_level:
+        KEEP_LEVEL.add(key)
+    return PRESETS[key]
+
 # ── loudness ─────────────────────────────────────────────────────────────────
 # Targets (dBFS RMS on the reference DI, out_level forced to -20 during measurement):
 TARGET = {"dirty": -12.5, "clean": -13.0, "sunn": -11.5, "bass": -13.0}
 PEAK_CAP = {"dirty": -1.0, "clean": -1.0, "sunn": -1.0, "bass": 5.0}   # bass: the guitar DI's pick thump is
                                                                         # not bass programme; the output limiter covers it
+# Per-preset peak-cap overrides (dBFS), for presets whose CONTENT is more demanding than the
+# reference DI the cap is measured against. The class cap lands the DI at its target by
+# construction, but a preset weighted low — into an amp with a broad LF impedance peak — can
+# still reach full scale on a hard low-E, which the class cap cannot see. One entry per outlier,
+# with the reason, rather than pulling the whole class down.
+PEAK_CAP_BY_NAME = {
+    # 2026-09-26: rendered at peak 1.0005 (over full scale) after the EVH impedance peak was
+    # re-fitted to 90 Hz, even though its DI measurement sat exactly on the -1 dBFS clean cap.
+    # Its own test tone is a 110 Hz pluck, right in the widened peak.
+    "Winterborn": -3.0,
+    # 2026-09-26, same reason, found after the family-wide OT saturation fix: both render over
+    # full scale on a low-frequency pluck while their DI measurement sits on the class cap.
+    "Candlelit Clean": -3.0,
+    "Frayed Justice":  -3.0,
+}
 def apply_levels():
     path = os.path.join(HERE, "preset_levels.json")
     if not os.path.exists(path):
@@ -177,12 +223,14 @@ def apply_levels():
     lv = json.load(open(path))
     hit = miss = 0
     for key, p in PRESETS.items():
+        if key in KEEP_LEVEL:                            # legacy slot: keep its captured level
+            continue
         m = lv.get(p["name"])
         if not m:
             miss += 1; continue
         cls = CLASSES[key]
         out = -20.0 + (TARGET[cls] - m["rms"])
-        cap = PEAK_CAP[cls]
+        cap = PEAK_CAP_BY_NAME.get(p["name"], PEAK_CAP[cls])
         if m["peak"] + (out + 20.0) > cap:               # peak cap wins
             out = -20.0 + (cap - m["peak"])
         out = max(-60.0, min(12.0, out))

@@ -46,7 +46,15 @@ float Octavia::processSample(float x, int ch) noexcept {
     // and has strong ODD content (h3/h5) that a symmetric full-wave rectifier alone can't make.
     float y = 0.62f * oct + 0.38f * fz;
     y = s.toneLP.process(y);
-    return levelCur_ * 0.32f * y;
+    // Drive-compensated output.  The model's loudness climbed steeply across the
+    // Drive knob (quiet at Drive 0, loud at Drive 10) where the reference is
+    // essentially flat — a real output stage bounds the swing, the model's
+    // rectifier does not.  This is a pure output scalar, so it flattens the knob
+    // without touching the harmonic structure; a rational curve fits the whole
+    // rotation to well under half a dB.  (derivation kept out of the public tree)
+    const float d  = driveCur_;
+    const float cp = (kCompA + kCompB * d) / (1.0f + kCompC * d);
+    return levelCur_ * 0.32f * cp * y;
 }
 
 void Octavia::setParameter(const std::string& id, float v) noexcept {

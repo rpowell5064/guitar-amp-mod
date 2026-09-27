@@ -1,4 +1,5 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -6,8 +7,13 @@
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 @prefix dg:    <http://www.darkglass.com/lv2/ns#> .
 @prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
-@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/wah#g_wah>
+    a pg:Group ; lv2:symbol "g_wah" ; lv2:name "Wah" .
+<https://rpowell5064.github.io/guitaramp-suite/wah#g_response>
+    a pg:Group ; lv2:symbol "g_response" ; lv2:name "Response" .
 
 <https://rpowell5064.github.io/guitaramp-suite/wah#ingroup>
     a pg:StereoGroup, pg:InputGroup ;
@@ -36,7 +42,7 @@ Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open so
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 26 ;
+    lv2:microVersion 28 ;   # 28: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 27: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -62,6 +68,7 @@ Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open so
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "wah_type" ; lv2:name "Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_wah> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "Auto"  ; rdf:value 0 ] ;
@@ -69,35 +76,47 @@ Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open so
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "freq" ; lv2:name "Freq" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_wah> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "depth" ; lv2:name "Range" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_wah> ;
         lv2:default 0.7 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "sens" ; lv2:name "Sens" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_response> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "q" ; lv2:name "Resonance" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_response> ;
         lv2:default 0.6 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 9 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_wah> ;
         lv2:default 0.8 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/wah#g_wah> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
-    
     ] , [
-        a lv2:InputPort, lv2:ControlPort ;
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on,
+        # 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
     ] , [
         a lv2:InputPort, lv2:ControlPort ;
         lv2:index 12 ; lv2:symbol "reset" ; lv2:name "Reset" ;

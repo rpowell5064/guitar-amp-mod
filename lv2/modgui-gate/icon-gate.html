@@ -28,6 +28,15 @@
                     {{#controls.2}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.2}}
                     {{#controls.3}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
                     {{#controls.4}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.4}}
+                    {{#controls.6}}
+                    <div class="hf-sel-wrap" title="Mains frequency: 60 Hz (Americas) or 50 Hz (Europe, most of the world) - tunes the detector's hum-reject comb">
+                        <span class="hf-sel-label">{{name}}</span>
+                        <div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                            <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                        </div>
+                    </div>
+                    {{/controls.6}}
                 </div>
             </div>
         </div>

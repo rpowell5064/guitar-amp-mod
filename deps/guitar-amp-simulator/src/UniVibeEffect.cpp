@@ -1,6 +1,7 @@
 #include "UniVibeEffect.h"
 #include <complex>
 #include <cstdlib>
+#include <atomic>
 
 // Component values are the printed values of the Unicord Model 915 schematic (see the header),
 // with the one documented correction. ESTIMATE marks what the sheet does not give.
@@ -186,22 +187,55 @@ void UniVibeEffect::build() noexcept {
         cTh_ = fit_[FitLampTau] * 4.0 * kRad_ * std::pow(thetaR, 3.0);
         lightNorm_ = 1.0 / (std::pow(thetaR, fit_[FitLightExp]) - 1.0);
     }
-    // Trimmer: the idle glow with Intensity at zero.
-    {
-        double vb, th, il;
-        const double idle = fit_[FitLampIdle];
-        double lo = 0.0, hi = kQ13TrimMax;
-        if (restLight(lo, vb, th, il) <= idle) hi = lo;
-        else if (restLight(hi, vb, th, il) >= idle) lo = hi;
-        else {
-            for (int k = 0; k < 40; ++k) {
-                const double m = 0.5 * (lo + hi);
-                if (restLight(m, vb, th, il) > idle) lo = m; else hi = m;
-            }
+    // Trimmer: the idle glow with Intensity at zero. The solve depends only on the fit
+    // (not the sample rate), so the default-fit answer is solved once per process and
+    // shared; a lab fit re-solves. Lock-free: the first caller fills, a concurrent caller
+    // solves locally rather than waiting, so this stays safe on the audio thread.
+    if (std::equal(fit_, fit_ + kNFit, kFitDefault)) {
+        static std::atomic<int> state{0};   // 0 empty, 1 filling, 2 ready
+        static RestState cached;
+        int s = state.load(std::memory_order_acquire);
+        if (s == 2) {
+            applyRest(cached);
+        } else if (s == 0 && state.compare_exchange_strong(s, 1, std::memory_order_acq_rel)) {
+            cached = solveRest();
+            state.store(2, std::memory_order_release);
+            applyRest(cached);
+        } else {
+            applyRest(solveRest());
         }
-        trim_ = 0.5 * (lo + hi);
-        lightRest_ = restLight(trim_, vbRest_, thetaRest_, il);
+    } else {
+        applyRest(solveRest());
     }
+}
+
+UniVibeEffect::RestState UniVibeEffect::solveRest() noexcept {
+    RestState r;
+    double vb, th, il;
+    const double idle = fit_[FitLampIdle];
+    double lo = 0.0, hi = kQ13TrimMax;
+    if (restLight(lo, vb, th, il) <= idle) hi = lo;
+    else if (restLight(hi, vb, th, il) >= idle) lo = hi;
+    else {
+        for (int k = 0; k < 40; ++k) {
+            const double m = 0.5 * (lo + hi);
+            if (restLight(m, vb, th, il) > idle) lo = m; else hi = m;
+        }
+    }
+    r.trim  = 0.5 * (lo + hi);
+    r.light = restLight(r.trim, r.vb, r.theta, il);
+    r.reT   = reT_;   // restLight leaves reT_ at 150 + trim
+    return r;
+}
+
+void UniVibeEffect::applyRest(const RestState& r) noexcept {
+    trim_ = r.trim; reT_ = r.reT;
+    vbRest_ = r.vb; thetaRest_ = r.theta; lightRest_ = r.light;
+}
+
+void UniVibeEffect::warmup() {
+    UniVibeEffect e;
+    e.prepare(48000.0, 512, 2);   // the rest state does not depend on the rate
 }
 
 void UniVibeEffect::reset() noexcept {

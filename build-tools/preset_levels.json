@@ -1,68 +1,73 @@
 {
+ "Andalusian Slice": {
+  "idx": 62,
+  "peak": -4.63,
+  "rms": -18.02
+ },
  "Anyone Can Play Guitar": {
   "idx": 49,
-  "peak": -1.78,
-  "rms": -17.36
+  "peak": -1.85,
+  "rms": -17.39
  },
  "Apache Echo": {
   "idx": 37,
-  "peak": -11.47,
-  "rms": -24.81
+  "peak": -10.82,
+  "rms": -24.03
  },
  "Berlin Wall Pulse": {
   "idx": 17,
-  "peak": -2.19,
-  "rms": -26.08
+  "peak": -3.42,
+  "rms": -27.75
  },
  "Blackwing Rise": {
   "idx": 60,
-  "peak": -0.58,
-  "rms": -13.55
+  "peak": -0.92,
+  "rms": -13.78
  },
  "Bottle Jangle": {
   "idx": 33,
-  "peak": -2.95,
-  "rms": -16.32
+  "peak": -3.11,
+  "rms": -16.92
  },
  "Boxed Bones": {
   "idx": 63,
-  "peak": -8.02,
-  "rms": -20.95
+  "peak": -10.71,
+  "rms": -21.94
  },
  "Bridge Vibe": {
   "idx": 32,
-  "peak": -6.6,
-  "rms": -20.34
+  "peak": -7.56,
+  "rms": -22.53
  },
  "Broken Crush": {
   "idx": 46,
-  "peak": 6.57,
-  "rms": -8.08
+  "peak": 5.32,
+  "rms": -9.3
  },
  "Brown Sound '84": {
   "idx": 69,
-  "peak": -4.12,
-  "rms": -15.3
+  "peak": -1.58,
+  "rms": -13.48
  },
  "Candlelit Clean": {
   "idx": 8,
-  "peak": -9.39,
-  "rms": -25.94
+  "peak": -8.57,
+  "rms": -25.59
  },
  "Cardinal Lead": {
   "idx": 15,
-  "peak": -6.63,
-  "rms": -18.64
+  "peak": -6.42,
+  "rms": -18.37
  },
  "Cardinal Rhythm": {
   "idx": 14,
-  "peak": -6.71,
-  "rms": -18.56
+  "peak": -7.22,
+  "rms": -18.24
  },
  "Castaway Groove": {
   "idx": 51,
-  "peak": 1.18,
-  "rms": -13.0
+  "peak": -1.26,
+  "rms": -14.61
  },
  "Clean": {
   "idx": 0,
@@ -71,18 +76,18 @@
  },
  "Come As Water": {
   "idx": 7,
-  "peak": -10.95,
-  "rms": -24.76
+  "peak": -9.72,
+  "rms": -23.98
  },
  "Con Molars": {
   "idx": 47,
-  "peak": -5.68,
-  "rms": -16.69
+  "peak": -5.62,
+  "rms": -17.21
  },
  "Crunch": {
   "idx": 1,
-  "peak": -5.28,
-  "rms": -18.48
+  "peak": -6.22,
+  "rms": -19.4
  },
  "Dark Side Air": {
   "idx": 16,
@@ -91,12 +96,12 @@
  },
  "Desert Robot": {
   "idx": 38,
-  "peak": 5.1,
+  "peak": 5.11,
   "rms": -6.49
  },
  "Disco Chuck": {
   "idx": 35,
-  "peak": 1.94,
+  "peak": 1.93,
   "rms": -19.36
  },
  "Dreamlit Shimmer": {
@@ -106,8 +111,8 @@
  },
  "Flatliner": {
   "idx": 30,
-  "peak": -1.57,
-  "rms": -16.82
+  "peak": -3.75,
+  "rms": -18.44
  },
  "Forest Wash": {
   "idx": 34,
@@ -116,28 +121,23 @@
  },
  "Frayed Justice": {
   "idx": 68,
-  "peak": -5.73,
-  "rms": -19.02
- },
- "Freedom Scratch": {
-  "idx": 62,
-  "peak": -6.96,
-  "rms": -22.41
+  "peak": -5.39,
+  "rms": -18.78
  },
  "Fridge Grind": {
   "idx": 73,
-  "peak": -0.5,
-  "rms": -17.0
+  "peak": -0.68,
+  "rms": -17.3
  },
  "Fuzz Wall": {
   "idx": 75,
-  "peak": -7.66,
-  "rms": -22.13
+  "peak": -7.0,
+  "rms": -22.03
  },
  "Glide Wall": {
   "idx": 41,
-  "peak": -5.19,
-  "rms": -18.41
+  "peak": -5.64,
+  "rms": -19.34
  },
  "Gravity Lead": {
   "idx": 19,
@@ -146,113 +146,113 @@
  },
  "Grunge Drop": {
   "idx": 55,
-  "peak": -9.41,
-  "rms": -22.05
+  "peak": -9.18,
+  "rms": -23.17
  },
  "Hand in Cloud": {
   "idx": 66,
-  "peak": -0.46,
-  "rms": -18.96
+  "peak": -3.56,
+  "rms": -23.79
  },
  "Hazy Solo": {
   "idx": 21,
-  "peak": -4.36,
-  "rms": -19.32
+  "peak": -4.04,
+  "rms": -21.42
  },
  "Helsinki Clean": {
   "idx": 76,
   "peak": 0.85,
-  "rms": -20.49
+  "rms": -20.46
  },
  "Helsinki Djent": {
   "idx": 79,
-  "peak": -6.21,
-  "rms": -19.29
+  "peak": -7.58,
+  "rms": -20.01
  },
  "Helsinki Heavy": {
   "idx": 78,
-  "peak": -8.17,
-  "rms": -21.01
+  "peak": -8.44,
+  "rms": -21.33
  },
  "Helsinki Rock": {
   "idx": 77,
-  "peak": 4.47,
-  "rms": -15.21
+  "peak": 4.46,
+  "rms": -15.14
  },
  "Holy Smoke": {
   "idx": 23,
-  "peak": -3.11,
-  "rms": -15.36
+  "peak": -2.75,
+  "rms": -15.02
  },
  "Homesick Saucer": {
   "idx": 65,
-  "peak": -3.45,
-  "rms": -24.32
+  "peak": -10.89,
+  "rms": -28.35
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 4.09,
-  "rms": -11.92
+  "peak": 2.72,
+  "rms": -12.45
  },
  "Imperial Lead": {
   "idx": 13,
-  "peak": -5.96,
-  "rms": -21.52
+  "peak": -5.6,
+  "rms": -23.7
  },
  "Imperial Rhythm": {
   "idx": 12,
-  "peak": -4.98,
-  "rms": -18.59
+  "peak": -6.93,
+  "rms": -20.27
  },
  "Innerspeaker Swirl": {
   "idx": 40,
-  "peak": -12.67,
-  "rms": -24.32
+  "peak": -11.13,
+  "rms": -23.45
  },
  "Jungle Sleaze": {
   "idx": 71,
-  "peak": -7.79,
-  "rms": -22.17
+  "peak": -9.35,
+  "rms": -23.83
  },
  "Knights of Fuzz": {
   "idx": 57,
-  "peak": 2.37,
-  "rms": -12.6
+  "peak": 2.02,
+  "rms": -13.12
  },
  "Lead": {
   "idx": 3,
-  "peak": -0.05,
-  "rms": -13.5
+  "peak": 0.89,
+  "rms": -13.06
  },
  "Little Feather": {
   "idx": 22,
-  "peak": -5.0,
-  "rms": -20.71
+  "peak": -4.88,
+  "rms": -21.51
  },
  "March Stabs": {
   "idx": 44,
-  "peak": 3.03,
-  "rms": -11.08
+  "peak": 2.65,
+  "rms": -11.23
  },
  "Marionette Master": {
   "idx": 52,
-  "peak": -5.86,
-  "rms": -20.25
+  "peak": -5.67,
+  "rms": -19.97
  },
  "Mauve Haze": {
   "idx": 20,
-  "peak": -3.88,
-  "rms": -18.3
+  "peak": -3.85,
+  "rms": -21.01
  },
  "Moondust Glam": {
   "idx": 39,
-  "peak": -2.37,
-  "rms": -15.56
+  "peak": -2.12,
+  "rms": -14.35
  },
  "Motor City": {
   "idx": 74,
-  "peak": -2.44,
-  "rms": -17.98
+  "peak": -2.67,
+  "rms": -18.98
  },
  "Nevermind Verse": {
   "idx": 5,
@@ -261,88 +261,88 @@
  },
  "Nevermind Wall": {
   "idx": 6,
-  "peak": 3.32,
+  "peak": 3.33,
   "rms": -10.28
  },
  "Numb Sustain": {
   "idx": 18,
-  "peak": -2.22,
+  "peak": -2.23,
   "rms": -14.87
  },
  "Plug-In Junior": {
   "idx": 56,
-  "peak": -9.8,
-  "rms": -23.48
+  "peak": -9.19,
+  "rms": -24.72
  },
  "Prayer Djent": {
   "idx": 31,
-  "peak": -7.78,
-  "rms": -21.86
+  "peak": -10.13,
+  "rms": -23.16
  },
  "Quarter-Tone Lead": {
   "idx": 48,
-  "peak": -2.84,
-  "rms": -16.85
+  "peak": -2.27,
+  "rms": -17.14
  },
  "Regal Solo": {
   "idx": 43,
-  "peak": -6.29,
-  "rms": -18.53
+  "peak": -5.08,
+  "rms": -17.94
  },
  "Regal Sustain": {
   "idx": 4,
-  "peak": -6.74,
-  "rms": -18.95
+  "peak": -5.8,
+  "rms": -18.58
  },
  "Retro Poland": {
   "idx": 58,
-  "peak": -11.19,
-  "rms": -31.36
+  "peak": -8.93,
+  "rms": -28.68
  },
  "Rhythm": {
   "idx": 2,
-  "peak": -3.21,
-  "rms": -16.35
+  "peak": -4.3,
+  "rms": -17.38
  },
  "Round Trip": {
   "idx": 72,
-  "peak": -1.36,
-  "rms": -17.16
+  "peak": -1.78,
+  "rms": -17.55
  },
  "Sermon Crunch": {
   "idx": 9,
-  "peak": -7.95,
-  "rms": -21.27
+  "peak": -7.3,
+  "rms": -21.15
  },
  "Sermon Rhythm": {
   "idx": 10,
-  "peak": 0.56,
-  "rms": -13.76
+  "peak": -0.37,
+  "rms": -12.77
  },
  "Sermon Solo": {
   "idx": 11,
-  "peak": 0.52,
-  "rms": -14.95
+  "peak": 0.12,
+  "rms": -14.49
  },
  "Sister's Singer": {
   "idx": 70,
-  "peak": 2.95,
-  "rms": -11.83
+  "peak": -0.16,
+  "rms": -13.49
  },
  "Skye (No Mod)": {
   "idx": 25,
-  "peak": -5.78,
-  "rms": -17.01
+  "peak": -5.88,
+  "rms": -17.38
  },
  "Skye Crusher": {
   "idx": 24,
-  "peak": -10.52,
-  "rms": -22.27
+  "peak": -11.05,
+  "rms": -22.96
  },
  "Skye Soar": {
   "idx": 26,
-  "peak": -9.57,
-  "rms": -23.23
+  "peak": -10.05,
+  "rms": -23.77
  },
  "Solar Monolith": {
   "idx": 27,
@@ -351,28 +351,28 @@
  },
  "Spectrum Lead": {
   "idx": 54,
-  "peak": -6.4,
-  "rms": -18.53
+  "peak": -5.8,
+  "rms": -18.43
  },
  "Spectrum Rhythm": {
   "idx": 53,
-  "peak": 2.03,
-  "rms": -12.56
+  "peak": 2.61,
+  "rms": -11.43
  },
  "Spiral Out": {
   "idx": 61,
-  "peak": -4.19,
-  "rms": -15.35
+  "peak": -8.79,
+  "rms": -19.87
  },
  "Stockholm Riff": {
   "idx": 59,
-  "peak": -1.96,
-  "rms": -14.81
+  "peak": -2.28,
+  "rms": -15.79
  },
  "Streets Chime": {
   "idx": 42,
-  "peak": -9.29,
-  "rms": -22.23
+  "peak": -11.58,
+  "rms": -23.94
  },
  "Surf Splash": {
   "idx": 36,
@@ -381,22 +381,22 @@
  },
  "Sweet Dispersion": {
   "idx": 64,
-  "peak": -7.83,
-  "rms": -21.78
+  "peak": -14.38,
+  "rms": -32.37
  },
  "Vanishing Drive": {
   "idx": 28,
-  "peak": -4.17,
-  "rms": -21.32
+  "peak": -5.91,
+  "rms": -23.69
  },
  "Winterborn": {
   "idx": 50,
   "peak": 0.33,
-  "rms": -13.2
+  "rms": -12.93
  },
  "World Went Away": {
   "idx": 45,
-  "peak": -8.34,
-  "rms": -21.84
+  "peak": -7.4,
+  "rms": -20.81
  }
 }

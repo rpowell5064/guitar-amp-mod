@@ -37,6 +37,17 @@
         <div class="hf-tab" rata-role="tab" data-tab="voice">Voicing / Channel</div>
         <div class="hf-tab" rata-role="tab" data-tab="power">Power Amp</div>
         <div class="hf-tab" rata-role="tab" data-tab="nam">Neural</div>
+        <!-- MAINS (2026-09-25): 60 / 50 Hz for the input hum comb + gate detector. Lives on the
+             tab rail (not a tab) so every model can reach it, like a rear-panel voltage selector. -->
+        <span class="hf-mains" title="Mains frequency: 60 Hz (Americas) or 50 Hz (Europe, most of the world) - tunes the input hum filter and the gate detector">
+        {{#controls.55}}
+            <span class="mod-inline-label">{{name}}</span>
+            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+            </div>
+        {{/controls.55}}
+        </span>
     </div>
 
     <div class="hf-tabpanels">

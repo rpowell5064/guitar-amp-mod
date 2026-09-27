@@ -1,4 +1,5 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -6,6 +7,12 @@
 @prefix modgui:<http://moddevices.com/ns/modgui#> .
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/comp#g_comp>
+    a pg:Group ; lv2:symbol "g_comp" ; lv2:name "Compressor" .
+<https://rpowell5064.github.io/guitaramp-suite/comp#g_env>
+    a pg:Group ; lv2:symbol "g_env" ; lv2:name "Envelope" .
 
 <https://rpowell5064.github.io/guitaramp-suite/comp>
     a lv2:Plugin, lv2:CompressorPlugin ;
@@ -23,7 +30,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 31 ;
+    lv2:microVersion 33 ;   # 33: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -35,6 +42,7 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "comp_type" ; lv2:name "Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_comp> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "5 Creature Amp" ; rdf:value 0 ] ;
@@ -42,11 +50,13 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "threshold" ; lv2:name "Threshold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_comp> ;
         units:unit units:db ;
         lv2:default -18.0 ; lv2:minimum -60.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "ratio" ; lv2:name "Ratio" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_comp> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "2:1"   ; rdf:value 0 ] ;
@@ -57,29 +67,47 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "attack" ; lv2:name "Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_env> ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "release" ; lv2:name "Release" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_env> ;
         lv2:default 5.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "knee" ; lv2:name "Knee" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_env> ;
         lv2:default 3.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "makeup" ; lv2:name "Makeup" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_comp> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 10.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
         lv2:index 9 ; lv2:symbol "gr_db" ; lv2:name "GR" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_comp> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -40.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/comp#g_comp> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port above: enabled 1 = processing
+        # on, 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] ;
 
     modgui:gui [

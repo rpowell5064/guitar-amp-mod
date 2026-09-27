@@ -1,5 +1,34 @@
 # Hex Chain Release Notes
 
+## v1.20.0 — 2026-09-27
+
+The pedal update. Four of the drive and fuzz voicings were re-measured and corrected, the
+suite now behaves properly on generic-UI hosts like Zynthian, the mains-hum filters work in
+50 Hz countries, and a batch of factory presets was fixed or replaced.
+
+### Added
+
+- **50 Hz mains.** Every hum filter in the suite is switchable between 60 Hz and 50 Hz: the Input Trim's notch comb (in Hex Forge and standalone), the noise gate's hum detector, the amp's input comb and the calibration reference. Default stays 60 Hz, so nothing changes unless you switch it.
+- **A designated block-enable port on all thirteen standalone plugins.** Hosts that build their own control panels can now bind a plugin's bypass properly instead of showing it as an ordinary parameter, and it sits at the END of the parameter list where such hosts expect it. Note the sense is inverted relative to the existing Bypass control: enabled means processing is on. The existing Bypass port is unchanged and unmoved, so saved boards are unaffected.
+- **Named parameter groups.** Every control port now declares which part of the chain it belongs to. On hosts that page through parameters four at a time, Hex Forge went from a long anonymous list to named groups per block.
+- **Correct plugin categories.** The cabinet declares itself a simulator and the octaver a pitch plugin, so hosts file them in the right place instead of lumping them under "other".
+- **Andalusian Slice** — a new preset in the Modern Rock bank: raw, wiry late-eighties alternative rock on the JCM800 with a studio plate.
+
+### Changed
+
+- **The Green Man's level is honest again.** Last release rescaled its drive-0 gain floor to tame what sounded like too much boost. That was the wrong lever: the floor is the real feedback ratio and belongs where it was, and the actual fault was output level — the pedal ran about 3 dB hot at every Drive setting. The floor is restored and the level corrected. The circuit-accurate clipping path is now the default too, so the clean low end passes through instead of being squashed with everything else, which is what the circuit does.
+- **Dear Rodent Boy's Filter reaches dark.** At the top of its rotation the control could not get as dark as the circuit does, and it was losing harmonic content up there. Its range is extended in the top third of the rotation only, so the bright half is unchanged.
+- **Preamp 250 output level** corrected — it ran quiet across its whole Gain range.
+- **Octavius' Drive knob no longer changes how loud it is.** It used to climb about 9 dB from minimum to maximum; the output is now flat across the knob, with the tone untouched.
+- **Output-transformer saturation** in the component amps is rewritten as a flux-domain limit, which makes it the low-frequency effect it physically is, anchored to each amp's rated output. Several amps' speaker-resonance voicing was re-fitted alongside it.
+- **Presets.** Run Like Hell gets its dual-delay machine back (it had been split into two plain digital delays, which is not the same thing). The Alice in Chains and Tool presets move to the Friedman's hottest channel — the Tool preset had been standing on a mid-scooped amp to imitate a tight, mid-present one, and was undoing that with an equaliser. The Rage Against the Machine preset was replaced. Existing dial-ins saved on the device are preserved.
+
+### Fixed
+
+- **The Input Trim's humbucker voicing did nothing.** The standalone plugin shipped with the voicing amount defaulting to zero, which is a true bypass, while the Humbucker switch defaulted to on — so neither the switch nor the model selector had any effect at any setting. Now the switch is off by default and the amount is full, matching Hex Forge. Boards you already saved keep their stored values.
+- **Switching the Modulation block to Uni-Verse no longer causes a brief dropout.** Its start-up state is worked out once, off the audio thread, instead of being solved the moment you select it.
+- A duplicate control slot on the amp panel (two controls claimed the same position) and a preset-file reader that mis-read every entry after the first.
+
 ## v1.19.0 — 2026-09-24
 
 The component update. Nine amps are now built as circuits from their own drawings and run

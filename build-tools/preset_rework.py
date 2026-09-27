@@ -13,7 +13,14 @@
 # Research (private lab, per-claim evidence grades) is summarised in the
 # comments; "doc" = documented dial, "inf" = inferred from the record.
 # ─────────────────────────────────────────────────────────────────────────────
-from gen_hexforge_presets import preset, BASE
+from gen_hexforge_presets import preset, legacy, BASE
+
+# EVH 5150 III (Gainzilla): the dials are the DOCUMENTED ones again, 2026-09-26.
+# They were trimmed x0.64 on 2026-09-25 to compensate a model that ran hot for its dial. Both
+# causes have since been fixed in the model itself — the OT flux limiter (a fixed-voltage
+# limit that pinned the low end at every playing level) and the Red GAIN taper
+# (gainMidRed_ 0.15 -> 0.05) — so the compensation would now make these presets far too
+# clean, and the documented dials are correct again.
 
 # Rig shorthands (the Cab panel's factory rows; each sets cab IR + mics + room +
 # Speaker Drive "Physical"). High cuts are set per preset AFTER the rig.
@@ -166,12 +173,19 @@ def bank_floyd():
            rv=plate(0.18, 2.2, 40), gt=gate(-60), rb={"enable": 0, "cab2on": 0})
     # B Berlin Wall Pulse — Run Like Hell: Dyna Comp > ST-2 boost (Tube Chauffeur stands in) > Mistress > Hiwatt;
     #   two MXR DDLs: 380 ms 7-8 repeats at unity + 507 ms one repeat (B) = dotted 8th + quarter at 117 BPM.
-    preset(4, 1, "Berlin Wall Pulse", cls="clean", chain=["gt", "cp", "dr", "md", "amp", "cab", "dl", "dl2"], rig=WALL,
+    #   2026-09-27 (user): the delay is back to the SERAPH dual-delay the preset had before the
+    #   2026-09-24 rework. That rework had split it into two plain digital delays (dotted 8th at
+    #   0.72 feedback plus a quarter at 0.15), which is not the same thing — the Seraph runs both
+    #   taps in one machine with its own Dotted 8th pattern and ducking, and that is the version
+    #   the user liked. Settings restored verbatim from the pre-rework row.
+    preset(4, 1, "Berlin Wall Pulse", cls="clean", chain=["gt", "cp", "dr", "md", "amp", "cab", "dl"], rig=WALL,
            cp=comp("5 Creature Amp", -28, "4:1", FAST, MED),
            dr={"model": "Tube Chauffeur", "drive": 0.25, "tone": 0.45, "level": 0.6, "mix": 1.0},
            md={"type": "Flanger", "rate": 0.2, "depth": 0.5, "mix": 0.5, "width": 0.3},
            amp=dict(hiwatt, treble=0.7), cab={"lowcut": 90, "highcut": 7000},
-           dl=dig(dotted8(117), 0.72, 0.5, 0.2), dl2=dig(quarter(117), 0.15, 0.3, 0.6), gt=gate(-58))
+           dl={"type": "Seraph", "pattern": "Dotted 8th", "time": 380, "feedback": 0.5, "mix": 0.4,
+               "width": 0.4, "ducking": 0.1, "moddepth": 0.05, "modrate": 0.2},
+           gt=gate(-58))
     # C Numb Sustain — Comfortably Numb: ram's head Muff "through a Hiwatt and a Yamaha RA-200" (B), 450 ms 4-5 repeats.
     preset(4, 2, "Numb Sustain", cls="dirty", chain=["gt", "fz", "amp", "cab", "md", "dl", "rv"], rig=WALL,
            fz={"pedal": "Italian Hero", "mode": "Ovis", "sustain": 0.7, "tone": 0.35, "volume": 0.55, "bias": 0.5, "inputtrim": 0.4, "gvol": 1.0},
@@ -282,21 +296,47 @@ def bank_modern_rock():
            dr={"model": "Green Man", "drive": 0.15, "tone": 0.5, "level": 0.8, "mix": 1.0},
            amp={"model": "Tremont 15", "mt_mode": "Lead", "mt_bright": "Off", "gain": 0.6, "bass": 0.75, "mid": 0.4, "treble": 0.6, "presence": 0.35, "master": 0.5, "sag": 0.25},
            cab={"lowcut": 70, "highcut": 9000}, dl=dig(quarter(150), 0.3, 0.12, 0.3), gt=gate(-52))
-    # B Spiral Out — Tool: VH4 gain noon / mids 5 o'clock (photo, B) → Recto CH3 Modern with the mids pushed and an un-scoop EQ before the cab.
+    # B Spiral Out — Tool: VH4 gain noon / mids 5 o'clock (photo, B).
+    #   2026-09-27 (user: "wrong amp character"): OFF the Recto. A Recto CH3 Modern is mid-SCOOPED
+    #   and loose in the low end, which is the opposite of a VH4 — tight, controlled bass, present
+    #   mids, smooth top. The closest amp in the library is the Friedman BE-100 on HBE, so that is
+    #   the stand-in now. The mid push moves out of the EQ and into the amp where it belongs (the
+    #   old row needed +3 dB at 800 Hz just to undo the Recto's scoop); the EQ keeps only a light
+    #   presence shape. Bass comes down and the cab lowcut goes up to hold the low end tight.
     preset(15, 1, "Spiral Out", cls="dirty", chain=["gt", "amp", "eq", "cab", "dl"], rig=PAIR57R, base=False,
-           amp={"model": "Diamond Plate", "rc_mode": "CH3 Modern", "rc_variac": "Bold", "rc_rect": "Silicon", "gain": 0.5, "bass": 0.55, "mid": 0.85, "treble": 0.55, "presence": 0.45, "master": 0.55, "sag": 0.35},
-           eq=eqm(**{"100": -2, "200": 0, "400": 2, "800": 3, "1k6": 2, "3k2": -1, "level": 0}),
-           cab={"lowcut": 60, "highcut": 8500}, dl=dig(quarter(158), 0.25, 0.1, 0.5), gt=gate(-52))
-    # C Freedom Scratch — RATM: JCM800 2205 boost channel, bass 10 / mid 10 / treble 7 / presence 7 / master 6 (doc, Neural DSP row);
-    #   2205 gain 9 ≈ 2203 gain 7; Tele → humbucker: -4 dB at the input; G12K-85 cab = Tight 57, bone dry.
-    preset(15, 2, "Freedom Scratch", cls="dirty", chain=["gt", "wh", "amp", "cab", "dl"], rig=TIGHT57, base=False,
-           it={"gain": -4},
-           wh={"type": "Fixed", "freq": 0.58, "q": 0.6, "mix": 1.0},
-           amp={"model": "Crunchy McCrunchFace", "sir34": 0, "gain": 0.7, "bass": 1.0, "mid": 1.0, "treble": 0.7, "presence": 0.7, "master": 0.6, "sag": 0.4},
-           cab={"lowcut": 80, "highcut": 7500}, dl=dig(eighth(88), 0.35, 0.0, 0.3), gt=gate(-50))
+           amp={"model": "Beardo BE", "fr_channel": "HBE", "fr_fat": 0, "fr_c45": 0, "fr_sat": 0,
+                "gain": 0.55, "bass": 0.45, "mid": 0.75, "treble": 0.55, "presence": 0.5, "master": 0.55, "sag": 0.3},
+           eq=eqm(**{"100": -2, "200": 0, "400": 1, "800": 1, "1k6": 1, "3k2": -1, "level": 0}),
+           cab={"lowcut": 70, "highcut": 8500}, dl=dig(quarter(158), 0.25, 0.1, 0.5), gt=gate(-52))
+    # C Andalusian Slice — PIXIES, Debaser (replaced the RATM row 2026-09-27 at the user's request:
+    #   that preset leaned on a parked wah and never sounded right). Joey Santiago on a MARSHALL
+    #   JCM800 — the user corrected an earlier draft of this row that had him on a solid-state
+    #   Peavey, which is a claim that floats around but is the weaker one; the JCM800 is what he is
+    #   usually cited on for this era, and it is also the amp we model schematic-exact.
+    #   The voice: raw and wiry rather than saturated. A 2203 is a single-channel master-volume amp,
+    #   so the grit comes from the preamp at little over half and the master doing the work, with
+    #   treble and presence up for Joey's trebly bends and the bass held back so the riff stays
+    #   percussive. Greenbacks in a room for late-80s air; +2 dB at the input stands in for a P-90
+    #   Les Paul Junior being hotter than the single coil these models are referenced to. No pedals,
+    #   because he essentially used none.
+    preset(15, 2, "Andalusian Slice", cls="dirty", chain=["gt", "amp", "cab", "rv"], rig=GBROOM, base=False,
+           it={"gain": 2},
+           amp={"model": "Crunchy McCrunchFace", "sir34": 0, "gain": 0.55, "bass": 0.45, "mid": 0.6,
+                "treble": 0.7, "presence": 0.6, "master": 0.65, "sag": 0.3},
+           cab={"lowcut": 90, "highcut": 7500},
+           # Reverb 2026-09-27 (user: a plate, a little more mix / predelay / decay, not extreme).
+           # Doolittle is a PRODUCED record (Gil Norton) rather than the near-dry Surfer Rosa, so a
+           # late-80s studio plate is right: medium-short tail, enough predelay that the pick attack
+           # stays dry and the riff keeps its bite, and only a modest blend on a rhythm guitar.
+           # Damping 0.42 and the DENSE tank (user, 2026-09-27): brighter, thicker tail than the
+           # classic 4-comb plate. The 28 ms predelay is what keeps that from smearing the riff.
+           rv=dict(plate(0.14, 1.8, 28, 0.42), density="Dense"), gt=gate(-50))
+
     # D Boxed Bones — Alice in Chains: Bogner-modded JCM800 4010 (Facelift) / Fish-VHT (Dirt) → Beardo BE, Greenbacks off-cap.
     preset(15, 3, "Boxed Bones", cls="dirty", chain=["gt", "amp", "cab", "rv"], rig=GBROOM, base=False,
-           amp={"model": "Beardo BE", "fr_channel": "BE", "fr_fat": 0, "fr_c45": 0, "fr_sat": 0, "gain": 0.6, "bass": 0.55, "mid": 0.65, "treble": 0.6, "presence": 0.55, "master": 0.5, "sag": 0.35},
+           # 2026-09-27 (user): HBE, not BE. The hotter channel is the closer match to the
+           # Bogner-modded 4010 / Fish-VHT pair this preset is after.
+           amp={"model": "Beardo BE", "fr_channel": "HBE", "fr_fat": 0, "fr_c45": 0, "fr_sat": 0, "gain": 0.6, "bass": 0.55, "mid": 0.65, "treble": 0.6, "presence": 0.55, "master": 0.5, "sag": 0.35},
            cab={"lowcut": 70, "highcut": 8000}, rv=plate(0.08, 1.2, 20), gt=gate(-55))
 
 # ═══ Bank 6 (index 5) — JIMI HENDRIX (+ Sleep) ═══
@@ -477,28 +517,19 @@ def bank_muse():
            cab={"lowcut": 75, "highcut": 8500, "spkdrive": "Off"}, dl=dig(eighth(122), 0.2, 0.08, 0.3), gt=gate(-48))
 
 # ═══ Bank 17 (index 16) — HEX AMBIENT ═══
+# RESTORED 2026-09-25 (user: "restore the original ambient bank. I liked those presets
+# better."). All four slots ship the 2026-09-24 capture verbatim — the ambient bank as it
+# played before the rework re-voiced it — including their own levels. The rework rows they
+# replaced are in git (preset_rework.py at 616820e): AC30-on-the-edge Sweet Dispersion,
+# blackface + opto-tremolo Homesick Saucer, stacked-echo Hand in Cloud.
+# keep_level=False: every TONE value is the capture, but out_level comes from the loudness
+# pass — as captured they sat up to 5.5 dB over the clean target and jumped out against the
+# neighbouring banks. Re-measured on the device 2026-09-25, so there is a row to fold.
 def bank_ambient():
-    # A Sweet Dispersion — Temper Trap: AC30 on the edge, DD-20 dotted eighth at 129.5, light comp; the repeats nearly as loud as the notes.
-    preset(16, 0, "Sweet Dispersion", cls="clean", chain=["gt", "cp", "amp", "cab", "dl", "rv"], rig=CHIME,
-           cp=comp("5 Creature Amp", -22, "4:1", MED, MED),
-           amp={"model": "Chime Thirty", "gain": 0.55, "bass": 0.4, "mid": 0.5, "treble": 0.6, "presence": 0.55, "master": 0.7, "sag": 0.5},
-           cab={"highcut": 10000}, dl={"type": "Seraph", "pattern": "Dotted 8th", "time": dotted8(129.5), "feedback": 0.5, "mix": 0.45, "width": 0.7},
-           rv=plate(0.18, 1.8, 20), gt=gate(-58))
-    # B Homesick Saucer — Subterranean Homesick Alien: blackface clean, opto tremolo bed, Space Echo chords (395 ms), spring.
-    preset(16, 1, "Homesick Saucer", cls="clean", chain=["cp", "amp", "cab", "md", "dl", "rv"], rig=OPENBACK,
-           cp=comp("5 Creature Amp", -24, "4:1", MED, MED),
-           amp={"model": "Clean Meanie", "gain": 0.4, "bass": 0.5, "mid": 0.45, "treble": 0.6, "presence": 0.5, "master": 0.75, "sag": 0.4},
-           cab={"highcut": 10000, "spkdrive": "Off"}, md={"type": "Tremolo", "shape": "Opto", "rate": 0.42, "depth": 0.55, "mix": 1.0, "width": 0.3},
-           dl=tape(395, 0.45, 0.3, 0.7), rv=spring(0.25, 2.2, 15))
-    # C Hand in Cloud — Your Hand in Mine: Fender clean, DL4/DE7 stacked echoes (391 + 522 ms at 115), RV-3 "cloud".
-    preset(16, 2, "Hand in Cloud", cls="clean", chain=["cp", "amp", "cab", "dl", "dl2", "rv"], rig=OPENBACK,
-           cp=comp("5 Creature Amp", -22, "4:1", MED, SLOW),
-           amp={"model": "Clean Meanie", "gain": 0.35, "bass": 0.5, "mid": 0.45, "treble": 0.65, "presence": 0.5, "master": 0.85, "sag": 0.35},
-           cab={"lowcut": 90, "highcut": 11000, "spkdrive": "Off"},
-           dl={"type": "Seraph", "pattern": "Dotted 8th", "time": dotted8(115), "feedback": 0.55, "mix": 0.35, "width": 0.8},
-           dl2=dig(quarter(115), 0.45, 0.25, 0.8), rv=ambient(0.3, 4.0, 40, 0.4))
-    # D I Saw a Deer — the user's showcase build, on the open-back rig.
-    preset(16, 3, "I Saw a Deer", cls="clean", rig=OPENBACK, cab={"highcut": 10500})
+    legacy(16, 0, keep_level=False)   # Sweet Dispersion
+    legacy(16, 1, keep_level=False)   # Homesick Saucer
+    legacy(16, 2, keep_level=False)   # Hand in Cloud
+    legacy(16, 3, keep_level=False)   # I Saw a Deer — the user's own build
 
 # ═══ Bank 18 (index 17) — CLASSIC ROCK / METAL ═══
 def bank_classic():

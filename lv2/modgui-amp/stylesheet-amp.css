@@ -128,6 +128,10 @@
     -webkit-user-select: none; user-select: none;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-tab:hover { color: #cfe0ee; }
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-mains {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    display: inline-flex; align-items: center; gap: 6px;
+}
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-tab.hf-tab-active {
     color: #0b0d12; background: #ff963c; border-color: #ff963c;
     box-shadow: 0 0 14px rgba(255,150,60,.4);

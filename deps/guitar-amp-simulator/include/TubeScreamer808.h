@@ -47,8 +47,10 @@ private:
     float tone_  = 0.5f;
     float level_ = 0.5f;
     float mix_   = 1.0f;
-    bool  cleanPath_ = false;   // false = original clip-the-sum (default, bit-identical);
-                                // true = circuit-accurate clean-path-preserved (Phase-2, "cleanPath")
+    bool  cleanPath_ = true;    // true (default since 2026-09-27) =
+                                // circuit-accurate: the clean input passes at unity and
+                                // only the boosted high-passed band meets the diodes.
+                                // false = the original clip-the-sum path, kept for A/B.
 
     LinearSmoother driveSmooth_, levelSmooth_, mixSmooth_;
     float driveCur_ = 0.5f, levelCur_ = 0.5f, mixCur_ = 1.0f;

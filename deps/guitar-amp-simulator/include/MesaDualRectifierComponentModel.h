@@ -94,7 +94,7 @@ private:
     float  gainMid_   = 0.15f;   // fit0: GAIN 1M audio taper — a linear law crams the usable gain into the first sliver of travel
     float  masterMid_ = 0.15f;   // fit1: MASTER 1M law
     double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 40.0, raa_ = 4200.0;   // fit2..fit6
-    double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
+    double nfbStabHz_ = 60e3, fluxLim_ = 56.6;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
     double zSrcStack_ = 10e3;                    // fit11: treble-wiper source R into the bleed (ESTIMATE, grid-calibrated)

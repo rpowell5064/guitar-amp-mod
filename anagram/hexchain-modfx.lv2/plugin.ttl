@@ -1,4 +1,5 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -7,8 +8,13 @@
 @prefix units: <http://lv2plug.in/ns/extensions/units#> .
 @prefix dg:    <http://www.darkglass.com/lv2/ns#> .
 @prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
-@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/modfx#g_mod>
+    a pg:Group ; lv2:symbol "g_mod" ; lv2:name "Modulation" .
+<https://rpowell5064.github.io/guitaramp-suite/modfx#g_more>
+    a pg:Group ; lv2:symbol "g_more" ; lv2:name "More" .
 
 <https://rpowell5064.github.io/guitaramp-suite/modfx#ingroup>
     a pg:StereoGroup, pg:InputGroup ;
@@ -49,7 +55,7 @@ Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open so
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 36 ;   # 34: version bump to re-list on PatchStorage so the listing description publishes (was missing). 33: Script Phaser type 8 (script-era P90, no feedback)
+    lv2:microVersion 39 ;   # 39: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 38: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 37: panel 430 -> 490 (the plate measured 477 px live). 34: version bump to re-list on PatchStorage so the listing description publishes (was missing). 33: Script Phaser type 8 (script-era P90, no feedback)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -75,6 +81,7 @@ Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open so
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "mod_type" ; lv2:name "Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_mod> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 8 ;
         lv2:scalePoint [ rdfs:label "Lush-2"          ; rdf:value 0 ] ;
@@ -89,46 +96,59 @@ Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open so
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "rate" ; lv2:name "Rate" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_mod> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "depth" ; lv2:name "Depth" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_mod> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_mod> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "stereo_width" ; lv2:name "Width" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_more> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 9 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_mod> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "offset" ; lv2:name "Center Delay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_more> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0 ;
         units:unit units:ms ;
         rdfs:comment "Delay the modulation centre by 0–100 ms (chorus/flanger/small-clone only; 0 = stock voicing)."
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "shape" ; lv2:name "Shape" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/modfx#g_more> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
         lv2:scalePoint [ rdfs:label "Bias"     ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Opto"     ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "Harmonic" ; rdf:value 2 ] ;
         rdfs:comment "Tremolo waveform: Bias (classic sine), Opto (hard photocell chop), Harmonic (brownface phase-split). Tremolo only."
-    
     ] , [
-        a lv2:InputPort, lv2:ControlPort ;
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on,
+        # 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
         lv2:index 12 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
     ] , [
         a lv2:InputPort, lv2:ControlPort ;
         lv2:index 13 ; lv2:symbol "reset" ; lv2:name "Reset" ;

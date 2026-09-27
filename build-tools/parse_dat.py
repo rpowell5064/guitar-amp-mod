@@ -12,8 +12,8 @@ for flat in range(banks*slots):
     used = u32()
     name = b[o:o+32].split(b'\0')[0].decode('latin1'); o += 32
     vals = struct.unpack_from("<%df" % nports, b, o); o += 4*nports
-    for _ in range(4):
-        ln = u32(); o += ln
+    for _ in range(7):        # ir, ampNam, drNam, cabNam, amp2Nam, ir2, dr2Nam (hfSerialize order;
+        ln = u32(); o += ln   # this said 4 until 2026-09-25, so every preset after the first mis-read)
     out_level = vals[7]
     if used:
         print(f"{flat:2d}  B{flat//slots+1}{'ABCD'[flat%slots]}  used={used}  out={out_level:7.2f}  {name}")

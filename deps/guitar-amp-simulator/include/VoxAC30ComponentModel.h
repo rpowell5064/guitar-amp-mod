@@ -95,7 +95,7 @@ private:
     float  stackMid_  = 0.15f;   // fit1: TREBLE / BASS / CUT law (printed "log")
     double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 0.0, idleMa_ = 45.0, raa_ = 4000.0;   // fit2..fit6 (raa PRINTED 4k; zRes 0: with NO loop the
                                                                                           // speaker resonance is fully expressed and the reference does not carry it)
-    double nfbStabHz_ = 60e3, fluxLim_ = 4.0;    // fit7 / fit8 (small OT)
+    double nfbStabHz_ = 60e3, fluxLim_ = 31.0;    // fit7 / fit8 (small OT)
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
     double cathR_ = 50.0, cathC_ = 220e-6;       // fit11 / fit12: R70 ‖ R71 = 50 Ω, C47 220µ (hooks for the dynamics)

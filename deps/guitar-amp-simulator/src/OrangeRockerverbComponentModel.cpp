@@ -58,7 +58,10 @@ PushPullPowerV::Params rockerverbPowerParams(double railC, double railA, double 
     p.otLfHz = 30.0;  p.otHfHz = otHfHz;
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
-    p.fluxHz = 120.0; p.fluxLim = fluxLim;
+    // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
+    // 50 W (the header's own figure) into the 16 ohm tap -> sqrt(2*50*16) = 40.0 V peak. The old fixed-voltage limit
+    // sat far below this, so the core saturated from a fraction of rated power.
+    p.fluxRefHz = 40.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 1000.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 1k 5W screens
     p.outTrim = 1.0;
     return p;

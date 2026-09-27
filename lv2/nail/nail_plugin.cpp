@@ -26,8 +26,10 @@ enum NailPorts {
     P_LEVEL   = 6,   // output volume
     P_RING    = 7,   // Tusk ring-mod toggle (off by default)
     P_BYPASS  = 8,
+    P_ENABLED,            // lv2:designation lv2:enabled — the host's block enable.
+                          // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+    P_RESET,              // KosmOS: kx:Reset trigger
 #endif
     P_N_PORTS
 };
@@ -72,10 +74,9 @@ static void nail_run(LV2_Handle h, uint32_t n) {
 #endif
 
     bool bypassed = *p->ports[P_BYPASS] > 0.5f;
-#ifdef HEXCHAIN_ANAGRAM
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
-#endif
     if (bypassed) {
         if (p->ports[P_OUT] != p->ports[P_IN])
             std::memcpy(p->ports[P_OUT], p->ports[P_IN], sizeof(float) * n);

@@ -967,7 +967,8 @@ function (event, funcs) {
     }
 
     // ── Presets: pulse command ports, render bank/slot/name + the 32-slot list ──
-    var SW = ['sw_a', 'sw_b', 'sw_c', 'sw_d'];
+    // (The sw_a..sw_d ports stay for the PEDAL/MIDI path — the UI's A-D buttons use
+    //  ps_goto so a double click can't trigger the bank chord; see the wiring below.)
     var PS_NAME_URI = 'https://rpowell5064.github.io/guitaramp-suite/hexforge#ps_name';
     function psPulse(fns, sym) {
         if (!fns || typeof fns.set_port_value !== 'function') return;
@@ -1535,9 +1536,15 @@ function (event, funcs) {
                 icon.find('.hf-advbtn').removeClass('hf-on').attr('aria-pressed', 'false');
             }
         });
+        // The A-D buttons recall DIRECTLY by flat index (ps_goto), never through the
+        // sw_* pulse: the sw_* path runs the PEDAL's gesture decoder, where a second
+        // tap on A or D inside 400 ms is the bank-down / bank-up chord. That belongs to
+        // the footswitches (a stomp is deliberate); a stray second mouse click in the
+        // browser must not move the bank (2026-09-25 user report).
         icon.find('.hf-ps-slot').each(function () { var el = this;
             el.addEventListener('click', function (e) { e.stopPropagation();
-                psPulse(funcs, SW[parseInt(el.getAttribute('data-slot'), 10)]); }); });
+                var b = icon.data('ps_bank'); if (b == null) b = 0;
+                psGoto(funcs, b * 4 + parseInt(el.getAttribute('data-slot'), 10)); }); });
         icon.find('.hf-ps-name').each(function () {
             var el = this;
             el.addEventListener('mousedown', function (e) { e.stopPropagation(); });

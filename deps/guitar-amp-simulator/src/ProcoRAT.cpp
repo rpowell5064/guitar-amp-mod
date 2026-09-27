@@ -150,11 +150,25 @@ void ProcoRAT::recalcFilters() noexcept {
     const auto hpC = Filters::highpass1pole(72.3, fs);
     const auto dcC = Filters::highpass1pole(8.0, fs);   // output DC blocker
 
-    // Filter LP: R = filter × 100 kΩ, C = 560 pF.
+    // Filter LP: R = filter × 100 kΩ (plus the dark-end extension below), C = 560 pF.
     // fc = 1/(2π·R·C); minimum R = 100 Ω to avoid division near zero.
     // At filter=0, R≈0 → fc≫audio band (effectively bypassed).
-    // At filter=1, R=100 kΩ → fc ≈ 2 840 Hz.
-    const double R_filt = std::max(100.0, static_cast<double>(filter_) * kRfiltMax);
+    //
+    // Dark-end extension (added 2026-09-27).  The pot value alone cannot reach the
+    // darkness the reference has: with R capped at 100 kΩ (fc 2 840 Hz) the model stays
+    // several dB too BRIGHT at the top of the audio band at the darkest two Filter
+    // positions, and no setting of the knob closes that gap.  The cap does not see the
+    // filter pot alone — the volume pot that follows it adds to the effective
+    // resistance — so the top of the rotation needs roughly 4× the pot value.
+    //
+    // kFiltDarkExt is applied as f³ so it appears only in the top third of the
+    // rotation: at filter=0.5 the corner moves under 6 %, leaving the bright half
+    // (which already matched) where it was, while filter=1 reaches 400 kΩ → fc ≈
+    // 710 Hz.  3.0 is the value that fixes the dark end without pulling the mid
+    // positions back out.  (derivation kept out of the public tree)
+    const double _f = static_cast<double>(filter_);
+    const double R_filt = std::max(100.0, _f * kRfiltMax
+                                          * (1.0 + kFiltDarkExt * _f * _f * _f));
     const double fc_lp  = 1.0 / (2.0 * M_PI * R_filt * kCfilt);
     const auto   lpC    = Filters::lowpass1pole(std::min(fc_lp, fs * 0.49), fs);
 

@@ -1,6 +1,7 @@
 #include "lv2_util.h"
 #include "ModulationBlock.h"
 #include "ModulationFactory.h"
+#include "UniVibeEffect.h"
 #include <new>
 
 #define MODFX_URI "https://rpowell5064.github.io/guitaramp-suite/modfx"
@@ -18,8 +19,10 @@ enum ModfxPorts {
     P_BYPASS = 9,
     P_OFFSET = 10,   // Center Delay (ms) — pushes the modulation centre out (delay types only)
     P_SHAPE  = 11,   // Tremolo waveform: 0 bias / 1 opto / 2 harmonic (tremolo only)
+    P_ENABLED,            // lv2:designation lv2:enabled — the host's block enable.
+                          // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+    P_RESET,              // KosmOS: kx:Reset trigger
 #endif
     P_N_PORTS
 };
@@ -38,11 +41,12 @@ static LV2_Handle modfx_instantiate(const LV2_Descriptor*, double rate,
                                      const char*, const LV2_Feature* const*) {
     auto* p = new(std::nothrow) ModfxPlugin;
     if (!p) return nullptr;
+    UniVibeEffect::warmup();   // off the audio thread: a later switch to Uni-Verse costs no solve
     p->dsp.prepare(rate, 512, 2);
     p->dsp.setType(ModulationType::CE2_Chorus);
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
-    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
     p->ports[P_RESET]   = nullptr;
 #endif
     return p;
@@ -64,12 +68,11 @@ static void modfx_run(LV2_Handle h, uint32_t n) {
             p->lastType = -1;   // re-apply the modulation type below
         }
     } else p->resetLatch = false;
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+#endif
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
                      (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
-#else
-    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
-#endif
 
     const int type = static_cast<int>(*p->ports[P_TYPE] + 0.5f);
     if (type != p->lastType) {

@@ -41,6 +41,7 @@
 #include "CabModels.h"
 #include "ModulationBlock.h"
 #include "ModulationFactory.h"
+#include "UniVibeEffect.h"
 #include "DelayBlock.h"
 #include "DelayFactory.h"
 #include "PlateReverbBlock.h"

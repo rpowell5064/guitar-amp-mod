@@ -97,6 +97,12 @@ public:
     double naturalHz(double Rarm) const noexcept;
     double armR(double rate) const noexcept;
 
+    // Solve the trimmer / idle-lamp rest state for the default fit once per process and
+    // cache it. That solve is nearly all of build()'s cost (~2 ms on x86, far more on a
+    // Pi) and build() runs on the AUDIO thread when a host switches the modulation type
+    // to this effect — the Zynthian xrun report (2026-09-25). Call from instantiate.
+    static void warmup();
+
 private:
     enum Fit { FitInVolts = 0, FitOutScale, FitHeadroom, FitLampRail, FitAudioRail, FitLampTau,
                FitLightExp, FitCellR1, FitCellGamma, FitCellDark, FitCellTauOn, FitCellTauOff,
@@ -162,6 +168,10 @@ private:
         PhaseStage st[4];
     };
     std::array<LampCh, kMaxCh> ch_;
+
+    struct RestState { double trim = 0.0, reT = 150.0, vb = 0.0, theta = 1.0, light = 0.0; };
+    RestState solveRest() noexcept;
+    void      applyRest(const RestState& r) noexcept;
 
     void   build() noexcept;
     void   controlStep(int nCh) noexcept;

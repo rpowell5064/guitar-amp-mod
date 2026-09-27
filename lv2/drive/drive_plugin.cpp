@@ -45,9 +45,11 @@ static constexpr int kMaxModel = 11;  // highest selectable model index (Treble 
 enum DrivePorts {
     P_IN = 0, P_OUT, P_MODEL, P_DRIVE, P_TONE, P_LEVEL, P_MIX, P_OCTAVE, P_BYPASS,
     P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
+    P_ENABLED,                 // lv2:designation lv2:enabled — the host's block enable,
+                               // INVERTED vs Bypass (1 = on).  Placed BEFORE the atoms:
+                               // mod-host breaks if control ports follow them.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the
-                               // atoms (mod-host breaks if control ports follow them)
+    P_RESET,                   // KosmOS: kx:Reset trigger
 #endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
@@ -208,10 +210,9 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     const int    model = clampi(*p->ports[P_MODEL], 0, kMaxModel);
 
     bool bypassed = *p->ports[P_BYPASS] > 0.5f;
-#ifdef HEXCHAIN_ANAGRAM
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
-#endif
     if (bypassed) {
         if (out != in) std::memcpy(out, in, sizeof(float) * n);
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);

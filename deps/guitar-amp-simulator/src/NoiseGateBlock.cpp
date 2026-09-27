@@ -28,13 +28,13 @@ void NoiseGateBlock::recalcCoeffs() {
     gainRelease = makeCoeff(std::max(0.1f, releaseMs));
     holdSamplesTotal = static_cast<int>(holdMs * 0.001f * static_cast<float>(sampleRate));
 
-    // Detector-only hum-reject comb (60/120/180/240 Hz). Q=18 matches the shared
-    // HumNotchComb design: ~15 dB off the hum stack, ~1 dB on a low B, no phantom
-    // tones (LTI). Coeffs depend on fs only; stamped onto the (already-reset) state.
-    static const double humF[kHumNotches] = {60.0, 120.0, 180.0, 240.0};
+    // Detector-only hum-reject comb (mains x 1..4: 60/120/180/240 Hz, or the 50 Hz
+    // series). Q=18 matches the shared HumNotchComb design: ~15 dB off the hum stack,
+    // ~1 dB on a low B, no phantom tones (LTI). Coeffs depend on fs + mains only;
+    // stamped onto the (already-reset) state.
     for (auto& s : ch)
         for (int k = 0; k < kHumNotches; ++k)
-            s.scNotch[k].setCoeffs(Filters::notch(humF[k], 18.0, sampleRate));
+            s.scNotch[k].setCoeffs(Filters::notch(double(mainsHz) * (k + 1), 18.0, sampleRate));
 }
 
 void NoiseGateBlock::setParameter(const std::string& id, float v) {
@@ -44,6 +44,7 @@ void NoiseGateBlock::setParameter(const std::string& id, float v) {
     else if (id == "hold")       holdMs       = v;
     else if (id == "hysteresis") hysteresisDB = v;
     else if (id == "humReject")  humReject    = v > 0.5f;
+    else if (id == "mainsHz")    mainsHz      = (v < 55.0f) ? 50.0f : 60.0f;
     recalcCoeffs();
 }
 
@@ -54,6 +55,7 @@ float NoiseGateBlock::getParameter(const std::string& id) const {
     if (id == "hold")       return holdMs;
     if (id == "hysteresis") return hysteresisDB;
     if (id == "humReject")  return humReject ? 1.0f : 0.0f;
+    if (id == "mainsHz")    return mainsHz;
     return 0.0f;
 }
 

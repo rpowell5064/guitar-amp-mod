@@ -1,4 +1,5 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
@@ -13,7 +14,6 @@
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 @prefix dg:    <http://www.darkglass.com/lv2/ns#> .
 @prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
-@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
 
 # ── Cabinet IR file parameter ─────────────────────────────────────────────────
@@ -35,6 +35,16 @@
     rdfs:label "Saved Rigs" ;
     rdfs:range atom:String .
 
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/cab#g_cab>
+    a pg:Group ; lv2:symbol "g_cab" ; lv2:name "Cabinet" .
+<https://rpowell5064.github.io/guitaramp-suite/cab#g_mic>
+    a pg:Group ; lv2:symbol "g_mic" ; lv2:name "Mic" .
+<https://rpowell5064.github.io/guitaramp-suite/cab#g_room>
+    a pg:Group ; lv2:symbol "g_room" ; lv2:name "Room" .
+<https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2>
+    a pg:Group ; lv2:symbol "g_mic2" ; lv2:name "Mic 2" .
+
 <https://rpowell5064.github.io/guitaramp-suite/cab#ingroup>
     a pg:StereoGroup, pg:InputGroup ;
     lv2:symbol "audioin" ;
@@ -46,7 +56,7 @@
     lv2:name "Audio Out" .
 
 <https://rpowell5064.github.io/guitaramp-suite/cab>
-    a lv2:Plugin, lv2:FilterPlugin ;
+    a lv2:Plugin, lv2:SimulatorPlugin ;
     dg:abbreviation "CAB" ;
     dg:blockImageOff <block-off.png> ;
     dg:blockImageOn <block-on.png> ;
@@ -72,7 +82,7 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 54 ;   # 54: Studio Pair rig row fixed (was one value short) + rig rows length-checked. 53: user-saved rigs on the device (#rigs string param, MY RIGS section, tap-twice delete). 52: Rig selector under the IR picker (eleven cab-named rigs applied through the existing ports + patch_set on #irfile). 51: MIC 1 / MIC 2 tabs on the mic pad (one pad for both mics, Mic 2 controls on its tab; same ports). 50: Room Density option 2 = Space (geometric image-source room). 49: Cab Mic 2 (type / blend / pos / dist / align / polarity, ports 18-23; atoms moved to 24/25). 48: Speaker Drive option 3 = Physical (state-based large-signal driver, SpeakerModel.h). 47: FOUR bass cabs (@bass810/@bass410h/@bass210/@bass115, longer IRs + 45 Hz macro bands) + the @sentinel basename fix (mod-ui path-mangling — the hexforge 2026-08-21 incident, latent here). 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
+    lv2:microVersion 60 ;   # 60: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 59: LV2 class SimulatorPlugin (was Filter) + LV2 port groups (generic-UI hosts like Zynthian page the controls by these). 58: panel 660 -> 790 (the plate reaches 775 px with MIC 2 open); the rig selector takes the dropdown box look (was bare grey text). 57: the user-.wav rule matches mod-ui's outer wrapper. 56: a user .wav shows the basics only (the rig picker and MIC & ROOM are for the built-in cabs). 55: panel 640 -> 660, one plate size on both tabs; a user IR keeps MIC & ROOM and the rigs (a rig applies its placement to the user cab, and is recognised on it). 54: Studio Pair rig row fixed (was one value short) + rig rows length-checked. 53: user-saved rigs on the device (#rigs string param, MY RIGS section, tap-twice delete). 52: Rig selector under the IR picker (eleven cab-named rigs applied through the existing ports + patch_set on #irfile). 51: MIC 1 / MIC 2 tabs on the mic pad (one pad for both mics, Mic 2 controls on its tab; same ports). 50: Room Density option 2 = Space (geometric image-source room). 49: Cab Mic 2 (type / blend / pos / dist / align / polarity, ports 18-23; atoms moved to 24/25). 48: Speaker Drive option 3 = Physical (state-based large-signal driver, SpeakerModel.h). 47: FOUR bass cabs (@bass810/@bass410h/@bass210/@bass115, longer IRs + 45 Hz macro bands) + the @sentinel basename fix (mod-ui path-mangling — the hexforge 2026-08-21 incident, latent here). 45: Speaker Drive (item #40) toggle + depth, PRE-convolution
 
     # IR loading runs on the worker thread; URID map reads the incoming atom:Path.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -105,20 +115,24 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "low_cut_hz" ; lv2:name "Low Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         units:unit units:hz ;
         lv2:default 80.0 ; lv2:minimum 20.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "high_cut_hz" ; lv2:name "High Cut" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         units:unit units:hz ;
         lv2:default 16000.0 ; lv2:minimum 2000.0 ; lv2:maximum 20000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
@@ -126,39 +140,47 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
         # ports stay because indices are ABI (hosts save/restore by index) ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "nam_gain" ; lv2:name "NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 9 ; lv2:symbol "nam_vol" ; lv2:name "NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         # ── Mic placement (post-convolution morphs; 0/0 = the voiced baseline) ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "mic_pos" ; lv2:name "Mic Pos" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "mic_dist" ; lv2:name "Mic Dist" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         # ── Room ambience (post-convolution small room; off = bit-identical) ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 12 ; lv2:symbol "room_on" ; lv2:name "Room" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_room> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 13 ; lv2:symbol "room_mix" ; lv2:name "Room Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_room> ;
         lv2:default 0.12 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 14 ; lv2:symbol "room_amt" ; lv2:name "Room Size" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_room> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 15 ; lv2:symbol "voice" ; lv2:name "Voice" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0 ;
         lv2:scalePoint [ rdfs:label "Room"   ; rdf:value 0.0 ] ;
@@ -166,6 +188,7 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 16 ; lv2:symbol "room_density" ; lv2:name "Room Density" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_room> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 2.0 ;
         lv2:scalePoint [ rdfs:label "Classic" ; rdf:value 0.0 ] ;
@@ -179,6 +202,7 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
         # Voice/Density rather than crowding the (already nowrap) knob rows. ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 17 ; lv2:symbol "spk_drive" ; lv2:name "Speaker Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_cab> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 3.0 ;
         lv2:scalePoint [ rdfs:label "Off"      ; rdf:value 0.0 ] ;
@@ -191,6 +215,7 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
         # blend, coherent align, polarity. Off = bit-identical. ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 18 ; lv2:symbol "mic2_type" ; lv2:name "Mic 2 Type" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 4.0 ;
         lv2:scalePoint [ rdfs:label "Off"         ; rdf:value 0.0 ] ;
@@ -201,27 +226,38 @@ Ships making sound out of the box. Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 19 ; lv2:symbol "mic2_pos" ; lv2:name "Mic 2 Pos" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 20 ; lv2:symbol "mic2_dist" ; lv2:name "Mic 2 Dist" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 21 ; lv2:symbol "mic2_lvl" ; lv2:name "Mic 2 Blend" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2> ;
         lv2:default 0.35 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 22 ; lv2:symbol "mic2_align" ; lv2:name "Mic 2 Align" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 23 ; lv2:symbol "mic2_pol" ; lv2:name "Mic 2 Polarity" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/cab#g_mic2> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
-        a lv2:InputPort, lv2:ControlPort ;
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on,
+        # 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
         lv2:index 24 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;

@@ -9,9 +9,10 @@
 // was tried and rejected: time-varying cancellers build weights from sustained or
 // abruptly-stopped notes and then *emit* a decaying 60/120/180/240 Hz tone, which
 // is exactly the artifact that showed up on the device -- see tools/hum_cancel.py.)
-// 60 Hz mains (North America). Tuned + verified: ~15 dB reduction of the hum
-// stack, each line killed deeply, ~1 dB static impact on a low B1, transient ring
-// no worse than the old twin-notch.
+// 60 Hz mains (North America) by default; prepare(sr, 50.0) re-tunes the whole
+// series to 50 Hz harmonics for the rest of the world (2026-09-25). Tuned + verified
+// at 60 Hz: ~15 dB reduction of the hum stack, each line killed deeply, ~1 dB static
+// impact on a low B1, transient ring no worse than the old twin-notch.
 #include "BiquadFilter.h"
 #include <cmath>
 
@@ -29,9 +30,10 @@ inline BiquadCoeffs makeNotch(double fc, double Q, double fs) noexcept {
 struct HumNotchComb {
     static constexpr int kN = 6;
     BiquadFilter notch[kN];
-    void prepare(double sr) noexcept {
-        static const double f[kN] = {60.0, 120.0, 180.0, 240.0, 300.0, 360.0};
-        for (int k = 0; k < kN; ++k) notch[k].setCoeffs(humcomb::makeNotch(f[k], 18.0, sr));
+    double mainsHz = 60.0;
+    void prepare(double sr, double mains = 60.0) noexcept {
+        mainsHz = mains;
+        for (int k = 0; k < kN; ++k) notch[k].setCoeffs(humcomb::makeNotch(mains * (k + 1), 18.0, sr));
     }
     void reset() noexcept { for (auto& b : notch) b.reset(); }
     float process(float x) noexcept {

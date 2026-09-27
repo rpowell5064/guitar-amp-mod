@@ -102,8 +102,14 @@ private:
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
     float  stackMid_  = 0.15f;   // fit0: VR5 / VR6 "log" law
-    double otHfHz_ = 60e3, zHfDb_ = 0.0, zResDb_ = 8.0, idleMa_ = 24.0, raa_ = 1900.0;   // fit1..fit5 (raa from the boxed 372 V RMS at 300 W; zRes 8 / zHf 0: the reference carries the ~60 Hz impedance hump — with it OFF the grid lost 2.4 points at its best knobs)
-    double nfbStabHz_ = 60e3, fluxLim_ = 12.0;   // fit6 / fit7 (300 W transformer)
+    // zResDb 8.0 -> 2.0, 2026-09-26, revised against the reference measurements. Same
+    // correction as the other amps in the family: the old OT saturation stage was masking an
+    // over-strong resonance, and with saturation modelled in the flux domain 8 dB is too much.
+    // 2.0 is the value the rest of the family settled on; the error is flat over a range around
+    // it, so there is nothing to gain from chasing a narrower value.
+    // (derivation kept out of the public tree)
+    double otHfHz_ = 60e3, zHfDb_ = 0.0, zResDb_ = 2.0, idleMa_ = 24.0, raa_ = 1900.0;   // fit1..fit5 (raa from the boxed 372 V RMS at 300 W; zRes/zHf: the reference carries the ~60 Hz impedance hump, so it must be modelled)
+    double nfbStabHz_ = 60e3, fluxLim_ = 49.0;   // fit6 / fit7 (300 W transformer)
     double kneeV_ = 0.15;                        // fit8
     int    lutPoints_ = 1024;   // fit28 (lab): output-tube LUT resolution
     int    probeTap_ = -1;                       // fit9 (lab)

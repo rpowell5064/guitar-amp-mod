@@ -49,9 +49,11 @@ enum CabPorts {
     P_ROOMDENSE,               // room density (2026-07-23): 0 Classic 4-comb / 1 Dense 6-comb+2AP
     P_SPKDRIVE,                // speaker drive (item #40, 2026-07-28): 0 Off / 1 Subtle / 2 Full / 3 Physical
     P_MIC2TYPE, P_MIC2POS, P_MIC2DIST, P_MIC2LVL, P_MIC2ALIGN, P_MIC2POL,   // Cab Mic 2 (Phase 3, 2026-09-21)
+    P_ENABLED,                 // lv2:designation lv2:enabled — the host's block enable,
+                               // INVERTED vs Bypass (1 = on).  Placed BEFORE the atoms:
+                               // mod-host breaks if control ports follow them.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the
-                               // atoms (mod-host breaks if control ports follow them)
+    P_RESET,                   // KosmOS: kx:Reset trigger
 #endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
@@ -375,13 +377,10 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         }
     }
 
-#ifdef HEXCHAIN_ANAGRAM
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass/passthrough paths.
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     const bool bypass = (*p->ports[P_BYPASS] > 0.5f) ||
                         (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
-#else
-    const bool bypass = *p->ports[P_BYPASS] > 0.5f;
-#endif
     float* inL  = p->ports[P_IN_L];  float* inR  = p->ports[P_IN_R];
     float* outL = p->ports[P_OUT_L]; float* outR = p->ports[P_OUT_R];
 

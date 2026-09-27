@@ -62,7 +62,10 @@ PushPullPowerV::Params ad200PowerParams(double railV2, double railA, double rail
     p.otLfHz = 25.0;  p.otHfHz = otHfHz;
     p.zResHz = zResHz; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 2500.0; p.zHfDb = zHfDb;
-    p.fluxHz = 60.0;  p.fluxLim = fluxLim;
+    // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
+    // 200 W into the 8 ohm tap; bass OT wound lower -> sqrt(2*200*8) = 56.6 V peak. The old fixed-voltage limit
+    // sat far below this, so the core saturated from a fraction of rated power.
+    p.fluxRefHz = 30.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 1000.0; p.screenAttS = 0.010; p.screenRelS = 0.200;
     // see the SVT model: the toolkit scales by (raa/4)/otRatio where the ideal
     // push-pull value is raa/(2*otRatio), so 2.0 restores it.

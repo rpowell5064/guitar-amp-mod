@@ -42,7 +42,12 @@ private:
                                                //  static ~40% THD; the real DOD cleans up at low gain/soft pick)
     static constexpr double kVf      = 0.42;   // shunt-diode clamp (V) — hard clip threshold
     static constexpr double kHard    = 2.6;    // clip hardness (higher = squarer/harder)
-    static constexpr double kMakeup  = 0.85;   // output trim (matched to capture loudness)
+    // Output trim.  Revised 2026-09-27: at 0.85 the model sat consistently quiet across
+    // the whole Gain range, so the pedal never reached the loudness it should.  1.19
+    // centres it.  The residual error is drive-dependent (slightly hot at Gain 0, slightly
+    // quiet at Gain 10) and would need a drive-shaped law to remove, not a scalar.
+    // (derivation kept out of the public tree)
+    static constexpr double kMakeup  = 1.19;
     static constexpr double kInHPfc  = 125.0;  // input coupling HP — the DOD 250 cuts bass HARD (captures show
                                                // -3.6..-6.8 dB @50 Hz rel 500, tighter with more gain); was 80 = too boomy
     static constexpr double kFbLpFc  = 6000.0; // gain-stage bandwidth limit → mid-forward (was 3200 = too dark up top)

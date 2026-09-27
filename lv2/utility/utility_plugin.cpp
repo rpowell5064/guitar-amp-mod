@@ -24,10 +24,12 @@ enum UtilPorts {
     P_BOOST     = 8,   // clean-boost enable
     P_BOOST_AMT = 9,   // clean-boost amount in dB (0..12)
     P_PICKUP_LOAD = 10, // pickup/cable/input-impedance sim (2026-07-23, default 0 = off)
+    P_MAINS     = 11,  // mains frequency for the hum comb: 0 = 60 Hz, 1 = 50 Hz (2026-09-25)
+    P_ENABLED,            // lv2:designation lv2:enabled — Input Trim has no Bypass
+                          // port, so this IS its bypass.  1 = on, 0 = bypassed
+                          // (a plain memcpy passthrough).
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports).
-                          // Input Trim has no stock bypass port, so enabled=0 is a plain
-                          // passthrough (memcpy) rather than a shared bypass path.
+    P_RESET,              // KosmOS: kx:Reset trigger
 #endif
     P_N_PORTS
 };
@@ -59,8 +61,10 @@ struct UtilityPlugin {
     PickupVoicer voice;        // single-coil -> humbucker voicing
     PickupLoadSim load;        // pickup loading / input impedance (v24 fidelity)
     OutputBoost  boost;        // clean boost + low-mid beef
-    float*       ports[P_N_PORTS];
+    float*       ports[P_N_PORTS] = {};
     float        sr = 44100.0f;
+    float        mainsCur = 60.0f;  // mains the comb is tuned to; starts at the prepared 60 Hz so
+                                    // the default path re-prepares nothing (bit-identical)
 #ifdef HEXCHAIN_ANAGRAM
     bool         resetLatch = false;   // kx:Reset edge detect
 #endif
@@ -73,8 +77,8 @@ static LV2_Handle util_instantiate(const LV2_Descriptor*, double rate,
     p->sr = static_cast<float>(rate);
     p->hum.prepare(rate);
     p->load.prepare(rate);
-#ifdef HEXCHAIN_ANAGRAM
     p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
+#ifdef HEXCHAIN_ANAGRAM
     p->ports[P_RESET]   = nullptr;
 #endif
     return p;
@@ -93,23 +97,25 @@ static void util_run(LV2_Handle h, uint32_t n) {
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
-            p->hum   = HumNotchComb{};  p->hum.prepare(p->sr);
+            p->hum   = HumNotchComb{};  p->hum.prepare(p->sr, p->mainsCur);
             p->load  = PickupLoadSim{}; p->load.prepare(p->sr);
             p->voice = PickupVoicer{};
             p->boost = OutputBoost{};
         }
     } else p->resetLatch = false;
-    // lv2:enabled (KosmOS bypass, 1 = on): Input Trim has no stock bypass port,
-    // so enabled=0 is a plain passthrough.
+#endif
+    // lv2:designation lv2:enabled: Input Trim has no stock Bypass port, so this
+    // IS its bypass.  Inverted sense — enabled=0 is a plain passthrough.
     if (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f) {
         if (p->ports[P_OUT] != p->ports[P_IN])
             std::memcpy(p->ports[P_OUT], p->ports[P_IN], sizeof(float) * n);
         return;
     }
-#endif
     const float gainLin  = std::pow(10.0f, *p->ports[P_GAIN_DB] / 20.0f);
     const float sign     = (*p->ports[P_PHASE] > 0.5f) ? -1.0f : 1.0f;
     const bool  humOn    = *p->ports[P_HUM] > 0.5f;
+    const float mainsHz  = (p->ports[P_MAINS] && *p->ports[P_MAINS] > 0.5f) ? 50.0f : 60.0f;
+    if (mainsHz != p->mainsCur) { p->mainsCur = mainsHz; p->hum.prepare(p->sr, mainsHz); }   // 50/60 Hz mains
     const float hbAmount = *p->ports[P_HB_AMOUNT];
     const bool  hbOn     = *p->ports[P_HUMBK] > 0.5f;   // enable toggle (default on -> legacy amount>0 behaviour)
     const int   hbModel  = static_cast<int>(*p->ports[P_HB_MODEL] + 0.5f);

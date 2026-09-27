@@ -73,7 +73,10 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.otLfHz = 40.0;  p.otHfHz = otHfHz;
     p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
-    p.fluxHz = 120.0; p.fluxLim = fluxLim;
+    // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
+    // 30 W quad EL84 into the 16 ohm tap -> sqrt(2*30*16) = 31.0 V peak. The old fixed-voltage limit
+    // sat far below this, so the core saturated from a fraction of rated power.
+    p.fluxRefHz = 40.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 100.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 100 Î© screens: little screen sag
     p.outTrim = 1.0;
     return p;

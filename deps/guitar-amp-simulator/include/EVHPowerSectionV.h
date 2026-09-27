@@ -57,9 +57,11 @@ public:
         otHP_.setCoeffs(Filters::highpass1pole(35.0, fs_));
         otLP_.setCoeffs(Filters::lowpass1pole(15e3, fs_));
         // Reflected speaker-impedance shape (see process() note).
-        zRes_.setCoeffs(Filters::peaking(120.0, 12.5, 0.9, fs_));
+        zRes_.setCoeffs(Filters::peaking(zResHz_, zResDb_, zResQ_, fs_));
         zHF_.setCoeffs(Filters::highshelf(4000.0, 4.5, fs_));
-        fluxLP_.setCoeffs(Filters::lowpass1pole(120.0, fs_));
+        fluxLP_.setCoeffs(Filters::lowpass1pole(120.0, fs_));   // (retired: the flux limit is in the flux domain now)
+        fluxPhiMax_ = fluxLim_ / (2.0 * M_PI * kFluxRefHz);    // peak volt-seconds at saturation
+        fluxLeak_   = std::exp(-2.0 * M_PI * 20.0 / fs_);      // 20 Hz leak: winding resistance, not a tone control
         spkP_.leRp = spkP_.re * (std::pow(10.0, 4.5 / 20.0) - 1.0);   // plateau at the anchored +4.5 dB shelf (2026-09-22)
         spkP_.loadMatch = true;      // small-signal transparent; the anchored zRes/zHF curve stays in series (see PushPullPowerV::loadRow)
         spkZ_.prepare(fs_, spkP_);   // Phase 5 dynamic load (off by default)
@@ -80,6 +82,7 @@ public:
         biasShift_ = 0.0;
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
         zRes_.reset(); zHF_.reset(); fluxLP_.reset(); spkZ_.reset();
+        fluxInt_ = 0.0;
         presShelf_.reset(); resoShelf_.reset();
         c89HP_.reset(); c118HP_.reset(); c119HP_.reset();
     }
@@ -99,6 +102,8 @@ public:
         // Grid A: vin through C93/R136 (flat in-band, small divider).
         // Grid B: the NFB signal through C89/R161.
         const double vgA = vin * kPiInDiv;
+        paTap_[kTapVgA] = vgA;
+        paTap_[kTapNfb] = nfb;
         // OT secondary polarity is chosen so the loop is NEGATIVE: with this
         // class's speaker sign convention (spk ∝ vgB − vgA) the feedback must
         // enter inverted.
@@ -115,6 +120,8 @@ public:
         // 220k bias feeds + 1.5k stoppers; grid conduction clamped vs bias).
         double gA = c118HP_.process(float(vpA - ltpVpBiasA_));
         double gB = c119HP_.process(float(vpB - ltpVpBiasB_));
+        paTap_[kTapVpDiff] = (vpA - ltpVpBiasA_) - (vpB - ltpVpBiasB_);
+        paTap_[kTapGridA]  = gA;
         // 6L6 grid conduction ALSO charges the shared bias network: grid
         // current flows through the 220k feeds into C97 10uF on the bias-adj
         // rail, pushing BOTH grids colder; it recovers through R171 25k
@@ -130,6 +137,7 @@ public:
         }
         gA = gridClamp(gA) - biasShift_;
         gB = gridClamp(gB) - biasShift_;
+        paTap_[kTapGridClamped] = gA;
 
         // ── 6L6GC push-pull via the bias-solved LUT ─────────────────────────
         const double iP  = lut(gA) * kImbalance;
@@ -158,20 +166,40 @@ public:
         // speaker-typical estimates (the reference recordings ran the Axe's
         // PA speaker-impedance modeling, cab off — same convention).
         double spk = (iP - iN) * (kRaa / 4.0) / kOtRatio * scrFactor_;
+        paTap_[kTapPlateDiff] = spk;
         if (dynLoad_) spk = spkZ_.loadVolts(spk, spkP_.vDriver);   // Phase 5: the driver's large-signal behaviour (small-signal matched out)
         spk = zHF_.process(zRes_.process(float(spk)));             // the amp's anchored reflected-impedance curve, both ways
+        paTap_[kTapPostZ] = spk;
 
         spk = otLP_.process(otHP_.process(float(spk)));
-        // OT CORE SATURATION: flux scales with V/f, so the low band drives
-        // the core toward saturation first — the hardware reference shows a
-        // flat ~22% THD floor at 111 Hz at every gain and drive level, which
-        // only a flux limit produces. Split at ~120 Hz and soft-limit the low
-        // band (kFluxLim in speaker-node volts); runs inside the NFB loop.
+        paTap_[kTapPostOT] = spk;
+        // ── OT CORE SATURATION, IN THE FLUX DOMAIN (rewritten 2026-09-25) ────
+        // Core flux is the INTEGRAL of the winding voltage, so for a sine of
+        // amplitude A at frequency f the peak flux is A/(2*pi*f): the same voltage
+        // is four times the flux at 40 Hz that it is at 160 Hz. Saturation is
+        // therefore a low-FREQUENCY limit, not a low-band voltage limit.
+        //
+        // What was here until today limited a 120 Hz-split low band at a FIXED
+        // 20 V, which is level-independent once it engages — and that is exactly
+        // the artefact: it pinned low-frequency THD nearly flat at every playing
+        // level, where the reference measurements show it rising steadily with
+        // pick strength. (derivation kept out of the public tree)
+        //
+        // Anchor instead of fit: this OT is rated 50 W into 16 ohms = 28.3 Vrms =
+        // 40 V peak at the speaker node, and a guitar OT is wound so that rated
+        // output at the LOW end of its passband is just short of saturation. So
+        // the core saturates at 40 V peak at kFluxRefHz, i.e. at a peak flux of
+        // kFluxSatV / (2*pi*kFluxRefHz) volt-seconds — and nowhere near it at
+        // 110 Hz, where that same limit corresponds to 110 V peak. The gain is
+        // tanh(phi)/phi so it is transparent while the core is linear, and the
+        // leaky integrator's 20 Hz corner stands in for the winding resistance
+        // that stops real flux from running away at DC.
         {
-            const float lo = fluxLP_.process(float(spk));
-            const double hi = spk - lo;
-            spk = hi + fluxLim_ * std::tanh(lo / fluxLim_);
+            fluxInt_ = fluxInt_ * fluxLeak_ + spk / fs_;          // volts -> volt-seconds
+            const double ph = std::abs(fluxInt_) / fluxPhiMax_;
+            if (ph > 1e-6) spk *= std::tanh(ph) / ph;
         }
+        paTap_[kTapPostFlux] = spk;
         nfbPrev_ = float(spk);
         // Small residual level trim vs the TP47-derived speaker targets (the
         // bulk of the old 6.5x trim was the TP41 mis-assignment, now fixed in
@@ -182,6 +210,14 @@ public:
     // Bias/verification accessors
     double ltpTailV()   const noexcept { return ltpTailV_; }
     double outIdlemA()  const noexcept { return outIdle_ * 1e3; }
+
+    // ── Debug taps (lab harness; one store each, see the enum) ──────────────
+    // Tracking down WHICH element distorts needs waveforms, and RMS taps cannot
+    // tell clipping from gain. paTap(i) returns the most recent sample at the
+    // point i, so the waveform at a single stage can be examined.
+    enum PaTap { kTapVgA = 0, kTapVpDiff, kTapGridA, kTapGridClamped,
+                 kTapPlateDiff, kTapPostZ, kTapPostOT, kTapPostFlux, kTapNfb, kNPaTaps };
+    double paTap(int i) const noexcept { return (i >= 0 && i < kNPaTaps) ? paTap_[i] : 0.0; }
 
 private:
     // ── Schematic constants (sheet 2) ────────────────────────────────────────
@@ -371,10 +407,28 @@ private:
     bool          dynLoad_ = false;
 public:
     void setDynLoad(bool on) noexcept { if (on && !dynLoad_) spkZ_.reset(); dynLoad_ = on; }
-    void setFluxLim(double v) noexcept { fluxLim_ = std::max(0.1, v); }
+    // Lab hooks for the reflected-impedance peak. Header note already flags this curve as
+    // "speaker-typical estimates": the cab's LF impedance rise is a BROAD plateau, not one
+    // narrow peak, and Q is what decides how much survives at 50-80 Hz.
+    void setZRes(double hz, double db, double q) noexcept {
+        zResHz_ = hz; zResDb_ = db; zResQ_ = std::max(0.2, q);
+        if (fs_ > 0.0) zRes_.setCoeffs(Filters::peaking(zResHz_, zResDb_, zResQ_, fs_));
+    }
+    // Lab hook (fit5): the speaker-node VOLTS at which the core saturates at
+    // kFluxRefHz. Pass something huge to take the core out of the picture.
+    void setFluxLim(double v) noexcept {
+        fluxLim_ = std::max(0.1, v);
+        fluxPhiMax_ = fluxLim_ / (2.0 * M_PI * kFluxRefHz);
+    }
     bool dynLoad() const noexcept { return dynLoad_; }
 private:
-    double fluxLim_ = kFluxLim;               // runtime copy (lab hook setFluxLim)
+    // Defaults mirror EVH5150ComponentModel's (which sets them through setZRes on build):
+    // a BROAD plateau, not a narrow peak — see the note there.
+    double zResHz_ = 90.0, zResDb_ = 12.5, zResQ_ = 0.5;    // reflected-impedance peak (lab: setZRes)
+    double fluxLim_ = kFluxSatV;              // runtime copy (lab hook setFluxLim)
+    double fluxPhiMax_ = 1.0;                 // kFluxSatV / (2*pi*kFluxRefHz), volt-seconds
+    double fluxLeak_ = 1.0, fluxInt_ = 0.0;   // leaky flux integrator
+    double paTap_[kNPaTaps] = {};              // debug taps (see paTap())
     // OT core saturation threshold, speaker-node volts, applied to the band below
     // fluxHz. Was 4.0 (2026-09-09), fitted to a reference modeler's flat 22 % THD
     // floor at 111 Hz — but 4 V at the 16 ohm node is ~1 W, i.e. the 50 W
@@ -384,7 +438,14 @@ private:
     // and carries +4..+8 dB more 80-315 Hz than the model did: the limiter was the
     // largest part of "thin". 20 V = flux saturation starting near 25 W at the
     // lowest notes, where a real 50 W OT lives. Lab hook fit5 (setFluxLim).
-    static constexpr double kFluxLim = 20.0;
+    // OT core saturation, anchored to the drawing's own rated-output test rather than
+    // fitted: 50 W into 16 ohms = 28.3 Vrms = 40 V peak at the speaker node, and the core
+    // is just short of saturation there at the low end of the passband. At 110 Hz this
+    // same flux limit sits at 110 V peak, so the core barely participates — which matches
+    // the reference measurements (low-frequency THD there tracks the pick; it is tube
+    // distortion, not core saturation).
+    static constexpr double kFluxSatV = 40.0;   // speaker-node volts peak at kFluxRefHz
+    static constexpr double kFluxRefHz = 40.0;  // OT passband low end (design estimate)
     float  nfbPrev_ = 0.0f;
     double sagEnv_ = 0.0, sagAtk_ = 0.0, sagRel_ = 0.0;
     double scrEnv_ = 0.018, scrFactor_ = 1.0;    // screen-node droop state

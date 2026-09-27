@@ -37,6 +37,7 @@ private:
     float holdMs       = 120.0f; // ride through note transitions / palm mutes before releasing
     float hysteresisDB =   8.0f; // dead-band width (wider = no chatter)
     bool  humReject    = true;   // detector-only 60Hz hum-comb (see class note); "humReject" param
+    float mainsHz      = 60.0f;  // mains frequency the detector comb is tuned to (60 / 50); "mainsHz" param
 
     // Derived coefficients (recalculated in prepare/setParameter)
     float envAttack{}, envRelease{};

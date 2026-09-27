@@ -111,7 +111,10 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
     # 3. Add the Darkglass prefixes after the existing prefix block.
     lastPrefix = ttl.rfind("\n@prefix")
     endOfPrefixes = ttl.index("\n", ttl.index(".", lastPrefix)) + 1
-    ttl = ttl[:endOfPrefixes] + EXTRA_PREFIXES + ttl[endOfPrefixes:]
+    # (skip a prefix the source already declares — pg: since the 2026-09-25 port groups)
+    extra = "".join(line + chr(10) for line in EXTRA_PREFIXES.splitlines()
+                    if line.split()[1] not in ttl[:endOfPrefixes])
+    ttl = ttl[:endOfPrefixes] + extra + ttl[endOfPrefixes:]
 
     # 4. Audio port group node(s) + plugin-level dg: metadata. Mono plugins
     #    (1-in/1-out) get the dark-tremolo MonoGroup shape; stereo plugins
@@ -185,7 +188,15 @@ def transform(src_path, plugin_uri, abbrev, so_name, group_frag, strip_nam=False
                       f"\n        pg:group {group_uri}")
         out_blocks.append(b)
 
-    new_blocks = [port_block(x) for x in enabled_reset_blocks()]
+    # Skip any of these the SOURCE TTL already declares.  Since 2026-09-27 the shipped
+    # plugins carry their own lv2:enabled port (a Zynthian request), so inserting a
+    # second one here would emit a duplicate symbol and index.  kx:Reset is still
+    # KosmOS-only and is always added.
+    have = set()
+    for _b in out_blocks:
+        have.update(re.findall(r'lv2:symbol "([^"]+)"', _b))
+    new_blocks = [port_block(x) for x in enabled_reset_blocks()
+                  if re.search(r'lv2:symbol "([^"]+)"', x).group(1) not in have]
     atom_at = next((i for i, b in enumerate(out_blocks) if "atom:AtomPort" in b), None)
     if atom_at is not None:
         out_blocks[atom_at:atom_at] = new_blocks   # BEFORE the atoms (mod-host rule)

@@ -99,11 +99,21 @@ private:
     float  gainMid_   = 0.15f;   // fit0: GAIN 1MA law
     float  masterMid_ = 0.15f;   // fit17: CH3 MASTER 100KA law
     float  outputPot_ = 0.5f;    // fit1: rear OUTPUT 1MA position (not a plugin knob)
-    // fit2..fit6. The Ch3 power section is lightly damped and presence-forward: the Z-network
-    // resonance sits low (zRes) so the low-mids stay tight rather than humped, and the open-loop
+    // fit2..fit6. The Ch3 power section is lightly damped and presence-forward: the open-loop
     // top carries an HF shelf (zHf) so the presence band is not rolled off.
+    //
+    // zResDb: REVERTED to 2.0 on 2026-09-26, same day it was briefly raised to 11.0.
+    // The 11.0 was argued only from consistency with the other guitar amps (all 11.0). That
+    // argument was wrong: this amp's power section really does differ. At 2.0 the model is
+    // already well ABOVE the reference response at 50-80 Hz, so it never lacked low end and
+    // the extra 9 dB just made it boomy — the old note's rationale ("the resonance sits low so
+    // the low-mids stay tight") was right all along. Kept at the original 2.0 rather than
+    // chasing the last tenth, which would be over-tuning to a single reference.
+    // zHfDb 7.0 is CORRECT and was re-checked at the same time: it tracks the reference across
+    // 2-8 kHz, and cutting it only makes the top too dark.
+    // (derivation kept out of the public tree)
     double otHfHz_ = 80e3, zHfDb_ = 7.0, zResDb_ = 2.0, idleMa_ = 40.0, raa_ = 4200.0;
-    double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
+    double nfbStabHz_ = 60e3, fluxLim_ = 53.7;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
     double presPot_ = 10e3;                      // fit11: CH3 presence rheostat (value not printed)

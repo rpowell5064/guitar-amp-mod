@@ -187,8 +187,12 @@ enum AmpPorts {
     P_SV_ULTRALO, P_SV_ULTRAHI, P_SV_MIDFREQ,                  // Blue Liner (SVT): Ultra-Lo/Ultra-Hi + 3-way mid select (0/1/2 = 220/800/3k, default 1)
     P_COMP, P_DYNLOAD, P_ECO,                                  // 2026-09-23 (v62): Component Build (schematic-exact twin, own power section),
                                                                // Dynamic Load (the driver as the power section's load), Engine Quality (4x / 2x)
+    P_MAINS,                                                   // 2026-09-25: mains frequency for the input hum comb + gate detector comb (0 = 60 Hz, 1 = 50 Hz)
+    P_ENABLED,                                             // lv2:designation lv2:enabled — the host's block enable,
+                                                           // INVERTED vs Bypass (1 = on).  Placed BEFORE the atoms:
+                                                           // mod-host breaks if control ports follow them.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,                                        // KosmOS: lv2:enabled + kx:Reset — inserted BEFORE the atoms (mod-host breaks if control ports follow them)
+    P_RESET,                                               // KosmOS: kx:Reset trigger
 #endif
     P_CONTROL, P_NOTIFY,                                       // atom in/out (NAM file) — MUST be last: MOD/mod-host break if control ports follow the atom ports
     P_N_PORTS
@@ -230,6 +234,8 @@ struct AmpPlugin {
                                        // 89% mains-hum harmonics; ~15 dB off it puts the floor under the
                                        // gate's close threshold). Engaged with the gate; always fed (warm state).
     NamModel*         nam = nullptr;   // swapped in by the worker on file load
+    float             mainsCur = 60.0f; // mains the hum/detector combs are tuned to; starts at the
+                                       // prepared 60 Hz so the default path re-tunes nothing
 
     float* ctrl[P_N_PORTS] = {};
     const LV2_Atom_Sequence* control = nullptr;
@@ -410,8 +416,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             p->inGate.setParameter("hold",     120.0f);
             p->inGate.setParameter("release",  250.0f);
             p->inGate.setParameter("hysteresis", 8.0f);
-            p->inComb[0] = HumNotchComb{};   p->inComb[0].prepare(p->rate);
-            p->inComb[1] = HumNotchComb{};   p->inComb[1].prepare(p->rate);
+            p->inComb[0] = HumNotchComb{};   p->inComb[0].prepare(p->rate, p->mainsCur);
+            p->inComb[1] = HumNotchComb{};   p->inComb[1].prepare(p->rate, p->mainsCur);
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
             p->lastTube = -1;   // re-apply the tube type below
         }
@@ -449,13 +455,10 @@ static void amp_run(LV2_Handle h, uint32_t n) {
 
     const int  modelIdx   = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);
     const bool isNam       = (modelIdx == kNamIdx);
-#ifdef HEXCHAIN_ANAGRAM
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the passthrough path.
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     const bool fullBypass  = (*p->ctrl[P_BYPASS] > 0.5f) ||
                              (p->ctrl[P_ENABLED] && *p->ctrl[P_ENABLED] <= 0.5f);
-#else
-    const bool fullBypass  = *p->ctrl[P_BYPASS] > 0.5f;
-#endif
     float* inL  = p->ctrl[P_IN_L];  float* inR  = p->ctrl[P_IN_R];
     float* outL = p->ctrl[P_OUT_L]; float* outR = p->ctrl[P_OUT_R];
 
@@ -496,6 +499,13 @@ static void amp_run(LV2_Handle h, uint32_t n) {
 
     const bool compOn = hasComponentModel(modelIdx) && *p->ctrl[P_COMP] > 0.5f;
     const bool ecoOn  = *p->ctrl[P_ECO] > 0.5f;
+    const float mainsHz = (p->ctrl[P_MAINS] && *p->ctrl[P_MAINS] > 0.5f) ? 50.0f : 60.0f;
+    if (mainsHz != p->mainsCur) {   // 50/60 Hz mains: re-tune the input hum comb + the gate's detector comb
+        p->mainsCur = mainsHz;
+        p->inComb[0].prepare(p->rate, mainsHz);
+        p->inComb[1].prepare(p->rate, mainsHz);
+        p->inGate.setParameter("mainsHz", mainsHz);
+    }
     if (modelIdx != p->lastModel || compOn != p->lastComp || ecoOn != p->lastEco) {
         if (scheduleRebuild(p, modelIdx) == LV2_WORKER_SUCCESS) p->lastModel = modelIdx;
     }

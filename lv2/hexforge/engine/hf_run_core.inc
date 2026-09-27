@@ -126,7 +126,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             p->calCmdPrev = cv;
             const int cmd = (int)(cv + 0.5f);
             if (cmd >= 1 && cmd <= 3) {
-                p->calMeas.begin(p->rate);
+                p->calMeas.begin(p->rate, p->itMainsCur);
                 p->calState = cmd;
                 p->calSamplesTotal = p->calSamplesLeft =
                     (uint32_t)(p->rate * (cmd == 3 ? 6.0 : 5.0));
@@ -192,6 +192,13 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     const float itGain    = std::pow(10.0f, (*p->ports[HF_IT_GAIN] + p->calTrimOffsSm)/20.0f)
                             * ((*p->ports[HF_IT_PHASE] > 0.5f) ? -1.0f : 1.0f);
     const bool  itHum     = *p->ports[HF_IT_HUM] > 0.5f;
+    const float itMains   = (p->ports[HF_IT_MAINS] && *p->ports[HF_IT_MAINS] > 0.5f) ? 50.0f : 60.0f;   // global 50/60 Hz mains
+    if (itMains != p->itMainsCur) {   // re-tune the hum comb + both gate detector combs (default 60 = bit-identical)
+        p->itMainsCur = itMains;
+        p->trimHum.prepare(p->rate, itMains);
+        p->gate.setParameter("mainsHz",  itMains);
+        p->gate2.setParameter("mainsHz", itMains);
+    }
     const bool  itHB      = *p->ports[HF_IT_HUMBK] > 0.5f;
     const int   itHBModel = (int)(*p->ports[HF_IT_HBMODEL] + 0.5f);
     if (itHB) p->trimVoice.prepare(p->rate, itHBModel, *p->ports[HF_IT_HBAMT]);   // recompute on model/amount change
@@ -1390,6 +1397,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
 // out-of-band store backup. Returns false on allocation failure (caller frees).
 static bool hfEngineInit(HexForge* p, double rate) {
     p->rate = rate;
+    UniVibeEffect::warmup();   // off the audio thread: a later Mod type switch to Uni-Verse costs no solve
     p->trimHum.prepare(rate);
     p->trimLoad.prepare(rate);
     // (EVH lab EQ coeffs are set in run() from dbg_evhfit on first use / knob move.)

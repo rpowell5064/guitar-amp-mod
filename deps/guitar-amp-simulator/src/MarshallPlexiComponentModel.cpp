@@ -56,7 +56,7 @@ CCStageV::Params v2aParams(double rail, double knee) {
 }
 
 PushPullPowerV::Params plexiPowerParams(double railPI, double railB, double railScreen,
-                                        double idleA, double raa, double presR) {
+                                        double idleA, double raa, double presR, double zResDb) {
     PushPullPowerV::Params p;
     // ── V3 ECC83 long-tail pair ─────────────────────────────────────────────
     p.ltpVcc   = railPI;           // solved from the dropping chain
@@ -99,9 +99,12 @@ PushPullPowerV::Params plexiPowerParams(double railPI, double railB, double rail
 
     // ── OT + speaker (ESTIMATE class, the JCM800 build's 100 W values) ───────
     p.otLfHz = 30.0;  p.otHfHz = 22e3;
-    p.zResHz = 110.0; p.zResDb = 11.0; p.zResQ = 0.9;
+    p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = 8.0;
-    p.fluxHz = 120.0; p.fluxLim = 5.0;
+    // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
+    // 100 W quad EL34 (1970 Super Lead) into the 16 ohm tap -> sqrt(2*100*16) = 56.6 V peak. The old fixed-voltage limit
+    // sat far below this, so the core saturated from a fraction of rated power.
+    p.fluxRefHz = 40.0;  p.fluxSatV = 56.6;
     p.screenR = 1e3;               // the 1k screen resistors
     p.screenAttS = 0.010; p.screenRelS = 0.200;
     p.outTrim = 1.0;
@@ -182,10 +185,10 @@ void MarshallPlexiComponentModel::buildStages() noexcept {
             c.ts.prepare(fs_, tp);
         }
         c.coupPI.prepare(fs_, 22e-9, kZthStack + 33e3, 1e6);   // .022 into the 1M grid leak
-        c.pa.prepare(fs_, plexiPowerParams(rb.PI, rb.B, rb.screen, idleB, raa_, double(presence_)));
+        c.pa.prepare(fs_, plexiPowerParams(rb.PI, rb.B, rb.screen, idleB, raa_, double(presence_), zResDb_));
         if (ci == 0) endB_.pa = c.pa.opPoint();
         c.pa.copyLut(c.lutB);
-        c.pa.prepare(fs_, plexiPowerParams(ra.PI, ra.B, ra.screen, idleA, raa_, double(presence_)));
+        c.pa.prepare(fs_, plexiPowerParams(ra.PI, ra.B, ra.screen, idleA, raa_, double(presence_), zResDb_));
         if (ci == 0) endA_.pa = c.pa.opPoint();
         c.pa.setPresence(presence_);   // inert (presDepth 0): presence is the NFB split
         c.pa.setSagDepth(sag_);
@@ -358,6 +361,7 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit4")     { screenDropV_ = value; rebuildAll(); }
     else if (id == "fit5")     { idleMa_ = value;      rebuildAll(); }
     else if (id == "fit6")     { raa_ = value;         rebuildAll(); }
+    else if (id == "fit7")     { zResDb_ = value;     rebuildAll(); }   // lab: reflected LF resonance depth (dB)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

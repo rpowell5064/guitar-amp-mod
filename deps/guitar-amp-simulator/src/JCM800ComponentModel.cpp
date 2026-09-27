@@ -59,7 +59,10 @@ PushPullPowerV::Params jcmPowerParams() {
     p.otLfHz = 30.0;  p.otHfHz = 22e3;
     p.zResHz = 110.0; p.zResDb = 11.0; p.zResQ = 0.9;
     p.zHfHz  = 3000.0; p.zHfDb = 8.0;
-    p.fluxHz = 120.0; p.fluxLim = 5.0;
+    // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
+    // 100 W quad EL34 into the 16 ohm tap -> sqrt(2*100*16) = 56.6 V peak. The old fixed-voltage limit
+    // sat far below this, so the core saturated from a fraction of rated power.
+    p.fluxRefHz = 40.0;  p.fluxSatV = 56.6;
     p.screenR = 1e3;  p.screenAttS = 0.010; p.screenRelS = 0.200;
     p.outTrim = 1.0;
     return p;
@@ -109,7 +112,7 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             p.R4 += kZthStack;
             c.ts.prepare(fs_, p);
         }
-        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; c.pa.prepare(fs_, pp); }
+        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); }
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -200,8 +203,12 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
+    else if (id == "fit3")     { fluxSatV_ = value;   // lab: OT core saturation, peak volts at 40 Hz
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_;
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
     else if (id == "fit2")     { zResDb_  = value;   // lab: OT low-resonance depth (dB)
-        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_;
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // The 2203 has no channel switch and no resonance control.
 }

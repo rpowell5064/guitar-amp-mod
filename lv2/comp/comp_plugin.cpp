@@ -16,8 +16,10 @@ enum CompPorts {
     P_MAKEUP = 8,
     P_GR     = 9,
     P_BYPASS = 10,
+    P_ENABLED,            // lv2:designation lv2:enabled — the host's block enable.
+                          // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
-    P_ENABLED, P_RESET,   // KosmOS: lv2:enabled + kx:Reset (appended after all stock ports)
+    P_RESET,              // KosmOS: kx:Reset trigger
 #endif
     P_N_PORTS
 };
@@ -37,9 +39,9 @@ static LV2_Handle comp_instantiate(const LV2_Descriptor*, double rate,
     auto* p = new(std::nothrow) CompPlugin;
     if (!p) return nullptr;
     p->dsp.prepare(rate, 512, 1);
+    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
-    p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
     p->ports[P_RESET]   = nullptr;
 #endif
     return p;
@@ -57,12 +59,11 @@ static void comp_run(LV2_Handle h, uint32_t n) {
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) { p->resetLatch = true; p->dsp.prepare(p->sampleRate, 512, 1); }
     } else p->resetLatch = false;
-    // lv2:enabled (KosmOS bypass, 1 = on) shares the bypass passthrough.
+#endif
+    // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
+    // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f ||
                      (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f));
-#else
-    p->dsp.setBypass(*p->ports[P_BYPASS] > 0.5f);
-#endif
     p->dsp.setParameter("type",      *p->ports[P_TYPE]);
     p->dsp.setParameter("threshold", *p->ports[P_THRESH]);
     p->dsp.setParameter("ratio",     *p->ports[P_RATIO]);

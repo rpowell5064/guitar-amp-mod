@@ -1,4 +1,5 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -6,8 +7,13 @@
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 @prefix dg:    <http://www.darkglass.com/lv2/ns#> .
 @prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
-@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz>
+    a pg:Group ; lv2:symbol "g_fuzz" ; lv2:name "Fuzz" .
+<https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fine>
+    a pg:Group ; lv2:symbol "g_fine" ; lv2:name "Fine Tune" .
 
 <https://rpowell5064.github.io/guitaramp-suite/fuzz#audiogroup>
     a pg:MonoGroup, pg:Group ;
@@ -38,7 +44,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 33 ;
+    lv2:microVersion 35 ;   # 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -54,6 +60,7 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "pedal" ; lv2:name "Pedal" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Italian Hero"    ; rdf:value 0 ] ;
@@ -63,6 +70,7 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "mode" ; lv2:name "Variant" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 2 ; lv2:minimum 0 ; lv2:maximum 5 ;
         lv2:scalePoint [ rdfs:label "Delta"    ; rdf:value 0 ] ;
@@ -74,43 +82,57 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "sustain" ; lv2:name "Sustain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz> ;
         lv2:default 0.55 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "tone" ; lv2:name "Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "volume" ; lv2:name "Volume" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz> ;
         lv2:default 0.65 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "bias" ; lv2:name "Bias" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fine> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "inputtrim" ; lv2:name "Input Trim" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fine> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 9 ; lv2:symbol "getemp" ; lv2:name "Ge Temp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fine> ;
         lv2:default 0.4 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fuzz> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "gvol" ; lv2:name "Guitar Vol" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/fuzz#g_fine> ;
         lv2:default 1.0 ; lv2:minimum 0.05 ; lv2:maximum 1.0
-    
     ] , [
-        a lv2:InputPort, lv2:ControlPort ;
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on,
+        # 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
         lv2:index 12 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
     ] , [
         a lv2:InputPort, lv2:ControlPort ;
         lv2:index 13 ; lv2:symbol "reset" ; lv2:name "Reset" ;

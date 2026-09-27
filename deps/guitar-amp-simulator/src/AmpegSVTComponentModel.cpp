@@ -68,7 +68,10 @@ PushPullPowerV::Params svtPowerParams(double railA, double railE, double otHfHz,
     p.otLfHz = 25.0;  p.otHfHz = otHfHz;
     p.zResHz = zResHz; p.zResDb = zResDb; p.zResQ = 0.9;
     p.zHfHz  = 2500.0; p.zHfDb = zHfDb;
-    p.fluxHz = 60.0;  p.fluxLim = fluxLim;
+    // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
+    // 300 W into the 4 ohm tap; bass OT wound lower -> sqrt(2*300*4) = 49.0 V peak. The old fixed-voltage limit
+    // sat far below this, so the core saturated from a fraction of rated power.
+    p.fluxRefHz = 30.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 22.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 22 Ω screens off a stiff 350 V: little sag
     // The toolkit's speaker scaling is (raa/4)/otRatio; the ideal push-pull value is
     // raa/(2·otRatio). 2.0 restores it and lands the printed 34.6 V RMS at 4 Ω.

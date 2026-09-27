@@ -1,13 +1,20 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix doap:  <http://usefulinc.com/ns/doap#> .
 @prefix foaf:  <http://xmlns.com/foaf/0.1/> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix units: <http://lv2plug.in/ns/extensions/units#> .
 @prefix dg:    <http://www.darkglass.com/lv2/ns#> .
 @prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
-@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/gate#g_gate>
+    a pg:Group ; lv2:symbol "g_gate" ; lv2:name "Gate" .
+<https://rpowell5064.github.io/guitaramp-suite/gate#g_env>
+    a pg:Group ; lv2:symbol "g_env" ; lv2:name "Envelope" .
 
 <https://rpowell5064.github.io/guitaramp-suite/gate#audiogroup>
     a pg:MonoGroup, pg:Group ;
@@ -31,7 +38,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 28 ;
+    lv2:microVersion 31 ;   # 31: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 30: MAINS selector (60 / 50 Hz) for the detector hum comb, port 8, default 60 = bit-identical. 29: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -47,43 +54,65 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "threshold" ; lv2:name "Threshold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_gate> ;
         units:unit units:db ;
         lv2:default -60.0 ; lv2:minimum -80.0 ; lv2:maximum 0.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "attack_ms" ; lv2:name "Attack" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_env> ;
         units:unit units:ms ;
         lv2:default 5.0 ; lv2:minimum 0.1 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "hold_ms" ; lv2:name "Hold" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_env> ;
         units:unit units:ms ;
         lv2:default 50.0 ; lv2:minimum 0.0 ; lv2:maximum 500.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "release_ms" ; lv2:name "Release" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_env> ;
         units:unit units:ms ;
         lv2:default 100.0 ; lv2:minimum 10.0 ; lv2:maximum 2000.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "hysteresis" ; lv2:name "Hysteresis" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_gate> ;
         units:unit units:db ;
         lv2:default 6.0 ; lv2:minimum 0.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_gate> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
-    
     ] , [
-        a lv2:InputPort, lv2:ControlPort ;
-        lv2:index 8 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        # Mains frequency (2026-09-25): the detector's hum-reject comb follows the 60 Hz
+        # (Americas) or 50 Hz (Europe, most of the world) harmonic series.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "mains" ; lv2:name "Mains" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/gate#g_gate> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        lv2:scalePoint [ rdfs:label "60 Hz" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "50 Hz" ; rdf:value 1 ]
+    ] , [
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on,
+        # 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    
     ] , [
         a lv2:InputPort, lv2:ControlPort ;
-        lv2:index 9 ; lv2:symbol "reset" ; lv2:name "Reset" ;
+        lv2:index 10 ; lv2:symbol "reset" ; lv2:name "Reset" ;
         lv2:designation kx:Reset ;
         lv2:portProperty lv2:toggled, pprops:trigger ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .

@@ -78,6 +78,13 @@ private:
     double screenDropV_ = 0.0;      // HT to the screen node: no choke on this sheet (fit4)
     double idleMa_     = 35.0;      // per-EL34 idle at stock mains (fit5)
     double raa_        = 3400.0;    // output transformer primary (fit6)
+    // fit7: reflected LF resonance depth (dB). 11.0 -> 2.0, 2026-09-26, revised against the
+    // reference measurements. Same story as the JCM800 and Friedman: the old fixed-voltage OT
+    // saturation stage had been masking an over-strong resonance, and with saturation modelled
+    // properly in the flux domain the 11 dB is far too much. 2.0 is the same value the JCM800
+    // and Friedman settled on, rather than chasing the last tenth against a single reference.
+    // (derivation kept out of the public tree)
+    double zResDb_     = 2.0;
 
     // ── The two variac positions, solved at build time ───────────────────────
     struct RailSet { double B, screen, PI, V2, V1, iV1, iV2, iPI; };

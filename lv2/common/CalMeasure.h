@@ -57,13 +57,12 @@ struct CalRecommend {
 
 class CalMeasure {
 public:
-    void begin(double sampleRate) noexcept {
+    void begin(double sampleRate, double mainsHz = 60.0) noexcept {
         fs = sampleRate;
-        comb.prepare(fs);
+        comb.prepare(fs, mainsHz);
         comb.reset();
-        static const double humF[kDetN] = {60.0, 120.0, 180.0, 240.0};
         for (int k = 0; k < kDetN; ++k) {
-            det[k].setCoeffs(Filters::notch(humF[k], 18.0, fs));
+            det[k].setCoeffs(Filters::notch(mainsHz * (k + 1), 18.0, fs));
             det[k].reset();
         }
         // NoiseGateBlock detector envelope at the suite defaults (attack 2 ms →

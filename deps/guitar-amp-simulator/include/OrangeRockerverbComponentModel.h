@@ -95,7 +95,7 @@ private:
     // Dirty-channel presence: the OD channel sits darker than the rest of the amp roster in the
     // rig, so it carries its own post-power-amp HF shelf (dirty only; the clean channel is flat).
     float  dirtyHfDb_ = 7.0f;   // fit15: DIRTY presence-shelf gain (dB) above ~1.2 kHz
-    double nfbStabHz_ = 60e3, fluxLim_ = 10.0;   // fit7 / fit8
+    double nfbStabHz_ = 60e3, fluxLim_ = 40.0;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
     double nfbSeriesR_ = 4.7e3;                  // fit11: R10 4k7 (+R6 10k in the other SW2 position)

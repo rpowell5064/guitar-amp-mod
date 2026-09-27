@@ -112,7 +112,12 @@ public:
         double otLfHz = 35.0, otHfHz = 15e3;
         double zResHz = 120.0, zResDb = 12.5, zResQ = 0.9;  // speaker Z resonance
         double zHfHz  = 4000.0, zHfDb = 4.5;                // inductive HF rise
-        double fluxHz = 120.0, fluxLim = 4.0;               // OT core saturation
+        // OT core saturation, in the FLUX domain (rewritten 2026-09-26 — see process()).
+        // fluxSatV = the PEAK volts at the modelled speaker tap at which the core saturates,
+        // taken at fluxRefHz. Anchor it to the amp's own rated output rather than fitting it:
+        // Vpeak = sqrt(2 * P_rated * Z_tap), and fluxRefHz = the low end of the OT's passband,
+        // where a transformer is wound so that rated output is just short of saturation.
+        double fluxRefHz = 40.0, fluxSatV = 56.6;           // OT core saturation (100 W into 16 ohms)
 
         // ── Screen sag ───────────────────────────────────────────────────────
         double screenR = 10e3, screenAttS = 0.010, screenRelS = 0.220;
@@ -167,7 +172,8 @@ public:
         otLP_.setCoeffs(Filters::lowpass1pole(p_.otHfHz, fs_));
         zRes_.setCoeffs(Filters::peaking(p_.zResHz, p_.zResDb, p_.zResQ, fs_));
         zHF_.setCoeffs(Filters::highshelf(p_.zHfHz, p_.zHfDb, fs_));
-        fluxLP_.setCoeffs(Filters::lowpass1pole(p_.fluxHz, fs_));
+        fluxPhiMax_ = p_.fluxSatV / (2.0 * M_PI * p_.fluxRefHz);   // peak volt-seconds at saturation
+        fluxLeak_   = std::exp(-2.0 * M_PI * 20.0 / fs_);          // 20 Hz leak = winding resistance
         spkZ_.prepare(fs_, loadRow()); dynLoad_ = p_.dynLoad;
         sagAtk_    = std::exp(-1.0 / (p_.screenAttS * fs_));
         sagRel_    = std::exp(-1.0 / (p_.screenRelS * fs_));
@@ -183,7 +189,8 @@ public:
         scrFactor_ = 1.0;
         biasShift_ = 0.0;
         nfbStabLP_.reset(); otHP_.reset(); otLP_.reset();
-        zRes_.reset(); zHF_.reset(); fluxLP_.reset(); spkZ_.reset();
+        zRes_.reset(); zHF_.reset(); spkZ_.reset();
+        fluxInt_ = 0.0;
         presShelf_.reset(); resoShelf_.reset(); nfbLoShelf_.reset();
         cathAvg_ = cathIdle_; cathLast_ = cathIdle_;
         piCapA_.reset(); piCapB_.reset();
@@ -322,10 +329,29 @@ private:
         if (dynLoad_) spk = spkZ_.loadVolts(spk, p_.spk.vDriver);   // Phase 5: the driver's large-signal behaviour (small-signal matched out)
         spk = zHF_.process(zRes_.process(float(spk)));               // the amp's anchored reflected-impedance curve, both ways
         spk = otLP_.process(otHP_.process(float(spk)));
+        // ── OT CORE SATURATION, IN THE FLUX DOMAIN (rewritten 2026-09-26) ────────
+        // Core flux is the INTEGRAL of the winding voltage, so for a sine of amplitude A at
+        // frequency f the peak flux is A/(2*pi*f): the same voltage is four times the flux at
+        // 40 Hz that it is at 160 Hz. Saturation is therefore a low-FREQUENCY limit, not a
+        // low-band VOLTAGE limit.
+        //
+        // What was here until today soft-limited a 120 Hz-split low band at a fixed few volts,
+        // which is level-independent once it engages — and every amp's threshold sat at a
+        // quarter to an eighth of its rated peak (the JCM800 and Plexi at 5 V against 56.6 V
+        // rated, i.e. saturating from about a watt). On the EVH, where this was fixed first,
+        // that construct tripled low-frequency THD and pinned it flat across the whole playing
+        // range, where it should rise with the pick. The old flat-THD target it had been tuned
+        // to was wrong. (derivation kept out of the public tree)
+        //
+        // Now: a leaky integrator (20 Hz corner, standing in for the winding resistance that
+        // stops real flux running away at DC) turns volts into volt-seconds, and the gain is
+        // tanh(phi)/phi against the rated-output anchor. Transparent while the core is linear,
+        // and it still bites progressively at the bottom of the range at high level, so the amp
+        // keeps its real "the OT can't do the lows at full tilt" behaviour.
         {
-            const float lo = fluxLP_.process(float(spk));
-            const double hi = spk - lo;
-            spk = hi + p_.fluxLim * std::tanh(lo / p_.fluxLim);
+            fluxInt_ = fluxInt_ * fluxLeak_ + spk / fs_;          // volts -> volt-seconds
+            const double ph = std::abs(fluxInt_) / fluxPhiMax_;
+            if (ph > 1e-6) spk *= std::tanh(ph) / ph;
         }
         nfbPrev_ = float(spk);
         return spk;
@@ -499,7 +525,9 @@ private:
     BiquadFilter piCapA_, piCapB_;
     bool   piCapActive_ = false;
     BiquadFilter nfbStabLP_, otHP_, otLP_, c89HP_, c118HP_, c119HP_;
-    BiquadFilter zRes_, zHF_, fluxLP_;
+    BiquadFilter zRes_, zHF_;
+    double fluxPhiMax_ = 1.0;                 // fluxSatV / (2*pi*fluxRefHz), volt-seconds
+    double fluxLeak_ = 1.0, fluxInt_ = 0.0;   // leaky flux integrator
     SpeakerModel spkZ_;          // Phase 5 dynamic load (current-driven)
     bool         dynLoad_ = false;
     float  nfbPrev_ = 0.0f;

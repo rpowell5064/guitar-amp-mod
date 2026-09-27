@@ -1,4 +1,5 @@
 @prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix mod:   <http://moddevices.com/ns/mod#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
@@ -13,7 +14,6 @@
 @prefix rsz:   <http://lv2plug.in/ns/ext/resize-port#> .
 @prefix dg:    <http://www.darkglass.com/lv2/ns#> .
 @prefix kx:    <http://kxstudio.sf.net/ns/lv2ext/props#> .
-@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
 @prefix pprops:<http://lv2plug.in/ns/ext/port-props#> .
 
 # NAM neural-model file parameter (used when Model = "Neural (NAM)").
@@ -22,6 +22,12 @@
     rdfs:label "NAM Model" ;
     rdfs:range atom:Path ;
     mod:fileTypes "nammodel,nam" .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/drive#g_drive>
+    a pg:Group ; lv2:symbol "g_drive" ; lv2:name "Drive" .
+<https://rpowell5064.github.io/guitaramp-suite/drive#g_nam>
+    a pg:Group ; lv2:symbol "g_nam" ; lv2:name "NAM" .
 
 <https://rpowell5064.github.io/guitaramp-suite/drive#audiogroup>
     a pg:MonoGroup, pg:Group ;
@@ -57,7 +63,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 43 ;   # 43: Treble Ranger (Dallas Rangemaster germanium treble booster) model 11 — one OC44 common-emitter stage solved Ebers-Moll against its load line; the 5 nF input cap keeps the lows out of the amp (the whole point), Tone = the input-cap RANGE mod (5 nF treble → 22 nF mid → 100 nF full-range), Drive = how hard the germanium is pushed (always boosting, h2-dominant until you dig in); validated against R.G. Keen's measured original to 0.62 dB mean, and the pickup loading it puts on the guitar — the reason it is a 1.2 kHz band-pass in use rather than the bench shelf — is modeled. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
+    lv2:microVersion 45 ;   # 45: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 44: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 43: Treble Ranger (Dallas Rangemaster germanium treble booster) model 11 — one OC44 common-emitter stage solved Ebers-Moll against its load line; the 5 nF input cap keeps the lows out of the amp (the whole point), Tone = the input-cap RANGE mod (5 nF treble → 22 nF mid → 100 nF full-range), Drive = how hard the germanium is pushed (always boosting, h2-dominant until you dig in); validated against R.G. Keen's measured original to 0.62 dB mean, and the pickup loading it puts on the guitar — the reason it is a 1.2 kHz band-pass in use rather than the bench shelf — is modeled. 40: Tube Chauffeur (Butler Tube Driver) model 9 — starved-12AX7 warm OD/clean boost. 39: Green Man (TS-808) gain-floor fix — real 51k/4.7k feedback floor (x11.85 at drive 0), the drive-0/level-up boost trick now works; capture anchor at drive 0.5 preserved exactly. 38: Echo Primer (Echoplex EP-3 JFET preamp) model; 37: faster NAM inference
     lv2:requiredFeature urid:map , work:schedule ;
     lv2:optionalFeature lv2:hardRTCapable ;
     lv2:extensionData state:interface , work:interface ;
@@ -76,6 +82,7 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 2 ; lv2:symbol "model" ; lv2:name "Model" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 11 ;
         lv2:scalePoint [ rdfs:label "Green Man"       ; rdf:value 0 ] ;
@@ -92,41 +99,55 @@ Free and open source (GPL-3).""" ;
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 3 ; lv2:symbol "drive" ; lv2:name "Drive" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 4 ; lv2:symbol "tone" ; lv2:name "Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 5 ; lv2:symbol "level" ; lv2:name "Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "mix" ; lv2:name "Mix" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "octave" ; lv2:name "Octave" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 8 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_drive> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         # ── Neural (NAM) input/output trims (used only when Model = Neural) ──
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 9 ; lv2:symbol "nam_gain" ; lv2:name "NAM Gain" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_nam> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 10 ; lv2:symbol "nam_vol" ; lv2:name "NAM Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/drive#g_nam> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
-        a lv2:InputPort, lv2:ControlPort ;
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch
+        # instead of listing it as an ordinary parameter.  NOTE the sense is
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on,
+        # 0 = bypassed.  Deliberately ungrouped and last, so a host that
+        # ignores the designation still shows it at the END of the list.
+        a lv2:ControlPort, lv2:InputPort ;
         lv2:index 11 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;

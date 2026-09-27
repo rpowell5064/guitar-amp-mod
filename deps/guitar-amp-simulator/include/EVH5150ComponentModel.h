@@ -89,13 +89,35 @@ private:
     // law on THREE (0.50) and 0.60 on ONE/TWO match every take (Red 16.9/12.4/
     // 16.2/17.0, Blue g25 15.4 / noon 19.5). The real pots may well be audio
     // taper; what the knob has to reproduce is the reference rig's dial.
-    float gainMidRed_ = 0.15f, gainMidBlue_ = 0.25f;   // GAIN audio taper on both channels (a >=linear law crams the usable range into the bottom sliver)
+    // GAIN audio taper on both channels: the fraction the pot passes at HALF rotation
+    // (a >= linear law crams the usable range into the bottom sliver).
+    //
+    // RED RE-ANCHORED 2026-09-26, 0.15 -> 0.05 (user: "if the red is too hot, fix it").
+    // The Red channel ran hot at every playing level AND barely responded to the pick — its
+    // low-frequency THD was nearly flat where it should climb with pick strength. Per-stage
+    // taps put the cause in the V3 cascade: V3-A left enough signal on V3-B's grid that V3-B
+    // was already deep into distortion on a WHISPER.
+    //
+    // Not a topology or stage-gain error — with the stages linear the model's per-stage gains
+    // match the drawing's own AC ladder (V2-A->V2-B 1.88x vs 1.91 printed; V4-A->V4-B 0.277
+    // vs 0.269). What was wrong is how much the GAIN pot passes at a given dial. The drawing's
+    // own GAIN-1/4 ladder point implies roughly 0.026, so the old 0.15 was far too generous;
+    // 0.05 is the re-anchored value. At 0.05 the channel finally cleans up when you play
+    // softly and its dynamic range across playing level is right. Blue is untouched (its own
+    // midpoint, and the user reports Blue already sounds right).
+    // (derivation kept out of the public tree)
+    float gainMidRed_ = 0.05f, gainMidBlue_ = 0.25f;
     float inVolts_  = 0.35f;   // volts at the input jack per normalised input unit
     // Red (CH3) open-loop presence: the lead channel's power section runs with little
     // global feedback, so its top decays through the cascaded interstage Miller with no
     // presence loop to restore it. redHfDb_ is a bounded HF shelf on the CH3 path only
     // (CH1/CH2 keep their own response). fit3 in the lab harness.
-    float redHfDb_  = 8.0f;    // CH3 presence-shelf gain (dB) above ~1 kHz
+    // 2026-09-26: 8 -> 5 dB (user: "the component version is harsher"). This is a voicing
+    // value, not a schematic one, and at 8 dB it pushed CH3 up in the 800 Hz - 1.2 kHz
+    // harshness band. Being post-power-amp it also dragged the whole low end down in
+    // relative terms, so trimming it recovers bass as well as removing edge.
+    // (derivation kept out of the public tree)
+    float redHfDb_  = 5.0f;    // CH3 presence-shelf gain (dB) above ~1 kHz
     // CH2 (Blue) shares Red's open-loop character but with less lost top; its own
     // post-power-amp presence shelf (gated to Blue, not the CH1/Green relay state).
     float blueHfDb_ = 6.0f;    // CH2 presence-shelf gain (dB) above ~1 kHz
@@ -156,10 +178,20 @@ private:
         static constexpr int kNTaps = 12;
         double tapAcc[kNTaps] = {};
         long   tapN = 0;
+        // Most recent sample at each tap ("taplast<N>"): exposes a tap's WAVEFORM so
+        // per-stage distortion can be measured, not just RMS. One store per tap.
+        double tapLast[kNTaps] = {};
     };
     std::array<ChState, kMaxCh> ch_;
 
     void recalcPots() noexcept;   // gain/tone-pot-dependent pieces
+    void applyZRes() noexcept { for (auto& c : ch_) c.pa.setZRes(zResHz_, zResDb_, zResQ_); }
+    // Reflected speaker impedance, revised 2026-09-26 (user: "missing some tight lowend").
+    // 120 Hz / Q 0.9 was a single narrow peak; a real cab's LF impedance rise is a broad
+    // PLATEAU that is still well up at 50-80 Hz, where a Q 0.9 peak at 120 Hz has already
+    // collapsed. 90 Hz / Q 0.5 covers that plateau and largely closes the 50 Hz hole on both
+    // channels. (derivation kept out of the public tree)
+    float zResHz_ = 90.0f, zResDb_ = 12.5f, zResQ_ = 0.5f;   // lab hooks fit6/fit8/fit7
 
     // ── Circuit constants (drawing 0079092000 Rev E) ─────────────────────────
     static constexpr double kRailW = 273.0;   // V1/V2/V5 plate rail

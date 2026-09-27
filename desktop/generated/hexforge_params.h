@@ -113,6 +113,7 @@ static const HfScalePoint kHfSp_dr2_b7k_grunt[] = { { "Fat", 0.0f }, { "Raw", 1.
 static const HfScalePoint kHfSp_dr2_b7k_attack[] = { { "Flat", 0.0f }, { "Boost", 1.0f }, { "Cut", 2.0f } };
 static const HfScalePoint kHfSp_cab_mic2type[] = { { "Off", 0.0f }, { "Dynamic 57", 1.0f }, { "Dynamic 421", 2.0f }, { "Ribbon", 3.0f }, { "Condenser", 4.0f } };
 static const HfScalePoint kHfSp_rb_cabmic2type[] = { { "Off", 0.0f }, { "Dynamic 57", 1.0f }, { "Dynamic 421", 2.0f }, { "Ribbon", 3.0f }, { "Condenser", 4.0f } };
+static const HfScalePoint kHfSp_it_mains[] = { { "60 Hz", 0.0f }, { "50 Hz", 1.0f } };
 
 static const HfDesktopParam kHfDesktopParams[] = {
     { 6, "bypass", "Bypass", "Global", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
@@ -602,5 +603,6 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 490, "out_phase", "Output Phase Invert", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
     { 491, "amp_evhcomp", "Component Model", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
     { 492, "amp_dynload", "Dynamic Load", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 493, "it_mains", "IT Mains", "Input Trim", 0.0f, 1.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_mains, int(sizeof(kHfSp_it_mains)/sizeof(HfScalePoint)) },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));
