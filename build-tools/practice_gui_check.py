@@ -126,6 +126,19 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
     ].forEach(function(p){ gui({type:'change', icon:icon, symbol:p[0], value:p[1]}, funcs); });
     // Simulate a tempo drag: press on the grab, move 40px up, release.
     // 2px per BPM, so 40px up is +20 BPM on top of the 138 just pushed.
+    // Click a dropdown open and pick an option. The groove picker shipped
+    // unusable because mod-ui's custom-select never opened, and nothing here
+    // noticed -- a select that cannot be opened looks identical to one that can.
+    if (window.__TAB__ === 'drums') {
+      var sel = document.querySelector('[rata-role=selgroove]');
+      if (sel) {
+        sel.querySelector('.mod-enumerated-selected').dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        window.__OPENED__ = sel.classList.contains('open');
+        var opts = sel.querySelectorAll('[mod-role=enumeration-option]');
+        if (opts.length > 3) opts[3].dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        window.__PICKED__ = sel.querySelector('.mod-enumerated-selected').textContent;
+      }
+    }
     if (window.__TAB__ === 'loops') {
       var grab = document.querySelector('[rata-role=tempograb]');
       if (grab) {
@@ -160,7 +173,8 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
   var r = document.createElement('div');
   r.id = 'result';
   r.textContent = JSON.stringify({err: window.__ERR__, ink: window.__INK__,
-                                  groove: (document.querySelector('.mod-enumerated-selected')||{}).textContent || '',
+                                  groove: (document.querySelector('[rata-role=selgroove] .mod-enumerated-selected')||{}).textContent || '',
+                                  length: (document.querySelector('[rata-role=sellen] .mod-enumerated-selected')||{}).textContent || '',
                                   status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
                                   bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || '',
                                   tempo:  (document.querySelector('[rata-role=tempofield]')||{}).textContent || '',
@@ -174,6 +188,9 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
                                             recArmed: !!document.querySelector('.px-tbtn.rec.counting')};
                                   })(),
                                   tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
+                                  selOpened: window.__OPENED__,
+                                  selPicked: window.__PICKED__,
+                                  patternSets: window.__SET__.filter(function(p){ return p[0]==='pattern'; }),
                                   grid: (function(){
                                     var c = document.querySelector('[rata-role=grid]');
                                     if (!c) return null;
@@ -291,6 +308,8 @@ def main():
               "a dot per beat, all still to go",
               "%s dots, %s lit" % (ci.get("dots"), ci.get("lit")))
         check(ci.get("recArmed") is True, "the record button shows it is counting")
+        check(r.get("length") == "Free", "the loop length control defaults to Free",
+              str(r.get("length")))
         # The readout moving is not enough: it must actually reach the port.
         sets = r.get("tempoSets") or []
         check(len(sets) > 0 and abs(float(sets[-1][1]) - 158) < 0.51,
@@ -317,6 +336,12 @@ def main():
               r["groove"])
         check("Rock 8ths" in r["status"], "the status line names the factory groove",
               r["status"])
+        check(r.get("selOpened") is True, "the groove dropdown opens when clicked")
+        picked = r.get("patternSets") or []
+        check(len(picked) == 1, "picking an option writes the pattern port",
+              "%d write(s): %s" % (len(picked), picked))
+        check(bool(r.get("selPicked")) and r.get("selPicked") != "Rock 8ths",
+              "and the box shows what was picked", str(r.get("selPicked")))
 
     print("\nDRUMS (8 bars / 128 steps)")
     r = run_tab("drumslong", outdir)

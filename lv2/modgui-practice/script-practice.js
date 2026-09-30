@@ -308,19 +308,46 @@ function (event, funcs) {
 
     function patStatus(icon, msg) { R(icon, 'patstatus').text(msg || ''); }
 
-    // mod-ui does not reliably write the selected scale-point label into a
-    // custom-select inside a custom GUI -- the cabinet plugin hit the same
-    // thing -- so the groove picker would sit blank until it was opened. Drive
-    // the label from the port's own value instead.
-    function syncGroove(icon, value) {
-        var box = icon.find('.mod-enumerated .mod-enumerated-selected');
-        if (!box.length) return;
+    // ── dropdowns ────────────────────────────────────────────────────────────
+    // Ours, not mod-ui's. Its custom-select widget never opened on this host,
+    // so the groove could not be changed at all; and it does not reliably write
+    // the selected label either, which left the box blank. Opening, labelling
+    // and writing the port are all handled here, through set_port_value, which
+    // is the one path on this stack that has proved dependable.
+    function selClose(icon) {
+        icon.find('.px-sel').each(function () { this.classList.remove('open'); });
+    }
+    function selLabel(icon, role, value) {
+        var wrap = R(icon, role); if (!wrap.length) return;
         var want = Math.round(value), label = null;
-        icon.find('[mod-role=enumeration-option]').each(function () {
+        wrap.find('[mod-role=enumeration-option]').each(function () {
             if (Math.round(parseFloat(this.getAttribute('mod-parameter-value'))) === want)
                 label = (this.textContent || '').replace(/^\s+|\s+$/g, '');
         });
-        if (label) box.text(label);
+        if (label) wrap.find('.mod-enumerated-selected').text(label);
+    }
+    function bindSelect(icon, role) {
+        var wrap = R(icon, role); if (!wrap.length) return;
+        var sym = wrap.attr('data-sym');
+        wrap.find('.mod-enumerated-selected').on('click', function (e) {
+            var was = wrap[0].classList.contains('open');
+            selClose(icon);
+            if (!was) wrap[0].classList.add('open');
+            e.stopPropagation();
+        });
+        wrap.find('[mod-role=enumeration-option]').each(function () {
+            var opt = this;
+            $(opt).on('click', function (e) {
+                var v = parseFloat(opt.getAttribute('mod-parameter-value'));
+                if (!isNaN(v)) {
+                    wrap.find('.mod-enumerated-selected').text(
+                        (opt.textContent || '').replace(/^\s+|\s+$/g, ''));
+                    setPort(icon, sym, v);
+                }
+                wrap[0].classList.remove('open');
+                e.stopPropagation();
+            });
+        });
     }
 
     // Parse either shape the plugin sends: a factory groove (builtin:1) or the
@@ -342,7 +369,7 @@ function (event, funcs) {
         // back as an event (it did not here, on the device), but the pattern
         // push always arrives — it is what redrew this grid.
         if (d.builtin && d.name) {
-            var box = icon.find('.mod-enumerated .mod-enumerated-selected');
+            var box = R(icon, 'selgroove').find('.mod-enumerated-selected');
             if (box.length) box.text(d.name);
         }
         drawGrid(icon);
@@ -646,6 +673,9 @@ function (event, funcs) {
         });
 
         bindTempo(icon);
+        bindSelect(icon, 'selgroove');
+        bindSelect(icon, 'sellen');
+        $(document).on('click', function () { selClose(icon); });
         selectTrack(icon, 1, false);
         drawGrid(icon);
         drawAllWaves(icon);
@@ -695,7 +725,8 @@ function (event, funcs) {
         if (!sym) return;
         faderSet(icon, sym, value);
 
-        if (sym === 'pattern')    { syncGroove(icon, value); return; }
+        if (sym === 'pattern')   { selLabel(icon, 'selgroove', value); return; }
+        if (sym === 'loop_bars') { selLabel(icon, 'sellen', value); return; }
         if (sym === 'loop_track') { selectTrack(icon, clamp(Math.round(value), 1, 4), false); return; }
         if (sym === 'run')        { R(icon, 'runpill').toggleClass('on', value > 0.5); return; }
         if (sym === 'tempo_sync') {

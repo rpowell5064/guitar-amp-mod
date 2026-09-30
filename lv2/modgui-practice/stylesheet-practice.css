@@ -327,3 +327,14 @@
     animation:px-ci-blink .5s steps(1,end) infinite;
 }
 @keyframes px-ci-blink { 50% { opacity:.45; } }
+
+/* Dropdowns are opened by the script (mod-ui's custom-select never opened on
+   this host), so the open state is a class rather than an inline style. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-sel { cursor:pointer; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-sel .mod-enumerated-selected::after {
+    content:""; position:absolute; right:9px; top:50%; margin-top:-2px;
+    border-left:4px solid transparent; border-right:4px solid transparent;
+    border-top:5px solid var(--ink2);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-sel .mod-enumerated-selected { padding-right:24px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-sel.open .mod-enumerated-list { display:block; }

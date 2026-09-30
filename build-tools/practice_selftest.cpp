@@ -51,8 +51,8 @@ enum {
     BYPASS = 51, ENABLED = 52,
     CONTROL = 53, NOTIFY = 54,
     TEMPO_SYNC = 55, HOST_BPM = 56,
-    COUNT_IN = 57, OUT_COUNTIN = 58,
-    N_PORTS = 59
+    COUNT_IN = 57, OUT_COUNTIN = 58, LOOP_BARS = 59,
+    N_PORTS = 60
 };
 
 static constexpr double kFs    = 48000.0;
@@ -488,23 +488,32 @@ int main() {
 
         hst.trigger(LOOP_REC);
         hst.run(kBlock);
-        check(hst.ctl[OUT_COUNTIN] > 0.0f, "pressing record starts a count-in",
+        // The complaint that produced this check: the count used to wait out
+        // the rest of the current bar before showing anything, which at a slow
+        // tempo is many seconds of a blank screen.
+        check(hst.ctl[OUT_COUNTIN] > 0.0f, "the count is visible immediately on press",
+              "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        // Pressing on (or a hair after) the downbeat must give the four-beat
+        // count, not eight: a rounding slip here doubled the wait.
+        check(std::lround(hst.ctl[OUT_COUNTIN]) == 4,
+              "a press on the downbeat counts exactly four",
               "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 0,
               "recording has NOT started during the count",
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
         // The count runs to the next bar line and then one whole bar more.
-        hst.run(barLen - kBlock * 2);
-        // From here on it is the COUNT bar itself: exactly one bar's worth of
-        // beats, which is the four the user hears in the default 4/4.
-        check(std::lround(hst.ctl[OUT_COUNTIN]) == 4,
-              "the count bar is exactly one bar of beats",
+        // Half way through the count: still counting, still not recording.
+        hst.run(barLen / 2);
+        check(std::lround(hst.ctl[OUT_COUNTIN]) == 2,
+              "the count is still running half way through",
               "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 0,
-              "still not recording at the first bar line");
+              "and nothing has been recorded yet",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
-        hst.run(barLen);
+        // At the bar line the count ends and the take begins.
+        hst.run(barLen / 2 + kBlock * 2);
         check(std::lround(hst.ctl[OUT_COUNTIN]) == 0, "the count clears",
               "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
@@ -512,7 +521,7 @@ int main() {
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
         // And the take is still a whole number of bars.
-        hst.run(barLen * 2);
+        hst.run(barLen * 2 - kBlock * 2);
         hst.trigger(LOOP_REC);
         hst.run(kBlock);
         check(std::lround(hst.ctl[OUT_BARS]) == 2,
@@ -533,6 +542,56 @@ int main() {
               "count-in off means no count", "beats " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
               "recording starts immediately with the count-in off",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+        hst.close();
+    }
+
+    // ── Fixed-length takes ───────────────────────────────────────────────────
+    // "Record four bars and stop" has to stop on the bar, by itself: the whole
+    // point is not needing a hand free at the end.
+    std::printf("\nLoop length\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN]  = 0.0f;      // timing of the count is tested above
+        hst.ctl[LOOP_BARS] = 2.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+        hst.trigger(LOOP_REC);
+        hst.run(barLen - kBlock);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
+              "still recording one bar into a two-bar take",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+
+        // Past the second bar line it must have closed ITSELF.
+        hst.run(barLen + kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3,
+              "the take closes itself at the requested length",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+        check(std::lround(hst.ctl[OUT_BARS]) == 2, "and the loop is exactly two bars",
+              "bars " + std::to_string(hst.ctl[OUT_BARS]));
+
+        std::vector<float> loopOnly;
+        hst.run(barLen, &loopOnly, true);
+        check(peak(loopOnly) > 0.05f, "the auto-closed loop plays back",
+              "peak " + std::to_string(peak(loopOnly)));
+        hst.close();
+    }
+    {
+        // Free length must still record until pressed again.
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN]  = 0.0f;
+        hst.ctl[LOOP_BARS] = 0.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+        hst.trigger(LOOP_REC);
+        hst.run(barLen * 3);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
+              "Free keeps recording past any bar count",
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
         hst.close();
     }

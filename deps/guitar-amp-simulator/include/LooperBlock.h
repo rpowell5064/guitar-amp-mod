@@ -47,6 +47,10 @@ public:
     static constexpr float kFadeMs   = 8.0f;   // mute / state-change ramp
     static constexpr float kPreRollMs = 400.0f; // late-press lookbehind
     static constexpr float kSnapMs    = 250.0f; // hard cap on the snap-back window
+    // Shortest count-in, in beats. The take still lands on a bar line, so
+    // the real count is this or a little more; it is never less, and never
+    // an invisible wait before the numbers start.
+    static constexpr int   kMinCountBeats = 4;
 
     enum class State : uint8_t { Empty, Recording, Overdubbing, Playing, Stopped };
     enum class Action : uint8_t { None, RecordToggle, Play, Stop };
@@ -97,6 +101,9 @@ public:
     // ── Parameters ───────────────────────────────────────────────────────────
     void setQuantize(bool on)          noexcept { quantize = on; }
     void setCountIn(bool on)           noexcept { countIn = on; }
+    // 0 = record until you press again; otherwise the take closes itself
+    // after this many bars.
+    void setLoopBars(int bars)         noexcept { loopBarsWanted = std::max(0, bars); }
 
     // Samples until the counted-in take starts, or 0 when nothing is counting.
     // The plugin turns this into the beats the panel counts down, and into the
@@ -275,6 +282,8 @@ private:
         int64_t applyAt{0};
         int64_t recorded{0};      // samples captured on the take in progress
         int64_t lateBy{0};        // samples this action landed past its bar line
+        int64_t targetLen{0};     // 0 = open-ended; else close the take here
+        int64_t barLen{0};        // bar length in samples when the action was armed
         float   level{1.0f};
         float   gain{0.0f}, targetGain{0.0f};
         bool    muted{false};
@@ -292,6 +301,7 @@ private:
     void schedule(int t, Action a, const TransportClock& clk) noexcept {
         if (!valid(t)) return;
         tracks[t].pending = a;
+        tracks[t].barLen  = static_cast<int64_t>(clk.samplesPerBar());
         // Free mode, or a stopped transport (nothing to quantise TO), acts now.
         if (!quantize || !clk.running()) {
             tracks[t].applyAt = clk.samplePosition();
@@ -302,13 +312,25 @@ private:
 
         // COUNT-IN. Only for the take that DEFINES the loop: once a loop
         // exists you can hear where beat one is, and counting in over the top
-        // of it would just be in the way. The take starts one whole bar after
-        // the next bar line, so the count is a full bar in any meter (four
-        // beats in the default 4/4) and the loop still begins exactly on a bar
-        // line. The wait before that line is "armed", not part of the count.
+        // of it would just be in the way.
+        //
+        // The count starts IMMEDIATELY and runs to the first bar line at least
+        // a bar away, so the take still begins exactly on a bar line and stays
+        // in step with the drums. An earlier version waited out the current
+        // bar in silence before counting, which at 72 bpm meant staring at
+        // nothing for up to seven seconds before the first number appeared.
+        // Everything from the press onwards is now part of the count: it is
+        // visible and clicking from the instant the button goes down.
         if (a == Action::RecordToggle && countIn && masterLen == 0 &&
             tracks[t].state == State::Empty) {
-            tracks[t].applyAt    = clk.samplePosition() + static_cast<int64_t>(toBar + spb);
+            const double spBeat = clk.samplesPerBeat();
+            double wait = toBar;
+            // Half a beat of slack. Without it a press landing a few dozen
+            // samples after the bar line reads as "just under four beats away"
+            // and buys a whole extra bar -- which is how pressing record on the
+            // downbeat produced an eight-beat count.
+            while (wait < (kMinCountBeats - 0.5) * spBeat) wait += spb;
+            tracks[t].applyAt    = clk.samplePosition() + static_cast<int64_t>(wait);
             tracks[t].lateBy     = 0;
             tracks[t].countingIn = true;
             return;
@@ -357,6 +379,11 @@ private:
             case State::Empty: {
                 tr.recorded   = 0;        // counts THIS take, master or punch-in
                 tr.state      = State::Recording;
+                // Freeze the target NOW: changing the length control halfway
+                // through a take must not retune the take already running.
+                tr.targetLen  = (loopBarsWanted > 0 && masterLen == 0)
+                              ? static_cast<int64_t>(loopBarsWanted) * tr.barLen
+                              : 0;
                 tr.targetGain = 1.0f;
                 // The first take also defines where loop position zero is.
                 if (masterLen == 0) loopCursor = 0;
@@ -477,7 +504,14 @@ private:
                         if (pos < capacity) tr.buf[static_cast<size_t>(pos)] = x;
                         ++tr.recorded;
                         if (masterLen == 0) {
-                            if (tr.recorded >= capacity) {   // out of room
+                            // A fixed-length take closes itself on the bar it
+                            // was asked for, so you can start a loop and play
+                            // into it without a hand free for the footswitch.
+                            if (tr.targetLen > 0 && tr.recorded >= tr.targetLen) {
+                                closeRecording(t);
+                                tr.state      = State::Playing;
+                                tr.targetGain = 1.0f;
+                            } else if (tr.recorded >= capacity) {   // out of room
                                 closeRecording(t);
                                 tr.state = State::Playing;
                             }
@@ -549,6 +583,7 @@ private:
     bool    undoReady{false};
     bool    quantize{true};
     bool  countIn{true};   // a bar of count-in before the take that sets the loop
+    int   loopBarsWanted{0};  // 0 = free; else the take is this many bars
     float   feedback{1.0f};
     float   masterLevel{1.0f};
     float   fadeInc{0.001f};

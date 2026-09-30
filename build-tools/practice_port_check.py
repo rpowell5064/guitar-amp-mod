@@ -58,6 +58,7 @@ SYMBOLS = {
     "P_CONTROL": "control", "P_NOTIFY": "notify",
     "P_TEMPO_SYNC": "tempo_sync", "P_HOST_BPM": "host_bpm",
     "P_COUNT_IN": "count_in", "P_OUT_COUNTIN": "out_countin",
+    "P_LOOP_BARS": "loop_bars",
 }
 
 errors = []
@@ -409,6 +410,25 @@ def check_template_shell():
         errors.append("the modgui reads %s but it is not in modgui:monitoredOutputs, "
                       "so mod-ui never sends it" % sym)
     print("  outputs: %d monitored, %d read by the script" % (len(declared), len(used)))
+
+    # The Loop Length options are written into the HTML because lv2:index 59 is
+    # past the end of the modgui:port vector, so {{#controls.59}} would be
+    # dropped. That makes the HTML a second copy of the TTL's scale points, so
+    # it gets checked rather than trusted.
+    html_src = (ROOT / "lv2" / "modgui-practice" / "icon-practice.html").read_text(encoding="utf-8")
+    m = re.search(r'rata-role="sellen".*?</div>\s*</div>', html_src, re.S)
+    if not m:
+        errors.append("the Loop Length dropdown is missing from icon-practice.html")
+    else:
+        html_opts = re.findall(r'mod-parameter-value="(\d+)">([^<]+)<', m.group(0))
+        blk = re.search(r'lv2:symbol "loop_bars".*?\]\s*,\s*\[\s*a lv2:', ttl_src, re.S)
+        blk = blk.group(0) if blk else ttl_src[ttl_src.find('lv2:symbol "loop_bars"'):]
+        ttl_opts = re.findall(r'lv2:scalePoint \[ rdfs:label "([^"]+)"\s*;\s*rdf:value\s+(\d+)', blk)
+        ttl_pairs = [(v, l) for l, v in ttl_opts]
+        if ttl_pairs != html_opts:
+            errors.append("Loop Length options differ: TTL %r vs HTML %r" % (ttl_pairs, html_opts))
+        else:
+            print("  loop length: %d options, HTML matches the TTL" % len(html_opts))
 
 
 def main():

@@ -117,6 +117,10 @@ enum PracticePorts {
     // beats still to go, which is what the panel counts down.
     P_COUNT_IN,
     P_OUT_COUNTIN,
+
+    // Fixed-length takes: 0 = record until pressed again, otherwise the take
+    // closes itself after this many bars.
+    P_LOOP_BARS,
     P_N_PORTS
 };
 
@@ -658,6 +662,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // ── Looper ───────────────────────────────────────────────────────────────
     p->looper.setQuantize(portBool(p, P_LOOP_QUANTIZE, true));
     p->looper.setCountIn(portBool(p, P_COUNT_IN, true));
+    p->looper.setLoopBars(static_cast<int>(portValue(p, P_LOOP_BARS, 0.0f)));
     p->looper.setFeedback(portValue(p, P_LOOP_FEEDBACK, 100.0f) * 0.01f);
     p->looper.setMasterLevel(bypassed ? 0.0f : dbToLin(portValue(p, P_LOOP_LEVEL, 0.0f)));
 
