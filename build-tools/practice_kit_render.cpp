@@ -153,6 +153,8 @@ int main(int argc, char** argv) {
             { "2_comp",      0.35f, 0.00f },
             { "3_comp_room", 0.35f, 0.30f },   // the shipping defaults
             { "4_pushed",    0.70f, 0.55f },
+            { "5_roomonly",  0.00f, 0.30f },
+            { "6_roommax",   0.00f, 1.00f },
         };
         for (const Stage& st : stages) {
             DrumMachineBlock dm;
