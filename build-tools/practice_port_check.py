@@ -328,6 +328,24 @@ def check_fader_ranges():
                           % (sym, tmin, tmax, jmin, jmax))
     print("  faders: %d ports, all %g..%g dB" % (len(syms), jmin, jmax))
 
+    # Same story for the tempo: the modgui drives that port itself (mod-ui's
+    # film widget cannot), so it carries its own span and must agree with the TTL.
+    mt = re.search(r"var TEMPO_MIN\s*=\s*(-?[\d.]+)\s*,\s*TEMPO_MAX\s*=\s*(-?[\d.]+)",
+                   js.read_text(encoding="utf-8"))
+    if not mt:
+        errors.append("script-practice.js no longer declares TEMPO_MIN/TEMPO_MAX")
+        return
+    b = re.search(r'lv2:symbol "tempo" ;.*?lv2:minimum\s+(-?[\d.]+)\s*;\s*lv2:maximum\s+(-?[\d.]+)',
+                  src, re.S)
+    if not b:
+        errors.append("the tempo port has no minimum/maximum in the TTL")
+        return
+    if (float(b.group(1)), float(b.group(2))) != (float(mt.group(1)), float(mt.group(2))):
+        errors.append("tempo is %s..%s in the TTL but the modgui assumes %s..%s"
+                      % (b.group(1), b.group(2), mt.group(1), mt.group(2)))
+    else:
+        print("  tempo:  %s..%s BPM, modgui agrees" % (b.group(1), b.group(2)))
+
 
 def check_template_shell():
     """The bits of a MOD pedal template that are easy to forget and invisible offline.
@@ -357,6 +375,24 @@ def check_template_shell():
         errors.append("stylesheet-practice.css does not pin .mod-drag-handle to "
                       "z-index:0 !important, so it covers the controls")
     print("  template: audio jacks present, drag handle pinned behind the plate")
+
+    # mod-ui emits exactly three JS event types: 'start', and 'change' carrying
+    # either a patch property (uri) or a control port (symbol). There is no
+    # 'port_event'. A handler keyed on one silently drops every live port
+    # update -- lamps, playhead, readouts -- while looking correct in any
+    # offline harness that invents the event. Both this repo's script and its
+    # GUI harness did exactly that, so the name is now banned outright.
+    js_src = (ROOT / "lv2" / "modgui-practice" / "script-practice.js").read_text(encoding="utf-8")
+    gui_src = (ROOT / "build-tools" / "practice_gui_check.py").read_text(encoding="utf-8")
+    for name, src in (("script-practice.js", js_src), ("practice_gui_check.py", gui_src)):
+        for line in src.splitlines():
+            if "port_event" in line and not line.lstrip().startswith(("//", "#")):
+                errors.append("%s references 'port_event', which mod-ui never sends" % name)
+                break
+    if "event.symbol" not in js_src:
+        errors.append("script-practice.js never reads event.symbol, so control-port "
+                      "changes cannot reach it")
+    print("  events: no 'port_event'; port changes read from change.symbol")
 
 
 def main():

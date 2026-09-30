@@ -9,7 +9,7 @@
          the right. Tempo lives HERE rather than inside a tab because it governs
          the looper and the sequencer at the same time; putting it on either tab
          would imply it belonged to that one. -->
-    <div class="px-bar">
+    <div class="px-bar" rata-role="topbar">
         <div class="px-brand">
             <span class="hx-mark" aria-hidden="true"></span>
             <span class="px-wordmark">HEX</span><span class="px-name">PRACTICE</span>
@@ -17,17 +17,20 @@
         <span class="px-tag">4-track looper · resynthesised acoustic kit · step sequencer</span>
         <span class="px-bar-spacer"></span>
 
-        <div class="px-tgroup">
+        <!-- Tempo. The readout is a SPAN, not an input: mod-ui writes value
+             readouts with textContent, which an <input> does not display, so
+             the field rendered blank on the device.
+             The drag is OURS, not a mod-ui widget. mod-ui's control widget is
+             a "film" whose step count comes from a background sprite; a plain
+             element with a CSS background gets half-initialised and never
+             responds, which is exactly how this shipped dead. Dragging the
+             number and driving the port through funcs.set_port_value is both
+             simpler and what a DAW does anyway. -->
+        <div class="px-tgroup px-tempo-grab" rata-role="tempograb" title="Drag up or down to set the tempo">
             <span class="px-tlabel">Tempo</span>
-            <!-- A SPAN, not an input: mod-ui writes value readouts with
-                 textContent, which an <input> does not display, so the field
-                 rendered blank on the device. The script formats this itself
-                 from the tempo port (whole BPM, no unit suffix) rather than
-                 wearing mod-role="input-control-value", which would print
-                 "72.34 BPM" next to our own BPM label. -->
             <span class="px-tempo-field" rata-role="tempofield">120</span>
             <span class="px-tempo-unit">BPM</span>
-            <div class="px-tempo-drag" title="Drag to set tempo" mod-role="input-control-port" mod-port-symbol="tempo"></div>
+            <div class="px-tempo-drag" aria-hidden="true"></div>
             <span class="px-hostbpm" rata-role="hostbpm"></span>
         </div>
         <div class="px-pill" rata-role="syncpill" title="Sync To Host">Sync</div>

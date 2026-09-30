@@ -38,6 +38,8 @@ function (event, funcs) {
 
     // dB span shared by every fader port (see the note in the `start` handler).
     var FADER_MIN = -60, FADER_MAX = 12;
+    // Tempo span, same deal -- checked against the TTL by practice_port_check.py.
+    var TEMPO_MIN = 20, TEMPO_MAX = 300;
 
     // ── small helpers ────────────────────────────────────────────────────────
     function R(icon, role) { return icon.find('[rata-role=' + role + ']'); }
@@ -478,6 +480,55 @@ function (event, funcs) {
         $e.find('.px-fad-hand').css('bottom', 'calc(1px + ' + travel + ')');
     }
 
+    // ── tempo drag ───────────────────────────────────────────────────────────
+    // Driven here rather than by a mod-ui control widget: mod-ui's widget is a
+    // "film" that reads its step count off a background sprite, so a plain
+    // element with a CSS background is half-initialised and silently does
+    // nothing. Dragging the number is the DAW idiom regardless.
+    function tempoNow(icon) {
+        var v = parseFloat(R(icon, 'tempofield').text());
+        return isNaN(v) ? 120 : v;
+    }
+    function tempoSet(icon, v) {
+        v = Math.round(clamp(v, TEMPO_MIN, TEMPO_MAX));
+        R(icon, 'tempofield').text(String(v));
+        setPort(icon, 'tempo', v);
+        return v;
+    }
+    function bindTempo(icon) {
+        var grab = R(icon, 'tempograb');
+        if (!grab.length) return;
+        var dragging = false, startY = 0, startV = 120;
+
+        function synced() { return R(icon, 'topbar').hasClass('px-synced'); }
+
+        grab.on('mousedown', function (e) {
+            if (synced()) return;          // the host owns the tempo
+            dragging = true;
+            startY = e.clientY;
+            startV = tempoNow(icon);
+            icon.data('px_tempodrag', true);
+            e.preventDefault();
+        });
+        $(document).on('mousemove', function (e) {
+            if (!dragging) return;
+            // 2 px per BPM: fine enough to land on a number, coarse enough to
+            // cross the useful range without a marathon drag.
+            tempoSet(icon, startV + (startY - e.clientY) * 0.5);
+            e.preventDefault();
+        });
+        $(document).on('mouseup', function () {
+            if (!dragging) return;
+            dragging = false;
+            icon.data('px_tempodrag', false);
+        });
+        grab.on('wheel', function (e) {
+            if (synced()) return;
+            tempoSet(icon, tempoNow(icon) + ((e.deltaY || 0) > 0 ? -1 : 1));
+            e.preventDefault();
+        });
+    }
+
     // ── events ───────────────────────────────────────────────────────────────
     if (event.type == 'start') {
         var icon = event.icon;
@@ -542,7 +593,7 @@ function (event, funcs) {
         R(icon, 'syncpill').on('click', function () {
             var on = !$(this).hasClass('on');
             $(this).toggleClass('on', on);
-            icon.toggleClass('px-synced', on);
+            R(icon, 'topbar').toggleClass('px-synced', on);
             setPort(icon, 'tempo_sync', on ? 1 : 0);
         });
 
@@ -570,6 +621,7 @@ function (event, funcs) {
             patSend(icon);
         });
 
+        bindTempo(icon);
         selectTrack(icon, 1, false);
         drawGrid(icon);
         drawAllWaves(icon);
@@ -598,12 +650,18 @@ function (event, funcs) {
         }
 
     } else if (event.type == 'change') {
-        if (!event.uri) return;
-        if (event.uri.indexOf('#waveform') >= 0) waveParse(event.icon, event.value);
-        else if (event.uri.indexOf('#pattern') >= 0) patParse(event.icon, event.value);
-
-    } else if (event.type == 'port_event') {
-        portApply(event.icon, event.symbol, event.value);
+        // mod-ui has exactly ONE change event and it carries either a patch
+        // property (uri) or a control port (symbol) -- there is no separate
+        // port event. Handling only the uri form, as this did, silently drops
+        // every port update after load: the transport lamps, the playhead, the
+        // bar readout, the undo dimming and the tempo readout all froze at
+        // their start values on the device while looking perfect offline.
+        if (event.uri) {
+            if (event.uri.indexOf('#waveform') >= 0) waveParse(event.icon, event.value);
+            else if (event.uri.indexOf('#pattern') >= 0) patParse(event.icon, event.value);
+        } else if (event.symbol) {
+            portApply(event.icon, event.symbol, parseFloat(event.value));
+        }
     }
 
     function portApply(icon, sym, value) {
@@ -616,10 +674,15 @@ function (event, funcs) {
         if (sym === 'tempo_sync') {
             var on = value > 0.5;
             R(icon, 'syncpill').toggleClass('on', on);
-            icon.toggleClass('px-synced', on);
+            R(icon, 'topbar').toggleClass('px-synced', on);
             return;
         }
-        if (sym === 'tempo')    { R(icon, 'tempofield').text(String(Math.round(value))); return; }
+        // Skip while the user is dragging, or an echoed value would fight
+        // the number under their cursor.
+        if (sym === 'tempo') {
+            if (!icon.data('px_tempodrag')) R(icon, 'tempofield').text(String(Math.round(value)));
+            return;
+        }
         if (sym === 'host_bpm') { R(icon, 'hostbpm').text('host ' + Math.round(value)); return; }
 
         if (sym === 'out_progress') {

@@ -108,7 +108,9 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
 (function(){
   var icon = new Q([document.querySelector('.mod-pedal-guitaramp-practice')]);
   var gui = __SCRIPT__;
-  var funcs = { set_port_value:function(){}, patch_set:function(){}, patch_get:function(){} };
+  window.__SET__ = [];
+  var funcs = { set_port_value:function(s,v){ window.__SET__.push([s,v]); },
+                patch_set:function(){}, patch_get:function(){} };
   try {
     gui({type:'start', icon:icon, ports:__PORTS__, parameters:[]}, funcs);
     gui({type:'change', icon:icon, uri:'x#waveform', value:__WAVE__}, funcs);
@@ -116,7 +118,25 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
     [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
      ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
      ['lvl_kick',3],['drums_level',-4]
-    ].forEach(function(p){ gui({type:'port_event', icon:icon, symbol:p[0], value:p[1]}, funcs); });
+    // mod-ui has exactly ONE change event: it carries a patch property (uri) OR
+    // a control port (symbol). There is no 'port_event' -- this harness used to
+    // invent one, so it validated a code path the device never exercises and
+    // passed while every live port update was being dropped. Send what mod-ui
+    // actually sends.
+    ].forEach(function(p){ gui({type:'change', icon:icon, symbol:p[0], value:p[1]}, funcs); });
+    // Simulate a tempo drag: press on the grab, move 40px up, release.
+    // 2px per BPM, so 40px up is +20 BPM on top of the 138 just pushed.
+    if (window.__TAB__ === 'loops') {
+      var grab = document.querySelector('[rata-role=tempograb]');
+      if (grab) {
+        var gr = grab.getBoundingClientRect();
+        var x = gr.left + gr.width/2, y = gr.top + gr.height/2;
+        grab.dispatchEvent(new MouseEvent('mousedown', {clientX:x, clientY:y, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mousemove', {clientX:x, clientY:y-40, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mouseup',   {clientX:x, clientY:y-40, bubbles:true, cancelable:true}));
+      }
+    }
+
     var tab = (window.__TAB__ === 'drumslong') ? 'drums' : window.__TAB__;
     document.querySelector('[rata-role=pxview]').setAttribute('data-tab', tab);
     if (window.__TAB__ === 'drums')
@@ -144,6 +164,7 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
                                   status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
                                   bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || '',
                                   tempo:  (document.querySelector('[rata-role=tempofield]')||{}).textContent || '',
+                                  tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
                                   grid: (function(){
                                     var c = document.querySelector('[rata-role=grid]');
                                     if (!c) return null;
@@ -251,7 +272,12 @@ def main():
         # The tempo readout is a SPAN the script fills, not a mod-ui value
         # widget: mod-ui writes readouts with textContent, which an <input>
         # silently does not display, and that is how it shipped blank once.
-        check(r["tempo"].strip() == "138", "the tempo readout shows whole BPM", r["tempo"])
+        check(r["tempo"].strip() == "158", "dragging the tempo sets it", r["tempo"])
+        # The readout moving is not enough: it must actually reach the port.
+        sets = r.get("tempoSets") or []
+        check(len(sets) > 0 and abs(float(sets[-1][1]) - 158) < 0.51,
+              "the drag writes the tempo port",
+              "%d write(s), last %s" % (len(sets), sets[-1] if sets else "none"))
 
     print("\nMIX")
     r = run_tab("mix", outdir)

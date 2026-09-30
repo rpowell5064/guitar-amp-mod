@@ -92,6 +92,8 @@
 }
 
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tgroup { flex:0 0 auto; display:flex; align-items:center; gap:8px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-grab { cursor:ns-resize; user-select:none; padding:2px 6px; margin:-2px -6px; border-radius:8px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-grab:hover { background:rgba(255,255,255,.05); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tlabel { font-size:9px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink3); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-field {
     min-width:52px; display:inline-block;
@@ -99,13 +101,13 @@
     color:var(--ink); text-align:right; font-variant-numeric:tabular-nums;
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-unit { font-size:10px; font-weight:700; letter-spacing:1px; color:var(--ink3); align-self:flex-end; padding-bottom:5px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-drag { width:12px; height:30px; cursor:ns-resize; border-radius:3px; background:repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 1px, transparent 1px 4px); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-drag { width:12px; height:30px; border-radius:3px; background:repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 1px, transparent 1px 4px); }
 /* Host-driven tempo must LOOK inert: a field that still invites a drag it will
    silently ignore is worse than no field at all. */
-.mod-pedal-guitaramp-practice{{{cns}}}.px-synced .px-tempo-field { color:var(--ink3); }
-.mod-pedal-guitaramp-practice{{{cns}}}.px-synced .px-tempo-drag { opacity:.25; pointer-events:none; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bar.px-synced .px-tempo-field { color:var(--ink3); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bar.px-synced .px-tempo-grab { opacity:.55; cursor:default; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-hostbpm { font-size:11px; font-weight:600; color:var(--acc); display:none; font-variant-numeric:tabular-nums; }
-.mod-pedal-guitaramp-practice{{{cns}}}.px-synced .px-hostbpm { display:inline; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bar.px-synced .px-hostbpm { display:inline; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-bars { font-size:22px; font-weight:300; color:var(--ink); font-variant-numeric:tabular-nums; min-width:62px; text-align:center; letter-spacing:.5px; }
 
 .mod-pedal-guitaramp-practice{{{cns}}} .px-pill {
