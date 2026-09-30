@@ -36,7 +36,9 @@ enum {
     TRK3_LEVEL = 35, TRK3_MUTE = 36, TRK4_LEVEL = 37, TRK4_MUTE = 38,
     OUT_PROGRESS = 39, OUT_BARS = 40,
     OUT_TRK1_STATE = 41, OUT_TRK2_STATE = 42, OUT_TRK3_STATE = 43, OUT_TRK4_STATE = 44,
-    OUT_STEP = 45, OUT_UNDO_AVAIL = 46, BYPASS = 47, ENABLED = 48, N_PORTS = 49
+    OUT_STEP = 45, OUT_UNDO_AVAIL = 46,
+    DRUM_COMP = 47, DRUM_ROOM = 48, DRUM_ROOM_SIZE = 49,
+    BYPASS = 50, ENABLED = 51, N_PORTS = 52
 };
 
 static const double kFs = 48000.0;
@@ -75,6 +77,9 @@ static Run render(const LV2_Descriptor* d, const char* bundle, double secs,
     ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
     ctl[LOOP_QUANTIZE] = 1.0f; ctl[LOOP_FEEDBACK] = 100.0f; ctl[LOOP_TRACK] = 1.0f;
     ctl[ENABLED] = 1.0f;
+    ctl[DRUM_COMP] = 35.0f;      // the shipping defaults, so the CPU figure
+    ctl[DRUM_ROOM] = 30.0f;      // below is the cost we actually ship
+    ctl[DRUM_ROOM_SIZE] = 35.0f;
     ctl[PATTERN] = float(pattern);
     ctl[RUN] = 1.0f;
 

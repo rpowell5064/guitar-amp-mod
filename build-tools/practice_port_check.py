@@ -52,6 +52,8 @@ SYMBOLS = {
     "P_OUT_TRK1_STATE": "out_trk1_state", "P_OUT_TRK2_STATE": "out_trk2_state",
     "P_OUT_TRK3_STATE": "out_trk3_state", "P_OUT_TRK4_STATE": "out_trk4_state",
     "P_OUT_STEP": "out_step", "P_OUT_UNDO_AVAIL": "out_undo_avail",
+    "P_DRUM_COMP": "drum_comp", "P_DRUM_ROOM": "drum_room",
+    "P_DRUM_ROOM_SIZE": "drum_room_size",
     "P_BYPASS": "bypass", "P_ENABLED": "enabled",
 }
 

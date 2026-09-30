@@ -119,6 +119,9 @@ int main(int argc, char** argv) {
         dm.setResynthKit(&kit);
         dm.setPattern(p);
         dm.setHumanize(0.35f);
+        dm.setCompAmount(0.35f);   // == TTL defaults
+        dm.setRoomAmount(0.30f);
+        dm.setRoomSize(0.35f);
         TransportClock clk;
         clk.prepare(kFs); clk.setTempo(table[p].stepsPerBar == 12 ? 120.0 : 160.0);
         clk.setBeatsPerBar(4); clk.start();
@@ -135,6 +138,53 @@ int main(int argc, char** argv) {
         writeWav(outDir + "/groove_" + slug(table[p].name) + ".wav", out, kFs);
     }
 
+    // ── Bus comparison ───────────────────────────────────────────────────────
+    // Dry, then compression, then compression plus room, on one groove, so the
+    // contribution of each stage is audible on its own rather than inferred.
+    std::printf("\nBus stages\n");
+    {
+        int rock = 0;
+        for (int p = 0; p < nPat; ++p)
+            if (!std::strcmp(table[p].name, "Rock 8ths")) rock = p;
+
+        struct Stage { const char* name; float comp, room; };
+        const Stage stages[] = {
+            { "1_dry",       0.00f, 0.00f },
+            { "2_comp",      0.35f, 0.00f },
+            { "3_comp_room", 0.35f, 0.30f },   // the shipping defaults
+            { "4_pushed",    0.70f, 0.55f },
+        };
+        for (const Stage& st : stages) {
+            DrumMachineBlock dm;
+            dm.prepare(kFs);
+            dm.setResynthKit(&kit);
+            dm.setPattern(rock);
+            dm.setHumanize(0.35f);
+            dm.setCompAmount(st.comp);
+            dm.setRoomAmount(st.room);
+            dm.setRoomSize(0.35f);
+            TransportClock clk;
+            clk.prepare(kFs); clk.setTempo(150.0); clk.setBeatsPerBar(4); clk.start();
+            dm.rearm(clk);
+
+            const int64_t total = int64_t(clk.samplesPerBar() * 4) + int64_t(kFs * 2.0);
+            std::vector<float> out(size_t(total), 0.0f);
+            for (int64_t pos = 0; pos < total; pos += 64) {
+                const int n = int(std::min<int64_t>(64, total - pos));
+                dm.render(clk, out.data() + pos, n);
+                clk.advance(n);
+            }
+            // Crest factor: compression should measurably reduce it.
+            double acc = 0.0;
+            for (float v : out) acc += double(v) * v;
+            const double rms = std::sqrt(acc / out.size());
+            const double crest = 20.0 * std::log10(peakOf(out) / (rms + 1e-12));
+            std::printf("  %-10s peak %.3f  rms %.4f  crest %.1f dB\n",
+                        st.name, peakOf(out), rms, crest);
+            writeWav(outDir + "/bus_" + st.name + ".wav", out, kFs);
+        }
+    }
+
     // ── CPU ──────────────────────────────────────────────────────────────────
     // The number that decides whether this runs on a pi-Stomp next to an amp
     // model. Measured on the densest groove in the table.
@@ -149,6 +199,8 @@ int main(int argc, char** argv) {
             dm.prepare(kFs);
             dm.setResynthKit(&kit);
             dm.setResynthPartialLimit(limit);
+            dm.setCompAmount(0.50f);     // measure the cost we actually ship
+            dm.setRoomAmount(0.45f);
             dm.setPattern(dk);
             TransportClock clk;
             clk.prepare(kFs); clk.setTempo(200.0); clk.setBeatsPerBar(4); clk.start();

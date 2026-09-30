@@ -85,6 +85,12 @@ enum PracticePorts {
     P_OUT_STEP,         // sequencer playhead, -1 when stopped
     P_OUT_UNDO_AVAIL,
 
+    // Drum bus (2026-09-30). Parallel compression and a room, both applied
+    // to the kit before the Drums Level control.
+    P_DRUM_COMP,        // % blend of a crushed parallel copy
+    P_DRUM_ROOM,        // % room mix
+    P_DRUM_ROOM_SIZE,   // % small -> large
+
     P_BYPASS,
     P_ENABLED,          // lv2:designation lv2:enabled — INVERTED (1 = processing on)
     P_N_PORTS
@@ -299,6 +305,13 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     p->drums.setSnareSnappy(portValue(p, P_SNARE_SNAPPY, 60.0f) * 0.01f);
     p->drums.setHatDecay(portValue(p, P_HAT_DECAY, 0.45f));
     p->drums.setHatTone(portValue(p, P_HAT_TONE, 50.0f) * 0.01f);
+
+    // Drum bus. The kit is modelled from close mics only, so the room here is
+    // not an effect on top of an ambient recording — it is the ambience the
+    // close-mic analysis deliberately excluded, put back over the whole kit.
+    p->drums.setCompAmount(portValue(p, P_DRUM_COMP, 35.0f) * 0.01f);
+    p->drums.setRoomAmount(portValue(p, P_DRUM_ROOM, 30.0f) * 0.01f);
+    p->drums.setRoomSize(portValue(p, P_DRUM_ROOM_SIZE, 35.0f) * 0.01f);
 
     // ── Looper ───────────────────────────────────────────────────────────────
     p->looper.setQuantize(portBool(p, P_LOOP_QUANTIZE, true));

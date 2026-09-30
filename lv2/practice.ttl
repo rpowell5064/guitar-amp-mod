@@ -35,7 +35,9 @@ A practice rig in one plugin: a four-track looper that quantises to the bar, and
 
 The looper keeps a rolling pre-roll of its input, so hitting record a fraction late still gives you a loop that starts on the beat instead of one that is short by however late you were. All four tracks share one loop length, overdub with adjustable feedback, and there is one level of undo/redo.
 
-The drum machine ships seventeen grooves from straight rock through gallop, d-beat, blast and half-time breakdowns, with swing, humanisation and a full kit mix. The kit models the instruments rather than filtering noise into shape: the kick is a pitched body sweep with a separately enveloped beater click, snare and toms are modal shells with shaped noise for the wires, and the cymbals come from a metallic oscillator bank.
+The drum machine ships seventeen grooves from straight rock through gallop, d-beat, blast and half-time breakdowns, with swing, humanisation, a full kit mix, parallel bus compression and a room.
+
+Its acoustic kit is resynthesised, not sampled. Every piece was analysed from real recordings into tracked partials and a noise spectrum, so the whole twelve-piece kit ships as about a megabyte of parameters instead of hundreds of megabytes of audio — and because it is generated rather than played back, every hit differs slightly, with no round-robins and no machine-gun effect.
 
 Place it LAST in the chain, after amp and cab: the looper then records the signal you actually hear, and the drums are not run through your preamp.
 
@@ -46,7 +48,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 1 ;   # 1: first release — four-track looper + synth drum machine
+    lv2:microVersion 2 ;   # 2: drum bus — parallel compression + room (ports 47-49; bypass/enabled moved to 50/51). 1: first release
     # The worker carries the undo snapshot (a memcpy of the whole loop) off the
     # audio thread. It is OPTIONAL: without it the plugin runs normally and only
     # undo is unavailable, so a host with no worker support still loads it.
@@ -364,10 +366,41 @@ Free and open source (GPL-3).""" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
+        # ── Drum bus ────────────────────────────────────────────────────────
+        # Parallel compression: a hard-crushed copy of the kit blended under
+        # the untouched dry. Series bus compression measured useless here —
+        # the kit has a 22 dB crest factor, so any threshold that catches the
+        # peaks never touches the body, and one that catches the body ducks it
+        # while missing the peaks. Parallel raises density with the transients
+        # intact, and because the knob is a blend rather than a threshold it
+        # behaves the same at any gain staging.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 47 ; lv2:symbol "drum_comp" ; lv2:name "Drum Comp" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:pc ;
+        lv2:default 35.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        # The kit is analysed from CLOSE mics only, on purpose: overhead bleed
+        # would have put one instrument's partials into another's model. That
+        # leaves it accurate and completely dry, so the room a real kit is
+        # played in has to be restored here — over the whole kit at once, which
+        # is how a room actually works.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 48 ; lv2:symbol "drum_room" ; lv2:name "Drum Room" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:pc ;
+        lv2:default 30.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 49 ; lv2:symbol "drum_room_size" ; lv2:name "Room Size" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:pc ;
+        lv2:default 35.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
         # Silences the drums and the loop; the dry guitar still passes, because
         # this plugin sits last in the chain and muting it would mute the rig.
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 47 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:index 50 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
@@ -376,7 +409,7 @@ Free and open source (GPL-3).""" ;
         # is INVERTED relative to "bypass": 1 = processing on, 0 = bypassed.
         # Deliberately ungrouped and last.
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 48 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:index 51 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0

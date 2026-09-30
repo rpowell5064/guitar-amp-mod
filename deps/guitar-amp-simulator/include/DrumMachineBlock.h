@@ -13,12 +13,15 @@
 // before its nominal step arrives) and it keeps swing correct at the 32-frame
 // buffers the pi-Stomp runs, where a swung sixteenth is often several blocks
 // away from its own downbeat.
+#include "CompressorBlock.h"
 #include "DrumPatterns.h"
 #include "DrumResynth.h"
+#include "PlateReverbBlock.h"
 #include "DrumVoices.h"
 #include "TransportClock.h"
 #include <algorithm>
 #include <atomic>
+#include <vector>
 #include <cmath>
 #include <cstdint>
 
@@ -43,8 +46,16 @@ struct UserPattern {
 class DrumMachineBlock {
 public:
     // ── Lifecycle ────────────────────────────────────────────────────────────
-    void prepare(double sampleRate) noexcept {
+    void prepare(double sampleRate, int maxBlock = 8192) noexcept {
         fs = (sampleRate > 0.0) ? sampleRate : 48000.0;
+        // The kit is rendered into this at unity and the bus processes it in
+        // place, so the compressor always sees the same level no matter where
+        // the user has the Drums fader.
+        scratch.assign(size_t(std::max(maxBlock, 1024)), 0.0f);
+        parallel.assign(scratch.size(), 0.0f);
+        comp.prepare(fs, int(scratch.size()), 1);
+        room.prepare(fs, int(scratch.size()), 1);
+        applyBus();
         resynth.prepare(fs);
         kick.prepare(fs);
         snare.prepare(fs);
@@ -68,6 +79,7 @@ public:
         tomHi.reset(); tomMid.reset(); tomFloor.reset();
         hat.reset(); crash.reset(); ride.reset();
         resynth.reset();
+        room.reset();
         queueCount   = 0;
         nextScanStep = kNoStep;
     }
@@ -102,6 +114,32 @@ public:
     void setInstrumentMuted(int inst, bool m) noexcept {
         if (inst >= 0 && inst < INST_COUNT) muted[inst] = m;
     }
+
+    // ── Drum bus: compression and room ───────────────────────────────────────
+    //
+    // Both sit BEFORE the Drums Level control, on purpose. A fixed compressor
+    // threshold placed after a user fader is the mistake that cost a previous
+    // session: the chain ran hotter than the threshold assumed and it slammed
+    // 8 dB of gain reduction. Compressing at a known, fixed operating point and
+    // scaling afterwards makes the behaviour independent of gain staging.
+    //
+    // The room matters more than it sounds: the kit is modelled from CLOSE mics
+    // only, deliberately, so that overhead bleed could not contaminate each
+    // instrument's analysis. That leaves it accurate and bone dry. The
+    // ambience a real kit gets from the room it was played in has to be put
+    // back here, over the whole kit at once — which is also how a real room
+    // works, and why baking it per voice would have been wrong.
+    // PARALLEL, not series. Measured on the real kit: a series bus compressor
+    // is useless here. The drum bus has a 22 dB crest factor (RMS -27 dBFS,
+    // peaks -5.5), so a threshold high enough to catch peaks never engages on
+    // the body, and one low enough to catch the body ducks it while a
+    // transient-safe attack misses the peaks entirely — crest went UP, which
+    // is the opposite of glue. Blending a hard-crushed COPY under the
+    // untouched dry raises the body by several dB with the transients still
+    // intact, which is what makes a kit sound dense rather than squashed.
+    void setCompAmount(float a) noexcept { compAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
+    void setRoomAmount(float a) noexcept { roomAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
+    void setRoomSize(float a)   noexcept { roomSize = std::clamp(a, 0.0f, 1.0f); applyBus(); }
 
     // ── Resynthesised kit ────────────────────────────────────────────────────
     // When a kit is loaded, its instruments play from the analysed models and
@@ -167,15 +205,33 @@ public:
     // transport is stopped, so a decaying crash isn't cut off by hitting stop.
     void render(const TransportClock& clk, float* out, int n) noexcept {
         if (n <= 0) return;
+        if (size_t(n) > scratch.size()) scratch.assign(size_t(n), 0.0f);   // host grew the block
+        float* buf = scratch.data();
+        std::fill(buf, buf + n, 0.0f);
 
         if (clk.running()) {
             clockSamplePos = clk.samplePosition();
             scheduleSteps(clk, n);
-            fireQueue(out, n);
+            fireQueue(buf, n);
         } else {
-            renderVoices(out, 0, n);
+            renderVoices(buf, 0, n);
             lastFiredStep = -1;
         }
+
+        // Parallel compression, then room, then level. The level control comes
+        // last so the compressor's operating point never moves with the fader.
+        if (compAmt > 0.005f) {
+            if (parallel.size() < size_t(n)) parallel.assign(size_t(n), 0.0f);
+            float* par = parallel.data();
+            std::copy(buf, buf + n, par);
+            float* pp[1] = { par };
+            comp.process(pp, pp, n, 1);
+            for (int i = 0; i < n; ++i) buf[i] += par[i] * compAmt;
+        }
+        float* io[1] = { buf };
+        if (roomAmt > 0.005f) room.process(io, io, n, 1);
+
+        for (int i = 0; i < n; ++i) out[i] += buf[i] * master;
     }
 
     // Manual hit, e.g. auditioning a voice from the GUI. Fires immediately.
@@ -312,8 +368,10 @@ private:
         renderVoices(out, cursor, n);
     }
 
+    // NOTE: master is deliberately absent — it is applied after the bus, so
+    // the compressor's operating point does not move with the Drums fader.
     float voiceGain(int inst) const noexcept {
-        return kBalance[inst] * trims[inst] * kVoiceTrim[inst] * master;
+        return kBalance[inst] * trims[inst] * kVoiceTrim[inst];
     }
 
     void renderVoices(float* out, int from, int to) noexcept {
@@ -327,7 +385,7 @@ private:
         if (resynth.currentKit()) {
             float g[INST_COUNT];
             for (int i = 0; i < INST_COUNT; ++i)
-                g[i] = muted[i] ? 0.0f : kBalance[i] * trims[i] * master;
+                g[i] = muted[i] ? 0.0f : kBalance[i] * trims[i];
             resynth.render(p, n, g);
         }
 
@@ -363,6 +421,38 @@ private:
             default: break;
         }
     }
+
+    // Map the two bus knobs onto the shared Compressor and Plate blocks.
+    void applyBus() noexcept {
+        comp.setBypass(compAmt <= 0.005f);
+        // The parallel path's settings are FIXED, and deliberately extreme —
+        // its job is to be crushed. The knob controls how much of it is
+        // blended in, which is also what keeps this immune to gain staging:
+        // there is no threshold that has to line up with the signal's level
+        // for the control to behave as labelled.
+        comp.setParameter("type", 0.0f);          // VCA, not the 1176
+        comp.setParameter("threshold", -38.0f);
+        comp.setParameter("ratio", 3.0f);         // 20:1
+        comp.setParameter("attack", 8.0f);        // ~2.5 ms, catches the hit
+        comp.setParameter("release", 5.0f);       // ~220 ms, breathes with the groove
+        comp.setParameter("knee", 3.0f);
+        comp.setParameter("makeup", 5.0f);        // +10 dB, so the blend is audible
+        comp.setParameter("progRel", 1.0f);
+        comp.setParameter("scHP", 0.0f);          // the whole kit drives it
+
+        room.setParameter("type", 0.0f);          // plate tank, used as a room
+        room.setParameter("density", 1.0f);
+        room.setParameter("mix", roomAmt * 0.60f);
+        room.setParameter("decayTime", 0.35f + roomSize * 1.85f);
+        room.setParameter("preDelayMs", 8.0f + roomSize * 14.0f);
+        room.setParameter("damping", 0.45f);
+        room.setParameter("monosum", 1.0f);       // mono insert: correlated wet
+    }
+
+    std::vector<float>  scratch, parallel;
+    CompressorBlock     comp;
+    PlateReverbBlock    room;
+    float compAmt{0.0f}, roomAmt{0.0f}, roomSize{0.35f};
 
     // Voices
     ResynthVoices resynth;

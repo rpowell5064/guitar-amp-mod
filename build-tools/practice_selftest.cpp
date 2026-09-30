@@ -41,8 +41,9 @@ enum {
     OUT_PROGRESS = 39, OUT_BARS = 40,
     OUT_TRK1_STATE = 41, OUT_TRK2_STATE = 42, OUT_TRK3_STATE = 43, OUT_TRK4_STATE = 44,
     OUT_STEP = 45, OUT_UNDO_AVAIL = 46,
-    BYPASS = 47, ENABLED = 48,
-    N_PORTS = 49
+    DRUM_COMP = 47, DRUM_ROOM = 48, DRUM_ROOM_SIZE = 49,
+    BYPASS = 50, ENABLED = 51,
+    N_PORTS = 52
 };
 
 static constexpr double kFs    = 48000.0;
