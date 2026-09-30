@@ -80,7 +80,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 6 ;   # 6: editor channel (atom control/notify ports 53-54 + pattern/waveform/midifile properties). 5: china, stack and rimshot added (15 instruments) + 3 grooves using them. 4: 10 modern metal / djent grooves (27 total). 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
+    lv2:microVersion 14 ;   # 14: audio jacks added (the block had no connectors) + drag handle pinned to z-index 0 so it stops covering the controls. 13: fader dB span baked into the modgui - mod-ui start events carry only {symbol,value}, never ranges. 12: fader ranges read from the port ranges object mod-ui actually sends. 11: faders positioned in percent (measuring a hidden tab returned zero height, pinning them all to the bottom). 10: groove label driven by the plugin push, not a port echo. 9: tempo readout is a script-filled span (mod-ui writes readouts with textContent, invisible on an input). 8: modgui binds ports by literal symbol - mod-ui resolves {{#controls.N}} by lv2:index into a vector sized by the entry count, so the drum bus and tempo-sync ports were being dropped. 7: web GUI (modgui-practice) + host-tempo sync ports 55-56. mod-ui keys its modgui cache on the plugin version, so a modgui change that does not bump this is invisible on the device. 6: editor channel (atom control/notify ports 53-54 + pattern/waveform/midifile properties). 5: china, stack and rimshot added (15 instruments) + 3 grooves using them. 4: 10 modern metal / djent grooves (27 total). 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
     # The worker carries the undo snapshot (a memcpy of the whole loop) off the
     # audio thread. It is OPTIONAL: without it the plugin runs normally and only
     # undo is unavailable, so a host with no worker support still loads it.
@@ -511,11 +511,27 @@ Free and open source (GPL-3).""" ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
     # A work surface rather than a faceplate: the loop waveforms and the drum
-    # step grid are drawn on canvases and travel over the atom ports as JSON,
-    # because a control port cannot carry either. modgui:port maps the control
-    # ports onto the template's {{#controls.N}} slots — N is the POSITION in
-    # this list, not lv2:index, so entries must never be reordered without
-    # editing icon-practice.html to match. The N is written on each line.
+    # step grid are canvases, and they travel over the atom ports as JSON
+    # because a control port cannot carry either.
+    #
+    # HOW modgui:port ACTUALLY WORKS (verified against mod-ui on the device,
+    # 2026-09-30 -- do not "tidy" this without re-checking):
+    # mod-ui's native parser assigns each entry below AT ITS lv2:index into a
+    # vector whose LENGTH IS THE NUMBER OF ENTRIES, then the icon template's
+    # {{#controls.N}} resolves to element N of that vector. So:
+    #   * N is the port's lv2:index, NOT its position in this list;
+    #   * any entry whose lv2:index >= the entry count is SILENTLY DROPPED;
+    #   * indices belonging to non-declared ports come back as blank entries.
+    # That last two points bit this panel: with 43 entries declared, the drum
+    # bus (47-50) and the host-tempo ports (55-56) vanished from the template.
+    #
+    # The template therefore binds almost everything by a LITERAL
+    # mod-port-symbol, which mod-ui resolves at runtime from the plugin's own
+    # port list and which no amount of index drift can break. The sole
+    # {{#controls.N}} left is the groove dropdown (index 6), which needs
+    # {{#scalePoints}} to emit its 30 rows -- keeping that list here, where
+    # practice_port_check.py already gates it against DrumPatterns.h, beats
+    # copying 30 groove names into the HTML as a third source of truth.
     modgui:gui [
         modgui:resourcesDirectory <modgui-practice> ;
         modgui:iconTemplate <modgui-practice/icon-practice.html> ;
@@ -527,133 +543,94 @@ Free and open source (GPL-3).""" ;
         modgui:label "Practice" ;
         modgui:model "mod-pedal-guitaramp-practice" ;
         modgui:port [
-            # controls.0
             lv2:index 2 ; lv2:symbol "run" ; lv2:name "Run"
         ] , [
-            # controls.1
             lv2:index 3 ; lv2:symbol "tempo" ; lv2:name "Tempo"
         ] , [
-            # controls.2
-            lv2:index 55 ; lv2:symbol "tempo_sync" ; lv2:name "Sync To Host"
-        ] , [
-            # controls.3
             lv2:index 4 ; lv2:symbol "beats_per_bar" ; lv2:name "Beats / Bar"
         ] , [
-            # controls.4
-            lv2:index 6 ; lv2:symbol "pattern" ; lv2:name "Pattern"
-        ] , [
-            # controls.5
             lv2:index 5 ; lv2:symbol "drums_level" ; lv2:name "Drums Level"
         ] , [
-            # controls.6
+            lv2:index 6 ; lv2:symbol "pattern" ; lv2:name "Pattern"
+        ] , [
             lv2:index 7 ; lv2:symbol "swing" ; lv2:name "Swing"
         ] , [
-            # controls.7
             lv2:index 8 ; lv2:symbol "humanize" ; lv2:name "Humanise"
         ] , [
-            # controls.8
             lv2:index 9 ; lv2:symbol "lvl_kick" ; lv2:name "Kick"
         ] , [
-            # controls.9
             lv2:index 10 ; lv2:symbol "lvl_snare" ; lv2:name "Snare"
         ] , [
-            # controls.10
             lv2:index 11 ; lv2:symbol "lvl_toms" ; lv2:name "Toms"
         ] , [
-            # controls.11
             lv2:index 12 ; lv2:symbol "lvl_hats" ; lv2:name "Hats"
         ] , [
-            # controls.12
             lv2:index 13 ; lv2:symbol "lvl_cymbals" ; lv2:name "Cymbals"
         ] , [
-            # controls.13
-            lv2:index 47 ; lv2:symbol "drum_comp" ; lv2:name "Drum Comp"
-        ] , [
-            # controls.14
-            lv2:index 48 ; lv2:symbol "drum_room" ; lv2:name "Drum Room"
-        ] , [
-            # controls.15
-            lv2:index 49 ; lv2:symbol "drum_room_size" ; lv2:name "Room Size"
-        ] , [
-            # controls.16
-            lv2:index 50 ; lv2:symbol "drum_body" ; lv2:name "Drum Body"
-        ] , [
-            # controls.17
-            lv2:index 22 ; lv2:symbol "loop_level" ; lv2:name "Loop Level"
-        ] , [
-            # controls.18
-            lv2:index 23 ; lv2:symbol "loop_quantize" ; lv2:name "Quantise"
-        ] , [
-            # controls.19
-            lv2:index 24 ; lv2:symbol "loop_feedback" ; lv2:name "Overdub Feedback"
-        ] , [
-            # controls.20
-            lv2:index 25 ; lv2:symbol "loop_track" ; lv2:name "Active Track"
-        ] , [
-            # controls.21
-            lv2:index 26 ; lv2:symbol "loop_rec" ; lv2:name "Rec / Overdub"
-        ] , [
-            # controls.22
-            lv2:index 27 ; lv2:symbol "loop_play" ; lv2:name "Play"
-        ] , [
-            # controls.23
-            lv2:index 28 ; lv2:symbol "loop_stop" ; lv2:name "Stop"
-        ] , [
-            # controls.24
-            lv2:index 29 ; lv2:symbol "loop_clear" ; lv2:name "Clear"
-        ] , [
-            # controls.25
-            lv2:index 30 ; lv2:symbol "loop_undo" ; lv2:name "Undo / Redo"
-        ] , [
-            # controls.26
-            lv2:index 31 ; lv2:symbol "trk1_level" ; lv2:name "Track 1 Level"
-        ] , [
-            # controls.27
-            lv2:index 32 ; lv2:symbol "trk1_mute" ; lv2:name "Track 1 Mute"
-        ] , [
-            # controls.28
-            lv2:index 33 ; lv2:symbol "trk2_level" ; lv2:name "Track 2 Level"
-        ] , [
-            # controls.29
-            lv2:index 34 ; lv2:symbol "trk2_mute" ; lv2:name "Track 2 Mute"
-        ] , [
-            # controls.30
-            lv2:index 35 ; lv2:symbol "trk3_level" ; lv2:name "Track 3 Level"
-        ] , [
-            # controls.31
-            lv2:index 36 ; lv2:symbol "trk3_mute" ; lv2:name "Track 3 Mute"
-        ] , [
-            # controls.32
-            lv2:index 37 ; lv2:symbol "trk4_level" ; lv2:name "Track 4 Level"
-        ] , [
-            # controls.33
-            lv2:index 38 ; lv2:symbol "trk4_mute" ; lv2:name "Track 4 Mute"
-        ] , [
-            # controls.34
-            lv2:index 51 ; lv2:symbol "bypass" ; lv2:name "Bypass"
-        ] , [
-            # controls.35
             lv2:index 14 ; lv2:symbol "kick_tune" ; lv2:name "Kick Tune"
         ] , [
-            # controls.36
             lv2:index 15 ; lv2:symbol "kick_decay" ; lv2:name "Kick Decay"
         ] , [
-            # controls.37
             lv2:index 16 ; lv2:symbol "kick_click" ; lv2:name "Kick Click"
         ] , [
-            # controls.38
             lv2:index 17 ; lv2:symbol "snare_tune" ; lv2:name "Snare Tune"
         ] , [
-            # controls.39
             lv2:index 18 ; lv2:symbol "snare_decay" ; lv2:name "Snare Decay"
         ] , [
-            # controls.40
             lv2:index 19 ; lv2:symbol "snare_snappy" ; lv2:name "Snare Snappy"
         ] , [
-            # controls.41
             lv2:index 20 ; lv2:symbol "hat_decay" ; lv2:name "Hat Decay"
         ] , [
-            # controls.42
             lv2:index 21 ; lv2:symbol "hat_tone" ; lv2:name "Hat Tone"
+        ] , [
+            lv2:index 22 ; lv2:symbol "loop_level" ; lv2:name "Loop Level"
+        ] , [
+            lv2:index 23 ; lv2:symbol "loop_quantize" ; lv2:name "Quantise"
+        ] , [
+            lv2:index 24 ; lv2:symbol "loop_feedback" ; lv2:name "Overdub Feedback"
+        ] , [
+            lv2:index 25 ; lv2:symbol "loop_track" ; lv2:name "Active Track"
+        ] , [
+            lv2:index 26 ; lv2:symbol "loop_rec" ; lv2:name "Rec / Overdub"
+        ] , [
+            lv2:index 27 ; lv2:symbol "loop_play" ; lv2:name "Play"
+        ] , [
+            lv2:index 28 ; lv2:symbol "loop_stop" ; lv2:name "Stop"
+        ] , [
+            lv2:index 29 ; lv2:symbol "loop_clear" ; lv2:name "Clear"
+        ] , [
+            lv2:index 30 ; lv2:symbol "loop_undo" ; lv2:name "Undo / Redo"
+        ] , [
+            lv2:index 31 ; lv2:symbol "trk1_level" ; lv2:name "Track 1 Level"
+        ] , [
+            lv2:index 32 ; lv2:symbol "trk1_mute" ; lv2:name "Track 1 Mute"
+        ] , [
+            lv2:index 33 ; lv2:symbol "trk2_level" ; lv2:name "Track 2 Level"
+        ] , [
+            lv2:index 34 ; lv2:symbol "trk2_mute" ; lv2:name "Track 2 Mute"
+        ] , [
+            lv2:index 35 ; lv2:symbol "trk3_level" ; lv2:name "Track 3 Level"
+        ] , [
+            lv2:index 36 ; lv2:symbol "trk3_mute" ; lv2:name "Track 3 Mute"
+        ] , [
+            lv2:index 37 ; lv2:symbol "trk4_level" ; lv2:name "Track 4 Level"
+        ] , [
+            lv2:index 38 ; lv2:symbol "trk4_mute" ; lv2:name "Track 4 Mute"
+        ] , [
+            lv2:index 47 ; lv2:symbol "drum_comp" ; lv2:name "Drum Comp"
+        ] , [
+            lv2:index 48 ; lv2:symbol "drum_room" ; lv2:name "Drum Room"
+        ] , [
+            lv2:index 49 ; lv2:symbol "drum_room_size" ; lv2:name "Room Size"
+        ] , [
+            lv2:index 50 ; lv2:symbol "drum_body" ; lv2:name "Drum Body"
+        ] , [
+            lv2:index 51 ; lv2:symbol "bypass" ; lv2:name "Bypass"
+        ] , [
+            lv2:index 52 ; lv2:symbol "enabled" ; lv2:name "Enabled"
+        ] , [
+            lv2:index 55 ; lv2:symbol "tempo_sync" ; lv2:name "Sync To Host"
+        ] , [
+            lv2:index 56 ; lv2:symbol "host_bpm" ; lv2:name "Host BPM"
         ]
     ] .

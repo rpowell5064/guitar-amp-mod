@@ -36,6 +36,9 @@ function (event, funcs) {
     // normal, accent) are one click apart and nothing else is reachable.
     var CYCLE = ['.', '-', 'o', 'x', 'X'];
 
+    // dB span shared by every fader port (see the note in the `start` handler).
+    var FADER_MIN = -60, FADER_MAX = 12;
+
     // ── small helpers ────────────────────────────────────────────────────────
     function R(icon, role) { return icon.find('[rata-role=' + role + ']'); }
     function el(icon, role) { var q = R(icon, role); return q.length ? q[0] : null; }
@@ -246,6 +249,14 @@ function (event, funcs) {
         }
         icon.data('px_pat', { spb: spb, bars: bars, lanes: lanes, builtin: !!d.builtin });
         patStatus(icon, d.builtin ? ('Factory groove — ' + (d.name || '')) : 'Edited pattern');
+        // Label the picker from the PLUGIN's own message rather than waiting for
+        // a port echo. mod-ui does not reliably echo a programmatic port write
+        // back as an event (it did not here, on the device), but the pattern
+        // push always arrives — it is what redrew this grid.
+        if (d.builtin && d.name) {
+            var box = icon.find('.mod-enumerated .mod-enumerated-selected');
+            if (box.length) box.text(d.name);
+        }
         drawGrid(icon);
     }
 
@@ -390,10 +401,14 @@ function (event, funcs) {
     function faderSet(icon, sym, val) {
         var map = icon.data('px_fad'); var f = map && map[sym]; if (!f) return;
         var frac = (f.max > f.min) ? clamp((val - f.min) / (f.max - f.min), 0, 1) : 0;
-        var $e = $(f.el), h = $e.height() || 150;
-        var travel = h - 14;
-        $e.find('.px-fad-fill').css('height', (travel * frac) + 'px');
-        $e.find('.px-fad-hand').css('bottom', (1 + travel * frac) + 'px');
+        // Positioned in PERCENT, never from a measured height: the MIX tab is
+        // display:none when `start` fires, so every element there measures zero
+        // and each fader was being pinned to the bottom of its track. calc()
+        // resolves at paint time, when the tab is actually visible.
+        var travel = '(100% - 14px) * ' + frac.toFixed(4);
+        var $e = $(f.el);
+        $e.find('.px-fad-fill').css('height', 'calc(' + travel + ')');
+        $e.find('.px-fad-hand').css('bottom', 'calc(1px + ' + travel + ')');
     }
 
     // ── events ───────────────────────────────────────────────────────────────
@@ -403,18 +418,17 @@ function (event, funcs) {
         icon.data('px_prog', -1);
         icon.data('px_step', -1);
 
-        // Port ranges, needed before any fader can be positioned.
+        // Fader ranges are baked in, NOT read from the host. mod-ui's `start`
+        // event carries only {symbol, value} per port -- it has no ranges in
+        // any shape -- so anything taken from it is undefined and every fader
+        // ends up pinned at zero. Every port drawn as a fader here is a dB
+        // level over the same span; practice_port_check.py asserts these two
+        // numbers against the TTL so they cannot drift apart.
         var fad = {};
         icon.find('.px-fader').each(function () {
             var sym = this.getAttribute('mod-port-symbol');
-            if (sym) fad[sym] = { el: this, min: 0, max: 1 };
+            if (sym) fad[sym] = { el: this, min: FADER_MIN, max: FADER_MAX };
         });
-        if (event.ports) {
-            for (var i = 0; i < event.ports.length; ++i) {
-                var pt = event.ports[i];
-                if (fad[pt.symbol]) { fad[pt.symbol].min = pt.minimum; fad[pt.symbol].max = pt.maximum; }
-            }
-        }
         icon.data('px_fad', fad);
 
         R(icon, 'pxtabs').find('.px-tab').each(function () {
@@ -496,8 +510,12 @@ function (event, funcs) {
         // Saved state the host replays at load, then a full refresh request so
         // a freshly opened editor gets the waveforms and the live groove.
         if (event.ports) {
-            for (var k = 0; k < event.ports.length; ++k)
-                portApply(icon, event.ports[k].symbol, event.ports[k].value);
+            for (var k = 0; k < event.ports.length; ++k) {
+                var po = event.ports[k];
+                var pv = (po.value !== undefined) ? po.value
+                       : (po.ranges ? po.ranges.default : undefined);
+                if (pv !== undefined) portApply(icon, po.symbol, parseFloat(pv));
+            }
         }
         if (event.parameters) {
             for (var q = 0; q < event.parameters.length; ++q) {
@@ -534,6 +552,7 @@ function (event, funcs) {
             icon.toggleClass('px-synced', on);
             return;
         }
+        if (sym === 'tempo')    { R(icon, 'tempofield').text(String(Math.round(value))); return; }
         if (sym === 'host_bpm') { R(icon, 'hostbpm').text('host ' + Math.round(value)); return; }
 
         if (sym === 'out_progress') {

@@ -85,9 +85,9 @@ def ttl_ports():
     """(index, symbol) pairs from the TTL, in index order."""
     src = TTL.read_text(encoding="utf-8")
     # The modgui:gui block repeats lv2:index/lv2:symbol to map ports onto the
-    # template's controls.N slots. Those are not port declarations, and they are
-    # deliberately NOT in index order, so scraping them here would report every
-    # one of them as out of order. Cut the block off before matching.
+    # template's controls.N slots. Those are not port declarations -- scraping
+    # them here would double-count every port. Cut the block off before
+    # matching; check_modgui() validates that block on its own terms.
     gui = src.find("modgui:gui")
     if gui >= 0:
         src = src[:gui]
@@ -230,59 +230,141 @@ def check_turtle():
 
 
 def check_modgui():
-    """The modgui maps ports onto template slots BY POSITION, not by index.
+    """Gate the modgui port mapping against how mod-ui ACTUALLY resolves it.
 
-    `modgui:port` is an ordered list and the icon template addresses its
-    entries as {{#controls.N}} where N is the position in that list. Nothing
-    in the TTL or the HTML states the correspondence, so inserting one entry
-    shifts every slot after it and the panel silently rewires itself — a Kick
-    Decay knob quietly driving Snare Tune. This checks three things: that every
-    mapped symbol is a real port at the index claimed, that every controls.N
-    the template references exists in the list, and that the position comments
-    in the TTL still say what the position actually is.
+    Verified against mod-ui on the device 2026-09-30. Its native parser assigns
+    each modgui:port entry AT ITS lv2:index into a vector whose length is the
+    NUMBER OF ENTRIES, and the icon template's {{#controls.N}} indexes that
+    vector. Two consequences, both of which silently produced a wrong panel
+    here before they were understood:
+      * N is the port's lv2:index, not its position in the list;
+      * an entry whose lv2:index >= the entry count is DROPPED without a word.
+    So this checks that every {{#controls.N}} the template uses names a
+    declared port at lv2:index N, and that N is inside the vector.
     """
     src = TTL.read_text(encoding="utf-8")
     gui = src.find("modgui:gui")
     if gui < 0:
         return
-    block = src[gui:]
-
     real = dict((sym, idx) for idx, sym in ttl_ports())
     entries = re.findall(
-        r"#\s*controls\.(\d+)\s*\n\s*lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+\"([a-z0-9_]+)\"",
-        block)
+        r'lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+"([a-z0-9_]+)"', src[gui:])
     if not entries:
         errors.append("modgui:gui present but no modgui:port entries were parsed")
         return
+    count = len(entries)
 
-    for pos, (claimed, idx, sym) in enumerate(entries):
-        if int(claimed) != pos:
-            errors.append("modgui:port entry %d is commented 'controls.%s'" % (pos, claimed))
-        if sym not in real:
-            errors.append("modgui:port maps '%s', which is not a port" % sym)
-        elif real[sym] != int(idx):
-            errors.append("modgui:port says %s is index %s; the port list says %d"
-                          % (sym, idx, real[sym]))
+    by_index = {}
+    for idx, sym in entries:
+        idx = int(idx)
+        if real.get(sym) != idx:
+            errors.append("modgui:port says %s is index %d; the port list says %s"
+                          % (sym, idx, real.get(sym)))
+        if idx in by_index:
+            errors.append("modgui:port declares index %d twice (%s, %s)"
+                          % (idx, by_index[idx], sym))
+        by_index[idx] = sym
 
     html = ROOT / "lv2" / "modgui-practice" / "icon-practice.html"
-    if html.exists():
-        used = set(int(n) for n in re.findall(r"\{\{#controls\.(\d+)\}\}", html.read_text(encoding="utf-8")))
-        for n in sorted(used):
-            if n >= len(entries):
-                errors.append("icon-practice.html uses controls.%d but only %d ports are mapped"
-                              % (n, len(entries)))
-        unused = sorted(set(range(len(entries))) - used)
-        if unused:
-            names = ", ".join(entries[u][2] for u in unused)
-            print("  note: modgui:port maps %d port(s) the template never draws: %s"
-                  % (len(unused), names))
-    return len(entries)
+    if not html.exists():
+        return count
+    used = sorted(set(int(n) for n in
+                      re.findall(r"\{\{#controls\.(\d+)\}\}", html.read_text(encoding="utf-8"))))
+    for n in used:
+        if n >= count:
+            errors.append("icon-practice.html uses controls.%d but only %d entries are "
+                          "declared, so mod-ui drops it" % (n, count))
+        elif n not in by_index:
+            errors.append("icon-practice.html uses controls.%d but no modgui:port entry "
+                          "has lv2:index %d" % (n, n))
+    if used:
+        print("  modgui: %d entries; template uses controls.%s -> %s"
+              % (count, ",".join(str(u) for u in used),
+                 ",".join(by_index.get(u, "?") for u in used)))
+    return count
+
+
+def check_fader_ranges():
+    """The modgui hardcodes the fader dB span; assert it against the TTL.
+
+    mod-ui's modgui `start` event passes only {symbol, value} for each port --
+    no ranges at all -- so a fader cannot learn its own span from the host and
+    the script carries FADER_MIN/FADER_MAX itself. That is a second copy of a
+    number the TTL already owns, so it gets checked here: a port drawn as a
+    fader whose range is widened in the TTL would otherwise render at the wrong
+    position forever, with nothing failing.
+    """
+    js = ROOT / "lv2" / "modgui-practice" / "script-practice.js"
+    html = ROOT / "lv2" / "modgui-practice" / "icon-practice.html"
+    if not js.exists() or not html.exists():
+        return
+    m = re.search(r"var FADER_MIN\s*=\s*(-?[\d.]+)\s*,\s*FADER_MAX\s*=\s*(-?[\d.]+)",
+                  js.read_text(encoding="utf-8"))
+    if not m:
+        errors.append("script-practice.js no longer declares FADER_MIN/FADER_MAX")
+        return
+    jmin, jmax = float(m.group(1)), float(m.group(2))
+
+    # Every port the template draws as a fader.
+    syms = set(re.findall(r'class="px-fader"[^>]*mod-port-symbol="([a-z0-9_]+)"',
+                          html.read_text(encoding="utf-8")))
+    if not syms:
+        errors.append("no .px-fader ports found in icon-practice.html")
+        return
+
+    src = TTL.read_text(encoding="utf-8")
+    gui = src.find("modgui:gui")
+    if gui >= 0:
+        src = src[:gui]
+    for sym in sorted(syms):
+        b = re.search(r'lv2:symbol "%s".*?lv2:minimum\s+(-?[\d.]+)\s*;\s*lv2:maximum\s+(-?[\d.]+)'
+                      % re.escape(sym), src, re.S)
+        if not b:
+            errors.append("fader port %s has no minimum/maximum in the TTL" % sym)
+            continue
+        tmin, tmax = float(b.group(1)), float(b.group(2))
+        if (tmin, tmax) != (jmin, jmax):
+            errors.append("fader %s is %g..%g in the TTL but the modgui assumes %g..%g"
+                          % (sym, tmin, tmax, jmin, jmax))
+    print("  faders: %d ports, all %g..%g dB" % (len(syms), jmin, jmax))
+
+
+def check_template_shell():
+    """The bits of a MOD pedal template that are easy to forget and invisible offline.
+
+    Both of these shipped broken once: the audio jacks were simply never added
+    (the stylesheet had rules for them, the markup did not), so the block had
+    no connectors in the pedalboard at all; and without the drag-handle z-index
+    override the handle floats above the plate, putting a move cursor over
+    every knob and swallowing clicks. Neither shows up in an offline render.
+    """
+    html_p = ROOT / "lv2" / "modgui-practice" / "icon-practice.html"
+    css_p = ROOT / "lv2" / "modgui-practice" / "stylesheet-practice.css"
+    if not html_p.exists() or not css_p.exists():
+        return
+    html = html_p.read_text(encoding="utf-8")
+    css = css_p.read_text(encoding="utf-8")
+
+    for role, loop in (("input-audio-port", "effect.ports.audio.input"),
+                       ("output-audio-port", "effect.ports.audio.output")):
+        if role not in html:
+            errors.append("icon-practice.html has no mod-role=%s: the block would show "
+                          "no audio connector" % role)
+        if loop not in html:
+            errors.append("icon-practice.html never iterates {{#%s}}" % loop)
+
+    if not re.search(r"\.mod-drag-handle\s*\{[^}]*z-index\s*:\s*0\s*!important", css):
+        errors.append("stylesheet-practice.css does not pin .mod-drag-handle to "
+                      "z-index:0 !important, so it covers the controls")
+    print("  template: audio jacks present, drag handle pinned behind the plate")
 
 
 def main():
     count = check_ports()
     check_patterns()
     check_modgui()
+    check_fader_ranges()
+    check_template_shell()
     check_turtle()
 
     if errors:

@@ -66,22 +66,22 @@ def parse_controls(ttl_path):
     by_index = dict(ctrls)
     ordered = [c for _, c in ctrls]
 
-    # mod-ui builds the template's `controls` array from modgui:port IN LIST
-    # ORDER when that block is present, not from lv2:index. Sorting by index
-    # here would label {{#controls.N}} with whatever port happens to sit at
-    # index N, which is only the same thing when the list is already in index
-    # order -- it is not, for cab or practice. Honour the list.
+    # Mirror mod-ui exactly (verified on the device 2026-09-30): when a
+    # modgui:port block is present, its native parser assigns each entry AT ITS
+    # lv2:index into a vector sized by the NUMBER OF ENTRIES, and the template's
+    # {{#controls.N}} indexes that vector. So N is the port's lv2:index, slots
+    # for undeclared indices come back empty, and an entry whose index is past
+    # the end is dropped. Rendering any other way mislabels the screenshot and,
+    # worse, hides exactly the drift this render would otherwise reveal.
     gui = txt.find("modgui:gui")
     if gui >= 0:
-        block = txt[gui:]
-        mapped = re.findall(r'lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+"([^"]*)"', block)
+        mapped = re.findall(r'lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+"([^"]*)"', txt[gui:])
         if mapped:
-            ordered = []
+            ordered = [{"symbol": "", "name": "", "sp": []} for _ in mapped]
             for idx, sym in mapped:
-                c = by_index.get(int(idx))
-                # An output port can be mapped for a meter; it has no control
-                # entry, so hold the slot rather than shifting everything after.
-                ordered.append(c if c else {"symbol": sym, "name": sym, "sp": []})
+                idx = int(idx)
+                if idx < len(ordered):
+                    ordered[idx] = by_index.get(idx) or {"symbol": sym, "name": sym, "sp": []}
     return ordered
 
 # ── Mustache-lite: fill {{#controls.N}} blocks from the port list, drop runtime-only loops ────────

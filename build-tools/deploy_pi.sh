@@ -24,6 +24,28 @@ for f in lv2/*.ttl;            do install_atomic "$f" "$BUNDLE/$(basename "$f")"
 [ -f lv2/practice/drumkit.dat ] && install_atomic lv2/practice/drumkit.dat "$BUNDLE/drumkit.dat"
 echo "copied $(ls "$BUNDLE"/*.so | wc -l) .so, $(ls "$BUNDLE"/*.ttl | wc -l) .ttl, kit=$([ -f "$BUNDLE/drumkit.dat" ] && echo yes || echo no)"
 
+# modgui resources. Copied FILE BY FILE, never "rm -rf dir && cp -r": if this
+# checkout is missing an image the bundle already has, a wipe-and-replace
+# deletes it from the bundle and the panel loses its artwork. Overwriting in
+# place can only ever add or update, never remove.
+# Note mod-ui caches modgui files against the plugin's lv2:microVersion, so a
+# changed stylesheet that did not bump it will look unchanged on screen even
+# though the md5s here match.
+guis=0
+for d in lv2/modgui-*; do
+    [ -d "$d" ] || continue
+    name=$(basename "$d")
+    mkdir -p "$BUNDLE/$name"
+    (cd "$d" && find . -type d -printf '%P\n') | while read -r sub; do
+        [ -n "$sub" ] && mkdir -p "$BUNDLE/$name/$sub"
+    done
+    (cd "$d" && find . -type f -printf '%P\n') | while read -r f; do
+        install_atomic "$d/$f" "$BUNDLE/$name/$f"
+    done
+    guis=$((guis + 1))
+done
+echo "copied $guis modgui dir(s)"
+
 echo "--- bundle contents ---"
 ls -la --time-style=+%Y-%m-%d_%H:%M:%S "$BUNDLE"/
 

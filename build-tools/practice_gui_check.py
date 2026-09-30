@@ -105,7 +105,7 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
     gui({type:'change', icon:icon, uri:'x#waveform', value:__WAVE__}, funcs);
     gui({type:'change', icon:icon, uri:'x#pattern',  value:__PAT__}, funcs);
     [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
-     ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['trk1_level',0],
+     ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
      ['lvl_kick',3],['drums_level',-4]
     ].forEach(function(p){ gui({type:'port_event', icon:icon, symbol:p[0], value:p[1]}, funcs); });
     document.querySelector('[rata-role=pxview]').setAttribute('data-tab', window.__TAB__);
@@ -130,7 +130,15 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
   r.textContent = JSON.stringify({err: window.__ERR__, ink: window.__INK__,
                                   groove: (document.querySelector('.mod-enumerated-selected')||{}).textContent || '',
                                   status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
-                                  bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || ''});
+                                  bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || '',
+                                  tempo:  (document.querySelector('[rata-role=tempofield]')||{}).textContent || '',
+                                  faders: [].slice.call(document.querySelectorAll('.px-fad-fill'))
+                                            .filter(function(f){
+                                              // RENDERED height, not the style string: a zero
+                                              // fraction serialises as "calc(0% + 0px)", which is
+                                              // not "0px" and sailed through a string test while
+                                              // every fader on the device sat empty.
+                                              return f.getBoundingClientRect().height > 1; }).length});
   r.style.cssText = 'position:fixed;left:-9999px';
   document.body.appendChild(r);
 })();
@@ -148,7 +156,12 @@ def build_page(tab):
     html = rm.fill_mustache(open(os.path.join(BASE, "icon-practice.html"), encoding="utf-8").read(), controls)
     html = html.replace('class="mod-powerswitch-image"', 'class="mod-powerswitch-image on"')
 
-    ports = [{"symbol": c["symbol"], "value": 0, "minimum": -60, "maximum": 12} for c in controls]
+    # Mirror mod-ui's real port shape: the range is nested under "ranges".
+    # A flat minimum/maximum fixture is what let a fader bug reach the device
+    # -- the script read fields the host never sends and every fader sat at
+    # zero while this gate reported success.
+    ports = [{"symbol": c["symbol"], "value": 0,
+              "ranges": {"minimum": -60, "maximum": 12, "default": 0}} for c in controls]
     shim = (SHIM.replace("__SCRIPT__", open(os.path.join(BASE, "script-practice.js"), encoding="utf-8").read())
                 .replace("__WAVE__", json.dumps(WAVE))
                 .replace("__PAT__", json.dumps(PATTERN))
@@ -212,6 +225,20 @@ def main():
         check(0 < r["ink"].get("wave3", 0) < 0.02, "an empty track draws no waveform",
               "ink %.4f" % r["ink"].get("wave3", 0))
         check(r["bars"].strip() != "", "the bar readout is filled in", r["bars"])
+        # The tempo readout is a SPAN the script fills, not a mod-ui value
+        # widget: mod-ui writes readouts with textContent, which an <input>
+        # silently does not display, and that is how it shipped blank once.
+        check(r["tempo"].strip() == "138", "the tempo readout shows whole BPM", r["tempo"])
+
+    print("\nMIX")
+    r = run_tab("mix", outdir)
+    if r:
+        check(not r["err"], "the script runs without throwing", r["err"])
+        # Faders are positioned in PERCENT precisely because this tab is hidden
+        # when `start` fires: measuring a hidden element returns zero, which
+        # pinned every fader to the bottom of its track on the device.
+        check(r.get("faders", 0) >= 9, "the faders are positioned while the tab is hidden",
+              "%d of 11 have a fill" % r.get("faders", 0))
 
     print("\nDRUMS")
     r = run_tab("drums", outdir)

@@ -31,8 +31,14 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .hx-mark { display:inline-block; width:9px; height:10px; margin-right:7px; vertical-align:-1px; background:linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
 .mod-pedal-guitaramp-practice{{{cns}}} .hx-title { font-size:26px; font-weight:800; letter-spacing:2px; line-height:1; margin-top:7px; text-transform:uppercase; color:var(--acc); text-shadow:0 0 16px rgba(240,168,48,.40); }
 .mod-pedal-guitaramp-practice{{{cns}}} .hx-tag { font-size:11px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
+/* The drag handle covers the whole pedal so the block can be moved from any
+   blank area. It MUST sit at z-index 0 or it floats above the controls: every
+   knob, fader and lane then shows the move cursor and the plate stops taking
+   clicks. Suite convention (do not regress): handle 0, plate 5, topbar 20,
+   powerswitch 40, selects 50, dropdown lists 9000. */
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-drag-handle { z-index:0 !important; position:absolute; top:0; left:0; right:0; bottom:0; }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-input,
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-output { top:150px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-output { top:150px; z-index:30; }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch { margin-left:905px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
@@ -47,11 +53,10 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tgroup { display:flex; align-items:center; gap:8px; padding:7px 12px; border-radius:9px; background:rgba(6,7,10,.5); border:1px solid rgba(255,255,255,.09); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tlabel { font-size:9px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink3); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-field {
-    width:62px; background:transparent; border:0; outline:0; padding:0;
-    font-family:inherit; font-size:26px; font-weight:300; letter-spacing:-.5px;
+    min-width:52px; display:inline-block;
+    font-size:26px; font-weight:300; letter-spacing:-.5px;
     color:var(--ink); text-align:right; font-variant-numeric:tabular-nums;
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-field:focus { color:var(--acc); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-unit { font-size:10px; font-weight:700; letter-spacing:1px; color:var(--ink3); align-self:flex-end; padding-bottom:5px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-drag { width:12px; height:30px; cursor:ns-resize; border-radius:3px; background:repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 1px, transparent 1px 4px); }
 /* When the host is driving the tempo the knob must LOOK inert — a field that still
