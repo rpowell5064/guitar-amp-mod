@@ -62,3 +62,5 @@ build-tools/out_wsl_tsan/
 /out_anagram/
 /out_golden_pi/
 /out_practice/
+/drum_src/
+/out_analyze/
