@@ -8,6 +8,7 @@ function (event, funcs) {
     var BASE = 'https://rpowell5064.github.io/guitaramp-suite/practice';
     var PATTERN_URI  = BASE + '#pattern';
     var WAVEFORM_URI = BASE + '#waveform';
+    var STATUS_URI   = BASE + '#status';
 
     // Instrument rows, in the order the plugin's Instrument enum defines them.
     // Laid out high-to-low the way a drummer reads a chart: cymbals on top,
@@ -285,6 +286,24 @@ function (event, funcs) {
             g.fillStyle = 'rgba(255,255,255,.15)';
             g.fillRect(hx, 0, G.cw, c.height);
         }
+    }
+
+    // Live panel state. It arrives on the atom channel rather than from the
+    // output control ports because mod-host forwards those to a web GUI far too
+    // sparsely to animate anything -- measured at one update in 2.5 s on the
+    // device, against the four numbers in two seconds a count-in has to show.
+    function statusParse(icon, json) {
+        var d = null;
+        try { d = JSON.parse(json); } catch (e) { return; }
+        if (!d) return;
+        if (d.st && d.st.length) {
+            for (var t = 0; t < d.st.length && t < 4; ++t) laneState(icon, t + 1, d.st[t]);
+        }
+        if (typeof d.pr === 'number') portApply(icon, 'out_progress', d.pr / 400);
+        if (typeof d.bars === 'number') icon.data('px_bars', d.bars);
+        if (typeof d.step === 'number') portApply(icon, 'out_step', d.step);
+        if (typeof d.undo === 'number') portApply(icon, 'out_undo_avail', d.undo);
+        if (typeof d.ci === 'number') portApply(icon, 'out_countin', d.ci);
     }
 
     function patStatus(icon, msg) { R(icon, 'patstatus').text(msg || ''); }
@@ -585,6 +604,11 @@ function (event, funcs) {
         R(icon, 'btnundo').on('click',  function () { pulse(icon, 'loop_undo'); });
         R(icon, 'btnclear').on('click', function () { pulse(icon, 'loop_clear'); });
 
+        R(icon, 'countpill').on('click', function () {
+            var on = !$(this).hasClass('on');
+            $(this).toggleClass('on', on);
+            setPort(icon, 'count_in', on ? 1 : 0);
+        });
         R(icon, 'runpill').on('click', function () {
             var on = !$(this).hasClass('on');
             $(this).toggleClass('on', on);
@@ -642,11 +666,13 @@ function (event, funcs) {
                 if (!pr.uri || !pr.value) continue;
                 if (pr.uri.indexOf('#pattern') >= 0) patParse(icon, pr.value);
                 else if (pr.uri.indexOf('#waveform') >= 0) waveParse(icon, pr.value);
+                else if (pr.uri.indexOf('#status') >= 0) statusParse(icon, pr.value);
             }
         }
         if (funcs && typeof funcs.patch_get === 'function') {
             funcs.patch_get(WAVEFORM_URI);
             funcs.patch_get(PATTERN_URI);
+            funcs.patch_get(STATUS_URI);
         }
 
     } else if (event.type == 'change') {
@@ -659,6 +685,7 @@ function (event, funcs) {
         if (event.uri) {
             if (event.uri.indexOf('#waveform') >= 0) waveParse(event.icon, event.value);
             else if (event.uri.indexOf('#pattern') >= 0) patParse(event.icon, event.value);
+            else if (event.uri.indexOf('#status') >= 0) statusParse(event.icon, event.value);
         } else if (event.symbol) {
             portApply(event.icon, event.symbol, parseFloat(event.value));
         }
@@ -695,7 +722,7 @@ function (event, funcs) {
                 if (stt >= 1 && stt <= 3) drawWave(icon, t);
             }
             var W = icon.data('px_wave');
-            var bars = (W && W.bars) || 0;
+            var bars = icon.data('px_bars') || (W && W.bars) || 0;
             if (bars > 0) {
                 var pos = value * bars;
                 R(icon, 'barsread').text((Math.floor(pos) + 1) + ' . ' + bars);
@@ -707,6 +734,55 @@ function (event, funcs) {
             if (s !== icon.data('px_step')) { icon.data('px_step', s); drawGrid(icon); }
             return;
         }
+        if (sym === 'count_in') { R(icon, 'countpill').toggleClass('on', value > 0.5); return; }
+
+        if (sym === 'beats_per_bar') { icon.data('px_bpb', Math.max(1, Math.round(value))); return; }
+
+        if (sym === 'out_countin') {
+            var raw = Math.round(value);
+            var bpb = icon.data('px_bpb') || 4;
+            // A press lands anywhere in a bar, so up to a further bar can pass
+            // before the count itself starts. That wait is ARMED, not counting:
+            // showing "8" would contradict the four-beat count you can hear.
+            var beats = (raw > 0 && raw <= bpb) ? raw : 0;
+            R(icon, 'btnrec').toggleClass('armed', raw > 0 && beats === 0);
+            var on = beats > 0;
+            R(icon, 'countin').toggleClass('on', on);
+            R(icon, 'btnrec').toggleClass('counting', on);
+            if (on) {
+                // Re-pop the number only when it actually changes, or the
+                // animation would restart on every block and just shimmer.
+                if (beats !== icon.data('px_cibeat')) {
+                    icon.data('px_cibeat', beats);
+                    var num = R(icon, 'cinum');
+                    num.text(String(beats));
+                    // restart the CSS animation
+                    num.css('animation', 'none');
+                    if (num.length && num[0].offsetHeight) { /* reflow */ }
+                    num.css('animation', '');
+                    // The first value we see is the length of this count, so
+                    // the dots match the meter without being told it.
+                    var total = icon.data('px_citotal') || 0;
+                    if (beats > total) { icon.data('px_citotal', beats); total = beats; }
+                    var dots = R(icon, 'cidots');
+                    if (dots.length && dots[0].childNodes.length !== total) {
+                        var html = '';
+                        for (var d = 0; d < total; ++d) html += '<span class="px-ci-dot"></span>';
+                        dots[0].innerHTML = html;
+                    }
+                    if (dots.length) {
+                        var kids = dots[0].childNodes;
+                        for (var k = 0; k < kids.length; ++k)
+                            kids[k].className = 'px-ci-dot' + (k < beats ? ' lit' : '');
+                    }
+                }
+            } else {
+                icon.data('px_cibeat', 0);
+                icon.data('px_citotal', 0);
+            }
+            return;
+        }
+
         if (sym === 'out_undo_avail') { R(icon, 'btnundo').toggleClass('dim', value < 0.5); return; }
 
         var m = /^out_trk([1-4])_state$/.exec(sym);

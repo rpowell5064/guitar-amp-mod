@@ -82,6 +82,7 @@ public:
             t.gain = 0.0f; t.targetGain = 0.0f;
             t.recorded = 0;
             t.pending = Action::None;
+            t.countingIn = false;
         }
         std::fill(preRoll.begin(), preRoll.end(), 0.0f);
         preRollPos = 0;
@@ -95,6 +96,25 @@ public:
 
     // ── Parameters ───────────────────────────────────────────────────────────
     void setQuantize(bool on)          noexcept { quantize = on; }
+    void setCountIn(bool on)           noexcept { countIn = on; }
+
+    // Samples until the counted-in take starts, or 0 when nothing is counting.
+    // The plugin turns this into the beats the panel counts down, and into the
+    // click on each beat.
+    int64_t countInSamplesLeft(const TransportClock& clk) const noexcept {
+        int64_t best = 0;
+        for (const auto& tr : tracks) {
+            if (!tr.countingIn || tr.pending != Action::RecordToggle) continue;
+            const int64_t left = tr.applyAt - clk.samplePosition();
+            if (left > 0 && (best == 0 || left < best)) best = left;
+        }
+        return best;
+    }
+    bool counting() const noexcept {
+        for (const auto& tr : tracks)
+            if (tr.countingIn && tr.pending == Action::RecordToggle) return true;
+        return false;
+    }
     void setFeedback(float f)          noexcept { feedback = std::clamp(f, 0.0f, 1.0f); }
     void setTrackLevel(int t, float g) noexcept { if (valid(t)) tracks[t].level = std::max(0.0f, g); }
     void setTrackMuted(int t, bool m)  noexcept { if (valid(t)) tracks[t].muted = m; }
@@ -122,6 +142,7 @@ public:
         tracks[t].recorded   = 0;
         tracks[t].lateBy     = 0;
         tracks[t].pending    = Action::None;
+        tracks[t].countingIn = false;
         if (undoTrack == t) { undoReady = false; undoTrack = -1; }
         ++waveGen;
         // The last track standing takes the loop length with it.
@@ -257,6 +278,7 @@ private:
         float   level{1.0f};
         float   gain{0.0f}, targetGain{0.0f};
         bool    muted{false};
+        bool    countingIn{false};  // this take is waiting out a count-in
     };
 
     static bool inRange(int t) noexcept { return t >= 0 && t < kNumTracks; }
@@ -277,6 +299,20 @@ private:
         }
         const double spb   = clk.samplesPerBar();
         const double toBar = clk.samplesToNextBar();
+
+        // COUNT-IN. Only for the take that DEFINES the loop: once a loop
+        // exists you can hear where beat one is, and counting in over the top
+        // of it would just be in the way. The take starts one whole bar after
+        // the next bar line, so the count is a full bar in any meter (four
+        // beats in the default 4/4) and the loop still begins exactly on a bar
+        // line. The wait before that line is "armed", not part of the count.
+        if (a == Action::RecordToggle && countIn && masterLen == 0 &&
+            tracks[t].state == State::Empty) {
+            tracks[t].applyAt    = clk.samplePosition() + static_cast<int64_t>(toBar + spb);
+            tracks[t].lateBy     = 0;
+            tracks[t].countingIn = true;
+            return;
+        }
         // How far past the bar line just gone this press landed.
         const double sinceBar = (toBar <= 0.0) ? 0.0 : spb - toBar;
 
@@ -299,6 +335,7 @@ private:
         Track& tr = tracks[t];
         const Action a = tr.pending;
         tr.pending = Action::None;
+        tr.countingIn = false;
 
         switch (a) {
             case Action::RecordToggle: recordToggle(t); break;
@@ -511,6 +548,7 @@ private:
     int     undoTrack{-1};
     bool    undoReady{false};
     bool    quantize{true};
+    bool  countIn{true};   // a bar of count-in before the take that sets the loop
     float   feedback{1.0f};
     float   masterLevel{1.0f};
     float   fadeInc{0.001f};

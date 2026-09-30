@@ -34,6 +34,15 @@
     rdfs:label "Loop Waveforms" ;
     rdfs:range atom:String .
 
+# Live panel state (count-in, track states, playhead, loop progress). These
+# also exist as output control ports for the hardware and the HMI, but
+# mod-host forwards a monitored output to a web GUI far too sparsely to drive
+# a count-in, so the panel reads them from here.
+<https://rpowell5064.github.io/guitaramp-suite/practice#status>
+    a lv2:Parameter ;
+    rdfs:label "Panel State" ;
+    rdfs:range atom:String .
+
 # A .mid file to import as the drum pattern.
 <https://rpowell5064.github.io/guitaramp-suite/practice#midifile>
     a lv2:Parameter ;
@@ -80,7 +89,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 17 ;   # 17: live port updates reach the panel again - mod-ui sends port changes as change.symbol and has no port_event, so every readout had frozen at its load value. 16: tempo is drag-settable again (mod-ui film widgets need a sprite, so the plain grip never initialised) + the sync state class was landing on the wrong element. 15: Hex Forge styling (gunmetal frame, hex-textured panels, unified toolbar, height auto), 1280 wide so an 8-bar grid never scrolls, hits drawn as velocity-height bars. 14: audio jacks added (the block had no connectors) + drag handle pinned to z-index 0 so it stops covering the controls. 13: fader dB span baked into the modgui - mod-ui start events carry only {symbol,value}, never ranges. 12: fader ranges read from the port ranges object mod-ui actually sends. 11: faders positioned in percent (measuring a hidden tab returned zero height, pinning them all to the bottom). 10: groove label driven by the plugin push, not a port echo. 9: tempo readout is a script-filled span (mod-ui writes readouts with textContent, invisible on an input). 8: modgui binds ports by literal symbol - mod-ui resolves {{#controls.N}} by lv2:index into a vector sized by the entry count, so the drum bus and tempo-sync ports were being dropped. 7: web GUI (modgui-practice) + host-tempo sync ports 55-56. mod-ui keys its modgui cache on the plugin version, so a modgui change that does not bump this is invisible on the device. 6: editor channel (atom control/notify ports 53-54 + pattern/waveform/midifile properties). 5: china, stack and rimshot added (15 instruments) + 3 grooves using them. 4: 10 modern metal / djent grooves (27 total). 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
+    lv2:microVersion 20 ;   # 20: panel state moved onto the atom channel - mod-host forwards monitored outputs to a web GUI far too sparsely to animate a count-in. 19: modgui:monitoredOutputs declared - mod-ui never pushes an output port to a custom GUI unless the GUI names it, so every live readout was frozen. 18: a bar of count-in (clicks + on-screen countdown) before the take that sets the loop; ports 57-58. 17: live port updates reach the panel again - mod-ui sends port changes as change.symbol and has no port_event, so every readout had frozen at its load value. 16: tempo is drag-settable again (mod-ui film widgets need a sprite, so the plain grip never initialised) + the sync state class was landing on the wrong element. 15: Hex Forge styling (gunmetal frame, hex-textured panels, unified toolbar, height auto), 1280 wide so an 8-bar grid never scrolls, hits drawn as velocity-height bars. 14: audio jacks added (the block had no connectors) + drag handle pinned to z-index 0 so it stops covering the controls. 13: fader dB span baked into the modgui - mod-ui start events carry only {symbol,value}, never ranges. 12: fader ranges read from the port ranges object mod-ui actually sends. 11: faders positioned in percent (measuring a hidden tab returned zero height, pinning them all to the bottom). 10: groove label driven by the plugin push, not a port echo. 9: tempo readout is a script-filled span (mod-ui writes readouts with textContent, invisible on an input). 8: modgui binds ports by literal symbol - mod-ui resolves {{#controls.N}} by lv2:index into a vector sized by the entry count, so the drum bus and tempo-sync ports were being dropped. 7: web GUI (modgui-practice) + host-tempo sync ports 55-56. mod-ui keys its modgui cache on the plugin version, so a modgui change that does not bump this is invisible on the device. 6: editor channel (atom control/notify ports 53-54 + pattern/waveform/midifile properties). 5: china, stack and rimshot added (15 instruments) + 3 grooves using them. 4: 10 modern metal / djent grooves (27 total). 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
     # The worker carries the undo snapshot (a memcpy of the whole loop) off the
     # audio thread. It is OPTIONAL: without it the plugin runs normally and only
     # undo is unavailable, so a host with no worker support still loads it.
@@ -89,7 +98,8 @@ Free and open source (GPL-3).""" ;
 
     patch:writable <https://rpowell5064.github.io/guitaramp-suite/practice#pattern> ,
                    <https://rpowell5064.github.io/guitaramp-suite/practice#midifile> ;
-    patch:readable <https://rpowell5064.github.io/guitaramp-suite/practice#waveform> ;
+    patch:readable <https://rpowell5064.github.io/guitaramp-suite/practice#waveform> ,
+                   <https://rpowell5064.github.io/guitaramp-suite/practice#status> ;
 
     lv2:port [
         a lv2:AudioPort, lv2:InputPort ;
@@ -507,6 +517,19 @@ Free and open source (GPL-3).""" ;
         lv2:default 120.0 ; lv2:minimum 20.0 ; lv2:maximum 300.0 ;
         units:unit units:bpm ;
         rdfs:comment "Written by the host with the global transport tempo; read only when Sync To Host is on."
+    ] , [
+        a lv2:InputPort, lv2:ControlPort ;
+        lv2:index 57 ; lv2:symbol "count_in" ; lv2:name "Count In" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1 ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        rdfs:comment "Count a bar of clicks in before the take that sets the loop length."
+    ] , [
+        a lv2:OutputPort, lv2:ControlPort ;
+        lv2:index 58 ; lv2:symbol "out_countin" ; lv2:name "Count In Beats" ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 16 ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        rdfs:comment "Beats remaining on the count-in; 0 when not counting."
     ] ;
 
     # ── Custom MOD web GUI ────────────────────────────────────────────────────
@@ -542,6 +565,11 @@ Free and open source (GPL-3).""" ;
         modgui:brand "Hex Chain" ;
         modgui:label "Practice" ;
         modgui:model "mod-pedal-guitaramp-practice" ;
+        # Output ports the panel reads. mod-ui pushes an output port to the GUI
+        # ONLY if it is named here -- an unlisted one is never monitored and the
+        # JS never sees it, which is how every live readout on this panel came
+        # to be frozen while nothing appeared to be wrong.
+        modgui:monitoredOutputs [ lv2:symbol "out_progress" ] , [ lv2:symbol "out_bars" ] , [ lv2:symbol "out_trk1_state" ] , [ lv2:symbol "out_trk2_state" ] , [ lv2:symbol "out_trk3_state" ] , [ lv2:symbol "out_trk4_state" ] , [ lv2:symbol "out_step" ] , [ lv2:symbol "out_undo_avail" ] , [ lv2:symbol "out_countin" ] ;
         modgui:port [
             lv2:index 2 ; lv2:symbol "run" ; lv2:name "Run"
         ] , [
@@ -632,5 +660,7 @@ Free and open source (GPL-3).""" ;
             lv2:index 55 ; lv2:symbol "tempo_sync" ; lv2:name "Sync To Host"
         ] , [
             lv2:index 56 ; lv2:symbol "host_bpm" ; lv2:name "Host BPM"
+        ] , [
+            lv2:index 57 ; lv2:symbol "count_in" ; lv2:name "Count In"
         ]
     ] .

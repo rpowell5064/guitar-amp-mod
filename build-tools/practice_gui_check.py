@@ -117,7 +117,7 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
     gui({type:'change', icon:icon, uri:'x#pattern',  value:__PAT__}, funcs);
     [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
      ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
-     ['lvl_kick',3],['drums_level',-4]
+     ['lvl_kick',3],['drums_level',-4],['beats_per_bar',4],['count_in',1],['out_countin',3]
     // mod-ui has exactly ONE change event: it carries a patch property (uri) OR
     // a control port (symbol). There is no 'port_event' -- this harness used to
     // invent one, so it validated a code path the device never exercises and
@@ -164,6 +164,15 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
                                   status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
                                   bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || '',
                                   tempo:  (document.querySelector('[rata-role=tempofield]')||{}).textContent || '',
+                                  countin: (function(){
+                                    var o = document.querySelector('[rata-role=countin]');
+                                    if (!o) return null;
+                                    return {shown: o.classList.contains('on'),
+                                            num: (document.querySelector('[rata-role=cinum]')||{}).textContent,
+                                            dots: document.querySelectorAll('[rata-role=cidots] .px-ci-dot').length,
+                                            lit: document.querySelectorAll('[rata-role=cidots] .px-ci-dot.lit').length,
+                                            recArmed: !!document.querySelector('.px-tbtn.rec.counting')};
+                                  })(),
                                   tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
                                   grid: (function(){
                                     var c = document.querySelector('[rata-role=grid]');
@@ -273,6 +282,15 @@ def main():
         # widget: mod-ui writes readouts with textContent, which an <input>
         # silently does not display, and that is how it shipped blank once.
         check(r["tempo"].strip() == "158", "dragging the tempo sets it", r["tempo"])
+        # The count-in has to be UNMISSABLE -- that was the whole request --
+        # so check it is actually on screen, not merely that a port arrived.
+        ci = r.get("countin") or {}
+        check(ci.get("shown") is True, "the count-in overlay is visible while counting")
+        check(ci.get("num") == "3", "it shows the beats remaining", str(ci.get("num")))
+        check(ci.get("dots") == 3 and ci.get("lit") == 3,
+              "a dot per beat, all still to go",
+              "%s dots, %s lit" % (ci.get("dots"), ci.get("lit")))
+        check(ci.get("recArmed") is True, "the record button shows it is counting")
         # The readout moving is not enough: it must actually reach the port.
         sets = r.get("tempoSets") or []
         check(len(sets) > 0 and abs(float(sets[-1][1]) - 158) < 0.51,

@@ -293,3 +293,37 @@
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding:4px 10px; font-weight:600; }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated .mod-enumerated-list > div:hover { background-color:rgba(240,168,48,.22); cursor:pointer; }
+
+/* ── Count-in ─────────────────────────────────────────────────────────────
+   A count-in is useless if you cannot tell it apart from "nothing happened",
+   so it takes over the panel for its two seconds: a big number, the beats as
+   dots, and the word. Sized to still read at the 50% zoom the pedalboard
+   draws blocks at. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-countin {
+    position:absolute; left:0; top:0; right:0; bottom:0; z-index:60;
+    display:none; align-items:center; justify-content:center;
+    background:rgba(6,7,10,.62); border-radius:11px;
+    pointer-events:none;   /* transient: never swallow a click */
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-countin.on { display:flex; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ci-card { text-align:center; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ci-num {
+    display:block; font-size:104px; font-weight:200; line-height:1;
+    color:var(--acc); font-variant-numeric:tabular-nums; letter-spacing:-2px;
+    text-shadow:0 0 44px rgba(240,168,48,.55);
+    animation:px-ci-pop .18s ease-out;
+}
+@keyframes px-ci-pop { from { transform:scale(1.22); opacity:.35; } to { transform:scale(1); opacity:1; } }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ci-lab {
+    display:block; margin-top:8px; font-size:12px; font-weight:800;
+    letter-spacing:5px; text-transform:uppercase; color:var(--ink2);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ci-dots { display:flex; gap:12px; justify-content:center; margin-top:18px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ci-dot { width:13px; height:13px; border-radius:50%; background:rgba(255,255,255,.13); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ci-dot.lit { background:var(--acc); box-shadow:0 0 14px rgba(240,168,48,.75); }
+/* The record button says what it is doing while the count runs. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn.rec.counting {
+    color:#fff; background:var(--rec); border-color:var(--rec);
+    animation:px-ci-blink .5s steps(1,end) infinite;
+}
+@keyframes px-ci-blink { 50% { opacity:.45; } }

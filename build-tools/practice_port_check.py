@@ -57,6 +57,7 @@ SYMBOLS = {
     "P_BYPASS": "bypass", "P_ENABLED": "enabled",
     "P_CONTROL": "control", "P_NOTIFY": "notify",
     "P_TEMPO_SYNC": "tempo_sync", "P_HOST_BPM": "host_bpm",
+    "P_COUNT_IN": "count_in", "P_OUT_COUNTIN": "out_countin",
 }
 
 errors = []
@@ -393,6 +394,21 @@ def check_template_shell():
         errors.append("script-practice.js never reads event.symbol, so control-port "
                       "changes cannot reach it")
     print("  events: no 'port_event'; port changes read from change.symbol")
+
+    # mod-ui pushes an OUTPUT port to a custom GUI only if the GUI names it in
+    # modgui:monitoredOutputs. An unlisted output is simply never monitored:
+    # the JS never hears from it, the readout sits frozen at its load value and
+    # absolutely nothing reports an error. Every output the script reads must
+    # therefore be declared.
+    ttl_src = TTL.read_text(encoding="utf-8")
+    gui_at = ttl_src.find("modgui:gui")
+    declared = set(re.findall(r'modgui:monitoredOutputs\s+(.*?);', ttl_src[gui_at:], re.S))
+    declared = set(re.findall(r'lv2:symbol\s+"([a-z0-9_]+)"', " ".join(declared)))
+    used = set(re.findall(r"sym === '(out_[a-z0-9_]+)'", js_src))
+    for sym in sorted(used - declared):
+        errors.append("the modgui reads %s but it is not in modgui:monitoredOutputs, "
+                      "so mod-ui never sends it" % sym)
+    print("  outputs: %d monitored, %d read by the script" % (len(declared), len(used)))
 
 
 def main():

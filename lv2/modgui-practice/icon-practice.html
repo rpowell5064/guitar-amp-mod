@@ -42,6 +42,8 @@
             <span class="px-tlabel">Bar</span>
             <span class="px-bars" rata-role="barsread">1 . 1</span>
         </div>
+        <div class="px-pill" rata-role="countpill" title="Count a bar in before the first take">Count-in</div>
+        <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="count_in"></div></div>
         <div class="px-pill" rata-role="runpill" title="Run">Run</div>
         <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="run"></div></div>
     </div>
@@ -53,6 +55,17 @@
     </div>
 
     <div class="px-detail">
+        <!-- Count-in. Lives on the detail panel rather than inside the LOOPS
+             tab so it is visible whichever tab is open: the take starts
+             regardless of what you happen to be looking at. pointer-events are
+             off so it never swallows a click on its way past. -->
+        <div class="px-countin" rata-role="countin">
+            <div class="px-ci-card">
+                <span class="px-ci-num" rata-role="cinum">4</span>
+                <span class="px-ci-lab">Counting in</span>
+                <div class="px-ci-dots" rata-role="cidots"></div>
+            </div>
+        </div>
 
         <div rata-role="pxview" data-tab="loops">
 
@@ -105,7 +118,7 @@
                     <div class="hf-knob" title="Quantise"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_quantize"></div><span class="hf-knob-t">Quantise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_quantize"></span></div>
                     <div class="hf-knob" title="Overdub Feedback"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_feedback"></div><span class="hf-knob-t">Feedback</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_feedback"></span></div>
                 </div>
-                <div class="px-hint">Click a lane to arm it — Rec, Play, Stop, Undo and Clear all act on the selected track. Recording snaps to the bar when Quantise is on.</div>
+                <div class="px-hint">Click a lane to arm it — Rec, Play, Stop, Undo and Clear all act on the selected track. The first take counts a bar in and starts on the bar line; later takes snap to the bar.</div>
             </div>
 
             <!-- ══ DRUMS ══ -->

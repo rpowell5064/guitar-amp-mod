@@ -111,6 +111,12 @@ enum PracticePorts {
     // would leave the user staring at whatever the host last pushed.
     P_TEMPO_SYNC,
     P_HOST_BPM,
+
+    // Count-in. A bar of clicks before the take that DEFINES the loop, so you
+    // know where beat one is without staring at the screen. OUT_COUNTIN is the
+    // beats still to go, which is what the panel counts down.
+    P_COUNT_IN,
+    P_OUT_COUNTIN,
     P_N_PORTS
 };
 
@@ -120,11 +126,13 @@ enum PracticePorts {
 #define PRACTICE_PATTERN_URI  PRACTICE_URI "#pattern"
 #define PRACTICE_WAVEFORM_URI PRACTICE_URI "#waveform"
 #define PRACTICE_MIDI_URI     PRACTICE_URI "#midifile"
+// Live panel state. See the note at practiceSendStatus().
+#define PRACTICE_STATUS_URI   PRACTICE_URI "#status"
 
 struct PracticeURIs {
     LV2_URID atom_Object, atom_Path, atom_String, atom_URID, atom_eventTransfer;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID pattern, waveform, midifile;
+    LV2_URID pattern, waveform, midifile, status;
 };
 
 // Undo snapshots are a memcpy of the whole loop (up to 23 MB), so they go to
@@ -155,6 +163,10 @@ struct PracticePlugin {
     bool                     wantSendAll = false;
     std::string              patternJson;      // last pattern the editor sent
     int                      sentPattern = -1; // built-in groove last pushed to the editor
+    int                      lastCountBeat = -1;  // last count-in beat already clicked
+    std::string              lastStatus;          // last panel state pushed
+    int64_t                  lastStatusAt = 0;
+    float                    countInBeats = 0.0f;
     bool                     sentUser    = false;
 
     // Rising-edge state for the trigger ports and the run toggle.
@@ -221,6 +233,7 @@ static void practiceMapURIs(PracticePlugin* p) {
     p->uris.pattern            = m->map(m->handle, PRACTICE_PATTERN_URI);
     p->uris.waveform           = m->map(m->handle, PRACTICE_WAVEFORM_URI);
     p->uris.midifile           = m->map(m->handle, PRACTICE_MIDI_URI);
+    p->uris.status             = m->map(m->handle, PRACTICE_STATUS_URI);
 }
 
 static void practiceSendString(PracticePlugin* p, LV2_URID prop, const char* s) {
@@ -314,6 +327,54 @@ static void practiceSendBuiltin(PracticePlugin* p, int index) {
     }
     j += "]}";
     practiceSendString(p, p->uris.pattern, j.c_str());
+}
+
+// Live panel state, pushed over the atom port.
+//
+// LV2 output CONTROL ports are the obvious home for this, and they exist (the
+// hardware and the HMI read them). But mod-host only forwards a monitored
+// output to a web GUI sporadically -- measured on the device at a single
+// update in 2.5 seconds of a running transport -- which is fine for a meter
+// and useless for a count-in that has to show four numbers in two seconds.
+// The atom channel already carries the waveform and the pattern reliably on
+// the same hardware, so the panel's live state travels with them.
+//
+// Pushed only when something actually changes, and no more than ~25 times a
+// second: loop progress moves every block, and a kilobyte of JSON per block
+// would cost more than everything else this plugin does.
+static void practiceSendStatus(PracticePlugin* p) {
+    const int ci    = static_cast<int>(p->countInBeats);
+    const int step  = p->drums.playheadStep();
+    const int bars  = p->looper.loopBars(p->clk);
+    const int undo  = p->looper.undoAvailable() ? 1 : 0;
+    // Progress is quantised for the COMPARISON only: at 1/400 the playhead
+    // still moves smoothly on screen but a slow loop stops re-sending
+    // identical-looking state every block.
+    const int prq   = static_cast<int>(p->looper.loopProgress() * 400.0f);
+
+    std::string j = "{\"ci\":" + std::to_string(ci);
+    j += ",\"step\":" + std::to_string(step);
+    j += ",\"bars\":" + std::to_string(bars);
+    j += ",\"undo\":" + std::to_string(undo);
+    j += ",\"pr\":" + std::to_string(prq);
+    j += ",\"st\":[";
+    for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
+        if (t) j += ',';
+        j += std::to_string(stateCode(p->looper.trackState(t)));
+    }
+    j += "]}";
+
+    if (j == p->lastStatus) return;
+    const int64_t now = p->clk.samplePosition();
+    const int64_t minGap = static_cast<int64_t>(p->rate * 0.04);   // 25 Hz
+    // A count-in beat or a state change must never be held back by the
+    // throttle: those are the moments the panel exists to show.
+    const bool urgent = (j.compare(0, j.find(",\"pr\""), p->lastStatus,
+                                   0, p->lastStatus.find(",\"pr\"")) != 0);
+    if (!urgent && now - p->lastStatusAt < minGap) return;
+    p->lastStatus   = j;
+    p->lastStatusAt = now;
+    practiceSendString(p, p->uris.status, j.c_str());
 }
 
 static bool practiceApplyPattern(PracticePlugin* p, const char* json) {
@@ -596,6 +657,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
 
     // ── Looper ───────────────────────────────────────────────────────────────
     p->looper.setQuantize(portBool(p, P_LOOP_QUANTIZE, true));
+    p->looper.setCountIn(portBool(p, P_COUNT_IN, true));
     p->looper.setFeedback(portValue(p, P_LOOP_FEEDBACK, 100.0f) * 0.01f);
     p->looper.setMasterLevel(bypassed ? 0.0f : dbToLin(portValue(p, P_LOOP_LEVEL, 0.0f)));
 
@@ -624,6 +686,31 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);
 
+    // ── Count-in click ───────────────────────────────────────────────────────
+    // A count-in you can only see is no use with a guitar in both hands, so
+    // each remaining beat gets a stick click — accented on the first of the
+    // bar. Fired at block granularity (well under a millisecond here), which
+    // is far tighter than a player can hear against their own playing.
+    const int64_t countLeft = p->looper.countInSamplesLeft(p->clk);
+    if (countLeft > 0) {
+        const double spBeat = p->clk.samplesPerBeat();
+        // Beats remaining, counting DOWN: 4, 3, 2, 1 in four-four.
+        const int beatsLeft = static_cast<int>(std::ceil(countLeft / std::max(1.0, spBeat)));
+        const int bpb = std::max(1, p->clk.beatsPerBar());
+        // Click only through the COUNT bar itself. A press lands anywhere in a
+        // bar, so up to a further bar can pass first; clicking through that too
+        // would turn a four-beat count into a ragged seven, which is not what
+        // a count-in means.
+        if (beatsLeft != p->lastCountBeat && beatsLeft <= bpb) {
+            p->lastCountBeat = beatsLeft;
+            const bool downbeat = beatsLeft == bpb;
+            p->drums.triggerNow(downbeat ? INST_SIDESTICK : INST_HAT_CLOSED,
+                                downbeat ? 1.0f : 0.6f);
+        }
+    } else {
+        p->lastCountBeat = -1;
+    }
+
     // ── Render ───────────────────────────────────────────────────────────────
     // Dry guitar first (in and out may alias), then the loop, then the kit.
     for (int i = 0; i < n; ++i) out[i] = in[i];
@@ -636,6 +723,14 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     p->clk.advance(n);
 
     // ── UI feedback ──────────────────────────────────────────────────────────
+    // Beats left on the count-in, 0 when nothing is counting. Recomputed from
+    // the post-advance clock so the panel and the audio agree.
+    {
+        const int64_t left = p->looper.countInSamplesLeft(p->clk);
+        const double  spb  = std::max(1.0, p->clk.samplesPerBeat());
+        p->countInBeats = (left > 0) ? static_cast<float>(std::ceil(left / spb)) : 0.0f;
+        setOut(p, P_OUT_COUNTIN, p->countInBeats);
+    }
     setOut(p, P_OUT_PROGRESS, p->looper.loopProgress());
     setOut(p, P_OUT_BARS,     static_cast<float>(p->looper.loopBars(p->clk)));
     setOut(p, P_OUT_TRK1_STATE, static_cast<float>(stateCode(p->looper.trackState(0))));
@@ -654,6 +749,8 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
             practiceSendWaveform(p);
             p->sentWaveGen = gen;
         }
+        if (p->wantSendAll) p->lastStatus.clear();   // force a full refresh
+        practiceSendStatus(p);
         // The grid follows whatever is actually playing: the user's edited
         // pattern if one is live, otherwise the selected factory groove.
         const int  patIdx  = static_cast<int>(portValue(p, P_PATTERN, 0.0f));

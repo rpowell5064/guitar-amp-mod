@@ -51,7 +51,8 @@ enum {
     BYPASS = 51, ENABLED = 52,
     CONTROL = 53, NOTIFY = 54,
     TEMPO_SYNC = 55, HOST_BPM = 56,
-    N_PORTS = 57
+    COUNT_IN = 57, OUT_COUNTIN = 58,
+    N_PORTS = 59
 };
 
 static constexpr double kFs    = 48000.0;
@@ -124,6 +125,7 @@ struct Host {
         ctl[KICK_DECAY] = 0.42f; ctl[KICK_CLICK] = 50.0f;
         ctl[SNARE_DECAY] = 0.20f; ctl[SNARE_SNAPPY] = 60.0f;
         ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
+        ctl[COUNT_IN] = 0.0f;   // off unless a test asks for it
         ctl[LOOP_QUANTIZE] = 1.0f; ctl[LOOP_FEEDBACK] = 100.0f; ctl[LOOP_TRACK] = 1.0f;
         ctl[ENABLED] = 1.0f;
     }
@@ -469,6 +471,72 @@ int main() {
         noKit.close();
     }
 
+    // ── Count-in ─────────────────────────────────────────────────────────────
+    // A bar of clicks before the take that DEFINES the loop. The risk is not
+    // that it fails loudly but that it quietly eats the first bar of playing,
+    // so these check WHEN recording actually starts, not just that a number
+    // counts down.
+    std::printf("\nCount-in\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;       // isolate the loop from the kit
+        hst.ctl[COUNT_IN] = 1.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);                     // transport starts at bar one
+
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        check(hst.ctl[OUT_COUNTIN] > 0.0f, "pressing record starts a count-in",
+              "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 0,
+              "recording has NOT started during the count",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+
+        // The count runs to the next bar line and then one whole bar more.
+        hst.run(barLen - kBlock * 2);
+        // From here on it is the COUNT bar itself: exactly one bar's worth of
+        // beats, which is the four the user hears in the default 4/4.
+        check(std::lround(hst.ctl[OUT_COUNTIN]) == 4,
+              "the count bar is exactly one bar of beats",
+              "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 0,
+              "still not recording at the first bar line");
+
+        hst.run(barLen);
+        check(std::lround(hst.ctl[OUT_COUNTIN]) == 0, "the count clears",
+              "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
+              "recording starts when the count ends",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+
+        // And the take is still a whole number of bars.
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        check(std::lround(hst.ctl[OUT_BARS]) == 2,
+              "the counted-in take is still bar-aligned",
+              "bars " + std::to_string(hst.ctl[OUT_BARS]));
+        hst.close();
+    }
+    {
+        // With the count-in off, recording must start at the bar line as before.
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN] = 0.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        check(std::lround(hst.ctl[OUT_COUNTIN]) == 0,
+              "count-in off means no count", "beats " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
+              "recording starts immediately with the count-in off",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+        hst.close();
+    }
+
     // ── Editor channel ───────────────────────────────────────────────────────
     // Everything the new GUI draws arrives over the atom ports, and none of it
     // is reachable from a control port. These checks are what stands between a
@@ -522,6 +590,33 @@ int main() {
         for (auto& m : hst.notified()) if (m.first == PAT) rev = m.second;
         check(rev.find("\"builtin\":1") != std::string::npos,
               "revert restores the factory groove");
+
+        // The panel's live state travels on this channel too, because
+        // mod-host's output-port monitoring is far too sparse to animate a
+        // count-in. If this stops arriving the panel silently freezes.
+        {
+            const std::string STAT = "https://rpowell5064.github.io/guitaramp-suite/practice#status";
+            Host h2; h2.open();
+            h2.ctl[DRUMS_LEVEL] = -60.0f;
+            h2.ctl[COUNT_IN] = 1.0f;
+            h2.ctl[RUN] = 1.0f;
+            h2.run(kBlock);
+            h2.trigger(LOOP_REC);
+            // The push happens on the block where the state CHANGES, which is
+            // inside trigger() itself, so scan a few blocks rather than
+            // assuming it lands in the next one.
+            std::string st;
+            for (int b = 0; b < 8 && st.empty(); ++b) {
+                for (auto& m : h2.notified()) if (m.first == STAT) st = m.second;
+                if (st.empty()) h2.run(kBlock);
+            }
+            check(!st.empty(), "panel state is pushed on the atom channel");
+            check(st.find("\"ci\":") != std::string::npos && st.find("\"ci\":0") == std::string::npos,
+                  "it carries a non-zero count-in", st.substr(0, 40));
+            check(st.find("\"st\":[") != std::string::npos,
+                  "it carries the track states");
+            h2.close();
+        }
 
         // A recorded loop has to reach the waveform lanes. Same bar-aligned
         // sequence the Looper section uses: with Quantise on, a take only
