@@ -1,0 +1,236 @@
+#!/usr/bin/env python3
+"""Execute the Practice modgui's JavaScript and prove it draws.
+
+Nothing else in this repo runs modgui JavaScript. render_modguis.py fills the
+Mustache and screenshots the CSS, but never executes the script; the only other
+place the script runs is the device. That left the parts of this panel that are
+NOT declarative -- the waveform lanes, the step grid, the base64 peak decoder,
+the groove-label sync -- with no gate at all, which is a poor trade for a plugin
+whose whole UI is two canvases.
+
+This supplies the small subset of jQuery the script actually calls, feeds it a
+realistic waveform and pattern plus the port events the host would send, and
+then checks that the script ran without throwing AND that both canvases have
+non-blank pixels. A canvas that silently stays empty is the exact failure this
+is here to catch, so "it didn't throw" is deliberately not enough.
+
+Writes PNGs next to the checks so a human can look at what was verified.
+
+Run:  python build-tools/practice_gui_check.py [--out DIR]
+"""
+import base64
+import json
+import math
+import os
+import re
+import subprocess
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+LV2 = os.path.join(REPO, "lv2")
+BASE = os.path.join(LV2, "modgui-practice")
+CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import importlib.util
+_spec = importlib.util.spec_from_file_location("rm", os.path.join(REPO, "build-tools", "render_modguis.py"))
+rm = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(rm)
+
+failures = []
+
+
+def check(ok, what, detail=""):
+    print("  [%s] %s%s%s" % ("PASS" if ok else "FAIL", what,
+                             " - " if detail else "", detail))
+    if not ok:
+        failures.append(what)
+
+
+# ── Fixtures: the exact shapes the plugin emits (see practiceSendWaveform /
+#    practiceSendBuiltin in practice_plugin.cpp; practice_selftest gates them).
+def _peaks(seed):
+    b = bytearray()
+    for i in range(256):
+        env = math.exp(-((i % 64) / 64.0) * 2.4)
+        b.append(max(0, min(255, int(235 * env * (0.55 + 0.45 * math.sin(i * seed))))))
+    return base64.b64encode(bytes(b)).decode()
+
+
+WAVE = json.dumps({"v": 3, "bars": 2, "len": 384000,
+                   "t": [_peaks(0.31), _peaks(0.17), "", ""]})
+PATTERN = json.dumps({
+    "builtin": 1, "idx": 0, "name": "Rock 8ths", "spb": 16, "bars": 1,
+    "lanes": [{"i": 0, "s": "X...-...X..x-..."},
+              {"i": 1, "s": "....X.......X..o"},
+              {"i": 6, "s": "x.o.x.o.x.o.x.o."},
+              {"i": 9, "s": "X..............."}]})
+
+# The jQuery subset script-practice.js uses. Kept minimal on purpose: if the
+# script starts calling something else, this throws and the check fails, which
+# is the correct outcome -- it means the script gained a dependency nothing
+# here has verified.
+SHIM = r"""
+<script>
+function Q(n){ this.nodes=n||[]; this.length=this.nodes.length;
+  for(var i=0;i<this.nodes.length;i++) this[i]=this.nodes[i]; }
+Q.prototype.find=function(s){ var o=[]; this.nodes.forEach(function(n){
+  o=o.concat(Array.prototype.slice.call(n.querySelectorAll(s))); }); return new Q(o); };
+Q.prototype.each=function(f){ this.nodes.forEach(function(n,i){ f.call(n,i,n); }); return this; };
+Q.prototype.attr=function(k,v){ if(v===undefined) return this.nodes[0]&&this.nodes[0].getAttribute(k);
+  this.nodes.forEach(function(n){n.setAttribute(k,v);}); return this; };
+Q.prototype.text=function(t){ if(t===undefined) return this.nodes[0]?this.nodes[0].textContent:'';
+  this.nodes.forEach(function(n){n.textContent=t;}); return this; };
+Q.prototype.css=function(k,v){ this.nodes.forEach(function(n){n.style[k]=v;}); return this; };
+Q.prototype.on=function(e,f){ this.nodes.forEach(function(n){n.addEventListener(e,f);}); return this; };
+Q.prototype.toggleClass=function(c,o){ this.nodes.forEach(function(n){n.classList.toggle(c,!!o);}); return this; };
+Q.prototype.hasClass=function(c){ return !!(this.nodes[0]&&this.nodes[0].classList.contains(c)); };
+Q.prototype.closest=function(s){ var o=[]; this.nodes.forEach(function(n){ var c=n.closest&&n.closest(s); if(c)o.push(c); }); return new Q(o); };
+Q.prototype.height=function(){ var n=this.nodes[0]; return n?n.getBoundingClientRect().height:0; };
+var _d=new WeakMap();
+Q.prototype.data=function(k,v){ var n=this.nodes[0]; if(!n) return undefined;
+  var m=_d.get(n); if(!m){m={};_d.set(n,m);} if(v===undefined) return m[k]; m[k]=v; return this; };
+function $(x){ if(x instanceof Q) return x;
+  if(typeof x==='string') return new Q(Array.prototype.slice.call(document.querySelectorAll(x)));
+  return new Q(x?[x]:[]); }
+
+window.__ERR__ = '';
+window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
+(function(){
+  var icon = new Q([document.querySelector('.mod-pedal-guitaramp-practice')]);
+  var gui = __SCRIPT__;
+  var funcs = { set_port_value:function(){}, patch_set:function(){}, patch_get:function(){} };
+  try {
+    gui({type:'start', icon:icon, ports:__PORTS__, parameters:[]}, funcs);
+    gui({type:'change', icon:icon, uri:'x#waveform', value:__WAVE__}, funcs);
+    gui({type:'change', icon:icon, uri:'x#pattern',  value:__PAT__}, funcs);
+    [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
+     ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['trk1_level',0],
+     ['lvl_kick',3],['drums_level',-4]
+    ].forEach(function(p){ gui({type:'port_event', icon:icon, symbol:p[0], value:p[1]}, funcs); });
+    document.querySelector('[rata-role=pxview]').setAttribute('data-tab', window.__TAB__);
+    if (window.__TAB__ === 'drums')
+      gui({type:'change', icon:icon, uri:'x#pattern', value:__PAT__}, funcs);
+  } catch (e) { window.__ERR__ = (e && e.message) || String(e); }
+
+  // Ink coverage per canvas: a canvas that drew nothing is the failure mode
+  // this exists to catch, and it looks identical to success without this.
+  window.__INK__ = {};
+  ['wave1','wave2','wave3','grid'].forEach(function(role){
+    var c = document.querySelector('[rata-role=' + role + ']');
+    if (!c || !c.getContext) { window.__INK__[role] = -1; return; }
+    try {
+      var d = c.getContext('2d').getImageData(0,0,c.width,c.height).data, lit = 0;
+      for (var i=3;i<d.length;i+=4) if (d[i] > 8) lit++;
+      window.__INK__[role] = lit / (c.width*c.height);
+    } catch (e) { window.__INK__[role] = -2; }
+  });
+  var r = document.createElement('div');
+  r.id = 'result';
+  r.textContent = JSON.stringify({err: window.__ERR__, ink: window.__INK__,
+                                  groove: (document.querySelector('.mod-enumerated-selected')||{}).textContent || '',
+                                  status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
+                                  bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || ''});
+  r.style.cssText = 'position:fixed;left:-9999px';
+  document.body.appendChild(r);
+})();
+</script>
+"""
+
+
+def build_page(tab):
+    css = open(os.path.join(BASE, "stylesheet-practice.css"), encoding="utf-8").read()
+    css = css.replace("{{{cns}}}", "").replace("{{{ns}}}", "")
+    fileurl = "file:///" + BASE.replace("\\", "/") + "/"
+    css = css.replace("url(/resources/", "url(" + fileurl).replace('url("/resources/', 'url("' + fileurl)
+
+    controls = rm.parse_controls(os.path.join(LV2, "practice.ttl"))
+    html = rm.fill_mustache(open(os.path.join(BASE, "icon-practice.html"), encoding="utf-8").read(), controls)
+    html = html.replace('class="mod-powerswitch-image"', 'class="mod-powerswitch-image on"')
+
+    ports = [{"symbol": c["symbol"], "value": 0, "minimum": -60, "maximum": 12} for c in controls]
+    shim = (SHIM.replace("__SCRIPT__", open(os.path.join(BASE, "script-practice.js"), encoding="utf-8").read())
+                .replace("__WAVE__", json.dumps(WAVE))
+                .replace("__PAT__", json.dumps(PATTERN))
+                .replace("__PORTS__", json.dumps(ports)))
+    return ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
+            'html,body{margin:0;padding:0;background:#0b0d12;'
+            'font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}' + css + '</style></head><body>'
+            + html + '<script>window.__TAB__=' + json.dumps(tab) + ';</script>' + shim
+            + '</body></html>')
+
+
+def run_tab(tab, outdir):
+    hp = os.path.join(outdir, "gui_%s.html" % tab)
+    open(hp, "w", encoding="utf-8").write(build_page(tab))
+    url = "file:///" + hp.replace("\\", "/")
+
+    dom = subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
+                          "--window-size=980,812", "--virtual-time-budget=2500",
+                          "--dump-dom", url], capture_output=True, timeout=120).stdout
+    # The page contains the plugin's own UTF-8 (en dashes in the hints), so the
+    # dump must be decoded as UTF-8 rather than the console's ANSI codepage.
+    dom = dom.decode("utf-8", "replace")
+    subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
+                    "--window-size=980,812", "--virtual-time-budget=2500",
+                    "--screenshot=" + os.path.join(outdir, "gui_%s.png" % tab), url],
+                   capture_output=True, timeout=120)
+
+    m = re.search(r'id="result"[^>]*>(.*?)</div>', dom, re.S)
+    if not m:
+        check(False, "%s: the script produced a result" % tab, "no #result node -- the page did not run")
+        return None
+    import html as _h
+    try:
+        return json.loads(_h.unescape(m.group(1)))
+    except Exception as e:
+        check(False, "%s: result parses" % tab, str(e))
+        return None
+
+
+def main():
+    outdir = os.path.join(os.environ.get("TEMP", "/tmp"), "hxpractice")
+    if "--out" in sys.argv:
+        outdir = sys.argv[sys.argv.index("--out") + 1]
+    os.makedirs(outdir, exist_ok=True)
+
+    if not os.path.exists(CHROME):
+        print("Chrome not found at %s -- skipping (this gate is Windows-side)." % CHROME)
+        return 0
+
+    print("Practice modgui script check\n")
+
+    print("LOOPS")
+    r = run_tab("loops", outdir)
+    if r:
+        check(not r["err"], "the script runs without throwing", r["err"])
+        check(r["ink"].get("wave1", 0) > 0.02, "track 1's waveform is drawn",
+              "ink %.3f" % r["ink"].get("wave1", 0))
+        check(r["ink"].get("wave2", 0) > 0.02, "track 2's waveform is drawn",
+              "ink %.3f" % r["ink"].get("wave2", 0))
+        # Track 3 was sent as empty: it must show the bar rules and nothing else.
+        check(0 < r["ink"].get("wave3", 0) < 0.02, "an empty track draws no waveform",
+              "ink %.4f" % r["ink"].get("wave3", 0))
+        check(r["bars"].strip() != "", "the bar readout is filled in", r["bars"])
+
+    print("\nDRUMS")
+    r = run_tab("drums", outdir)
+    if r:
+        check(not r["err"], "the script runs without throwing", r["err"])
+        check(r["ink"].get("grid", 0) > 0.05, "the step grid is drawn",
+              "ink %.3f" % r["ink"].get("grid", 0))
+        check("Rock 8ths" in r["groove"], "the groove picker shows the selected groove",
+              r["groove"])
+        check("Rock 8ths" in r["status"], "the status line names the factory groove",
+              r["status"])
+
+    print("\nimages in %s" % outdir)
+    if failures:
+        print("\nFAILED (%d)" % len(failures))
+        return 1
+    print("\nALL CHECKS PASSED")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

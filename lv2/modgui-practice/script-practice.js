@@ -200,6 +200,13 @@ function (event, funcs) {
             }
         }
 
+        // A hairline on every beat. At 16 steps the cells are wide enough to
+        // count; at 32 or 48 they are not, and without this the bar loses its
+        // shape entirely.
+        g.fillStyle = 'rgba(255,255,255,.13)';
+        for (var bt = beat; bt < G.steps; bt += beat)
+            g.fillRect(LBL_W + bt * (G.cw + GAP) - 2, 0, 1, c.height);
+
         // Playhead column, drawn last so it sits over the cells.
         if (step >= 0 && step < G.steps) {
             var hx = LBL_W + step * (G.cw + GAP);
@@ -209,6 +216,21 @@ function (event, funcs) {
     }
 
     function patStatus(icon, msg) { R(icon, 'patstatus').text(msg || ''); }
+
+    // mod-ui does not reliably write the selected scale-point label into a
+    // custom-select inside a custom GUI -- the cabinet plugin hit the same
+    // thing -- so the groove picker would sit blank until it was opened. Drive
+    // the label from the port's own value instead.
+    function syncGroove(icon, value) {
+        var box = icon.find('.mod-enumerated .mod-enumerated-selected');
+        if (!box.length) return;
+        var want = Math.round(value), label = null;
+        icon.find('[mod-role=enumeration-option]').each(function () {
+            if (Math.round(parseFloat(this.getAttribute('mod-parameter-value'))) === want)
+                label = (this.textContent || '').replace(/^\s+|\s+$/g, '');
+        });
+        if (label) box.text(label);
+    }
 
     // Parse either shape the plugin sends: a factory groove (builtin:1) or the
     // user's own edited pattern echoed back.
@@ -503,6 +525,7 @@ function (event, funcs) {
         if (!sym) return;
         faderSet(icon, sym, value);
 
+        if (sym === 'pattern')    { syncGroove(icon, value); return; }
         if (sym === 'loop_track') { selectTrack(icon, clamp(Math.round(value), 1, 4), false); return; }
         if (sym === 'run')        { R(icon, 'runpill').toggleClass('on', value > 0.5); return; }
         if (sym === 'tempo_sync') {
