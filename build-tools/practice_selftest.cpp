@@ -58,6 +58,7 @@ static void check(bool ok, const char* what, const std::string& detail = {}) {
 
 // A harness that owns the control-port storage and the audio buffers.
 struct Host {
+    const char* bundle = "";      // where the plugin looks for drumkit.dat
     const LV2_Descriptor* desc = nullptr;
     LV2_Handle            h    = nullptr;
     float                 ctl[N_PORTS] = {};
@@ -68,7 +69,7 @@ struct Host {
         desc = lv2_descriptor(0);
         if (!desc) { std::printf("  !! lv2_descriptor(0) returned null\n"); ++failures; return; }
         static const LV2_Feature* const kNoFeatures[] = { nullptr };
-        h = desc->instantiate(desc, kFs, "", kNoFeatures);   // no worker offered
+        h = desc->instantiate(desc, kFs, bundle, kNoFeatures);   // no worker offered
         if (!h) { std::printf("  !! instantiate returned null\n"); ++failures; return; }
 
         in.assign(kBlock, 0.0f);
@@ -281,6 +282,44 @@ int main() {
               "diff " + std::to_string(worst2));
 
         hst.close();
+    }
+
+    // ── Resynthesised kit ────────────────────────────────────────────────────
+    // The kit is data in the bundle, found via the bundle_path handed to
+    // instantiate(). Both outcomes are tested: with it the drums must sound,
+    // and WITHOUT it the plugin must still load and fall back to its
+    // synthesised voices rather than refusing to instantiate.
+    std::printf("\nResynth kit\n");
+    {
+        Host withKit;  withKit.bundle = "lv2/practice/";
+        withKit.open();
+        withKit.ctl[RUN] = 1.0f;
+        withKit.ctl[PATTERN] = 0.0f;
+        std::vector<float> a;
+        withKit.run(static_cast<int64_t>(kFs * 2.0), &a, true);
+        const float pa = peak(a);
+        check(pa > 0.02f, "drums sound with the kit loaded from the bundle",
+              "peak " + std::to_string(pa));
+        check(pa < 1.0f, "kit does not clip", "peak " + std::to_string(pa));
+        withKit.close();
+
+        Host noKit;   noKit.bundle = "/nonexistent-bundle-path/";
+        noKit.open();
+        noKit.ctl[RUN] = 1.0f;
+        noKit.ctl[PATTERN] = 0.0f;
+        std::vector<float> b;
+        noKit.run(static_cast<int64_t>(kFs * 2.0), &b, true);
+        const float pb = peak(b);
+        check(pb > 0.02f, "falls back to synthesised voices with no kit present",
+              "peak " + std::to_string(pb));
+
+        // And the two must actually differ, or the kit is not being used.
+        double diff = 0.0;
+        const size_t nn = std::min(a.size(), b.size());
+        for (size_t i = 0; i < nn; ++i) diff = std::max(diff, std::fabs(double(a[i]) - b[i]));
+        check(diff > 1.0e-3, "the loaded kit really replaces the synth voices",
+              "max diff " + std::to_string(diff));
+        noKit.close();
     }
 
     // ── Robustness ───────────────────────────────────────────────────────────

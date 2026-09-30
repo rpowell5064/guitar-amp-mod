@@ -206,7 +206,7 @@ install(TARGETS
     guitaramp_gate guitaramp_comp guitaramp_drive guitaramp_modfx
     guitaramp_delay guitaramp_reverb guitaramp_amp guitaramp_cab
     guitaramp_utility guitaramp_fuzz guitaramp_nail guitaramp_hexforge
-    guitaramp_wah guitaramp_octave
+    guitaramp_wah guitaramp_octave guitaramp_practice
     DESTINATION ${BUNDLE_DIR}
 )
 
@@ -228,8 +228,15 @@ install(FILES
     lv2/hexforge.ttl
     lv2/wah.ttl
     lv2/octave.ttl
+    lv2/practice.ttl
     DESTINATION ${BUNDLE_DIR}
 )
+
+# The Practice plugin's resynthesised drum kit: tracked partials and noise
+# envelopes, NOT sample audio. It sits in the bundle and the plugin finds it
+# through the bundle_path handed to instantiate(), so there is no install path
+# to configure and no way for it to go missing on one machine but not another.
+install(FILES lv2/practice/drumkit.dat DESTINATION ${BUNDLE_DIR})
 
 # MOD-UI modgui resources: one dir per plugin, named exactly as that plugin's
 # modgui:resourcesDirectory in its TTL (modgui-amp, modgui-cab, …). Each carries

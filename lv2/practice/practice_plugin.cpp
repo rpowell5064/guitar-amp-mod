@@ -17,7 +17,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 #include <new>
+#include <string>
+#include <vector>
 
 #define PRACTICE_URI "https://rpowell5064.github.io/guitaramp-suite/practice"
 
@@ -96,6 +99,7 @@ struct PracticePlugin {
     TransportClock   clk;
     DrumMachineBlock drums;
     LooperBlock      looper;
+    ResynthKit       kit;          // owned; the drum machine holds a pointer
 
     float* ports[P_N_PORTS] = {};
 
@@ -150,8 +154,39 @@ static int stateCode(LooperBlock::State s) noexcept {
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
+// Load the resynthesised kit out of the plugin's own bundle. It is parameters,
+// not audio: tracked partials and noise envelopes, about 1.4 MB for the whole
+// twelve-piece kit. Using bundle_path means there is no install path to
+// configure and no way for the data to be present on one machine and missing
+// on another — it travels with the .so.
+//
+// Failure is NOT fatal. Without the kit the plugin falls back to its
+// synthesised voices, which is far better than refusing to load.
+static bool practiceLoadKit(PracticePlugin* p, const char* bundlePath) {
+    if (!bundlePath || !*bundlePath) return false;
+
+    std::string path = bundlePath;
+    if (!path.empty() && path.back() != '/' && path.back() != '\\') path += '/';
+    path += "drumkit.dat";
+
+    std::ifstream f(path, std::ios::binary | std::ios::ate);
+    if (!f) return false;
+    const std::streamoff sz = f.tellg();
+    if (sz <= 0 || sz > (64 << 20)) return false;      // sanity bound
+    f.seekg(0);
+
+    // Braces, not parentheses: `raw(size_t(sz))` is a function declaration.
+    const size_t bytes = size_t(sz);
+    std::vector<uint8_t> raw(bytes, 0u);
+    f.read(reinterpret_cast<char*>(raw.data()), sz);
+    if (!f) return false;
+
+    return decodeKit(raw.data(), raw.size(), p->kit, nullptr);
+}
+
 static LV2_Handle practice_instantiate(const LV2_Descriptor*, double rate,
-                                       const char*, const LV2_Feature* const* features) {
+                                       const char* bundlePath,
+                                       const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) PracticePlugin;
     if (!p) return nullptr;
 
@@ -169,6 +204,11 @@ static LV2_Handle practice_instantiate(const LV2_Descriptor*, double rate,
     p->clk.prepare(rate);
     p->drums.prepare(rate);
     p->looper.prepare(rate);      // allocates ~115 MB of loop + undo buffers
+
+    if (practiceLoadKit(p, bundlePath))
+        p->drums.setResynthKit(&p->kit);
+    // else: the synthesised voices carry it.
+
     return p;
 }
 

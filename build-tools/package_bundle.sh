@@ -44,9 +44,17 @@ gui=$(find "$BUNDLE" -maxdepth 1 -type d -name 'modgui-*' | wc -l)
 # must hold one .so + one modgui dir per plugin, and one .ttl per plugin + manifest.ttl.
 # Derived (not hardcoded) so adding/removing a plugin never trips this.
 want=$(grep -c 'lv2:binary' "$BUNDLE/manifest.ttl")
-echo "   .so=$so  ttl=$ttl  modgui=$gui   (expect $want / $((want+1)) / $want)"
-if [ "$want" -lt 1 ] || [ "$so" -ne "$want" ] || [ "$ttl" -ne $((want+1)) ] || [ "$gui" -ne "$want" ]; then
+# A modgui is OPTIONAL: a plugin with no web UI still loads and runs, MOD just
+# renders generic controls for it. So the expected modgui count is derived from
+# the TTLs that actually DECLARE one, not assumed to equal the plugin count —
+# otherwise adding a plugin before its UI exists breaks the release build.
+wantgui=$(grep -l 'modgui:gui' "$BUNDLE"/*.ttl 2>/dev/null | wc -l)
+echo "   .so=$so  ttl=$ttl  modgui=$gui   (expect $want / $((want+1)) / $wantgui)"
+if [ "$want" -lt 1 ] || [ "$so" -ne "$want" ] || [ "$ttl" -ne $((want+1)) ] || [ "$gui" -ne "$wantgui" ]; then
     echo "!! staged bundle incomplete — aborting"; exit 1
+fi
+if [ "$gui" -lt "$want" ]; then
+    echo "   note: $((want - gui)) plugin(s) ship without a modgui (generic UI in MOD)"
 fi
 # every modgui dir must carry its rendered art + stylesheet (+ a branding logo)
 for d in "$BUNDLE"/modgui-*; do

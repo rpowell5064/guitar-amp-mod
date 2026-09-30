@@ -10,6 +10,7 @@ echo "=== (re)constructing bundle at $BUNDLE ==="
 mkdir -p "$BUNDLE"
 cp build/guitaramp_*.so "$BUNDLE"/
 cp lv2/*.ttl "$BUNDLE"/
+cp lv2/practice/drumkit.dat "$BUNDLE"/   # Practice: resynthesised kit (parameters, not audio)
 echo "copied $(ls "$BUNDLE"/*.so | wc -l) .so and $(ls "$BUNDLE"/*.ttl | wc -l) .ttl"
 
 echo "--- bundle contents ---"
