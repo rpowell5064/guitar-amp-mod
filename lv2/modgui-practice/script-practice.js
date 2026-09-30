@@ -75,6 +75,16 @@ function (event, funcs) {
     function drawWave(icon, trk) {
         var c = el(icon, 'wave' + trk); if (!c) return;
         var g = c.getContext('2d'); if (!g) return;
+        // Size the bitmap to the box it is painted into. Left at its markup
+        // size the browser rescales it to fit, which softens every edge --
+        // and the lane is a different height at 1280 wide than it was at 980.
+        var box = c.parentNode;
+        var bw = (box && box.clientWidth) || 0, bh = (box && box.clientHeight) || 0;
+        if (bw < 40) bw = icon.data('px_wavew') || 1000;      // hidden tab: keep the last good size
+        if (bh < 20) bh = icon.data('px_waveh') || 86;
+        icon.data('px_wavew', bw); icon.data('px_waveh', bh);
+        if (c.width !== bw) c.width = bw;
+        if (c.height !== bh) c.height = bh;
         var W = c.width, H = c.height, mid = H / 2;
         g.clearRect(0, 0, W, H);
 
@@ -154,66 +164,123 @@ function (event, funcs) {
     }
 
     // ── step grid ────────────────────────────────────────────────────────────
-    var LBL_W = 92, CELL_H = 24, GAP = 2;
+    var LBL_W = 96, CELL_H = 26, GAP = 2;
+
+    // Hit strengths, weakest first. Height is what separates them at a glance —
+    // four shades of amber in a 20px cell are not distinguishable, four bar
+    // heights are. Colour carries the same order so the two agree.
+    var HIT = {
+        '-': { h: 0.26, fill: '#7a5c2b', edge: '#946f34' },   // ghost
+        'o': { h: 0.48, fill: '#c08c2f', edge: '#d79c34' },   // soft
+        'x': { h: 0.74, fill: '#f0a830', edge: '#ffc861' },   // normal
+        'X': { h: 1.00, fill: '#ffd98a', edge: '#fff0c8' }    // accent
+    };
+
+    // The canvas is sized to the space available, so the grid never scrolls:
+    // cells shrink instead. 5px is the floor at which a column is still a
+    // visible target — a full 8-bar pattern is 128 steps and still fits.
+    function gridFit(icon) {
+        var c = el(icon, 'grid'); if (!c) return null;
+        var box = c.parentNode;
+        var w = (box && box.clientWidth) ? box.clientWidth - 16 : 0;
+        // While the tab is hidden the container measures zero; keep the last
+        // good width rather than collapsing the canvas to nothing.
+        if (w < 200) w = icon.data('px_gridw') || 1100;
+        icon.data('px_gridw', w);
+        if (c.width !== w) c.width = w;
+        return c;
+    }
 
     function gridGeom(icon) {
         var p = icon.data('px_pat');
         var steps = p ? p.spb * p.bars : 16;
         var c = el(icon, 'grid');
-        var avail = (c ? c.width : 912) - LBL_W - 8;
-        var cw = Math.max(9, Math.floor(avail / Math.max(1, steps)) - GAP);
+        var avail = (c ? c.width : 1100) - LBL_W - 6;
+        var cw = Math.max(5, Math.floor(avail / Math.max(1, steps)) - GAP);
         return { steps: steps, cw: cw, spb: p ? p.spb : 16 };
     }
 
     function drawGrid(icon) {
-        var c = el(icon, 'grid'); if (!c) return;
+        var c = gridFit(icon); if (!c) return;
         var g = c.getContext('2d'); if (!g) return;
         var p = icon.data('px_pat');
         var G = gridGeom(icon);
         var H = ROWS.length * (CELL_H + GAP) + GAP;
         if (c.height !== H) c.height = H;
+        // Trim the bitmap to the grid it actually draws. Cell widths are
+        // floored to whole pixels, so the remainder would otherwise show as a
+        // dark ragged gutter down the right-hand edge.
+        var gridW = LBL_W + G.steps * (G.cw + GAP);
+        if (gridW > 0 && gridW < c.width) c.width = gridW;
         g.clearRect(0, 0, c.width, c.height);
         if (!p) return;
 
-        var beat = Math.max(1, Math.round(G.spb / 4));   // 16ths → 4, triplet 8ths → 3
+        var beat = Math.max(1, Math.round(G.spb / 4));   // 16ths -> 4, triplet 8ths -> 3
+        var barSteps = G.spb;
         var step = icon.data('px_step');
+
+        // Bar bands first: alternate bars get a faint wash so a 4- or 8-bar
+        // pattern reads as bars rather than one long ribbon of steps.
+        var nBars = Math.max(1, Math.round(G.steps / barSteps));
+        for (var bi = 1; bi < nBars; bi += 2) {
+            g.fillStyle = 'rgba(255,255,255,.020)';
+            g.fillRect(LBL_W + bi * barSteps * (G.cw + GAP), 0, barSteps * (G.cw + GAP), c.height);
+        }
 
         for (var r = 0; r < ROWS.length; ++r) {
             var y = GAP + r * (CELL_H + GAP);
             var lane = p.lanes[ROWS[r].i] || '';
 
-            g.fillStyle = (r % 2) ? 'rgba(255,255,255,.022)' : 'rgba(255,255,255,.045)';
-            g.fillRect(0, y, c.width, CELL_H);
+            g.fillStyle = (r % 2) ? 'rgba(255,255,255,.020)' : 'rgba(255,255,255,.042)';
+            g.fillRect(0, y, gridW, CELL_H);
 
             g.fillStyle = '#9aa0ab';
             g.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
             g.textBaseline = 'middle';
             g.fillText(ROWS[r].n, 6, y + CELL_H / 2 + 1);
 
-            for (var s = 0; s < G.steps; ++s) {
-                var x = LBL_W + s * (G.cw + GAP);
-                var ch = lane.charAt(s) || '.';
-                var on = ch !== '.';
-                // The downbeat of each beat is a shade lighter so the bar keeps
-                // its shape even when the grid is empty.
-                g.fillStyle = on ? (ch === 'X' ? '#ffc861' : ch === 'x' ? '#f0a830'
-                                              : ch === 'o' ? '#b9832c' : '#6d5327')
-                                 : ((s % beat === 0) ? 'rgba(255,255,255,.10)' : 'rgba(255,255,255,.045)');
-                g.fillRect(x, y + 2, G.cw, CELL_H - 4);
+            for (var st = 0; st < G.steps; ++st) {
+                var x = LBL_W + st * (G.cw + GAP);
+                var ch = lane.charAt(st) || '.';
+                var hit = HIT[ch];
+                if (!hit) {
+                    // Empty cell. The first step of each beat is a shade
+                    // lighter so the bar keeps its shape when the lane is bare.
+                    g.fillStyle = (st % beat === 0) ? 'rgba(255,255,255,.085)' : 'rgba(255,255,255,.035)';
+                    g.fillRect(x, y + 3, G.cw, CELL_H - 6);
+                    continue;
+                }
+                // A hit is a bar grown from the bottom of the cell: its HEIGHT
+                // is the velocity, so strength is legible as a silhouette
+                // rather than as a shade of amber.
+                var full = CELL_H - 6;
+                var h = Math.max(3, Math.round(full * hit.h));
+                var top = y + 3 + (full - h);
+                g.fillStyle = hit.fill;
+                g.fillRect(x, top, G.cw, h);
+                // A bright cap reads as the transient and keeps narrow cells
+                // visible when the bar itself is only a few pixels wide.
+                g.fillStyle = hit.edge;
+                g.fillRect(x, top, G.cw, Math.min(2, h));
             }
         }
 
-        // A hairline on every beat. At 16 steps the cells are wide enough to
-        // count; at 32 or 48 they are not, and without this the bar loses its
-        // shape entirely.
-        g.fillStyle = 'rgba(255,255,255,.13)';
-        for (var bt = beat; bt < G.steps; bt += beat)
-            g.fillRect(LBL_W + bt * (G.cw + GAP) - 2, 0, 1, c.height);
+        // Beat hairlines, and a brighter rule on every bar line. At 16 steps the
+        // cells are wide enough to count; at 64 or 128 they are not, and without
+        // this the pattern loses its metre entirely.
+        for (var t = beat; t < G.steps; t += beat) {
+            var isBar = (t % barSteps) === 0;
+            g.fillStyle = isBar ? 'rgba(255,255,255,.30)' : 'rgba(255,255,255,.11)';
+            g.fillRect(LBL_W + t * (G.cw + GAP) - 2, 0, isBar ? 2 : 1, c.height);
+        }
+        // Close the label gutter with the same rule so the grid has an edge.
+        g.fillStyle = 'rgba(255,255,255,.30)';
+        g.fillRect(LBL_W - 2, 0, 2, c.height);
 
         // Playhead column, drawn last so it sits over the cells.
         if (step >= 0 && step < G.steps) {
             var hx = LBL_W + step * (G.cw + GAP);
-            g.fillStyle = 'rgba(255,255,255,.16)';
+            g.fillStyle = 'rgba(255,255,255,.15)';
             g.fillRect(hx, 0, G.cw, c.height);
         }
     }

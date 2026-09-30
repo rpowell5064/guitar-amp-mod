@@ -26,7 +26,8 @@ PEDALS = {
     "nail":   ("nail.ttl",    360, 485),
     "octave": ("octave.ttl",  400, 490),
     "wah":    ("wah.ttl",     460, 440),
-    "practice":("practice.ttl", 980, 812),   # looper/drum workstation: a work surface, not a faceplate
+    "practice":("practice.ttl", 1280, 900),  # looper/drum workstation: a work surface, not a faceplate.
+                                             # height:auto in CSS, so this is just the capture box.
 }
 
 # ── TTL -> ordered control-input ports (what MOD exposes as `controls`) ───────────────────────────

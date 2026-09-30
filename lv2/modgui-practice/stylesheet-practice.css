@@ -1,56 +1,97 @@
 .mod-pedal-guitaramp-practice{{{cns}}} { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
-/* GuitarAmp guitaramp-practice — the looper + drum machine workstation.
-   Unlike the pedals in this suite this panel is a WORK SURFACE, not a faceplate:
-   the waveform lanes and the step grid are the controls. The brushed-enclosure
-   shell and the Hex Chain header are kept so it still reads as part of the rig,
-   but inside the plate the styling stays deliberately flat and quiet — the only
-   saturated colour in the window is the accent, and it is spent on exactly three
-   things: what is armed, what is playing, and where the playhead is. */
+/* HEX CHAIN — PRACTICE (looper + drum sequencer)
+   Built in the Hex Forge idiom: gunmetal brushed frame, hex-textured panels, the
+   cyan->magenta Hex Chain wordmark on a unified toolbar, and height:auto so the
+   block grows to its content instead of clipping it.
+   Its OWN identity is the amber accent and the fact that this is a WORK SURFACE
+   rather than a rack — the waveform lanes and the step grid ARE the controls, so
+   the panels are large and quiet and the accent is spent on only three things:
+   what is armed, what is playing, and where the playhead is. */
 .mod-pedal-guitaramp-practice{{{cns}}} {
-    --acc:#f0a830; --acc-dim:rgba(240,168,48,.28); --rec:#ff4a4a; --play:#54d98c;
-    --encl1:#3a3730; --encl2:#1b1a17;
+    /* Shared hex texture, tinted with this plugin's accent rather than Hex
+       Forge's cyan — same material, different metal. */
+    --hex: url("data:image/svg+xml,%3Csvg%20width='28'%20height='49'%20viewBox='0%200%2028%2049'%20xmlns='http://www.w3.org/2000/svg'%3E%3Cg%20fill='%23f0a830'%20fill-opacity='0.05'%20fill-rule='evenodd'%3E%3Cpath%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/g%3E%3C/svg%3E");
+    --hexsz: 28px 49px;
+    --acc:#f0a830; --acc-dim:rgba(240,168,48,.30); --rec:#ff4a4a; --play:#54d98c;
     --ink:#eef1f6; --ink2:#9aa0ab; --ink3:#6c727d;
-    --lane:#0a0b0e; --line:rgba(255,255,255,.09);
-    background-color: #0b0d12;
+    --lane:#07080b;
+
+    background-color: #0d0f13;
     background-image:
-        radial-gradient(150% 70% at 50% -12%, rgba(240,168,48,.13), rgba(11,13,18,0) 55%),
-        linear-gradient(180deg, #0d1016 0%, #070809 100%);
-    background-repeat: no-repeat, no-repeat;
-    height: 812px;
-    width: 980px;
+        radial-gradient(120% 55% at 50% -12%, rgba(240,168,48,.10), rgba(10,11,14,0) 52%),
+        repeating-linear-gradient(118deg, rgba(255,255,255,.022) 0px, rgba(255,255,255,.022) 1px, rgba(255,255,255,0) 2px, rgba(255,255,255,0) 5px),
+        linear-gradient(160deg, #1a1d24 0%, #121419 45%, #07080b 100%);
+    background-repeat: no-repeat, repeat, no-repeat;
+    background-position: center top;
+    background-size: 100% 100%, auto, 100% 100%;
+
+    /* Wide enough that the step grid never needs a scrollbar: a full 8-bar
+       pattern is 128 steps, and the grid sizes its cells to whatever width is
+       left after the instrument labels. */
+    width: 1280px;
+    /* Height follows the content. A fixed height cannot be right for three tabs
+       of different lengths, and the offline renderer under-reports MOD's runtime
+       widgets, so any magic number here would be a lie. */
+    height: auto;
+    box-sizing: border-box;
+    display: flex; flex-direction: column; gap: 12px; padding: 14px 20px 20px;
     position: absolute;
-    border-radius: 12px;
-    border-top: 2px solid var(--acc);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), inset 0 -50px 70px rgba(0,0,0,.45);
+    border-radius: 16px;
+    border-top: 2px solid transparent;
+    border-image: linear-gradient(90deg, #19e0ff 0%, #ff2bd6 100%) 1;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.05), inset 0 -70px 100px rgba(0,0,0,.45);
     font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
+/* No scrollbars anywhere in the block — panels grow instead (Hex Forge does the
+   same). The step grid in particular must never gain one. */
+.mod-pedal-guitaramp-practice{{{cns}}} *::-webkit-scrollbar { width:0 !important; height:0 !important; display:none; }
 
-/* HEX CHAIN HEADER */
-.mod-pedal-guitaramp-practice{{{cns}}} .hx-header { position:absolute; top:8px; left:24px; right:24px; z-index:5; pointer-events:none; border-bottom:1px solid var(--acc-dim); padding-bottom:8px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .hx-brand { font-size:11px; font-weight:800; letter-spacing:3px; line-height:1; text-transform:uppercase; background:linear-gradient(90deg,#19e0ff 0%,#ff2bd6 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
-.mod-pedal-guitaramp-practice{{{cns}}} .hx-mark { display:inline-block; width:9px; height:10px; margin-right:7px; vertical-align:-1px; background:linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%); clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
-.mod-pedal-guitaramp-practice{{{cns}}} .hx-title { font-size:26px; font-weight:800; letter-spacing:2px; line-height:1; margin-top:7px; text-transform:uppercase; color:var(--acc); text-shadow:0 0 16px rgba(240,168,48,.40); }
-.mod-pedal-guitaramp-practice{{{cns}}} .hx-tag { font-size:11px; font-weight:600; letter-spacing:.6px; line-height:1; margin-top:7px; color:#828893; }
-/* The drag handle covers the whole pedal so the block can be moved from any
-   blank area. It MUST sit at z-index 0 or it floats above the controls: every
-   knob, fader and lane then shows the move cursor and the plate stops taking
-   clicks. Suite convention (do not regress): handle 0, plate 5, topbar 20,
-   powerswitch 40, selects 50, dropdown lists 9000. */
+/* The drag handle covers the whole block so it can be moved from any blank
+   area. It MUST stay at z-index 0 or it floats above the controls: every knob,
+   fader and lane then shows a move cursor and stops taking clicks.
+   Suite order (do not regress): handle 0, panels 30, toolbar 40, powerswitch 45,
+   selects 50, dropdown lists 9000. */
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-drag-handle { z-index:0 !important; position:absolute; top:0; left:0; right:0; bottom:0; }
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-input,
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-output { top:150px; z-index:30; }
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch { margin-left:905px; margin-top:12px; cursor:pointer; position:absolute; height:30px; width:60px; z-index:40; }
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
-.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image.off { background-position:0 0; }
 
-/* ── Global transport bar (header-right): tempo lives here, above the tabs, because
-      it governs every tab at once. ── */
-.mod-pedal-guitaramp-practice{{{cns}}} .px-topbar {
-    position:absolute; top:14px; right:96px; z-index:20;
-    display:flex; align-items:center; gap:14px;
+/* ── Unified toolbar: brand (left) · transport + tempo (right) ── */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bar {
+    flex:0 0 auto; position:relative; z-index:40; min-height:60px; box-sizing:border-box;
+    display:flex; flex-wrap:nowrap; align-items:center; gap:12px; padding:0 90px 0 16px;
+    background-color: rgba(8,9,13,.6);
+    background-image: var(--hex), linear-gradient(180deg, rgba(240,168,48,.10), rgba(0,0,0,.22));
+    background-repeat: repeat, no-repeat; background-position:center top; background-size: var(--hexsz), 100% 100%;
+    border:1px solid var(--acc-dim); border-radius:11px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 4px 14px rgba(0,0,0,.42);
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tgroup { display:flex; align-items:center; gap:8px; padding:7px 12px; border-radius:9px; background:rgba(6,7,10,.5); border:1px solid rgba(255,255,255,.09); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-brand { flex:0 0 auto; display:flex; align-items:center; gap:9px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .hx-mark {
+    display:inline-block; width:15px; height:17px; flex:0 0 15px;
+    background:linear-gradient(135deg,#19e0ff 0%,#ff2bd6 100%);
+    clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-wordmark {
+    font-size:20px; font-weight:800; letter-spacing:3.5px; line-height:1; text-transform:uppercase; white-space:nowrap;
+    background:linear-gradient(90deg,#19e0ff 0%,#ff2bd6 100%);
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent;
+    text-shadow:0 0 22px rgba(240,168,48,.28);
+}
+/* PRACTICE reads in the accent, so this block is identifiable at a glance in a
+   rack where every Hex Chain pedal shares the wordmark. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-name {
+    font-size:20px; font-weight:800; letter-spacing:3.5px; line-height:1; text-transform:uppercase; white-space:nowrap;
+    color:var(--acc); text-shadow:0 0 18px rgba(240,168,48,.40);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tag {
+    font-size:10px; font-weight:600; letter-spacing:.6px; color:var(--ink3); white-space:nowrap;
+    padding-left:12px; border-left:1px solid rgba(255,255,255,.10);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bar-spacer { flex:1 1 auto; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-div {
+    flex:0 0 auto; width:1px; height:24px; margin:0 2px; border-radius:1px;
+    background:linear-gradient(180deg, rgba(240,168,48,0) 0%, rgba(240,168,48,.34) 50%, rgba(240,168,48,0) 100%);
+}
+
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tgroup { flex:0 0 auto; display:flex; align-items:center; gap:8px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tlabel { font-size:9px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink3); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-field {
     min-width:52px; display:inline-block;
@@ -59,93 +100,108 @@
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-unit { font-size:10px; font-weight:700; letter-spacing:1px; color:var(--ink3); align-self:flex-end; padding-bottom:5px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tempo-drag { width:12px; height:30px; cursor:ns-resize; border-radius:3px; background:repeating-linear-gradient(180deg, rgba(255,255,255,.22) 0 1px, transparent 1px 4px); }
-/* When the host is driving the tempo the knob must LOOK inert — a field that still
-   invites a drag it will silently ignore is worse than no field at all. */
+/* Host-driven tempo must LOOK inert: a field that still invites a drag it will
+   silently ignore is worse than no field at all. */
 .mod-pedal-guitaramp-practice{{{cns}}}.px-synced .px-tempo-field { color:var(--ink3); }
 .mod-pedal-guitaramp-practice{{{cns}}}.px-synced .px-tempo-drag { opacity:.25; pointer-events:none; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-hostbpm { font-size:11px; font-weight:600; color:var(--acc); display:none; font-variant-numeric:tabular-nums; }
 .mod-pedal-guitaramp-practice{{{cns}}}.px-synced .px-hostbpm { display:inline; }
-
-.mod-pedal-guitaramp-practice{{{cns}}} .px-pill {
-    cursor:pointer; user-select:none; padding:6px 12px; border-radius:7px;
-    font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
-    color:var(--ink2); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.10);
-    transition:color .12s, background .12s, border-color .12s;
-}
-.mod-pedal-guitaramp-practice{{{cns}}} .px-pill:hover { color:var(--ink); background:rgba(255,255,255,.09); }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-pill.on { color:#12141a; background:var(--acc); border-color:var(--acc); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-bars { font-size:22px; font-weight:300; color:var(--ink); font-variant-numeric:tabular-nums; min-width:62px; text-align:center; letter-spacing:.5px; }
 
-/* ── Plate ── */
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-plate {
-    position:relative; z-index:5; box-sizing:border-box; min-height:672px;
-    border-radius:12px; padding:16px 20px 20px; margin:118px 16px 0;
-    background-image:
-        linear-gradient(180deg, rgba(255,255,255,.13) 0, rgba(255,255,255,0) 20%, rgba(0,0,0,.24) 100%),
-        linear-gradient(158deg, var(--encl1), var(--encl2));
-    border:1px solid rgba(0,0,0,.55);
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.16), inset 0 -22px 46px rgba(0,0,0,.3), 0 4px 10px rgba(0,0,0,.55);
+.mod-pedal-guitaramp-practice{{{cns}}} .px-pill {
+    cursor:pointer; user-select:none; padding:7px 14px; border-radius:8px; white-space:nowrap;
+    font-size:10px; font-weight:800; letter-spacing:1.2px; text-transform:uppercase;
+    color:var(--ink2); background:rgba(6,7,10,.5); border:1px solid rgba(255,255,255,.10);
+    transition:color .12s, background .12s, border-color .12s;
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-screw { position:absolute; width:15px; height:15px; z-index:4; background:url(/resources/screw.png{{{ns}}}) no-repeat center; background-size:contain; filter:drop-shadow(0 1px 1px rgba(0,0,0,.55)); }
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-screw-tl { top:8px; left:8px; transform:rotate(24deg); }
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-screw-tr { top:8px; right:8px; transform:rotate(-38deg); }
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-screw-bl { bottom:8px; left:8px; transform:rotate(67deg); }
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-screw-br { bottom:8px; right:8px; transform:rotate(-11deg); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-pill:hover { color:var(--ink); background:rgba(255,255,255,.08); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-pill.on { color:#0b0d12; background:var(--acc); border-color:var(--acc); box-shadow:0 2px 12px rgba(0,0,0,.45); }
 
-/* ── Tabs ── */
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tabs { display:flex; gap:2px; margin:0 0 14px 0; border-bottom:1px solid rgba(255,255,255,.10); }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch { position:absolute; right:26px; top:26px; cursor:pointer; height:30px; width:60px; z-index:45; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image { background-image:url(/resources/switches/powerswitch.png{{{ns}}}); background-position:0 0; background-repeat:no-repeat; background-size:auto 30px; height:30px; width:60px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image.on { background-position:-60px 0; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-powerswitch-image.off { background-position:0 0; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-input,
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-pedal-output { top:150px; z-index:30; }
+
+/* ── Tabs (Hex Forge detail-tab idiom) ── */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tabs { flex:0 0 auto; display:flex; gap:6px; margin:0 0 -13px 4px; position:relative; z-index:31; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tab {
-    cursor:pointer; user-select:none; padding:9px 22px 10px;
-    font-size:11px; font-weight:800; letter-spacing:1.8px; text-transform:uppercase;
-    color:var(--ink3); border-bottom:2px solid transparent; margin-bottom:-1px;
-    transition:color .12s;
+    cursor:pointer; user-select:none; position:relative;
+    font-size:12px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--ink2); padding:8px 26px; border-radius:8px 8px 0 0;
+    background:rgba(6,7,10,.5); border:1px solid rgba(255,255,255,.08); border-bottom:none;
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tab:hover { color:var(--ink2); }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tab.on { color:var(--ink); border-bottom-color:var(--acc); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tab:hover { color:var(--ink); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tab.on { color:#0b0d12; background:var(--acc); border-color:var(--acc); box-shadow:0 2px 12px rgba(0,0,0,.45); }
+
+/* ── Detail panel: the hex-textured surface everything sits on ── */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-detail {
+    flex:1 1 auto; position:relative; z-index:30; box-sizing:border-box;
+    background-color: rgba(10,12,18,.5);
+    background-image: var(--hex), linear-gradient(180deg, rgba(255,255,255,.03), rgba(0,0,0,.20));
+    background-repeat: repeat, no-repeat; background-position:center top; background-size: var(--hexsz), 100% 100%;
+    border:1px solid rgba(255,255,255,.08); border-radius:11px; padding:16px;
+    overflow:visible;   /* grow to fit — never clip, never scroll */
+}
 .mod-pedal-guitaramp-practice{{{cns}}} .px-view { display:none; }
 .mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=loops] .px-view-loops,
 .mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=drums] .px-view-drums,
 .mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=mix]   .px-view-mix { display:block; }
 
+/* Inner sub-panels share the toolbar's material at lower contrast. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-panel {
+    background-color: rgba(8,9,13,.45);
+    background-image: var(--hex), linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.18));
+    background-repeat: repeat, no-repeat; background-position:center top; background-size: var(--hexsz), 100% 100%;
+    border:1px solid rgba(255,255,255,.08); border-radius:10px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-ptitle {
+    display:block; font-size:10px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase;
+    color:var(--ink2); margin-bottom:11px;
+}
+
 /* ── LOOPS ── */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane {
-    display:flex; align-items:stretch; gap:10px; margin-bottom:8px;
-    padding:8px; border-radius:9px; border:1px solid rgba(255,255,255,.07);
-    background:rgba(6,7,10,.38); cursor:pointer;
-    transition:border-color .12s, background .12s;
+    display:flex; align-items:stretch; gap:10px; margin-bottom:8px; padding:8px;
+    border-radius:10px; border:1px solid rgba(255,255,255,.07);
+    background-color:rgba(8,9,13,.45);
+    background-image: var(--hex), linear-gradient(180deg, rgba(255,255,255,.025), rgba(0,0,0,.18));
+    background-repeat:repeat, no-repeat; background-position:center top; background-size: var(--hexsz), 100% 100%;
+    cursor:pointer; transition:border-color .12s, box-shadow .12s;
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-lane:hover { background:rgba(6,7,10,.55); }
-/* The active track is the one the transport buttons act on. It gets the accent
-   edge so "which track am I about to record onto" is answerable at a glance. */
-.mod-pedal-guitaramp-practice{{{cns}}} .px-lane.sel { border-color:var(--acc); background:rgba(240,168,48,.07); }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-id { width:46px; flex:0 0 46px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:5px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-n { font-size:17px; font-weight:300; color:var(--ink2); line-height:1; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane:hover { border-color:rgba(255,255,255,.16); }
+/* The armed track is what the transport acts on, so it gets the accent edge:
+   "which track am I about to record onto" must be answerable at a glance. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane.sel { border-color:var(--acc); box-shadow:0 0 0 1px rgba(240,168,48,.25), 0 4px 16px rgba(0,0,0,.4); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-id { width:52px; flex:0 0 52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-n { font-size:19px; font-weight:300; color:var(--ink2); line-height:1; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane.sel .px-lane-n { color:var(--ink); }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-lamp { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.14); box-shadow:none; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lamp { width:7px; height:7px; border-radius:50%; background:rgba(255,255,255,.14); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lamp[data-st=rec]  { background:var(--rec);  box-shadow:0 0 8px var(--rec); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lamp[data-st=play] { background:var(--play); box-shadow:0 0 8px var(--play); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lamp[data-st=stop] { background:#5a6270; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-wave { flex:1 1 auto; position:relative; height:74px; border-radius:6px; background:var(--lane); overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-wave { flex:1 1 auto; position:relative; height:86px; border-radius:7px; background:var(--lane); overflow:hidden; box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-wave canvas { display:block; width:100%; height:100%; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-wave-empty { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#31363f; pointer-events:none; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane-btns { flex:0 0 auto; display:flex; flex-direction:column; justify-content:center; gap:4px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-mini {
-    cursor:pointer; user-select:none; width:34px; text-align:center; padding:4px 0; border-radius:5px;
+    cursor:pointer; user-select:none; width:38px; text-align:center; padding:5px 0; border-radius:6px;
     font-size:9px; font-weight:800; letter-spacing:.8px; color:var(--ink3);
-    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.09);
+    background:rgba(6,7,10,.5); border:1px solid rgba(255,255,255,.09);
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-mini:hover { color:var(--ink); }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-mini.on { color:#12141a; background:var(--acc); border-color:var(--acc); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-mini.on { color:#0b0d12; background:var(--acc); border-color:var(--acc); }
 
 .mod-pedal-guitaramp-practice{{{cns}}} .px-transport { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:16px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn {
-    cursor:pointer; user-select:none; height:44px; min-width:90px; padding:0 20px; border-radius:9px;
+    cursor:pointer; user-select:none; height:46px; min-width:104px; padding:0 22px; border-radius:10px;
     display:flex; align-items:center; justify-content:center; gap:9px;
     font-size:11px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase;
-    color:var(--ink2); background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.11);
+    color:var(--ink2); background:rgba(6,7,10,.5); border:1px solid rgba(255,255,255,.11);
     transition:color .1s, background .1s, border-color .1s;
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn:hover { color:var(--ink); background:rgba(255,255,255,.09); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn:hover { color:var(--ink); background:rgba(255,255,255,.08); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn:active { transform:translateY(1px); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn.rec.armed { color:#fff; background:var(--rec); border-color:var(--rec); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn.play.armed { color:#0d1512; background:var(--play); border-color:var(--play); }
@@ -157,32 +213,43 @@
 
 /* ── DRUMS ── */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-drow { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-grid { border-radius:8px; background:var(--lane); box-shadow:inset 0 0 0 1px rgba(255,255,255,.05); padding:8px; overflow-x:auto; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-grid {
+    border-radius:9px; background:var(--lane); box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+    padding:8px; overflow:hidden;   /* the canvas is sized to fit — never a scrollbar */
+}
 .mod-pedal-guitaramp-practice{{{cns}}} .px-grid canvas { display:block; cursor:pointer; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-hint { font-size:10px; color:var(--ink3); letter-spacing:.4px; margin-top:9px; line-height:1.5; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-file { display:none; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-status { font-size:10px; font-weight:700; letter-spacing:.6px; color:var(--acc); min-height:13px; margin-top:6px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-status { font-size:10px; font-weight:700; letter-spacing:.6px; color:var(--acc); min-height:13px; margin-top:8px; }
+/* Velocity key. The grid draws four hit strengths as bars of different height,
+   and a legend is cheaper than making the user infer them. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key { display:flex; align-items:center; gap:16px; margin-top:10px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-item { display:flex; align-items:center; gap:7px; font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink3); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw { width:18px; border-radius:2px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k1 { height:4px;  background:#7a5c2b; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k2 { height:8px;  background:#c08c2f; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k3 { height:13px; background:#f0a830; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k4 { height:18px; background:#ffd98a; }
 
 /* ── MIX ── */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-mixgrid { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-mixcol { flex:0 0 auto; padding:12px 14px 14px; border-radius:10px; background:rgba(6,7,10,.40); border:1px solid rgba(255,255,255,.08); }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-mixcol.wide { flex:1 0 100%; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-mixttl { display:block; font-size:10px; font-weight:800; letter-spacing:1.6px; text-transform:uppercase; color:var(--ink2); margin-bottom:11px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-strips { display:flex; gap:8px; align-items:flex-end; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-strip { width:56px; display:flex; flex-direction:column; align-items:center; gap:6px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-fader { height:150px; width:36px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-mixcol { flex:0 0 auto; padding:12px 14px 14px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-mixcol.wide { flex:1 1 auto; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strips { display:flex; gap:10px; align-items:flex-end; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip { width:58px; display:flex; flex-direction:column; align-items:center; gap:6px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fader { height:160px; width:36px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-slab { font-size:9px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; color:var(--ink2); text-align:center; white-space:nowrap; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-sval { font-size:10px; color:var(--ink3); font-variant-numeric:tabular-nums; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-knobs { display:flex; flex-wrap:wrap; gap:4px 6px; justify-content:flex-start; }
-.mod-pedal-guitaramp-practice{{{cns}}} .hf-knob { display:inline-block; width:64px; height:86px; position:relative; vertical-align:top; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-knobs { display:flex; flex-wrap:wrap; gap:4px 8px; justify-content:flex-start; }
+.mod-pedal-guitaramp-practice{{{cns}}} .hf-knob { display:inline-block; width:66px; height:88px; position:relative; vertical-align:top; }
 .mod-pedal-guitaramp-practice{{{cns}}} .hf-knob-img { background-image:url(/resources/knobs/knob.png{{{ns}}}); background-repeat:no-repeat; background-size:auto 46px; height:46px; width:46px; margin:2px auto 0; }
 .mod-pedal-guitaramp-practice{{{cns}}} .hf-knob-t { display:block; font-size:10px; font-weight:700; text-transform:uppercase; color:var(--ink); margin-top:5px; text-align:center; text-shadow:0 1px 2px rgba(0,0,0,.9); white-space:nowrap; }
 .mod-pedal-guitaramp-practice{{{cns}}} .hf-knob-v { display:block; font-size:9px; color:var(--ink3); text-align:center; margin-top:2px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-hidden { position:absolute; width:0; height:0; overflow:hidden; opacity:0; pointer-events:none; }
 
-/* Faders. mod-ui binds the drag to the port div itself, but it paints nothing —
-   the fill and handle are ours, positioned from port_event in the script. The
-   background is forced flat so a knob sprite can never land behind them. */
+/* Faders. mod-ui binds the drag to the port div but paints nothing, so the fill
+   and cap are ours, positioned from the port value in PERCENT (the MIX tab is
+   display:none when `start` fires, so a measured height is always zero). */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-fader {
     position:relative; background:none !important; border-radius:5px; cursor:ns-resize;
     box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);
@@ -206,10 +273,10 @@
 }
 
 /* Groove picker. mod-ui supplies no styling of its own for a custom GUI, so the
-   dropdown carries its own — without the display:none the whole 30-groove list
+   dropdown carries it here — without display:none the whole 30-groove list
    renders open over the step grid. */
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated {
-    background-color:rgba(0,0,0,.5); border:1px solid rgba(240,168,48,.5); border-radius:6px;
+    background-color:rgba(0,0,0,.5); border:1px solid var(--acc-dim); border-radius:6px;
     font-family:inherit; font-size:12px; font-weight:700; color:var(--ink);
     line-height:2.1; position:relative; overflow:visible; text-align:left;
 }
@@ -219,7 +286,7 @@
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated .mod-enumerated-list {
     display:none; background-color:rgba(8,9,12,.96); color:var(--ink); width:100%;
-    max-height:240px; overflow:auto; position:absolute; z-index:9000 !important;
+    max-height:260px; overflow:auto; position:absolute; z-index:9000 !important;
     border-radius:0 0 6px 6px; box-shadow:0 8px 20px rgba(0,0,0,.6);
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated .mod-enumerated-list > div { padding:4px 10px; font-weight:600; }

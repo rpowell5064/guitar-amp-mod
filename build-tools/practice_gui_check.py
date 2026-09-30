@@ -66,6 +66,15 @@ PATTERN = json.dumps({
               {"i": 6, "s": "x.o.x.o.x.o.x.o."},
               {"i": 9, "s": "X..............."}]})
 
+# The longest pattern the plugin accepts: 8 bars of sixteenths = 128 steps.
+# The panel is sized so even this needs no scrollbar, which is a claim with a
+# number in it and therefore gets a test.
+PATTERN_LONG = json.dumps({
+    "builtin": 0, "spb": 16, "bars": 8,
+    "lanes": [{"i": 0, "s": ("X...-...X..x-..." * 8)},
+              {"i": 1, "s": ("....X.......X..o" * 8)},
+              {"i": 6, "s": ("x.o.x.o.x.o.x.o." * 8)}]})
+
 # The jQuery subset script-practice.js uses. Kept minimal on purpose: if the
 # script starts calling something else, this throws and the check fails, which
 # is the correct outcome -- it means the script gained a dependency nothing
@@ -108,9 +117,12 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
      ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
      ['lvl_kick',3],['drums_level',-4]
     ].forEach(function(p){ gui({type:'port_event', icon:icon, symbol:p[0], value:p[1]}, funcs); });
-    document.querySelector('[rata-role=pxview]').setAttribute('data-tab', window.__TAB__);
+    var tab = (window.__TAB__ === 'drumslong') ? 'drums' : window.__TAB__;
+    document.querySelector('[rata-role=pxview]').setAttribute('data-tab', tab);
     if (window.__TAB__ === 'drums')
       gui({type:'change', icon:icon, uri:'x#pattern', value:__PAT__}, funcs);
+    if (window.__TAB__ === 'drumslong')
+      gui({type:'change', icon:icon, uri:'x#pattern', value:__LONGPAT__}, funcs);
   } catch (e) { window.__ERR__ = (e && e.message) || String(e); }
 
   // Ink coverage per canvas: a canvas that drew nothing is the failure mode
@@ -132,6 +144,16 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
                                   status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
                                   bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || '',
                                   tempo:  (document.querySelector('[rata-role=tempofield]')||{}).textContent || '',
+                                  grid: (function(){
+                                    var c = document.querySelector('[rata-role=grid]');
+                                    if (!c) return null;
+                                    var box = c.parentNode;
+                                    return {cw: c.width,
+                                            box: box.clientWidth,
+                                            // >0 means the box is scrollable, i.e. a
+                                            // scrollbar: exactly what must never happen.
+                                            over: box.scrollWidth - box.clientWidth};
+                                  })(),
                                   faders: [].slice.call(document.querySelectorAll('.px-fad-fill'))
                                             .filter(function(f){
                                               // RENDERED height, not the style string: a zero
@@ -165,6 +187,7 @@ def build_page(tab):
     shim = (SHIM.replace("__SCRIPT__", open(os.path.join(BASE, "script-practice.js"), encoding="utf-8").read())
                 .replace("__WAVE__", json.dumps(WAVE))
                 .replace("__PAT__", json.dumps(PATTERN))
+            .replace("__LONGPAT__", json.dumps(PATTERN_LONG))
                 .replace("__PORTS__", json.dumps(ports)))
     return ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
             'html,body{margin:0;padding:0;background:#0b0d12;'
@@ -179,13 +202,13 @@ def run_tab(tab, outdir):
     url = "file:///" + hp.replace("\\", "/")
 
     dom = subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
-                          "--window-size=980,812", "--virtual-time-budget=2500",
+                          "--window-size=1280,980", "--virtual-time-budget=2500",
                           "--dump-dom", url], capture_output=True, timeout=120).stdout
     # The page contains the plugin's own UTF-8 (en dashes in the hints), so the
     # dump must be decoded as UTF-8 rather than the console's ANSI codepage.
     dom = dom.decode("utf-8", "replace")
     subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
-                    "--window-size=980,812", "--virtual-time-budget=2500",
+                    "--window-size=1280,980", "--virtual-time-budget=2500",
                     "--screenshot=" + os.path.join(outdir, "gui_%s.png" % tab), url],
                    capture_output=True, timeout=120)
 
@@ -250,6 +273,18 @@ def main():
               r["groove"])
         check("Rock 8ths" in r["status"], "the status line names the factory groove",
               r["status"])
+
+    print("\nDRUMS (8 bars / 128 steps)")
+    r = run_tab("drumslong", outdir)
+    if r:
+        check(not r["err"], "the script runs without throwing", r["err"])
+        g = r.get("grid") or {}
+        # The whole point of the 1280px width: the longest pattern the plugin
+        # accepts still lays out without a scrollbar.
+        check(g.get("over", 1) <= 0, "128 steps fit without scrolling",
+              "canvas %s in a %s box, overflow %s" % (g.get("cw"), g.get("box"), g.get("over")))
+        check(r["ink"].get("grid", 0) > 0.05, "the 8-bar grid is drawn",
+              "ink %.3f" % r["ink"].get("grid", 0))
 
     print("\nimages in %s" % outdir)
     if failures:

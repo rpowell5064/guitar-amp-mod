@@ -5,19 +5,20 @@
         <div class="mod-powerswitch-image" mod-role="bypass-light"></div>
     </div>
 
-    <div class="hx-header">
-        <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
-        <div class="hx-title">PRACTICE</div>
-        <div class="hx-tag">4-track looper · resynthesised acoustic kit · step sequencer</div>
-    </div>
+    <!-- Unified toolbar, Hex Forge style: brand on the left, global transport on
+         the right. Tempo lives HERE rather than inside a tab because it governs
+         the looper and the sequencer at the same time; putting it on either tab
+         would imply it belonged to that one. -->
+    <div class="px-bar">
+        <div class="px-brand">
+            <span class="hx-mark" aria-hidden="true"></span>
+            <span class="px-wordmark">HEX</span><span class="px-name">PRACTICE</span>
+        </div>
+        <span class="px-tag">4-track looper · resynthesised acoustic kit · step sequencer</span>
+        <span class="px-bar-spacer"></span>
 
-    <!-- Global transport. Tempo sits in the header rather than inside a tab because
-         it governs the looper and the sequencer at the same time; putting it on one
-         of them would imply it belonged to that one. -->
-    <div class="px-topbar">
         <div class="px-tgroup">
             <span class="px-tlabel">Tempo</span>
-            
             <!-- A SPAN, not an input: mod-ui writes value readouts with
                  textContent, which an <input> does not display, so the field
                  rendered blank on the device. The script formats this itself
@@ -27,32 +28,28 @@
             <span class="px-tempo-field" rata-role="tempofield">120</span>
             <span class="px-tempo-unit">BPM</span>
             <div class="px-tempo-drag" title="Drag to set tempo" mod-role="input-control-port" mod-port-symbol="tempo"></div>
-            
             <span class="px-hostbpm" rata-role="hostbpm"></span>
         </div>
-        
         <div class="px-pill" rata-role="syncpill" title="Sync To Host">Sync</div>
         <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="tempo_sync"></div></div>
-        
+
+        <span class="px-div" aria-hidden="true"></span>
+
         <div class="px-tgroup">
             <span class="px-tlabel">Bar</span>
             <span class="px-bars" rata-role="barsread">1 . 1</span>
         </div>
-        
         <div class="px-pill" rata-role="runpill" title="Run">Run</div>
         <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="run"></div></div>
-        
     </div>
 
-    <div class="hf-plate">
-        <div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>
-        <div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>
+    <div class="px-tabs" rata-role="pxtabs">
+        <div class="px-tab on" data-pxtab="loops">Loops</div>
+        <div class="px-tab" data-pxtab="drums">Drums</div>
+        <div class="px-tab" data-pxtab="mix">Mix</div>
+    </div>
 
-        <div class="px-tabs" rata-role="pxtabs">
-            <div class="px-tab on" data-pxtab="loops">Loops</div>
-            <div class="px-tab" data-pxtab="drums">Drums</div>
-            <div class="px-tab" data-pxtab="mix">Mix</div>
-        </div>
+    <div class="px-detail">
 
         <div rata-role="pxview" data-tab="loops">
 
@@ -128,6 +125,15 @@
 
                 <div class="px-grid"><canvas rata-role="grid" width="912" height="392"></canvas></div>
                 <div class="px-status" rata-role="patstatus"></div>
+                <!-- The grid draws each hit as a bar whose HEIGHT is its
+                     strength, so the four levels are readable without
+                     comparing shades. This names them. -->
+                <div class="px-key">
+                    <span class="px-key-item"><span class="px-key-sw k1"></span>Ghost</span>
+                    <span class="px-key-item"><span class="px-key-sw k2"></span>Soft</span>
+                    <span class="px-key-item"><span class="px-key-sw k3"></span>Normal</span>
+                    <span class="px-key-item"><span class="px-key-sw k4"></span>Accent</span>
+                </div>
 
                 <div class="px-drow" style="justify-content:center; margin-top:12px;">
                     <div class="hf-knob" title="Swing"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="swing"></div><span class="hf-knob-t">Swing</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="swing"></span></div>
@@ -140,8 +146,8 @@
             <!-- ══ MIX ══ -->
             <div class="px-view px-view-mix">
                 <div class="px-mixgrid">
-                    <div class="px-mixcol">
-                        <span class="px-mixttl">Loop Tracks</span>
+                    <div class="px-mixcol px-panel">
+                        <span class="px-ptitle">Loop Tracks</span>
                         <div class="px-strips">
                             <div class="px-strip"><div class="px-fader" rata-role="fad26" mod-role="input-control-port" mod-port-symbol="trk1_level"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Trk 1</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="trk1_level"></span></div>
                             <div class="px-strip"><div class="px-fader" rata-role="fad28" mod-role="input-control-port" mod-port-symbol="trk2_level"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Trk 2</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="trk2_level"></span></div>
@@ -150,16 +156,16 @@
                         </div>
                     </div>
 
-                    <div class="px-mixcol">
-                        <span class="px-mixttl">Masters</span>
+                    <div class="px-mixcol px-panel">
+                        <span class="px-ptitle">Masters</span>
                         <div class="px-strips">
                             <div class="px-strip"><div class="px-fader" rata-role="fad17" mod-role="input-control-port" mod-port-symbol="loop_level"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Loops</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="loop_level"></span></div>
                             <div class="px-strip"><div class="px-fader" rata-role="fad5" mod-role="input-control-port" mod-port-symbol="drums_level"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Drums</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="drums_level"></span></div>
                         </div>
                     </div>
 
-                    <div class="px-mixcol">
-                        <span class="px-mixttl">Kit</span>
+                    <div class="px-mixcol px-panel">
+                        <span class="px-ptitle">Kit</span>
                         <div class="px-strips">
                             <div class="px-strip"><div class="px-fader" rata-role="fad8" mod-role="input-control-port" mod-port-symbol="lvl_kick"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Kick</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="lvl_kick"></span></div>
                             <div class="px-strip"><div class="px-fader" rata-role="fad9" mod-role="input-control-port" mod-port-symbol="lvl_snare"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Snare</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="lvl_snare"></span></div>
@@ -169,8 +175,8 @@
                         </div>
                     </div>
 
-                    <div class="px-mixcol wide">
-                        <span class="px-mixttl">Drum Bus &amp; Voicing</span>
+                    <div class="px-mixcol px-panel wide">
+                        <span class="px-ptitle">Drum Bus &amp; Voicing</span>
                         <div class="px-knobs">
                             <div class="hf-knob" title="Drum Comp"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="drum_comp"></div><span class="hf-knob-t">Comp</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="drum_comp"></span></div>
                             <div class="hf-knob" title="Drum Room"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="drum_room"></div><span class="hf-knob-t">Room</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="drum_room"></span></div>
