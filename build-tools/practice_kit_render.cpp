@@ -122,6 +122,7 @@ int main(int argc, char** argv) {
         dm.setCompAmount(0.35f);   // == TTL defaults
         dm.setRoomAmount(0.30f);
         dm.setRoomSize(0.35f);
+        dm.setBodyAmount(0.30f);
         TransportClock clk;
         clk.prepare(kFs); clk.setTempo(table[p].stepsPerBar == 12 ? 120.0 : 160.0);
         clk.setBeatsPerBar(4); clk.start();
@@ -145,16 +146,14 @@ int main(int argc, char** argv) {
     {
         int rock = 0;
         for (int p = 0; p < nPat; ++p)
-            if (!std::strcmp(table[p].name, "Rock 8ths")) rock = p;
+            if (!std::strcmp(table[p].name, "Double Kick")) rock = p;
 
-        struct Stage { const char* name; float comp, room; };
+        struct Stage { const char* name; float comp, room, body; };
         const Stage stages[] = {
-            { "1_dry",       0.00f, 0.00f },
-            { "2_comp",      0.35f, 0.00f },
-            { "3_comp_room", 0.35f, 0.30f },   // the shipping defaults
-            { "4_pushed",    0.70f, 0.55f },
-            { "5_roomonly",  0.00f, 0.30f },
-            { "6_roommax",   0.00f, 1.00f },
+            { "1_dry",       0.00f, 0.00f, 0.00f },
+            { "2_body",      0.00f, 0.00f, 0.60f },
+            { "3_default",   0.35f, 0.30f, 0.30f },   // the shipping defaults
+            { "4_bodymax",   0.35f, 0.30f, 1.00f },
         };
         for (const Stage& st : stages) {
             DrumMachineBlock dm;
@@ -165,8 +164,9 @@ int main(int argc, char** argv) {
             dm.setCompAmount(st.comp);
             dm.setRoomAmount(st.room);
             dm.setRoomSize(0.35f);
+            dm.setBodyAmount(st.body);
             TransportClock clk;
-            clk.prepare(kFs); clk.setTempo(150.0); clk.setBeatsPerBar(4); clk.start();
+            clk.prepare(kFs); clk.setTempo(190.0); clk.setBeatsPerBar(4); clk.start();
             dm.rearm(clk);
 
             const int64_t total = int64_t(clk.samplesPerBar() * 4) + int64_t(kFs * 2.0);

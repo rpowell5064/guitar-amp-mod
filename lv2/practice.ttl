@@ -48,7 +48,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 2 ;   # 2: drum bus — parallel compression + room (ports 47-49; bypass/enabled moved to 50/51). 1: first release
+    lv2:microVersion 3 ;   # 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
     # The worker carries the undo snapshot (a memcpy of the whole loop) off the
     # audio thread. It is OPTIONAL: without it the plugin runs normally and only
     # undo is unavailable, so a host with no worker support still loads it.
@@ -397,10 +397,23 @@ Free and open source (GPL-3).""" ;
         units:unit units:pc ;
         lv2:default 35.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
+        # Weight for the kick and low toms. A low SHELF at 90 Hz, not a
+        # resonant boost: a shelf is minimum-phase with a short impulse
+        # response, so it raises the low end already present without adding
+        # decay. A resonance at 60-90 Hz would ring, and that ringing is
+        # exactly what smears consecutive double-kick strokes together.
+        # 90 Hz sits above the kick's 47-60 Hz fundamental so it lifts body
+        # rather than sub-rumble, and below the snare's ~185 Hz shell.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 50 ; lv2:symbol "drum_body" ; lv2:name "Drum Body" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:pc ;
+        lv2:default 30.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
         # Silences the drums and the loop; the dry guitar still passes, because
         # this plugin sits last in the chain and muting it would mute the rig.
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 50 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:index 51 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
@@ -409,7 +422,7 @@ Free and open source (GPL-3).""" ;
         # is INVERTED relative to "bypass": 1 = processing on, 0 = bypassed.
         # Deliberately ungrouped and last.
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 51 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:index 52 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
         lv2:designation lv2:enabled ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0

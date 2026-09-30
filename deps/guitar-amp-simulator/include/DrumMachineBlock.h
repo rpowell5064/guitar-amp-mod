@@ -84,6 +84,7 @@ public:
         resynth.reset();
         room.reset();
         sendHp.reset();
+        bodyShelf.reset();
         queueCount   = 0;
         nextScanStep = kNoStep;
         lastStepsPerBeat = -1.0;
@@ -142,6 +143,12 @@ public:
     // is the opposite of glue. Blending a hard-crushed COPY under the
     // untouched dry raises the body by several dB with the transients still
     // intact, which is what makes a kit sound dense rather than squashed.
+    // Weight for the kick and the low toms. A low SHELF, not a resonator: a
+    // shelf is minimum-phase with a short impulse response, so it raises the
+    // low end that is already there without adding any decay. A resonant boost
+    // would ring, and ringing at 60-90 Hz is exactly what smears consecutive
+    // double-kick strokes into each other — which is the thing to preserve.
+    void setBodyAmount(float a) noexcept { bodyAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
     void setCompAmount(float a) noexcept { compAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
     void setRoomAmount(float a) noexcept { roomAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
     void setRoomSize(float a)   noexcept { roomSize = std::clamp(a, 0.0f, 1.0f); applyBus(); }
@@ -222,6 +229,11 @@ public:
             renderVoices(buf, 0, n);
             lastFiredStep = -1;
         }
+
+        // Body first: tone before dynamics, so the compressor responds to the
+        // weight the player has dialled in rather than fighting it.
+        if (bodyAmt > 0.005f)
+            for (int i = 0; i < n; ++i) buf[i] = bodyShelf.process(buf[i]) * bodyTrim;
 
         // Parallel compression, then room, then level. The level control comes
         // last so the compressor's operating point never moves with the fader.
@@ -471,6 +483,15 @@ private:
 
     // Map the two bus knobs onto the shared Compressor and Plate blocks.
     void applyBus() noexcept {
+        // 90 Hz: above the kick's 47-60 Hz fundamental so it lifts the body
+        // rather than the sub-rumble, and low enough to leave the snare's
+        // ~185 Hz shell alone. Shelf, so the group delay stays short.
+        bodyShelf.setCoeffs(Filters::lowshelf(90.0, bodyAmt * 9.0f, fs));
+        // Compensate the level the shelf adds, so the control changes TONE
+        // rather than volume. Without it, full Body pushed the bus to 1.12
+        // full scale and clipped. Measured peak rise was ~4.7 dB at maximum.
+        bodyTrim = std::pow(10.0f, -bodyAmt * 4.5f / 20.0f);
+
         comp.setBypass(compAmt <= 0.005f);
         // The parallel path's settings are FIXED, and deliberately extreme —
         // its job is to be crushed. The knob controls how much of it is
@@ -506,9 +527,9 @@ private:
 
     std::vector<float>  scratch, parallel, sendA, sendB;
     CompressorBlock     comp;
-    BiquadFilter        sendHp;
+    BiquadFilter        sendHp, bodyShelf;
     PlateReverbBlock    room;
-    float compAmt{0.0f}, roomAmt{0.0f}, roomSize{0.35f};
+    float compAmt{0.0f}, roomAmt{0.0f}, roomSize{0.35f}, bodyAmt{0.0f}, bodyTrim{1.0f};
 
     // Voices
     ResynthVoices resynth;

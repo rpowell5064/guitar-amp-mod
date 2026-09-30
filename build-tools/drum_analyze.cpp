@@ -63,9 +63,17 @@
 // resolve a 47 Hz kick fundamental, short enough to follow its sweep. Zero
 // padding to 4x costs nothing offline and sharpens the parabolic peak
 // interpolation well past the raw bin spacing.
-static constexpr size_t kWin  = 1024;
-static constexpr size_t kPad  = 4096;
-static constexpr size_t kHop  = 128;          // 2.7 ms
+// Runtime-settable, because one window size does not fit the whole kit. A
+// 1024-point window is 23 ms — barely ONE CYCLE of a 47 Hz kick fundamental,
+// with a mainlobe ~170 Hz wide, so the kick's lowest and most important
+// partials are smeared into each other and largely missed. Measured, the
+// sinusoidal part of the kick was 12 dB down at 20-40 Hz and the missing
+// energy fell into the residual, where it was resynthesised as NOISE: a kick
+// rendered as rumble rather than as a note. Low drums need a longer window;
+// cymbals and hats do not care, since their partials are high and dense.
+static size_t kWin = 1024;
+static size_t kPad = 4096;
+static size_t kHop = 128;          // 2.7 ms
 static constexpr double kHannMeanSq = 0.375;  // mean(w^2) for Hann
 
 // ── Model ────────────────────────────────────────────────────────────────────
@@ -186,7 +194,7 @@ static std::vector<FramePeak> framePeaks(const Frame& f, double fs, double floor
 // and never link into a long track.
 static std::vector<Partial> trackPartials(const std::vector<Frame>& frames, double fs,
                                           int maxPartials, int minLen, float maxJitter,
-                                          float maxExcursion, float ampFloor) {
+                                          float maxWanderSemis, float ampFloor) {
     struct Live { Partial p; double lastFreq; int missing; bool open; };
     std::vector<Live> live;
     std::vector<Partial> done;
@@ -350,12 +358,44 @@ static std::vector<Partial> trackPartials(const std::vector<Frame>& frames, doub
             [&](const Partial& p) {
                 if (p.peakAmp() < ampFloor * loudest) return true;
                 for (const Partial* e : exempt) if (e == &p) return false;
+                if (p.freq.size() < 3) return true;
 
-                float lo = p.freq[0], hi = p.freq[0], sum = 0.0f;
-                for (float f : p.freq) { lo = std::min(lo, f); hi = std::max(hi, f); sum += f; }
-                const float mean = sum / float(p.freq.size());
-                if (mean < 1.0f) return true;
-                if ((hi - lo) / mean > maxExcursion) return true;
+                // Reject on how far a track departs from a SMOOTH TREND, not on
+                // how far it travels. Total excursion was the wrong test: a
+                // kick's fundamental sweeps 112 -> 47 Hz, so every harmonic
+                // sweeps with it, and a 15% excursion limit threw away every
+                // partial except the two or three loudest ones that were
+                // exempt. The kick's tonal content then fell into the residual
+                // and got resynthesised as NOISE — measured, the sinusoidal
+                // part was 4-18 dB down across the whole spectrum and the kick
+                // was mostly hiss.
+                //
+                // A real glide is smooth and monotonic in log-frequency; a
+                // track threaded through noise peaks wanders erratically. So
+                // fit a line to log2(f) over time and measure the residual
+                // around it, in semitones.
+                double sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+                for (size_t i = 0; i < p.freq.size(); ++i) {
+                    if (p.freq[i] < 1.0f) return true;
+                    const double x = double(i);
+                    const double y = std::log2(double(p.freq[i]));
+                    const double w = p.amp[i];
+                    sw += w; sx += w * x; sy += w * y; sxx += w * x * x; sxy += w * x * y;
+                }
+                if (sw < 1e-12) return true;
+                const double den = sw * sxx - sx * sx;
+                if (std::fabs(den) < 1e-20) return true;
+                const double sl = (sw * sxy - sx * sy) / den;
+                const double ic = (sy - sl * sx) / sw;
+
+                double acc = 0.0;
+                for (size_t i = 0; i < p.freq.size(); ++i) {
+                    const double r = std::log2(double(p.freq[i])) - (ic + sl * double(i));
+                    acc += p.amp[i] * r * r;
+                }
+                const double semitones = 12.0 * std::sqrt(acc / sw);
+                if (semitones > maxWanderSemis) return true;
+
                 return maxJitter > 0.0f && p.jitter > maxJitter;
             }), done.end());
     }
@@ -777,7 +817,8 @@ int main(int argc, char** argv) {
     int  maxPartials = 24;   // fewer, but genuinely tonal; the rest becomes noise
     double maxSeconds = 0.0;      // 0 = keep the whole hit
     double maxJitter  = 0.0;      // 0 = no high-frequency-wobble test
-    double maxExcursion = 0.15;   // reject a track that wanders >15% of its mean
+    double maxWanderSemis = 0.60; // reject a track departing >0.6 semitone from a smooth glide
+    int    winSize = 0;           // 0 = default 1024; larger resolves low fundamentals
     int    denseModes   = 0;      // >0 = model as fixed modes (cymbals, hats)
     double noiseSeconds = 0.0;    // 0 = model noise for the whole hit
     double ampFloor     = 0.02;   // and any quieter than 2% of the loudest
@@ -789,12 +830,19 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--emit")     && i + 1 < argc) emitPath = argv[++i];
         if (!std::strcmp(argv[i], "--max-seconds") && i + 1 < argc) maxSeconds = std::atof(argv[++i]);
         if (!std::strcmp(argv[i], "--max-jitter")  && i + 1 < argc) maxJitter  = std::atof(argv[++i]);
-        if (!std::strcmp(argv[i], "--max-excursion") && i + 1 < argc) maxExcursion = std::atof(argv[++i]);
+        if (!std::strcmp(argv[i], "--max-wander") && i + 1 < argc) maxWanderSemis = std::atof(argv[++i]);
+        if (!std::strcmp(argv[i], "--win") && i + 1 < argc) winSize = std::atoi(argv[++i]);
         if (!std::strcmp(argv[i], "--amp-floor") && i + 1 < argc) ampFloor = std::atof(argv[++i]);
         if (!std::strcmp(argv[i], "--dense-modes") && i + 1 < argc) denseModes = std::atoi(argv[++i]);
         if (!std::strcmp(argv[i], "--noise-seconds") && i + 1 < argc) noiseSeconds = std::atof(argv[++i]);
     }
     const bool writeWavs = emitPath.empty();
+
+    if (winSize >= 256 && winSize <= 8192) {
+        kWin = size_t(winSize);
+        kPad = kWin * 4;
+        kHop = kWin / 8;          // keep the 8x overlap
+    }
 
     std::vector<float> L, R;
     uint32_t rate = 0;
@@ -841,7 +889,7 @@ int main(int argc, char** argv) {
         modes = extractDenseModes(x, fs, denseModes);
     } else {
         partials = trackPartials(frames, fs, maxPartials, 6, float(maxJitter),
-                                 float(maxExcursion), float(ampFloor));
+                                 float(maxWanderSemis), float(ampFloor));
     }
 
     std::printf("  %zu STFT frames -> %zu tracked partials, %zu dense modes\n",

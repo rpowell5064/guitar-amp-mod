@@ -43,7 +43,23 @@ INSTRUMENTS = [
 #
 # Cymbals are capped because their tails dominate the model size (an 18 s ride
 # is mostly inaudible decay) and a practice plugin retriggers long before then.
-# (path, model seconds, velocity layers, partial budget, dense modes)
+# (path, model seconds, velocity layers, partial budget, dense modes, window)
+#
+# ANALYSIS WINDOW matters enormously for the low drums and was set far too
+# short. At 1024 points (23 ms) a 47 Hz kick fundamental gets barely one cycle
+# and a ~170 Hz mainlobe, so its lowest partials were smeared together and
+# largely missed — the energy then fell into the residual and was resynthesised
+# as NOISE, i.e. the kick came out as rumble rather than as a note. Measured
+# band-distance from the real recording, by window:
+#
+#            1024     2048     4096
+#   kick    10.82     4.83     7.22
+#   tom     14.57    10.08     5.29     <- "tom groove sounds really bad"
+#   snare    5.95     5.62     5.13
+#
+# Cymbals and hats keep the short window: their partials are high and dense, a
+# long window smears their attack, and their modes come from a separate
+# 65536-point analysis anyway.
 #
 # Two model types, chosen per instrument:
 #
@@ -70,18 +86,18 @@ INSTRUMENTS = [
 # opposite — their shell modes are the sound.
 SOURCES = {
     #                path                      secs  vel  parts  modes
-    "KICK":       ("kick_24/kick/kick",        3.0, 4, 24,   0),
-    "SNARE":      ("snare_14/center/top",      3.0, 4, 24,   0),
-    "SIDESTICK":  ("snare_14/sidestick/top",   2.0, 3, 16,   0),
-    "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 24,   0),
-    "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 24,   0),
-    "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 24,   0),
-    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  0, 300),
-    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  0, 240),
-    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0, 450),
-    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 600),
-    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0, 600),
-    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 500),
+    "KICK":       ("kick_24/kick/kick",        3.0, 4, 32,   0, 2048),
+    "SNARE":      ("snare_14/center/top",      3.0, 4, 28,   0, 4096),
+    "SIDESTICK":  ("snare_14/sidestick/top",   2.0, 3, 16,   0, 2048),
+    "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 28,   0, 4096),
+    "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 28,   0, 4096),
+    "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 28,   0, 4096),
+    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  0, 300, 1024),
+    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  0, 240, 1024),
+    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0, 450, 1024),
+    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 600, 1024),
+    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0, 600, 1024),
+    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 500, 1024),
 }
 
 # How much of the noise residual to keep, in seconds. For a modal instrument
@@ -124,10 +140,11 @@ def velocity_windows(n):
     return [(edges[i], edges[i + 1] - 1 if i + 1 < n else 127) for i in range(n)]
 
 
-def analyse(analyzer, wav_path, out_path, max_seconds, partials, modes):
+def analyse(analyzer, wav_path, out_path, max_seconds, partials, modes, win):
     cmd = [analyzer, wav_path, "--emit", out_path, "--quiet"]
     if max_seconds:
         cmd += ["--max-seconds", str(max_seconds)]
+    cmd += ["--win", str(win)]
     if modes:
         cmd += ["--dense-modes", str(modes),
                 "--noise-seconds", str(NOISE_SECONDS_MODAL)]
@@ -165,7 +182,7 @@ def main():
     print("-" * 64)
 
     for name, index in INSTRUMENTS:
-        rel, max_sec, want, budget, nmodes = SOURCES[name]
+        rel, max_sec, want, budget, nmodes, win = SOURCES[name]
         hits = source_hits(os.path.join(args.src, rel))
         if not hits:
             print("%-12s  !! no sources under %s" % (name, rel))
@@ -184,7 +201,7 @@ def main():
                 print("%-12s  !! flac failed on %s" % (name, os.path.basename(flac)))
                 continue
 
-            stat = analyse(args.analyzer, wav, hit, max_sec, budget, nmodes)
+            stat = analyse(args.analyzer, wav, hit, max_sec, budget, nmodes, win)
             if stat is None:
                 print("%-12s  !! analysis failed on %s" % (name, os.path.basename(flac)))
                 continue

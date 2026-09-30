@@ -90,6 +90,7 @@ enum PracticePorts {
     P_DRUM_COMP,        // % blend of a crushed parallel copy
     P_DRUM_ROOM,        // % room mix
     P_DRUM_ROOM_SIZE,   // % small -> large
+    P_DRUM_BODY,        // % low-shelf weight for kick and low toms
 
     P_BYPASS,
     P_ENABLED,          // lv2:designation lv2:enabled — INVERTED (1 = processing on)
@@ -312,6 +313,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     p->drums.setCompAmount(portValue(p, P_DRUM_COMP, 35.0f) * 0.01f);
     p->drums.setRoomAmount(portValue(p, P_DRUM_ROOM, 30.0f) * 0.01f);
     p->drums.setRoomSize(portValue(p, P_DRUM_ROOM_SIZE, 35.0f) * 0.01f);
+    p->drums.setBodyAmount(portValue(p, P_DRUM_BODY, 30.0f) * 0.01f);
 
     // ── Looper ───────────────────────────────────────────────────────────────
     p->looper.setQuantize(portBool(p, P_LOOP_QUANTIZE, true));
