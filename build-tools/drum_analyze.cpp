@@ -425,6 +425,52 @@ static double spectralDistanceDb(const std::vector<float>& a, const std::vector<
     return frames ? total / frames : 0.0;
 }
 
+// ── Model file ───────────────────────────────────────────────────────────────
+//
+// One analysed hit, quantised. This is what ships — there is no audio in it.
+//
+//   header   "HXD1", rate, counts
+//   partials per track: start frame, length, then (freq, amp) per frame
+//   noise    band RMS per frame
+//
+// Frequencies go in quarter-Hz steps (0.25 Hz resolution to 16 kHz fits a
+// uint16 exactly). Amplitudes go in a 96 dB logarithmic byte, because drum
+// decays are exponential: a linear byte would quantise the tail into steps
+// while wasting most of its range on the first few milliseconds.
+static uint8_t quantAmp(double a) {
+    if (a <= 1e-5) return 0;                       // 0 is reserved for silence
+    const double db = 20.0 * std::log10(a);
+    if (db <= -96.0) return 0;
+    const double t = (db + 96.0) / 96.0;           // 0..1 over -96..0 dB
+    return uint8_t(std::clamp(int(t * 254.0 + 0.5) + 1, 1, 255));
+}
+
+static void put16(std::vector<uint8_t>& v, uint16_t x) { v.push_back(uint8_t(x)); v.push_back(uint8_t(x >> 8)); }
+static void put32(std::vector<uint8_t>& v, uint32_t x) { for (int i = 0; i < 4; ++i) v.push_back(uint8_t(x >> (8 * i))); }
+
+static std::vector<uint8_t> encodeHit(const std::vector<Partial>& ps, const NoiseModel& nm, double fs) {
+    std::vector<uint8_t> v;
+    v.push_back('H'); v.push_back('X'); v.push_back('D'); v.push_back('1');
+    put32(v, uint32_t(fs));
+    put16(v, uint16_t(ps.size()));
+    put16(v, uint16_t(kHop));
+    put16(v, uint16_t(nm.frames.size()));
+    v.push_back(uint8_t(NoiseModel::kBands));
+    v.push_back(0);
+
+    for (const Partial& p : ps) {
+        put16(v, uint16_t(p.start));
+        put16(v, uint16_t(p.amp.size()));
+        for (size_t i = 0; i < p.amp.size(); ++i) {
+            put16(v, uint16_t(std::clamp(int(p.freq[i] * 4.0f + 0.5f), 0, 65535)));
+            v.push_back(quantAmp(p.amp[i]));
+        }
+    }
+    for (const auto& fr : nm.frames)
+        for (int b = 0; b < NoiseModel::kBands; ++b) v.push_back(quantAmp(fr[b]));
+    return v;
+}
+
 // ── WAV out ──────────────────────────────────────────────────────────────────
 
 static void writeWav(const std::string& path, const std::vector<float>& x, double fs) {
@@ -453,12 +499,18 @@ int main(int argc, char** argv) {
     }
     const std::string inPath = argv[1];
     const std::string outDir = (argc > 2 && argv[2][0] != '-') ? argv[2] : ".";
-    bool verbose = false;
+    bool verbose = false, quiet = false;
     int  maxPartials = 40;
+    double maxSeconds = 0.0;      // 0 = keep the whole hit
+    std::string emitPath;
     for (int i = 2; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--verbose")) verbose = true;
+        if (!std::strcmp(argv[i], "--quiet"))   quiet = true;
         if (!std::strcmp(argv[i], "--partials") && i + 1 < argc) maxPartials = std::atoi(argv[++i]);
+        if (!std::strcmp(argv[i], "--emit")     && i + 1 < argc) emitPath = argv[++i];
+        if (!std::strcmp(argv[i], "--max-seconds") && i + 1 < argc) maxSeconds = std::atof(argv[++i]);
     }
+    const bool writeWavs = emitPath.empty();
 
     std::vector<float> L, R;
     uint32_t rate = 0;
@@ -471,6 +523,23 @@ int main(int argc, char** argv) {
 
     const size_t onset = findOnset(L);
     std::vector<float> x(L.begin() + onset, L.end());
+
+    // Cap the modelled length. An 18 s ride is mostly inaudible tail, and its
+    // noise frames dominate the model size (152 kB of 190 kB); trimming is a
+    // far better trade than shipping a decay nobody hears under a guitar.
+    if (maxSeconds > 0.0) {
+        const size_t cap = size_t(maxSeconds * fs);
+        if (x.size() > cap) {
+            x.resize(cap);
+            // Fade the new end so the truncation is not a step.
+            // Linear, and long (up to a second). A short or squared fade is a
+            // fast amplitude move the partial tracker cannot follow, and it
+            // measurably worsened the fit rather than just shortening it.
+            const size_t fade = std::min<size_t>(cap / 4, size_t(1.0 * fs));
+            for (size_t i = 0; i < fade; ++i)
+                x[cap - fade + i] *= float(fade - i) / float(fade);
+        }
+    }
     float pk = 0.0f;
     for (float s : x) pk = std::max(pk, std::fabs(s));
     std::printf("%s\n  %zu frames @ %.0f Hz, peak %.3f\n", inPath.c_str(), x.size(), fs, pk);
@@ -512,16 +581,33 @@ int main(int argc, char** argv) {
                 bytesP + bytesN, bytesP, bytesN, bytesW,
                 double(bytesW) / double(bytesP + bytesN + 1));
 
-    std::string base = inPath;
-    const size_t slash = base.find_last_of("/\\");
-    if (slash != std::string::npos) base = base.substr(slash + 1);
-    const size_t dot = base.find_last_of('.');
-    if (dot != std::string::npos) base = base.substr(0, dot);
+    if (!emitPath.empty()) {
+        const std::vector<uint8_t> blob = encodeHit(partials, noise, fs);
+        FILE* f = std::fopen(emitPath.c_str(), "wb");
+        if (!f) { std::printf("  !! cannot write %s\n", emitPath.c_str()); return 1; }
+        std::fwrite(blob.data(), 1, blob.size(), f);
+        std::fclose(f);
+        if (!quiet) std::printf("  emitted %s (%zu B)\n", emitPath.c_str(), blob.size());
+        // Machine-readable line for the batch builder's summary table.
+        // Machine-readable summary for the kit builder. The source peak is
+        // what lets it normalise each instrument: the close mics in a sampled
+        // kit are recorded at very different gains.
+        std::printf("STAT %s %.2f %zu %zu %zu %.6f\n", emitPath.c_str(), dFull,
+                    partials.size(), noise.frames.size(), blob.size(), double(pk));
+    }
 
-    writeWav(outDir + "/" + base + "_orig.wav",    x,       fs);
-    writeWav(outDir + "/" + base + "_resynth.wav", resynth, fs);
-    writeWav(outDir + "/" + base + "_sines.wav",   sines,   fs);
-    writeWav(outDir + "/" + base + "_noise.wav",   noiseSg, fs);
-    std::printf("  wrote %s_{orig,resynth,sines,noise}.wav\n\n", base.c_str());
+    if (writeWavs) {
+        std::string base = inPath;
+        const size_t slash = base.find_last_of("/\\");
+        if (slash != std::string::npos) base = base.substr(slash + 1);
+        const size_t dot = base.find_last_of('.');
+        if (dot != std::string::npos) base = base.substr(0, dot);
+
+        writeWav(outDir + "/" + base + "_orig.wav",    x,       fs);
+        writeWav(outDir + "/" + base + "_resynth.wav", resynth, fs);
+        writeWav(outDir + "/" + base + "_sines.wav",   sines,   fs);
+        writeWav(outDir + "/" + base + "_noise.wav",   noiseSg, fs);
+        std::printf("  wrote %s_{orig,resynth,sines,noise}.wav\n\n", base.c_str());
+    }
     return 0;
 }

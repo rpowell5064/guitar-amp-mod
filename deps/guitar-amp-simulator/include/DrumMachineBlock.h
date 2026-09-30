@@ -14,6 +14,7 @@
 // buffers the pi-Stomp runs, where a swung sixteenth is often several blocks
 // away from its own downbeat.
 #include "DrumPatterns.h"
+#include "DrumResynth.h"
 #include "DrumVoices.h"
 #include "TransportClock.h"
 #include <algorithm>
@@ -44,6 +45,7 @@ public:
     // ── Lifecycle ────────────────────────────────────────────────────────────
     void prepare(double sampleRate) noexcept {
         fs = (sampleRate > 0.0) ? sampleRate : 48000.0;
+        resynth.prepare(fs);
         kick.prepare(fs);
         snare.prepare(fs);
         rim.prepare(fs);
@@ -65,6 +67,7 @@ public:
         kick.reset(); snare.reset(); rim.reset();
         tomHi.reset(); tomMid.reset(); tomFloor.reset();
         hat.reset(); crash.reset(); ride.reset();
+        resynth.reset();
         queueCount   = 0;
         nextScanStep = kNoStep;
     }
@@ -99,6 +102,14 @@ public:
     void setInstrumentMuted(int inst, bool m) noexcept {
         if (inst >= 0 && inst < INST_COUNT) muted[inst] = m;
     }
+
+    // ── Resynthesised kit ────────────────────────────────────────────────────
+    // When a kit is loaded, its instruments play from the analysed models and
+    // the synthesised voices are used only for whatever it does not cover.
+    void setResynthKit(const ResynthKit* k) noexcept { resynth.setKit(k); }
+    const ResynthKit* resynthKit() const noexcept    { return resynth.currentKit(); }
+    void setResynthPartialLimit(int n) noexcept      { resynth.setPartialLimit(n); }
+    void setResynthVariation(float v) noexcept       { resynth.setVariation(v); }
 
     // Kit voicing, exposed so a metal kit and a jazz kit are the same code.
     void setKickTuning(float semis) noexcept { kick.setTuning(semis); }
@@ -310,6 +321,16 @@ private:
         if (n <= 0) return;
         float* p = out + from;
 
+        // Analysed models are already at recorded levels, so they take the
+        // balance and master gain but NOT kVoiceTrim, which exists only to
+        // equalise the synthesised voices' raw output.
+        if (resynth.currentKit()) {
+            float g[INST_COUNT];
+            for (int i = 0; i < INST_COUNT; ++i)
+                g[i] = muted[i] ? 0.0f : kBalance[i] * trims[i] * master;
+            resynth.render(p, n, g);
+        }
+
         kick    .render(p, n, voiceGain(INST_KICK));
         snare   .render(p, n, voiceGain(INST_SNARE));
         rim     .render(p, n, voiceGain(INST_SIDESTICK));
@@ -322,6 +343,9 @@ private:
     }
 
     void strike(uint8_t inst, float vel) noexcept {
+        // The recorded model wins wherever the kit has one; the synthesised
+        // voice is the fallback, not the default.
+        if (resynth.covers(inst)) { resynth.trigger(inst, vel); return; }
         switch (inst) {
             case INST_KICK:       kick.trigger(vel); break;
             case INST_SNARE:      snare.trigger(vel); break;
@@ -341,6 +365,8 @@ private:
     }
 
     // Voices
+    ResynthVoices resynth;
+
     KickVoice   kick;
     SnareVoice  snare;
     RimVoice    rim;
