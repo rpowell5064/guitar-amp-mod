@@ -68,3 +68,6 @@ build-tools/out_wsl_tsan/
 /out_kit/
 /out_real/
 /out_ab/
+/out_ab2/
+/out_new/
+/out_old/

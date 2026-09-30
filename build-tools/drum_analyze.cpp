@@ -74,6 +74,7 @@ struct Partial {
     int                start{0};   // first frame index
     std::vector<float> freq;       // Hz, per frame
     std::vector<float> amp;        // linear amplitude, per frame
+    float              jitter{0.0f};  // residual frequency wobble after smoothing
     float peakAmp() const {
         float p = 0.0f;
         for (float a : amp) p = std::max(p, a);
@@ -184,7 +185,8 @@ static std::vector<FramePeak> framePeaks(const Frame& f, double fs, double floor
 // frequency in frame after frame, whereas noise throws up peaks that scatter
 // and never link into a long track.
 static std::vector<Partial> trackPartials(const std::vector<Frame>& frames, double fs,
-                                          int maxPartials, int minLen) {
+                                          int maxPartials, int minLen, float maxJitter,
+                                          float maxExcursion, float ampFloor) {
     struct Live { Partial p; double lastFreq; int missing; bool open; };
     std::vector<Live> live;
     std::vector<Partial> done;
@@ -215,10 +217,17 @@ static std::vector<Partial> trackPartials(const std::vector<Frame>& frames, doub
                 L.lastFreq = peaks[bestIdx].freq;
                 L.missing  = 0;
             } else {
-                // Tolerate one dropped frame before closing: a partial can dip
-                // below the peak threshold briefly without having ended.
-                if (++L.missing > 2) { L.open = false; }
-                else { L.p.freq.push_back(L.p.freq.back()); L.p.amp.push_back(0.0f); }
+                // Tolerate a couple of dropped frames: a partial can dip below
+                // the peak threshold briefly without having ended. Bridge the
+                // gap by HOLDING the amplitude (decayed slightly), never by
+                // inserting a zero — a track that drops to silence and comes
+                // back flickers, and a flickering partial is heard as tremolo.
+                if (++L.missing > 2) {
+                    L.open = false;
+                } else {
+                    L.p.freq.push_back(L.p.freq.back());
+                    L.p.amp.push_back(L.p.amp.back() * 0.7f);
+                }
             }
         }
 
@@ -249,6 +258,107 @@ static std::vector<Partial> trackPartials(const std::vector<Frame>& frames, doub
                                   return int(p.amp.size()) < minLen || p.peakAmp() < 1e-4f;
                               }),
                done.end());
+
+    // ── Smooth the frequency contours, and drop the ones that never settle ──
+    //
+    // A peak's frequency is re-estimated every frame from a noisy spectrum, so
+    // successive estimates wobble by a fraction of a bin even for a perfectly
+    // steady partial. Replaying that wobble as real frequency modulation is
+    // audible as warble — the characteristic artefact of naive sinusoidal
+    // resynthesis. A real drum partial holds one frequency or glides smoothly,
+    // so median-filtering the contour removes the estimation noise while
+    // preserving a genuine glide such as a kick's pitch drop.
+    //
+    // The jitter REMAINING after smoothing is then a good tonality test: a real
+    // partial sits close to its own smoothed contour, whereas a track threaded
+    // through noise peaks keeps jumping away from it. Those are dropped rather
+    // than resynthesised, because the noise model already represents that
+    // energy properly — keeping them both warbles AND double-counts.
+    for (Partial& p : done) {
+        const size_t n = p.freq.size();
+        if (n < 3) { p.jitter = 0.0f; continue; }
+
+        std::vector<float> med(n);
+        for (size_t i = 0; i < n; ++i) {
+            const size_t a = (i >= 2) ? i - 2 : 0;
+            const size_t b = std::min(n - 1, i + 2);
+            std::vector<float> w(p.freq.begin() + a, p.freq.begin() + b + 1);
+            std::nth_element(w.begin(), w.begin() + w.size() / 2, w.end());
+            med[i] = w[w.size() / 2];
+        }
+        // A light moving average after the median removes the staircase the
+        // median itself leaves behind.
+        std::vector<float> sm(n);
+        for (size_t i = 0; i < n; ++i) {
+            const size_t a = (i >= 1) ? i - 1 : 0;
+            const size_t b = std::min(n - 1, i + 1);
+            float acc = 0.0f; int c = 0;
+            for (size_t k = a; k <= b; ++k) { acc += med[k]; ++c; }
+            sm[i] = acc / float(c);
+        }
+
+        double acc = 0.0, wsum = 0.0;
+        for (size_t i = 0; i < n; ++i) {
+            const double w = p.amp[i];                 // weight by audibility
+            acc  += w * std::fabs(double(p.freq[i]) - sm[i]) / std::max(20.0f, sm[i]);
+            wsum += w;
+        }
+        p.jitter = (wsum > 1e-12) ? float(acc / wsum) : 1.0f;
+        p.freq = sm;
+
+        // Amplitude gets a gentle 3-point average too: frame-to-frame
+        // amplitude noise reads as roughness on a sustained partial.
+        std::vector<float> sa(n);
+        for (size_t i = 0; i < n; ++i) {
+            const size_t a = (i >= 1) ? i - 1 : 0;
+            const size_t b = std::min(n - 1, i + 1);
+            float s = 0.0f; int c = 0;
+            for (size_t k = a; k <= b; ++k) { s += p.amp[k]; ++c; }
+            sa[i] = s / float(c);
+        }
+        p.amp = sa;
+    }
+
+    // ── Reject tracks that are not really partials ──────────────────────────
+    //
+    // The decisive test is not high-frequency wobble but slow WANDER. A track
+    // threaded through unrelated noise peaks drifts a long way over its life —
+    // measured on a real snare, tracks ran 1374 -> 1067 Hz and even 2494 ->
+    // 3405 Hz. A struck drum's partial does not rise in pitch as it decays, so
+    // those are noise, and resynthesising them as gliding tones is exactly the
+    // warble this is here to remove.
+    //
+    // Rejecting them is also self-correcting: the noise model is read off the
+    // spectrum with the KEPT partials notched out, so whatever is dropped here
+    // is automatically represented as noise instead — which is what it is.
+    {
+        float loudest = 0.0f;
+        for (const Partial& p : done) loudest = std::max(loudest, p.peakAmp());
+
+        std::vector<const Partial*> byAmp;
+        for (const Partial& p : done) byAmp.push_back(&p);
+        std::sort(byAmp.begin(), byAmp.end(),
+                  [](const Partial* a, const Partial* b) { return a->peakAmp() > b->peakAmp(); });
+
+        // The few loudest partials are structural and exempt from the wander
+        // test: a kick's fundamental legitimately sweeps 112 -> 47 Hz, which is
+        // a bigger excursion than any noise artefact.
+        std::vector<const Partial*> exempt(byAmp.begin(),
+                                           byAmp.begin() + std::min<size_t>(3, byAmp.size()));
+
+        done.erase(std::remove_if(done.begin(), done.end(),
+            [&](const Partial& p) {
+                if (p.peakAmp() < ampFloor * loudest) return true;
+                for (const Partial* e : exempt) if (e == &p) return false;
+
+                float lo = p.freq[0], hi = p.freq[0], sum = 0.0f;
+                for (float f : p.freq) { lo = std::min(lo, f); hi = std::max(hi, f); sum += f; }
+                const float mean = sum / float(p.freq.size());
+                if (mean < 1.0f) return true;
+                if ((hi - lo) / mean > maxExcursion) return true;
+                return maxJitter > 0.0f && p.jitter > maxJitter;
+            }), done.end());
+    }
     std::sort(done.begin(), done.end(), [](const Partial& a, const Partial& b) {
         return a.peakAmp() * a.amp.size() > b.peakAmp() * b.amp.size();
     });
@@ -500,8 +610,11 @@ int main(int argc, char** argv) {
     const std::string inPath = argv[1];
     const std::string outDir = (argc > 2 && argv[2][0] != '-') ? argv[2] : ".";
     bool verbose = false, quiet = false;
-    int  maxPartials = 40;
+    int  maxPartials = 24;   // fewer, but genuinely tonal; the rest becomes noise
     double maxSeconds = 0.0;      // 0 = keep the whole hit
+    double maxJitter  = 0.0;      // 0 = no high-frequency-wobble test
+    double maxExcursion = 0.15;   // reject a track that wanders >15% of its mean
+    double ampFloor     = 0.02;   // and any quieter than 2% of the loudest
     std::string emitPath;
     for (int i = 2; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--verbose")) verbose = true;
@@ -509,6 +622,9 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--partials") && i + 1 < argc) maxPartials = std::atoi(argv[++i]);
         if (!std::strcmp(argv[i], "--emit")     && i + 1 < argc) emitPath = argv[++i];
         if (!std::strcmp(argv[i], "--max-seconds") && i + 1 < argc) maxSeconds = std::atof(argv[++i]);
+        if (!std::strcmp(argv[i], "--max-jitter")  && i + 1 < argc) maxJitter  = std::atof(argv[++i]);
+        if (!std::strcmp(argv[i], "--max-excursion") && i + 1 < argc) maxExcursion = std::atof(argv[++i]);
+        if (!std::strcmp(argv[i], "--amp-floor") && i + 1 < argc) ampFloor = std::atof(argv[++i]);
     }
     const bool writeWavs = emitPath.empty();
 
@@ -546,15 +662,15 @@ int main(int argc, char** argv) {
 
     // ── Analyse ──────────────────────────────────────────────────────────────
     const auto frames   = stft(x);
-    const auto partials = trackPartials(frames, fs, maxPartials, 6);
+    const auto partials = trackPartials(frames, fs, maxPartials, 6, float(maxJitter),
+                                        float(maxExcursion), float(ampFloor));
 
     std::printf("  %zu STFT frames -> %zu tracked partials\n", frames.size(), partials.size());
     if (verbose) {
         for (size_t i = 0; i < std::min<size_t>(10, partials.size()); ++i) {
             const Partial& p = partials[i];
-            std::printf("    %2zu  %7.1f -> %7.1f Hz  peak %.4f  %zu frames (%.0f ms)\n",
-                        i, p.freq.front(), p.freq.back(), p.peakAmp(), p.amp.size(),
-                        1000.0 * p.amp.size() * kHop / fs);
+            std::printf("    %2zu  %7.1f -> %7.1f Hz  peak %.4f  jitter %.4f  %zu frames\n",
+                        i, p.freq.front(), p.freq.back(), p.peakAmp(), p.jitter, p.amp.size());
         }
     }
 

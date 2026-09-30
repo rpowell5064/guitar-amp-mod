@@ -43,19 +43,28 @@ INSTRUMENTS = [
 #
 # Cymbals are capped because their tails dominate the model size (an 18 s ride
 # is mostly inaudible decay) and a practice plugin retriggers long before then.
+# (path, model seconds, velocity layers, partial budget)
+#
+# The partial budget matters more than it looks. Resynthesised sinusoids are
+# the source of warble, so each instrument gets only as many as it genuinely
+# has. Measured on real hits, cymbals barely use theirs at all: a crash scores
+# 12.01 dB with 24 partials and 12.90 dB with NONE, because its sound is
+# essentially all noise. Spending 24 gliding tones to buy 0.9 dB is a bad
+# trade when those tones are what makes it sound electronic. Drums are the
+# opposite — their shell modes are the sound.
 SOURCES = {
-    "KICK":       ("kick_24/kick/kick",        3.0, 4),
-    "SNARE":      ("snare_14/center/top",      3.0, 4),
-    "SIDESTICK":  ("snare_14/sidestick/top",   2.0, 3),
-    "TOM_HI":     ("tom_14/center/cl",         3.5, 4),
-    "TOM_MID":    ("tom_18/center/cl",         4.0, 4),
-    "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4),
-    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4),
-    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3),
-    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4),
-    "CRASH":      ("crash_17/cr/cl",           8.0, 3),
-    "RIDE":       ("ride_22/rd/cl",            8.0, 3),
-    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3),
+    "KICK":       ("kick_24/kick/kick",        3.0, 4, 24),
+    "SNARE":      ("snare_14/center/top",      3.0, 4, 24),
+    "SIDESTICK":  ("snare_14/sidestick/top",   2.0, 3, 16),
+    "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 24),
+    "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 24),
+    "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 24),
+    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  6),
+    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  6),
+    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  6),
+    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  4),
+    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  8),   # the bell ping IS tonal
+    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  8),
 }
 
 VL_RE = re.compile(r"_vl(\d+)_rr(\d+)\.flac$", re.I)
@@ -94,10 +103,11 @@ def velocity_windows(n):
     return [(edges[i], edges[i + 1] - 1 if i + 1 < n else 127) for i in range(n)]
 
 
-def analyse(analyzer, wav_path, out_path, max_seconds):
+def analyse(analyzer, wav_path, out_path, max_seconds, partials):
     cmd = [analyzer, wav_path, "--emit", out_path, "--quiet"]
     if max_seconds:
         cmd += ["--max-seconds", str(max_seconds)]
+    cmd += ["--partials", str(partials)]
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
         return None
@@ -130,7 +140,7 @@ def main():
     print("-" * 64)
 
     for name, index in INSTRUMENTS:
-        rel, max_sec, want = SOURCES[name]
+        rel, max_sec, want, budget = SOURCES[name]
         hits = source_hits(os.path.join(args.src, rel))
         if not hits:
             print("%-12s  !! no sources under %s" % (name, rel))
@@ -149,7 +159,7 @@ def main():
                 print("%-12s  !! flac failed on %s" % (name, os.path.basename(flac)))
                 continue
 
-            stat = analyse(args.analyzer, wav, hit, max_sec)
+            stat = analyse(args.analyzer, wav, hit, max_sec, budget)
             if stat is None:
                 print("%-12s  !! analysis failed on %s" % (name, os.path.basename(flac)))
                 continue
