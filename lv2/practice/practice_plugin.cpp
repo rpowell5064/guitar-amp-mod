@@ -297,6 +297,11 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     p->drums.setInstrumentTrim(INST_CRASH,      trimCym);
     p->drums.setInstrumentTrim(INST_RIDE,       trimCym);
     p->drums.setInstrumentTrim(INST_RIDE_BELL,  trimCym);
+    // China and stack are cymbals, the rimshot is a snare articulation, so
+    // they ride the faders a player would expect rather than getting their own.
+    p->drums.setInstrumentTrim(INST_CHINA,      trimCym);
+    p->drums.setInstrumentTrim(INST_STACK,      trimCym);
+    p->drums.setInstrumentTrim(INST_SNARE_RIM,  trimSnr);
 
     p->drums.setKickTuning(portValue(p, P_KICK_TUNE, 0.0f));
     p->drums.setKickDecay(portValue(p, P_KICK_DECAY, 0.42f));

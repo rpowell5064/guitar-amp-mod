@@ -327,6 +327,7 @@ public:
     }
     void reset() {
         for (auto& v : voices) v.active = false;
+        for (auto& b : banks) { b = ModeBank{}; }
         nextBank = 0;
         age = 0;
     }
@@ -359,8 +360,10 @@ public:
         }
         if (!best) return;
 
-        // Hi-hats: one stand, so a new hat silences whatever is ringing.
-        if (inst == INST_HAT_CLOSED || inst == INST_HAT_PEDAL || inst == INST_HAT_OPEN)
+        // Hi-hat choking is handled inside the shared bank (closing the hat
+        // damps the ring); here it only needs to stop the previous hat's
+        // noise burst.
+        if (inst == INST_HAT_CLOSED || inst == INST_HAT_PEDAL)
             for (auto& v : voices)
                 if (v.active && (v.inst == INST_HAT_CLOSED || v.inst == INST_HAT_PEDAL ||
                                  v.inst == INST_HAT_OPEN))
@@ -395,20 +398,11 @@ public:
         v->detune = 1.0f + variation * 0.003f * urand(v->order);
         v->trim   = std::pow(10.0f, variation * 0.5f * urand(v->order * 7919u) / 20.0f);
 
-        // Dense modes: one damped rotator each, struck at t = 0.
-        const int nm = std::min<int>(int(best->hit.modes.size()), kMaxModes);
-        v->numModes = nm;
-        for (int i = 0; i < nm; ++i) {
-            const ResynthMode& m = best->hit.modes[i];
-            const float w = 2.0f * float(M_PI) * m.freq * v->detune / float(fs);
-            const float r = std::exp(-6.907755f / std::max(1e-4f, m.t60 * float(fs)));
-            v->mode[i].cr = r * std::cos(w);
-            v->mode[i].ci = r * std::sin(w);
-            const float ph = modePhase(i);
-            const float a  = m.amp * v->gain * v->trim;
-            v->mode[i].re = a * std::cos(ph);
-            v->mode[i].im = a * std::sin(ph);
-        }
+        // Modal instruments excite their shared persistent bank instead of
+        // carrying their own oscillators; the voice then handles only the
+        // noise (the stick attack).
+        v->numModes = 0;
+        if (!best->hit.modes.empty()) exciteBank(inst, vel, v->gain * v->trim);
 
         const int np = std::min<int>(int(best->hit.partials.size()), partialLimit);
         v->numOsc = np;
@@ -435,7 +429,7 @@ public:
         if (!kit) return;
         for (int i = 0; i < n; ++i) {
             bus.tick();
-            float acc = 0.0f;
+            float acc = renderBanks(instGain);
             for (auto& v : voices) {
                 if (!v.active) continue;
                 acc += renderSample(v) * (instGain ? instGain[v.inst] : 1.0f);
@@ -457,6 +451,27 @@ private:
     // unlike the unit rotators the tracked partials use.
     struct ModeOsc { float re, im, cr, ci; };
 
+    // ONE persistent bank per cymbal, not one voice per strike.
+    //
+    // A real cymbal struck repeatedly is not many cymbals: it is one piece of
+    // metal whose modes are re-excited, so a new strike ADDS energy to what is
+    // already ringing. Allocating a fresh voice per hit modelled it as a stack
+    // of independent copies, and a ride on eighth notes needs about 43 of them
+    // (5.3 hits/s over an 8 s decay) against a 12-voice pool — so the pool
+    // stole voices every couple of seconds and cut a ringing cymbal dead. That
+    // is the "repeat glitch".
+    //
+    // Exciting a persistent bank is both the physically correct model and far
+    // cheaper: one bank per cymbal regardless of how fast it is played, and the
+    // ring carries over the next strike the way a real one does.
+    struct ModeBank {
+        ModeOsc osc[kMaxModes];
+        int     count{0};        // modes in this bank
+        int     live{0};         // still above the audibility floor
+        const ResynthHit* src{nullptr};
+        bool    active{false};
+    };
+
     struct Voice {
         const ResynthHit* hit{nullptr};
         Osc      osc[kMaxPartials];
@@ -473,6 +488,93 @@ private:
     static float urand(uint32_t s) {          // deterministic per voice, in [-1,1]
         s ^= s << 13; s ^= s >> 17; s ^= s << 5;
         return float(int32_t(s)) * (1.0f / 2147483648.0f);
+    }
+
+    // Hi-hats are ONE pair of cymbals on one stand, so closed, pedal and open
+    // share a bank — which is also what makes closing the hat damp an open
+    // ring, rather than leaving two hats sounding at once.
+    static int bankIndexFor(int inst) {
+        if (inst == INST_HAT_PEDAL || inst == INST_HAT_OPEN) return INST_HAT_CLOSED;
+        return inst;
+    }
+
+    // Harder strikes are BRIGHTER, not merely louder: the high modes come up
+    // faster than the low ones. Raising a level below 1 to a larger exponent
+    // does exactly that, and it is why one mode set can serve every velocity.
+    static float velExcite(float vel01, float freq) {
+        const float base = std::clamp(0.18f + 0.82f * vel01, 0.02f, 1.0f);
+        const float expo = 1.0f + std::min(freq, 14000.0f) / 9000.0f;
+        return std::pow(base, expo);
+    }
+
+    void exciteBank(int inst, float vel01, float gain) {
+        const int bi = bankIndexFor(inst);
+        ModeBank& B = banks[bi];
+
+        // All velocities share ONE mode set — the hardest layer's. A cymbal's
+        // modes do not move with how hard it is hit, only their excitation
+        // does, and a persistent bank cannot accumulate strikes whose mode
+        // frequencies differ.
+        const auto& layers = kit->inst[bi];
+        if (layers.empty()) return;
+        const ResynthHit& src = layers.back().hit;
+        if (src.modes.empty()) return;
+
+        if (B.src != &src) {
+            B.src = &src;
+            B.count = std::min<int>(int(src.modes.size()), kMaxModes);
+            for (int i = 0; i < B.count; ++i) {
+                const ResynthMode& m = src.modes[i];
+                const float w = 2.0f * float(M_PI) * m.freq / float(fs);
+                const float r = std::exp(-6.907755f / std::max(1e-4f, m.t60 * float(fs)));
+                B.osc[i].cr = r * std::cos(w);
+                B.osc[i].ci = r * std::sin(w);
+                B.osc[i].re = B.osc[i].im = 0.0f;
+            }
+        }
+
+        // Closing the hat clamps the cymbals, so it damps whatever is ringing
+        // before adding the new strike. Open hits just add.
+        if (inst == INST_HAT_CLOSED || inst == INST_HAT_PEDAL)
+            for (int i = 0; i < B.count; ++i) { B.osc[i].re *= 0.10f; B.osc[i].im *= 0.10f; }
+
+        for (int i = 0; i < B.count; ++i) {
+            const ResynthMode& m = src.modes[i];
+            const float a  = m.amp * gain * velExcite(vel01, m.freq);
+            const float ph = modePhase(i);
+            // ADD, do not replace: this is the superposition of a new strike
+            // onto a cymbal that is still ringing.
+            B.osc[i].re += a * std::cos(ph);
+            B.osc[i].im += a * std::sin(ph);
+        }
+        B.live   = B.count;      // previously culled modes are alive again
+        B.active = true;
+    }
+
+    // Render every ringing bank. Culling works the same way as before: modes
+    // are ordered by how long they stay audible, so the count only shrinks.
+    float renderBanks(const float* instGain) {
+        float s = 0.0f;
+        for (int bi = 0; bi < INST_COUNT; ++bi) {
+            ModeBank& B = banks[bi];
+            if (!B.active) continue;
+            while (B.live > 0) {
+                const ModeOsc& last = B.osc[B.live - 1];
+                if (last.re * last.re + last.im * last.im > kModeFloor * kModeFloor) break;
+                --B.live;
+            }
+            if (B.live == 0) { B.active = false; continue; }
+            float acc = 0.0f;
+            for (int i = 0; i < B.live; ++i) {
+                ModeOsc& m = B.osc[i];
+                const float nr = m.re * m.cr - m.im * m.ci;
+                const float ni = m.re * m.ci + m.im * m.cr;
+                m.re = nr; m.im = ni;
+                acc += ni;
+            }
+            s += acc * (instGain ? instGain[bi] : 1.0f);
+        }
+        return s;
     }
 
     Voice* allocate() {
@@ -592,7 +694,8 @@ private:
         return s;
     }
 
-    Voice  voices[kMaxVoices];
+    Voice    voices[kMaxVoices];
+    ModeBank banks[INST_COUNT];
     NoiseBus bus;
     const ResynthKit* kit{nullptr};
     double fs{48000.0};

@@ -33,6 +33,7 @@ INSTRUMENTS = [
     ("TOM_HI",     3), ("TOM_MID",   4), ("TOM_FLOOR", 5),
     ("HAT_CLOSED", 6), ("HAT_PEDAL", 7), ("HAT_OPEN",  8),
     ("CRASH",      9), ("RIDE",     10), ("RIDE_BELL", 11),
+    ("CHINA",     12), ("STACK",    13), ("SNARE_RIM", 14),
 ]
 
 # Where each instrument's close-mic hits live inside the source kit, and how
@@ -98,6 +99,12 @@ SOURCES = {
     "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 600, 1024),
     "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0, 600, 1024),
     "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 500, 1024),
+    # Added for modern metal. China and stack are cymbals, so they take
+    # the dense modal model; the rimshot is a drum and takes tracked
+    # partials with the snare's 4096-point window.
+    "CHINA":      ("china_18/cn/cl",           6.0, 3,  0, 500, 1024),
+    "STACK":      ("stack_3_layer/mid/cl",     2.5, 3,  0, 300, 1024),
+    "SNARE_RIM":  ("snare_14/rimshot/top",     3.0, 3, 28,   0, 4096),
 }
 
 # How much of the noise residual to keep, in seconds. For a modal instrument

@@ -37,13 +37,20 @@ enum Instrument : uint8_t {
     INST_CRASH,
     INST_RIDE,
     INST_RIDE_BELL,
+    // Appended 2026-09-30 for modern metal. Deliberately at the END: the
+    // indices above are baked into drumkit.dat's entry table and into every
+    // pattern lane, so inserting in the middle would silently remap the kit.
+    INST_CHINA,         // the metal accent cymbal; trashy and short
+    INST_STACK,         // stacked cymbals: tight, dry, metalcore/djent
+    INST_SNARE_RIM,     // rimshot — the crack that cuts through a wall of guitar
     INST_COUNT
 };
 
 inline const char* instrumentName(uint8_t i) noexcept {
     static const char* kNames[INST_COUNT] = {
         "Kick", "Snare", "Sidestick", "Tom Hi", "Tom Mid", "Tom Floor",
-        "Hat Closed", "Hat Pedal", "Hat Open", "Crash", "Ride", "Ride Bell"
+        "Hat Closed", "Hat Pedal", "Hat Open", "Crash", "Ride", "Ride Bell",
+        "China", "Stack", "Snare Rim"
     };
     return (i < INST_COUNT) ? kNames[i] : "?";
 }
@@ -293,6 +300,32 @@ inline const DrumLane kDjentBell[] = {
     { INST_SNARE,      "....X.......X.......X.......X..." },
 };
 
+// China on the accents with a rimshot backbeat — the modern metalcore
+// signature. The china is short and trashy, so it punctuates rather than
+// washing over the riff the way a crash would.
+inline const DrumLane kMetalcore[] = {
+    { INST_CHINA,       "X.......X.......X.......X......." },
+    { INST_KICK,        "x..x..x...x.....x..x..x...x....." },
+    { INST_SNARE_RIM,   "....X.......X.......X.......X..." },
+    { INST_HAT_CLOSED,  "..x...x...x...x...x...x...x...x." },
+};
+
+// Stacked cymbals on the eighths: tight and dry, with none of a hat's
+// sizzle, which is why it sits under a djent riff without clutter.
+inline const DrumLane kStackGroove[] = {
+    { INST_STACK,       "x.x.x.x.x.x.x.x." },
+    { INST_KICK,        "x..x..x.x..x...." },
+    { INST_SNARE_RIM,   "....X.......X..." },
+};
+
+// Blast with the china carrying the pulse instead of the hat — its short
+// trashy decay keeps a blast readable where a ride would smear it.
+inline const DrumLane kChinaBlast[] = {
+    { INST_CHINA,       "x.x.x.x.x.x.x.x." },
+    { INST_KICK,        "x.x.x.x.x.x.x.x." },
+    { INST_SNARE,       ".x.x.x.x.x.x.x.x" },
+};
+
 } // namespace patterns
 
 #define HEXDRUMS_PATTERN(nm, spb, br, lanes) \
@@ -327,6 +360,9 @@ inline const DrumPattern* patternTable(int& countOut) noexcept {
         HEXDRUMS_PATTERN("Breakdown Chug", 16, 2, patterns::kChug),
         HEXDRUMS_PATTERN("Groove Metal",   16, 1, patterns::kGrooveMetal),
         HEXDRUMS_PATTERN("Djent Bell",     16, 2, patterns::kDjentBell),
+        HEXDRUMS_PATTERN("Metalcore",       16, 2, patterns::kMetalcore),
+        HEXDRUMS_PATTERN("Stack Groove",    16, 1, patterns::kStackGroove),
+        HEXDRUMS_PATTERN("China Blast",     16, 1, patterns::kChinaBlast),
     };
     countOut = static_cast<int>(sizeof(kTable) / sizeof(DrumPattern));
     return kTable;

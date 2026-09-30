@@ -95,16 +95,19 @@ inline int gmNoteToInstrument(int note) noexcept {
     switch (note) {
         case 35: case 36:           return INST_KICK;          // acoustic / electric bass drum
         case 37:                    return INST_SIDESTICK;
-        case 38: case 40:           return INST_SNARE;         // acoustic / electric snare
+        case 38:                    return INST_SNARE;         // acoustic snare
         case 39:                    return INST_SNARE;         // hand clap → snare slot
         case 41: case 43:           return INST_TOM_FLOOR;     // low floor / high floor
         case 45: case 47:           return INST_TOM_MID;       // low tom / low-mid tom
         case 48: case 50:           return INST_TOM_HI;        // hi-mid / high tom
         case 42: case 44:           return (note == 44) ? INST_HAT_PEDAL : INST_HAT_CLOSED;
         case 46:                    return INST_HAT_OPEN;
-        case 49: case 52: case 55: case 57:  return INST_CRASH;
+        case 49: case 57:           return INST_CRASH;
+        case 52:                    return INST_CHINA;      // GM "Chinese Cymbal"
+        case 55:                    return INST_STACK;      // GM "Splash" -> stack
         case 51: case 59:           return INST_RIDE;
         case 53:                    return INST_RIDE_BELL;
+        case 40:                    return INST_SNARE_RIM;  // electric snare -> rimshot
         default:                    return -1;
     }
 }

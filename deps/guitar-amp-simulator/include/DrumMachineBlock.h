@@ -565,6 +565,9 @@ private:
         3.07f,  // crash       measured 0.261
         1.91f,  // ride        measured 0.419
         1.91f,  // ride bell
+        1.00f,  // china       synth fallback has no voice; kit covers it
+        1.00f,  // stack
+        1.00f,  // snare rim
     };
 
     // The kit's designed balance. Fixed, because it is part of how the kit
@@ -572,12 +575,14 @@ private:
     // out would make every fader default to a kit nobody voiced.
     static constexpr float kBalance[INST_COUNT] = {
         1.00f, 0.90f, 0.70f, 0.80f, 0.80f, 0.85f,
-        0.55f, 0.45f, 0.55f, 0.50f, 0.60f, 0.60f
+        0.55f, 0.45f, 0.55f, 0.50f, 0.60f, 0.60f,
+        0.52f, 0.55f, 0.95f          // china, stack, snare rim
     };
 
     // User trim ON TOP of the balance. Unity = "as voiced".
     float trims[INST_COUNT] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-                                1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+                                1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                                1.0f, 1.0f, 1.0f };
     bool  muted[INST_COUNT] = {};
     float master{0.45f};
 
