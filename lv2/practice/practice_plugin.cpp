@@ -94,13 +94,46 @@ enum PracticePorts {
 
     P_BYPASS,
     P_ENABLED,          // lv2:designation lv2:enabled — INVERTED (1 = processing on)
+
+    // Atom ports for the editor. APPENDED AFTER `enabled` deliberately: this
+    // plugin's ports have been renumbered three times already, and every
+    // renumber invalidates saved pedalboards and MIDI bindings. From here on
+    // new ports go on the end. The lv2:enabled designation is what a host
+    // binds, not its position, so nothing depends on it being last.
+    P_CONTROL,          // atom in  — patch:Set from the editor
+    P_NOTIFY,           // atom out — patch:Set to the editor
+
+    // Host-transport tempo follow. HOST_BPM carries lv2:designation
+    // time:beatsPerMinute, so the host writes the global transport tempo into
+    // it; TEMPO_SYNC chooses whether the sequencer listens to it or to the
+    // plugin's own TEMPO knob. Two ports rather than one because the knob has
+    // to keep its own value while sync is on — otherwise turning sync off
+    // would leave the user staring at whatever the host last pushed.
+    P_TEMPO_SYNC,
+    P_HOST_BPM,
     P_N_PORTS
+};
+
+// Properties carried over the atom ports. A control port cannot carry a
+// waveform or a drum pattern, so these travel as strings — the same mechanism
+// the cabinet plugin already uses for its saved rigs.
+#define PRACTICE_PATTERN_URI  PRACTICE_URI "#pattern"
+#define PRACTICE_WAVEFORM_URI PRACTICE_URI "#waveform"
+#define PRACTICE_MIDI_URI     PRACTICE_URI "#midifile"
+
+struct PracticeURIs {
+    LV2_URID atom_Object, atom_Path, atom_String, atom_URID, atom_eventTransfer;
+    LV2_URID patch_Set, patch_Get, patch_property, patch_value;
+    LV2_URID pattern, waveform, midifile;
 };
 
 // Undo snapshots are a memcpy of the whole loop (up to 23 MB), so they go to
 // the worker thread. Quantisation gives us most of a bar of notice before the
 // overdub actually starts.
 struct WorkMsg { int track; };
+
+// The UI draws a few hundred pixels per track, not a few million samples.
+static constexpr int kWavePoints = 256;
 
 struct PracticePlugin {
     TransportClock   clk;
@@ -111,6 +144,18 @@ struct PracticePlugin {
     float* ports[P_N_PORTS] = {};
 
     LV2_Worker_Schedule* schedule = nullptr;   // optional: no worker → no undo
+
+    // Editor channel
+    LV2_URID_Map*            map = nullptr;
+    LV2_Atom_Forge           forge{};
+    PracticeURIs             uris{};
+    const LV2_Atom_Sequence* control = nullptr;
+    LV2_Atom_Sequence*       notify  = nullptr;
+    uint32_t                 sentWaveGen = 0xFFFFFFFFu;
+    bool                     wantSendAll = false;
+    std::string              patternJson;      // last pattern the editor sent
+    int                      sentPattern = -1; // built-in groove last pushed to the editor
+    bool                     sentUser    = false;
 
     // Rising-edge state for the trigger ports and the run toggle.
     bool prevRun   = false;
@@ -157,6 +202,179 @@ static int stateCode(LooperBlock::State s) noexcept {
         case LooperBlock::State::Stopped:     return 4;
     }
     return 0;
+}
+
+
+// ── Editor channel helpers ───────────────────────────────────────────────────
+
+static void practiceMapURIs(PracticePlugin* p) {
+    LV2_URID_Map* m = p->map;
+    p->uris.atom_Object        = m->map(m->handle, LV2_ATOM__Object);
+    p->uris.atom_Path          = m->map(m->handle, LV2_ATOM__Path);
+    p->uris.atom_String        = m->map(m->handle, LV2_ATOM__String);
+    p->uris.atom_URID          = m->map(m->handle, LV2_ATOM__URID);
+    p->uris.atom_eventTransfer = m->map(m->handle, LV2_ATOM__eventTransfer);
+    p->uris.patch_Set          = m->map(m->handle, LV2_PATCH__Set);
+    p->uris.patch_Get          = m->map(m->handle, LV2_PATCH__Get);
+    p->uris.patch_property     = m->map(m->handle, LV2_PATCH__property);
+    p->uris.patch_value        = m->map(m->handle, LV2_PATCH__value);
+    p->uris.pattern            = m->map(m->handle, PRACTICE_PATTERN_URI);
+    p->uris.waveform           = m->map(m->handle, PRACTICE_WAVEFORM_URI);
+    p->uris.midifile           = m->map(m->handle, PRACTICE_MIDI_URI);
+}
+
+static void practiceSendString(PracticePlugin* p, LV2_URID prop, const char* s) {
+    if (!p->notify || !s) return;
+    LV2_Atom_Forge_Frame frame;
+    lv2_atom_forge_frame_time(&p->forge, 0);
+    lv2_atom_forge_object(&p->forge, &frame, 0, p->uris.patch_Set);
+    lv2_atom_forge_key(&p->forge, p->uris.patch_property);
+    lv2_atom_forge_urid(&p->forge, prop);
+    lv2_atom_forge_key(&p->forge, p->uris.patch_value);
+    lv2_atom_forge_string(&p->forge, s, static_cast<uint32_t>(std::strlen(s)));
+    lv2_atom_forge_pop(&p->forge, &frame);
+}
+
+static const char kB64[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+// Peaks are quantised to a byte and base64'd. A track is 256 points, so a
+// whole four-track picture is about 1.4 kB — small enough to push whenever the
+// audio actually changes, which is what the version counter is for.
+static void practiceAppendB64(std::string& out, const unsigned char* d, size_t n) {
+    for (size_t i = 0; i < n; i += 3) {
+        const unsigned v = (unsigned(d[i]) << 16)
+                         | ((i + 1 < n ? unsigned(d[i + 1]) : 0u) << 8)
+                         | (i + 2 < n ? unsigned(d[i + 2]) : 0u);
+        out += kB64[(v >> 18) & 63];
+        out += kB64[(v >> 12) & 63];
+        out += (i + 1 < n) ? kB64[(v >> 6) & 63] : '=';
+        out += (i + 2 < n) ? kB64[v & 63]        : '=';
+    }
+}
+
+static void practiceSendWaveform(PracticePlugin* p) {
+    std::string j = "{\"v\":";
+    j += std::to_string(p->looper.waveformVersion());
+    j += ",\"bars\":" + std::to_string(p->looper.loopBars(p->clk));
+    j += ",\"len\":" + std::to_string(static_cast<long long>(p->looper.loopLength()));
+    j += ",\"t\":[";
+
+    float peaks[kWavePoints];
+    unsigned char bytes[kWavePoints];
+    for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
+        if (t) j += ",";
+        if (!p->looper.trackPeaks(t, peaks, kWavePoints)) { j += "\"\""; continue; }
+        for (int i = 0; i < kWavePoints; ++i)
+            bytes[i] = static_cast<unsigned char>(std::clamp(peaks[i], 0.0f, 1.0f) * 255.0f + 0.5f);
+        j += "\"";
+        practiceAppendB64(j, bytes, kWavePoints);
+        j += "\"";
+    }
+    j += "]}";
+    practiceSendString(p, p->uris.waveform, j.c_str());
+}
+
+// The editor sends a groove as JSON; it lands in the RT-safe double-buffered
+// user-pattern slot the sequencer already reads from.
+//   {"spb":16,"bars":1,"lanes":[{"i":0,"s":"x.......x......."}, ...]}
+// Serialise one of the built-in grooves into the same JSON the editor sends
+// back. Without this the step grid opens blank on a fresh instance: the plugin
+// would only ever echo a pattern the editor had already authored, so the 30
+// shipped grooves would be invisible to the very screen meant to display them.
+// Sending them in the editable shape is also what makes "tweak a factory
+// groove" work — the editor edits what it was given and posts it back as a
+// user pattern.
+static void practiceSendBuiltin(PracticePlugin* p, int index) {
+    int count = 0;
+    const DrumPattern* table = patternTable(count);
+    if (!table || count <= 0) return;
+    if (index < 0) index = 0;
+    if (index >= count) index = count - 1;
+    const DrumPattern& pat = table[index];
+
+    std::string j = "{\"builtin\":1,\"idx\":";
+    j += std::to_string(index);
+    j += ",\"name\":\"";
+    for (const char* c = pat.name; c && *c; ++c) {
+        if (*c == '"' || *c == '\\') j += '\\';
+        j += *c;
+    }
+    j += "\",\"spb\":";
+    j += std::to_string(static_cast<int>(pat.stepsPerBar));
+    j += ",\"bars\":";
+    j += std::to_string(static_cast<int>(pat.bars));
+    j += ",\"lanes\":[";
+    for (int l = 0; l < pat.numLanes; ++l) {
+        if (l) j += ',';
+        j += "{\"i\":";
+        j += std::to_string(static_cast<int>(pat.lanes[l].inst));
+        j += ",\"s\":\"";
+        j += pat.lanes[l].steps;   // only the fixed step alphabet, nothing to escape
+        j += "\"}";
+    }
+    j += "]}";
+    practiceSendString(p, p->uris.pattern, j.c_str());
+}
+
+static bool practiceApplyPattern(PracticePlugin* p, const char* json) {
+    if (!json) return false;
+    const std::string s(json);
+
+    // "Revert to factory": hand the groove back to the pattern table. The
+    // user's edit is left in its slot rather than erased, so flipping back to
+    // a factory groove and away again does not cost the work they did.
+    if (s.find("\"revert\"") != std::string::npos) {
+        p->drums.setUseUserPattern(false);
+        p->patternJson.clear();
+        p->sentPattern = -1;          // force the factory groove back out to the editor
+        return true;
+    }
+
+    auto readInt = [&](const char* key, int dflt) {
+        const size_t k = s.find(key);
+        if (k == std::string::npos) return dflt;
+        const size_t c = s.find(':', k);
+        return (c == std::string::npos) ? dflt : std::atoi(s.c_str() + c + 1);
+    };
+    const int spb  = std::clamp(readInt("\"spb\"", 16), 1, 64);
+    const int bars = std::clamp(readInt("\"bars\"", 1), 1, 8);
+
+    UserPattern& u = p->drums.writableSlot();
+    u.numEvents  = 0;
+    u.stepsPerBar = static_cast<uint8_t>(spb);
+    u.bars        = static_cast<uint8_t>(bars);
+    std::snprintf(u.name, sizeof(u.name), "Editor");
+
+    const int total = spb * bars;
+    size_t pos = 0;
+    while (u.numEvents < UserPattern::kMaxEvents) {
+        const size_t ik = s.find("\"i\"", pos);
+        if (ik == std::string::npos) break;
+        const size_t ic = s.find(':', ik);
+        if (ic == std::string::npos) break;
+        const int inst = std::atoi(s.c_str() + ic + 1);
+
+        const size_t sk = s.find("\"s\"", ic);
+        if (sk == std::string::npos) break;
+        const size_t q1 = s.find('"', s.find(':', sk));
+        if (q1 == std::string::npos) break;
+        const size_t q2 = s.find('"', q1 + 1);
+        if (q2 == std::string::npos) break;
+
+        const std::string lane = s.substr(q1 + 1, q2 - q1 - 1);
+        if (inst >= 0 && inst < INST_COUNT)
+            for (int st = 0; st < total && st < int(lane.size()); ++st) {
+                const uint8_t v = stepVelocity(lane[size_t(st)]);
+                if (!v || u.numEvents >= UserPattern::kMaxEvents) continue;
+                u.events[u.numEvents++] = { uint16_t(st), uint8_t(inst), v };
+            }
+        pos = q2 + 1;
+    }
+
+    p->drums.publishUserPattern();
+    p->drums.setUseUserPattern(true);
+    p->patternJson = s;
+    return true;
 }
 
 // ── Lifecycle ────────────────────────────────────────────────────────────────
@@ -207,6 +425,15 @@ static LV2_Handle practice_instantiate(const LV2_Descriptor*, double rate,
                                  lv2_find_feature(features, LV2_WORKER__schedule))
                            : nullptr;
 
+    // The URID map is what the editor channel needs. Without it the plugin
+    // still runs — it simply has no editor — so this is not fatal either.
+    p->map = features ? static_cast<LV2_URID_Map*>(lv2_find_feature(features, LV2_URID__map))
+                      : nullptr;
+    if (p->map) {
+        practiceMapURIs(p);
+        lv2_atom_forge_init(&p->forge, p->map);
+    }
+
     p->rate = rate;
     p->clk.prepare(rate);
     p->drums.prepare(rate);
@@ -221,7 +448,11 @@ static LV2_Handle practice_instantiate(const LV2_Descriptor*, double rate,
 
 static void practice_connect_port(LV2_Handle h, uint32_t port, void* data) {
     auto* p = static_cast<PracticePlugin*>(h);
-    if (port < P_N_PORTS) p->ports[port] = static_cast<float*>(data);
+    switch (port) {
+        case P_CONTROL: p->control = static_cast<const LV2_Atom_Sequence*>(data); break;
+        case P_NOTIFY:  p->notify  = static_cast<LV2_Atom_Sequence*>(data);       break;
+        default:        if (port < P_N_PORTS) p->ports[port] = static_cast<float*>(data);
+    }
 }
 
 // ── Worker: undo snapshot off the RT thread ─────────────────────────────────
@@ -248,6 +479,40 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     float*       out = p->ports[P_OUT];
     if (!in || !out) return;
 
+    // ── Editor channel ───────────────────────────────────────────────────────
+    LV2_Atom_Forge_Frame notifyFrame;
+    const bool editor = (p->map && p->notify);
+    if (editor) {
+        // The notify buffer's capacity is whatever the host gave us THIS run;
+        // it must be re-declared every block or the forge writes past it.
+        const uint32_t cap = p->notify->atom.size;
+        lv2_atom_forge_set_buffer(&p->forge, reinterpret_cast<uint8_t*>(p->notify), cap);
+        lv2_atom_forge_sequence_head(&p->forge, &notifyFrame, 0);
+    }
+
+    if (editor && p->control) {
+        LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
+            if (ev->body.type != p->uris.atom_Object) continue;
+            const auto* obj = reinterpret_cast<const LV2_Atom_Object*>(&ev->body);
+
+            if (obj->body.otype == p->uris.patch_Get) {
+                // The editor has just opened (or reloaded): send it everything.
+                p->wantSendAll = true;
+
+            } else if (obj->body.otype == p->uris.patch_Set) {
+                const LV2_Atom* prop = nullptr;
+                const LV2_Atom* val  = nullptr;
+                lv2_atom_object_get(obj, p->uris.patch_property, &prop,
+                                         p->uris.patch_value,    &val, 0);
+                if (!prop || !val || prop->type != p->uris.atom_URID) continue;
+                const LV2_URID key = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
+
+                if (key == p->uris.pattern && val->type == p->uris.atom_String)
+                    practiceApplyPattern(p, reinterpret_cast<const char*>(val + 1));
+            }
+        }
+    }
+
     // Bypass: the guitar passes, the plugin makes no sound. Deliberately NOT a
     // hard early return before the passthrough — this plugin sits last in the
     // chain, so dropping the dry signal would mute the rig.
@@ -255,7 +520,16 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
                           (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
 
     // ── Transport ────────────────────────────────────────────────────────────
-    p->clk.setTempo(portValue(p, P_TEMPO, 120.0f));
+    // Sync follows the host only when the host is actually reporting a sane
+    // tempo: mod-host leaves the designated port at its default until a
+    // transport exists, and silently snapping the groove to 120 would look
+    // like a bug rather than a missing transport.
+    float tempoBpm = portValue(p, P_TEMPO, 120.0f);
+    if (portBool(p, P_TEMPO_SYNC)) {
+        const float hostBpm = portValue(p, P_HOST_BPM, 0.0f);
+        if (hostBpm >= 20.0f && hostBpm <= 300.0f) tempoBpm = hostBpm;
+    }
+    p->clk.setTempo(tempoBpm);
     p->clk.setBeatsPerBar(static_cast<int>(portValue(p, P_BEATS_PER_BAR, 4.0f)));
 
     const bool wantRun = portBool(p, P_RUN);
@@ -370,6 +644,31 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     setOut(p, P_OUT_TRK4_STATE, static_cast<float>(stateCode(p->looper.trackState(3))));
     setOut(p, P_OUT_STEP,       static_cast<float>(p->drums.playheadStep()));
     setOut(p, P_OUT_UNDO_AVAIL, p->looper.undoAvailable() ? 1.0f : 0.0f);
+
+    // Push the waveform only when the audio has actually changed, or when a
+    // freshly opened editor has asked for everything. Polling a kilobyte of
+    // peaks every block would be pure waste.
+    if (editor) {
+        const uint32_t gen = p->looper.waveformVersion();
+        if (p->wantSendAll || gen != p->sentWaveGen) {
+            practiceSendWaveform(p);
+            p->sentWaveGen = gen;
+        }
+        // The grid follows whatever is actually playing: the user's edited
+        // pattern if one is live, otherwise the selected factory groove.
+        const int  patIdx  = static_cast<int>(portValue(p, P_PATTERN, 0.0f));
+        const bool useUser = p->drums.usingUserPattern();
+        if (p->wantSendAll || patIdx != p->sentPattern || useUser != p->sentUser) {
+            if (useUser && !p->patternJson.empty())
+                practiceSendString(p, p->uris.pattern, p->patternJson.c_str());
+            else
+                practiceSendBuiltin(p, patIdx);
+            p->sentPattern = patIdx;
+            p->sentUser    = useUser;
+        }
+        p->wantSendAll = false;
+        lv2_atom_forge_pop(&p->forge, &notifyFrame);
+    }
 }
 
 static void practice_cleanup(LV2_Handle h) { delete static_cast<PracticePlugin*>(h); }

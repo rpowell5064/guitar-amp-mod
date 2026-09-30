@@ -109,3 +109,8 @@ target_include_directories(practice_selftest PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
     "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include"
     ${HF_LV2_INCLUDE})
+# The drum bus gained a room send, so the plugin stopped linking from headers
+# alone. The LV2 target gets PlateReverbBlock (and what it in turn pulls in)
+# from GuitarAmpSim; this harness must link the same library or it fails at
+# link with no hint that the plugin picked up a new dependency.
+target_link_libraries(practice_selftest PRIVATE GuitarAmpSim)

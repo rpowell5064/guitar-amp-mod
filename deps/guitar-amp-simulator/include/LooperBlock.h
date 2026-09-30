@@ -88,6 +88,7 @@ public:
         masterLen  = 0;
         loopCursor = 0;
         sealing    = 0;
+        ++waveGen;
         undoTrack  = -1;
         undoReady  = false;
     }
@@ -122,6 +123,7 @@ public:
         tracks[t].lateBy     = 0;
         tracks[t].pending    = Action::None;
         if (undoTrack == t) { undoReady = false; undoTrack = -1; }
+        ++waveGen;
         // The last track standing takes the loop length with it.
         if (allEmpty()) { masterLen = 0; loopCursor = 0; }
     }
@@ -136,6 +138,7 @@ public:
         float* a = tracks[t].buf.data();
         float* b = undoBuf.data();
         for (int64_t i = 0; i < masterLen; ++i) std::swap(a[i], b[i]);
+        ++waveGen;
     }
 
     // Snapshot a track for undo. This is a ~23 MB memcpy, so it must NOT run on
@@ -180,6 +183,38 @@ public:
         return (masterLen > 0 && spb > 0.0)
              ? static_cast<int>(std::lround(masterLen / spb)) : 0;
     }
+
+    // ── Waveform for the UI ──────────────────────────────────────────────────
+    // A control port cannot carry a waveform, so the UI gets a peak envelope
+    // pushed to it as a string instead. Peaks, not RMS: a DAW waveform is a
+    // peak envelope, and RMS would hide exactly the transients a player is
+    // looking for when they line up an edit.
+    //
+    // `out` receives `n` values in 0..1. Returns false when the track has
+    // nothing to draw.
+    bool trackPeaks(int t, float* out, int n) const noexcept {
+        if (!valid(t) || masterLen <= 0 || n <= 0) return false;
+        if (tracks[t].state == State::Empty) return false;
+
+        const float* buf = tracks[t].buf.data();
+        const int64_t span = masterLen;
+        for (int i = 0; i < n; ++i) {
+            const int64_t a = span * i / n;
+            const int64_t b = std::max(a + 1, span * (i + 1) / n);
+            float pk = 0.0f;
+            // Stride large loops: a two-minute take is 5.8 M samples and the
+            // UI asks for a few hundred pixels, so reading every sample would
+            // cost far more than the picture is worth.
+            const int64_t step = std::max<int64_t>(1, (b - a) / 64);
+            for (int64_t k = a; k < b; k += step) pk = std::max(pk, std::fabs(buf[k]));
+            out[i] = std::min(1.0f, pk);
+        }
+        return true;
+    }
+
+    // Bumped whenever a track's audio changes, so the UI can redraw only when
+    // there is something new rather than polling a megabyte of peaks.
+    uint32_t waveformVersion() const noexcept { return waveGen; }
 
     // ── Render ───────────────────────────────────────────────────────────────
     // Records from `in` and ADDS loop playback into `out`. `in` and `out` may
@@ -305,6 +340,7 @@ private:
                 tr.state      = State::Overdubbing;
                 tr.targetGain = 1.0f;
                 overdubGen.fetch_add(1, std::memory_order_release);
+                ++waveGen;
                 break;
         }
     }
@@ -342,6 +378,7 @@ private:
 
         // Playback resumes where we actually are: `lateBy` past the bar line.
         loopCursor = (masterLen > 0) ? (tr.lateBy % masterLen) : 0;
+        ++waveGen;
     }
 
     // Copy the last `count` samples of input history into the take, so a take
@@ -470,6 +507,7 @@ private:
     int64_t sealing{0}, sealCursor{0};
     int     sealTrack{-1};
     std::atomic<uint32_t> overdubGen{0};
+    uint32_t waveGen{0};
     int     undoTrack{-1};
     bool    undoReady{false};
     bool    quantize{true};

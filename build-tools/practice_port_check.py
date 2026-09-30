@@ -55,6 +55,8 @@ SYMBOLS = {
     "P_DRUM_COMP": "drum_comp", "P_DRUM_ROOM": "drum_room",
     "P_DRUM_ROOM_SIZE": "drum_room_size", "P_DRUM_BODY": "drum_body",
     "P_BYPASS": "bypass", "P_ENABLED": "enabled",
+    "P_CONTROL": "control", "P_NOTIFY": "notify",
+    "P_TEMPO_SYNC": "tempo_sync", "P_HOST_BPM": "host_bpm",
 }
 
 errors = []
@@ -82,6 +84,13 @@ def enum_order():
 def ttl_ports():
     """(index, symbol) pairs from the TTL, in index order."""
     src = TTL.read_text(encoding="utf-8")
+    # The modgui:gui block repeats lv2:index/lv2:symbol to map ports onto the
+    # template's controls.N slots. Those are not port declarations, and they are
+    # deliberately NOT in index order, so scraping them here would report every
+    # one of them as out of order. Cut the block off before matching.
+    gui = src.find("modgui:gui")
+    if gui >= 0:
+        src = src[:gui]
     pairs = re.findall(r"lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+\"([a-z0-9_]+)\"", src)
     out = [(int(i), s) for i, s in pairs]
     out.sort(key=lambda t: t[0])
@@ -110,10 +119,13 @@ def check_ports():
             errors.append("index %d: enum %s expects symbol '%s', TTL says '%s'"
                           % (idx, name, want, ttl_sym))
 
-    # The enabled port must stay last: hosts bind it by designation, and moving
-    # it would renumber every port before it and invalidate saved boards.
-    if names and names[-1] != "P_ENABLED":
-        errors.append("P_ENABLED must be the LAST port, found %s" % names[-1])
+    # `enabled` no longer has to be last. It was kept last for UI ordering,
+    # but this plugin has been renumbered three times and every renumber
+    # invalidates saved pedalboards and MIDI bindings, so new ports now append
+    # at the END. What actually matters is that the DESIGNATION exists (checked
+    # in the Turtle pass) and that nothing before it ever moves again.
+    if "P_ENABLED" not in names:
+        errors.append("the lv2:enabled port is missing")
 
     return len(names)
 
@@ -212,15 +224,65 @@ def check_turtle():
                if g.value(p, P_DESIG) == C_ENABLED]
     if len(enabled) != 1:
         errors.append("expected exactly one lv2:enabled designated port, found %d" % len(enabled))
-    elif int(g.value(enabled[0], P_INDEX)) != len(seen) - 1:
-        errors.append("the lv2:enabled port must be last (index %d)" % (len(seen) - 1))
+    # Its INDEX is no longer pinned (see above); only its existence is.
 
     print("  Turtle parses; %d ports, indices contiguous, defaults in range" % len(seen))
+
+
+def check_modgui():
+    """The modgui maps ports onto template slots BY POSITION, not by index.
+
+    `modgui:port` is an ordered list and the icon template addresses its
+    entries as {{#controls.N}} where N is the position in that list. Nothing
+    in the TTL or the HTML states the correspondence, so inserting one entry
+    shifts every slot after it and the panel silently rewires itself — a Kick
+    Decay knob quietly driving Snare Tune. This checks three things: that every
+    mapped symbol is a real port at the index claimed, that every controls.N
+    the template references exists in the list, and that the position comments
+    in the TTL still say what the position actually is.
+    """
+    src = TTL.read_text(encoding="utf-8")
+    gui = src.find("modgui:gui")
+    if gui < 0:
+        return
+    block = src[gui:]
+
+    real = dict((sym, idx) for idx, sym in ttl_ports())
+    entries = re.findall(
+        r"#\s*controls\.(\d+)\s*\n\s*lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+\"([a-z0-9_]+)\"",
+        block)
+    if not entries:
+        errors.append("modgui:gui present but no modgui:port entries were parsed")
+        return
+
+    for pos, (claimed, idx, sym) in enumerate(entries):
+        if int(claimed) != pos:
+            errors.append("modgui:port entry %d is commented 'controls.%s'" % (pos, claimed))
+        if sym not in real:
+            errors.append("modgui:port maps '%s', which is not a port" % sym)
+        elif real[sym] != int(idx):
+            errors.append("modgui:port says %s is index %s; the port list says %d"
+                          % (sym, idx, real[sym]))
+
+    html = ROOT / "lv2" / "modgui-practice" / "icon-practice.html"
+    if html.exists():
+        used = set(int(n) for n in re.findall(r"\{\{#controls\.(\d+)\}\}", html.read_text(encoding="utf-8")))
+        for n in sorted(used):
+            if n >= len(entries):
+                errors.append("icon-practice.html uses controls.%d but only %d ports are mapped"
+                              % (n, len(entries)))
+        unused = sorted(set(range(len(entries))) - used)
+        if unused:
+            names = ", ".join(entries[u][2] for u in unused)
+            print("  note: modgui:port maps %d port(s) the template never draws: %s"
+                  % (len(unused), names))
+    return len(entries)
 
 
 def main():
     count = check_ports()
     check_patterns()
+    check_modgui()
     check_turtle()
 
     if errors:

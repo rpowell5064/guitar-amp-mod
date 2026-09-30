@@ -1,0 +1,188 @@
+<div class="mod-pedal mod-pedal-guitaramp-practice{{{cns}}} ">
+    <div mod-role="drag-handle" class="mod-drag-handle"></div>
+
+    <div class="mod-powerswitch" mod-role="bypass">
+        <div class="mod-powerswitch-image" mod-role="bypass-light"></div>
+    </div>
+
+    <div class="hx-header">
+        <div class="hx-brand"><span class="hx-mark"></span>HEX CHAIN</div>
+        <div class="hx-title">PRACTICE</div>
+        <div class="hx-tag">4-track looper · resynthesised acoustic kit · step sequencer</div>
+    </div>
+
+    <!-- Global transport. Tempo sits in the header rather than inside a tab because
+         it governs the looper and the sequencer at the same time; putting it on one
+         of them would imply it belonged to that one. -->
+    <div class="px-topbar">
+        <div class="px-tgroup">
+            <span class="px-tlabel">Tempo</span>
+            {{#controls.1}}
+            <input class="px-tempo-field" rata-role="tempofield" mod-role="input-control-value" mod-port-symbol="{{symbol}}" />
+            <span class="px-tempo-unit">BPM</span>
+            <div class="px-tempo-drag" title="Drag to set tempo" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
+            {{/controls.1}}
+            <span class="px-hostbpm" rata-role="hostbpm"></span>
+        </div>
+        {{#controls.2}}
+        <div class="px-pill" rata-role="syncpill" title="{{name}}">Sync</div>
+        <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>
+        {{/controls.2}}
+        <div class="px-tgroup">
+            <span class="px-tlabel">Bar</span>
+            <span class="px-bars" rata-role="barsread">1 . 1</span>
+        </div>
+        {{#controls.0}}
+        <div class="px-pill" rata-role="runpill" title="{{name}}">Run</div>
+        <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>
+        {{/controls.0}}
+    </div>
+
+    <div class="hf-plate">
+        <div class="hf-screw hf-screw-tl"></div><div class="hf-screw hf-screw-tr"></div>
+        <div class="hf-screw hf-screw-bl"></div><div class="hf-screw hf-screw-br"></div>
+
+        <div class="px-tabs" rata-role="pxtabs">
+            <div class="px-tab on" data-pxtab="loops">Loops</div>
+            <div class="px-tab" data-pxtab="drums">Drums</div>
+            <div class="px-tab" data-pxtab="mix">Mix</div>
+        </div>
+
+        <div rata-role="pxview" data-tab="loops">
+
+            <!-- ══ LOOPS ══ -->
+            <div class="px-view px-view-loops">
+                <div rata-role="lanes">
+                    <div class="px-lane" data-trk="1">
+                        <div class="px-lane-id"><span class="px-lane-n">1</span><span class="px-lamp" rata-role="lamp1"></span></div>
+                        <div class="px-wave"><canvas rata-role="wave1" width="760" height="74"></canvas><div class="px-wave-empty" rata-role="empty1">Empty</div></div>
+                        <div class="px-lane-btns">
+                            {{#controls.27}}<div class="px-mini" rata-role="mute1" title="{{name}}">MUTE</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.27}}
+                        </div>
+                    </div>
+                    <div class="px-lane" data-trk="2">
+                        <div class="px-lane-id"><span class="px-lane-n">2</span><span class="px-lamp" rata-role="lamp2"></span></div>
+                        <div class="px-wave"><canvas rata-role="wave2" width="760" height="74"></canvas><div class="px-wave-empty" rata-role="empty2">Empty</div></div>
+                        <div class="px-lane-btns">
+                            {{#controls.29}}<div class="px-mini" rata-role="mute2" title="{{name}}">MUTE</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.29}}
+                        </div>
+                    </div>
+                    <div class="px-lane" data-trk="3">
+                        <div class="px-lane-id"><span class="px-lane-n">3</span><span class="px-lamp" rata-role="lamp3"></span></div>
+                        <div class="px-wave"><canvas rata-role="wave3" width="760" height="74"></canvas><div class="px-wave-empty" rata-role="empty3">Empty</div></div>
+                        <div class="px-lane-btns">
+                            {{#controls.31}}<div class="px-mini" rata-role="mute3" title="{{name}}">MUTE</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.31}}
+                        </div>
+                    </div>
+                    <div class="px-lane" data-trk="4">
+                        <div class="px-lane-id"><span class="px-lane-n">4</span><span class="px-lamp" rata-role="lamp4"></span></div>
+                        <div class="px-wave"><canvas rata-role="wave4" width="760" height="74"></canvas><div class="px-wave-empty" rata-role="empty4">Empty</div></div>
+                        <div class="px-lane-btns">
+                            {{#controls.33}}<div class="px-mini" rata-role="mute4" title="{{name}}">MUTE</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.33}}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active-track port. The transport buttons all act on whichever lane is
+                     selected, so clicking a lane writes this rather than opening a menu. -->
+                <div class="px-hidden">{{#controls.20}}<div rata-role="trkport" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>{{/controls.20}}</div>
+
+                <div class="px-transport">
+                    {{#controls.21}}<div class="px-tbtn rec" rata-role="btnrec" title="{{name}}"><span class="px-gly circle"></span>Rec</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.21}}
+                    {{#controls.22}}<div class="px-tbtn play" rata-role="btnplay" title="{{name}}"><span class="px-gly tri"></span>Play</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.22}}
+                    {{#controls.23}}<div class="px-tbtn" rata-role="btnstop" title="{{name}}"><span class="px-gly square"></span>Stop</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.23}}
+                    {{#controls.25}}<div class="px-tbtn" rata-role="btnundo" title="{{name}}">Undo</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.25}}
+                    {{#controls.24}}<div class="px-tbtn" rata-role="btnclear" title="{{name}}">Clear</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>{{/controls.24}}
+                </div>
+
+                <div class="px-drow" style="justify-content:center; margin-top:14px;">
+                    {{#controls.18}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Quantise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.18}}
+                    {{#controls.19}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Feedback</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.19}}
+                </div>
+                <div class="px-hint">Click a lane to arm it — Rec, Play, Stop, Undo and Clear all act on the selected track. Recording snaps to the bar when Quantise is on.</div>
+            </div>
+
+            <!-- ══ DRUMS ══ -->
+            <div class="px-view px-view-drums">
+                <div class="px-drow">
+                    {{#controls.4}}
+                    <span class="px-tlabel">Groove</span>
+                    <div class="mod-enumerated" style="min-width:190px" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                        <div class="mod-enumerated-selected" mod-widget-property="labels"></div>
+                        <div class="mod-enumerated-list">
+                            {{#scalePoints}}<div mod-role="enumeration-option" mod-parameter-value="{{value}}">{{label}}</div>{{/scalePoints}}
+                        </div>
+                    </div>
+                    {{/controls.4}}
+                    <div class="px-pill" rata-role="btnmidi">Import MIDI</div>
+                    <input type="file" class="px-file" rata-role="midifile" accept=".mid,.midi,audio/midi" />
+                    <div class="px-pill" rata-role="btnrevert">Revert to factory</div>
+                    <div class="px-pill" rata-role="btnclearpat">Clear grid</div>
+                </div>
+
+                <div class="px-grid"><canvas rata-role="grid" width="912" height="392"></canvas></div>
+                <div class="px-status" rata-role="patstatus"></div>
+
+                <div class="px-drow" style="justify-content:center; margin-top:12px;">
+                    {{#controls.6}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Swing</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.6}}
+                    {{#controls.7}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Humanise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.7}}
+                    {{#controls.3}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Beats / Bar</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.3}}
+                </div>
+                <div class="px-hint">Click a cell to cycle rest → soft → normal → accent; right-click clears it. Editing takes the groove over from the factory pattern — Revert puts it back.</div>
+            </div>
+
+            <!-- ══ MIX ══ -->
+            <div class="px-view px-view-mix">
+                <div class="px-mixgrid">
+                    <div class="px-mixcol">
+                        <span class="px-mixttl">Loop Tracks</span>
+                        <div class="px-strips">
+                            {{#controls.26}}<div class="px-strip"><div class="px-fader" rata-role="fad26" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Trk 1</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.26}}
+                            {{#controls.28}}<div class="px-strip"><div class="px-fader" rata-role="fad28" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Trk 2</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.28}}
+                            {{#controls.30}}<div class="px-strip"><div class="px-fader" rata-role="fad30" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Trk 3</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.30}}
+                            {{#controls.32}}<div class="px-strip"><div class="px-fader" rata-role="fad32" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Trk 4</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.32}}
+                        </div>
+                    </div>
+
+                    <div class="px-mixcol">
+                        <span class="px-mixttl">Masters</span>
+                        <div class="px-strips">
+                            {{#controls.17}}<div class="px-strip"><div class="px-fader" rata-role="fad17" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Loops</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.17}}
+                            {{#controls.5}}<div class="px-strip"><div class="px-fader" rata-role="fad5" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Drums</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.5}}
+                        </div>
+                    </div>
+
+                    <div class="px-mixcol">
+                        <span class="px-mixttl">Kit</span>
+                        <div class="px-strips">
+                            {{#controls.8}}<div class="px-strip"><div class="px-fader" rata-role="fad8" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Kick</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.8}}
+                            {{#controls.9}}<div class="px-strip"><div class="px-fader" rata-role="fad9" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Snare</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.9}}
+                            {{#controls.10}}<div class="px-strip"><div class="px-fader" rata-role="fad10" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Toms</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.10}}
+                            {{#controls.11}}<div class="px-strip"><div class="px-fader" rata-role="fad11" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Hats</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.11}}
+                            {{#controls.12}}<div class="px-strip"><div class="px-fader" rata-role="fad12" mod-role="input-control-port" mod-port-symbol="{{symbol}}"><span class="px-fad-fill"></span><span class="px-fad-hand"></span></div><span class="px-slab">Cymbals</span><span class="px-sval" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.12}}
+                        </div>
+                    </div>
+
+                    <div class="px-mixcol wide">
+                        <span class="px-mixttl">Drum Bus &amp; Voicing</span>
+                        <div class="px-knobs">
+                            {{#controls.13}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Comp</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.13}}
+                            {{#controls.14}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Room</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.14}}
+                            {{#controls.15}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Size</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.15}}
+                            {{#controls.16}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Body</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.16}}
+                            {{#controls.35}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Kick Tune</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.35}}
+                            {{#controls.36}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Kick Decay</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.36}}
+                            {{#controls.37}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Kick Click</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.37}}
+                            {{#controls.38}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Snare Tune</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.38}}
+                            {{#controls.39}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Snr Decay</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.39}}
+                            {{#controls.40}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Snappy</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.40}}
+                            {{#controls.41}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Hat Decay</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.41}}
+                            {{#controls.42}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">Hat Tone</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.42}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>

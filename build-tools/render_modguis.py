@@ -26,6 +26,7 @@ PEDALS = {
     "nail":   ("nail.ttl",    360, 485),
     "octave": ("octave.ttl",  400, 490),
     "wah":    ("wah.ttl",     460, 440),
+    "practice":("practice.ttl", 980, 812),   # looper/drum workstation: a work surface, not a faceplate
 }
 
 # ── TTL -> ordered control-input ports (what MOD exposes as `controls`) ───────────────────────────
@@ -62,7 +63,26 @@ def parse_controls(ttl_path):
                 sp.append((spb[1], spb[0]))
         ctrls.append((int(mi.group(1)), {"symbol": ms.group(1), "name": mn.group(1), "sp": sp}))
     ctrls.sort(key=lambda x: x[0])
-    return [c for _, c in ctrls]
+    by_index = dict(ctrls)
+    ordered = [c for _, c in ctrls]
+
+    # mod-ui builds the template's `controls` array from modgui:port IN LIST
+    # ORDER when that block is present, not from lv2:index. Sorting by index
+    # here would label {{#controls.N}} with whatever port happens to sit at
+    # index N, which is only the same thing when the list is already in index
+    # order -- it is not, for cab or practice. Honour the list.
+    gui = txt.find("modgui:gui")
+    if gui >= 0:
+        block = txt[gui:]
+        mapped = re.findall(r'lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+"([^"]*)"', block)
+        if mapped:
+            ordered = []
+            for idx, sym in mapped:
+                c = by_index.get(int(idx))
+                # An output port can be mapped for a meter; it has no control
+                # entry, so hold the slot rather than shifting everything after.
+                ordered.append(c if c else {"symbol": sym, "name": sym, "sp": []})
+    return ordered
 
 # ── Mustache-lite: fill {{#controls.N}} blocks from the port list, drop runtime-only loops ────────
 def fill_mustache(html, controls):

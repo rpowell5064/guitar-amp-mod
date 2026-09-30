@@ -241,7 +241,7 @@ install(FILES lv2/practice/drumkit.dat DESTINATION ${BUNDLE_DIR})
 # MOD-UI modgui resources: one dir per plugin, named exactly as that plugin's
 # modgui:resourcesDirectory in its TTL (modgui-amp, modgui-cab, …). Each carries
 # the stylesheet/icon/script, screenshot/thumbnail/logo, and knob/switch sprites.
-foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge wah octave)
+foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge wah octave practice)
     install(DIRECTORY lv2/modgui-${_m} DESTINATION ${BUNDLE_DIR})
 endforeach()
 

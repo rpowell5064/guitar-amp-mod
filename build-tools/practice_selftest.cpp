@@ -14,10 +14,16 @@
 //       build-tools/practice_selftest.cpp lv2/practice/practice_plugin.cpp
 //       -o /tmp/practice_selftest && /tmp/practice_selftest'
 #include <lv2/core/lv2.h>
+#include <lv2/atom/atom.h>
+#include <lv2/atom/forge.h>
+#include <lv2/atom/util.h>
+#include <lv2/patch/patch.h>
+#include <lv2/urid/urid.h>
 
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -43,7 +49,9 @@ enum {
     OUT_STEP = 45, OUT_UNDO_AVAIL = 46,
     DRUM_COMP = 47, DRUM_ROOM = 48, DRUM_ROOM_SIZE = 49, DRUM_BODY = 50,
     BYPASS = 51, ENABLED = 52,
-    N_PORTS = 53
+    CONTROL = 53, NOTIFY = 54,
+    TEMPO_SYNC = 55, HOST_BPM = 56,
+    N_PORTS = 57
 };
 
 static constexpr double kFs    = 48000.0;
@@ -57,6 +65,20 @@ static void check(bool ok, const char* what, const std::string& detail = {}) {
     if (!ok) ++failures;
 }
 
+// ── Minimal URID map ─────────────────────────────────────────────────────────
+// The editor channel is the one part of the plugin a control-port-only harness
+// cannot reach: with no urid:map feature the plugin disables it outright, so
+// the waveform push, the pattern push and patch:Set handling all went untested
+// until this existed. Names are interned in a vector; the URID is the 1-based
+// index, which is all the plugin requires of a map.
+static std::vector<std::string> gUrids;
+static LV2_URID uridMap(LV2_URID_Map_Handle, const char* uri) {
+    for (size_t i = 0; i < gUrids.size(); ++i)
+        if (gUrids[i] == uri) return static_cast<LV2_URID>(i + 1);
+    gUrids.push_back(uri);
+    return static_cast<LV2_URID>(gUrids.size());
+}
+
 // A harness that owns the control-port storage and the audio buffers.
 struct Host {
     const char* bundle = "";      // where the plugin looks for drumkit.dat
@@ -66,18 +88,36 @@ struct Host {
     std::vector<float>    in, out;
     int64_t               framesFed = 0;
 
+    // Editor channel. 64 KB is comfortably more than the largest message the
+    // plugin sends (four base64 waveforms at 256 points each).
+    static const uint32_t kAtomCap = 64u * 1024u;
+    std::vector<uint8_t>  ctlBuf, ntfBuf;
+    LV2_URID_Map          uridFeature { nullptr, uridMap };
+    LV2_Feature           fUrid { LV2_URID__map, &uridFeature };
+
     void open() {
         desc = lv2_descriptor(0);
         if (!desc) { std::printf("  !! lv2_descriptor(0) returned null\n"); ++failures; return; }
-        static const LV2_Feature* const kNoFeatures[] = { nullptr };
-        h = desc->instantiate(desc, kFs, bundle, kNoFeatures);   // no worker offered
+        const LV2_Feature* const feats[] = { &fUrid, nullptr };
+        h = desc->instantiate(desc, kFs, bundle, feats);         // no worker offered
         if (!h) { std::printf("  !! instantiate returned null\n"); ++failures; return; }
 
         in.assign(kBlock, 0.0f);
         out.assign(kBlock, 0.0f);
+        ctlBuf.assign(kAtomCap, 0);
+        ntfBuf.assign(kAtomCap, 0);
+        atomReset();
         desc->connect_port(h, IN,  in.data());
         desc->connect_port(h, OUT, out.data());
-        for (int i = 2; i < N_PORTS; ++i) desc->connect_port(h, i, &ctl[i]);
+        desc->connect_port(h, CONTROL, ctlBuf.data());
+        desc->connect_port(h, NOTIFY,  ntfBuf.data());
+        // Everything else is an ordinary control port. The two atom ports are
+        // skipped deliberately: handing the plugin a float* there would have it
+        // read a single float as an atom sequence.
+        for (int i = 2; i < N_PORTS; ++i) {
+            if (i == CONTROL || i == NOTIFY) continue;
+            desc->connect_port(h, i, &ctl[i]);
+        }
 
         // TTL defaults.
         ctl[TEMPO] = 120.0f; ctl[BEATS_PER_BAR] = 4.0f;
@@ -86,6 +126,80 @@ struct Host {
         ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
         ctl[LOOP_QUANTIZE] = 1.0f; ctl[LOOP_FEEDBACK] = 100.0f; ctl[LOOP_TRACK] = 1.0f;
         ctl[ENABLED] = 1.0f;
+    }
+
+    // A host clears the input sequence and republishes the output buffer's
+    // CAPACITY in its size field before every run; the plugin forges into that.
+    void atomResetIn() {
+        LV2_Atom_Sequence* i = reinterpret_cast<LV2_Atom_Sequence*>(ctlBuf.data());
+        i->atom.type = uridMap(nullptr, LV2_ATOM__Sequence);
+        i->atom.size = sizeof(LV2_Atom_Sequence_Body);
+        i->body.unit = 0;
+        i->body.pad  = 0;
+    }
+    void atomResetOut() {
+        LV2_Atom_Sequence* o = reinterpret_cast<LV2_Atom_Sequence*>(ntfBuf.data());
+        o->atom.type = uridMap(nullptr, LV2_ATOM__Sequence);
+        o->atom.size = kAtomCap - uint32_t(sizeof(LV2_Atom));
+    }
+    // Input is cleared AFTER the run, not before: a message posted by the test
+    // has to survive until the plugin has actually read it.
+    void atomReset() { atomResetIn(); atomResetOut(); }
+
+    // Ask the plugin for everything it can report, the way an editor does when
+    // it opens.
+    void sendPatchGet() {
+        LV2_Atom_Forge f;
+        lv2_atom_forge_init(&f, &uridFeature);
+        lv2_atom_forge_set_buffer(&f, ctlBuf.data(), kAtomCap);
+        LV2_Atom_Forge_Frame seq;
+        lv2_atom_forge_sequence_head(&f, &seq, 0);
+        lv2_atom_forge_frame_time(&f, 0);
+        LV2_Atom_Forge_Frame obj;
+        lv2_atom_forge_object(&f, &obj, 0, uridMap(nullptr, LV2_PATCH__Get));
+        lv2_atom_forge_pop(&f, &obj);
+        lv2_atom_forge_pop(&f, &seq);
+    }
+
+    // Post a patch:Set carrying a string, the way the editor sends a pattern.
+    void sendPatchSet(const char* propUri, const char* text) {
+        LV2_Atom_Forge f;
+        lv2_atom_forge_init(&f, &uridFeature);
+        lv2_atom_forge_set_buffer(&f, ctlBuf.data(), kAtomCap);
+        LV2_Atom_Forge_Frame seq;
+        lv2_atom_forge_sequence_head(&f, &seq, 0);
+        lv2_atom_forge_frame_time(&f, 0);
+        LV2_Atom_Forge_Frame obj;
+        lv2_atom_forge_object(&f, &obj, 0, uridMap(nullptr, LV2_PATCH__Set));
+        lv2_atom_forge_key(&f, uridMap(nullptr, LV2_PATCH__property));
+        lv2_atom_forge_urid(&f, uridMap(nullptr, propUri));
+        lv2_atom_forge_key(&f, uridMap(nullptr, LV2_PATCH__value));
+        lv2_atom_forge_string(&f, text, uint32_t(std::strlen(text)));
+        lv2_atom_forge_pop(&f, &obj);
+        lv2_atom_forge_pop(&f, &seq);
+    }
+
+    // Every patch:Set the plugin emitted this block, as property URI -> value.
+    std::vector<std::pair<std::string, std::string>> notified() const {
+        std::vector<std::pair<std::string, std::string>> out;
+        const LV2_Atom_Sequence* seq = reinterpret_cast<const LV2_Atom_Sequence*>(ntfBuf.data());
+        const LV2_URID setU  = uridMap(nullptr, LV2_PATCH__Set);
+        const LV2_URID propU = uridMap(nullptr, LV2_PATCH__property);
+        const LV2_URID valU  = uridMap(nullptr, LV2_PATCH__value);
+        LV2_ATOM_SEQUENCE_FOREACH(seq, ev) {
+            const LV2_Atom* a = &ev->body;
+            if (a->type != uridMap(nullptr, LV2_ATOM__Object)) continue;
+            const LV2_Atom_Object* o = reinterpret_cast<const LV2_Atom_Object*>(a);
+            if (o->body.otype != setU) continue;
+            const LV2_Atom* prop = nullptr;
+            const LV2_Atom* val  = nullptr;
+            lv2_atom_object_get(o, propU, &prop, valU, &val, 0);
+            if (!prop || !val) continue;
+            const LV2_URID pid = reinterpret_cast<const LV2_Atom_URID*>(prop)->body;
+            const char* name = (pid >= 1 && pid <= gUrids.size()) ? gUrids[pid - 1].c_str() : "?";
+            out.push_back({ name, std::string(reinterpret_cast<const char*>(val + 1)) });
+        }
+        return out;
     }
 
     void close() {
@@ -105,7 +219,9 @@ struct Host {
         for (int64_t done = 0; done < frames; done += kBlock) {
             for (int i = 0; i < kBlock; ++i)
                 in[i] = silent ? 0.0f : tone(framesFed + i);
+            atomResetOut();
             desc->run(h, kBlock);
+            atomResetIn();
             if (capture) capture->insert(capture->end(), out.begin(), out.end());
             framesFed += kBlock;
         }
@@ -351,6 +467,86 @@ int main() {
         check(diff > 1.0e-3, "the loaded kit really replaces the synth voices",
               "max diff " + std::to_string(diff));
         noKit.close();
+    }
+
+    // ── Editor channel ───────────────────────────────────────────────────────
+    // Everything the new GUI draws arrives over the atom ports, and none of it
+    // is reachable from a control port. These checks are what stands between a
+    // working panel and a panel that silently shows nothing.
+    std::printf("\nEditor channel\n");
+    {
+        const std::string PAT  = "https://rpowell5064.github.io/guitaramp-suite/practice#pattern";
+        const std::string WAVE = "https://rpowell5064.github.io/guitaramp-suite/practice#waveform";
+
+        Host hst; hst.open();
+        hst.ctl[PATTERN] = 0.0f;
+        hst.sendPatchGet();
+        hst.run(kBlock);
+        auto msgs = hst.notified();
+
+        std::string pat, wave;
+        for (auto& m : msgs) {
+            if (m.first == PAT)  pat  = m.second;
+            if (m.first == WAVE) wave = m.second;
+        }
+        check(!wave.empty(), "patch:Get is answered with a waveform");
+        check(!pat.empty(),  "patch:Get is answered with a pattern");
+        check(pat.find("\"builtin\":1") != std::string::npos,
+              "the answer is the factory groove, not an empty slot");
+        check(pat.find("\"lanes\":[{") != std::string::npos,
+              "the factory groove carries lanes the grid can draw");
+
+        // Selecting a different groove must push the new one out, or the grid
+        // would keep showing the pattern the user just navigated away from.
+        hst.ctl[PATTERN] = 5.0f;
+        hst.run(kBlock);
+        std::string pat5;
+        for (auto& m : hst.notified()) if (m.first == PAT) pat5 = m.second;
+        check(!pat5.empty(), "changing the Pattern port pushes the new groove");
+        check(pat5.find("\"idx\":5") != std::string::npos,
+              "the pushed groove is the one selected", pat5.substr(0, 46));
+
+        // An edited pattern from the editor takes over...
+        const char* edit = "{\"spb\":16,\"bars\":1,\"lanes\":[{\"i\":0,\"s\":\"X...X...X...X...\"}]}";
+        hst.sendPatchSet(PAT.c_str(), edit);
+        hst.run(kBlock);
+        std::string back;
+        for (auto& m : hst.notified()) if (m.first == PAT) back = m.second;
+        check(!back.empty() && back.find("\"builtin\"") == std::string::npos,
+              "an edited pattern is echoed back as a user pattern");
+
+        // ...and Revert hands the groove back to the factory table.
+        hst.sendPatchSet(PAT.c_str(), "{\"revert\":1}");
+        hst.run(kBlock);
+        std::string rev;
+        for (auto& m : hst.notified()) if (m.first == PAT) rev = m.second;
+        check(rev.find("\"builtin\":1") != std::string::npos,
+              "revert restores the factory groove");
+
+        // A recorded loop has to reach the waveform lanes. Same bar-aligned
+        // sequence the Looper section uses: with Quantise on, a take only
+        // closes on a bar line, so the run lengths are not arbitrary.
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+        hst.trigger(LOOP_REC);
+        hst.run(barLen * 2 - kBlock);
+        hst.trigger(LOOP_REC);            // closes the take
+        hst.run(kBlock);
+
+        // The push is version-gated, so ask explicitly rather than hoping the
+        // change landed in whichever block we happen to look at.
+        hst.sendPatchGet();
+        hst.run(kBlock);
+        std::string w2;
+        for (auto& m : hst.notified()) if (m.first == WAVE) w2 = m.second;
+        check(!w2.empty(), "a waveform is sent after recording");
+        // t[0] is track 1: an empty track encodes as "", a recorded one does not.
+        const size_t tpos = w2.find("\"t\":[");
+        check(tpos != std::string::npos && w2.compare(tpos + 5, 3, "\"\",") != 0,
+              "track 1's waveform is not empty after recording",
+              tpos == std::string::npos ? "" : w2.substr(tpos, 18));
+        hst.close();
     }
 
     // ── Robustness ───────────────────────────────────────────────────────────
