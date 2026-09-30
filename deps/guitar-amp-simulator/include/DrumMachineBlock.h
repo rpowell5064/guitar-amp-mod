@@ -60,6 +60,7 @@ public:
         room.prepare(fs, int(scratch.size()), 1);
         applyBus();
         resynth.prepare(fs);
+        buzz.prepare(fs);
         kick.prepare(fs);
         snare.prepare(fs);
         rim.prepare(fs);
@@ -82,6 +83,7 @@ public:
         tomHi.reset(); tomMid.reset(); tomFloor.reset();
         hat.reset(); crash.reset(); ride.reset();
         resynth.reset();
+        buzz.reset();
         room.reset();
         sendHp.reset();
         bodyShelf.reset();
@@ -448,6 +450,13 @@ private:
             resynth.render(p, n, g);
         }
 
+        // Sympathetic wire rattle, at the snare's own fader so muting the
+        // snare silences its wires too.
+        if (!muted[INST_SNARE]) {
+            const float g = 0.085f * kBalance[INST_SNARE] * trims[INST_SNARE];
+            for (int i = 0; i < n; ++i) p[i] += buzz.tick() * g;
+        }
+
         kick    .render(p, n, voiceGain(INST_KICK));
         snare   .render(p, n, voiceGain(INST_SNARE));
         rim     .render(p, n, voiceGain(INST_SIDESTICK));
@@ -460,6 +469,13 @@ private:
     }
 
     void strike(uint8_t inst, float vel) noexcept {
+        // Low drums set the snare wires rattling. Only the low ones: the
+        // snare's own hit already has its wires in the model, and a hat has no
+        // business moving them.
+        if (inst == INST_KICK)       buzz.excite(vel * 0.55f);
+        else if (inst == INST_TOM_FLOOR) buzz.excite(vel * 0.40f);
+        else if (inst == INST_TOM_MID)   buzz.excite(vel * 0.22f);
+
         // The recorded model wins wherever the kit has one; the synthesised
         // voice is the fallback, not the default.
         if (resynth.covers(inst)) { resynth.trigger(inst, vel); return; }
@@ -480,6 +496,38 @@ private:
             default: break;
         }
     }
+
+    // Snare wires rattle whenever the kick or a low tom moves air in the
+    // shell — it is one of the most recognisable things about a real kit in a
+    // room, and a kit that lacks it sounds like separate drums rather than one
+    // instrument. Close-miked one-shots cannot contain it by construction:
+    // each was recorded alone, so the snare was never there to answer.
+    //
+    // Modelled as the wires themselves: a band of noise around their rattle
+    // region with a short decay, excited by the low drums in proportion to how
+    // hard they were hit. It is deliberately not a control — a snare with
+    // wires engaged always does this, and the level is set low enough to be
+    // felt rather than heard as a separate sound.
+    struct WireBuzz {
+        BiquadFilter bp, hp;
+        float env{0.0f}, coef{0.999f};
+        Rng   rng{0x5B0221u};
+
+        void prepare(double fs) noexcept {
+            bp.setCoeffs(Filters::bandpass(2600.0, 0.55, fs));
+            hp.setCoeffs(Filters::highpass(1300.0, 0.7, fs));
+            coef = std::exp(-6.907755f / (0.115f * float(fs)));   // ~115 ms rattle
+            env = 0.0f;
+        }
+        void reset() noexcept { env = 0.0f; bp.reset(); hp.reset(); }
+        void excite(float v) noexcept { env = std::min(1.0f, env + v); }
+        float tick() noexcept {
+            if (env < 1.0e-5f) return 0.0f;
+            const float n = hp.process(bp.process(rng.white()));
+            env *= coef;
+            return n * env;
+        }
+    };
 
     // Map the two bus knobs onto the shared Compressor and Plate blocks.
     void applyBus() noexcept {
@@ -533,6 +581,7 @@ private:
 
     // Voices
     ResynthVoices resynth;
+    WireBuzz      buzz;
 
     KickVoice   kick;
     SnareVoice  snare;

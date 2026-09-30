@@ -530,31 +530,103 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
     for (size_t i = 0; i < take; ++i) spec[i] = x[i] * w[i];
     fft(spec);
 
+    // Where does this instrument's spectrum actually start?
+    //
+    // A crash has a cliff below ~300 Hz: the real one measures 43 dB at
+    // 300-500 Hz and only 6 dB at 130-200. Fitting modes down there fits
+    // NOISE, and fifty spurious low modes summed to ~20 dB of excess, which
+    // dragged the model's spectral centroid ~2 kHz below the real cymbal's and
+    // is most of why it read as dark rather than metallic.
+    //
+    // A fixed floor would be a guess that suits the crash and not the ride
+    // bell, which genuinely has low content. So the cut is derived from the
+    // recording: the lowest third-octave band whose energy comes within 30 dB
+    // of the strongest band.
+    const double binHz = fs / double(NF);
+    double loCut = 250.0;
+    {
+        constexpr int kB = 30;               // third-octaves from 60 Hz up
+        std::vector<double> e(kB, 0.0);
+        for (size_t k = 1; k < NF / 2; ++k) {
+            const double f = double(k) * binHz;
+            if (f < 60.0 || f > 16000.0) continue;
+            int b = int(std::log(f / 60.0) / std::log(16000.0 / 60.0) * (kB - 1) + 0.5);
+            b = std::clamp(b, 0, kB - 1);
+            e[b] += std::norm(spec[k]);
+        }
+        double peak = 0.0;
+        for (double v : e) peak = std::max(peak, v);
+        const double thr = peak * std::pow(10.0, -30.0 / 10.0);
+        for (int b = 0; b < kB; ++b) {
+            if (e[b] >= thr) {
+                loCut = 60.0 * std::pow(16000.0 / 60.0, double(b) / (kB - 1));
+                break;
+            }
+        }
+        loCut = std::clamp(loCut, 80.0, 900.0);
+    }
+
     struct Cand { double f, m; };
     std::vector<Cand> cands;
-    const double binHz = fs / double(NF);
     for (size_t k = 2; k + 2 < NF / 2; ++k) {
         const double m = std::abs(spec[k]);
         if (m <= std::abs(spec[k - 1]) || m < std::abs(spec[k + 1])) continue;
         const double f = double(k) * binHz;
-        if (f < 150.0 || f > 16000.0) continue;
+        if (f < loCut || f > 16000.0) continue;
         cands.push_back({ f, m });
     }
     std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.m > b.m; });
 
+    // Spend the mode budget PER OCTAVE BAND, not globally by amplitude.
+    //
+    // A cymbal's loudest modes are all low, so taking the strongest N peaks
+    // overall starves the top end. Measured as spectral centroid 10 ms into a
+    // hit: a real crash sits at 6373 Hz and a real ride at 7109, while the
+    // globally-selected model came out at 4293 and 4193 — about 2 kHz too
+    // dark, which is most of why it did not sound like metal. The high modes
+    // are quiet individually but there are a great many of them, and together
+    // they are the air and shimmer.
+    constexpr int kBands = 12;
+    const double lo = loCut, hi = 16000.0;
+    std::vector<int> used(kBands, 0);
+    const int quota = std::max(1, want / kBands);
+
     std::vector<DenseMode> modes;
-    for (const Cand& c : cands) {
-        if (int(modes.size()) >= want) break;
-        // 1.2 Hz, not 3. Cymbal modes are mostly SPLIT DOUBLETS a few Hz
-        // apart, and the slow beating between each pair is the shimmer — it is
-        // the difference between metal and a bell. A 3 Hz dedup threshold
-        // merged exactly those pairs and threw the shimmer away. The 65536-pt
-        // analysis window resolves 0.67 Hz, so the pairs are there to be kept.
-        bool dup = false;
-        for (const DenseMode& m : modes) if (std::fabs(m.freq - c.f) < 1.2) { dup = true; break; }
-        if (dup) continue;
-        DenseMode m;
-        if (fitStaticMode(x, fs, c.f, m)) modes.push_back(m);
+    // Two passes: fill each band's quota first, then spend anything left over
+    // on the strongest remaining peaks wherever they are.
+    for (int pass = 0; pass < 2; ++pass) {
+        for (const Cand& c : cands) {
+            if (int(modes.size()) >= want) break;
+            int b = int(std::log(c.f / lo) / std::log(hi / lo) * (kBands - 1) + 0.5);
+            b = std::clamp(b, 0, kBands - 1);
+            if (pass == 0 && used[b] >= quota) continue;
+
+            // 1.2 Hz, not 3. Cymbal modes are mostly SPLIT DOUBLETS a few Hz
+            // apart, and the slow beating between each pair is the shimmer —
+            // it is the difference between metal and a bell. A 3 Hz dedup
+            // threshold merged exactly those pairs and threw the shimmer away.
+            // The 65536-point analysis resolves 0.67 Hz, so they are there.
+            bool dup = false;
+            for (const DenseMode& m : modes) if (std::fabs(m.freq - c.f) < 1.2) { dup = true; break; }
+            if (dup) continue;
+
+            DenseMode m;
+            if (fitStaticMode(x, fs, c.f, m)) { modes.push_back(m); ++used[b]; }
+            // (weak modes are culled below, once the strongest is known)
+        }
+    }
+
+    // Drop modes more than 45 dB below the strongest. Below that they are
+    // inaudible individually, and a fit that weak is as likely to have latched
+    // onto the noise floor as onto a real mode — which is exactly how spurious
+    // energy accumulates in bands where the instrument has none.
+    if (!modes.empty()) {
+        double loudest = 0.0;
+        for (const DenseMode& m : modes) loudest = std::max(loudest, m.amp);
+        const double floorAmp = loudest * std::pow(10.0, -45.0 / 20.0);
+        modes.erase(std::remove_if(modes.begin(), modes.end(),
+                                   [floorAmp](const DenseMode& m) { return m.amp < floorAmp; }),
+                    modes.end());
     }
     return modes;
 }
