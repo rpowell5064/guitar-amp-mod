@@ -93,17 +93,17 @@ SOURCES = {
     "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 28,   0, 4096),
     "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 28,   0, 4096),
     "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 28,   0, 4096),
-    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  0, 300, 1024),
-    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  0, 240, 1024),
-    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0, 450, 1024),
-    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 600, 1024),
-    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0, 600, 1024),
-    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 500, 1024),
+    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  0, 500, 1024),
+    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  0, 400, 1024),
+    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0, 700, 1024),
+    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 900, 1024),
+    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0,1000, 1024),
+    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 800, 1024),
     # Added for modern metal. China and stack are cymbals, so they take
     # the dense modal model; the rimshot is a drum and takes tracked
     # partials with the snare's 4096-point window.
-    "CHINA":      ("china_18/cn/cl",           6.0, 3,  0, 500, 1024),
-    "STACK":      ("stack_3_layer/mid/cl",     2.5, 3,  0, 300, 1024),
+    "CHINA":      ("china_18/cn/cl",           6.0, 3,  0,1000, 1024),
+    "STACK":      ("stack_3_layer/mid/cl",     2.5, 3,  0, 500, 1024),
     "SNARE_RIM":  ("snare_14/rimshot/top",     3.0, 3, 28,   0, 4096),
 }
 

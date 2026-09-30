@@ -522,6 +522,12 @@ static std::vector<float> synthDenseModes(const std::vector<DenseMode>& modes, d
     return y;
 }
 
+// How far below the strongest third-octave band the mode search is allowed
+// to reach. Too small and the model is left hollow where the instrument
+// does have content; too large and it fits noise below the instrument's
+// natural cliff, which is what made the cymbals 2 kHz too dark.
+static double gLowCutDb = 25.0;
+
 static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, double fs, int want) {
     const size_t NF = 1u << 16;                       // fine enough to separate dense modes
     std::vector<std::complex<double>> spec(NF, { 0.0, 0.0 });
@@ -543,7 +549,7 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
     // recording: the lowest third-octave band whose energy comes within 30 dB
     // of the strongest band.
     const double binHz = fs / double(NF);
-    double loCut = 250.0;
+    double loCut = 250.0, hiCut = 16000.0;
     {
         constexpr int kB = 30;               // third-octaves from 60 Hz up
         std::vector<double> e(kB, 0.0);
@@ -556,7 +562,7 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
         }
         double peak = 0.0;
         for (double v : e) peak = std::max(peak, v);
-        const double thr = peak * std::pow(10.0, -30.0 / 10.0);
+        const double thr = peak * std::pow(10.0, -gLowCutDb / 10.0);
         for (int b = 0; b < kB; ++b) {
             if (e[b] >= thr) {
                 loCut = 60.0 * std::pow(16000.0 / 60.0, double(b) / (kB - 1));
@@ -564,6 +570,14 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
             }
         }
         loCut = std::clamp(loCut, 80.0, 900.0);
+
+        // NO high cut. One was tried, derived the same way as the low cut, to
+        // remove a measured 19 dB excess above 12 kHz on the china. It made
+        // every cymbal WORSE (china 16.3 -> 22.3 dB) and darker, because the
+        // top octave is where a cymbal's air lives even when its energy there
+        // is small: cutting it removed more than the excess it was aimed at.
+        // The asymmetry is real — a spectrum's low end has a cliff below which
+        // there is nothing, but its high end just thins out.
     }
 
     struct Cand { double f, m; };
@@ -572,7 +586,7 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
         const double m = std::abs(spec[k]);
         if (m <= std::abs(spec[k - 1]) || m < std::abs(spec[k + 1])) continue;
         const double f = double(k) * binHz;
-        if (f < loCut || f > 16000.0) continue;
+        if (f < loCut || f > hiCut) continue;
         cands.push_back({ f, m });
     }
     std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.m > b.m; });
@@ -586,8 +600,18 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
     // dark, which is most of why it did not sound like metal. The high modes
     // are quiet individually but there are a great many of them, and together
     // they are the air and shimmer.
+    // A UNIFORM quota per octave band, not one proportional to each band's
+    // energy. Proportional allocation was tried and measured WORSE on every
+    // cymbal (china 16.3 -> 19.7 dB, the ride's centroid 6137 -> 4513 Hz):
+    // weighting by loudness hands the budget to the low bands, but the high
+    // bands need many modes precisely BECAUSE they are dense and individually
+    // quiet. Spending where the energy is is the wrong rule for a cymbal.
+    //
+    // The real problem proportional allocation was aimed at — modes fitted
+    // into bands the instrument does not occupy — is handled at both ends by
+    // the derived cuts instead.
     constexpr int kBands = 12;
-    const double lo = loCut, hi = 16000.0;
+    const double lo = loCut, hi = hiCut;
     std::vector<int> used(kBands, 0);
     const int quota = std::max(1, want / kBands);
 
@@ -636,6 +660,53 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
 // Read straight off the spectrum with the tracked partials notched out. No
 // time-domain subtraction, so no phase-cancellation requirement and no way to
 // end up with more energy than we started with.
+// Noise for a DENSE MODAL instrument, by energy difference rather than by
+// notching.
+//
+// Notching cannot work here. A mode's Hann mainlobe is ~16 bins wide at 4x
+// zero padding, so 600 notched modes erase 10,000 bins from a 2048-bin
+// spectrum — the whole thing. The residual came out empty, which is why the
+// noise length made no measurable difference to any cymbal, and it matters
+// most for a china, which is the trashiest and most genuinely noisy of them.
+//
+// Instead: synthesise the modes, take their spectrum, and keep whatever energy
+// the original has that they do not account for. Energy cannot go negative, so
+// this can never invent noise the instrument does not have.
+static NoiseModel analyseNoiseDiff(const std::vector<Frame>& frames,
+                                   const std::vector<Frame>& modalFrames, double fs) {
+    NoiseModel nm;
+    nm.hopSeconds = double(kHop) / fs;
+    const double lo = 40.0, hi = std::min(fs * 0.45, 16000.0);
+    for (int b = 0; b < NoiseModel::kBands; ++b)
+        nm.centre[b] = float(lo * std::pow(hi / lo, double(b) / (NoiseModel::kBands - 1)));
+
+    const double binHz = fs / double(kPad);
+    constexpr double kHannMS = 0.375;
+
+    for (size_t fi = 0; fi < frames.size(); ++fi) {
+        std::array<double, NoiseModel::kBands> accA{}, accB{};
+        for (size_t k = 1; k < frames[fi].mag.size(); ++k) {
+            const double f = double(k) * binHz;
+            if (f < lo || f > hi) continue;
+            int b = int(std::log(f / lo) / std::log(hi / lo) * (NoiseModel::kBands - 1) + 0.5);
+            b = std::clamp(b, 0, NoiseModel::kBands - 1);
+            const double a = frames[fi].mag[k];
+            accA[b] += a * a;
+            if (fi < modalFrames.size() && k < modalFrames[fi].mag.size()) {
+                const double m = modalFrames[fi].mag[k];
+                accB[b] += m * m;
+            }
+        }
+        std::array<float, NoiseModel::kBands> e{};
+        for (int b = 0; b < NoiseModel::kBands; ++b) {
+            const double resid = std::max(0.0, accA[b] - accB[b]);
+            e[b] = float(std::sqrt(2.0 * resid / (double(kPad) * double(kWin) * kHannMS)));
+        }
+        nm.frames.push_back(e);
+    }
+    return nm;
+}
+
 static NoiseModel analyseNoise(const std::vector<Frame>& frames,
                                const std::vector<Partial>& ps,
                                const std::vector<DenseMode>& modes, double fs) {
@@ -733,6 +804,14 @@ static std::vector<float> synthNoise(const NoiseModel& nm, double fs, size_t n) 
     const double hop = double(kHop);
     for (size_t i = 0; i < n; ++i) {
         const double fpos = double(i) / hop;
+        // The noise model ENDS when its frames end. Clamping to the last frame
+        // held that frame's band gains for the rest of the hit, so a model
+        // trimmed to 80 ms of attack emitted a constant noise floor for the
+        // remaining six seconds. The runtime already stopped correctly, so
+        // every score reported for a trimmed-noise instrument was measuring
+        // something the plugin never produced — and it made SHORTER noise
+        // models look worse, which is backwards.
+        if (size_t(fpos) >= nm.frames.size()) break;
         const size_t f0 = std::min(nm.frames.size() - 1, size_t(fpos));
         const size_t f1 = std::min(nm.frames.size() - 1, f0 + 1);
         const float  fr = float(fpos - double(f0));
@@ -906,6 +985,7 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--win") && i + 1 < argc) winSize = std::atoi(argv[++i]);
         if (!std::strcmp(argv[i], "--amp-floor") && i + 1 < argc) ampFloor = std::atof(argv[++i]);
         if (!std::strcmp(argv[i], "--dense-modes") && i + 1 < argc) denseModes = std::atoi(argv[++i]);
+        if (!std::strcmp(argv[i], "--lowcut-db") && i + 1 < argc) gLowCutDb = std::atof(argv[++i]);
         if (!std::strcmp(argv[i], "--noise-seconds") && i + 1 < argc) noiseSeconds = std::atof(argv[++i]);
     }
     const bool writeWavs = emitPath.empty();
@@ -974,7 +1054,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    auto noise = analyseNoise(frames, partials, modes, fs);
+    auto noise = modes.empty()
+               ? analyseNoise(frames, partials, modes, fs)
+               : analyseNoiseDiff(frames, stft(synthDenseModes(modes, fs, x.size())), fs);
 
     // With a modal model, the noise part only has to carry the ATTACK — the
     // stick contact — because the modes carry the whole ringing body. Keeping

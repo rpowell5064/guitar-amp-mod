@@ -315,10 +315,12 @@ class ResynthVoices {
 public:
     static constexpr int kMaxVoices   = 12;
     static constexpr int kMaxPartials = 48;
-    // Cymbals need hundreds. 400 matched a real crash's spectral density
-    // in measurement; below ~200 it is audibly sparse, above ~600 it
-    // flattens back towards noise.
-    static constexpr int kMaxModes    = 512;
+    // Cymbals need hundreds to low thousands. Measured against the real
+    // recordings' spectral centroid, more modes keep buying brightness well
+    // past 600: a china reaches 3564 Hz at 1000 modes against the real 3637,
+    // where 600 modes stalls at 3269. Only the BANKS hold these now, one per
+    // instrument, so the cost is bounded by the kit rather than by polyphony.
+    static constexpr int kMaxModes    = 1536;
 
     void prepare(double sampleRate) {
         fs = sampleRate;
@@ -401,7 +403,6 @@ public:
         // Modal instruments excite their shared persistent bank instead of
         // carrying their own oscillators; the voice then handles only the
         // noise (the stick attack).
-        v->numModes = 0;
         if (!best->hit.modes.empty()) exciteBank(inst, vel, v->gain * v->trim);
 
         const int np = std::min<int>(int(best->hit.partials.size()), partialLimit);
@@ -475,8 +476,6 @@ private:
     struct Voice {
         const ResynthHit* hit{nullptr};
         Osc      osc[kMaxPartials];
-        ModeOsc  mode[kMaxModes];
-        int      numModes{0};
         float    nb[NoiseBus::kBands]{}, nbStep[NoiseBus::kBands]{};
         double   pos{0.0}, framePeriod{128.0};
         int      frame{-1}, numOsc{0}, inst{-1}, bank{0};
@@ -627,33 +626,14 @@ private:
 
         const int f = int(v.pos / v.framePeriod);
         if (f != v.frame) {
-            // A modal voice outlives its noise frames — the noise only carries
-            // the attack — so it ends when its modes have decayed, not when
-            // the noise model runs out.
-            if (f >= int(h.noiseFrames) && v.numModes == 0) { v.active = false; return 0.0f; }
+            // A modal voice carries only the attack noise; its ring lives in
+            // the shared bank, which outlives it.
+            if (f >= int(h.noiseFrames)) { v.active = false; return 0.0f; }
             v.frame = f;
             startFrame(v, f);
         }
 
         float s = 0.0f;
-
-        // Modes are sorted longest-decay first, so the inaudible ones are all
-        // at the end and the active count only ever shrinks. Without this a
-        // crash would keep rotating 400 oscillators for its whole 8 s tail,
-        // long after most of them are below -80 dB.
-        while (v.numModes > 0) {
-            const ModeOsc& last = v.mode[v.numModes - 1];
-            if (last.re * last.re + last.im * last.im > kModeFloor * kModeFloor) break;
-            --v.numModes;
-        }
-        for (int i = 0; i < v.numModes; ++i) {
-            ModeOsc& m = v.mode[i];
-            const float nr = m.re * m.cr - m.im * m.ci;
-            const float ni = m.re * m.ci + m.im * m.cr;
-            m.re = nr; m.im = ni;
-            s += ni;
-        }
-
         for (int i = 0; i < v.numOsc; ++i) {
             Osc& o = v.osc[i];
             if (!o.live) continue;
