@@ -92,8 +92,9 @@ public:
     void setHumanize(float amount) noexcept { humanize = std::clamp(amount, 0.0f, 1.0f); }
     void setMasterGain(float lin)  noexcept { master = std::max(0.0f, lin); }
 
-    void setInstrumentGain(int inst, float lin) noexcept {
-        if (inst >= 0 && inst < INST_COUNT) gains[inst] = std::max(0.0f, lin);
+    // Trim relative to the kit's voiced balance; 1.0 leaves it as designed.
+    void setInstrumentTrim(int inst, float lin) noexcept {
+        if (inst >= 0 && inst < INST_COUNT) trims[inst] = std::max(0.0f, lin);
     }
     void setInstrumentMuted(int inst, bool m) noexcept {
         if (inst >= 0 && inst < INST_COUNT) muted[inst] = m;
@@ -301,7 +302,7 @@ private:
     }
 
     float voiceGain(int inst) const noexcept {
-        return gains[inst] * kVoiceTrim[inst] * master;
+        return kBalance[inst] * trims[inst] * kVoiceTrim[inst] * master;
     }
 
     void renderVoices(float* out, int from, int to) noexcept {
@@ -373,9 +374,17 @@ private:
         1.91f,  // ride bell
     };
 
-    // Musical balance, not calibration.
-    float gains[INST_COUNT] = { 1.0f, 0.90f, 0.70f, 0.80f, 0.80f, 0.85f,
-                                0.55f, 0.45f, 0.55f, 0.50f, 0.60f, 0.60f };
+    // The kit's designed balance. Fixed, because it is part of how the kit
+    // sounds, not a user setting: a mixer port whose 0 dB position wiped this
+    // out would make every fader default to a kit nobody voiced.
+    static constexpr float kBalance[INST_COUNT] = {
+        1.00f, 0.90f, 0.70f, 0.80f, 0.80f, 0.85f,
+        0.55f, 0.45f, 0.55f, 0.50f, 0.60f, 0.60f
+    };
+
+    // User trim ON TOP of the balance. Unity = "as voiced".
+    float trims[INST_COUNT] = { 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+                                1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
     bool  muted[INST_COUNT] = {};
     float master{0.45f};
 

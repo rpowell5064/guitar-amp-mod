@@ -70,3 +70,8 @@
     a lv2:Plugin ;
     lv2:binary <guitaramp_octave.so> ;
     rdfs:seeAlso <octave.ttl> .
+
+<https://rpowell5064.github.io/guitaramp-suite/practice>
+    a lv2:Plugin ;
+    lv2:binary <guitaramp_practice.so> ;
+    rdfs:seeAlso <practice.ttl> .

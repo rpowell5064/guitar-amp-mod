@@ -1,0 +1,383 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix work:  <http://lv2plug.in/ns/ext/worker#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix units: <http://lv2plug.in/ns/extensions/units#> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_transport>
+    a pg:Group ; lv2:symbol "g_transport" ; lv2:name "Transport" .
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_drums>
+    a pg:Group ; lv2:symbol "g_drums" ; lv2:name "Drums" .
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_kit>
+    a pg:Group ; lv2:symbol "g_kit" ; lv2:name "Kit Mix" .
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_voice>
+    a pg:Group ; lv2:symbol "g_voice" ; lv2:name "Kit Voicing" .
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_loop>
+    a pg:Group ; lv2:symbol "g_loop" ; lv2:name "Looper" .
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks>
+    a pg:Group ; lv2:symbol "g_tracks" ; lv2:name "Loop Tracks" .
+<https://rpowell5064.github.io/guitaramp-suite/practice#g_status>
+    a pg:Group ; lv2:symbol "g_status" ; lv2:name "Status" .
+
+<https://rpowell5064.github.io/guitaramp-suite/practice>
+    a lv2:Plugin , lv2:UtilityPlugin ;
+    rdfs:label "Hex Chain — Practice" ;
+    doap:name  "Hex Chain Practice" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Four-track looper and synthesised drum machine for practice.
+
+A practice rig in one plugin: a four-track looper that quantises to the bar, and a drum machine whose kit is synthesised rather than sampled — so it needs no sample library and runs on a headless pedalboard.
+
+The looper keeps a rolling pre-roll of its input, so hitting record a fraction late still gives you a loop that starts on the beat instead of one that is short by however late you were. All four tracks share one loop length, overdub with adjustable feedback, and there is one level of undo/redo.
+
+The drum machine ships seventeen grooves from straight rock through gallop, d-beat, blast and half-time breakdowns, with swing, humanisation and a full kit mix. The kit models the instruments rather than filtering noise into shape: the kick is a pitched body sweep with a separately enveloped beater click, snare and toms are modal shells with shaped noise for the wires, and the cymbals come from a metallic oscillator bank.
+
+Place it LAST in the chain, after amp and cab: the looper then records the signal you actually hear, and the drums are not run through your preamp.
+
+Free and open source (GPL-3).""" ;
+    mod:label  "Practice" ;
+    mod:brand  "Hex Chain" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 1 ;   # 1: first release — four-track looper + synth drum machine
+    # The worker carries the undo snapshot (a memcpy of the whole loop) off the
+    # audio thread. It is OPTIONAL: without it the plugin runs normally and only
+    # undo is unavailable, so a host with no worker support still loads it.
+    lv2:optionalFeature lv2:hardRTCapable , work:schedule ;
+    lv2:extensionData work:interface ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out"
+    ] , [
+        # Master play/stop for the drums AND the loop. Restarting always returns
+        # to bar one, so the groove and the loop stay in phase.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "run" ; lv2:name "Run" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_transport> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "tempo" ; lv2:name "Tempo" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_transport> ;
+        units:unit units:bpm ;
+        lv2:default 120.0 ; lv2:minimum 20.0 ; lv2:maximum 300.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "beats_per_bar" ; lv2:name "Beats / Bar" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_transport> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 4.0 ; lv2:minimum 1.0 ; lv2:maximum 16.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "drums_level" ; lv2:name "Drums Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        # Must stay in step with hexdrums::patternTable() — 17 grooves.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "pattern" ; lv2:name "Pattern" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 16 ;
+        lv2:scalePoint [ rdfs:label "Rock 8ths"    ; rdf:value 0  ] ;
+        lv2:scalePoint [ rdfs:label "Rock 16ths"   ; rdf:value 1  ] ;
+        lv2:scalePoint [ rdfs:label "Half-Time"    ; rdf:value 2  ] ;
+        lv2:scalePoint [ rdfs:label "Double Kick"  ; rdf:value 3  ] ;
+        lv2:scalePoint [ rdfs:label "Blast"        ; rdf:value 4  ] ;
+        lv2:scalePoint [ rdfs:label "Bomb Blast"   ; rdf:value 5  ] ;
+        lv2:scalePoint [ rdfs:label "Thrash Skank" ; rdf:value 6  ] ;
+        lv2:scalePoint [ rdfs:label "Gallop"       ; rdf:value 7  ] ;
+        lv2:scalePoint [ rdfs:label "D-Beat"       ; rdf:value 8  ] ;
+        lv2:scalePoint [ rdfs:label "Shuffle"      ; rdf:value 9  ] ;
+        lv2:scalePoint [ rdfs:label "6/8"          ; rdf:value 10 ] ;
+        lv2:scalePoint [ rdfs:label "Ride Groove"  ; rdf:value 11 ] ;
+        lv2:scalePoint [ rdfs:label "Tom Groove"   ; rdf:value 12 ] ;
+        lv2:scalePoint [ rdfs:label "Breakdown"    ; rdf:value 13 ] ;
+        lv2:scalePoint [ rdfs:label "Open Hat"     ; rdf:value 14 ] ;
+        lv2:scalePoint [ rdfs:label "Fill Phrase"  ; rdf:value 15 ] ;
+        lv2:scalePoint [ rdfs:label "Metronome"    ; rdf:value 16 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "swing" ; lv2:name "Swing" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:pc ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "humanize" ; lv2:name "Humanise" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
+        units:unit units:pc ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        # Kit mix is a TRIM on the kit's voiced balance: 0 dB is "as designed",
+        # not "unity gain on a raw voice".
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "lvl_kick" ; lv2:name "Kick" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_kit> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "lvl_snare" ; lv2:name "Snare" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_kit> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 11 ; lv2:symbol "lvl_toms" ; lv2:name "Toms" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_kit> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 12 ; lv2:symbol "lvl_hats" ; lv2:name "Hats" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_kit> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 13 ; lv2:symbol "lvl_cymbals" ; lv2:name "Cymbals" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_kit> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "kick_tune" ; lv2:name "Kick Tune" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:semitone12TET ;
+        lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 15 ; lv2:symbol "kick_decay" ; lv2:name "Kick Decay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:s ;
+        lv2:default 0.42 ; lv2:minimum 0.05 ; lv2:maximum 1.5
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 16 ; lv2:symbol "kick_click" ; lv2:name "Kick Click" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:pc ;
+        lv2:default 50.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 17 ; lv2:symbol "snare_tune" ; lv2:name "Snare Tune" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:semitone12TET ;
+        lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 18 ; lv2:symbol "snare_decay" ; lv2:name "Snare Decay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:s ;
+        lv2:default 0.20 ; lv2:minimum 0.04 ; lv2:maximum 0.8
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 19 ; lv2:symbol "snare_snappy" ; lv2:name "Snare Snappy" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:pc ;
+        lv2:default 60.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 20 ; lv2:symbol "hat_decay" ; lv2:name "Hat Decay" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:s ;
+        lv2:default 0.45 ; lv2:minimum 0.05 ; lv2:maximum 1.5
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 21 ; lv2:symbol "hat_tone" ; lv2:name "Hat Tone" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_voice> ;
+        units:unit units:pc ;
+        lv2:default 50.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 22 ; lv2:symbol "loop_level" ; lv2:name "Loop Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        # Off = actions fire the instant you press. On = they land on the next
+        # bar line, with a short window that snaps a late press back.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 23 ; lv2:symbol "loop_quantize" ; lv2:name "Quantise" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # How much of the existing layer survives each overdub pass. 100% keeps
+        # every layer forever; lower values let old layers fade out underneath.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 24 ; lv2:symbol "loop_feedback" ; lv2:name "Overdub Feedback" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        units:unit units:pc ;
+        lv2:default 100.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
+    ] , [
+        # The track the five transport triggers below act on.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 25 ; lv2:symbol "loop_track" ; lv2:name "Active Track" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 1 ; lv2:maximum 4 ;
+        lv2:scalePoint [ rdfs:label "Track 1" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Track 2" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Track 3" ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "Track 4" ; rdf:value 4 ]
+    ] , [
+        # Triggers. Edge-detected in the plugin, so a footswitch that holds the
+        # port high (as pi-Stomp MIDI-learn does) fires exactly once.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 26 ; lv2:symbol "loop_rec" ; lv2:name "Rec / Overdub" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:toggled , lv2:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 27 ; lv2:symbol "loop_play" ; lv2:name "Play" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:toggled , lv2:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 28 ; lv2:symbol "loop_stop" ; lv2:name "Stop" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:toggled , lv2:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 29 ; lv2:symbol "loop_clear" ; lv2:name "Clear" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:toggled , lv2:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 30 ; lv2:symbol "loop_undo" ; lv2:name "Undo / Redo" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_loop> ;
+        lv2:portProperty lv2:toggled , lv2:trigger ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 31 ; lv2:symbol "trk1_level" ; lv2:name "Track 1 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 32 ; lv2:symbol "trk1_mute" ; lv2:name "Track 1 Mute" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 33 ; lv2:symbol "trk2_level" ; lv2:name "Track 2 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 34 ; lv2:symbol "trk2_mute" ; lv2:name "Track 2 Mute" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 35 ; lv2:symbol "trk3_level" ; lv2:name "Track 3 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 36 ; lv2:symbol "trk3_mute" ; lv2:name "Track 3 Mute" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 37 ; lv2:symbol "trk4_level" ; lv2:name "Track 4 Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        units:unit units:db ;
+        lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 38 ; lv2:symbol "trk4_mute" ; lv2:name "Track 4 Mute" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_tracks> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # Outputs: UI feedback only. The web GUI draws the loop progress ring,
+        # the per-track state lamps and the sequencer playhead from these.
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 39 ; lv2:symbol "out_progress" ; lv2:name "Loop Progress" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 40 ; lv2:symbol "out_bars" ; lv2:name "Loop Bars" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 512.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 41 ; lv2:symbol "out_trk1_state" ; lv2:name "Track 1 State" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 4.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 42 ; lv2:symbol "out_trk2_state" ; lv2:name "Track 2 State" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 4.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 43 ; lv2:symbol "out_trk3_state" ; lv2:name "Track 3 State" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 4.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 44 ; lv2:symbol "out_trk4_state" ; lv2:name "Track 4 State" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 4.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 45 ; lv2:symbol "out_step" ; lv2:name "Playhead Step" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:integer ;
+        lv2:default -1.0 ; lv2:minimum -1.0 ; lv2:maximum 63.0
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 46 ; lv2:symbol "out_undo_avail" ; lv2:name "Undo Available" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_status> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # Silences the drums and the loop; the dry guitar still passes, because
+        # this plugin sits last in the chain and muting it would mute the rig.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 47 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) bind it as the bypass switch. NOTE the sense
+        # is INVERTED relative to "bypass": 1 = processing on, 0 = bypassed.
+        # Deliberately ungrouped and last.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 48 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] .

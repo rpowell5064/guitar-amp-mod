@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <atomic>
 #include <cstring>
 #include <vector>
 
@@ -96,6 +97,11 @@ public:
     void setFeedback(float f)          noexcept { feedback = std::clamp(f, 0.0f, 1.0f); }
     void setTrackLevel(int t, float g) noexcept { if (valid(t)) tracks[t].level = std::max(0.0f, g); }
     void setTrackMuted(int t, bool m)  noexcept { if (valid(t)) tracks[t].muted = m; }
+    void setMasterLevel(float g)       noexcept { masterLevel = std::max(0.0f, g); }
+
+    // Return every track to the top of the loop. Called when the transport is
+    // restarted, so the loop and the drums both begin at bar one.
+    void rewind() noexcept { loopCursor = 0; }
 
     // ── Transport actions ────────────────────────────────────────────────────
     // Each schedules for the next bar line when quantise is on. A press on a
@@ -138,8 +144,16 @@ public:
     // a bar before the overdub actually begins.
     void snapshotForUndo(int t) noexcept {
         if (!valid(t) || masterLen <= 0) return;
+        // If an overdub begins while this copy is in flight, the snapshot is a
+        // torn mix of before and after. Detecting that and declining is far
+        // better than offering an undo that restores the wrong audio.
+        const uint32_t gen0 = overdubGen.load(std::memory_order_acquire);
         std::memcpy(undoBuf.data(), tracks[t].buf.data(),
                     static_cast<size_t>(masterLen) * sizeof(float));
+        if (overdubGen.load(std::memory_order_acquire) != gen0) {
+            undoReady = false; undoTrack = -1;
+            return;
+        }
         undoTrack = t;
         undoReady = true;
     }
@@ -290,6 +304,7 @@ private:
             case State::Stopped:
                 tr.state      = State::Overdubbing;
                 tr.targetGain = 1.0f;
+                overdubGen.fetch_add(1, std::memory_order_release);
                 break;
         }
     }
@@ -433,7 +448,7 @@ private:
                 if (++sealCursor >= seamLen) { sealing = 0; sealTrack = -1; }
             }
 
-            out[i] += mix;
+            out[i] += mix * masterLevel;
 
             // Advance the loop once per sample, shared by every track.
             if (masterLen > 0) {
@@ -454,10 +469,12 @@ private:
     int64_t seamLen{0};
     int64_t sealing{0}, sealCursor{0};
     int     sealTrack{-1};
+    std::atomic<uint32_t> overdubGen{0};
     int     undoTrack{-1};
     bool    undoReady{false};
     bool    quantize{true};
     float   feedback{1.0f};
+    float   masterLevel{1.0f};
     float   fadeInc{0.001f};
 };
 

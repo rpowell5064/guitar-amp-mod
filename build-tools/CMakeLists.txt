@@ -86,3 +86,26 @@ target_include_directories(hexforge_engine_standalone PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge/engine"
     "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common")
 target_link_libraries(hexforge_engine_standalone PRIVATE GuitarAmpSim)
+
+# ── Practice plugin gates (2026-09-29) ───────────────────────────────────────
+# Offline harness: renders the audition WAVs (voices, grooves, kick/snare stems,
+# swing/humanise comparisons) AND asserts the things that fail silently — a
+# pattern lane that doesn't span its bar, a loop that isn't the bars you played,
+# laps that drift, a wrap that clicks, undo that doesn't restore, and the
+# pre-roll recovering the audio played before a late record press.
+add_executable(practice_render "${CMAKE_CURRENT_SOURCE_DIR}/practice_render.cpp")
+target_include_directories(practice_render PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include")
+
+# End-to-end LV2 smoke test. Statically links the plugin TU (no dlopen, so it
+# runs on Windows too) and drives it through instantiate / connect_port / run /
+# cleanup — the only way to catch a port wired to the wrong parameter, which a
+# static index check cannot see.
+add_executable(practice_selftest
+    "${CMAKE_CURRENT_SOURCE_DIR}/practice_selftest.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/practice/practice_plugin.cpp")
+target_include_directories(practice_selftest PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/practice"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include"
+    ${HF_LV2_INCLUDE})

@@ -163,6 +163,7 @@ add_lv2_plugin(guitaramp_delay   lv2/delay/delay_plugin.cpp)
 add_lv2_plugin(guitaramp_reverb  lv2/reverb/reverb_plugin.cpp)
 add_lv2_plugin(guitaramp_amp     lv2/amp/amp_plugin.cpp)
 add_lv2_plugin(guitaramp_utility lv2/utility/utility_plugin.cpp)
+add_lv2_plugin(guitaramp_practice lv2/practice/practice_plugin.cpp)
 
 add_lv2_plugin(guitaramp_cab lv2/cab/cab_plugin.cpp)
 
