@@ -285,6 +285,36 @@ int main() {
         hst.close();
     }
 
+    // ── Every pattern must sound, after a LIVE change ────────────────────────
+    // Rendering each pattern from a fresh instance would NOT catch this. The
+    // sequencer counts in STEPS, so switching to a pattern with a different
+    // grid (6/8 and Shuffle are 12 steps, the Metronome 4, everything else 16)
+    // left its scan cursor holding a number counted in the old grid: 6/8
+    // played nothing at all and the Metronome was inaudible. The test has to
+    // turn the knob on a RUNNING transport, because that is the only way the
+    // bug appears.
+    std::printf("\nPattern sweep (live changes)\n");
+    {
+        Host hst; hst.bundle = "lv2/practice/";
+        hst.open();
+        hst.ctl[RUN] = 1.0f;
+        hst.run(static_cast<int64_t>(kFs * 1.0), nullptr, true);
+
+        int silent = 0;
+        for (int pat = 0; pat <= 16; ++pat) {
+            hst.ctl[PATTERN] = float(pat);
+            std::vector<float> cap;
+            hst.run(static_cast<int64_t>(kFs * 3.0), &cap, true);
+            if (peak(cap) < 0.01f) {
+                ++silent;
+                std::printf("    pattern %d is SILENT (peak %.4f)\n", pat, peak(cap));
+            }
+        }
+        check(silent == 0, "every pattern sounds after a live pattern change",
+              std::to_string(silent) + " silent");
+        hst.close();
+    }
+
     // ── Resynthesised kit ────────────────────────────────────────────────────
     // The kit is data in the bundle, found via the bundle_path handed to
     // instantiate(). Both outcomes are tested: with it the drums must sound,

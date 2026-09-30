@@ -86,6 +86,7 @@ public:
         sendHp.reset();
         queueCount   = 0;
         nextScanStep = kNoStep;
+        lastStepsPerBeat = -1.0;
     }
 
     // Re-arm the step scanner at the current musical position. Call when the
@@ -296,6 +297,20 @@ private:
         const double stepsPerBeat = static_cast<double>(currentStepsPerBar()) / clk.beatsPerBar();
         const double samplesPerStep = clk.samplesPerBeat() / stepsPerBeat;
         if (samplesPerStep <= 0.0 || totalSteps <= 0) return;
+
+        // The scan cursor counts STEPS, so it is only meaningful in one grid.
+        // Switching to a pattern with a different resolution — or changing
+        // beats-per-bar — silently invalidated it: nextScanStep was left
+        // holding a number counted in sixteenths while the new grid counts in
+        // twelfths, so the sequencer sat waiting for a step that was a long
+        // way off and the pattern simply never played. That is exactly what
+        // happened to 6/8 and Shuffle (12 steps) and to the Metronome (4).
+        // Re-arming whenever the grid changes makes it self-correcting.
+        if (stepsPerBeat != lastStepsPerBeat) {
+            lastStepsPerBeat = stepsPerBeat;
+            nextScanStep = kNoStep;
+            queueCount   = 0;       // pending hits were timed on the old grid
+        }
 
         const double jitterSamples = kJitterMs * 1.0e-3 * fs * humanize;
         const double stepPos0      = stepPositionAt(clk, 0.0);
@@ -549,6 +564,7 @@ private:
     int      patternIdx{0};
     float    swing{0.0f}, humanize{0.0f};
     int64_t  nextScanStep{kNoStep};
+    double   lastStepsPerBeat{-1.0};
     int64_t  clockSamplePos{0};
     int      lastFiredStep{-1};
     Pending  queue[kMaxQueued]{};
