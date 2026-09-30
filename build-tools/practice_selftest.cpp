@@ -301,7 +301,7 @@ int main() {
         hst.run(static_cast<int64_t>(kFs * 1.0), nullptr, true);
 
         int silent = 0;
-        for (int pat = 0; pat <= 16; ++pat) {
+        for (int pat = 0; pat <= 26; ++pat) {   // every groove in the table
             hst.ctl[PATTERN] = float(pat);
             std::vector<float> cap;
             hst.run(static_cast<int64_t>(kFs * 3.0), &cap, true);

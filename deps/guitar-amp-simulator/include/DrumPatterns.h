@@ -209,6 +209,90 @@ inline const DrumLane kMetronome[] = {
     { INST_SIDESTICK,  "Xxxx" },
 };
 
+// ── Modern metal and djent ───────────────────────────────────────────────
+// Djent's defining trait: a riff grouped in SEVENS against a 4/4 pulse, so
+// the accent walks around the bar and only resolves after two of them
+// (7+7+7+7+4 = 32 sixteenths). The kit states the grouping; the backbeat
+// stays put, which is what makes it feel displaced rather than just odd.
+inline const DrumLane kDjent7[] = {
+    { INST_HAT_CLOSED, "x.x.x.x.x.x.x.x.x.x.x.x.x.x.x.x." },
+    { INST_KICK,       "x......x......x......x......x..." },
+    { INST_SNARE,      "....X.......X.......X.......X..." },
+    { INST_CRASH,      "X..............................." },
+};
+
+// The same idea in fives, over a ride rather than hats: 5+5+5+5+5+5+2.
+inline const DrumLane kDjent5[] = {
+    { INST_RIDE,       "x...x...x...x...x...x...x...x..." },
+    { INST_KICK,       "x....x....x....x....x....x....x." },
+    { INST_SNARE,      "....X.......X.......X.......X..." },
+};
+
+// Threes inside a single bar (3+3+3+3+2+2) — the short, tight version that
+// resolves every bar instead of drifting across several.
+inline const DrumLane kPoly3[] = {
+    { INST_HAT_CLOSED, "x.x.x.x.x.x.x.x." },
+    { INST_KICK,       "x..x..x..x..x.x." },
+    { INST_SNARE,      "....X.......X..." },
+};
+
+// Backbeat on 3 with a busy syncopated kick and ghost notes either side —
+// the metalcore/progressive half-time feel, as opposed to the plain
+// Half-Time already in the table.
+inline const DrumLane kModernHalf[] = {
+    { INST_HAT_CLOSED, "xoooxoooxoooxooo" },
+    { INST_KICK,       "x..x..x...x.x..." },
+    { INST_SNARE,      "...-....X....-.." },
+};
+
+// Linear drumming: no two limbs ever strike at the same instant. Every hit
+// is exposed, which is the whole character — and it means the lanes must
+// not overlap on any step.
+inline const DrumLane kLinear[] = {
+    { INST_KICK,       "x...x...x...x..." },
+    { INST_HAT_CLOSED, ".xx..xx..xx..xx." },
+    { INST_SNARE,      "...x...x...x...x" },
+};
+
+// Kick on every sixteenth under an eighth-note snare. Faster and more
+// relentless than the traditional Blast, where kick and snare alternate.
+inline const DrumLane kHyperblast[] = {
+    { INST_HAT_CLOSED, "x.x.x.x.x.x.x.x." },
+    { INST_KICK,       "xxxxxxxxxxxxxxxx" },
+    { INST_SNARE,      "X.x.X.x.X.x.X.x." },
+};
+
+// The snare rolls in sixteenths with alternating accents (the stick
+// pivoting off the rim) over an eighth-note kick.
+inline const DrumLane kGravity[] = {
+    { INST_KICK,       "x.x.x.x.x.x.x.x." },
+    { INST_SNARE,      "X-x-X-x-X-x-X-x-" },
+    { INST_HAT_CLOSED, "x...x...x...x..." },
+};
+
+// Sparse, syncopated and heavy. The space between the hits is the point,
+// so the kick states the guitar's rhythm and almost nothing else moves.
+inline const DrumLane kChug[] = {
+    { INST_CRASH,      "X...............X..............." },
+    { INST_KICK,       "x..x..x...x.....x..x..x...x....." },
+    { INST_SNARE,      "........X...............X......." },
+};
+
+// Mid-tempo, ghost notes leading into and out of the backbeat.
+inline const DrumLane kGrooveMetal[] = {
+    { INST_HAT_CLOSED, "x.o.x.o.x.o.x.o." },
+    { INST_KICK,       "x...x..x..x....." },
+    { INST_SNARE,      "....X..-....X..-" },
+};
+
+// Ride bell marking the quarters while the kick carries a sixteenth
+// syncopation underneath — the bell gives the pulse the kick abandons.
+inline const DrumLane kDjentBell[] = {
+    { INST_RIDE_BELL,  "x...x...x...x...x...x...x...x..." },
+    { INST_KICK,       "x..x..x.x..x..x.x..x..x.x..x..x." },
+    { INST_SNARE,      "....X.......X.......X.......X..." },
+};
+
 } // namespace patterns
 
 #define HEXDRUMS_PATTERN(nm, spb, br, lanes) \
@@ -233,6 +317,16 @@ inline const DrumPattern* patternTable(int& countOut) noexcept {
         HEXDRUMS_PATTERN("Open Hat",     16, 1, patterns::kOpenHat),
         HEXDRUMS_PATTERN("Fill Phrase",  16, 2, patterns::kFillPhrase),
         HEXDRUMS_PATTERN("Metronome",     4, 1, patterns::kMetronome),
+        HEXDRUMS_PATTERN("Djent 7s",       16, 2, patterns::kDjent7),
+        HEXDRUMS_PATTERN("Djent 5s",       16, 2, patterns::kDjent5),
+        HEXDRUMS_PATTERN("Polymetric 3s",  16, 1, patterns::kPoly3),
+        HEXDRUMS_PATTERN("Modern Half-Time", 16, 1, patterns::kModernHalf),
+        HEXDRUMS_PATTERN("Linear Groove",  16, 1, patterns::kLinear),
+        HEXDRUMS_PATTERN("Hyperblast",     16, 1, patterns::kHyperblast),
+        HEXDRUMS_PATTERN("Gravity Blast",  16, 1, patterns::kGravity),
+        HEXDRUMS_PATTERN("Breakdown Chug", 16, 2, patterns::kChug),
+        HEXDRUMS_PATTERN("Groove Metal",   16, 1, patterns::kGrooveMetal),
+        HEXDRUMS_PATTERN("Djent Bell",     16, 2, patterns::kDjentBell),
     };
     countOut = static_cast<int>(sizeof(kTable) / sizeof(DrumPattern));
     return kTable;

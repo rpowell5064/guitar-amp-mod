@@ -48,7 +48,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 3 ;   # 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
+    lv2:microVersion 4 ;   # 4: 10 modern metal / djent grooves (27 total). 3: Drum Body low shelf (port 50; bypass/enabled moved to 51/52). 2: drum bus — parallel compression + room. 1: first release
     # The worker carries the undo snapshot (a memcpy of the whole loop) off the
     # audio thread. It is OPTIONAL: without it the plugin runs normally and only
     # undo is unavailable, so a host with no worker support still loads it.
@@ -88,29 +88,41 @@ Free and open source (GPL-3).""" ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -60.0 ; lv2:maximum 12.0
     ] , [
-        # Must stay in step with hexdrums::patternTable() — 17 grooves.
+        # Must stay in step with hexdrums::patternTable() — 27 grooves.
+        # practice_port_check.py asserts the labels and values match the
+        # table exactly, so adding a groove without updating this fails.
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 6 ; lv2:symbol "pattern" ; lv2:name "Pattern" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/practice#g_drums> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 16 ;
-        lv2:scalePoint [ rdfs:label "Rock 8ths"    ; rdf:value 0  ] ;
-        lv2:scalePoint [ rdfs:label "Rock 16ths"   ; rdf:value 1  ] ;
-        lv2:scalePoint [ rdfs:label "Half-Time"    ; rdf:value 2  ] ;
-        lv2:scalePoint [ rdfs:label "Double Kick"  ; rdf:value 3  ] ;
-        lv2:scalePoint [ rdfs:label "Blast"        ; rdf:value 4  ] ;
-        lv2:scalePoint [ rdfs:label "Bomb Blast"   ; rdf:value 5  ] ;
-        lv2:scalePoint [ rdfs:label "Thrash Skank" ; rdf:value 6  ] ;
-        lv2:scalePoint [ rdfs:label "Gallop"       ; rdf:value 7  ] ;
-        lv2:scalePoint [ rdfs:label "D-Beat"       ; rdf:value 8  ] ;
-        lv2:scalePoint [ rdfs:label "Shuffle"      ; rdf:value 9  ] ;
-        lv2:scalePoint [ rdfs:label "6/8"          ; rdf:value 10 ] ;
-        lv2:scalePoint [ rdfs:label "Ride Groove"  ; rdf:value 11 ] ;
-        lv2:scalePoint [ rdfs:label "Tom Groove"   ; rdf:value 12 ] ;
-        lv2:scalePoint [ rdfs:label "Breakdown"    ; rdf:value 13 ] ;
-        lv2:scalePoint [ rdfs:label "Open Hat"     ; rdf:value 14 ] ;
-        lv2:scalePoint [ rdfs:label "Fill Phrase"  ; rdf:value 15 ] ;
-        lv2:scalePoint [ rdfs:label "Metronome"    ; rdf:value 16 ]
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 26 ;
+        lv2:scalePoint [ rdfs:label "Rock 8ths"     ; rdf:value 0  ] ;
+        lv2:scalePoint [ rdfs:label "Rock 16ths"    ; rdf:value 1  ] ;
+        lv2:scalePoint [ rdfs:label "Half-Time"     ; rdf:value 2  ] ;
+        lv2:scalePoint [ rdfs:label "Double Kick"   ; rdf:value 3  ] ;
+        lv2:scalePoint [ rdfs:label "Blast"         ; rdf:value 4  ] ;
+        lv2:scalePoint [ rdfs:label "Bomb Blast"    ; rdf:value 5  ] ;
+        lv2:scalePoint [ rdfs:label "Thrash Skank"  ; rdf:value 6  ] ;
+        lv2:scalePoint [ rdfs:label "Gallop"        ; rdf:value 7  ] ;
+        lv2:scalePoint [ rdfs:label "D-Beat"        ; rdf:value 8  ] ;
+        lv2:scalePoint [ rdfs:label "Shuffle"       ; rdf:value 9  ] ;
+        lv2:scalePoint [ rdfs:label "6/8"           ; rdf:value 10 ] ;
+        lv2:scalePoint [ rdfs:label "Ride Groove"   ; rdf:value 11 ] ;
+        lv2:scalePoint [ rdfs:label "Tom Groove"    ; rdf:value 12 ] ;
+        lv2:scalePoint [ rdfs:label "Breakdown"     ; rdf:value 13 ] ;
+        lv2:scalePoint [ rdfs:label "Open Hat"      ; rdf:value 14 ] ;
+        lv2:scalePoint [ rdfs:label "Fill Phrase"   ; rdf:value 15 ] ;
+        lv2:scalePoint [ rdfs:label "Metronome"     ; rdf:value 16 ] ;
+        lv2:scalePoint [ rdfs:label "Djent 7s"      ; rdf:value 17 ] ;
+        lv2:scalePoint [ rdfs:label "Djent 5s"      ; rdf:value 18 ] ;
+        lv2:scalePoint [ rdfs:label "Polymetric 3s" ; rdf:value 19 ] ;
+        lv2:scalePoint [ rdfs:label "Modern Half-Time" ; rdf:value 20 ] ;
+        lv2:scalePoint [ rdfs:label "Linear Groove" ; rdf:value 21 ] ;
+        lv2:scalePoint [ rdfs:label "Hyperblast"    ; rdf:value 22 ] ;
+        lv2:scalePoint [ rdfs:label "Gravity Blast" ; rdf:value 23 ] ;
+        lv2:scalePoint [ rdfs:label "Breakdown Chug" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "Groove Metal"  ; rdf:value 25 ] ;
+        lv2:scalePoint [ rdfs:label "Djent Bell"    ; rdf:value 26 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 7 ; lv2:symbol "swing" ; lv2:name "Swing" ;
