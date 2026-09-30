@@ -45,6 +45,36 @@ inline double dequantAmp(uint8_t q) {
     return std::pow(10.0, (t * 96.0 - 96.0) / 20.0);
 }
 
+// One fixed mode of struck metal: frequency, starting amplitude, decay.
+// Cymbals and hats are modelled as hundreds of these rather than as shaped
+// noise, which is what they actually are — 24-band noise measured a spectral
+// crest of 7.8 dB against a real crash's 17.7, i.e. static.
+// -80 dB relative to full scale. Below this a mode cannot be heard under a
+// guitar, and the previous cutoff of -140 dB meant hundreds of them were kept
+// spinning for the whole tail of every cymbal.
+inline constexpr float kModeFloor = 1.0e-4f;
+
+struct ResynthMode {
+    float freq{0.0f}, amp{0.0f}, t60{1.0f};
+    float lifetime{0.0f};   // seconds until it falls below kModeFloor
+};
+
+// Modes must NOT all start in phase. Struck metal excites its modes with
+// scattered phase; starting 600 of them at zero makes them sum coherently and
+// the peak scales with N instead of sqrt(N) — measured, the hats and ride bell
+// came out at 2.6-3.7 full scale. A golden-ratio low-discrepancy sequence
+// gives a well-spread, deterministic phase per mode with no table and no
+// stored byte, and gives the offline analysis and the runtime the same answer.
+inline float modePhase(int i) {
+    const float t = float(i) * 0.6180339887f;
+    return 6.28318530718f * (t - std::floor(t));
+}
+
+inline double dequantT60(uint8_t q) {
+    const double lo = 0.02, hi = 25.0;
+    return lo * std::pow(hi / lo, double(q) / 255.0);
+}
+
 struct ResynthPartial {
     uint16_t start{0};          // first analysis frame
     uint16_t len{0};            // frames
@@ -56,6 +86,7 @@ struct ResynthPartial {
 struct ResynthHit {
     std::vector<uint8_t>        bytes;
     std::vector<ResynthPartial> partials;
+    std::vector<ResynthMode>    modes;      // decoded once at load
     uint32_t noiseOffset{0};
     uint16_t noiseFrames{0};
     uint16_t hop{128};
@@ -79,7 +110,9 @@ struct ResynthHit {
 // Decode one "HXD1" blob. Returns false on a malformed or truncated model
 // rather than reading past the end.
 inline bool decodeHit(const uint8_t* data, size_t n, ResynthHit& out) {
-    if (n < 16 || std::memcmp(data, "HXD1", 4) != 0) return false;
+    if (n < 16) return false;
+    const bool v2 = (std::memcmp(data, "HXD2", 4) == 0);
+    if (!v2 && std::memcmp(data, "HXD1", 4) != 0) return false;
     auto rd16 = [&](size_t o) { return uint16_t(data[o] | (data[o + 1] << 8)); };
     auto rd32 = [&](size_t o) {
         return uint32_t(data[o]) | (uint32_t(data[o + 1]) << 8) |
@@ -93,11 +126,16 @@ inline bool decodeHit(const uint8_t* data, size_t n, ResynthHit& out) {
     out.bands       = data[14];
     if (out.hop == 0 || out.bands == 0 || out.bands > 64) return false;
 
+    const uint16_t nModes = v2 ? rd16(16) : 0;
+    const size_t headerLen = v2 ? 20 : 16;
+    if (n < headerLen) return false;
+
     out.bytes.assign(data, data + n);
     out.partials.clear();
     out.partials.reserve(nPart);
+    out.modes.clear();
 
-    size_t o = 16;
+    size_t o = headerLen;
     for (uint16_t i = 0; i < nPart; ++i) {
         if (o + 4 > n) return false;
         ResynthPartial p;
@@ -110,6 +148,33 @@ inline bool decodeHit(const uint8_t* data, size_t n, ResynthHit& out) {
     }
     if (o + size_t(out.noiseFrames) * out.bands > n) return false;
     out.noiseOffset = uint32_t(o);
+    o += size_t(out.noiseFrames) * out.bands;
+
+    if (nModes) {
+        if (o + size_t(nModes) * 4 > n) return false;
+        out.modes.reserve(nModes);
+        for (uint16_t i = 0; i < nModes; ++i) {
+            ResynthMode m;
+            m.freq = float(rd16(o)) * 0.25f;
+            m.amp  = float(dequantAmp(data[o + 2]));
+            m.t60  = float(dequantT60(data[o + 3]));
+            o += 4;
+            if (m.freq > 10.0f && m.amp > 0.0f) out.modes.push_back(m);
+        }
+        // Sort by how long each mode stays AUDIBLE, not by its decay time.
+        // A long-decaying but very quiet mode dies before a loud short one, so
+        // sorting on t60 alone left hundreds of inaudible modes being rotated
+        // for the whole tail. Lifetime = t60 * ln(amp/threshold) / ln(1000),
+        // which is the time for that mode to reach the threshold from its own
+        // starting amplitude. With the list in that order, the renderer can
+        // walk a count that only ever shrinks.
+        for (ResynthMode& m : out.modes) {
+            const float rel = std::max(m.amp / kModeFloor, 1.0f);
+            m.lifetime = m.t60 * std::log(rel) / 6.907755f;
+        }
+        std::sort(out.modes.begin(), out.modes.end(),
+                  [](const ResynthMode& a, const ResynthMode& b) { return a.lifetime > b.lifetime; });
+    }
     return true;
 }
 
@@ -250,6 +315,10 @@ class ResynthVoices {
 public:
     static constexpr int kMaxVoices   = 12;
     static constexpr int kMaxPartials = 48;
+    // Cymbals need hundreds. 400 matched a real crash's spectral density
+    // in measurement; below ~200 it is audibly sparse, above ~600 it
+    // flattens back towards noise.
+    static constexpr int kMaxModes    = 512;
 
     void prepare(double sampleRate) {
         fs = sampleRate;
@@ -326,6 +395,21 @@ public:
         v->detune = 1.0f + variation * 0.003f * urand(v->order);
         v->trim   = std::pow(10.0f, variation * 0.5f * urand(v->order * 7919u) / 20.0f);
 
+        // Dense modes: one damped rotator each, struck at t = 0.
+        const int nm = std::min<int>(int(best->hit.modes.size()), kMaxModes);
+        v->numModes = nm;
+        for (int i = 0; i < nm; ++i) {
+            const ResynthMode& m = best->hit.modes[i];
+            const float w = 2.0f * float(M_PI) * m.freq * v->detune / float(fs);
+            const float r = std::exp(-6.907755f / std::max(1e-4f, m.t60 * float(fs)));
+            v->mode[i].cr = r * std::cos(w);
+            v->mode[i].ci = r * std::sin(w);
+            const float ph = modePhase(i);
+            const float a  = m.amp * v->gain * v->trim;
+            v->mode[i].re = a * std::cos(ph);
+            v->mode[i].im = a * std::sin(ph);
+        }
+
         const int np = std::min<int>(int(best->hit.partials.size()), partialLimit);
         v->numOsc = np;
         for (int i = 0; i < np; ++i) {
@@ -368,9 +452,16 @@ private:
         bool  live;
     };
 
+    // A damped rotator. The decay is built into the rotation coefficient, so
+    // there is nothing to update per frame and no magnitude to renormalise —
+    // unlike the unit rotators the tracked partials use.
+    struct ModeOsc { float re, im, cr, ci; };
+
     struct Voice {
         const ResynthHit* hit{nullptr};
         Osc      osc[kMaxPartials];
+        ModeOsc  mode[kMaxModes];
+        int      numModes{0};
         float    nb[NoiseBus::kBands]{}, nbStep[NoiseBus::kBands]{};
         double   pos{0.0}, framePeriod{128.0};
         int      frame{-1}, numOsc{0}, inst{-1}, bank{0};
@@ -434,12 +525,33 @@ private:
 
         const int f = int(v.pos / v.framePeriod);
         if (f != v.frame) {
-            if (f >= int(h.noiseFrames)) { v.active = false; return 0.0f; }
+            // A modal voice outlives its noise frames — the noise only carries
+            // the attack — so it ends when its modes have decayed, not when
+            // the noise model runs out.
+            if (f >= int(h.noiseFrames) && v.numModes == 0) { v.active = false; return 0.0f; }
             v.frame = f;
             startFrame(v, f);
         }
 
         float s = 0.0f;
+
+        // Modes are sorted longest-decay first, so the inaudible ones are all
+        // at the end and the active count only ever shrinks. Without this a
+        // crash would keep rotating 400 oscillators for its whole 8 s tail,
+        // long after most of them are below -80 dB.
+        while (v.numModes > 0) {
+            const ModeOsc& last = v.mode[v.numModes - 1];
+            if (last.re * last.re + last.im * last.im > kModeFloor * kModeFloor) break;
+            --v.numModes;
+        }
+        for (int i = 0; i < v.numModes; ++i) {
+            ModeOsc& m = v.mode[i];
+            const float nr = m.re * m.cr - m.im * m.ci;
+            const float ni = m.re * m.ci + m.im * m.cr;
+            m.re = nr; m.im = ni;
+            s += ni;
+        }
+
         for (int i = 0; i < v.numOsc; ++i) {
             Osc& o = v.osc[i];
             if (!o.live) continue;
@@ -451,9 +563,11 @@ private:
             s += ni * o.amp;
             o.amp += o.ampStep;
         }
-        for (int b = 0; b < NoiseBus::kBands; ++b) {
-            s += bus.band(v.bank, b) * v.nb[b];
-            v.nb[b] += v.nbStep[b];
+        if (f < int(h.noiseFrames)) {
+            for (int b = 0; b < NoiseBus::kBands; ++b) {
+                s += bus.band(v.bank, b) * v.nb[b];
+                v.nb[b] += v.nbStep[b];
+            }
         }
 
         if (v.choking) {

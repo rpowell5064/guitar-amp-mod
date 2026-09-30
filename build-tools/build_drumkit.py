@@ -43,7 +43,23 @@ INSTRUMENTS = [
 #
 # Cymbals are capped because their tails dominate the model size (an 18 s ride
 # is mostly inaudible decay) and a practice plugin retriggers long before then.
-# (path, model seconds, velocity layers, partial budget)
+# (path, model seconds, velocity layers, partial budget, dense modes)
+#
+# Two model types, chosen per instrument:
+#
+#   DRUMS get tracked partials + a noise residual. Their fundamentals glide (a
+#   kick falls 112 -> 47 Hz) and their decays are not single exponentials, so
+#   the partials have to be followed frame by frame.
+#
+#   CYMBALS AND HATS get a dense bank of FIXED modes instead. Nothing about
+#   them sweeps, so tracking bought nothing and cost warble — which is why
+#   their partial budget had been cut to 4-8, leaving them as 24-band shaped
+#   noise that measured a spectral crest of 7.8 dB against a real crash's 17.7.
+#   That is the "sounds like static" the user heard. 400 static modes measure
+#   17.3 dB, cost 1.6 kB instead of ~140 kB, and cannot warble because no
+#   frequency ever moves. Their noise model is trimmed to the attack only —
+#   the modes carry the whole ringing body, and keeping seconds of broadband
+#   residual would put the hiss straight back.
 #
 # The partial budget matters more than it looks. Resynthesised sinusoids are
 # the source of warble, so each instrument gets only as many as it genuinely
@@ -53,19 +69,24 @@ INSTRUMENTS = [
 # trade when those tones are what makes it sound electronic. Drums are the
 # opposite — their shell modes are the sound.
 SOURCES = {
-    "KICK":       ("kick_24/kick/kick",        3.0, 4, 24),
-    "SNARE":      ("snare_14/center/top",      3.0, 4, 24),
-    "SIDESTICK":  ("snare_14/sidestick/top",   2.0, 3, 16),
-    "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 24),
-    "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 24),
-    "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 24),
-    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  6),
-    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  6),
-    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  6),
-    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  4),
-    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  8),   # the bell ping IS tonal
-    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  8),
+    #                path                      secs  vel  parts  modes
+    "KICK":       ("kick_24/kick/kick",        3.0, 4, 24,   0),
+    "SNARE":      ("snare_14/center/top",      3.0, 4, 24,   0),
+    "SIDESTICK":  ("snare_14/sidestick/top",   2.0, 3, 16,   0),
+    "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 24,   0),
+    "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 24,   0),
+    "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 24,   0),
+    "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  0, 300),
+    "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  0, 240),
+    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0, 450),
+    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 600),
+    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0, 600),
+    "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 500),
 }
+
+# How much of the noise residual to keep, in seconds. For a modal instrument
+# this only needs to cover the stick attack.
+NOISE_SECONDS_MODAL = 0.5
 
 VL_RE = re.compile(r"_vl(\d+)_rr(\d+)\.flac$", re.I)
 
@@ -103,11 +124,15 @@ def velocity_windows(n):
     return [(edges[i], edges[i + 1] - 1 if i + 1 < n else 127) for i in range(n)]
 
 
-def analyse(analyzer, wav_path, out_path, max_seconds, partials):
+def analyse(analyzer, wav_path, out_path, max_seconds, partials, modes):
     cmd = [analyzer, wav_path, "--emit", out_path, "--quiet"]
     if max_seconds:
         cmd += ["--max-seconds", str(max_seconds)]
-    cmd += ["--partials", str(partials)]
+    if modes:
+        cmd += ["--dense-modes", str(modes),
+                "--noise-seconds", str(NOISE_SECONDS_MODAL)]
+    else:
+        cmd += ["--partials", str(partials)]
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
         return None
@@ -140,7 +165,7 @@ def main():
     print("-" * 64)
 
     for name, index in INSTRUMENTS:
-        rel, max_sec, want, budget = SOURCES[name]
+        rel, max_sec, want, budget, nmodes = SOURCES[name]
         hits = source_hits(os.path.join(args.src, rel))
         if not hits:
             print("%-12s  !! no sources under %s" % (name, rel))
@@ -159,7 +184,7 @@ def main():
                 print("%-12s  !! flac failed on %s" % (name, os.path.basename(flac)))
                 continue
 
-            stat = analyse(args.analyzer, wav, hit, max_sec, budget)
+            stat = analyse(args.analyzer, wav, hit, max_sec, budget, nmodes)
             if stat is None:
                 print("%-12s  !! analysis failed on %s" % (name, os.path.basename(flac)))
                 continue

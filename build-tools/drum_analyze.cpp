@@ -393,13 +393,140 @@ static std::vector<float> synthPartials(const std::vector<Partial>& ps, double f
     return y;
 }
 
+// ── Dense static modes (cymbals, hats) ───────────────────────────────────────
+//
+// A cymbal is not a few gliding partials plus noise; it is HUNDREDS of fixed
+// inharmonic modes beating against each other. Tracking buys nothing here —
+// nothing sweeps — and it cost the warble that forced the partial budget down
+// to 4-8, which left cymbals as 24-band shaped noise. Measured, that reads as
+// static: spectral crest 7.8 dB against the real crash's 17.7.
+//
+// A dense bank of FIXED damped modes measures 17.3 dB on the same test, costs
+// 4 bytes per mode instead of 24 bytes per frame, and cannot warble because no
+// frequency ever moves.
+//
+// Mode count matters and has an optimum: too few is audibly sparse (100 modes
+// measured 25.1 dB, far peakier than the real thing), too many goes flat again
+// (600 gave 15.5). Around 400 matches a real crash.
+struct DenseMode { double freq, amp, t60; };
+
+static bool fitStaticMode(const std::vector<float>& x, double fs, double f, DenseMode& out) {
+    const size_t n = x.size();
+    const double bw = std::max(6.0, f * 0.004);      // narrow: the modes are dense
+    const double a  = std::exp(-2.0 * M_PI * bw / fs);
+    const double w  = 2.0 * M_PI * f / fs;
+    const std::complex<double> step(std::cos(-w), std::sin(-w));
+    std::complex<double> rot(1.0, 0.0), lp(0.0, 0.0);
+
+    std::vector<double> env;
+    env.reserve(n / 64 + 1);
+    for (size_t i = 0; i < n; ++i) {
+        lp = (1.0 - a) * (double(x[i]) * rot) + a * lp;
+        rot *= step;
+        if ((i & 63) == 0) env.push_back(std::abs(lp));
+    }
+    double pk = 0.0; size_t at = 0;
+    for (size_t i = 0; i < env.size(); ++i) if (env[i] > pk) { pk = env[i]; at = i; }
+    if (pk < 1.0e-7) return false;
+
+    const double floorL = pk * 1.0e-3;
+    double sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+    size_t used = 0;
+    for (size_t i = at; i < env.size(); ++i) {
+        if (env[i] < floorL) break;
+        const double t  = double((i - at) * 64) / fs;
+        const double y  = std::log(env[i]);
+        const double wt = env[i] / pk;
+        sw += wt; sx += wt * t; sy += wt * y; sxx += wt * t * t; sxy += wt * t * y;
+        ++used;
+    }
+    if (used < 8) return false;
+    const double den = sw * sxx - sx * sx;
+    if (std::fabs(den) < 1.0e-20) return false;
+    const double slope = (sw * sxy - sx * sy) / den;
+    if (slope >= 0.0) return false;
+    const double t60 = -std::log(1000.0) / slope;
+    if (t60 < 0.02 || t60 > 25.0) return false;
+
+    out.freq = f; out.amp = pk * 2.0; out.t60 = t60;
+    return true;
+}
+
+// Modes must NOT all start in phase. Struck metal excites its modes with
+// scattered phase; starting 600 of them at zero makes them sum coherently and
+// the peak scales with N instead of sqrt(N) — measured, the hats and ride bell
+// came out at 2.6-3.7 full scale. A golden-ratio low-discrepancy sequence
+// gives a well-spread, deterministic phase per mode with no table and no
+// stored byte, and gives the offline analysis and the runtime the same answer.
+inline float modePhase(int i) {
+    const float t = float(i) * 0.6180339887f;
+    return 6.28318530718f * (t - std::floor(t));
+}
+
+static std::vector<float> synthDenseModes(const std::vector<DenseMode>& modes, double fs, size_t n) {
+    std::vector<float> y(n, 0.0f);
+    int idx = 0;
+    for (const DenseMode& m : modes) {
+        const double w  = 2.0 * M_PI * m.freq / fs;
+        const double r  = std::exp(-std::log(1000.0) / (m.t60 * fs));
+        const double cr = r * std::cos(w), ci = r * std::sin(w);
+        const double ph = modePhase(idx++);
+        double re = m.amp * std::cos(ph), im = m.amp * std::sin(ph);
+        for (size_t i = 0; i < n; ++i) {
+            const double nr = re * cr - im * ci;
+            const double ni = re * ci + im * cr;
+            re = nr; im = ni;
+            y[i] += float(ni);
+        }
+    }
+    return y;
+}
+
+static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, double fs, int want) {
+    const size_t NF = 1u << 16;                       // fine enough to separate dense modes
+    std::vector<std::complex<double>> spec(NF, { 0.0, 0.0 });
+    const size_t take = std::min(x.size(), NF);
+    const auto w = hann(take);
+    for (size_t i = 0; i < take; ++i) spec[i] = x[i] * w[i];
+    fft(spec);
+
+    struct Cand { double f, m; };
+    std::vector<Cand> cands;
+    const double binHz = fs / double(NF);
+    for (size_t k = 2; k + 2 < NF / 2; ++k) {
+        const double m = std::abs(spec[k]);
+        if (m <= std::abs(spec[k - 1]) || m < std::abs(spec[k + 1])) continue;
+        const double f = double(k) * binHz;
+        if (f < 150.0 || f > 16000.0) continue;
+        cands.push_back({ f, m });
+    }
+    std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.m > b.m; });
+
+    std::vector<DenseMode> modes;
+    for (const Cand& c : cands) {
+        if (int(modes.size()) >= want) break;
+        // 1.2 Hz, not 3. Cymbal modes are mostly SPLIT DOUBLETS a few Hz
+        // apart, and the slow beating between each pair is the shimmer — it is
+        // the difference between metal and a bell. A 3 Hz dedup threshold
+        // merged exactly those pairs and threw the shimmer away. The 65536-pt
+        // analysis window resolves 0.67 Hz, so the pairs are there to be kept.
+        bool dup = false;
+        for (const DenseMode& m : modes) if (std::fabs(m.freq - c.f) < 1.2) { dup = true; break; }
+        if (dup) continue;
+        DenseMode m;
+        if (fitStaticMode(x, fs, c.f, m)) modes.push_back(m);
+    }
+    return modes;
+}
+
 // ── Noise model ──────────────────────────────────────────────────────────────
 //
 // Read straight off the spectrum with the tracked partials notched out. No
 // time-domain subtraction, so no phase-cancellation requirement and no way to
 // end up with more energy than we started with.
 static NoiseModel analyseNoise(const std::vector<Frame>& frames,
-                               const std::vector<Partial>& ps, double fs) {
+                               const std::vector<Partial>& ps,
+                               const std::vector<DenseMode>& modes, double fs) {
     NoiseModel nm;
     nm.hopSeconds = double(kHop) / fs;
     const double lo = 40.0, hi = std::min(fs * 0.45, 16000.0);
@@ -410,6 +537,18 @@ static NoiseModel analyseNoise(const std::vector<Frame>& frames,
 
     for (size_t fi = 0; fi < frames.size(); ++fi) {
         std::vector<double> mag = frames[fi].mag;
+
+        // Notch out every dense mode. These are static, so the same bins are
+        // removed in every frame. Without this the "noise" model still
+        // contains the entire modal spectrum, and adding it back on top of the
+        // modes double-counts everything — measured, that turned a 17.2 dB
+        // model into a 35.3 dB one.
+        for (const DenseMode& m : modes) {
+            const int centre = int(m.freq / binHz + 0.5);
+            const int halfW  = int(2 * (kPad / kWin));
+            for (int k = centre - halfW; k <= centre + halfW; ++k)
+                if (k >= 0 && k < int(mag.size())) mag[k] = 0.0;
+        }
 
         // Notch out every partial present in this frame. The window's mainlobe
         // is 4 bins wide for Hann, times the 4x zero padding.
@@ -558,15 +697,27 @@ static uint8_t quantAmp(double a) {
 static void put16(std::vector<uint8_t>& v, uint16_t x) { v.push_back(uint8_t(x)); v.push_back(uint8_t(x >> 8)); }
 static void put32(std::vector<uint8_t>& v, uint32_t x) { for (int i = 0; i < 4; ++i) v.push_back(uint8_t(x >> (8 * i))); }
 
-static std::vector<uint8_t> encodeHit(const std::vector<Partial>& ps, const NoiseModel& nm, double fs) {
+// t60 spans 0.02 s (a stick tick) to 25 s (a ride tail), so it is stored
+// logarithmically in a byte — a linear byte would quantise the short decays
+// into steps while wasting most of its range on tails nobody hears.
+static uint8_t quantT60(double t) {
+    const double lo = 0.02, hi = 25.0;
+    const double u = std::log(std::clamp(t, lo, hi) / lo) / std::log(hi / lo);
+    return uint8_t(std::clamp(int(u * 255.0 + 0.5), 0, 255));
+}
+
+static std::vector<uint8_t> encodeHit(const std::vector<Partial>& ps, const NoiseModel& nm,
+                                      const std::vector<DenseMode>& modes, double fs) {
     std::vector<uint8_t> v;
-    v.push_back('H'); v.push_back('X'); v.push_back('D'); v.push_back('1');
+    v.push_back('H'); v.push_back('X'); v.push_back('D'); v.push_back('2');
     put32(v, uint32_t(fs));
     put16(v, uint16_t(ps.size()));
     put16(v, uint16_t(kHop));
     put16(v, uint16_t(nm.frames.size()));
     v.push_back(uint8_t(NoiseModel::kBands));
     v.push_back(0);
+    put16(v, uint16_t(modes.size()));
+    put16(v, 0);                                      // reserved
 
     for (const Partial& p : ps) {
         put16(v, uint16_t(p.start));
@@ -578,10 +729,23 @@ static std::vector<uint8_t> encodeHit(const std::vector<Partial>& ps, const Nois
     }
     for (const auto& fr : nm.frames)
         for (int b = 0; b < NoiseModel::kBands; ++b) v.push_back(quantAmp(fr[b]));
+
+    // Dense static modes: frequency, amplitude, decay. Four bytes each.
+    for (const DenseMode& m : modes) {
+        put16(v, uint16_t(std::clamp(int(m.freq * 4.0 + 0.5), 0, 65535)));
+        v.push_back(quantAmp(m.amp));
+        v.push_back(quantT60(m.t60));
+    }
     return v;
 }
 
 // ── WAV out ──────────────────────────────────────────────────────────────────
+
+static float peakOfVec(const std::vector<float>& v) {
+    float p = 0.0f;
+    for (float s : v) p = std::max(p, std::fabs(s));
+    return p;
+}
 
 static void writeWav(const std::string& path, const std::vector<float>& x, double fs) {
     FILE* f = std::fopen(path.c_str(), "wb");
@@ -614,6 +778,8 @@ int main(int argc, char** argv) {
     double maxSeconds = 0.0;      // 0 = keep the whole hit
     double maxJitter  = 0.0;      // 0 = no high-frequency-wobble test
     double maxExcursion = 0.15;   // reject a track that wanders >15% of its mean
+    int    denseModes   = 0;      // >0 = model as fixed modes (cymbals, hats)
+    double noiseSeconds = 0.0;    // 0 = model noise for the whole hit
     double ampFloor     = 0.02;   // and any quieter than 2% of the loudest
     std::string emitPath;
     for (int i = 2; i < argc; ++i) {
@@ -625,6 +791,8 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--max-jitter")  && i + 1 < argc) maxJitter  = std::atof(argv[++i]);
         if (!std::strcmp(argv[i], "--max-excursion") && i + 1 < argc) maxExcursion = std::atof(argv[++i]);
         if (!std::strcmp(argv[i], "--amp-floor") && i + 1 < argc) ampFloor = std::atof(argv[++i]);
+        if (!std::strcmp(argv[i], "--dense-modes") && i + 1 < argc) denseModes = std::atoi(argv[++i]);
+        if (!std::strcmp(argv[i], "--noise-seconds") && i + 1 < argc) noiseSeconds = std::atof(argv[++i]);
     }
     const bool writeWavs = emitPath.empty();
 
@@ -661,11 +829,23 @@ int main(int argc, char** argv) {
     std::printf("%s\n  %zu frames @ %.0f Hz, peak %.3f\n", inPath.c_str(), x.size(), fs, pk);
 
     // ── Analyse ──────────────────────────────────────────────────────────────
-    const auto frames   = stft(x);
-    const auto partials = trackPartials(frames, fs, maxPartials, 6, float(maxJitter),
-                                        float(maxExcursion), float(ampFloor));
+    const auto frames = stft(x);
 
-    std::printf("  %zu STFT frames -> %zu tracked partials\n", frames.size(), partials.size());
+    // Two models, chosen per instrument. Drums get tracked partials, because
+    // their fundamentals glide and their decays are not single exponentials.
+    // Cymbals and hats get a dense bank of FIXED modes, because nothing about
+    // them sweeps and tracking only introduced warble.
+    std::vector<DenseMode> modes;
+    std::vector<Partial>   partials;
+    if (denseModes > 0) {
+        modes = extractDenseModes(x, fs, denseModes);
+    } else {
+        partials = trackPartials(frames, fs, maxPartials, 6, float(maxJitter),
+                                 float(maxExcursion), float(ampFloor));
+    }
+
+    std::printf("  %zu STFT frames -> %zu tracked partials, %zu dense modes\n",
+                frames.size(), partials.size(), modes.size());
     if (verbose) {
         for (size_t i = 0; i < std::min<size_t>(10, partials.size()); ++i) {
             const Partial& p = partials[i];
@@ -674,10 +854,23 @@ int main(int argc, char** argv) {
         }
     }
 
-    const auto noise = analyseNoise(frames, partials, fs);
+    auto noise = analyseNoise(frames, partials, modes, fs);
+
+    // With a modal model, the noise part only has to carry the ATTACK — the
+    // stick contact — because the modes carry the whole ringing body. Keeping
+    // seconds of it would restore exactly the broadband hiss this replaces,
+    // and the noise frames are what dominate the model size.
+    if (noiseSeconds > 0.0) {
+        const size_t keep = size_t(noiseSeconds * fs / double(kHop));
+        if (noise.frames.size() > keep) noise.frames.resize(keep);
+    }
 
     // ── Resynthesise ─────────────────────────────────────────────────────────
-    const std::vector<float> sines   = synthPartials(partials, fs, x.size());
+    std::vector<float> sines = synthPartials(partials, fs, x.size());
+    if (!modes.empty()) {
+        const std::vector<float> mv = synthDenseModes(modes, fs, x.size());
+        for (size_t i = 0; i < sines.size(); ++i) sines[i] += mv[i];
+    }
     const std::vector<float> noiseSg = synthNoise(noise, fs, x.size());
     std::vector<float> resynth(x.size());
     for (size_t i = 0; i < x.size(); ++i) resynth[i] = sines[i] + noiseSg[i];
@@ -691,14 +884,15 @@ int main(int argc, char** argv) {
     size_t partialFrames = 0;
     for (const Partial& p : partials) partialFrames += p.amp.size();
     const size_t bytesP = partialFrames * 2;                       // amp + freq, 1 B each
+    const size_t bytesM = modes.size() * 4;                        // freq, amp, decay
     const size_t bytesN = noise.frames.size() * NoiseModel::kBands;
     const size_t bytesW = x.size() * sizeof(int16_t);
-    std::printf("  size: model %zu B (partials %zu + noise %zu) vs WAV %zu B = %.1fx smaller\n",
-                bytesP + bytesN, bytesP, bytesN, bytesW,
-                double(bytesW) / double(bytesP + bytesN + 1));
+    std::printf("  size: model %zu B (partials %zu + modes %zu + noise %zu) vs WAV %zu B = %.1fx smaller\n",
+                bytesP + bytesM + bytesN, bytesP, bytesM, bytesN, bytesW,
+                double(bytesW) / double(bytesP + bytesM + bytesN + 1));
 
     if (!emitPath.empty()) {
-        const std::vector<uint8_t> blob = encodeHit(partials, noise, fs);
+        const std::vector<uint8_t> blob = encodeHit(partials, noise, modes, fs);
         FILE* f = std::fopen(emitPath.c_str(), "wb");
         if (!f) { std::printf("  !! cannot write %s\n", emitPath.c_str()); return 1; }
         std::fwrite(blob.data(), 1, blob.size(), f);
@@ -709,7 +903,8 @@ int main(int argc, char** argv) {
         // what lets it normalise each instrument: the close mics in a sampled
         // kit are recorded at very different gains.
         std::printf("STAT %s %.2f %zu %zu %zu %.6f\n", emitPath.c_str(), dFull,
-                    partials.size(), noise.frames.size(), blob.size(), double(pk));
+                    partials.size(), noise.frames.size(), blob.size(),
+                    double(peakOfVec(resynth)));
     }
 
     if (writeWavs) {
