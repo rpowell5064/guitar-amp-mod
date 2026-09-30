@@ -8,10 +8,21 @@ BUNDLE=~/.lv2/guitaramp-suite.lv2
 
 echo "=== (re)constructing bundle at $BUNDLE ==="
 mkdir -p "$BUNDLE"
-cp build/guitaramp_*.so "$BUNDLE"/
-cp lv2/*.ttl "$BUNDLE"/
-cp lv2/practice/drumkit.dat "$BUNDLE"/   # Practice: resynthesised kit (parameters, not audio)
-echo "copied $(ls "$BUNDLE"/*.so | wc -l) .so and $(ls "$BUNDLE"/*.ttl | wc -l) .ttl"
+# ATOMIC copies. Writing over a .so that mod-host currently has mmap'd faults
+# the running process (SIGBUS, status=7/BUS) and crash-loops it — this cost a
+# whole session once, masquerading as "pistomp.local isn't loading". Copying to
+# a temp name and renaming keeps the old inode mapped for anyone still using it,
+# so the running host is undisturbed until it is restarted.
+install_atomic() {
+    src="$1"; dst="$2"
+    cp "$src" "$dst.new" && mv -f "$dst.new" "$dst"
+}
+for f in build/guitaramp_*.so; do install_atomic "$f" "$BUNDLE/$(basename "$f")"; done
+for f in lv2/*.ttl;            do install_atomic "$f" "$BUNDLE/$(basename "$f")"; done
+# Practice: the resynthesised kit (parameters, not sample audio). The plugin
+# finds it via the bundle_path handed to instantiate().
+[ -f lv2/practice/drumkit.dat ] && install_atomic lv2/practice/drumkit.dat "$BUNDLE/drumkit.dat"
+echo "copied $(ls "$BUNDLE"/*.so | wc -l) .so, $(ls "$BUNDLE"/*.ttl | wc -l) .ttl, kit=$([ -f "$BUNDLE/drumkit.dat" ] && echo yes || echo no)"
 
 echo "--- bundle contents ---"
 ls -la --time-style=+%Y-%m-%d_%H:%M:%S "$BUNDLE"/
