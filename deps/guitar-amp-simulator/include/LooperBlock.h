@@ -1,0 +1,464 @@
+#pragma once
+// Four-track looper for the Practice plugin.
+//
+// Design notes that matter more than the code:
+//
+// * ONE master loop length. The first take recorded defines it; every other
+//   track conforms. Independent per-track lengths turn a practice looper into
+//   a phrase sampler, and make "which track is the bar line" unanswerable.
+//
+// * Actions are QUANTISED, not immediate. A footswitch press schedules its
+//   action for the next bar line from the shared TransportClock, which is what
+//   lets you hit record slightly late — as everyone does, with a guitar in
+//   both hands — and still get a loop that starts on the beat.
+//
+// * Loop position is an internal cursor, NOT derived from the clock. The loop
+//   is recorded audio: it cannot stretch. Deriving its position from the clock
+//   would make a tempo change silently shift the playback point instead of
+//   honestly putting the loop out of time with the drums.
+//
+// * A late press is recovered from a PRE-ROLL, not merely snapped forward.
+//   Quantise alone cannot fix hitting record 40 ms after the bar line: the
+//   audio from the bar line to the press has already gone past. So the looper
+//   keeps a short rolling history of its input and, when a press lands inside
+//   the snap-back window, copies the missing head of the bar out of it. Firing
+//   "immediately" without that just yields a loop a few tens of milliseconds
+//   short, which is exactly the drift it was supposed to prevent.
+//
+// * The loop seam is crossfaded. Recording stops on a bar line, but the guitar
+//   is still ringing there, so the loop would click on every wrap. We keep
+//   recording for a few milliseconds past the stop point and fade that
+//   overhang into the head of the loop.
+#include "TransportClock.h"
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <vector>
+
+namespace hexdrums {
+
+class LooperBlock {
+public:
+    static constexpr int kNumTracks  = 4;
+    static constexpr int kMaxSeconds = 120;    // 2 minutes mono per track
+    static constexpr float kSeamMs   = 12.0f;  // loop-wrap crossfade
+    static constexpr float kFadeMs   = 8.0f;   // mute / state-change ramp
+    static constexpr float kPreRollMs = 400.0f; // late-press lookbehind
+    static constexpr float kSnapMs    = 250.0f; // hard cap on the snap-back window
+
+    enum class State : uint8_t { Empty, Recording, Overdubbing, Playing, Stopped };
+    enum class Action : uint8_t { None, RecordToggle, Play, Stop };
+
+    // ── Lifecycle ────────────────────────────────────────────────────────────
+    // Allocates ~23 MB per track at 48 kHz. Called from instantiate(), never
+    // from the audio thread.
+    void prepare(double sampleRate) noexcept {
+        fs       = (sampleRate > 0.0) ? sampleRate : 48000.0;
+        capacity = static_cast<int64_t>(fs) * kMaxSeconds;
+        seamLen  = static_cast<int64_t>(kSeamMs * 1.0e-3f * fs);
+        fadeInc  = 1.0f / std::max(1.0f, kFadeMs * 1.0e-3f * static_cast<float>(fs));
+
+        for (auto& t : tracks) {
+            t.buf.assign(static_cast<size_t>(capacity), 0.0f);
+            t.state = State::Empty;
+            t.gain  = 0.0f;
+        }
+        // One shared undo buffer, not one per track: undo is "take back the
+        // last overdub", so only the most recent pass ever needs a snapshot.
+        undoBuf.assign(static_cast<size_t>(capacity), 0.0f);
+
+        preRollLen = static_cast<int64_t>(kPreRollMs * 1.0e-3f * fs);
+        preRoll.assign(static_cast<size_t>(preRollLen), 0.0f);
+        reset();
+    }
+
+    // Clear every track and forget the loop length.
+    void reset() noexcept {
+        for (auto& t : tracks) {
+            std::fill(t.buf.begin(), t.buf.end(), 0.0f);
+            t.state = State::Empty;
+            t.gain = 0.0f; t.targetGain = 0.0f;
+            t.recorded = 0;
+            t.pending = Action::None;
+        }
+        std::fill(preRoll.begin(), preRoll.end(), 0.0f);
+        preRollPos = 0;
+        masterLen  = 0;
+        loopCursor = 0;
+        sealing    = 0;
+        undoTrack  = -1;
+        undoReady  = false;
+    }
+
+    // ── Parameters ───────────────────────────────────────────────────────────
+    void setQuantize(bool on)          noexcept { quantize = on; }
+    void setFeedback(float f)          noexcept { feedback = std::clamp(f, 0.0f, 1.0f); }
+    void setTrackLevel(int t, float g) noexcept { if (valid(t)) tracks[t].level = std::max(0.0f, g); }
+    void setTrackMuted(int t, bool m)  noexcept { if (valid(t)) tracks[t].muted = m; }
+
+    // ── Transport actions ────────────────────────────────────────────────────
+    // Each schedules for the next bar line when quantise is on. A press on a
+    // track with an action already pending REPLACES it, so double-tapping a
+    // footswitch doesn't queue two conflicting state changes.
+    void recordPressed(int t, const TransportClock& clk) noexcept { schedule(t, Action::RecordToggle, clk); }
+    void playPressed(int t, const TransportClock& clk)   noexcept { schedule(t, Action::Play, clk); }
+    void stopPressed(int t, const TransportClock& clk)   noexcept { schedule(t, Action::Stop, clk); }
+
+    // Destructive and immediate — clearing is never something you want to land
+    // a bar later, and it is always deliberate (a long press on the hardware).
+    void clearTrack(int t) noexcept {
+        if (!valid(t)) return;
+        std::fill(tracks[t].buf.begin(), tracks[t].buf.end(), 0.0f);
+        tracks[t].state      = State::Empty;
+        tracks[t].targetGain = 0.0f;
+        tracks[t].recorded   = 0;
+        tracks[t].lateBy     = 0;
+        tracks[t].pending    = Action::None;
+        if (undoTrack == t) { undoReady = false; undoTrack = -1; }
+        // The last track standing takes the loop length with it.
+        if (allEmpty()) { masterLen = 0; loopCursor = 0; }
+    }
+
+    void clearAll() noexcept { reset(); }
+
+    // Swap the live buffer with the pre-overdub snapshot. Doing it as a SWAP
+    // rather than a copy makes undo its own redo, which is what the second
+    // press of an undo footswitch should do.
+    void undo(int t) noexcept {
+        if (!valid(t) || !undoReady || undoTrack != t || masterLen <= 0) return;
+        float* a = tracks[t].buf.data();
+        float* b = undoBuf.data();
+        for (int64_t i = 0; i < masterLen; ++i) std::swap(a[i], b[i]);
+    }
+
+    // Snapshot a track for undo. This is a ~23 MB memcpy, so it must NOT run on
+    // the audio thread: the plugin schedules it on the LV2 worker when an
+    // overdub is ARMED, which quantisation guarantees is at least a fraction of
+    // a bar before the overdub actually begins.
+    void snapshotForUndo(int t) noexcept {
+        if (!valid(t) || masterLen <= 0) return;
+        std::memcpy(undoBuf.data(), tracks[t].buf.data(),
+                    static_cast<size_t>(masterLen) * sizeof(float));
+        undoTrack = t;
+        undoReady = true;
+    }
+
+    // True when the given track's next RecordToggle would start an overdub, so
+    // the plugin knows to schedule a snapshot.
+    bool wouldOverdub(int t) const noexcept {
+        return valid(t) && (tracks[t].state == State::Playing || tracks[t].state == State::Stopped)
+               && masterLen > 0;
+    }
+
+    // ── Queries (for the UI) ─────────────────────────────────────────────────
+    State   trackState(int t)  const noexcept { return valid(t) ? tracks[t].state : State::Empty; }
+    bool    hasLoop()          const noexcept { return masterLen > 0; }
+    int64_t loopLength()       const noexcept { return masterLen; }
+    int64_t loopPosition()     const noexcept { return loopCursor; }
+    float   loopProgress()     const noexcept {
+        return (masterLen > 0) ? static_cast<float>(loopCursor) / static_cast<float>(masterLen) : 0.0f;
+    }
+    bool    undoAvailable()    const noexcept { return undoReady; }
+    // Bars the loop spans at the clock's current tempo — how the UI labels it.
+    int     loopBars(const TransportClock& clk) const noexcept {
+        const double spb = clk.samplesPerBar();
+        return (masterLen > 0 && spb > 0.0)
+             ? static_cast<int>(std::lround(masterLen / spb)) : 0;
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────────
+    // Records from `in` and ADDS loop playback into `out`. `in` and `out` may
+    // be the same buffer: the plugin passes the guitar through separately, so
+    // this block only ever adds its own playback on top.
+    void process(const TransportClock& clk, const float* in, float* out, int n) noexcept {
+        if (n <= 0 || capacity <= 0) return;
+
+        int cursor = 0;
+        while (cursor < n) {
+            // Run up to the next scheduled action, so state changes land on the
+            // exact sample the bar line falls on rather than at a block edge.
+            int segEnd = n;
+            for (int t = 0; t < kNumTracks; ++t) {
+                if (tracks[t].pending == Action::None) continue;
+                const int64_t rel = tracks[t].applyAt - clk.samplePosition();
+                if (rel > cursor && rel < segEnd) segEnd = static_cast<int>(rel);
+            }
+
+            // Apply everything due exactly at `cursor`.
+            for (int t = 0; t < kNumTracks; ++t) {
+                if (tracks[t].pending == Action::None) continue;
+                const int64_t rel = tracks[t].applyAt - clk.samplePosition();
+                if (rel <= cursor) applyAction(t);
+            }
+
+            renderSegment(in, out, cursor, segEnd);
+            cursor = segEnd;
+        }
+    }
+
+private:
+    struct Track {
+        std::vector<float> buf;
+        State   state{State::Empty};
+        Action  pending{Action::None};
+        int64_t applyAt{0};
+        int64_t recorded{0};      // samples captured on the take in progress
+        int64_t lateBy{0};        // samples this action landed past its bar line
+        float   level{1.0f};
+        float   gain{0.0f}, targetGain{0.0f};
+        bool    muted{false};
+    };
+
+    static bool inRange(int t) noexcept { return t >= 0 && t < kNumTracks; }
+    bool valid(int t) const noexcept { return inRange(t); }
+
+    bool allEmpty() const noexcept {
+        for (const auto& t : tracks) if (t.state != State::Empty) return false;
+        return true;
+    }
+
+    void schedule(int t, Action a, const TransportClock& clk) noexcept {
+        if (!valid(t)) return;
+        tracks[t].pending = a;
+        // Free mode, or a stopped transport (nothing to quantise TO), acts now.
+        if (!quantize || !clk.running()) {
+            tracks[t].applyAt = clk.samplePosition();
+            return;
+        }
+        const double spb   = clk.samplesPerBar();
+        const double toBar = clk.samplesToNextBar();
+        // How far past the bar line just gone this press landed.
+        const double sinceBar = (toBar <= 0.0) ? 0.0 : spb - toBar;
+
+        // A press a hair after the bar line was meant for THAT line, not the
+        // next one. The window is capped in real time as well as in bars: at a
+        // slow tempo a bar is long enough that 9% of it would exceed the
+        // pre-roll we can actually recover from.
+        const double window = std::min(0.09 * spb, kSnapMs * 1.0e-3 * fs);
+
+        if (sinceBar <= window) {
+            tracks[t].applyAt = clk.samplePosition();
+            tracks[t].lateBy  = std::min(static_cast<int64_t>(sinceBar), preRollLen);
+        } else {
+            tracks[t].applyAt = clk.samplePosition() + static_cast<int64_t>(toBar);
+            tracks[t].lateBy  = 0;
+        }
+    }
+
+    void applyAction(int t) noexcept {
+        Track& tr = tracks[t];
+        const Action a = tr.pending;
+        tr.pending = Action::None;
+
+        switch (a) {
+            case Action::RecordToggle: recordToggle(t); break;
+            case Action::Play:
+                if (tr.state == State::Recording || tr.state == State::Overdubbing) closeRecording(t);
+                if (tr.state != State::Empty) { tr.state = State::Playing; tr.targetGain = 1.0f; }
+                break;
+            case Action::Stop:
+                if (tr.state == State::Recording || tr.state == State::Overdubbing) closeRecording(t);
+                if (tr.state != State::Empty) { tr.state = State::Stopped; tr.targetGain = 0.0f; }
+                break;
+            default: break;
+        }
+    }
+
+    void recordToggle(int t) noexcept {
+        Track& tr = tracks[t];
+        switch (tr.state) {
+            case State::Empty: {
+                tr.recorded   = 0;        // counts THIS take, master or punch-in
+                tr.state      = State::Recording;
+                tr.targetGain = 1.0f;
+                // The first take also defines where loop position zero is.
+                if (masterLen == 0) loopCursor = 0;
+                // Recover the head of the bar the player already played over.
+                fillFromPreRoll(t, tr.lateBy);
+                break;
+            }
+
+            case State::Recording:
+            case State::Overdubbing:
+                closeRecording(t);
+                tr.state      = State::Playing;
+                tr.targetGain = 1.0f;
+                break;
+
+            case State::Playing:
+            case State::Stopped:
+                tr.state      = State::Overdubbing;
+                tr.targetGain = 1.0f;
+                break;
+        }
+    }
+
+    // End a take. The FIRST take to close sets the master loop length and opens
+    // the seam window; later takes simply stop adding.
+    void closeRecording(int t) noexcept {
+        Track& tr = tracks[t];
+        if (masterLen != 0 || tr.state != State::Recording) return;
+
+        // The take began on a bar line and ran to `lateBy` past the closing
+        // one, so the loop is everything except that overshoot.
+        int64_t len = tr.recorded - tr.lateBy;
+        len = std::clamp(len, seamLen * 2, capacity - seamLen);
+        masterLen = len;
+
+        // The overshoot IS the seam material: it is the player still ringing
+        // over the top of bar one. Fold whatever we already captured, and only
+        // keep recording live for the part we are short of.
+        const int64_t have = std::min(tr.lateBy, seamLen);
+        for (int64_t i = 0; i < have; ++i) {
+            const float w = static_cast<float>(i) / static_cast<float>(seamLen);
+            float& head = tr.buf[static_cast<size_t>(i)];
+            head = head * w + tr.buf[static_cast<size_t>(masterLen + i)] * (1.0f - w);
+        }
+
+        if (have < seamLen) {
+            sealing    = seamLen;
+            sealTrack  = t;
+            sealCursor = have;
+        } else {
+            sealing   = 0;
+            sealTrack = -1;
+        }
+
+        // Playback resumes where we actually are: `lateBy` past the bar line.
+        loopCursor = (masterLen > 0) ? (tr.lateBy % masterLen) : 0;
+    }
+
+    // Copy the last `count` samples of input history into the take, so a take
+    // that was started late still begins on the bar line.
+    void fillFromPreRoll(int t, int64_t count) noexcept {
+        count = std::min(count, preRollLen);
+        if (count <= 0) return;
+        Track& tr = tracks[t];
+
+        for (int64_t i = 0; i < count; ++i) {
+            // preRollPos is the next slot to be written, so the oldest sample
+            // we want sits `count` slots behind it.
+            int64_t src = preRollPos - count + i;
+            src %= preRollLen;
+            if (src < 0) src += preRollLen;
+
+            int64_t dst;
+            if (masterLen == 0) {
+                dst = i;                                   // master take: linear
+            } else {
+                dst = loopCursor - count + i;              // punch-in: wraps
+                dst %= masterLen;
+                if (dst < 0) dst += masterLen;
+            }
+            if (dst >= 0 && dst < capacity)
+                tr.buf[static_cast<size_t>(dst)] = preRoll[static_cast<size_t>(src)];
+        }
+        tr.recorded = count;
+    }
+
+    void renderSegment(const float* in, float* out, int from, int to) noexcept {
+        const int len = to - from;
+        if (len <= 0) return;
+
+        for (int i = from; i < to; ++i) {
+            const float x = in ? in[i] : 0.0f;
+            float mix = 0.0f;
+
+            // Rolling input history for late-press recovery. Written for every
+            // sample regardless of state: the whole point is having audio from
+            // before anything was armed.
+            preRoll[static_cast<size_t>(preRollPos)] = x;
+            if (++preRollPos >= preRollLen) preRollPos = 0;
+
+            for (int t = 0; t < kNumTracks; ++t) {
+                Track& tr = tracks[t];
+
+                // Smooth every gain change: state transitions and mutes land on
+                // arbitrary samples and would otherwise click.
+                const float want = (tr.muted ? 0.0f : tr.targetGain);
+                if (tr.gain < want)      tr.gain = std::min(want, tr.gain + fadeInc);
+                else if (tr.gain > want) tr.gain = std::max(want, tr.gain - fadeInc);
+
+                switch (tr.state) {
+                    case State::Recording: {
+                        // Before a master length exists the take grows; after
+                        // one exists a punch-in wraps with the loop.
+                        const int64_t pos = (masterLen > 0) ? loopCursor : tr.recorded;
+                        if (pos < capacity) tr.buf[static_cast<size_t>(pos)] = x;
+                        ++tr.recorded;
+                        if (masterLen == 0) {
+                            if (tr.recorded >= capacity) {   // out of room
+                                closeRecording(t);
+                                tr.state = State::Playing;
+                            }
+                        } else if (tr.recorded >= masterLen) {
+                            // A full lap is captured regardless of where in the
+                            // loop the punch-in started.
+                            tr.state      = State::Playing;
+                            tr.targetGain = 1.0f;
+                        }
+                        break;
+                    }
+                    case State::Overdubbing: {
+                        if (masterLen > 0 && loopCursor < masterLen) {
+                            float& s = tr.buf[static_cast<size_t>(loopCursor)];
+                            s = s * feedback + x;
+                            mix += s * tr.level * tr.gain;
+                        }
+                        break;
+                    }
+                    case State::Playing: {
+                        if (masterLen > 0 && loopCursor < masterLen)
+                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain;
+                        break;
+                    }
+                    case State::Stopped:
+                        // Still fading out from the last ramp; keep feeding it
+                        // so the stop isn't a hard cut.
+                        if (tr.gain > 0.0f && masterLen > 0 && loopCursor < masterLen)
+                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain;
+                        break;
+                    case State::Empty:
+                    default: break;
+                }
+            }
+
+            // Fold the post-stop overhang into the head of the loop so the wrap
+            // is continuous instead of a step.
+            if (sealing > 0 && sealTrack >= 0) {
+                const float w = static_cast<float>(sealCursor) / static_cast<float>(seamLen);
+                float& head = tracks[sealTrack].buf[static_cast<size_t>(sealCursor)];
+                head = head * w + x * (1.0f - w);
+                if (++sealCursor >= seamLen) { sealing = 0; sealTrack = -1; }
+            }
+
+            out[i] += mix;
+
+            // Advance the loop once per sample, shared by every track.
+            if (masterLen > 0) {
+                if (++loopCursor >= masterLen) loopCursor = 0;
+            }
+        }
+    }
+
+    Track   tracks[kNumTracks];
+    std::vector<float> undoBuf;
+    std::vector<float> preRoll;
+    int64_t preRollLen{0}, preRollPos{0};
+
+    double  fs{48000.0};
+    int64_t capacity{0};
+    int64_t masterLen{0};
+    int64_t loopCursor{0};
+    int64_t seamLen{0};
+    int64_t sealing{0}, sealCursor{0};
+    int     sealTrack{-1};
+    int     undoTrack{-1};
+    bool    undoReady{false};
+    bool    quantize{true};
+    float   feedback{1.0f};
+    float   fadeInc{0.001f};
+};
+
+} // namespace hexdrums
