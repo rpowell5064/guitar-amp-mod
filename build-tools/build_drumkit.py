@@ -93,16 +93,23 @@ SOURCES = {
     "TOM_HI":     ("tom_14/center/cl",         3.5, 4, 28,   0, 4096),
     "TOM_MID":    ("tom_18/center/cl",         4.0, 4, 28,   0, 4096),
     "TOM_FLOOR":  ("tom_22/center/cl",         4.5, 4, 28,   0, 4096),
+    # Mode budgets re-tuned 2026-10-01 for CHINA, CRASH, RIDE and HAT_OPEN only
+    # -- the four that were actually measured. Each was swept against spectral
+    # centroid error (china and crash on a loud AND a quiet hit; ride and hat on
+    # one velocity, so treat those two as the weaker evidence). Mean |centroid
+    # error| over the pair: china 5.2% -> 1.3% at 1500, crash 13.1% -> 5.8% at
+    # 1400. The runtime bank holds kMaxModes = 1536, which is the ceiling.
+    # Every other budget here is untouched: there is no measurement behind them.
     "HAT_CLOSED": ("hihat_14/cl/cl",           1.5, 4,  0, 500, 1024),
     "HAT_PEDAL":  ("hihat_14/chik/cl",         1.5, 3,  0, 400, 1024),
-    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0, 700, 1024),
-    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0, 900, 1024),
-    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0,1000, 1024),
+    "HAT_OPEN":   ("hihat_14/open/cl",         4.0, 4,  0,1300, 1024),
+    "CRASH":      ("crash_17/cr/cl",           8.0, 3,  0,1400, 1024),
+    "RIDE":       ("ride_22/rd/cl",            8.0, 3,  0,1100, 1024),
     "RIDE_BELL":  ("ride_22/bl/cl",            8.0, 3,  0, 800, 1024),
     # Added for modern metal. China and stack are cymbals, so they take
     # the dense modal model; the rimshot is a drum and takes tracked
     # partials with the snare's 4096-point window.
-    "CHINA":      ("china_18/cn/cl",           6.0, 3,  0,1000, 1024),
+    "CHINA":      ("china_18/cn/cl",           6.0, 3,  0,1500, 1024),
     "STACK":      ("stack_3_layer/mid/cl",     2.5, 3,  0, 500, 1024),
     "SNARE_RIM":  ("snare_14/rimshot/top",     3.0, 3, 28,   0, 4096),
 }

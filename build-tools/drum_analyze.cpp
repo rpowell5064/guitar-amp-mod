@@ -568,8 +568,58 @@ static std::vector<float> synthDenseModes(const std::vector<DenseMode>& modes, d
 // to reach. Too small and the model is left hollow where the instrument
 // does have content; too large and it fits noise below the instrument's
 // natural cliff, which is what made the cymbals 2 kHz too dark.
+static double gDecayCap = 1.5;
 static double gWeakCullDb = 45.0;
 static double gLowCutDb = 25.0;
+
+
+// How long the RECORDING takes to fall 20 dB in one band.
+//
+// A per-mode decay fit is an estimate from a filtered envelope and is noisy;
+// the band envelope is a direct measurement of the instrument. Cymbal modes
+// are packed within a few Hz of each other up high, so even a narrow fit can
+// catch a neighbour and inherit its decay, and the error only ever runs one
+// way: too long. Measured on the china, modes above 10 kHz came out ringing
+// 0.80 s against the recording's 0.35 s -- audible as a trashy cymbal that
+// will not shut up. Capping each mode at what its own band actually does puts
+// a ceiling on that without touching the modes that were fitted correctly.
+static double bandT20(const std::vector<float>& x, double fs, double lo, double hi) {
+    const size_t N = 2048, hop = 512;
+    std::vector<double> env;
+    std::vector<std::complex<double>> s(N);
+    const auto w = hann(N);
+    for (size_t at = 0; at + N <= x.size(); at += hop) {
+        for (size_t i = 0; i < N; ++i) s[i] = x[at + i] * w[i];
+        fft(s);
+        double e = 0.0;
+        for (size_t k = 1; k < N / 2; ++k) {
+            const double f = double(k) * fs / double(N);
+            if (f >= lo && f < hi) e += std::norm(s[k]);
+        }
+        env.push_back(e);
+    }
+    if (env.size() < 4) return 0.0;
+    const double pk = *std::max_element(env.begin(), env.end());
+    if (pk <= 0.0) return 0.0;
+    const double target = pk * std::pow(10.0, -20.0 / 10.0);
+
+    // Refuse to measure a band that never gets 20 dB clear of the noise floor.
+    // On a QUIET hit the envelope flattens out early, so the apparent T-20 is
+    // the recording's noise and not the instrument -- and capping modes to that
+    // made soft china hits 11.6% too dark while the loud ones were right. A cap
+    // is only worth having where the thing it is derived from is real.
+    {
+        const size_t tailFrom = env.size() - std::max<size_t>(4, env.size() / 10);
+        std::vector<double> tail(env.begin() + tailFrom, env.end());
+        std::sort(tail.begin(), tail.end());
+        const double floorE = tail[tail.size() / 2];
+        if (target <= floorE * 2.0) return 0.0;      // 0 = do not cap this band
+    }
+
+    for (size_t i = 0; i < env.size(); ++i)
+        if (env[i] <= target) return double(i * hop) / fs;
+    return double(env.size() * hop) / fs;
+}
 
 static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, double fs, int want) {
     const size_t NF = 1u << 16;                       // fine enough to separate dense modes
@@ -683,6 +733,15 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
         }
     }
 
+    // NO per-band decay cap. One was tried: cap each mode's t60 at a multiple
+    // of its own octave's measured T60 in the recording. It measured BETTER on
+    // loud hits (crash centroid -10.4% -> +0.3%) and clearly WORSE on quiet
+    // ones (soft china -11.5%), because a quiet hit's band envelope flattens
+    // into the noise floor early, so the "measured" decay is the recording's
+    // noise rather than the instrument's. Refusing to cap bands that never get
+    // 20 dB clear of the floor did not rescue it. The kit ships three velocity
+    // layers per instrument, so a rule that only works at one velocity is not a
+    // rule worth having.
     // Drop modes more than 45 dB below the strongest. Below that they are
     // inaudible individually, and a fit that weak is as likely to have latched
     // onto the noise floor as onto a real mode — which is exactly how spurious

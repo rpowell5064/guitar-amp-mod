@@ -38,7 +38,16 @@ enum {
     OUT_TRK1_STATE = 41, OUT_TRK2_STATE = 42, OUT_TRK3_STATE = 43, OUT_TRK4_STATE = 44,
     OUT_STEP = 45, OUT_UNDO_AVAIL = 46,
     DRUM_COMP = 47, DRUM_ROOM = 48, DRUM_ROOM_SIZE = 49, DRUM_BODY = 50,
-    BYPASS = 51, ENABLED = 52, N_PORTS = 53
+    BYPASS = 51, ENABLED = 52,
+    // 53/54 are the editor's atom ports and are deliberately NOT connected
+    // here: handing a float* to an atom port would have the plugin read a
+    // single float as a sequence. Everything after them is an ordinary control.
+    CONTROL = 53, NOTIFY = 54,
+    TEMPO_SYNC = 55, HOST_BPM = 56,
+    COUNT_IN = 57, OUT_COUNTIN = 58, LOOP_BARS = 59, DRUM_SPACE = 60,
+    TRK1_TRIM_IN = 61, TRK1_TRIM_OUT = 62, TRK2_TRIM_IN = 63, TRK2_TRIM_OUT = 64,
+    TRK3_TRIM_IN = 65, TRK3_TRIM_OUT = 66, TRK4_TRIM_IN = 67, TRK4_TRIM_OUT = 68,
+    N_PORTS = 69
 };
 
 static const double kFs = 48000.0;
@@ -69,7 +78,10 @@ static Run render(const LV2_Descriptor* d, const char* bundle, double secs,
     std::vector<float> in(kBlock, 0.0f), out(kBlock, 0.0f);
     d->connect_port(h, IN, in.data());
     d->connect_port(h, OUT, out.data());
-    for (int i = 2; i < N_PORTS; ++i) d->connect_port(h, i, &ctl[i]);
+    for (int i = 2; i < N_PORTS; ++i) {
+        if (i == CONTROL || i == NOTIFY) continue;   // atom ports, not floats
+        d->connect_port(h, i, &ctl[i]);
+    }
 
     ctl[TEMPO] = float(tempo); ctl[BEATS_PER_BAR] = 4.0f;
     ctl[KICK_DECAY] = 0.42f; ctl[KICK_CLICK] = 50.0f;
@@ -77,6 +89,11 @@ static Run render(const LV2_Descriptor* d, const char* bundle, double secs,
     ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
     ctl[LOOP_QUANTIZE] = 1.0f; ctl[LOOP_FEEDBACK] = 100.0f; ctl[LOOP_TRACK] = 1.0f;
     ctl[ENABLED] = 1.0f;
+    // Trim defaults: an unset out-point reads 0, which would silence every
+    // track and quietly understate the CPU figure.
+    ctl[TRK1_TRIM_OUT] = 1.0f; ctl[TRK2_TRIM_OUT] = 1.0f;
+    ctl[TRK3_TRIM_OUT] = 1.0f; ctl[TRK4_TRIM_OUT] = 1.0f;
+    ctl[DRUM_SPACE] = 40.0f;     // shipping default
     ctl[DRUM_COMP] = 35.0f;      // the shipping defaults, so the CPU figure
     ctl[DRUM_ROOM] = 30.0f;      // below is the cost we actually ship
     ctl[DRUM_ROOM_SIZE] = 35.0f;
