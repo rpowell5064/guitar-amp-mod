@@ -58,7 +58,7 @@ SYMBOLS = {
     "P_CONTROL": "control", "P_NOTIFY": "notify",
     "P_TEMPO_SYNC": "tempo_sync", "P_HOST_BPM": "host_bpm",
     "P_COUNT_IN": "count_in", "P_OUT_COUNTIN": "out_countin",
-    "P_LOOP_BARS": "loop_bars",
+    "P_LOOP_BARS": "loop_bars", "P_DRUM_SPACE": "drum_space",
 }
 
 errors = []

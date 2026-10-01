@@ -452,31 +452,73 @@ struct DenseMode { double freq, amp, t60; };
 
 static bool fitStaticMode(const std::vector<float>& x, double fs, double f, DenseMode& out) {
     const size_t n = x.size();
-    const double bw = std::max(6.0, f * 0.004);      // narrow: the modes are dense
-    const double a  = std::exp(-2.0 * M_PI * bw / fs);
     const double w  = 2.0 * M_PI * f / fs;
-    const std::complex<double> step(std::cos(-w), std::sin(-w));
-    std::complex<double> rot(1.0, 0.0), lp(0.0, 0.0);
 
-    std::vector<double> env;
-    env.reserve(n / 64 + 1);
-    for (size_t i = 0; i < n; ++i) {
-        lp = (1.0 - a) * (double(x[i]) * rot) + a * lp;
-        rot *= step;
-        if ((i & 63) == 0) env.push_back(std::abs(lp));
-    }
-    double pk = 0.0; size_t at = 0;
-    for (size_t i = 0; i < env.size(); ++i) if (env[i] > pk) { pk = env[i]; at = i; }
+    // The amplitude and the decay want DIFFERENT filters, so the mode is
+    // tracked twice.
+    //
+    // AMPLITUDE needs a wide enough band to collect the mode's real energy. A
+    // cymbal partial is not a pure tone; narrowing the filter to isolate it
+    // throws away the skirts that make it audible, and the model comes out
+    // dark (measured: the china's centroid fell from 3059 to 2198 Hz).
+    //
+    // DECAY needs the opposite. Cymbal modes are packed within a few Hz of
+    // each other up high, so a wide filter sums several of them, and the sum
+    // decays at the rate of the SLOWEST one it caught. That is why the china's
+    // top octave came out ringing 3x too long while its low body died too
+    // early: every mode's decay was being dragged toward the same average.
+    auto track = [&](double bw, std::vector<double>& env) {
+        const double a = std::exp(-2.0 * M_PI * bw / fs);
+        const std::complex<double> step(std::cos(-w), std::sin(-w));
+        std::complex<double> rot(1.0, 0.0), lp(0.0, 0.0);
+        env.clear();
+        env.reserve(n / 64 + 1);
+        for (size_t i = 0; i < n; ++i) {
+            lp = (1.0 - a) * (double(x[i]) * rot) + a * lp;
+            rot *= step;
+            if ((i & 63) == 0) env.push_back(std::abs(lp));
+        }
+    };
+
+    std::vector<double> envA, envD;
+    track(std::max(6.0, f * 0.004),  envA);    // amplitude
+    track(std::max(4.0, f * 0.0015), envD);    // decay
+
+    double pk = 0.0;
+    for (double v : envA) pk = std::max(pk, v);
     if (pk < 1.0e-7) return false;
 
-    const double floorL = pk * 1.0e-3;
+    double pkD = 0.0; size_t at = 0;
+    for (size_t i = 0; i < envD.size(); ++i) if (envD[i] > pkD) { pkD = envD[i]; at = i; }
+    if (pkD < 1.0e-9) return false;
+
+    // Stop the fit before the RECORDING'S NOISE FLOOR, not merely 60 dB below
+    // the mode's peak. A quiet high mode reaches the floor long before -60 dB,
+    // and once there its envelope stops falling; a log-linear fit through that
+    // plateau reads a far slower slope than the mode really has. The floor is
+    // taken from the END of the capture, where the instrument has stopped.
+    double noiseFloor = 0.0;
+    {
+        const size_t tailFrom = envD.size() - std::max<size_t>(4, envD.size() / 10);
+        std::vector<double> tail(envD.begin() + tailFrom, envD.end());
+        std::sort(tail.begin(), tail.end());
+        noiseFloor = tail[tail.size() / 2];
+    }
+    // Only trust the tail as a noise floor if it really is one. A long capture
+    // of a cymbal that is STILL RINGING at the end gives a high "floor", which
+    // would truncate every fit early and make the model darken faster than the
+    // instrument -- the crash is 8 seconds long and does exactly that.
+    const double floorL = (noiseFloor < pkD * 0.03)            // 30 dB down
+                        ? std::max(pkD * 1.0e-3, noiseFloor * 2.0)
+                        : pkD * 1.0e-3;
+
     double sw = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
     size_t used = 0;
-    for (size_t i = at; i < env.size(); ++i) {
-        if (env[i] < floorL) break;
+    for (size_t i = at; i < envD.size(); ++i) {
+        if (envD[i] < floorL) break;
         const double t  = double((i - at) * 64) / fs;
-        const double y  = std::log(env[i]);
-        const double wt = env[i] / pk;
+        const double y  = std::log(envD[i]);
+        const double wt = envD[i] / pkD;
         sw += wt; sx += wt * t; sy += wt * y; sxx += wt * t * t; sxy += wt * t * y;
         ++used;
     }
@@ -526,6 +568,7 @@ static std::vector<float> synthDenseModes(const std::vector<DenseMode>& modes, d
 // to reach. Too small and the model is left hollow where the instrument
 // does have content; too large and it fits noise below the instrument's
 // natural cliff, which is what made the cymbals 2 kHz too dark.
+static double gWeakCullDb = 45.0;
 static double gLowCutDb = 25.0;
 
 static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, double fs, int want) {
@@ -647,7 +690,7 @@ static std::vector<DenseMode> extractDenseModes(const std::vector<float>& x, dou
     if (!modes.empty()) {
         double loudest = 0.0;
         for (const DenseMode& m : modes) loudest = std::max(loudest, m.amp);
-        const double floorAmp = loudest * std::pow(10.0, -45.0 / 20.0);
+        const double floorAmp = loudest * std::pow(10.0, -gWeakCullDb / 20.0);
         modes.erase(std::remove_if(modes.begin(), modes.end(),
                                    [floorAmp](const DenseMode& m) { return m.amp < floorAmp; }),
                     modes.end());

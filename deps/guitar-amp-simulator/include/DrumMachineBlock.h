@@ -87,6 +87,15 @@ public:
         room.reset();
         sendHp.reset();
         bodyShelf.reset();
+        // The detector listens to the band the two instruments fight over, not
+        // to the guitar's whole level: a bright lead line should not duck the
+        // kick, only a chord with weight in it should.
+        duckDet.setCoeffs(Filters::bandpass(220.0, 0.9, fs));
+        duckDet.reset();
+        duckEq.reset();
+        duckEnv = 0.0f;
+        duckAtk = 1.0f - std::exp(-1.0f / float(0.005 * fs));   // 5 ms
+        duckRel = 1.0f - std::exp(-1.0f / float(0.150 * fs));   // 150 ms
         queueCount   = 0;
         nextScanStep = kNoStep;
         lastStepsPerBeat = -1.0;
@@ -151,6 +160,30 @@ public:
     // would ring, and ringing at 60-90 Hz is exactly what smears consecutive
     // double-kick strokes into each other — which is the thing to preserve.
     void setBodyAmount(float a) noexcept { bodyAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
+
+    // GUITAR SPACE. Depth, 0..1, of a dynamic cut in the low mids, driven by
+    // how much the GUITAR is putting there right now.
+    //
+    // Kick and tom bodies live in roughly the same 120-320 Hz as the body of a
+    // distorted guitar, and the two mask each other: the drums get cloudy under
+    // playing and the guitar loses its weight. A static cut would fix that and
+    // leave a hole in the kit whenever you stop playing. Ducking only takes the
+    // room back while the guitar is actually using it.
+    void setGuitarSpace(float depth) noexcept { duckDepth = std::clamp(depth, 0.0f, 1.0f); }
+
+    // Called once per block with the guitar that is about to be mixed with
+    // this kit. Only a detector -- the signal itself is untouched.
+    void senseGuitar(const float* in, int n) noexcept {
+        if (!in || n <= 0 || duckDepth <= 0.001f) { duckEnv = 0.0f; return; }
+        for (int i = 0; i < n; ++i) {
+            const float b = duckDet.process(in[i]);
+            const float r = std::fabs(b);
+            // Fast to grab the note, slow to let go, so the kit breathes back
+            // in between phrases instead of fluttering on every pick.
+            duckEnv += (r > duckEnv) ? (r - duckEnv) * duckAtk
+                                     : (r - duckEnv) * duckRel;
+        }
+    }
     void setCompAmount(float a) noexcept { compAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
     void setRoomAmount(float a) noexcept { roomAmt = std::clamp(a, 0.0f, 1.0f); applyBus(); }
     void setRoomSize(float a)   noexcept { roomSize = std::clamp(a, 0.0f, 1.0f); applyBus(); }
@@ -236,6 +269,23 @@ public:
         // weight the player has dialled in rather than fighting it.
         if (bodyAmt > 0.005f)
             for (int i = 0; i < n; ++i) buf[i] = bodyShelf.process(buf[i]) * bodyTrim;
+
+        // Guitar space. The detector is already level-tracked, so this only
+        // has to turn it into decibels and move the filter. Recomputed per
+        // block, not per sample: a 220 Hz bell moving at block rate is well
+        // under anything audible as zipper noise, and redesigning a biquad
+        // 48000 times a second to chase a 150 ms envelope would be silly.
+        if (duckDepth > 0.001f) {
+            // -1 .. 0 as the guitar goes from nothing to a hard chord. The
+            // knee is deliberately low: by the time a guitar is at -20 dBFS in
+            // this band it is already in the kit's way.
+            const float lvl = std::min(1.0f, duckEnv * 8.0f);
+            const float cut = -kDuckMaxDb * duckDepth * lvl;
+            duckEq.setCoeffs(Filters::peaking(230.0, cut, 0.7, fs));
+            for (int i = 0; i < n; ++i) buf[i] = duckEq.process(buf[i]);
+        } else {
+            duckEq.reset();
+        }
 
         // Parallel compression, then room, then level. The level control comes
         // last so the compressor's operating point never moves with the fader.
@@ -576,6 +626,10 @@ private:
     std::vector<float>  scratch, parallel, sendA, sendB;
     CompressorBlock     comp;
     BiquadFilter        sendHp, bodyShelf;
+    BiquadFilter        duckDet, duckEq;
+    float               duckDepth{0.0f}, duckEnv{0.0f};
+    float               duckAtk{0.0f}, duckRel{0.0f};
+    static constexpr float kDuckMaxDb = 12.0f;
     PlateReverbBlock    room;
     float compAmt{0.0f}, roomAmt{0.0f}, roomSize{0.35f}, bodyAmt{0.0f}, bodyTrim{1.0f};
 

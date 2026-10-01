@@ -121,6 +121,10 @@ enum PracticePorts {
     // Fixed-length takes: 0 = record until pressed again, otherwise the take
     // closes itself after this many bars.
     P_LOOP_BARS,
+
+    // Dynamic low-mid cut on the kit, driven by the guitar. See
+    // DrumMachineBlock::setGuitarSpace().
+    P_DRUM_SPACE,
     P_N_PORTS
 };
 
@@ -658,6 +662,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     p->drums.setRoomAmount(portValue(p, P_DRUM_ROOM, 30.0f) * 0.01f);
     p->drums.setRoomSize(portValue(p, P_DRUM_ROOM_SIZE, 35.0f) * 0.01f);
     p->drums.setBodyAmount(portValue(p, P_DRUM_BODY, 30.0f) * 0.01f);
+    p->drums.setGuitarSpace(portValue(p, P_DRUM_SPACE, 40.0f) * 0.01f);
 
     // ── Looper ───────────────────────────────────────────────────────────────
     p->looper.setQuantize(portBool(p, P_LOOP_QUANTIZE, true));
@@ -722,6 +727,9 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // The looper still needs the input even when bypassed would silence it;
     // feeding it keeps the pre-roll warm, and its master level is already 0.
     p->looper.process(p->clk, in, out, n);
+    // Sense the guitar before the kit is rendered: the detector must see the
+    // dry playing, not the mix it is about to be folded into.
+    p->drums.senseGuitar(in, n);
     p->drums.render(p->clk, out, n);
 
     p->clk.advance(n);

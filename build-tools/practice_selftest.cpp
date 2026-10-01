@@ -51,8 +51,8 @@ enum {
     BYPASS = 51, ENABLED = 52,
     CONTROL = 53, NOTIFY = 54,
     TEMPO_SYNC = 55, HOST_BPM = 56,
-    COUNT_IN = 57, OUT_COUNTIN = 58, LOOP_BARS = 59,
-    N_PORTS = 60
+    COUNT_IN = 57, OUT_COUNTIN = 58, LOOP_BARS = 59, DRUM_SPACE = 60,
+    N_PORTS = 61
 };
 
 static constexpr double kFs    = 48000.0;
@@ -126,6 +126,7 @@ struct Host {
         ctl[SNARE_DECAY] = 0.20f; ctl[SNARE_SNAPPY] = 60.0f;
         ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
         ctl[COUNT_IN] = 0.0f;   // off unless a test asks for it
+        ctl[DRUM_SPACE] = 0.0f; // ditto: it would skew every drum level below
         ctl[LOOP_QUANTIZE] = 1.0f; ctl[LOOP_FEEDBACK] = 100.0f; ctl[LOOP_TRACK] = 1.0f;
         ctl[ENABLED] = 1.0f;
     }
@@ -656,6 +657,71 @@ int main() {
         check(peak(after) < 0.02f, "and the looper is silent after stop",
               "peak " + std::to_string(peak(after)));
         hst.close();
+    }
+
+    // ── Guitar Space ─────────────────────────────────────────────────────────
+    // The kit's low mids should step aside WHILE the guitar is using that band
+    // and not otherwise. The harness tone is 196 + 294 Hz, which is exactly the
+    // region in question, and out = in + loop + drums with no loop recorded --
+    // so subtracting the known tone leaves the kit on its own to be measured.
+    std::printf("\nGuitar space\n");
+    {
+        // Energy in the contested band, via a 2nd-order bandpass at 220 Hz.
+        auto bandRms = [](const std::vector<float>& x, double fs) {
+            const double w0 = 2.0 * M_PI * 220.0 / fs, Q = 0.9;
+            const double al = std::sin(w0) / (2.0 * Q), cw = std::cos(w0);
+            const double b0 = al, b1 = 0.0, b2 = -al;
+            const double a0 = 1.0 + al, a1 = -2.0 * cw, a2 = 1.0 - al;
+            double z1 = 0, z2 = 0, acc = 0;
+            for (float v : x) {
+                const double y = (b0 / a0) * v + z1;
+                z1 = (b1 / a0) * v - (a1 / a0) * y + z2;
+                z2 = (b2 / a0) * v - (a2 / a0) * y;
+                acc += y * y;
+            }
+            return x.empty() ? 0.0 : std::sqrt(acc / double(x.size()));
+        };
+
+        auto kitBand = [&](float space, bool withGuitar) {
+            Host h; h.open();
+            h.ctl[PATTERN]     = 3.0f;      // Double Kick: plenty of low-mid
+            h.ctl[DRUM_SPACE]  = space;
+            h.ctl[RUN]         = 1.0f;
+            h.run(kBlock * 4);              // settle the detector
+            std::vector<float> cap;
+            const int64_t at = h.framesFed;
+            h.run(int64_t(kFs * 2.0), &cap, !withGuitar);
+            // Subtract the guitar we know we fed, leaving the kit alone.
+            if (withGuitar)
+                for (size_t i = 0; i < cap.size(); ++i)
+                    cap[i] -= h.tone(at + int64_t(i));
+            h.close();
+            return bandRms(cap, kFs);
+        };
+
+        const double defGuitar   = kitBand(40.0f,  true);   // the shipped default
+        const double openGuitar  = kitBand(0.0f,   true);
+        const double duckGuitar  = kitBand(100.0f, true);
+        const double openSilent  = kitBand(0.0f,   false);
+        const double duckSilent  = kitBand(100.0f, false);
+
+        const double duckDb = (openGuitar > 0.0)
+                            ? 20.0 * std::log10(duckGuitar / openGuitar) : 0.0;
+        const double idleDb = (openSilent > 0.0)
+                            ? 20.0 * std::log10(duckSilent / openSilent) : 0.0;
+
+        const double defDb = (openGuitar > 0.0)
+                           ? 20.0 * std::log10(defGuitar / openGuitar) : 0.0;
+        check(defDb < -1.0, "the SHIPPED DEFAULT makes audible room",
+              std::to_string(defDb) + " dB at 40%");
+        check(duckDb < -1.5, "the kit's low mids duck while the guitar plays",
+              std::to_string(duckDb) + " dB");
+        check(duckDb > -12.0, "but not by an absurd amount",
+              std::to_string(duckDb) + " dB");
+        // The whole point of ducking rather than a fixed cut: with nothing
+        // played, the kit must be exactly as full as it was.
+        check(std::fabs(idleDb) < 0.5, "and not at all when nothing is played",
+              std::to_string(idleDb) + " dB");
     }
 
     // ── Editor channel ───────────────────────────────────────────────────────
