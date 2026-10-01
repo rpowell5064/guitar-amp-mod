@@ -149,6 +149,65 @@ public:
     // restarted, so the loop and the drums both begin at bar one.
     void rewind() noexcept { loopCursor = 0; }
 
+    // ── Persistence ──────────────────────────────────────────────────────────
+    // The loop is the one thing in this plugin the user cannot rebuild from a
+    // number: tempo, groove and trim all come back from control ports, but a
+    // take is a performance. Saving it is what makes "reload the pedalboard"
+    // stop meaning "lose your work".
+    //
+    // Stored as 16-BIT, not float. A take peaks at or below unity and the
+    // quantisation floor lands near -90 dBFS, which is below the noise of
+    // anything that reaches this plugin through a guitar amp; halving the size
+    // matters more, because a two-minute take is 23 MB per track as floats and
+    // the host writes this into every pedalboard save.
+
+    int64_t loopLengthForSave() const noexcept { return masterLen; }
+
+    // True when a track holds audio worth keeping. A take still being recorded
+    // is deliberately NOT saved: the host calls save from another thread, so
+    // the buffer would be read while the audio thread is still writing it, and
+    // a torn half-take is worse than no take.
+    bool trackSaveable(int t) const noexcept {
+        return valid(t) && masterLen > 0 &&
+               (tracks[t].state == State::Playing || tracks[t].state == State::Stopped);
+    }
+
+    void saveTrack(int t, int16_t* dst) const noexcept {
+        if (!valid(t) || !dst) return;
+        const float* src = tracks[t].buf.data();
+        for (int64_t i = 0; i < masterLen; ++i) {
+            const float v = std::clamp(src[i], -1.0f, 1.0f);
+            dst[i] = static_cast<int16_t>(std::lrint(v * 32767.0f));
+        }
+    }
+
+    // Restore is called from the HOST's thread, not the audio thread. `frozen`
+    // makes process() produce nothing and touch no track while a load is in
+    // flight, so a host that restores while running gets silence rather than a
+    // half-written buffer.
+    void loadBegin() noexcept {
+        frozen.store(true, std::memory_order_release);
+        reset();
+    }
+    void loadTrack(int t, const int16_t* src, int64_t len, int stateCode) noexcept {
+        if (!valid(t) || !src || len <= 0 || len > capacity) return;
+        float* dst = tracks[t].buf.data();
+        for (int64_t i = 0; i < len; ++i) dst[i] = float(src[i]) * (1.0f / 32767.0f);
+        // Restored takes come back STOPPED, never playing. Loading a pedalboard
+        // should not start making noise on its own.
+        tracks[t].state      = State::Stopped;
+        tracks[t].targetGain = 0.0f;
+        tracks[t].gain       = 0.0f;
+        tracks[t].recorded   = len;
+        (void)stateCode;
+    }
+    void loadEnd(int64_t len) noexcept {
+        masterLen  = std::clamp<int64_t>(len, 0, capacity);
+        loopCursor = 0;
+        ++waveGen;
+        frozen.store(false, std::memory_order_release);
+    }
+
     // ── Transport actions ────────────────────────────────────────────────────
     // Each schedules for the next bar line when quantise is on. A press on a
     // track with an action already pending REPLACES it, so double-tapping a
@@ -276,6 +335,9 @@ public:
     // this block only ever adds its own playback on top.
     void process(const TransportClock& clk, const float* in, float* out, int n) noexcept {
         if (n <= 0 || capacity <= 0) return;
+        // A state load is rewriting the buffers from the host's thread. Produce
+        // nothing and read nothing until it has finished.
+        if (frozen.load(std::memory_order_acquire)) return;
 
         int cursor = 0;
         while (cursor < n) {
@@ -641,6 +703,7 @@ private:
     float   masterLevel{1.0f};
     float   fadeInc{0.001f};
     float   trimInc{0.0f};
+    std::atomic<bool> frozen{false};   // a state load is in flight
 };
 
 } // namespace hexdrums

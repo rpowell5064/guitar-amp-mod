@@ -19,6 +19,8 @@
 #include <lv2/atom/util.h>
 #include <lv2/patch/patch.h>
 #include <lv2/urid/urid.h>
+#include <lv2/state/state.h>
+#include <map>
 
 #include <cmath>
 #include <cstdint>
@@ -919,6 +921,105 @@ int main() {
               "track 1's waveform is not empty after recording",
               tpos == std::string::npos ? "" : w2.substr(tpos, 18));
         hst.close();
+    }
+
+    // ── State ────────────────────────────────────────────────────────────────
+    // A loop is a performance: every other setting in this plugin comes back
+    // from a control port, but a take cannot be rebuilt from numbers. The TTL
+    // advertised state:interface from the first release while extension_data
+    // returned nothing for it, so hosts asked and got nothing -- these checks
+    // exist so that cannot silently happen again.
+    std::printf("\nState\n");
+    {
+        // A store the host would provide, as a plain key -> bytes map.
+        struct Store {
+            std::map<uint32_t, std::vector<uint8_t>> data;
+            std::map<uint32_t, uint32_t> types;
+        } store;
+
+        auto storeFn = [](LV2_State_Handle h, uint32_t key, const void* value,
+                          size_t size, uint32_t type, uint32_t) -> LV2_State_Status {
+            Store* st = static_cast<Store*>(h);
+            const uint8_t* b = static_cast<const uint8_t*>(value);
+            st->data[key].assign(b, b + size);
+            st->types[key] = type;
+            return LV2_STATE_SUCCESS;
+        };
+        auto retrieveFn = [](LV2_State_Handle h, uint32_t key, size_t* size,
+                             uint32_t* type, uint32_t* flags) -> const void* {
+            Store* st = static_cast<Store*>(h);
+            auto it = st->data.find(key);
+            if (it == st->data.end()) return nullptr;
+            if (size)  *size  = it->second.size();
+            if (type)  *type  = st->types[key];
+            if (flags) *flags = LV2_STATE_IS_POD;
+            return it->second.data();
+        };
+
+        const LV2_Descriptor* d0 = lv2_descriptor(0);
+        const LV2_State_Interface* si = static_cast<const LV2_State_Interface*>(
+            d0->extension_data(LV2_STATE__interface));
+        check(si != nullptr, "the plugin actually offers state:interface");
+
+        if (si) {
+            const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+            // Record a loop, note what it sounds like, then save.
+            Host a; a.open();
+            a.ctl[DRUMS_LEVEL] = -60.0f;
+            a.ctl[RUN] = 1.0f;
+            a.run(kBlock);
+            a.trigger(LOOP_REC);
+            a.run(barLen * 2 - kBlock);
+            a.trigger(LOOP_REC);
+            a.run(kBlock);
+            std::vector<float> original;
+            a.run(barLen * 2, &original, true);
+            const float origPeak = peak(original);
+            check(origPeak > 0.05f, "a loop was recorded to save",
+                  "peak " + std::to_string(origPeak));
+            si->save(a.h, storeFn, &store, 0, nullptr);
+            a.close();
+
+            check(!store.data.empty(), "saving produced state",
+                  std::to_string(store.data.size()) + " key(s)");
+            size_t bytes = 0;
+            for (auto& kv : store.data) bytes += kv.second.size();
+            // 2 bars at 120 bpm is 4 s; one track at 16-bit is ~384 kB. Float
+            // would be double, which is the reason for the conversion.
+            check(bytes > 100000 && bytes < 1200000,
+                  "and it is the expected size for one 2-bar take",
+                  std::to_string(bytes / 1024) + " kB");
+
+            // A FRESH instance must come back with the same audio.
+            Host b; b.open();
+            si->restore(b.h, retrieveFn, &store, 0, nullptr);
+            b.ctl[DRUMS_LEVEL] = -60.0f;
+            b.ctl[RUN] = 1.0f;
+            b.run(kBlock);
+            check(std::lround(b.ctl[OUT_BARS]) == 2, "the restored loop is two bars",
+                  "bars " + std::to_string(b.ctl[OUT_BARS]));
+            // Restored takes come back STOPPED: loading a pedalboard must not
+            // start making noise by itself.
+            check(std::lround(b.ctl[OUT_TRK1_STATE]) == 4,
+                  "and it is stopped, not playing",
+                  "state " + std::to_string(b.ctl[OUT_TRK1_STATE]));
+
+            b.trigger(LOOP_PLAY);
+            b.run(barLen * 2);
+            std::vector<float> restored;
+            b.run(barLen * 2, &restored, true);
+            const float newPeak = peak(restored);
+            check(newPeak > 0.05f, "the restored loop plays",
+                  "peak " + std::to_string(newPeak));
+            // Same audio, not merely some audio: 16-bit conversion should cost
+            // a fraction of a dB, nothing more.
+            const double dB = (origPeak > 0.0f)
+                            ? 20.0 * std::log10(double(newPeak) / double(origPeak)) : -99.0;
+            check(std::fabs(dB) < 0.5, "at the level it was saved at",
+                  std::to_string(dB) + " dB");
+            b.close();
+        }
     }
 
     // ── Robustness ───────────────────────────────────────────────────────────

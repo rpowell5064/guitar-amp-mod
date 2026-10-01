@@ -9,6 +9,7 @@
 // the pi-Stomp's MIDI-learn can bind them the way it does for the rest of the
 // suite (see the LOOP_* trigger ports below).
 #include "lv2_util.h"
+#include <lv2/state/state.h>
 
 #include "DenormalGuard.h"
 #include "DrumMachineBlock.h"
@@ -144,11 +145,16 @@ enum PracticePorts {
 #define PRACTICE_MIDI_URI     PRACTICE_URI "#midifile"
 // Live panel state. See the note at practiceSendStatus().
 #define PRACTICE_STATUS_URI   PRACTICE_URI "#status"
+// State keys. The loops are the only thing here a user cannot rebuild from
+// a control value, so they are what state exists to carry.
+#define PRACTICE_LOOPS_KEY    PRACTICE_URI "#loopState"
+#define PRACTICE_PATTERN_KEY  PRACTICE_URI "#patternState"
 
 struct PracticeURIs {
     LV2_URID atom_Object, atom_Path, atom_String, atom_URID, atom_eventTransfer;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
     LV2_URID pattern, waveform, midifile, status;
+    LV2_URID atom_Chunk, loopsKey, patternKey;
 };
 
 // Undo snapshots are a memcpy of the whole loop (up to 23 MB), so they go to
@@ -250,6 +256,9 @@ static void practiceMapURIs(PracticePlugin* p) {
     p->uris.waveform           = m->map(m->handle, PRACTICE_WAVEFORM_URI);
     p->uris.midifile           = m->map(m->handle, PRACTICE_MIDI_URI);
     p->uris.status             = m->map(m->handle, PRACTICE_STATUS_URI);
+    p->uris.atom_Chunk         = m->map(m->handle, LV2_ATOM__Chunk);
+    p->uris.loopsKey           = m->map(m->handle, PRACTICE_LOOPS_KEY);
+    p->uris.patternKey         = m->map(m->handle, PRACTICE_PATTERN_KEY);
 }
 
 static void practiceSendString(PracticePlugin* p, LV2_URID prop, const char* s) {
@@ -794,11 +803,140 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     }
 }
 
+
+// ── State: saving the takes ──────────────────────────────────────────────────
+//
+// Everything else about this plugin comes back from control ports -- tempo,
+// groove, trim, levels. A loop does not: it is a performance, and losing it to
+// a pedalboard reload is the difference between a practice tool and a toy.
+//
+// The blob is deliberately plain. 16-bit samples rather than float, because a
+// take peaks at or below unity and the quantisation floor sits near -90 dBFS,
+// which is far below anything arriving through a guitar amp -- and because the
+// host writes this into every pedalboard save, where a two-minute take at
+// float would be 23 MB per track.
+//
+// Tracks still RECORDING are skipped. save() runs on the host's thread while
+// the audio thread may still be writing that buffer, and half a take is worse
+// than none.
+#define PRACTICE_STATE_MAGIC 0x484C5031u   /* "HLP1" */
+
+static LV2_State_Status practice_save(LV2_Handle                 handle,
+                                      LV2_State_Store_Function   store,
+                                      LV2_State_Handle           stateHandle,
+                                      uint32_t                   /*flags*/,
+                                      const LV2_Feature* const*  /*features*/) {
+    PracticePlugin* p = static_cast<PracticePlugin*>(handle);
+    if (!p || !p->map) return LV2_STATE_ERR_UNKNOWN;
+
+    // The edited drum pattern is cheap and equally unrecoverable, so it goes
+    // too -- as the same JSON the editor speaks.
+    if (!p->patternJson.empty())
+        store(stateHandle, p->uris.patternKey,
+              p->patternJson.c_str(), p->patternJson.size() + 1,
+              p->uris.atom_String, LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+
+    const int64_t len = p->looper.loopLengthForSave();
+    if (len <= 0) return LV2_STATE_SUCCESS;          // nothing recorded
+
+    int saveable[LooperBlock::kNumTracks] = {};
+    int n = 0;
+    for (int t = 0; t < LooperBlock::kNumTracks; ++t)
+        if (p->looper.trackSaveable(t)) { saveable[t] = 1; ++n; }
+    if (n == 0) return LV2_STATE_SUCCESS;
+
+    // header: magic, version, rate, length, track count
+    const size_t header = 4 + 4 + 4 + 8 + 4;
+    const size_t perTrk = 4 + 8 + size_t(len) * sizeof(int16_t);
+    std::vector<uint8_t> blob(header + size_t(n) * perTrk);
+    uint8_t* w = blob.data();
+    auto put32 = [&](uint32_t v) { std::memcpy(w, &v, 4); w += 4; };
+    auto put64 = [&](int64_t v)  { std::memcpy(w, &v, 8); w += 8; };
+
+    put32(PRACTICE_STATE_MAGIC);
+    put32(1);
+    put32(static_cast<uint32_t>(p->rate));
+    put64(len);
+    put32(static_cast<uint32_t>(n));
+    for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
+        if (!saveable[t]) continue;
+        put32(static_cast<uint32_t>(t));
+        put64(len);
+        p->looper.saveTrack(t, reinterpret_cast<int16_t*>(w));
+        w += size_t(len) * sizeof(int16_t);
+    }
+
+    store(stateHandle, p->uris.loopsKey, blob.data(), blob.size(),
+          p->uris.atom_Chunk, LV2_STATE_IS_POD | LV2_STATE_IS_PORTABLE);
+    return LV2_STATE_SUCCESS;
+}
+
+static LV2_State_Status practice_restore(LV2_Handle                 handle,
+                                         LV2_State_Retrieve_Function retrieve,
+                                         LV2_State_Handle           stateHandle,
+                                         uint32_t                   /*flags*/,
+                                         const LV2_Feature* const*  /*features*/) {
+    PracticePlugin* p = static_cast<PracticePlugin*>(handle);
+    if (!p || !p->map) return LV2_STATE_ERR_UNKNOWN;
+
+    size_t   size = 0;
+    uint32_t type = 0, flags2 = 0;
+
+    const void* pat = retrieve(stateHandle, p->uris.patternKey, &size, &type, &flags2);
+    if (pat && size > 1) {
+        std::string json(static_cast<const char*>(pat), size - 1);
+        practiceApplyPattern(p, json.c_str());
+    }
+
+    const void* raw = retrieve(stateHandle, p->uris.loopsKey, &size, &type, &flags2);
+    if (!raw || size < 24) return LV2_STATE_SUCCESS;
+
+    const uint8_t* r = static_cast<const uint8_t*>(raw);
+    const uint8_t* end = r + size;
+    auto get32 = [&]() { uint32_t v = 0; std::memcpy(&v, r, 4); r += 4; return v; };
+    auto get64 = [&]() { int64_t  v = 0; std::memcpy(&v, r, 8); r += 8; return v; };
+
+    if (get32() != PRACTICE_STATE_MAGIC) return LV2_STATE_ERR_BAD_TYPE;
+    const uint32_t ver  = get32();
+    const uint32_t rate = get32();
+    const int64_t  len  = get64();
+    const uint32_t n    = get32();
+    if (ver != 1 || len <= 0 || n > uint32_t(LooperBlock::kNumTracks))
+        return LV2_STATE_ERR_BAD_TYPE;
+    // A loop recorded at another rate would play back at the wrong pitch and
+    // the wrong length. Declining is honest; resampling here is not this
+    // plugin's job.
+    if (rate != static_cast<uint32_t>(p->rate)) return LV2_STATE_SUCCESS;
+
+    p->looper.loadBegin();
+    for (uint32_t i = 0; i < n; ++i) {
+        if (size_t(end - r) < 12) break;
+        const uint32_t t    = get32();
+        const int64_t  tlen = get64();
+        if (tlen <= 0 || size_t(end - r) < size_t(tlen) * sizeof(int16_t)) break;
+        if (t < uint32_t(LooperBlock::kNumTracks))
+            p->looper.loadTrack(int(t), reinterpret_cast<const int16_t*>(r), tlen, 0);
+        r += size_t(tlen) * sizeof(int16_t);
+    }
+    p->looper.loadEnd(len);
+
+    // Make the editor redraw: the lanes are holding waveforms for audio that
+    // has just been replaced wholesale.
+    p->wantSendAll = true;
+    p->sentWaveGen = 0xFFFFFFFFu;
+    return LV2_STATE_SUCCESS;
+}
+
 static void practice_cleanup(LV2_Handle h) { delete static_cast<PracticePlugin*>(h); }
 
 static const void* practice_extension_data(const char* uri) {
     static const LV2_Worker_Interface worker = { practice_work, nullptr, nullptr };
+    // state:interface has been declared in the TTL since the first release but
+    // was never returned here, so every host asked for it and got nothing --
+    // which is why loops did not survive a reload.
+    static const LV2_State_Interface state = { practice_save, practice_restore };
     if (!std::strcmp(uri, LV2_WORKER__interface)) return &worker;
+    if (!std::strcmp(uri, LV2_STATE__interface))  return &state;
     return nullptr;
 }
 
