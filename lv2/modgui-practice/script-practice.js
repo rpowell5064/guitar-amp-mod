@@ -118,6 +118,44 @@ function (event, funcs) {
             }
         }
 
+        // Trim window. Drawn before the playhead so the playhead stays on top.
+        var ti = icon.data('px_trimIn' + trk);
+        var to = icon.data('px_trimOut' + trk);
+        if (ti === undefined) ti = 0;
+        if (to === undefined) to = 1;
+        if (pk && pk.length && (ti > 0.0005 || to < 0.9995)) {
+            // Shade what has been trimmed away rather than hiding it: you need
+            // to see what you are about to bring back.
+            g.fillStyle = 'rgba(5,6,9,.72)';
+            if (ti > 0)  g.fillRect(0, 0, Math.round(W * ti), H);
+            if (to < 1)  g.fillRect(Math.round(W * to), 0, W - Math.round(W * to), H);
+        }
+        if (pk && pk.length) {
+            // Handles. Always drawn, so the loop advertises that it can be
+            // trimmed at all -- a hidden affordance is one nobody finds.
+            var sel = icon.data('px_sel') === trk;
+            [[ti, 1], [to, -1]].forEach(function (h) {
+                var hx = Math.round(W * h[0]);
+                hx = Math.max(1, Math.min(W - 2, hx));
+                g.fillStyle = sel ? '#f0a830' : 'rgba(200,205,215,.55)';
+                g.fillRect(hx - 1, 0, 2, H);
+                // A grip tab on the inside edge, the way a DAW marks a region
+                // boundary you can drag.
+                g.beginPath();
+                g.moveTo(hx + (h[1] > 0 ? 1 : -1), 0);
+                g.lineTo(hx + h[1] * 9, 0);
+                g.lineTo(hx + (h[1] > 0 ? 1 : -1), 11);
+                g.closePath();
+                g.fill();
+                g.beginPath();
+                g.moveTo(hx + (h[1] > 0 ? 1 : -1), H);
+                g.lineTo(hx + h[1] * 9, H);
+                g.lineTo(hx + (h[1] > 0 ? 1 : -1), H - 11);
+                g.closePath();
+                g.fill();
+            });
+        }
+
         // Playhead. Only meaningful while something is actually playing back.
         var prog = icon.data('px_prog');
         var st = icon.data('px_st' + trk) || 0;
@@ -539,6 +577,84 @@ function (event, funcs) {
         $e.find('.px-fad-hand').css('bottom', 'calc(1px + ' + travel + ')');
     }
 
+    // ── trim handles ─────────────────────────────────────────────────────────
+    // Non-destructive: these only move the window the plugin plays through, so
+    // dragging a handle back brings the audio with it. Snapped to bar lines by
+    // default because the loop is bar-locked and anything else fights the
+    // drums; hold Shift for a free drag when you really do want to cut into a
+    // bar (chopping off a count-in, say).
+    var kTrimGrabPx = 11;
+
+    function trimOf(icon, trk) {
+        var i = icon.data('px_trimIn' + trk), o = icon.data('px_trimOut' + trk);
+        return { in: (i === undefined ? 0 : i), out: (o === undefined ? 1 : o) };
+    }
+    function trimSnap(icon, frac, free) {
+        if (free) return clamp(frac, 0, 1);
+        var bars = icon.data('px_bars') || 0;
+        var W = icon.data('px_wave');
+        if (!bars && W) bars = W.bars || 0;
+        if (!bars || bars < 1) return clamp(frac, 0, 1);
+        // Snap to the bar, and to the half-bar when the loop is short enough
+        // that whole bars would be a blunt instrument.
+        var div = (bars <= 2) ? bars * 4 : bars;
+        return clamp(Math.round(frac * div) / div, 0, 1);
+    }
+    function trimWrite(icon, trk, t) {
+        icon.data('px_trimIn' + trk, t.in);
+        icon.data('px_trimOut' + trk, t.out);
+        setPort(icon, 'trk' + trk + '_trim_in',  t.in);
+        setPort(icon, 'trk' + trk + '_trim_out', t.out);
+        drawWave(icon, trk);
+    }
+    function trimHit(icon, trk, c, ev) {
+        var r = c.getBoundingClientRect();
+        var x = (ev.clientX - r.left) * (c.width / r.width);
+        var t = trimOf(icon, trk);
+        var dIn  = Math.abs(x - c.width * t.in);
+        var dOut = Math.abs(x - c.width * t.out);
+        if (dIn <= kTrimGrabPx && dIn <= dOut) return 'in';
+        if (dOut <= kTrimGrabPx) return 'out';
+        return null;
+    }
+    function bindTrim(icon) {
+        var drag = null;   // {trk, edge}
+        for (var t = 1; t <= 4; ++t) (function (trk) {
+            var c = el(icon, 'wave' + trk);
+            if (!c) return;
+            $(c).on('mousedown', function (ev) {
+                var edge = trimHit(icon, trk, c, ev);
+                if (!edge) return;                 // a plain click still arms the lane
+                drag = { trk: trk, edge: edge };
+                ev.preventDefault();
+                ev.stopPropagation();
+            });
+            // Show the handle is grabbable before it is grabbed.
+            $(c).on('mousemove', function (ev) {
+                if (drag) return;
+                c.style.cursor = trimHit(icon, trk, c, ev) ? 'ew-resize' : 'pointer';
+            });
+        })(t);
+
+        $(document).on('mousemove', function (ev) {
+            if (!drag) return;
+            var c = el(icon, 'wave' + drag.trk);
+            if (!c) return;
+            var r = c.getBoundingClientRect();
+            var frac = trimSnap(icon, (ev.clientX - r.left) / r.width, ev.shiftKey);
+            var t = trimOf(icon, drag.trk);
+            // Never let the edges cross or meet: a zero-width window is a track
+            // that has silently disappeared with no way to see why.
+            var minGap = 0.02;
+            if (drag.edge === 'in') t.in = Math.min(frac, t.out - minGap);
+            else                    t.out = Math.max(frac, t.in + minGap);
+            t.in = clamp(t.in, 0, 1); t.out = clamp(t.out, 0, 1);
+            trimWrite(icon, drag.trk, t);
+            ev.preventDefault();
+        });
+        $(document).on('mouseup', function () { drag = null; });
+    }
+
     // ── tempo drag ───────────────────────────────────────────────────────────
     // Driven here rather than by a mod-ui control widget: mod-ui's widget is a
     // "film" that reads its step count off a background sprite, so a plain
@@ -686,6 +802,7 @@ function (event, funcs) {
         });
 
         bindTempo(icon);
+        bindTrim(icon);
         bindSelect(icon, 'selgroove');
         bindSelect(icon, 'sellen');
         $(document).on('click', function () { selClose(icon); });
@@ -842,6 +959,13 @@ function (event, funcs) {
 
         var m = /^out_trk([1-4])_state$/.exec(sym);
         if (m) { laneState(icon, parseInt(m[1], 10), Math.round(value)); return; }
+        var mt = /^trk([1-4])_trim_(in|out)$/.exec(sym);
+        if (mt) {
+            var tk = parseInt(mt[1], 10);
+            icon.data('px_trim' + (mt[2] === 'in' ? 'In' : 'Out') + tk, clamp(value, 0, 1));
+            drawWave(icon, tk);
+            return;
+        }
         var mm = /^trk([1-4])_mute$/.exec(sym);
         if (mm) { R(icon, 'mute' + mm[1]).toggleClass('on', value > 0.5); return; }
     }

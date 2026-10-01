@@ -45,6 +45,7 @@ public:
     static constexpr int kMaxSeconds = 120;    // 2 minutes mono per track
     static constexpr float kSeamMs   = 12.0f;  // loop-wrap crossfade
     static constexpr float kFadeMs   = 8.0f;   // mute / state-change ramp
+    static constexpr float kTrimMs   = 4.0f;   // trim-edge ramp
     static constexpr float kPreRollMs = 400.0f; // late-press lookbehind
     static constexpr float kSnapMs    = 250.0f; // hard cap on the snap-back window
     // Shortest count-in, in beats. The take still lands on a bar line, so
@@ -63,6 +64,9 @@ public:
         capacity = static_cast<int64_t>(fs) * kMaxSeconds;
         seamLen  = static_cast<int64_t>(kSeamMs * 1.0e-3f * fs);
         fadeInc  = 1.0f / std::max(1.0f, kFadeMs * 1.0e-3f * static_cast<float>(fs));
+        // Faster than the state fade: a trim edge should be inaudible but
+        // must not audibly soften the attack of whatever it reveals.
+        trimInc  = 1.0f / std::max(1.0f, kTrimMs * 1.0e-3f * static_cast<float>(fs));
 
         for (auto& t : tracks) {
             t.buf.assign(static_cast<size_t>(capacity), 0.0f);
@@ -87,6 +91,7 @@ public:
             t.recorded = 0;
             t.pending = Action::None;
             t.countingIn = false;
+            t.trimIn = 0.0f; t.trimOut = 1.0f; t.trimGain = 1.0f;
         }
         std::fill(preRoll.begin(), preRoll.end(), 0.0f);
         preRollPos = 0;
@@ -125,6 +130,19 @@ public:
     void setFeedback(float f)          noexcept { feedback = std::clamp(f, 0.0f, 1.0f); }
     void setTrackLevel(int t, float g) noexcept { if (valid(t)) tracks[t].level = std::max(0.0f, g); }
     void setTrackMuted(int t, bool m)  noexcept { if (valid(t)) tracks[t].muted = m; }
+    // Non-destructive trim: the audio is untouched and the track simply plays
+    // nothing outside [in, out). Widening the window brings it straight back,
+    // which is why this needs no undo and can never lose a take.
+    //
+    // The content does NOT slide when the start moves. Trimming is a gate, not
+    // a nudge: sliding it would shift the track against the bar grid and put
+    // it out of step with the drums, which is the one thing a looper must not
+    // do quietly.
+    void setTrackTrim(int t, float in, float out) noexcept {
+        if (!valid(t)) return;
+        tracks[t].trimIn  = std::clamp(in,  0.0f, 1.0f);
+        tracks[t].trimOut = std::clamp(out, 0.0f, 1.0f);
+    }
     void setMasterLevel(float g)       noexcept { masterLevel = std::max(0.0f, g); }
 
     // Return every track to the top of the loop. Called when the transport is
@@ -155,6 +173,9 @@ public:
         tracks[t].lateBy     = 0;
         tracks[t].pending    = Action::None;
         tracks[t].countingIn = false;
+        tracks[t].trimIn     = 0.0f;
+        tracks[t].trimOut    = 1.0f;
+        tracks[t].trimGain   = 1.0f;
         if (undoTrack == t) { undoReady = false; undoTrack = -1; }
         ++waveGen;
         // The last track standing takes the loop length with it.
@@ -291,6 +312,11 @@ private:
         int64_t barLen{0};        // bar length in samples when the action was armed
         float   level{1.0f};
         float   gain{0.0f}, targetGain{0.0f};
+        // Trim window, as FRACTIONS of the master loop. Fractions rather than
+        // samples so a trim survives the loop length being set later, and so
+        // the control means the same thing whatever the tempo.
+        float   trimIn{0.0f}, trimOut{1.0f};
+        float   trimGain{1.0f};          // ramped, so an edge never clicks
         bool    muted{false};
         bool    countingIn{false};  // this take is waiting out a count-in
     };
@@ -501,6 +527,22 @@ private:
                 if (tr.gain < want)      tr.gain = std::min(want, tr.gain + fadeInc);
                 else if (tr.gain > want) tr.gain = std::max(want, tr.gain - fadeInc);
 
+                // Trim gate. Ramped over a few milliseconds: a hard gate on an
+                // arbitrary sample of a ringing guitar is a click, and the
+                // whole point of trimming the head of a loop is to remove a
+                // noise, not to swap it for a different one.
+                float tw = 1.0f;
+                if (masterLen > 0 && tr.trimOut > tr.trimIn) {
+                    const int64_t lo = static_cast<int64_t>(tr.trimIn  * float(masterLen));
+                    const int64_t hi = (tr.trimOut >= 0.9995f)
+                                     ? masterLen
+                                     : static_cast<int64_t>(tr.trimOut * float(masterLen));
+                    if (loopCursor < lo || loopCursor >= hi) tw = 0.0f;
+                }
+                if (tr.trimGain < tw)      tr.trimGain = std::min(tw, tr.trimGain + trimInc);
+                else if (tr.trimGain > tw) tr.trimGain = std::max(tw, tr.trimGain - trimInc);
+                const float trimG = tr.trimGain;
+
                 switch (tr.state) {
                     case State::Recording: {
                         // Before a master length exists the take grows; after
@@ -538,20 +580,20 @@ private:
                         if (masterLen > 0 && loopCursor < masterLen) {
                             float& s = tr.buf[static_cast<size_t>(loopCursor)];
                             s = s * feedback + x;
-                            mix += s * tr.level * tr.gain;
+                            mix += s * tr.level * tr.gain * trimG;
                         }
                         break;
                     }
                     case State::Playing: {
                         if (masterLen > 0 && loopCursor < masterLen)
-                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain;
+                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain * trimG;
                         break;
                     }
                     case State::Stopped:
                         // Still fading out from the last ramp; keep feeding it
                         // so the stop isn't a hard cut.
                         if (tr.gain > 0.0f && masterLen > 0 && loopCursor < masterLen)
-                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain;
+                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain * trimG;
                         break;
                     case State::Empty:
                     default: break;
@@ -598,6 +640,7 @@ private:
     float   feedback{1.0f};
     float   masterLevel{1.0f};
     float   fadeInc{0.001f};
+    float   trimInc{0.0f};
 };
 
 } // namespace hexdrums

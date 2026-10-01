@@ -150,6 +150,23 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
       // put the count back so the overlay checks below still see it
       gui({type:'change', icon:icon, symbol:'out_countin', value:3}, funcs);
     }
+    // Drag track 1's right-hand trim handle in to ~60%. Non-destructive trim
+    // is invisible unless it reaches the port, and a handle you cannot grab
+    // looks exactly like one you can.
+    if (window.__TAB__ === 'loops') {
+      var wc = document.querySelector('[rata-role=wave1]');
+      if (wc) {
+        var wr = wc.getBoundingClientRect();
+        var yMid = wr.top + wr.height / 2;
+        // grab the OUT handle, which starts at the right edge
+        wc.dispatchEvent(new MouseEvent('mousedown',
+          {clientX: wr.right - 1, clientY: yMid, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mousemove',
+          {clientX: wr.left + wr.width * 0.6, clientY: yMid, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mouseup',
+          {clientX: wr.left + wr.width * 0.6, clientY: yMid, bubbles:true, cancelable:true}));
+      }
+    }
     if (window.__TAB__ === 'loops') {
       var grab = document.querySelector('[rata-role=tempograb]');
       if (grab) {
@@ -199,6 +216,7 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
                                             recArmed: !!document.querySelector('.px-tbtn.rec.counting')};
                                   })(),
                                   tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
+                                  trimSets: window.__SET__.filter(function(p){ return /trim/.test(p[0]); }),
                                   play: window.__PLAY__,
                                   selOpened: window.__OPENED__,
                                   selPicked: window.__PICKED__,
@@ -322,6 +340,19 @@ def main():
         check(ci.get("recArmed") is True, "the record button shows it is counting")
         check(r.get("length") == "Free", "the loop length control defaults to Free",
               str(r.get("length")))
+        # Dragging a handle must reach the port, and land on a bar line: the
+        # loop is bar-locked and a trim that is not would fight the drums.
+        trims = r.get("trimSets") or []
+        outs = [v for (n, v) in trims if n.endswith("_trim_out")]
+        check(bool(outs), "dragging a trim handle writes its port",
+              "%d write(s)" % len(trims))
+        if outs:
+            v = outs[-1]
+            check(0.4 < v < 0.9, "the handle lands where it was dragged", str(v))
+            # 2 bars -> eighths of the loop, so a snapped value is a multiple of 0.125
+            snapped = min(abs(v - round(v * 8) / 8), abs(v - round(v * 2) / 2))
+            check(snapped < 0.001, "and it snaps to the bar grid", "%.4f off" % snapped)
+
         pl = r.get("play") or {}
         check(pl.get("shown") is True and pl.get("go") is True and pl.get("text") == "PLAY",
               "the count ends by saying PLAY", str(pl))

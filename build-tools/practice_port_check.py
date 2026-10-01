@@ -59,6 +59,7 @@ SYMBOLS = {
     "P_TEMPO_SYNC": "tempo_sync", "P_HOST_BPM": "host_bpm",
     "P_COUNT_IN": "count_in", "P_OUT_COUNTIN": "out_countin",
     "P_LOOP_BARS": "loop_bars", "P_DRUM_SPACE": "drum_space",
+    "P_TRK1_TRIM_IN": "trk1_trim_in", "P_TRK1_TRIM_OUT": "trk1_trim_out", "P_TRK2_TRIM_IN": "trk2_trim_in", "P_TRK2_TRIM_OUT": "trk2_trim_out", "P_TRK3_TRIM_IN": "trk3_trim_in", "P_TRK3_TRIM_OUT": "trk3_trim_out", "P_TRK4_TRIM_IN": "trk4_trim_in", "P_TRK4_TRIM_OUT": "trk4_trim_out",
 }
 
 errors = []

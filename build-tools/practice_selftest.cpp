@@ -52,7 +52,9 @@ enum {
     CONTROL = 53, NOTIFY = 54,
     TEMPO_SYNC = 55, HOST_BPM = 56,
     COUNT_IN = 57, OUT_COUNTIN = 58, LOOP_BARS = 59, DRUM_SPACE = 60,
-    N_PORTS = 61
+    TRK1_TRIM_IN = 61, TRK1_TRIM_OUT = 62, TRK2_TRIM_IN = 63, TRK2_TRIM_OUT = 64,
+    TRK3_TRIM_IN = 65, TRK3_TRIM_OUT = 66, TRK4_TRIM_IN = 67, TRK4_TRIM_OUT = 68,
+    N_PORTS = 69
 };
 
 static constexpr double kFs    = 48000.0;
@@ -127,6 +129,8 @@ struct Host {
         ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
         ctl[COUNT_IN] = 0.0f;   // off unless a test asks for it
         ctl[DRUM_SPACE] = 0.0f; // ditto: it would skew every drum level below
+        ctl[TRK1_TRIM_OUT] = 1.0f; ctl[TRK2_TRIM_OUT] = 1.0f;
+        ctl[TRK3_TRIM_OUT] = 1.0f; ctl[TRK4_TRIM_OUT] = 1.0f;
         ctl[LOOP_QUANTIZE] = 1.0f; ctl[LOOP_FEEDBACK] = 100.0f; ctl[LOOP_TRACK] = 1.0f;
         ctl[ENABLED] = 1.0f;
     }
@@ -722,6 +726,92 @@ int main() {
         // played, the kit must be exactly as full as it was.
         check(std::fabs(idleDb) < 0.5, "and not at all when nothing is played",
               std::to_string(idleDb) + " dB");
+    }
+
+    // ── Loop trim ────────────────────────────────────────────────────────────
+    // Non-destructive: the window gates playback, the buffer is never touched.
+    // What has to be true is that the gated part is SILENT, that what is left
+    // is untouched, that the edges do not click, and that widening the window
+    // brings the audio back -- which is what makes undo unnecessary.
+    std::printf("\nLoop trim\n");
+    {
+        // Record a two-bar loop, then measure quarters of it.
+        auto recordTwoBars = [&](Host& h) {
+            h.ctl[DRUMS_LEVEL] = -60.0f;
+            h.ctl[RUN] = 1.0f;
+            h.run(kBlock);
+            const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+            h.trigger(LOOP_REC);
+            h.run(barLen * 2 - kBlock);
+            h.trigger(LOOP_REC);
+            h.run(kBlock);
+            return barLen;
+        };
+        // Peak over a fractional span of the capture. Spans are sampled in
+        // their INTERIOR, away from the window edges: the 4 ms trim ramp is
+        // deliberate, and the loop length is not exactly two bars (it is
+        // `recorded - lateBy`), so a span butted against an edge would measure
+        // the ramp or a few samples of the neighbouring region rather than the
+        // thing under test.
+        auto span = [](const std::vector<float>& v, double a, double b) {
+            const size_t i0 = size_t(v.size() * a), i1 = size_t(v.size() * b);
+            float pk = 0.0f;
+            for (size_t i = i0; i < i1 && i < v.size(); ++i) pk = std::max(pk, std::fabs(v[i]));
+            return pk;
+        };
+        auto quarter = [&](const std::vector<float>& v, int q) {
+            return span(v, 0.25 * q + 0.03, 0.25 * (q + 1) - 0.03);
+        };
+
+        Host hst; hst.open();
+        const int64_t barLen = recordTwoBars(hst);
+
+        std::vector<float> full;
+        hst.run(barLen * 2, &full, true);            // silent input: this IS the loop
+        check(quarter(full, 0) > 0.05f && quarter(full, 3) > 0.05f,
+              "the untrimmed loop plays from end to end",
+              "q0 " + std::to_string(quarter(full, 0)) +
+              " q3 " + std::to_string(quarter(full, 3)));
+
+        // Trim to the middle half.
+        hst.ctl[TRK1_TRIM_IN]  = 0.25f;
+        hst.ctl[TRK1_TRIM_OUT] = 0.75f;
+        hst.run(barLen * 2);                          // let it settle a full lap
+        std::vector<float> trimmed;
+        hst.run(barLen * 2, &trimmed, true);
+        check(span(trimmed, 0.05, 0.20) < 0.01f, "the trimmed head is silent",
+              "peak " + std::to_string(span(trimmed, 0.05, 0.20)));
+        check(span(trimmed, 0.80, 0.95) < 0.01f, "the trimmed tail is silent",
+              "peak " + std::to_string(span(trimmed, 0.80, 0.95)));
+        check(quarter(trimmed, 1) > 0.05f && quarter(trimmed, 2) > 0.05f,
+              "what is left still plays",
+              "q1 " + std::to_string(quarter(trimmed, 1)) +
+              " q2 " + std::to_string(quarter(trimmed, 2)));
+
+        // No clicks: the biggest sample-to-sample step anywhere in the trimmed
+        // loop must stay in the range ordinary audio produces. A hard gate on a
+        // ringing guitar shows up here as a step far larger than the material.
+        float worstStep = 0.0f, fullStep = 0.0f;
+        for (size_t i = 1; i < trimmed.size(); ++i)
+            worstStep = std::max(worstStep, std::fabs(trimmed[i] - trimmed[i - 1]));
+        for (size_t i = 1; i < full.size(); ++i)
+            fullStep = std::max(fullStep, std::fabs(full[i] - full[i - 1]));
+        check(worstStep <= fullStep * 1.2f + 1.0e-4f,
+              "the trim edges do not click",
+              "step " + std::to_string(worstStep) + " vs " + std::to_string(fullStep));
+
+        // Widen it again: the audio must come back, which is why this needs no
+        // undo and can never lose a take.
+        hst.ctl[TRK1_TRIM_IN]  = 0.0f;
+        hst.ctl[TRK1_TRIM_OUT] = 1.0f;
+        hst.run(barLen * 2);
+        std::vector<float> restored;
+        hst.run(barLen * 2, &restored, true);
+        check(quarter(restored, 0) > 0.05f && quarter(restored, 3) > 0.05f,
+              "widening the window brings the audio back",
+              "q0 " + std::to_string(quarter(restored, 0)) +
+              " q3 " + std::to_string(quarter(restored, 3)));
+        hst.close();
     }
 
     // ── Editor channel ───────────────────────────────────────────────────────

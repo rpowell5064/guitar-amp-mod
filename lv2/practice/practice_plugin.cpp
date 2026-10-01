@@ -125,6 +125,14 @@ enum PracticePorts {
     // Dynamic low-mid cut on the kit, driven by the guitar. See
     // DrumMachineBlock::setGuitarSpace().
     P_DRUM_SPACE,
+
+    // Per-track trim, as fractions of the loop. Non-destructive: the audio is
+    // untouched and the track simply plays nothing outside the window, so
+    // widening it brings the take straight back.
+    P_TRK1_TRIM_IN, P_TRK1_TRIM_OUT,
+    P_TRK2_TRIM_IN, P_TRK2_TRIM_OUT,
+    P_TRK3_TRIM_IN, P_TRK3_TRIM_OUT,
+    P_TRK4_TRIM_IN, P_TRK4_TRIM_OUT,
     P_N_PORTS
 };
 
@@ -673,9 +681,15 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
 
     static const int kLevelPort[4] = { P_TRK1_LEVEL, P_TRK2_LEVEL, P_TRK3_LEVEL, P_TRK4_LEVEL };
     static const int kMutePort[4]  = { P_TRK1_MUTE,  P_TRK2_MUTE,  P_TRK3_MUTE,  P_TRK4_MUTE  };
+    static const int kTrimInPort[4]  = { P_TRK1_TRIM_IN,  P_TRK2_TRIM_IN,
+                                         P_TRK3_TRIM_IN,  P_TRK4_TRIM_IN  };
+    static const int kTrimOutPort[4] = { P_TRK1_TRIM_OUT, P_TRK2_TRIM_OUT,
+                                         P_TRK3_TRIM_OUT, P_TRK4_TRIM_OUT };
     for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
         p->looper.setTrackLevel(t, dbToLin(portValue(p, kLevelPort[t], 0.0f)));
         p->looper.setTrackMuted(t, portBool(p, kMutePort[t]));
+        p->looper.setTrackTrim(t, portValue(p, kTrimInPort[t],  0.0f),
+                                  portValue(p, kTrimOutPort[t], 1.0f));
     }
 
     // Selected track for the transport triggers, as a 1-based port.
