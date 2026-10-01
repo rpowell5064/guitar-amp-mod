@@ -596,6 +596,68 @@ int main() {
         hst.close();
     }
 
+    // ── Multi-track ──────────────────────────────────────────────────────────
+    // Tracks 2-4 record as punch-ins against the existing master length, a path
+    // that never bumped the waveform version -- so they finished recording and
+    // the editor was never told, leaving their lanes blank.
+    std::printf("\nMulti-track\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN] = 0.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.ctl[LOOP_TRACK] = 1.0f;
+        hst.trigger(LOOP_REC);
+        hst.run(barLen * 2 - kBlock);
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3, "track 1 is playing");
+
+        // Record track 2 against that loop.
+        hst.ctl[LOOP_TRACK] = 2.0f;
+        hst.trigger(LOOP_REC);
+        hst.run(barLen * 2 + kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK2_STATE]) == 3,
+              "track 2 finishes its lap and plays",
+              "state " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+
+        // The editor must be able to SEE it: ask for a refresh and check that
+        // track 2's waveform is no longer the empty string.
+        hst.sendPatchGet();
+        hst.run(kBlock);
+        const std::string WAVE = "https://rpowell5064.github.io/guitaramp-suite/practice#waveform";
+        std::string w;
+        for (auto& m : hst.notified()) if (m.first == WAVE) w = m.second;
+        check(!w.empty(), "a waveform is sent");
+        const size_t tp = w.find("\"t\":[");
+        bool t2ok = false;
+        if (tp != std::string::npos) {
+            // "t":["<t1>","<t2>",...] -- find the second entry.
+            size_t c1 = w.find(',', tp);
+            t2ok = (c1 != std::string::npos) && (w.compare(c1 + 1, 3, "\"\",") != 0);
+        }
+        check(t2ok, "track 2's waveform is not empty", w.substr(tp, 24));
+
+        // STOP must silence every track, not just the selected one.
+        hst.ctl[LOOP_TRACK] = 1.0f;
+        hst.trigger(LOOP_STOP);
+        hst.run(barLen + kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 4 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 4,
+              "stop stops every track",
+              "t1 " + std::to_string(hst.ctl[OUT_TRK1_STATE]) +
+              ", t2 " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+
+        std::vector<float> after;
+        hst.run(barLen, &after, true);
+        check(peak(after) < 0.02f, "and the looper is silent after stop",
+              "peak " + std::to_string(peak(after)));
+        hst.close();
+    }
+
     // ── Editor channel ───────────────────────────────────────────────────────
     // Everything the new GUI draws arrives over the atom ports, and none of it
     // is reachable from a control port. These checks are what stands between a

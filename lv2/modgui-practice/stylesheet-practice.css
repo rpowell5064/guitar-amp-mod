@@ -338,3 +338,9 @@
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-sel .mod-enumerated-selected { padding-right:24px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-sel.open .mod-enumerated-list { display:block; }
+
+/* "PLAY" replaces the last number for a moment: the end of the count is the
+   cue to come in, and a countdown that simply vanishes does not say that. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-countin.go .px-ci-num { font-size:58px; letter-spacing:6px; color:var(--play); text-shadow:0 0 44px rgba(84,217,140,.55); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-countin.go .px-ci-lab,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-countin.go .px-ci-dots { visibility:hidden; }

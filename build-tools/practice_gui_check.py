@@ -139,6 +139,17 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
         window.__PICKED__ = sel.querySelector('.mod-enumerated-selected').textContent;
       }
     }
+    // The end of the count is the cue to come in, so it must SAY so rather
+    // than the number simply vanishing.
+    if (window.__TAB__ === 'loops') {
+      gui({type:'change', icon:icon, symbol:'out_countin', value:0}, funcs);
+      var ovp = document.querySelector('[rata-role=countin]');
+      window.__PLAY__ = {shown: ovp.classList.contains('on'),
+                         go: ovp.classList.contains('go'),
+                         text: (document.querySelector('[rata-role=cinum]')||{}).textContent};
+      // put the count back so the overlay checks below still see it
+      gui({type:'change', icon:icon, symbol:'out_countin', value:3}, funcs);
+    }
     if (window.__TAB__ === 'loops') {
       var grab = document.querySelector('[rata-role=tempograb]');
       if (grab) {
@@ -188,6 +199,7 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
                                             recArmed: !!document.querySelector('.px-tbtn.rec.counting')};
                                   })(),
                                   tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
+                                  play: window.__PLAY__,
                                   selOpened: window.__OPENED__,
                                   selPicked: window.__PICKED__,
                                   patternSets: window.__SET__.filter(function(p){ return p[0]==='pattern'; }),
@@ -310,6 +322,9 @@ def main():
         check(ci.get("recArmed") is True, "the record button shows it is counting")
         check(r.get("length") == "Free", "the loop length control defaults to Free",
               str(r.get("length")))
+        pl = r.get("play") or {}
+        check(pl.get("shown") is True and pl.get("go") is True and pl.get("text") == "PLAY",
+              "the count ends by saying PLAY", str(pl))
         # The readout moving is not enough: it must actually reach the port.
         sets = r.get("tempoSets") or []
         check(len(sets) > 0 and abs(float(sets[-1][1]) - 158) < 0.51,

@@ -687,7 +687,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         p->looper.recordPressed(track, p->clk);
     }
     if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay))  p->looper.playPressed(track, p->clk);
-    if (edge(portBool(p, P_LOOP_STOP),  p->prevStop))  p->looper.stopPressed(track, p->clk);
+    if (edge(portBool(p, P_LOOP_STOP),  p->prevStop))  p->looper.stopAllPressed(p->clk);
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);
 
@@ -702,13 +702,12 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         // Beats remaining, counting DOWN: 4, 3, 2, 1 in four-four.
         const int beatsLeft = static_cast<int>(std::ceil(countLeft / std::max(1.0, spBeat)));
         const int bpb = std::max(1, p->clk.beatsPerBar());
-        // Click only through the COUNT bar itself. A press lands anywhere in a
-        // bar, so up to a further bar can pass first; clicking through that too
-        // would turn a four-beat count into a ragged seven, which is not what
-        // a count-in means.
-        if (beatsLeft != p->lastCountBeat && beatsLeft <= bpb) {
+        // Click EVERY beat of the count, from the press onwards. Gating this to
+        // the final bar left up to three beats of silence after the button went
+        // down, which is exactly as useless as no count at all.
+        if (beatsLeft != p->lastCountBeat) {
             p->lastCountBeat = beatsLeft;
-            const bool downbeat = beatsLeft == bpb;
+            const bool downbeat = (beatsLeft % bpb) == 0;
             p->drums.triggerNow(downbeat ? INST_SIDESTICK : INST_HAT_CLOSED,
                                 downbeat ? 1.0f : 0.6f);
         }

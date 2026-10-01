@@ -122,9 +122,22 @@ function (event, funcs) {
         var prog = icon.data('px_prog');
         var st = icon.data('px_st' + trk) || 0;
         if (prog >= 0 && prog <= 1 && st >= 1 && st <= 3 && pk && pk.length) {
-            var px = Math.round(W * prog) + 0.5;
-            g.strokeStyle = '#ffffff'; g.lineWidth = 1;
-            g.beginPath(); g.moveTo(px, 0); g.lineTo(px, H); g.stroke();
+            var px = Math.round(W * prog);
+            // Shade what has already played. A bare hairline is easy to lose
+            // against a busy waveform; a moving edge is not.
+            g.fillStyle = 'rgba(0,0,0,.34)';
+            g.fillRect(0, 0, px, H);
+            // The line itself, in the accent with a glow so it reads at the
+            // 50% zoom the pedalboard draws blocks at.
+            g.fillStyle = 'rgba(255,255,255,.30)';
+            g.fillRect(px - 2, 0, 5, H);
+            g.fillStyle = '#ffffff';
+            g.fillRect(px, 0, 2, H);
+            // A tab at the top edge, the way a DAW marks the position.
+            g.fillStyle = '#ffffff';
+            g.beginPath();
+            g.moveTo(px - 4, 0); g.lineTo(px + 6, 0); g.lineTo(px + 1, 7);
+            g.closePath(); g.fill();
         }
     }
     function drawAllWaves(icon) { for (var t = 1; t <= 4; ++t) drawWave(icon, t); }
@@ -770,14 +783,28 @@ function (event, funcs) {
         if (sym === 'beats_per_bar') { icon.data('px_bpb', Math.max(1, Math.round(value))); return; }
 
         if (sym === 'out_countin') {
-            var raw = Math.round(value);
-            var bpb = icon.data('px_bpb') || 4;
-            // A press lands anywhere in a bar, so up to a further bar can pass
-            // before the count itself starts. That wait is ARMED, not counting:
-            // showing "8" would contradict the four-beat count you can hear.
-            var beats = (raw > 0 && raw <= bpb) ? raw : 0;
-            R(icon, 'btnrec').toggleClass('armed', raw > 0 && beats === 0);
+            var beats = Math.round(value);
+            // Show the WHOLE count. This used to hide everything until the
+            // final bar, so a press mid-bar left the panel blank for up to
+            // three beats -- the "count-in takes forever to show up" that the
+            // scheduling fix alone did not cure.
             var on = beats > 0;
+            // The moment the count ends is the moment to come in, so say so
+            // rather than just vanishing.
+            if (!on && icon.data('px_cibeat') > 0) {
+                icon.data('px_cibeat', 0);
+                var card = R(icon, 'cinum');
+                card.text('PLAY');
+                R(icon, 'countin').toggleClass('on', true).toggleClass('go', true);
+                R(icon, 'btnrec').toggleClass('counting', false);
+                clearTimeout(icon.data('px_citimer') || 0);
+                icon.data('px_citimer', setTimeout(function () {
+                    R(icon, 'countin').toggleClass('on', false).toggleClass('go', false);
+                }, 700));
+                icon.data('px_citotal', 0);
+                return;
+            }
+            R(icon, 'countin').toggleClass('go', false);
             R(icon, 'countin').toggleClass('on', on);
             R(icon, 'btnrec').toggleClass('counting', on);
             if (on) {
@@ -807,9 +834,6 @@ function (event, funcs) {
                             kids[k].className = 'px-ci-dot' + (k < beats ? ' lit' : '');
                     }
                 }
-            } else {
-                icon.data('px_cibeat', 0);
-                icon.data('px_citotal', 0);
             }
             return;
         }

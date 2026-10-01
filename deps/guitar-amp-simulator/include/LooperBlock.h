@@ -138,6 +138,11 @@ public:
     void recordPressed(int t, const TransportClock& clk) noexcept { schedule(t, Action::RecordToggle, clk); }
     void playPressed(int t, const TransportClock& clk)   noexcept { schedule(t, Action::Play, clk); }
     void stopPressed(int t, const TransportClock& clk)   noexcept { schedule(t, Action::Stop, clk); }
+    // Stop is a TRANSPORT command, not a per-track one: "stop" means the
+    // looper goes quiet, not that one lane of four does.
+    void stopAllPressed(const TransportClock& clk) noexcept {
+        for (int t = 0; t < kNumTracks; ++t) schedule(t, Action::Stop, clk);
+    }
 
     // Destructive and immediate — clearing is never something you want to land
     // a bar later, and it is always deliberate (a long press on the hardware).
@@ -520,6 +525,12 @@ private:
                             // loop the punch-in started.
                             tr.state      = State::Playing;
                             tr.targetGain = 1.0f;
+                            // The take that SETS the loop bumps this inside
+                            // closeRecording(), which returns early once a
+                            // master length exists -- so without this line
+                            // tracks 2-4 finished recording and the editor was
+                            // never told, leaving their lanes blank forever.
+                            ++waveGen;
                         }
                         break;
                     }
