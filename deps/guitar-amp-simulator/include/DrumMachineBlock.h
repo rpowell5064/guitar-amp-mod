@@ -99,11 +99,24 @@ public:
         queueCount   = 0;
         nextScanStep = kNoStep;
         lastStepsPerBeat = -1.0;
+        stepOrigin   = 0.0;
     }
 
     // Re-arm the step scanner at the current musical position. Call when the
     // transport starts or relocates, so the sequencer doesn't try to catch up
     // on every step between the old position and the new one.
+    // Put the GROOVE back to its first step, here and now.
+    //
+    // Done with an origin offset rather than by resetting the clock: the clock
+    // also carries the absolute sample positions the looper has scheduled its
+    // pending actions against, and winding it back to zero would push every one
+    // of them into the far future. The bar grid keeps running; only the
+    // pattern's idea of where it starts moves.
+    void restartPattern(const TransportClock& clk) noexcept {
+        stepOrigin += stepPositionAt(clk, 0.0);
+        rearm(clk);
+    }
+
     void rearm(const TransportClock& clk) noexcept {
         queueCount   = 0;
         nextScanStep = static_cast<int64_t>(std::floor(stepPositionAt(clk, 0.0)));
@@ -350,7 +363,8 @@ private:
     // Grid position (in steps) at an offset of `sampleOffset` into this block.
     double stepPositionAt(const TransportClock& clk, double sampleOffset) const noexcept {
         const double stepsPerBeat = static_cast<double>(currentStepsPerBar()) / clk.beatsPerBar();
-        return (clk.beatPosition() + clk.beatsPerSample() * sampleOffset) * stepsPerBeat;
+        return (clk.beatPosition() + clk.beatsPerSample() * sampleOffset) * stepsPerBeat
+             - stepOrigin;
     }
 
     // Walk every step boundary that could produce a hit inside this block (plus
@@ -631,6 +645,7 @@ private:
     float               duckAtk{0.0f}, duckRel{0.0f};
     static constexpr float kDuckMaxDb = 12.0f;
     PlateReverbBlock    room;
+    double stepOrigin{0.0};   // where the groove considers step zero to be
     float compAmt{0.0f}, roomAmt{0.0f}, roomSize{0.35f}, bodyAmt{0.0f}, bodyTrim{1.0f};
 
     // Voices

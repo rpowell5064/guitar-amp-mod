@@ -714,10 +714,14 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         }
         p->looper.recordPressed(track, p->clk);
     }
-    if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay))  p->looper.playPressed(track, p->clk);
+    if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay))  p->looper.playAllPressed(p->clk);
     if (edge(portBool(p, P_LOOP_STOP),  p->prevStop))  p->looper.stopAllPressed(p->clk);
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);
+
+    // A take has just begun: put the groove back to its first step so the loop
+    // and the drums start together, which is the whole point of counting in.
+    if (p->looper.consumeRestartRequest()) p->drums.restartPattern(p->clk);
 
     // ── Count-in click ───────────────────────────────────────────────────────
     // A count-in you can only see is no use with a guitar in both hands, so

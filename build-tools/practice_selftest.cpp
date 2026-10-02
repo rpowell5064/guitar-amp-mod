@@ -816,6 +816,137 @@ int main() {
         hst.close();
     }
 
+    // ── Transport semantics ──────────────────────────────────────────────────
+    // Play and Stop are TRANSPORT commands: they move the whole looper, not the
+    // one lane that happens to be armed. Picking what you hear is what the
+    // per-track mutes are for.
+    std::printf("\nTransport semantics\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN] = 0.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.ctl[LOOP_TRACK] = 1.0f;
+        hst.trigger(LOOP_REC);
+        hst.run(barLen * 2 - kBlock);
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        hst.ctl[LOOP_TRACK] = 2.0f;
+        hst.trigger(LOOP_REC);
+        hst.run(barLen * 2 + kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 3,
+              "two tracks are playing to begin with");
+
+        // Stop, with track 1 armed, must stop BOTH.
+        hst.ctl[LOOP_TRACK] = 1.0f;
+        hst.trigger(LOOP_STOP);
+        hst.run(barLen + kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 4 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 4,
+              "stop stops every track, whichever is armed",
+              "t1 " + std::to_string(hst.ctl[OUT_TRK1_STATE]) +
+              " t2 " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+
+        // ...and Play must start BOTH again.
+        hst.trigger(LOOP_PLAY);
+        hst.run(barLen + kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 3,
+              "play starts every track, whichever is armed",
+              "t1 " + std::to_string(hst.ctl[OUT_TRK1_STATE]) +
+              " t2 " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+        hst.close();
+    }
+
+    // ── Every take counts in, and starts at the top ──────────────────────────
+    // The second take used to punch in wherever the cursor happened to be, with
+    // no count: you pressed record and the take began mid-phrase.
+    std::printf("\nRecording starts at the top\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN] = 1.0f;
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // First take, counted in.
+        hst.trigger(LOOP_REC);
+        hst.run(barLen);                       // the count
+        hst.run(barLen * 2);                   // the take
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        check(std::lround(hst.ctl[OUT_BARS]) == 2, "the first take is two bars",
+              "bars " + std::to_string(hst.ctl[OUT_BARS]));
+
+        // Let the loop run to somewhere in its MIDDLE, then record track 2.
+        hst.run(barLen);
+        const float midway = hst.ctl[OUT_PROGRESS];
+        check(midway > 0.2f && midway < 0.8f, "the loop is mid-phrase before we press",
+              "progress " + std::to_string(midway));
+
+        hst.ctl[LOOP_TRACK] = 2.0f;
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock * 2);
+        check(hst.ctl[OUT_COUNTIN] > 0.0f, "a later take counts in too",
+              "beats " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        check(std::lround(hst.ctl[OUT_TRK2_STATE]) == 0,
+              "and has not started recording yet");
+
+        // Catch the FIRST block in which the take is running: progress a bar
+        // later would read 0.5 whether it rewound or not.
+        float progressAtStart = -1.0f;
+        for (int i = 0; i < 6000 && progressAtStart < 0.0f; ++i) {   // count can be ~2 bars
+            hst.run(kBlock);
+            if (std::lround(hst.ctl[OUT_TRK2_STATE]) == 1)
+                progressAtStart = hst.ctl[OUT_PROGRESS];
+        }
+        check(progressAtStart >= 0.0f, "the later take started");
+        check(progressAtStart >= 0.0f && progressAtStart < 0.02f,
+              "and it started from the TOP of the loop, not mid-phrase",
+              "progress " + std::to_string(progressAtStart));
+        hst.close();
+    }
+
+    // ── The groove restarts with the take ────────────────────────────────────
+    // Counting a take in is pointless if the drums carry on from wherever they
+    // were: the loop would be recorded against the middle of the pattern.
+    std::printf("\nDrums restart with the take\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[PATTERN]   = 0.0f;
+        hst.ctl[COUNT_IN]  = 1.0f;
+        hst.ctl[RUN]       = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Run to somewhere that is NOT the top of the pattern.
+        hst.run(barLen / 2);
+        const int before = static_cast<int>(hst.ctl[OUT_STEP]);
+        check(before > 1, "the groove is part way through before we press",
+              "step " + std::to_string(before));
+
+        hst.trigger(LOOP_REC);
+        // Again, catch the first block of the take: the groove must be at the
+        // START of the pattern right then, not wherever it had got to.
+        int stepAtStart = -1;
+        for (int i = 0; i < 6000 && stepAtStart < 0; ++i) {          // ditto
+            hst.run(kBlock);
+            if (std::lround(hst.ctl[OUT_TRK1_STATE]) == 1)
+                stepAtStart = static_cast<int>(hst.ctl[OUT_STEP]);
+        }
+        check(stepAtStart >= 0, "the take is running");
+        check(stepAtStart >= 0 && stepAtStart <= 1,
+              "and the groove restarted with it",
+              "step " + std::to_string(stepAtStart) + " (was " +
+              std::to_string(before) + ")");
+        hst.close();
+    }
+
     // ── Editor channel ───────────────────────────────────────────────────────
     // Everything the new GUI draws arrives over the atom ports, and none of it
     // is reachable from a control port. These checks are what stands between a

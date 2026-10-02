@@ -138,7 +138,7 @@ function (event, funcs) {
                 var hx = Math.round(W * h[0]);
                 hx = Math.max(1, Math.min(W - 2, hx));
                 g.fillStyle = sel ? '#f0a830' : 'rgba(200,205,215,.55)';
-                g.fillRect(hx - 1, 0, 2, H);
+                g.fillRect(hx - 1, 0, 3, H);
                 // A grip tab on the inside edge, the way a DAW marks a region
                 // boundary you can drag.
                 g.beginPath();
@@ -583,7 +583,10 @@ function (event, funcs) {
     // default because the loop is bar-locked and anything else fights the
     // drums; hold Shift for a free drag when you really do want to cut into a
     // bar (chopping off a count-in, say).
-    var kTrimGrabPx = 11;
+    // Grab zone in SCREEN pixels, not canvas pixels. The pedalboard draws the
+    // block at 50%, so an 11-canvas-pixel zone was about five pixels under the
+    // cursor -- which is most of why trimming felt like it did not work.
+    var kTrimGrabPx = 16;
 
     function trimOf(icon, trk) {
         var i = icon.data('px_trimIn' + trk), o = icon.data('px_trimOut' + trk);
@@ -595,9 +598,11 @@ function (event, funcs) {
         var W = icon.data('px_wave');
         if (!bars && W) bars = W.bars || 0;
         if (!bars || bars < 1) return clamp(frac, 0, 1);
-        // Snap to the bar, and to the half-bar when the loop is short enough
-        // that whole bars would be a blunt instrument.
-        var div = (bars <= 2) ? bars * 4 : bars;
+        // Snap to the BEAT, not the bar. Bars were too blunt for the job people
+        // actually use this for -- shaving a count-in or a dead bar off the
+        // front -- and on a two-bar loop they offered only three places to put
+        // a handle. Shift still gives a free drag.
+        var div = bars * (icon.data('px_bpb') || 4);
         return clamp(Math.round(frac * div) / div, 0, 1);
     }
     function trimWrite(icon, trk, t) {
@@ -608,11 +613,14 @@ function (event, funcs) {
         drawWave(icon, trk);
     }
     function trimHit(icon, trk, c, ev) {
+        // Measured against the element as DRAWN, so the zone is the same size
+        // under the cursor whatever zoom the pedalboard is at.
         var r = c.getBoundingClientRect();
-        var x = (ev.clientX - r.left) * (c.width / r.width);
+        if (r.width <= 0) return null;
+        var x = ev.clientX - r.left;
         var t = trimOf(icon, trk);
-        var dIn  = Math.abs(x - c.width * t.in);
-        var dOut = Math.abs(x - c.width * t.out);
+        var dIn  = Math.abs(x - r.width * t.in);
+        var dOut = Math.abs(x - r.width * t.out);
         if (dIn <= kTrimGrabPx && dIn <= dOut) return 'in';
         if (dOut <= kTrimGrabPx) return 'out';
         return null;

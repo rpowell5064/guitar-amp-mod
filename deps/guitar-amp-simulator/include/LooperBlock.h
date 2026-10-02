@@ -215,10 +215,21 @@ public:
     void recordPressed(int t, const TransportClock& clk) noexcept { schedule(t, Action::RecordToggle, clk); }
     void playPressed(int t, const TransportClock& clk)   noexcept { schedule(t, Action::Play, clk); }
     void stopPressed(int t, const TransportClock& clk)   noexcept { schedule(t, Action::Stop, clk); }
-    // Stop is a TRANSPORT command, not a per-track one: "stop" means the
-    // looper goes quiet, not that one lane of four does.
+    // Stop and Play are TRANSPORT commands, not per-track ones: "play" means
+    // the looper plays, not that one lane of four does. Use the per-track mutes
+    // to pick what you hear -- that is what they are for, and it does not lose
+    // your place in the others.
     void stopAllPressed(const TransportClock& clk) noexcept {
         for (int t = 0; t < kNumTracks; ++t) schedule(t, Action::Stop, clk);
+    }
+    void playAllPressed(const TransportClock& clk) noexcept {
+        for (int t = 0; t < kNumTracks; ++t) schedule(t, Action::Play, clk);
+    }
+
+    // Raised when a take begins, so the plugin can put the groove back to its
+    // first step at the same instant. The looper cannot reach the drums itself.
+    bool consumeRestartRequest() noexcept {
+        return restartReq.exchange(false, std::memory_order_acq_rel);
     }
 
     // Destructive and immediate — clearing is never something you want to land
@@ -414,8 +425,13 @@ private:
         // nothing for up to seven seconds before the first number appeared.
         // Everything from the press onwards is now part of the count: it is
         // visible and clicking from the instant the button goes down.
-        if (a == Action::RecordToggle && countIn && masterLen == 0 &&
-            tracks[t].state == State::Empty) {
+        // Count in before ANY take that starts recording, not just the one that
+        // sets the loop length. A press that CLOSES a take is excluded: that is
+        // a stop, and counting into it would be nonsense.
+        const bool startsRecording = (tracks[t].state == State::Empty    ||
+                                      tracks[t].state == State::Playing  ||
+                                      tracks[t].state == State::Stopped);
+        if (a == Action::RecordToggle && countIn && startsRecording) {
             const double spBeat = clk.samplesPerBeat();
             double wait = toBar;
             // Half a beat of slack. Without it a press landing a few dozen
@@ -472,6 +488,12 @@ private:
             case State::Empty: {
                 tr.recorded   = 0;        // counts THIS take, master or punch-in
                 tr.state      = State::Recording;
+                // Every take starts at the TOP of the loop, and takes the other
+                // tracks with it. Punching in wherever the cursor happened to
+                // be is what made recording feel unpredictable -- you pressed
+                // record and the take began in the middle of the phrase.
+                loopCursor = 0;
+                restartReq.store(true, std::memory_order_release);
                 // Freeze the target NOW: changing the length control halfway
                 // through a take must not retune the take already running.
                 tr.targetLen  = (loopBarsWanted > 0 && masterLen == 0)
@@ -704,6 +726,7 @@ private:
     float   fadeInc{0.001f};
     float   trimInc{0.0f};
     std::atomic<bool> frozen{false};   // a state load is in flight
+    std::atomic<bool> restartReq{false};   // a take has just begun
 };
 
 } // namespace hexdrums
