@@ -115,69 +115,10 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
     gui({type:'start', icon:icon, ports:__PORTS__, parameters:[]}, funcs);
     gui({type:'change', icon:icon, uri:'x#waveform', value:__WAVE__}, funcs);
     gui({type:'change', icon:icon, uri:'x#pattern',  value:__PAT__}, funcs);
-    [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
-     ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
-     ['lvl_kick',3],['drums_level',-4],['beats_per_bar',4],['count_in',1],['out_countin',3]
-    // mod-ui has exactly ONE change event: it carries a patch property (uri) OR
-    // a control port (symbol). There is no 'port_event' -- this harness used to
-    // invent one, so it validated a code path the device never exercises and
-    // passed while every live port update was being dropped. Send what mod-ui
-    // actually sends.
-    ].forEach(function(p){ gui({type:'change', icon:icon, symbol:p[0], value:p[1]}, funcs); });
+__DRIVE__
     // Simulate a tempo drag: press on the grab, move 40px up, release.
     // 2px per BPM, so 40px up is +20 BPM on top of the 138 just pushed.
-    // Click a dropdown open and pick an option. The groove picker shipped
-    // unusable because mod-ui's custom-select never opened, and nothing here
-    // noticed -- a select that cannot be opened looks identical to one that can.
-    if (window.__TAB__ === 'drums') {
-      var sel = document.querySelector('[rata-role=selgroove]');
-      if (sel) {
-        sel.querySelector('.mod-enumerated-selected').dispatchEvent(new MouseEvent('click', {bubbles:true}));
-        window.__OPENED__ = sel.classList.contains('open');
-        var opts = sel.querySelectorAll('[mod-role=enumeration-option]');
-        if (opts.length > 3) opts[3].dispatchEvent(new MouseEvent('click', {bubbles:true}));
-        window.__PICKED__ = sel.querySelector('.mod-enumerated-selected').textContent;
-      }
-    }
-    // The end of the count is the cue to come in, so it must SAY so rather
-    // than the number simply vanishing.
-    if (window.__TAB__ === 'loops') {
-      gui({type:'change', icon:icon, symbol:'out_countin', value:0}, funcs);
-      var ovp = document.querySelector('[rata-role=countin]');
-      window.__PLAY__ = {shown: ovp.classList.contains('on'),
-                         go: ovp.classList.contains('go'),
-                         text: (document.querySelector('[rata-role=cinum]')||{}).textContent};
-      // put the count back so the overlay checks below still see it
-      gui({type:'change', icon:icon, symbol:'out_countin', value:3}, funcs);
-    }
-    // Drag track 1's right-hand trim handle in to ~60%. Non-destructive trim
-    // is invisible unless it reaches the port, and a handle you cannot grab
-    // looks exactly like one you can.
-    if (window.__TAB__ === 'loops') {
-      var wc = document.querySelector('[rata-role=wave1]');
-      if (wc) {
-        var wr = wc.getBoundingClientRect();
-        var yMid = wr.top + wr.height / 2;
-        // grab the OUT handle, which starts at the right edge
-        wc.dispatchEvent(new MouseEvent('mousedown',
-          {clientX: wr.right - 1, clientY: yMid, bubbles:true, cancelable:true}));
-        document.dispatchEvent(new MouseEvent('mousemove',
-          {clientX: wr.left + wr.width * 0.6, clientY: yMid, bubbles:true, cancelable:true}));
-        document.dispatchEvent(new MouseEvent('mouseup',
-          {clientX: wr.left + wr.width * 0.6, clientY: yMid, bubbles:true, cancelable:true}));
-      }
-    }
-    if (window.__TAB__ === 'loops') {
-      var grab = document.querySelector('[rata-role=tempograb]');
-      if (grab) {
-        var gr = grab.getBoundingClientRect();
-        var x = gr.left + gr.width/2, y = gr.top + gr.height/2;
-        grab.dispatchEvent(new MouseEvent('mousedown', {clientX:x, clientY:y, bubbles:true, cancelable:true}));
-        document.dispatchEvent(new MouseEvent('mousemove', {clientX:x, clientY:y-40, bubbles:true, cancelable:true}));
-        document.dispatchEvent(new MouseEvent('mouseup',   {clientX:x, clientY:y-40, bubbles:true, cancelable:true}));
-      }
-    }
-
+__INTERACT__
     var tab = (window.__TAB__ === 'drumslong') ? 'drums' : window.__TAB__;
     document.querySelector('[rata-role=pxview]').setAttribute('data-tab', tab);
     if (window.__TAB__ === 'drums')
@@ -245,6 +186,76 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
 """
 
 
+# The gate's own port fixtures. Kept out of SHIM so practice_screens.py can
+# reuse the shim verbatim with a different session state.
+GATE_INTERACT = """
+    // Click a dropdown open and pick an option. The groove picker shipped
+    // unusable because mod-ui's custom-select never opened, and nothing here
+    // noticed -- a select that cannot be opened looks identical to one that can.
+    if (window.__TAB__ === 'drums') {
+      var sel = document.querySelector('[rata-role=selgroove]');
+      if (sel) {
+        sel.querySelector('.mod-enumerated-selected').dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        window.__OPENED__ = sel.classList.contains('open');
+        var opts = sel.querySelectorAll('[mod-role=enumeration-option]');
+        if (opts.length > 3) opts[3].dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        window.__PICKED__ = sel.querySelector('.mod-enumerated-selected').textContent;
+      }
+    }
+    // The end of the count is the cue to come in, so it must SAY so rather
+    // than the number simply vanishing.
+    if (window.__TAB__ === 'loops') {
+      gui({type:'change', icon:icon, symbol:'out_countin', value:0}, funcs);
+      var ovp = document.querySelector('[rata-role=countin]');
+      window.__PLAY__ = {shown: ovp.classList.contains('on'),
+                         go: ovp.classList.contains('go'),
+                         text: (document.querySelector('[rata-role=cinum]')||{}).textContent};
+      // put the count back so the overlay checks below still see it
+      gui({type:'change', icon:icon, symbol:'out_countin', value:3}, funcs);
+    }
+    // Drag track 1's right-hand trim handle in to ~60%. Non-destructive trim
+    // is invisible unless it reaches the port, and a handle you cannot grab
+    // looks exactly like one you can.
+    if (window.__TAB__ === 'loops') {
+      var wc = document.querySelector('[rata-role=wave1]');
+      if (wc) {
+        var wr = wc.getBoundingClientRect();
+        var yMid = wr.top + wr.height / 2;
+        // grab the OUT handle, which starts at the right edge
+        wc.dispatchEvent(new MouseEvent('mousedown',
+          {clientX: wr.right - 1, clientY: yMid, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mousemove',
+          {clientX: wr.left + wr.width * 0.6, clientY: yMid, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mouseup',
+          {clientX: wr.left + wr.width * 0.6, clientY: yMid, bubbles:true, cancelable:true}));
+      }
+    }
+    if (window.__TAB__ === 'loops') {
+      var grab = document.querySelector('[rata-role=tempograb]');
+      if (grab) {
+        var gr = grab.getBoundingClientRect();
+        var x = gr.left + gr.width/2, y = gr.top + gr.height/2;
+        grab.dispatchEvent(new MouseEvent('mousedown', {clientX:x, clientY:y, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mousemove', {clientX:x, clientY:y-40, bubbles:true, cancelable:true}));
+        document.dispatchEvent(new MouseEvent('mouseup',   {clientX:x, clientY:y-40, bubbles:true, cancelable:true}));
+      }
+    }
+
+"""
+
+GATE_DRIVE = """
+    // mod-ui has exactly ONE change event: it carries a patch property (uri) OR
+    // a control port (symbol). There is no 'port_event' -- this harness used to
+    // invent one, so it validated a code path the device never exercises and
+    // passed while every live port update was being dropped. Send what mod-ui
+    // actually sends.
+    [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
+     ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
+     ['lvl_kick',3],['drums_level',-4],['beats_per_bar',4],['count_in',1],['out_countin',3]
+    ].forEach(function(p){ gui({type:'change', icon:icon, symbol:p[0], value:p[1]}, funcs); });
+"""
+
+
 def build_page(tab):
     css = open(os.path.join(BASE, "stylesheet-practice.css"), encoding="utf-8").read()
     css = css.replace("{{{cns}}}", "").replace("{{{ns}}}", "")
@@ -265,7 +276,9 @@ def build_page(tab):
                 .replace("__WAVE__", json.dumps(WAVE))
                 .replace("__PAT__", json.dumps(PATTERN))
             .replace("__LONGPAT__", json.dumps(PATTERN_LONG))
-                .replace("__PORTS__", json.dumps(ports)))
+                .replace("__PORTS__", json.dumps(ports))
+                .replace("__DRIVE__", GATE_DRIVE)
+                .replace("__INTERACT__", GATE_INTERACT))
     return ('<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
             'html,body{margin:0;padding:0;background:#0b0d12;'
             'font-family:"Helvetica Neue",Helvetica,Arial,sans-serif;}' + css + '</style></head><body>'
