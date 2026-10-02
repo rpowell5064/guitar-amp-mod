@@ -89,9 +89,16 @@ def build_page(tab, extra):
     ports = [{"symbol": c["symbol"], "value": 0,
               "ranges": {"minimum": -60, "maximum": 12, "default": 0}} for c in controls]
 
+    # Panel state arrives on the atom channel, not as ports, so a screenshot
+    # that only drives ports shows a session with no bar counter and no shaded
+    # bar -- i.e. not what the plugin actually looks like in use.
+    status = json.dumps({"ci": 0, "step": 11, "bars": 4, "bar": 3,
+                         "undo": 1, "pr": 200, "st": [3, 3, 4, 0]})
     drive = "    " + "".join(
         "gui({type:'change', icon:icon, symbol:%s, value:%s}, funcs);\n    "
-        % (json.dumps(sym), json.dumps(val)) for sym, val in PORTS) + extra
+        % (json.dumps(sym), json.dumps(val)) for sym, val in PORTS) + (
+        "gui({type:'change', icon:icon, uri:'x#status', value:%s}, funcs);\n    "
+        % json.dumps(status)) + extra
 
     shim = (gc.SHIM
             .replace("__SCRIPT__", open(os.path.join(BASE, "script-practice.js"), encoding="utf-8").read())
@@ -124,20 +131,39 @@ def main():
         print("Chrome not found at %s" % CHROME)
         return 1
 
+    # Chrome resolves a RELATIVE --screenshot path against its own working
+    # directory, not ours, so a relative --out wrote the PNGs somewhere else
+    # entirely while this script cheerfully reported success -- and the stale
+    # pictures from the previous run sat there looking current. Absolute path,
+    # and check the file afterwards.
+    outdir = os.path.abspath(outdir)
+
+    written = 0
     for name, (tab, extra) in SHOTS.items():
         hp = os.path.join(outdir, name + ".html")
         open(hp, "w", encoding="utf-8").write(build_page(tab, extra))
         png = os.path.join(outdir, name + ".png")
-        subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
-                        "--window-size=1320,900", "--virtual-time-budget=2500",
-                        "--default-background-color=00000000",
-                        "--screenshot=" + png,
-                        "file:///" + hp.replace("\\", "/")],
-                       capture_output=True, timeout=120)
+        before = os.path.getmtime(png) if os.path.exists(png) else -1.0
+        r = subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
+                            "--window-size=1320,900", "--virtual-time-budget=2500",
+                            "--default-background-color=00000000",
+                            "--screenshot=" + png,
+                            "file:///" + hp.replace("\\", "/")],
+                           capture_output=True, timeout=120)
         os.remove(hp)
-        print("  %s" % png)
-    print("\n%d screenshots in %s" % (len(SHOTS), outdir))
-    return 0
+        # "It ran" is not "it rendered": a screenshot that silently went
+        # missing leaves the PREVIOUS run's picture in place, which is worse
+        # than no picture at all because it looks like an answer.
+        if not os.path.exists(png) or os.path.getmtime(png) <= before:
+            print("  FAILED %s" % png)
+            print("    chrome rc=%d %s" % (r.returncode,
+                                           r.stderr.decode("utf-8", "replace")[:300]))
+            continue
+        written += 1
+        print("  %s (%d kB)" % (png, os.path.getsize(png) // 1024))
+
+    print("\n%d of %d screenshots in %s" % (written, len(SHOTS), outdir))
+    return 0 if written == len(SHOTS) else 1
 
 
 if __name__ == "__main__":
