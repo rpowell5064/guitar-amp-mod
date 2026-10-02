@@ -70,6 +70,22 @@ static void check(bool ok, const char* what, const std::string& detail = {}) {
     if (!ok) ++failures;
 }
 
+// Run blocks until `pred` holds, up to a limit. Tests used to time the count-in
+// with a fixed sleep, which quietly encoded the old contract: when the count
+// stopped being a fixed number of samples, half a dozen checks failed for
+// reasons that had nothing to do with what they were testing. Wait for the
+// state you are waiting for. Returns the samples elapsed, or -1 on timeout.
+template <class H, class P>
+static int64_t runUntil(H& hst, P pred, int64_t limit) {
+    int64_t n = 0;
+    while (n < limit) {
+        if (pred()) return n;
+        hst.run(kBlock);
+        n += kBlock;
+    }
+    return pred() ? n : -1;
+}
+
 // ── Minimal URID map ─────────────────────────────────────────────────────────
 // The editor channel is the one part of the plugin a control-port-only harness
 // cannot reach: with no urid:map feature the plugin disables it outright, so
@@ -509,18 +525,19 @@ int main() {
               "recording has NOT started during the count",
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
-        // The count runs to the next bar line and then one whole bar more.
-        // Half way through the count: still counting, still not recording.
+        // The count is a bar of beats from the press, so half a bar in it is
+        // still counting and still has not recorded anything.
         hst.run(barLen / 2);
-        check(std::lround(hst.ctl[OUT_COUNTIN]) == 2,
+        check(hst.ctl[OUT_COUNTIN] > 0.0f,
               "the count is still running half way through",
               "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 0,
               "and nothing has been recorded yet",
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
-        // At the bar line the count ends and the take begins.
-        hst.run(barLen / 2 + kBlock * 2);
+        // A bar after the press (plus the sub-beat lead-in to the first click)
+        // the count has ended and the take is running.
+        hst.run(barLen / 2 + static_cast<int64_t>(kFs * 60.0 / 120.0) + kBlock * 2);
         check(std::lround(hst.ctl[OUT_COUNTIN]) == 0, "the count clears",
               "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
@@ -874,12 +891,14 @@ int main() {
         hst.run(kBlock);
         const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
 
-        // First take, counted in.
+        // First take: wait out the count rather than assuming its length.
         hst.trigger(LOOP_REC);
-        hst.run(barLen);                       // the count
+        check(runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; },
+                       barLen * 3) >= 0, "the first take starts");
         hst.run(barLen * 2);                   // the take
         hst.trigger(LOOP_REC);
-        hst.run(kBlock);
+        check(runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; },
+                       barLen * 2) >= 0, "the first take closes");
         check(std::lround(hst.ctl[OUT_BARS]) == 2, "the first take is two bars",
               "bars " + std::to_string(hst.ctl[OUT_BARS]));
 
@@ -909,6 +928,112 @@ int main() {
         check(progressAtStart >= 0.0f && progressAtStart < 0.02f,
               "and it started from the TOP of the loop, not mid-phrase",
               "progress " + std::to_string(progressAtStart));
+        hst.close();
+    }
+
+    // ── The count is a WHOLE BAR, wherever the press lands ───────────────────
+    // Two faults in one: the count used to run to the next BAR line with half a
+    // beat of slack, so what you got depended on where in the bar you pressed
+    // (a press just after a downbeat counted three and a half and the panel
+    // showed three), and it was a fixed four regardless of the time signature.
+    // It is now one full bar: four beats in four-four, five in five-four.
+    std::printf("\nThe count is a whole bar\n");
+    for (int bpb : {4, 5, 3, 7}) {
+        const int64_t beatLen = static_cast<int64_t>(kFs * 60.0 / 120.0);
+        // Press at points spread across the bar, including right on the
+        // downbeat and a hair after it -- the two that used to disagree.
+        const double offsets[] = {0.0, 0.05, 0.25, 0.5, 0.9, 1.0, 2.3};
+        const std::string sig = std::to_string(bpb) + "/4";
+        for (double off : offsets) {
+            if (off >= bpb) continue;                 // past the end of this bar
+            Host hst; hst.open();
+            hst.ctl[DRUMS_LEVEL]   = -60.0f;
+            hst.ctl[COUNT_IN]      = 1.0f;
+            hst.ctl[BEATS_PER_BAR] = static_cast<float>(bpb);
+            hst.ctl[RUN]           = 1.0f;
+            hst.run(kBlock);
+            if (off > 0.0) hst.run(static_cast<int64_t>(off * beatLen));
+
+            hst.trigger(LOOP_REC);
+            hst.run(kBlock);
+            const long shown = std::lround(hst.ctl[OUT_COUNTIN]);
+            const std::string what = "in " + sig + ", pressing " +
+                                     std::to_string(off) + " beats in counts " +
+                                     std::to_string(bpb);
+            check(shown == bpb, what.c_str(),
+                  "panel showed " + std::to_string(shown));
+
+            // And it must actually LAST a bar -- a panel that says five while
+            // the take starts in two is the same bug wearing a hat.
+            int64_t waited = 0;
+            while (waited < beatLen * (bpb + 4) &&
+                   std::lround(hst.ctl[OUT_TRK1_STATE]) != 1) {
+                hst.run(kBlock);
+                waited += kBlock;
+            }
+            const double beats = static_cast<double>(waited) / static_cast<double>(beatLen);
+            // Between bpb and bpb+1: the sub-beat lead-in from the press to the
+            // first click sits on top of the counted beats.
+            const std::string lasts = "and in " + sig + " the take begins a bar later";
+            check(beats >= bpb - 0.1 && beats <= bpb + 1.1, lasts.c_str(),
+                  "waited " + std::to_string(beats) + " beats");
+            hst.close();
+        }
+    }
+
+    // ── An OVERDUB restarts everything too ───────────────────────────────────
+    // The rewind and the groove restart used to sit inside the empty-track case
+    // only. Recording onto a track that ALREADY had audio -- the common case
+    // once there is anything to play along to -- punched in wherever the cursor
+    // was, over drums that were mid-pattern.
+    std::printf("\nOverdub restarts the loop and the groove\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[COUNT_IN] = 1.0f;
+        hst.ctl[PATTERN]  = 0.0f;
+        hst.ctl[RUN]      = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Lay a two-bar take on track 1 so it has audio and is PLAYING.
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 3);
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen * 2);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3,
+              "track 1 is playing before the overdub",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+
+        // Run into the middle of the phrase, then press record on the SAME
+        // track. This is an overdub, not a fresh take.
+        hst.run(barLen);
+        check(hst.ctl[OUT_PROGRESS] > 0.2f && hst.ctl[OUT_PROGRESS] < 0.8f,
+              "and the loop is mid-phrase when we press",
+              "progress " + std::to_string(hst.ctl[OUT_PROGRESS]));
+
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock);
+        check(hst.ctl[OUT_COUNTIN] > 0.0f, "the overdub counts in",
+              "beats " + std::to_string(hst.ctl[OUT_COUNTIN]));
+
+        // Catch the first block of the overdub: a bar later everything reads
+        // 0.5 whether it rewound or not, which is how this hid.
+        float prog = -1.0f; int step = -1;
+        for (int i = 0; i < 6000 && prog < 0.0f; ++i) {
+            hst.run(kBlock);
+            if (std::lround(hst.ctl[OUT_TRK1_STATE]) == 2) {   // Overdubbing
+                prog = hst.ctl[OUT_PROGRESS];
+                step = static_cast<int>(hst.ctl[OUT_STEP]);
+            }
+        }
+        check(prog >= 0.0f, "the overdub started");
+        check(prog >= 0.0f && prog < 0.02f,
+              "and it started from the TOP of the loop",
+              "progress " + std::to_string(prog));
+        check(step >= 0 && step <= 1,
+              "and the groove restarted with it",
+              "step " + std::to_string(step));
         hst.close();
     }
 

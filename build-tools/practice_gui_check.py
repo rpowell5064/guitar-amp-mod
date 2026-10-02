@@ -156,6 +156,7 @@ __INTERACT__
                                             lit: document.querySelectorAll('[rata-role=cidots] .px-ci-dot.lit').length,
                                             recArmed: !!document.querySelector('.px-tbtn.rec.counting')};
                                   })(),
+                                  ci5: window.__CI5__,
                                   tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
                                   trimSets: window.__SET__.filter(function(p){ return /trim/.test(p[0]); }),
                                   play: window.__PLAY__,
@@ -234,8 +235,14 @@ GATE_INTERACT = """
       window.__PLAY__ = {shown: ovp.classList.contains('on'),
                          go: ovp.classList.contains('go'),
                          text: (document.querySelector('[rata-role=cinum]')||{}).textContent};
-      // put the count back so the overlay checks below still see it
-      gui({type:'change', icon:icon, symbol:'out_countin', value:3}, funcs);
+      // The count is one BAR, so in five-four it is five. The dots are built
+      // from the first value of each count, so a five-beat count must grow a
+      // fifth dot rather than keeping four from the last one.
+      gui({type:'change', icon:icon, symbol:'out_countin', value:5}, funcs);
+      window.__CI5__ = document.querySelectorAll('[rata-role=cidots] .px-ci-dot').length;
+      // put a four-beat count back so the overlay checks below still see one
+      gui({type:'change', icon:icon, symbol:'out_countin', value:0}, funcs);
+      gui({type:'change', icon:icon, symbol:'out_countin', value:4}, funcs);
     }
     // Drag track 1's right-hand trim handle in to ~60%. Non-destructive trim
     // is invisible unless it reaches the port, and a handle you cannot grab
@@ -275,7 +282,7 @@ GATE_DRIVE = """
     // actually sends.
     [['pattern',0],['out_trk1_state',3],['out_trk2_state',4],['out_progress',0.38],
      ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
-     ['lvl_kick',3],['drums_level',-4],['beats_per_bar',4],['count_in',1],['out_countin',3]
+     ['lvl_kick',3],['drums_level',-4],['beats_per_bar',4],['count_in',1],['out_countin',4]
     ].forEach(function(p){ gui({type:'change', icon:icon, symbol:p[0], value:p[1]}, funcs); });
 """
 
@@ -381,8 +388,11 @@ def main():
         # so check it is actually on screen, not merely that a port arrived.
         ci = r.get("countin") or {}
         check(ci.get("shown") is True, "the count-in overlay is visible while counting")
-        check(ci.get("num") == "3", "it shows the beats remaining", str(ci.get("num")))
-        check(ci.get("dots") == 3 and ci.get("lit") == 3,
+        check(ci.get("num") == "4", "it shows the beats remaining", str(ci.get("num")))
+        check(r.get("ci5") == 5,
+              "a five-beat count draws five dots (the count follows the meter)",
+              "%s dots" % r.get("ci5"))
+        check(ci.get("dots") == 4 and ci.get("lit") == 4,
               "a dot per beat, all still to go",
               "%s dots, %s lit" % (ci.get("dots"), ci.get("lit")))
         check(ci.get("recArmed") is True, "the record button shows it is counting")

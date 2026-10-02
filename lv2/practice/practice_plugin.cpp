@@ -719,10 +719,6 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);
 
-    // A take has just begun: put the groove back to its first step so the loop
-    // and the drums start together, which is the whole point of counting in.
-    if (p->looper.consumeRestartRequest()) p->drums.restartPattern(p->clk);
-
     // ── Count-in click ───────────────────────────────────────────────────────
     // A count-in you can only see is no use with a guitar in both hands, so
     // each remaining beat gets a stick click — accented on the first of the
@@ -732,12 +728,19 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     if (countLeft > 0) {
         const double spBeat = p->clk.samplesPerBeat();
         // Beats remaining, counting DOWN: 4, 3, 2, 1 in four-four.
-        const int beatsLeft = static_cast<int>(std::ceil(countLeft / std::max(1.0, spBeat)));
+        const int beatsRaw = static_cast<int>(std::ceil(countLeft / std::max(1.0, spBeat)));
+        // The press lands wherever it lands, so there is a sub-beat lead-in
+        // before the first click falls on a beat line. Clicking on the press
+        // itself would put a fifth click off the grid; the count reads 4 and
+        // waits for the beat.
+        const int  countTo  = LooperBlock::countBeats(p->clk);
+        const bool leadIn   = beatsRaw > countTo;
+        const int  beatsLeft = leadIn ? countTo : beatsRaw;
         const int bpb = std::max(1, p->clk.beatsPerBar());
-        // Click EVERY beat of the count, from the press onwards. Gating this to
-        // the final bar left up to three beats of silence after the button went
-        // down, which is exactly as useless as no count at all.
-        if (beatsLeft != p->lastCountBeat) {
+        // Click EVERY beat of the count. Gating this to the final bar left up
+        // to three beats of silence after the button went down, which is
+        // exactly as useless as no count at all.
+        if (!leadIn && beatsLeft != p->lastCountBeat) {
             p->lastCountBeat = beatsLeft;
             const bool downbeat = (beatsLeft % bpb) == 0;
             p->drums.triggerNow(downbeat ? INST_SIDESTICK : INST_HAT_CLOSED,
@@ -754,6 +757,24 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // The looper still needs the input even when bypassed would silence it;
     // feeding it keeps the pre-roll warm, and its master level is already 0.
     p->looper.process(p->clk, in, out, n);
+    // A take has just begun: put the groove back to its first step so the loop
+    // and the drums start together, which is the whole point of counting in.
+    //
+    // This MUST sit between the looper and the kit. The take starts inside
+    // looper.process(), so asking before it ran applied the restart a block
+    // late -- which was invisible for as long as a counted-in take could only
+    // begin on a bar line, because the groove read step 0 at a bar line whether
+    // it had been restarted or not. The moment the count stopped being
+    // bar-aligned, the drums came in mid-pattern.
+    if (p->looper.consumeRestartRequest()) {
+        // The take IS bar one, beat one. The count-in no longer waits for the
+        // old grid's bar line, so unless the grid moves with the take, the
+        // loop gets closed on a bar line it never started from and comes out
+        // a fraction of a bar long. Only the TEMPO follows the host here --
+        // bar position is the plugin's own -- so there is nothing to fight.
+        p->clk.setPositionBeats(0.0);
+        p->drums.restartPattern(p->clk);
+    }
     // Sense the guitar before the kit is rendered: the detector must see the
     // dry playing, not the mix it is about to be folded into.
     p->drums.senseGuitar(in, n);
@@ -767,7 +788,13 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     {
         const int64_t left = p->looper.countInSamplesLeft(p->clk);
         const double  spb  = std::max(1.0, p->clk.samplesPerBeat());
-        p->countInBeats = (left > 0) ? static_cast<float>(std::ceil(left / spb)) : 0.0f;
+        // Clamped for the same reason the click is: during the sub-beat
+        // lead-in the panel must show the full count (4 in four-four, 5 in
+        // five-four), not one more than the player is about to hear.
+        p->countInBeats = (left > 0)
+            ? static_cast<float>(std::min<double>(std::ceil(left / spb),
+                                                  LooperBlock::countBeats(p->clk)))
+            : 0.0f;
         setOut(p, P_OUT_COUNTIN, p->countInBeats);
     }
     setOut(p, P_OUT_PROGRESS, p->looper.loopProgress());

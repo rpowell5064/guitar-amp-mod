@@ -66,6 +66,14 @@ public:
         return (1.0 - phase) * samplesPerBar();
     }
 
+    // Samples from the start of this block until the next beat line. The
+    // count-in needs this because its clicks land on beats, not bars.
+    double samplesToNextBeat() const noexcept {
+        const double b = beatPos - std::floor(beatPos);
+        if (b <= 0.0) return 0.0;
+        return (1.0 - b) * samplesPerBeat();
+    }
+
     // Advance past a rendered block. Called ONCE per run(), after every
     // consumer has read its block-start position.
     void advance(int numSamples) noexcept {

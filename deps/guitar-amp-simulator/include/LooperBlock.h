@@ -48,10 +48,6 @@ public:
     static constexpr float kTrimMs   = 4.0f;   // trim-edge ramp
     static constexpr float kPreRollMs = 400.0f; // late-press lookbehind
     static constexpr float kSnapMs    = 250.0f; // hard cap on the snap-back window
-    // Shortest count-in, in beats. The take still lands on a bar line, so
-    // the real count is this or a little more; it is never less, and never
-    // an invisible wait before the numbers start.
-    static constexpr int   kMinCountBeats = 4;
 
     enum class State : uint8_t { Empty, Recording, Overdubbing, Playing, Stopped };
     enum class Action : uint8_t { None, RecordToggle, Play, Stop };
@@ -106,6 +102,14 @@ public:
     // ── Parameters ───────────────────────────────────────────────────────────
     void setQuantize(bool on)          noexcept { quantize = on; }
     void setCountIn(bool on)           noexcept { countIn = on; }
+
+    // The count-in is one FULL BAR, so it follows the time signature: four
+    // beats in four-four, five in five-four, seven in seven-eight. It is not a
+    // minimum and not a constant -- whatever this returns is exactly what the
+    // player hears and sees, wherever in the bar they pressed record.
+    static int countBeats(const TransportClock& clk) noexcept {
+        return std::max(1, clk.beatsPerBar());
+    }
     // 0 = record until you press again; otherwise the take closes itself
     // after this many bars.
     void setLoopBars(int bars)         noexcept { loopBarsWanted = std::max(0, bars); }
@@ -433,12 +437,15 @@ private:
                                       tracks[t].state == State::Stopped);
         if (a == Action::RecordToggle && countIn && startsRecording) {
             const double spBeat = clk.samplesPerBeat();
-            double wait = toBar;
-            // Half a beat of slack. Without it a press landing a few dozen
-            // samples after the bar line reads as "just under four beats away"
-            // and buys a whole extra bar -- which is how pressing record on the
-            // downbeat produced an eight-beat count.
-            while (wait < (kMinCountBeats - 0.5) * spBeat) wait += spb;
+            // A WHOLE BAR of count, every time: "4 3 2 1" in four-four,
+            // "5 4 3 2 1" in five-four. The count is aligned to the next BEAT,
+            // not to a bar line. It used to wait out the bar with half a beat
+            // of slack, so what you got depended on where in the bar you
+            // happened to press -- a press just after a downbeat counted three
+            // and a half, and the panel showed three. There is nothing left to
+            // meet on the old grid anyway: a take now rewinds the loop and
+            // restarts the groove when it begins, so the take IS the bar line.
+            const double wait = clk.samplesToNextBeat() + countBeats(clk) * spBeat;
             tracks[t].applyAt    = clk.samplePosition() + static_cast<int64_t>(wait);
             tracks[t].lateBy     = 0;
             tracks[t].countingIn = true;
@@ -484,16 +491,22 @@ private:
 
     void recordToggle(int t) noexcept {
         Track& tr = tracks[t];
+        // EVERY take starts from the top, whatever it is recording onto: a
+        // fresh track, or an overdub on one that already has audio. The rewind
+        // and the groove restart used to live inside the Empty case only, so
+        // overdubbing -- the common case once there is anything to play along
+        // to -- dropped you in wherever the cursor happened to be, with the
+        // drums mid-pattern. The whole looper moves together or the count-in
+        // is counting you in to the middle of a phrase.
+        if (tr.state == State::Empty || tr.state == State::Playing ||
+            tr.state == State::Stopped) {
+            loopCursor = 0;
+            restartReq.store(true, std::memory_order_release);
+        }
         switch (tr.state) {
             case State::Empty: {
                 tr.recorded   = 0;        // counts THIS take, master or punch-in
                 tr.state      = State::Recording;
-                // Every take starts at the TOP of the loop, and takes the other
-                // tracks with it. Punching in wherever the cursor happened to
-                // be is what made recording feel unpredictable -- you pressed
-                // record and the take began in the middle of the phrase.
-                loopCursor = 0;
-                restartReq.store(true, std::memory_order_release);
                 // Freeze the target NOW: changing the length control halfway
                 // through a take must not retune the take already running.
                 tr.targetLen  = (loopBarsWanted > 0 && masterLen == 0)
