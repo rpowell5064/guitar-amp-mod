@@ -13,6 +13,16 @@
     --hex: url("data:image/svg+xml,%3Csvg%20width='28'%20height='49'%20viewBox='0%200%2028%2049'%20xmlns='http://www.w3.org/2000/svg'%3E%3Cg%20fill='%23f0a830'%20fill-opacity='0.05'%20fill-rule='evenodd'%3E%3Cpath%20d='M13.99%209.25l13%207.5v15l-13%207.5L1%2031.75v-15l12.99-7.5zM3%2017.9v12.7l10.99%206.34%2011-6.35V17.9l-11-6.34L3%2017.9zM0%2015l12.98-7.5V0h-2v6.35L0%2012.69v2.3zm0%2018.5L12.98%2041v8h-2v-6.85L0%2035.81v-2.3zM15%200v7.5L27.99%2015H28v-2.31h-.01L17%206.35V0h-2zm0%2049v-8l12.99-7.5H28v2.31h-.01L17%2042.15V49h-2z'/%3E%3C/g%3E%3C/svg%3E");
     --hexsz: 28px 49px;
     --acc:#f0a830; --acc-dim:rgba(240,168,48,.30); --rec:#ff4a4a; --play:#54d98c;
+    /* Colour here is INFORMATION, not decoration. Four loop tracks get four
+       identities, carried consistently by the waveform, the lane and that
+       track's fader, so "which track am I looking at" is answerable without
+       reading a label. The kit is grouped the way a drummer hears it. The amber
+       accent stays reserved for the transport, so the thing that says "armed"
+       is never competing with a track colour for attention. */
+    --t1:#f0a830; --t2:#45c8d8; --t3:#a07bff; --t4:#58cc82;
+    --c-kick:#ffd166; --c-snare:#f0a830; --c-toms:#ff8a5c;
+    --c-hats:#45c8d8; --c-cym:#a07bff;
+    --c-loops:#f0a830; --c-drums:#a07bff;
     --ink:#eef1f6; --ink2:#9aa0ab; --ink3:#6c727d;
     --lane:#07080b;
 
@@ -56,7 +66,7 @@
 /* ── Unified toolbar: brand (left) · transport + tempo (right) ── */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-bar {
     flex:0 0 auto; position:relative; z-index:40; min-height:60px; box-sizing:border-box;
-    display:flex; flex-wrap:nowrap; align-items:center; gap:12px; padding:0 90px 0 16px;
+    display:flex; flex-wrap:nowrap; align-items:center; gap:12px; padding:0 100px 0 16px;
     background-color: rgba(8,9,13,.6);
     background-image: var(--hex), linear-gradient(180deg, rgba(240,168,48,.10), rgba(0,0,0,.22));
     background-repeat: repeat, no-repeat; background-position:center top; background-size: var(--hexsz), 100% 100%;
@@ -84,6 +94,10 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tag {
     font-size:10px; font-weight:600; letter-spacing:.6px; color:var(--ink3); white-space:nowrap;
     padding-left:12px; border-left:1px solid rgba(255,255,255,.10);
+    /* Shrinks and ellipses before anything else does: "SCRATCH PAD" is wider
+       than "PRACTICE" was, and a strapline is worth less than a transport
+       control that has slid under the power switch. */
+    flex:0 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis;
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-bar-spacer { flex:1 1 auto; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-div {
@@ -228,10 +242,10 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-key { display:flex; align-items:center; gap:16px; margin-top:10px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-key-item { display:flex; align-items:center; gap:7px; font-size:9px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:var(--ink3); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw { width:18px; border-radius:2px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k1 { height:4px;  background:#7a5c2b; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k2 { height:8px;  background:#c08c2f; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k3 { height:13px; background:#f0a830; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k4 { height:18px; background:#ffd98a; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k1 { background:#5a6270; height:4px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k2 { background:#8f98a8; height:8px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k3 { background:#c3cbd8; height:13px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-key-sw.k4 { background:#f2f6fb; height:18px; }
 
 /* ── MIX ── */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-mixgrid { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
@@ -344,3 +358,43 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-countin.go .px-ci-num { font-size:58px; letter-spacing:6px; color:var(--play); text-shadow:0 0 44px rgba(84,217,140,.55); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-countin.go .px-ci-lab,
 .mod-pedal-guitaramp-practice{{{cns}}} .px-countin.go .px-ci-dots { visibility:hidden; }
+
+/* ── Strip colours ──────────────────────────────────────────────────────────
+   Each fader is tinted by what it carries, so the MIX page reads as the same
+   four tracks and five kit groups as the other two tabs rather than as eleven
+   identical sliders. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT1    .px-fad-fill { background:var(--t1);      box-shadow:0 0 7px var(--t1); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT2    .px-fad-fill { background:var(--t2);      box-shadow:0 0 7px var(--t2); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT3    .px-fad-fill { background:var(--t3);      box-shadow:0 0 7px var(--t3); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT4    .px-fad-fill { background:var(--t4);      box-shadow:0 0 7px var(--t4); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cLoops .px-fad-fill { background:var(--c-loops); box-shadow:0 0 7px var(--c-loops); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cDrums .px-fad-fill { background:var(--c-drums); box-shadow:0 0 7px var(--c-drums); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cKick  .px-fad-fill { background:var(--c-kick);  box-shadow:0 0 7px var(--c-kick); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cSnare .px-fad-fill { background:var(--c-snare); box-shadow:0 0 7px var(--c-snare); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cToms  .px-fad-fill { background:var(--c-toms);  box-shadow:0 0 7px var(--c-toms); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cHats  .px-fad-fill { background:var(--c-hats);  box-shadow:0 0 7px var(--c-hats); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cCym   .px-fad-fill { background:var(--c-cym);   box-shadow:0 0 7px var(--c-cym); }
+/* The strip label picks up the same hue, quietly. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT1 .px-slab { color:var(--t1); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT2 .px-slab { color:var(--t2); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT3 .px-slab { color:var(--t3); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cT4 .px-slab { color:var(--t4); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cKick .px-slab  { color:var(--c-kick); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cSnare .px-slab { color:var(--c-snare); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cToms .px-slab  { color:var(--c-toms); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cHats .px-slab  { color:var(--c-hats); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-strip.cCym .px-slab   { color:var(--c-cym); }
+/* Lane identity: the armed track wears its own colour at full strength, the
+   others keep theirs at a whisper. The ARMED one is the bright one, which is
+   why the accent is not spent on the border any more. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="1"].sel { border-color:var(--t1); box-shadow:0 0 0 1px var(--t1), 0 4px 16px rgba(0,0,0,.45); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="2"].sel { border-color:var(--t2); box-shadow:0 0 0 1px var(--t2), 0 4px 16px rgba(0,0,0,.45); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="3"].sel { border-color:var(--t3); box-shadow:0 0 0 1px var(--t3), 0 4px 16px rgba(0,0,0,.45); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="4"].sel { border-color:var(--t4); box-shadow:0 0 0 1px var(--t4), 0 4px 16px rgba(0,0,0,.45); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="1"].sel .px-lane-n { color:var(--t1); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="2"].sel .px-lane-n { color:var(--t2); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="3"].sel .px-lane-n { color:var(--t3); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="4"].sel .px-lane-n { color:var(--t4); }
+/* Tabs take the page's own hue, so switching tabs is a visible change of room. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tab[data-pxtab="drums"].on { background:var(--c-cym); border-color:var(--c-cym); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tab[data-pxtab="mix"].on   { background:var(--t2);    border-color:var(--t2); }

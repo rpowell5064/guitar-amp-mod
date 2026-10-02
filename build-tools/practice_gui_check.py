@@ -172,6 +172,30 @@ __INTERACT__
                                             // scrollbar: exactly what must never happen.
                                             over: box.scrollWidth - box.clientWidth};
                                   })(),
+                                  // Toolbar fit. The header is a single row of fixed-size
+                                  // controls plus one elastic tagline, so renaming the plugin
+                                  // (PRACTICE -> SCRATCH PAD) silently pushed the RUN pill under
+                                  // the power switch. A static render does not catch this: the
+                                  // elements still EXIST and still have styles, they just sit on
+                                  // top of each other. Measure actual rectangles instead.
+                                  bar: (function(){
+                                    var bar = document.querySelector('.px-bar');
+                                    if (!bar) return null;
+                                    var br = bar.getBoundingClientRect();
+                                    var kids = [].slice.call(bar.children)
+                                                 .filter(function(k){ return k.getBoundingClientRect().width > 0; });
+                                    var worstOut = 0, overlap = 0;
+                                    kids.forEach(function(k, i){
+                                      var r = k.getBoundingClientRect();
+                                      worstOut = Math.max(worstOut, br.left - r.left, r.right - br.right);
+                                      for (var j = i + 1; j < kids.length; j++) {
+                                        var o = kids[j].getBoundingClientRect();
+                                        overlap = Math.max(overlap, Math.min(r.right, o.right) - Math.max(r.left, o.left));
+                                      }
+                                    });
+                                    return {out: Math.round(worstOut), overlap: Math.round(overlap),
+                                            scroll: bar.scrollWidth - bar.clientWidth, kids: kids.length};
+                                  })(),
                                   faders: [].slice.call(document.querySelectorAll('.px-fad-fill'))
                                             .filter(function(f){
                                               // RENDERED height, not the style string: a zero
@@ -330,6 +354,17 @@ def main():
     r = run_tab("loops", outdir)
     if r:
         check(not r["err"], "the script runs without throwing", r["err"])
+        # The toolbar carries the plugin's name, so it is the one row that a
+        # rename can break. Overlapping children look fine in a static render.
+        b = r.get("bar")
+        check(bool(b), "the toolbar is measurable")
+        if b:
+            check(b["out"] <= 1, "every toolbar control sits inside the bar",
+                  "worst %d px outside" % b["out"])
+            check(b["overlap"] <= 1, "no two toolbar controls overlap",
+                  "worst %d px overlap" % b["overlap"])
+            check(b["scroll"] <= 1, "the toolbar does not scroll",
+                  "%d px of overflow" % b["scroll"])
         check(r["ink"].get("wave1", 0) > 0.02, "track 1's waveform is drawn",
               "ink %.3f" % r["ink"].get("wave1", 0))
         check(r["ink"].get("wave2", 0) > 0.02, "track 2's waveform is drawn",

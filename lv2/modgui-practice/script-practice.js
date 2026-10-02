@@ -14,28 +14,47 @@ function (event, funcs) {
     // Laid out high-to-low the way a drummer reads a chart: cymbals on top,
     // kick at the bottom. The index is the enum value, NOT the row position —
     // those indices are baked into drumkit.dat and cannot be reordered here.
+    // Track colours, matching the CSS custom properties. Kept here as literals
+    // because a canvas cannot read a CSS variable without a getComputedStyle
+    // per frame, and these are drawn on every playhead tick.
+    var TRACK_COL = ['#f0a830', '#45c8d8', '#a07bff', '#58cc82'];
+
     var ROWS = [
-        { i: 9,  n: 'Crash' },
-        { i: 12, n: 'China' },
-        { i: 13, n: 'Stack' },
-        { i: 11, n: 'Ride Bell' },
-        { i: 10, n: 'Ride' },
-        { i: 8,  n: 'Hat Open' },
-        { i: 7,  n: 'Hat Pedal' },
-        { i: 6,  n: 'Hat Closed' },
-        { i: 14, n: 'Rimshot' },
-        { i: 2,  n: 'Sidestick' },
-        { i: 1,  n: 'Snare' },
-        { i: 3,  n: 'Tom Hi' },
-        { i: 4,  n: 'Tom Mid' },
-        { i: 5,  n: 'Tom Floor' },
-        { i: 0,  n: 'Kick' }
+        { i: 9,  n: 'Crash', f: 'cym' },
+        { i: 12, n: 'China', f: 'cym' },
+        { i: 13, n: 'Stack', f: 'cym' },
+        { i: 11, n: 'Ride Bell', f: 'cym' },
+        { i: 10, n: 'Ride', f: 'cym' },
+        { i: 8,  n: 'Hat Open', f: 'hat' },
+        { i: 7,  n: 'Hat Pedal', f: 'hat' },
+        { i: 6,  n: 'Hat Closed', f: 'hat' },
+        { i: 14, n: 'Rimshot', f: 'snare' },
+        { i: 2,  n: 'Sidestick', f: 'snare' },
+        { i: 1,  n: 'Snare', f: 'snare' },
+        { i: 3,  n: 'Tom Hi', f: 'tom' },
+        { i: 4,  n: 'Tom Mid', f: 'tom' },
+        { i: 5,  n: 'Tom Floor', f: 'tom' },
+        { i: 0,  n: 'Kick', f: 'kick' }
     ];
 
     // The step alphabet the pattern table uses. Clicking a cell walks this
     // list, so the four states a drummer actually needs (silence, ghost,
     // normal, accent) are one click apart and nothing else is reachable.
     var CYCLE = ['.', '-', 'o', 'x', 'X'];
+
+    // Drum families, coloured the way a kit is grouped by ear rather than by
+    // MIDI number. Velocity is still the bar's HEIGHT; hue says what the
+    // instrument IS, so a glance at the grid reads as a kit and not as a
+    // spreadsheet. Four tints per family, weakest first.
+    var FAMILY = {
+        kick:  ['#8a6a2a', '#c49a3c', '#ffd166', '#ffe4a3'],
+        snare: ['#7a5c2b', '#c08c2f', '#f0a830', '#ffd98a'],
+        tom:   ['#8a4530', '#c76544', '#ff8a5c', '#ffb79a'],
+        hat:   ['#24666e', '#2f949f', '#45c8d8', '#92e2ec'],
+        cym:   ['#4f3d80', '#7257c0', '#a07bff', '#c8b2ff']
+    };
+    var HIT_LEVEL = { '-': 0, 'o': 1, 'x': 2, 'X': 3 };
+    var HIT_H     = { '-': 0.26, 'o': 0.48, 'x': 0.74, 'X': 1.00 };
 
     // dB span shared by every fader port (see the note in the `start` handler).
     var FADER_MIN = -60, FADER_MAX = 12;
@@ -109,7 +128,12 @@ function (event, funcs) {
 
         R(icon, 'empty' + trk).css('display', (pk && pk.length) ? 'none' : '');
         if (pk && pk.length) {
-            g.fillStyle = icon.data('px_sel') === trk ? '#f0a830' : '#7d8493';
+            // The track's own colour, full strength when it is the armed one and
+            // dimmed when it is not -- so "which track is this" and "which am I
+            // about to record onto" are two different questions the lane answers
+            // at once, without a label for either.
+            var tcol = TRACK_COL[(trk - 1) % TRACK_COL.length];
+            g.fillStyle = (icon.data('px_sel') === trk) ? tcol : hexFade(tcol, 0.42);
             var n = pk.length;
             for (var i = 0; i < W; ++i) {
                 var v = pk[Math.min(n - 1, Math.floor(i * n / W))] / 255;
@@ -179,6 +203,18 @@ function (event, funcs) {
         }
     }
     function drawAllWaves(icon) { for (var t = 1; t <= 4; ++t) drawWave(icon, t); }
+
+    // Mix a hex colour toward the panel background. Canvas has no notion of
+    // opacity on a fill style without rgba, and the lanes are drawn over a known
+    // dark ground, so blending is cheaper and more predictable than alpha.
+    function hexFade(hex, k) {
+        var r = parseInt(hex.substr(1, 2), 16), gg = parseInt(hex.substr(3, 2), 16),
+            b = parseInt(hex.substr(5, 2), 16);
+        r  = Math.round(r  * k + 10 * (1 - k));
+        gg = Math.round(gg * k + 11 * (1 - k));
+        b  = Math.round(b  * k + 14 * (1 - k));
+        return 'rgb(' + r + ',' + gg + ',' + b + ')';
+    }
 
     function waveParse(icon, json) {
         var d = null;
@@ -288,7 +324,7 @@ function (event, funcs) {
             g.fillStyle = (r % 2) ? 'rgba(255,255,255,.020)' : 'rgba(255,255,255,.042)';
             g.fillRect(0, y, gridW, CELL_H);
 
-            g.fillStyle = '#9aa0ab';
+            g.fillStyle = hexFade((FAMILY[ROWS[r].f] || FAMILY.snare)[2], 0.80);
             g.font = '600 10px "Helvetica Neue", Helvetica, Arial, sans-serif';
             g.textBaseline = 'middle';
             g.fillText(ROWS[r].n, 6, y + CELL_H / 2 + 1);
@@ -304,17 +340,20 @@ function (event, funcs) {
                     g.fillRect(x, y + 3, G.cw, CELL_H - 6);
                     continue;
                 }
-                // A hit is a bar grown from the bottom of the cell: its HEIGHT
-                // is the velocity, so strength is legible as a silhouette
-                // rather than as a shade of amber.
+                // Two dimensions, both doing work: the bar's HEIGHT is how hard
+                // the hit is, its HUE is which part of the kit it belongs to.
+                // That makes the grid read as a drum kit grouped the way it
+                // sounds, rather than a spreadsheet of identical cells.
+                var fam = FAMILY[ROWS[r].f] || FAMILY.snare;
+                var lvl = HIT_LEVEL[ch];
                 var full = CELL_H - 6;
-                var h = Math.max(3, Math.round(full * hit.h));
+                var h = Math.max(3, Math.round(full * HIT_H[ch]));
                 var top = y + 3 + (full - h);
-                g.fillStyle = hit.fill;
+                g.fillStyle = fam[lvl];
                 g.fillRect(x, top, G.cw, h);
-                // A bright cap reads as the transient and keeps narrow cells
+                // A brighter cap reads as the transient and keeps narrow cells
                 // visible when the bar itself is only a few pixels wide.
-                g.fillStyle = hit.edge;
+                g.fillStyle = fam[Math.min(3, lvl + 1)];
                 g.fillRect(x, top, G.cw, Math.min(2, h));
             }
         }
