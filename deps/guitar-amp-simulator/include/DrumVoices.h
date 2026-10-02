@@ -119,6 +119,8 @@ public:
         rng.reseed(0x01234567u);
         reset();
     }
+    // Fade what is already sounding, for a choke group or a count-in.
+    void release(float ms) noexcept { amp.choke(ms, fs); clickEnv.choke(ms, fs); }
     void reset() noexcept {
         amp.reset(); clickEnv.reset(); phase = 0.0; pitchEnv = 0.0f; clickHp.reset();
     }
@@ -186,6 +188,8 @@ public:
         retune();
         reset();
     }
+    // Fade what is already sounding, for a choke group or a count-in.
+    void release(float ms) noexcept { shellEnv.choke(ms, fs); wireEnv.choke(ms, fs); spikeEnv.choke(ms, fs); }
     void reset() noexcept {
         shellEnv.reset(); wireEnv.reset(); spikeEnv.reset();
         for (auto& m : modes) m.reset();
@@ -256,6 +260,8 @@ public:
         reset();
     }
     void reset() noexcept { env.reset(); clickEnv.reset(); mode.reset(); bp.reset(); }
+    // Fade what is already sounding, for a choke group or a count-in.
+    void release(float ms) noexcept { env.choke(ms, fs); }
 
     void trigger(float vel) noexcept {
         env.configure(0.2f, 0.07f, fs);
@@ -295,6 +301,8 @@ public:
         retune();
         reset();
     }
+    // Fade what is already sounding, for a choke group or a count-in.
+    void release(float ms) noexcept { env.choke(ms, fs); attackEnv.choke(ms, fs); }
     void reset() noexcept {
         env.reset(); attackEnv.reset();
         for (auto& m : modes) m.reset();

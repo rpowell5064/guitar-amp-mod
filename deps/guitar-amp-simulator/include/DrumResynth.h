@@ -420,6 +420,19 @@ public:
         for (auto& v : voices) if (v.active && v.inst == inst) v.choking = true;
     }
 
+    // Stop the whole kit, gracefully. Both halves of it: the one-shot voices
+    // get the existing choke envelope, and the cymbal banks -- which are
+    // persistent and would otherwise ring straight through -- get a hand laid
+    // on them. Used by the count-in, where the only thing that should be
+    // audible is the click.
+    void chokeAll(float ms = 25.0f) {
+        for (auto& v : voices) if (v.active) v.choking = true;
+        const float n = std::max(1.0f, ms * 1.0e-3f * static_cast<float>(fs));
+        const float c = std::exp(-9.21f / n);        // ~-80 dB over `ms`
+        for (auto& B : banks)
+            if (B.active) { B.dampCoef = c; }
+    }
+
     bool anyActive() const {
         for (const auto& v : voices) if (v.active) return true;
         return false;
@@ -471,6 +484,10 @@ private:
         int     live{0};         // still above the audibility floor
         const ResynthHit* src{nullptr};
         bool    active{false};
+        // Choke envelope. A cymbal bank rings for seconds and is never
+        // retriggered to silence, so stopping the kit needs an explicit damp
+        // -- the hand on the cymbal. 1.0 with coef 1.0 is "not choking".
+        float   damp{1.0f}, dampCoef{1.0f};
     };
 
     struct Voice {
@@ -548,6 +565,7 @@ private:
         }
         B.live   = B.count;      // previously culled modes are alive again
         B.active = true;
+        B.damp = 1.0f; B.dampCoef = 1.0f;   // a new strike lifts any hand on it
     }
 
     // Render every ringing bank. Culling works the same way as before: modes
@@ -570,6 +588,11 @@ private:
                 const float ni = m.re * m.ci + m.im * m.cr;
                 m.re = nr; m.im = ni;
                 acc += ni;
+            }
+            if (B.dampCoef < 1.0f) {
+                B.damp *= B.dampCoef;
+                if (B.damp < 1.0e-4f) { B.active = false; B.live = 0; continue; }
+                acc *= B.damp;
             }
             s += acc * (instGain ? instGain[bi] : 1.0f);
         }

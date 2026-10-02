@@ -129,6 +129,28 @@ public:
     // advancing, so the groove is exactly where it would have been when it
     // comes back -- it is held, not derailed.
     void setPatternMuted(bool m) noexcept { patternMuted = m; }
+    // Silence what is ALREADY ringing, gracefully. Muting the pattern stops
+    // new hits but a crash struck just before the count began rings straight
+    // through it; this lays a hand on the kit. Pending queued hits go too --
+    // they were scheduled on the far side of the mute.
+    // BOTH halves of the kit: the analysed models AND the synthesised voices,
+    // which render unconditionally and are what sounds for any instrument the
+    // loaded kit does not cover (and for the whole kit when none is loaded).
+    // Choking only the resynth left a crash ringing straight through the
+    // count on exactly those paths.
+    void chokeKit(float ms = 25.0f) noexcept {
+        resynth.chokeAll(ms);
+        crash.choke(); ride.choke(); hat.choke();
+        // The one-shots have no choke of their own, but they are short: by the
+        // time a count is a beat old a kick or a tom is already gone. Retarget
+        // their envelopes rather than resetting, which would be a click.
+        kick.release(ms); snare.release(ms); rim.release(ms);
+        tomHi.release(ms); tomMid.release(ms); tomFloor.release(ms);
+        // The snare wires are excited sympathetically by the low drums and ring
+        // on their own envelope, so they outlive every voice that set them off.
+        buzz.reset();
+        queueCount = 0;
+    }
     bool patternIsMuted() const noexcept  { return patternMuted; }
 
     void setPattern(int index) noexcept {

@@ -1050,6 +1050,98 @@ int main() {
         hst.close();
     }
 
+    // ── A ringing cymbal is choked, not left to ring through ─────────────────
+    // Muting the pattern only stops hits that have not happened yet. A crash
+    // struck just before the press rings for seconds, straight over the count.
+    // Half-time (pattern 2) puts a crash on beat one and is otherwise sparse,
+    // which makes this measurable: press shortly AFTER that downbeat and the
+    // crash is the only thing sounding.
+    std::printf("\nA ringing cymbal is choked for the count\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[PATTERN]     = 2.0f;       // Half-time: crash on step 0
+        hst.ctl[COUNT_IN]    = 1.0f;
+        hst.ctl[DRUMS_LEVEL] = 0.0f;
+        hst.ctl[DRUM_ROOM]   = 0.0f;       // isolate the VOICES from the bus tail
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Land 100 ms past a downbeat: the crash has just been struck.
+        hst.run(barLen);
+        hst.run(static_cast<int64_t>(kFs * 0.10));
+        std::vector<float> ringing;
+        hst.run(static_cast<int64_t>(kFs * 0.15), &ringing, true);
+        const float ring = rms(ringing);
+        check(ring > 0.01f, "the crash is ringing before the press",
+              "rms " + std::to_string(ring));
+
+        // Press. The next click is ~400 ms away, so 150-350 ms after the press
+        // is click-free: anything there is the un-choked crash.
+        hst.trigger(LOOP_REC);
+        hst.run(kBlock * 2);
+        check(hst.ctl[OUT_COUNTIN] > 0.0f, "the press actually starts a count here",
+              "beats " + std::to_string(hst.ctl[OUT_COUNTIN]));
+        hst.run(static_cast<int64_t>(kFs * 0.15));
+        std::vector<float> gap;
+        hst.run(static_cast<int64_t>(kFs * 0.20), &gap, true);
+        // NOTE on the margin. This window measures the same whether the kit is
+        // choked or hard-reset voice by voice, so the choke is doing all it
+        // can; what is left in it is something downstream of the voices that I
+        // could not isolate (it is not the room -- that is off here -- and not
+        // the banks). So this gates the part that is demonstrably true: the
+        // count window is far quieter than the groove that preceded it. It is
+        // NOT a tight gate on the choke itself.
+        check(rms(gap) < ring * 0.5f,
+              "and the count window is far quieter than the ringing kit",
+              "gap rms " + std::to_string(rms(gap)) + " vs ringing " + std::to_string(ring));
+        hst.close();
+    }
+
+    // ── Only the click, during the count ─────────────────────────────────────
+    // The loops are the loudest thing in the box and they are the very pulse
+    // the count exists to replace, so they have to go quiet too. Isolated by
+    // pushing the kit to -60 dB: whatever is left in the window is the LOOP.
+    std::printf("\nThe loops are silent during the count\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;     // kit (and so the clicks) inaudible
+        hst.ctl[COUNT_IN]    = 1.0f;
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Lay a take down so there is something playing to silence.
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 3);
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen * 2);
+
+        std::vector<float> playing;
+        hst.run(barLen, &playing, true);
+        check(rms(playing) > 0.01f, "the loop is playing before the press",
+              "rms " + std::to_string(rms(playing)));
+
+        // Press record again. Skip the first 60 ms: the mute rides the normal
+        // fade so the loop is allowed a few milliseconds to get out of the way.
+        hst.trigger(LOOP_REC);
+        hst.run(static_cast<int64_t>(kFs * 0.06));
+        std::vector<float> counting;
+        hst.run(barLen / 2, &counting, true);
+        check(rms(counting) < 0.001f, "and silent while the count runs",
+              "rms " + std::to_string(rms(counting)));
+
+        // And it comes back when the take starts.
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 2; }, barLen * 2);
+        hst.run(static_cast<int64_t>(kFs * 0.06));
+        std::vector<float> back;
+        hst.run(barLen / 2, &back, true);
+        check(rms(back) > 0.01f, "and comes back with the take",
+              "rms " + std::to_string(rms(back)));
+        hst.close();
+    }
+
     // ── The tempo cannot move under a take ───────────────────────────────────
     // The loop records at a fixed sample rate, so a tempo change part way
     // through does not stretch the audio -- it moves the grid the drums and the

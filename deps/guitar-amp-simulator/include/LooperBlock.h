@@ -102,6 +102,7 @@ public:
     // ── Parameters ───────────────────────────────────────────────────────────
     void setQuantize(bool on)          noexcept { quantize = on; }
     void setCountIn(bool on)           noexcept { countIn = on; }
+    void setCountMute(bool m)          noexcept { countMute = m; }
 
     // The count-in is one FULL BAR, so it follows the time signature: four
     // beats in four-four, five in five-four, seven in seven-eight. It is not a
@@ -643,7 +644,13 @@ private:
 
                 // Smooth every gain change: state transitions and mutes land on
                 // arbitrary samples and would otherwise click.
-                const float want = (tr.muted ? 0.0f : tr.targetGain);
+                // countMute silences the whole looper for the duration of a
+                // count-in: the click is the only thing that should be audible
+                // while the player is counted in, and existing loops playing
+                // underneath are exactly the pulse the count is there to
+                // replace. It rides the same ramp as a mute, so it cannot
+                // click, and nothing is recording yet.
+                const float want = ((tr.muted || countMute) ? 0.0f : tr.targetGain);
                 if (tr.gain < want)      tr.gain = std::min(want, tr.gain + fadeInc);
                 else if (tr.gain > want) tr.gain = std::max(want, tr.gain - fadeInc);
 
@@ -756,6 +763,7 @@ private:
     bool    undoReady{false};
     bool    quantize{true};
     bool  countIn{true};   // a bar of count-in before the take that sets the loop
+    bool  countMute{false};// loop playback held silent while a count runs
     int   loopBarsWanted{0};  // 0 = free; else the take is this many bars
     float   feedback{1.0f};
     float   masterLevel{1.0f};

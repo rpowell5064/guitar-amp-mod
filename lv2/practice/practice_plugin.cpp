@@ -190,6 +190,7 @@ struct PracticePlugin {
     int64_t                  lastStatusAt = 0;
     float                    countInBeats = 0.0f;
     // Tempo and meter held for the duration of a take (see run()).
+    bool                     wasCounting = false;  // count-in edge (see run())
     bool                     tempoHeld = false;
     float                    heldBpm   = 120.0f;
     int                      heldBpb   = 0;
@@ -750,12 +751,21 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // bar. Fired at block granularity (well under a millisecond here), which
     // is far tighter than a player can hear against their own playing.
     const int64_t countLeft = p->looper.countInSamplesLeft(p->clk);
-    // Hold the groove while the count runs. Counting a player in over a groove
-    // that is still going is the one thing a count-in must not do: there are
-    // two conflicting pulses and the clicks are the quieter of them. The
-    // pattern resumes from the top the moment the take begins (the restart
-    // request below), so the bar the player comes in on is bar one of both.
-    p->drums.setPatternMuted(countLeft > 0);
+    // While the count runs the click is the ONLY thing that should be audible.
+    // That takes three separate silences, because the noise comes from three
+    // places: the groove's upcoming hits (the pattern mute), the kit that is
+    // already ringing (the choke -- a crash struck just before the press rings
+    // for seconds, straight through the count), and the loops themselves,
+    // which are the loudest of the three and the very pulse the count exists
+    // to replace. The player's own dry signal is deliberately left alone: they
+    // are about to play, and they need to hear themselves do it.
+    const bool counting = countLeft > 0;
+    p->drums.setPatternMuted(counting);
+    p->looper.setCountMute(counting);
+    // Choke ONCE, on the edge. Calling this every block would re-arm the damp
+    // envelope each time and hold the kit at full level instead of fading it.
+    if (counting && !p->wasCounting) p->drums.chokeKit();
+    p->wasCounting = counting;
     if (countLeft > 0) {
         const double spBeat = p->clk.samplesPerBeat();
         // Beats remaining, counting DOWN: 4, 3, 2, 1 in four-four.
