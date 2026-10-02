@@ -187,8 +187,20 @@ int main(int argc, char** argv) {
         }
         const double rms = std::sqrt(sq / (2.0 * HASH_BLOCKS * NF));
         all = fnv1a(all, &h, sizeof(h));
-        printf("P%03d bank%02d%c hash=%016llx peak=%.6f rms=%.6f\n",
+        printf("P%03d bank%02d%c hash=%016llx peak=%.6f rms=%.6f",
                k, k / 4 + 1, "ABCD"[k % 4], (unsigned long long)h, peak, rms);
+#ifdef HF_STEREO_AUDIT
+        // Worst |L-R| seen on any block this preset claimed was mono. Anything
+        // above the float noise floor means the chain collapsed real stereo.
+        {
+            extern double g_hfMonoClaimWorst;
+            extern long   g_hfAmpMonoBlocks;
+            printf(" monoclaim=%.3e ampmono=%ld", g_hfMonoClaimWorst, g_hfAmpMonoBlocks);
+            g_hfMonoClaimWorst = 0.0;
+            g_hfAmpMonoBlocks  = 0;
+        }
+#endif
+        printf("\n");
         fflush(stdout);
     }
     printf("ALL  hash=%016llx presets=%d\n", (unsigned long long)all, maxPresets);

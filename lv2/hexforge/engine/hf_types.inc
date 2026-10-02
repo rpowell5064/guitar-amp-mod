@@ -674,6 +674,13 @@ struct HexForge {
     // model-switch caches
     int lastAmpModel = 1, lastAmpTube = -1, lastDriveModel = 0, lastNailMode = 2;
     int lastModfxType = 0, lastDelayType = 0;
+    // Does this block CURRENTLY decorrelate the two channels? Derived from the
+    // parameters once per run, not sniffed from the samples: a chorus sitting
+    // at an LFO zero crossing produces identical channels for a block or two,
+    // and a sample-level test would flip the chain between its mono and stereo
+    // paths while that lasted. Parameters are stable; samples are not.
+    bool delayDecorr = true, delay2Decorr = true;
+    bool modfxDecorr = true, modfx2Decorr = true;
     float hostBpm = 120.0f;   // host tempo from time:Position events (tap-tempo / MIDI clock sync)
     TunerDetector tuner;      // strobe tuner pitch detector (runs only when engaged)
     int  lastTunerNote = -2;  // to notify the UI only on change (int output ports)

@@ -724,6 +724,9 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // width knob (decorrelated tails just narrow, never null) so the output sum covers it.
     const bool monoOut = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
     p->modfx.setParameter("stereoWidth", monoOut ? 0.0f : *p->ports[HF_MD_WIDTH]);
+    // Every modulation type decorrelates the same way -- an LFO phase offset
+    // scaled by stereoWidth -- so at width 0 they all emit identical channels.
+    p->modfxDecorr = (monoOut ? 0.0f : *p->ports[HF_MD_WIDTH]) > 0.0f;
     // Delay
     p->delay.setBypass(false);
     const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 4);
@@ -741,6 +744,26 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->delay.setParameter("stereoWidth",  monoOut ? 0.0f : *p->ports[HF_DL_WIDTH]);
     p->delay.setParameter("wowDepth",     *p->ports[HF_DL_WOW]);
     p->delay.setParameter("flutterDepth", *p->ports[HF_DL_FLUTTER]);
+    // Does this delay actually produce two DIFFERENT channels? Each model
+    // decorrelates by a different mechanism, and three of the five stop dead
+    // when their own control is at zero:
+    //   0 Digital  per-channel time offset, scaled by stereoWidth
+    //   1 Tape     FLUTTER carries a half-pi per-channel phase stagger; wow is
+    //              in phase on both channels, and stereoWidth does nothing here
+    //   2 Echorec  per-channel noise seed only, and Hex Forge never raises
+    //              noiseLevel off its zero default; motor wow is shared
+    //   3 Seraph   equal-power pan of the two engines, collapsing at width 0
+    //   4 Echoplex per-channel wow RATE, phase, flutter seed and hiss, with a
+    //              0.35 floor on the wear term -- nothing turns it off
+    {
+        const float dlW = monoOut ? 0.0f : *p->ports[HF_DL_WIDTH];
+        switch (delayType) {
+            case 0: case 3: p->delayDecorr = dlW > 0.0f; break;
+            case 1:         p->delayDecorr = *p->ports[HF_DL_FLUTTER] > 0.0f; break;
+            case 2:         p->delayDecorr = false; break;
+            default:        p->delayDecorr = true; break;
+        }
+    }
     p->delay.setParameter("headMask", static_cast<float>(kEchorecProgram[clampi(*p->ports[HF_DL_HEADS],0,11)]));
     p->delay.setParameter("pattern",  *p->ports[HF_DL_PATTERN]);    // Seraph
     p->delay.setParameter("ducking",  *p->ports[HF_DL_DUCKING]);    // Seraph
@@ -841,6 +864,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->modfx2.setParameter("shape",       *p->ports[HF_MD2_SHAPE]);
         const bool monoOut2 = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
         p->modfx2.setParameter("stereoWidth", monoOut2 ? 0.0f : *p->ports[HF_MD2_WIDTH]);
+        p->modfx2Decorr = (monoOut2 ? 0.0f : *p->ports[HF_MD2_WIDTH]) > 0.0f;
     }
     if (*p->ports[HF_DL2_ENABLE] > 0.5f) {
         p->delay2.setBypass(false);
@@ -859,6 +883,15 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->delay2.setParameter("stereoWidth",  monoOut2 ? 0.0f : *p->ports[HF_DL2_WIDTH]);
         p->delay2.setParameter("wowDepth",     *p->ports[HF_DL2_WOW]);
         p->delay2.setParameter("flutterDepth", *p->ports[HF_DL2_FLUTTER]);
+        {   // same model-by-model reasoning as the primary delay above
+            const float dl2W = monoOut2 ? 0.0f : *p->ports[HF_DL2_WIDTH];
+            switch (delay2Type) {
+                case 0: case 3: p->delay2Decorr = dl2W > 0.0f; break;
+                case 1:         p->delay2Decorr = *p->ports[HF_DL2_FLUTTER] > 0.0f; break;
+                case 2:         p->delay2Decorr = false; break;
+                default:        p->delay2Decorr = true; break;
+            }
+        }
         p->delay2.setParameter("headMask", static_cast<float>(kEchorecProgram[clampi(*p->ports[HF_DL2_HEADS],0,11)]));
         p->delay2.setParameter("pattern",  *p->ports[HF_DL2_PATTERN]);
         p->delay2.setParameter("ducking",  *p->ports[HF_DL2_DUCKING]);
@@ -1105,11 +1138,27 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
                     } else {
-                        float* io[2] = { L, R };
-                        amp->process(io, io, len, 2);
-                        p->pa.process(io, io, len, 2);
-                        amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
-                        if (ampMakeup != 1.0f) for (int i=0;i<len;++i){ L[i]*=ampMakeup; R[i]*=ampMakeup; }
+                        // An amplifier is ONE amplifier. A stereo block in front of
+                        // it -- a delay with any width, a chorus -- is feeding two
+                        // channels into a thing that physically has one input, and
+                        // the chain then pays for two 4x-oversampled tube cascades
+                        // and two cabs for the rest of its length. That is where the
+                        // delay-before-amp spike comes from: it is not waste the
+                        // chain can detect and skip, it is real work on a second
+                        // channel that only exists because the stereo image was
+                        // created UPSTREAM of the amp rather than after it.
+                        //
+                        // Summing here is what a real rig does at the amp's jack.
+                        // Stereo made after the amp (the cab's room, a post-amp
+                        // delay or reverb) is untouched.
+                        for (int i=0;i<len;++i) p->mono[i] = 0.5f*(L[i]+R[i]);
+                        float* io1[1] = { p->mono };
+                        amp->process(io1, io1, len, 1);
+                        p->pa.process(io1, io1, len, 1);
+                        amp->setExternalSag(p->pa.getSagEnvNorm());
+                        if (ampMakeup != 1.0f) for (int i=0;i<len;++i) p->mono[i]*=ampMakeup;
+                        for (int i=0;i<len;++i) { L[i]=p->mono[i]; R[i]=p->mono[i]; }
+                        stereo = false;   // one amp out: downstream keeps its fast paths
                     }
                     // NOTE: the amp's output is mono-identical when its input was — do NOT
                     // force the stereo flag; downstream blocks keep their mono fast paths.
@@ -1137,8 +1186,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                             && p->cab.getParameter("voice") < 0.5f) stereo = true;
                     } else runStereo(p->cab, L, R, len, stereo);
                     break;
-                case B_MODFX:  runStereo(p->modfx,  L, R, len, stereo); break;
-                case B_DELAY:  runStereo(p->delay,  L, R, len, stereo); break;
+                case B_MODFX:  runStereoIf(p->modfx,  L, R, len, stereo, p->modfxDecorr);  break;
+                case B_DELAY:  runStereoIf(p->delay,  L, R, len, stereo, p->delayDecorr);  break;
                 case B_REVERB: runStereo(p->reverb, L, R, len, stereo); break;
                 case B_WAH:    runMono(p->wah, L, R, len, p->mono, stereo); break;
                 case B_OCTAVE: runMono(p->octave, L, R, len, p->mono, stereo); break;
@@ -1157,8 +1206,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 case B_COMP2:   runMono(p->comp2, L, R, len, p->mono, stereo); break;
                 case B_FUZZ2:   runMono(fz2Pedal==0 ? *p->fuzz2Muff : (fz2Pedal==1 ? *p->fuzz2Bender : (fz2Pedal==2 ? *p->fuzz2Octavia : *p->fuzz2Factory)), L, R, len, p->mono, stereo); break;
                 case B_NAIL2:   runMono(*p->nail2, L, R, len, p->mono, stereo); break;
-                case B_MODFX2:  runStereo(p->modfx2,  L, R, len, stereo); break;
-                case B_DELAY2:  runStereo(p->delay2,  L, R, len, stereo); break;
+                case B_MODFX2:  runStereoIf(p->modfx2,  L, R, len, stereo, p->modfx2Decorr); break;
+                case B_DELAY2:  runStereoIf(p->delay2,  L, R, len, stereo, p->delay2Decorr); break;
                 case B_REVERB2: runStereo(p->reverb2, L, R, len, stereo); break;
                 case B_WAH2:    runMono(p->wah2, L, R, len, p->mono, stereo); break;
                 case B_OCTAVE2: runMono(p->octave2, L, R, len, p->mono, stereo); break;

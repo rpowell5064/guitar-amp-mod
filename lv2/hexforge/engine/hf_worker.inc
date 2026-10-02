@@ -107,6 +107,10 @@ static void hfWorkResponse(HexForge* p, const void* data) {
     return;
 }
 
+#ifdef HF_STEREO_AUDIT
+double g_hfMonoClaimWorst = 0.0;
+#endif
+
 // ── Audio helpers ─────────────────────────────────────────────────────────────
 // Run a mono block on the chunk: collapse to mono per real-pedal semantics, then
 // mirror the result back to both channels.
@@ -122,6 +126,51 @@ static inline void runStereo(AudioBlock& b, float* L, float* R, int len, bool& s
     float* io[2] = { L, R };
     b.process(io, io, len, 2);
     stereo = true;
+}
+// As above, but only PROMOTE the chain to stereo when the block is actually
+// configured to decorrelate the channels.
+//
+// This is NOT what fixed the delay-before-amp spike -- the amp mono-sum did, and
+// the factory delay width is 0.5, so this predicate correctly says "stereo"
+// there and saves nothing. What it does save is the genuinely pointless case: a
+// delay or modulation sitting at width ZERO still turned off every downstream
+// mono fast path to carry two identical channels at twice the price.
+//
+// `decorrelates` MUST be derived from parameters, never from comparing the
+// samples: a chorus at an LFO zero crossing emits identical channels for a
+// block, and a sample test would flip the amp between its mono and stereo
+// paths mid-note.
+static inline void runStereoIf(AudioBlock& b, float* L, float* R, int len,
+                               bool& stereo, bool decorrelates) {
+    // A block that does not decorrelate must PRESERVE what it was handed, not
+    // assert mono over it. If something upstream has already made the chain
+    // genuinely stereo -- a reverb, or the cab's room -- then mirroring L onto R
+    // here would collapse that real stereo image, which is a far worse bug than
+    // the cost this is saving.
+    const bool wasStereo = stereo;
+    if (!wasStereo) for (int i=0;i<len;++i) R[i] = L[i];
+    float* io[2] = { L, R };
+    b.process(io, io, len, 2);
+    if (decorrelates || wasStereo) { stereo = true; return; }
+#ifdef HF_STEREO_AUDIT
+    // Audit build only: prove the claim. If the predicate says this block does
+    // not decorrelate but the channels have actually drifted apart, the mirror
+    // below is DESTROYING real stereo content rather than tidying up a residue.
+    {
+        double worst = 0.0;
+        for (int i = 0; i < len; ++i) {
+            const double d = std::fabs((double)L[i] - (double)R[i]);
+            if (d > worst) worst = d;
+        }
+        extern double g_hfMonoClaimWorst;
+        if (worst > g_hfMonoClaimWorst) g_hfMonoClaimWorst = worst;
+    }
+#endif
+    // Hold the invariant exactly. Downstream mono paths read L and ignore R, so
+    // "not stereo" has to mean bit-identical, not merely nearly identical --
+    // otherwise a residue left in R by a parameter change survives as a channel
+    // imbalance that nothing ever corrects.
+    for (int i=0;i<len;++i) R[i] = L[i];
 }
 
 // ── Seamless switching: tail resets + the zero-point apply ───────────────────
