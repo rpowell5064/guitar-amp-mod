@@ -123,6 +123,14 @@ public:
     }
 
     // ── Parameters ───────────────────────────────────────────────────────────
+    // Hold the groove silent without silencing the kit. The count-in clicks are
+    // played through these same voices, so muting the drum output would mute
+    // the count too; what has to stop is the PATTERN. The scan cursor keeps
+    // advancing, so the groove is exactly where it would have been when it
+    // comes back -- it is held, not derailed.
+    void setPatternMuted(bool m) noexcept { patternMuted = m; }
+    bool patternIsMuted() const noexcept  { return patternMuted; }
+
     void setPattern(int index) noexcept {
         int n = 0; patternTable(n);
         patternIdx = std::clamp(index, 0, n - 1);
@@ -407,7 +415,7 @@ private:
 
             // Steps behind us (a big tempo jump, or a relocate) are skipped
             // rather than fired late in a burst.
-            if (nominalOffset >= -samplesPerStep) {
+            if (nominalOffset >= -samplesPerStep && !patternMuted) {
                 int64_t s = nextScanStep % totalSteps;
                 if (s < 0) s += totalSteps;
                 queueStep(static_cast<int>(s), nextScanStep,
@@ -707,6 +715,7 @@ private:
     // Sequencer
     int      patternIdx{0};
     float    swing{0.0f}, humanize{0.0f};
+    bool     patternMuted{false};   // groove held silent (count-in); see setPatternMuted
     int64_t  nextScanStep{kNoStep};
     double   lastStepsPerBeat{-1.0};
     int64_t  clockSamplePos{0};

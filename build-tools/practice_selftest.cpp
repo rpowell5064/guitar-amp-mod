@@ -266,6 +266,31 @@ static float peak(const std::vector<float>& v) {
     return p;
 }
 
+// Energy, not peak. Four count clicks peak as high as a dense groove -- a
+// sidestick on the downbeat is a loud transient -- so peak cannot tell "the
+// groove is held" from "the groove is playing". RMS can.
+static float rms(const std::vector<float>& v) {
+    if (v.empty()) return 0.0f;
+    double sq = 0.0;
+    for (float s : v) sq += double(s) * double(s);
+    return static_cast<float>(std::sqrt(sq / v.size()));
+}
+
+// How many separate HITS are in this audio? Neither peak nor rms can tell a
+// held groove from a loud count: four sidestick clicks peak as high as a dense
+// groove and carry most of its energy. What actually differs is how many times
+// something is struck -- a bar of Rock 8ths is a dozen hits, a bar of count is
+// four. Refractory period keeps one decaying hit from counting twice.
+static int onsets(const std::vector<float>& v) {
+    const int refractory = static_cast<int>(kFs * 0.07);
+    int n = 0, hold = 0;
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (hold > 0) { --hold; continue; }
+        if (std::fabs(v[i]) > 0.05f) { ++n; hold = refractory; }
+    }
+    return n;
+}
+
 int main() {
     std::printf("Practice LV2 plugin self-test @ %.0f Hz\n\n", kFs);
 
@@ -979,6 +1004,79 @@ int main() {
                   "waited " + std::to_string(beats) + " beats");
             hst.close();
         }
+    }
+
+    // ── The groove is HELD while the count runs ──────────────────────────────
+    // Counting a player in over a groove that is still playing gives them two
+    // conflicting pulses, and the clicks are the quieter of the two. The kit
+    // must still be able to SOUND though -- the count clicks are played on it --
+    // so this checks the pattern goes quiet and the clicks do not.
+    std::printf("\nThe groove is held during the count\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[PATTERN]     = 0.0f;       // Rock 8ths: busy enough to be obvious
+        hst.ctl[COUNT_IN]    = 1.0f;
+        hst.ctl[DRUMS_LEVEL] = 0.0f;
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        std::vector<float> groove;
+        hst.run(barLen, &groove, true);
+        const float loud = rms(groove);
+        check(loud > 0.01f, "the groove is playing before the press",
+              "rms " + std::to_string(loud));
+
+        hst.trigger(LOOP_REC);
+        std::vector<float> during;
+        hst.run(barLen, &during, true);      // the count, less than a bar of it
+        // The clicks are on the kit, so this is NOT silence. Count the HITS:
+        // a bar of count is four, a bar of Rock 8ths is many more.
+        const int hitsGroove = onsets(groove);
+        const int hitsCount  = onsets(during);
+        check(peak(during) > 0.001f, "the count clicks still sound",
+              "peak " + std::to_string(peak(during)));
+        check(hitsCount >= 3 && hitsCount <= 6,
+              "exactly the count is heard, not the groove",
+              std::to_string(hitsCount) + " hits during the count");
+        check(hitsGroove > hitsCount + 2, "and the groove was busier before it",
+              std::to_string(hitsGroove) + " hits in the bar before the press");
+
+        // And it comes back, from the top, once the take is running.
+        std::vector<float> after;
+        hst.run(barLen, &after, true);
+        check(onsets(after) > hitsCount + 2, "the groove returns with the take",
+              std::to_string(onsets(after)) + " hits once the take is running");
+        hst.close();
+    }
+
+    // ── The tempo cannot move under a take ───────────────────────────────────
+    // The loop records at a fixed sample rate, so a tempo change part way
+    // through does not stretch the audio -- it moves the grid the drums and the
+    // bar counter run on, and the take ends up played against one pulse and
+    // closed against another.
+    std::printf("\nTempo is held for the whole take\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN]    = 1.0f;
+        hst.ctl[TEMPO]       = 120.0f;
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen120 = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen120 * 3);
+        // Yank the tempo mid-take. Two bars at the ORIGINAL tempo must still
+        // read as two bars when the take closes.
+        hst.ctl[TEMPO] = 180.0f;
+        hst.run(barLen120 * 2);
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen120 * 2);
+        check(std::lround(hst.ctl[OUT_BARS]) == 2,
+              "a tempo change mid-take does not retime the take",
+              "bars " + std::to_string(hst.ctl[OUT_BARS]));
+        hst.close();
     }
 
     // ── An OVERDUB restarts everything too ───────────────────────────────────

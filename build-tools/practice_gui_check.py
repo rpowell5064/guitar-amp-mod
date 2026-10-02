@@ -157,6 +157,10 @@ __INTERACT__
                                             recArmed: !!document.querySelector('.px-tbtn.rec.counting')};
                                   })(),
                                   ci5: window.__CI5__,
+                                  cireshow: window.__CIRESHOW__,
+                                  citimer: window.__CITIMER__,
+                                  laneBars: [].slice.call(document.querySelectorAll('.px-lane-bar'))
+                                              .map(function(e){ return e.textContent; }),
                                   tempoSets: window.__SET__.filter(function(p){ return p[0]==='tempo'; }),
                                   trimSets: window.__SET__.filter(function(p){ return /trim/.test(p[0]); }),
                                   play: window.__PLAY__,
@@ -235,6 +239,16 @@ GATE_INTERACT = """
       window.__PLAY__ = {shown: ovp.classList.contains('on'),
                          go: ovp.classList.contains('go'),
                          text: (document.querySelector('[rata-role=cinum]')||{}).textContent};
+      // Press record again straight after a take. The PLAY cue hides itself on
+      // a 700 ms timer, and nothing used to cancel it, so a new count starting
+      // inside that window was blanked by the old timer -- the count-in that
+      // "doesn't always show". Drive exactly that sequence.
+      gui({type:'change', icon:icon, symbol:'out_countin', value:0}, funcs);   // count ends, PLAY cue armed
+      gui({type:'change', icon:icon, symbol:'out_countin', value:4}, funcs);   // new count immediately after
+      window.__CIRESHOW__ = document.querySelector('[rata-role=countin]').classList.contains('on');
+      // The old timer must not be able to blank it any more.
+      window.__CITIMER__ = icon.data('px_citimer') || 0;
+
       // The count is one BAR, so in five-four it is five. The dots are built
       // from the first value of each count, so a five-beat count must grow a
       // fifth dot rather than keeping four from the last one.
@@ -284,6 +298,12 @@ GATE_DRIVE = """
      ['out_step',6],['out_undo_avail',1],['run',1],['tempo_sync',0],['tempo',138.4],['trk1_level',0],
      ['lvl_kick',3],['drums_level',-4],['beats_per_bar',4],['count_in',1],['out_countin',4]
     ].forEach(function(p){ gui({type:'change', icon:icon, symbol:p[0], value:p[1]}, funcs); });
+    // Panel state arrives on the atom channel, not as ports -- mod-host's
+    // output-port monitoring is far too sparse to animate. Track 1 is RECORDING
+    // and track 2 is playing, in bar 3 of a 4-bar loop: the two readings the
+    // lane counter has to tell apart.
+    gui({type:'change', icon:icon, uri:'x#status',
+         value:'{"ci":4,"step":6,"bars":4,"bar":3,"undo":1,"pr":200,"st":[1,3,0,0]}'}, funcs);
 """
 
 
@@ -389,6 +409,21 @@ def main():
         ci = r.get("countin") or {}
         check(ci.get("shown") is True, "the count-in overlay is visible while counting")
         check(ci.get("num") == "4", "it shows the beats remaining", str(ci.get("num")))
+        # "Which bar am I in" was only answerable by watching the playhead cross
+        # a faint rule. The lane says it, and a RECORDING lane counts up rather
+        # than claiming a total its take has not defined yet.
+        lb = r.get("laneBars") or []
+        check(lb[:2] == ["BAR 3", "BAR 3/4"],
+              "the lane says which bar, and counts up while recording",
+              "lanes %s" % lb)
+        check(lb[2:] == ["", ""],
+              "an empty lane claims no bar of its own", "lanes %s" % lb)
+        check(r.get("cireshow") is True,
+              "a count starting right after a take is still shown",
+              "overlay on=%s" % r.get("cireshow"))
+        check(not r.get("citimer"),
+              "and the PLAY-cue hide timer was cancelled",
+              "timer id %s" % r.get("citimer"))
         check(r.get("ci5") == 5,
               "a five-beat count draws five dots (the count follows the meter)",
               "%s dots" % r.get("ci5"))

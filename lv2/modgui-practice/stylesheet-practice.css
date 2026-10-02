@@ -398,3 +398,21 @@
 /* Tabs take the page's own hue, so switching tabs is a visible change of room. */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tab[data-pxtab="drums"].on { background:var(--c-cym); border-color:var(--c-cym); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-tab[data-pxtab="mix"].on   { background:var(--t2);    border-color:var(--t2); }
+
+/* ── Where am I in the phrase? ──────────────────────────────────────────────
+   The playhead says where in the loop you are, but not WHICH BAR -- and "bar 3
+   of 4" is the thing a player actually counts. Each lane now carries its own
+   bar readout, and the waveform is divided by bar lines so the number has
+   something to point at. The recording lane counts bars UP as it fills, since
+   a take that is still defining the loop has no total to count against yet. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-bar {
+    font-size:9.5px; font-weight:600; letter-spacing:.08em;
+    color:var(--ink3); line-height:1; font-variant-numeric:tabular-nums;
+    min-height:10px; text-align:center; white-space:nowrap;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="1"].sel .px-lane-bar { color:var(--t1); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="2"].sel .px-lane-bar { color:var(--t2); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="3"].sel .px-lane-bar { color:var(--t3); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="4"].sel .px-lane-bar { color:var(--t4); }
+/* Recording: the count is the loudest thing on the lane. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-bar.rec { color:var(--rec); }

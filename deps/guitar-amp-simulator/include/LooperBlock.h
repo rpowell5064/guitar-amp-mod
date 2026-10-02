@@ -126,6 +126,13 @@ public:
         }
         return best;
     }
+    // Is a take in progress, counted-in or already rolling? The tempo is held
+    // across this whole window: the grid must not move underneath a take.
+    bool takeInProgress() const noexcept {
+        for (const auto& tr : tracks)
+            if (tr.state == State::Recording || tr.state == State::Overdubbing) return true;
+        return counting();
+    }
     bool counting() const noexcept {
         for (const auto& tr : tracks)
             if (tr.countingIn && tr.pending == Action::RecordToggle) return true;
@@ -298,6 +305,22 @@ public:
 
     // ── Queries (for the UI) ─────────────────────────────────────────────────
     State   trackState(int t)  const noexcept { return valid(t) ? tracks[t].state : State::Empty; }
+    // Which bar is playing, or being recorded, 1-based. 0 when there is
+    // nothing to count. The panel needs this to tell the player where they
+    // are in the phrase; counting bars from the loop PROGRESS alone cannot do
+    // it during the take that is still defining the loop, because the loop has
+    // no length yet -- that take has to count the bars it has actually filled.
+    int currentBar(const TransportClock& clk) const noexcept {
+        const double spb = clk.samplesPerBar();
+        if (spb <= 0.0) return 0;
+        for (const auto& tr : tracks) {
+            if (tr.state != State::Recording) continue;
+            if (masterLen > 0) break;          // length known: fall through to the loop count
+            return static_cast<int>(tr.recorded / spb) + 1;
+        }
+        if (masterLen <= 0) return 0;
+        return static_cast<int>(loopCursor / spb) + 1;
+    }
     bool    hasLoop()          const noexcept { return masterLen > 0; }
     int64_t loopLength()       const noexcept { return masterLen; }
     int64_t loopPosition()     const noexcept { return loopCursor; }

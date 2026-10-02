@@ -189,6 +189,10 @@ struct PracticePlugin {
     std::string              lastStatus;          // last panel state pushed
     int64_t                  lastStatusAt = 0;
     float                    countInBeats = 0.0f;
+    // Tempo and meter held for the duration of a take (see run()).
+    bool                     tempoHeld = false;
+    float                    heldBpm   = 120.0f;
+    int                      heldBpb   = 0;
     bool                     sentUser    = false;
 
     // Rising-edge state for the trigger ports and the run toggle.
@@ -380,6 +384,7 @@ static void practiceSendStatus(PracticePlugin* p) {
     std::string j = "{\"ci\":" + std::to_string(ci);
     j += ",\"step\":" + std::to_string(step);
     j += ",\"bars\":" + std::to_string(bars);
+    j += ",\"bar\":" + std::to_string(p->looper.currentBar(p->clk));
     j += ",\"undo\":" + std::to_string(undo);
     j += ",\"pr\":" + std::to_string(prq);
     j += ",\"st\":[";
@@ -615,8 +620,28 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         const float hostBpm = portValue(p, P_HOST_BPM, 0.0f);
         if (hostBpm >= 20.0f && hostBpm <= 300.0f) tempoBpm = hostBpm;
     }
+    // Hold the tempo for the whole take, count-in included. The loop records at
+    // a fixed sample rate, so a tempo change part way through does not stretch
+    // the audio -- it just moves the grid the drums and the bar counter run on,
+    // and the take ends up played against one pulse and bounded by another.
+    // Whatever the player counted in at is what they are playing to.
+    const bool takeRunning = p->looper.takeInProgress();
+    if (takeRunning) {
+        if (!p->tempoHeld) { p->tempoHeld = true; p->heldBpm = tempoBpm; }
+        tempoBpm = p->heldBpm;
+    } else {
+        p->tempoHeld = false;
+    }
     p->clk.setTempo(tempoBpm);
-    p->clk.setBeatsPerBar(static_cast<int>(portValue(p, P_BEATS_PER_BAR, 4.0f)));
+    // Likewise the meter: the count-in is one bar long, so changing bars-per-bar
+    // mid-count would change how long the count is while it is running.
+    const int wantBpb = static_cast<int>(portValue(p, P_BEATS_PER_BAR, 4.0f));
+    if (takeRunning) {
+        if (p->heldBpb <= 0) p->heldBpb = wantBpb;
+    } else {
+        p->heldBpb = wantBpb;
+    }
+    p->clk.setBeatsPerBar(p->heldBpb > 0 ? p->heldBpb : wantBpb);
 
     const bool wantRun = portBool(p, P_RUN);
     if (wantRun != p->prevRun) {
@@ -725,6 +750,12 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // bar. Fired at block granularity (well under a millisecond here), which
     // is far tighter than a player can hear against their own playing.
     const int64_t countLeft = p->looper.countInSamplesLeft(p->clk);
+    // Hold the groove while the count runs. Counting a player in over a groove
+    // that is still going is the one thing a count-in must not do: there are
+    // two conflicting pulses and the clicks are the quieter of them. The
+    // pattern resumes from the top the moment the take begins (the restart
+    // request below), so the bar the player comes in on is bar one of both.
+    p->drums.setPatternMuted(countLeft > 0);
     if (countLeft > 0) {
         const double spBeat = p->clk.samplesPerBeat();
         // Beats remaining, counting DOWN: 4, 3, 2, 1 in four-four.

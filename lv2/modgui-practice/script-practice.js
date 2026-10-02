@@ -115,12 +115,30 @@ function (event, funcs) {
         var bars = W_.bars || 0;
 
         // Bar rules first, so the waveform is drawn over them rather than
-        // fighting them for the same pixels.
-        if (bars > 1 && bars <= 64) {
-            g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1;
+        // fighting them for the same pixels. The CURRENT bar is shaded and
+        // numbered: rules alone tell you a bar line went past, which is not the
+        // same as knowing you are in bar 3 of 4 -- and that is what a player
+        // counts. Numbers are drawn only when they have room to be legible.
+        var curBar = icon.data('px_bar') || 0;
+        if (bars > 0 && bars <= 64) {
+            var bwPx = W / bars;
+            if (curBar >= 1 && curBar <= bars) {
+                g.fillStyle = 'rgba(255,255,255,.055)';
+                g.fillRect(Math.round((curBar - 1) * bwPx), 0, Math.round(bwPx), H);
+            }
+            g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = 1;
             for (var b = 1; b < bars; ++b) {
-                var x = Math.round(W * b / bars) + 0.5;
-                g.beginPath(); g.moveTo(x, 4); g.lineTo(x, H - 4); g.stroke();
+                var x = Math.round(bwPx * b) + 0.5;
+                g.beginPath(); g.moveTo(x, 2); g.lineTo(x, H - 2); g.stroke();
+            }
+            if (bwPx >= 26) {
+                g.font = '600 9px ui-sans-serif,system-ui,sans-serif';
+                g.textBaseline = 'top';
+                for (var bn = 1; bn <= bars; ++bn) {
+                    g.fillStyle = (bn === curBar) ? 'rgba(255,255,255,.72)'
+                                                  : 'rgba(255,255,255,.26)';
+                    g.fillText(String(bn), Math.round((bn - 1) * bwPx) + 4, 3);
+                }
             }
         }
         g.strokeStyle = 'rgba(255,255,255,.10)';
@@ -241,6 +259,9 @@ function (event, funcs) {
             R(icon, 'btnplay').toggleClass('armed', st === 3);
         }
         drawWave(icon, trk);
+        // A lane that has just started recording has to switch its readout
+        // from "BAR 3/4" to a count-up in the same instant the lamp changes.
+        laneBars(icon);
     }
 
     function selectTrack(icon, trk, write) {
@@ -391,9 +412,35 @@ function (event, funcs) {
         }
         if (typeof d.pr === 'number') portApply(icon, 'out_progress', d.pr / 400);
         if (typeof d.bars === 'number') icon.data('px_bars', d.bars);
+        if (typeof d.bar === 'number' && d.bar !== icon.data('px_bar')) {
+            icon.data('px_bar', d.bar);
+            laneBars(icon);
+            // The shaded bar lives on the waveform, so the lanes have to be
+            // repainted when it moves -- once per bar, not once per block.
+            for (var w = 1; w <= 4; ++w) drawWave(icon, w);
+        }
         if (typeof d.step === 'number') portApply(icon, 'out_step', d.step);
         if (typeof d.undo === 'number') portApply(icon, 'out_undo_avail', d.undo);
         if (typeof d.ci === 'number') portApply(icon, 'out_countin', d.ci);
+    }
+
+    // Per-lane bar readout. A track that is RECORDING counts up ("BAR 3"),
+    // because a take still defining the loop has no total to count against;
+    // everything else reads "BAR 3/4". Empty lanes say nothing rather than
+    // showing a count that belongs to somebody else's take.
+    function laneBars(icon) {
+        var bar   = icon.data('px_bar')  || 0;
+        var total = icon.data('px_bars') || 0;
+        for (var t = 1; t <= 4; ++t) {
+            var st  = icon.data('px_st' + t) || 0;
+            var out = R(icon, 'bar' + t);
+            if (!out.length) continue;
+            var recording = (st === 1 || st === 2);
+            if (!bar || st === 0) { out.text(''); out.toggleClass('rec', false); continue; }
+            out.text(total > 0 && !recording ? ('BAR ' + bar + '/' + total)
+                                             : ('BAR ' + bar));
+            out.toggleClass('rec', recording);
+        }
     }
 
     function patStatus(icon, msg) { R(icon, 'patstatus').text(msg || ''); }
@@ -967,6 +1014,15 @@ function (event, funcs) {
                 }, 700));
                 icon.data('px_citotal', 0);
                 return;
+            }
+            // Kill any pending PLAY-cue hide. The cue hides itself 700 ms after
+            // a count ends, and nothing used to cancel that: press record again
+            // within those 700 ms -- which is exactly what you do when stacking
+            // takes -- and the timer fired in the middle of the NEW count and
+            // blanked it. That was the "count-in doesn't always show".
+            if (on) {
+                clearTimeout(icon.data('px_citimer') || 0);
+                icon.data('px_citimer', 0);
             }
             R(icon, 'countin').toggleClass('go', false);
             R(icon, 'countin').toggleClass('on', on);
