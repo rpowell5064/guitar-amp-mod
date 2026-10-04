@@ -98,6 +98,7 @@ public:
         preRollPos = 0;
         masterLen  = 0;
         loopCursor = 0;
+        barsAtClose = 0;
         sealing    = 0;
         ++waveGen;
         undoTrack  = -1;
@@ -236,9 +237,13 @@ public:
         tracks[t].recorded   = len;
         (void)stateCode;
     }
-    void loadEnd(int64_t len) noexcept {
-        masterLen  = std::clamp<int64_t>(len, 0, capacity);
-        loopCursor = 0;
+    // `bars` is what the take measured when it was SAVED. The blob does not
+    // carry the tempo, so the caller works it out from the restored tempo port
+    // -- which is the same board state that recorded it.
+    void loadEnd(int64_t len, int bars = 0) noexcept {
+        masterLen   = std::clamp<int64_t>(len, 0, capacity);
+        barsAtClose = std::max(0, bars);
+        loopCursor  = 0;
         ++waveGen;
         frozen.store(false, std::memory_order_release);
     }
@@ -292,6 +297,22 @@ public:
 
     // Raised when a take begins, so the plugin can put the groove back to its
     // first step at the same instant. The looper cannot reach the drums itself.
+    // True once per loop wrap. The plugin re-origins the grid and the groove
+    // on it, so "in time at the start" becomes "in time, still, an hour later".
+    bool consumeWrap() noexcept {
+        return wrapReq.exchange(false, std::memory_order_acq_rel);
+    }
+
+    // Jump the loop to a fraction of its length. The player picking where to
+    // come in is a normal thing to want and the loop is the only clock that
+    // matters once one exists.
+    void seekTo(float frac) noexcept {
+        if (masterLen <= 0) return;
+        const float f = std::clamp(frac, 0.0f, 0.9999f);
+        loopCursor = static_cast<int64_t>(f * static_cast<float>(masterLen));
+        if (loopCursor >= masterLen) loopCursor = masterLen - 1;
+    }
+
     bool consumeRestartRequest() noexcept {
         return restartReq.exchange(false, std::memory_order_acq_rel);
     }
@@ -314,7 +335,7 @@ public:
         if (undoTrack == t) { undoReady = false; undoTrack = -1; }
         ++waveGen;
         // The last track standing takes the loop length with it.
-        if (allEmpty()) { masterLen = 0; loopCursor = 0; }
+        if (allEmpty()) { masterLen = 0; loopCursor = 0; barsAtClose = 0; }
     }
 
     void clearAll() noexcept { reset(); }
@@ -386,10 +407,24 @@ public:
     }
     bool    undoAvailable()    const noexcept { return undoReady; }
     // Bars the loop spans at the clock's current tempo — how the UI labels it.
+    // Bars in the loop. Taken from what the take MEASURED when it closed,
+    // not recomputed from the current tempo -- otherwise turning the tempo knob
+    // appears to change the length of audio that cannot change.
     int     loopBars(const TransportClock& clk) const noexcept {
+        if (barsAtClose > 0) return barsAtClose;
         const double spb = clk.samplesPerBar();
         return (masterLen > 0 && spb > 0.0)
              ? static_cast<int>(std::lround(masterLen / spb)) : 0;
+    }
+
+    // The tempo the loop itself implies, or 0 when there is no loop. Once a
+    // take exists this is the only tempo that keeps the groove with the tracks:
+    // the audio is fixed, so anything else is the drums disagreeing with it.
+    double loopTempo(double fs, int beatsPerBar) const noexcept {
+        if (masterLen <= 0 || barsAtClose <= 0 || beatsPerBar <= 0 || fs <= 0.0) return 0.0;
+        const double seconds = double(masterLen) / fs;
+        if (seconds <= 0.0) return 0.0;
+        return (double(barsAtClose) * double(beatsPerBar) * 60.0) / seconds;
     }
 
     // ── Waveform for the UI ──────────────────────────────────────────────────
@@ -441,6 +476,8 @@ public:
         // A state load is rewriting the buffers from the host's thread. Produce
         // nothing and read nothing until it has finished.
         if (frozen.load(std::memory_order_acquire)) return;
+
+        clockRunning = clk.running();
 
         int cursor = 0;
         while (cursor < n) {
@@ -660,6 +697,12 @@ private:
         int64_t len = tr.recorded - tr.lateBy;
         len = std::clamp(len, seamLen * 2, capacity - seamLen);
         masterLen = len;
+        // Remember how long the take was IN BARS. tr.barLen is the bar length
+        // captured when this take was SCHEDULED, which is the tempo the player
+        // actually recorded against -- deriving it from the current tempo would
+        // make the answer change later, which is the whole bug.
+        barsAtClose = (tr.barLen > 0)
+                    ? int(std::lround(double(len) / double(tr.barLen))) : 0;
 
         // The overshoot IS the seam material: it is the player still ringing
         // over the top of bar one. Fold whatever we already captured, and only
@@ -848,9 +891,23 @@ private:
             if (outL) outL[i] += mixL * masterLevel;
             if (outR) outR[i] += mixR * masterLevel;
 
-            // Advance the loop once per sample, shared by every track.
-            if (masterLen > 0) {
-                if (++loopCursor >= masterLen) loopCursor = 0;
+            // Advance the loop once per sample, shared by every track -- but
+            // only while the transport is RUNNING. It used to advance
+            // regardless, so after a stop the playhead and the bar counter
+            // carried on sweeping through a loop that was not playing, which
+            // is a display saying the opposite of what you can hear.
+            if (masterLen > 0 && clockRunning) {
+                if (++loopCursor >= masterLen) {
+                    loopCursor = 0;
+                    // The loop wrapped. The groove runs on a CONTINUOUS clock
+                    // while the loop is an integer number of samples, so the
+                    // two disagree by the rounding every single lap and the
+                    // error accumulates -- which is how the drums drift away
+                    // from the tracks over a few minutes. Telling the plugin
+                    // each wrap lets it put the groove back on the loop's own
+                    // downbeat, so the error can never add up.
+                    wrapReq.store(true, std::memory_order_release);
+                }
             }
         }
     }
@@ -864,6 +921,7 @@ private:
     int64_t capacity{0};
     int64_t masterLen{0};
     int64_t loopCursor{0};
+    int     barsAtClose{0};   // bars the take measured when it closed
     int64_t seamLen{0};
     int64_t sealing{0}, sealCursor{0};
     int     sealTrack{-1};
@@ -874,13 +932,15 @@ private:
     bool    quantize{true};
     bool  countIn{true};   // a bar of count-in before the take that sets the loop
     bool  countMute{false};// loop playback held silent while a count runs
+    bool  clockRunning{false};  // transport state for this block (see process)
     int   loopBarsWanted{0};  // 0 = free; else the take is this many bars
     float   feedback{1.0f};
     float   masterLevel{1.0f};
     float   fadeInc{0.001f};
     float   trimInc{0.0f};
     std::atomic<bool> frozen{false};   // a state load is in flight
-    std::atomic<bool> restartReq{false};   // a take has just begun
+    std::atomic<bool> restartReq{false};
+    std::atomic<bool> wrapReq{false};   // a take has just begun
 };
 
 } // namespace hexdrums

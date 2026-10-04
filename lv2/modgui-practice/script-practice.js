@@ -9,6 +9,7 @@ function (event, funcs) {
     var PATTERN_URI  = BASE + '#pattern';
     var WAVEFORM_URI = BASE + '#waveform';
     var STATUS_URI   = BASE + '#status';
+    var SEEK_URI     = BASE + '#seek';
 
     // Instrument rows, in the order the plugin's Instrument enum defines them.
     // Laid out high-to-low the way a drummer reads a chart: cymbals on top,
@@ -421,6 +422,10 @@ function (event, funcs) {
         }
         if (typeof d.step === 'number') portApply(icon, 'out_step', d.step);
         if (typeof d.undo === 'number') portApply(icon, 'out_undo_avail', d.undo);
+        // 'tr' is whether the transport is MOVING, which Play and Record start
+        // on their own. It is not the Run switch -- that is the drummer's
+        // on/off and the pill already follows its port.
+        if (typeof d.tr === 'number') icon.data('px_running', d.tr > 0.5);
         if (typeof d.ci === 'number') portApply(icon, 'out_countin', d.ci);
     }
 
@@ -711,6 +716,19 @@ function (event, funcs) {
         if (dOut <= kTrimGrabPx) return 'out';
         return null;
     }
+    // Play from a point in the loop. Goes over the atom channel as a float
+    // property: the control ports were appended only this morning and each
+    // append is a port-count change every saved pedalboard notices, while this
+    // channel is already open and already carries the waveforms.
+    function seekTo(icon, frac) {
+        if (!funcs || typeof funcs.patch_set !== 'function') return;
+        funcs.patch_set(SEEK_URI, 'f', frac);
+        // Move the drawn playhead immediately rather than waiting for the next
+        // status push, so the click feels like it did something.
+        icon.data('px_seekPending', frac);
+        portApply(icon, 'out_progress', frac);
+    }
+
     function bindTrim(icon) {
         var drag = null;   // {trk, edge}
         for (var t = 1; t <= 4; ++t) (function (trk) {
@@ -718,7 +736,16 @@ function (event, funcs) {
             if (!c) return;
             $(c).on('mousedown', function (ev) {
                 var edge = trimHit(icon, trk, c, ev);
-                if (!edge) return;                 // a plain click still arms the lane
+                if (!edge) {
+                    // Not a trim handle, so it is a position: play from here.
+                    // Only meaningful once there IS a loop -- before that the
+                    // click just arms the lane, as it always did.
+                    if (icon.data('px_bars') > 0) {
+                        var rr = c.getBoundingClientRect();
+                        seekTo(icon, clamp((ev.clientX - rr.left) / rr.width, 0, 0.9999));
+                    }
+                    return;
+                }
                 drag = { trk: trk, edge: edge };
                 ev.preventDefault();
                 ev.stopPropagation();

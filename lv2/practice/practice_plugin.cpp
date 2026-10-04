@@ -154,6 +154,8 @@ enum PracticePorts {
 #define PRACTICE_PATTERN_URI  PRACTICE_URI "#pattern"
 #define PRACTICE_WAVEFORM_URI PRACTICE_URI "#waveform"
 #define PRACTICE_MIDI_URI     PRACTICE_URI "#midifile"
+// Where in the loop to play from, 0..1. Sent when the player clicks a lane.
+#define PRACTICE_SEEK_URI     PRACTICE_URI "#seek"
 // Live panel state. See the note at practiceSendStatus().
 #define PRACTICE_STATUS_URI   PRACTICE_URI "#status"
 // State keys. The loops are the only thing here a user cannot rebuild from
@@ -164,7 +166,8 @@ enum PracticePorts {
 struct PracticeURIs {
     LV2_URID atom_Object, atom_Path, atom_String, atom_URID, atom_eventTransfer;
     LV2_URID patch_Set, patch_Get, patch_property, patch_value;
-    LV2_URID pattern, waveform, midifile, status;
+    LV2_URID pattern, waveform, midifile, status, seek;
+    LV2_URID atom_Float;
     LV2_URID atom_Chunk, loopsKey, patternKey;
 };
 
@@ -203,6 +206,9 @@ struct PracticePlugin {
     // Tempo and meter held for the duration of a take (see run()).
     bool                     wasCounting = false;  // count-in edge (see run())
     bool                     drumsStopped = false; // STOP stops the groove too
+    bool                     transportOn  = false; // Play/Record start it, Stop stops it
+    bool                     drumsEnabled = false; // the Run switch: is there a drummer
+    float                    effectiveBpm = 120.0f; // what the groove is ACTUALLY running at
     bool                     tempoHeld = false;
     float                    heldBpm   = 120.0f;
     int                      heldBpb   = 0;
@@ -272,6 +278,8 @@ static void practiceMapURIs(PracticePlugin* p) {
     p->uris.pattern            = m->map(m->handle, PRACTICE_PATTERN_URI);
     p->uris.waveform           = m->map(m->handle, PRACTICE_WAVEFORM_URI);
     p->uris.midifile           = m->map(m->handle, PRACTICE_MIDI_URI);
+    p->uris.seek               = m->map(m->handle, PRACTICE_SEEK_URI);
+    p->uris.atom_Float         = m->map(m->handle, LV2_ATOM__Float);
     p->uris.status             = m->map(m->handle, PRACTICE_STATUS_URI);
     p->uris.atom_Chunk         = m->map(m->handle, LV2_ATOM__Chunk);
     p->uris.loopsKey           = m->map(m->handle, PRACTICE_LOOPS_KEY);
@@ -399,6 +407,9 @@ static void practiceSendStatus(PracticePlugin* p) {
     j += ",\"bars\":" + std::to_string(bars);
     j += ",\"bar\":" + std::to_string(p->looper.currentBar(p->clk));
     j += ",\"undo\":" + std::to_string(undo);
+    // Whether the transport is moving. Not the Run switch -- that is the
+    // drummer's on/off and the panel already knows it from the port.
+    j += ",\"tr\":" + std::to_string(p->transportOn ? 1 : 0);
     j += ",\"pr\":" + std::to_string(prq);
     j += ",\"st\":[";
     for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
@@ -617,6 +628,22 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
 
                 if (key == p->uris.pattern && val->type == p->uris.atom_String)
                     practiceApplyPattern(p, reinterpret_cast<const char*>(val + 1));
+                else if (key == p->uris.seek && val->type == p->uris.atom_Float) {
+                    // Move the loop AND the grid together. Seeking the audio
+                    // but leaving the groove where it was would put the two in
+                    // exactly the disagreement the per-lap re-lock exists to
+                    // prevent -- so the groove is placed at the same point in
+                    // the phrase, not merely restarted.
+                    const float f = reinterpret_cast<const LV2_Atom_Float*>(val)->body;
+                    p->looper.seekTo(f);
+                    const int bars = p->looper.loopBars(p->clk);
+                    if (bars > 0) {
+                        const double beats = double(f) * double(bars)
+                                           * double(p->clk.beatsPerBar());
+                        p->clk.setPositionBeats(beats);
+                        p->drums.rearm(p->clk);
+                    }
+                }
             }
         }
     }
@@ -649,7 +676,18 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     } else {
         p->tempoHeld = false;
     }
+    // Once a loop EXISTS it is the clock. The tracks are fixed audio, so a
+    // tempo change cannot retime them -- it can only move the groove away from
+    // them, which is exactly how the drums end up out of sync with what was
+    // recorded. Deriving the tempo from the loop removes the disagreement
+    // rather than correcting it after the fact. Changing the tempo knob again
+    // takes effect once the loop is cleared.
+    if (!takeRunning) {
+        const double lt = p->looper.loopTempo(p->rate, p->clk.beatsPerBar());
+        if (lt >= 20.0 && lt <= 300.0) tempoBpm = static_cast<float>(lt);
+    }
     p->clk.setTempo(tempoBpm);
+    p->effectiveBpm = tempoBpm;
     // Likewise the meter: the count-in is one bar long, so changing bars-per-bar
     // mid-count would change how long the count is while it is running.
     const int wantBpb = static_cast<int>(portValue(p, P_BEATS_PER_BAR, 4.0f));
@@ -660,22 +698,23 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     }
     p->clk.setBeatsPerBar(p->heldBpb > 0 ? p->heldBpb : wantBpb);
 
+    // Run is the DRUMMER's switch: is there a kit playing or not. It is not
+    // the transport -- Play, Stop and Record are. Having one control mean "the
+    // clock is moving" and another mean "you can hear something" left two
+    // overlapping ideas of playing, and the one you pressed decided which you
+    // got.
     const bool wantRun = portBool(p, P_RUN);
     if (wantRun != p->prevRun) {
         p->prevRun = wantRun;
+        p->drumsEnabled = wantRun;
         if (wantRun) {
-            // Always restart at bar one: resuming mid-bar makes the count-in
-            // meaningless and puts the loop out of phase with the groove.
-            p->clk.reset();
-            p->clk.start();
-            p->drums.rearm(p->clk);
-            p->looper.rewind();
-            // Starting the transport always brings the groove back: otherwise
-            // a STOP earlier in the session leaves RUN looking broken too.
-            p->drumsStopped = false;
+            // Come in from the top of the pattern rather than wherever the
+            // groove would have been had it never stopped.
             p->drums.resumeSound();
+            p->drums.restartPattern(p->clk);
         } else {
-            p->clk.stop();
+            // Off means off, tails included -- the same silence Stop gives.
+            p->drums.stopSound();
         }
     }
 
@@ -761,7 +800,26 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     const int track = std::clamp(static_cast<int>(portValue(p, P_LOOP_TRACK, 1.0f)) - 1,
                                  0, LooperBlock::kNumTracks - 1);
 
-    if (edge(portBool(p, P_LOOP_REC), p->prevRec)) {
+    // Read every transport edge FIRST. Record has to be able to start the
+    // transport before it schedules itself: the count-in is scheduled inside
+    // recordPressed(), and with the clock stopped that call takes the "nothing
+    // to quantise to" path and the count never happens. This was the whole of
+    // "if I record without the drums on, the count-in doesn't work".
+    const bool recEdge  = edge(portBool(p, P_LOOP_REC),  p->prevRec);
+    const bool playEdge = edge(portBool(p, P_LOOP_PLAY), p->prevPlay);
+    const bool stopEdge = edge(portBool(p, P_LOOP_STOP), p->prevStop);
+
+    if ((recEdge || playEdge) && !p->clk.running()) {
+        // Same thing the Run switch does, so starting by pressing Record and
+        // starting by flicking Run leave the box in the same state.
+        p->clk.reset();
+        p->clk.start();
+        p->drums.rearm(p->clk);
+        p->looper.rewind();
+        p->transportOn = true;
+    }
+
+    if (recEdge) {
         // Ask for the undo snapshot BEFORE arming, so the copy overlaps the
         // wait for the bar line instead of the overdub itself.
         if (p->schedule && p->looper.wouldOverdub(track)) {
@@ -770,24 +828,32 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         }
         p->looper.recordPressed(track, p->clk);
         p->drumsStopped = false;      // a take always brings the groove back
-        p->drums.resumeSound();       // ...and the kit audible again, click included
+        // ...and the kit audible again -- but only if there is a drummer. The
+        // count-in click lives on the kit, so this has to come back even when
+        // the pattern itself will stay muted.
+        p->drums.resumeSound();
     }
     // Stop means STOP. It used to stop only the looper, leaving the groove
     // playing -- so the box carried on making a loop's worth of noise and the
     // button looked broken. Play and a new take start it again, from the top of
     // the pattern, which is where the loop restarts too.
-    if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay)) {
+    if (playEdge) {
         // playAllPressed() raises the restart request, so the groove restart
         // and the grid re-origin happen on the shared path below -- the same
         // one a take uses. Restarting the pattern here as well would put the
         // drums a block out from the loop.
         p->looper.playAllPressed(p->clk);
         p->drumsStopped = false;
-        p->drums.resumeSound();
+        if (p->drumsEnabled) p->drums.resumeSound();
     }
-    if (edge(portBool(p, P_LOOP_STOP),  p->prevStop)) {
+    if (stopEdge) {
         p->looper.stopAllPressed(p->clk);
         p->drumsStopped = true;
+        // Stop the TRANSPORT too, not just the sound. Otherwise the groove is
+        // silent but still counting, and the bar readout and the playhead keep
+        // sweeping through a loop nobody can hear.
+        p->clk.stop();
+        p->transportOn = false;
         // Stop means SILENCE, now. Muting the pattern only stops the next hit,
         // and choking the voices still leaves the room spilling -- it sits
         // after them, and the choke feeds it on the way down. Ramping the whole
@@ -813,7 +879,9 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // to replace. The player's own dry signal is deliberately left alone: they
     // are about to play, and they need to hear themselves do it.
     const bool counting = countLeft > 0;
-    p->drums.setPatternMuted(counting || p->drumsStopped);
+    // Three ways the groove can be silent, and they are different things:
+    // the count-in is holding it, Stop stopped it, or there is no drummer.
+    p->drums.setPatternMuted(counting || p->drumsStopped || !p->drumsEnabled);
     p->looper.setCountMute(counting);
     // Choke ONCE, on the edge. Calling this every block would re-arm the damp
     // envelope each time and hold the kit at full level instead of fading it.
@@ -872,6 +940,15 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         // loop gets closed on a bar line it never started from and comes out
         // a fraction of a bar long. Only the TEMPO follows the host here --
         // bar position is the plugin's own -- so there is nothing to fight.
+        p->clk.setPositionBeats(0.0);
+        p->drums.restartPattern(p->clk);
+    }
+    // Every lap, put the groove back on the loop's own downbeat. Once a loop
+    // exists IT is the clock that matters: the tracks are fixed audio and the
+    // groove is generated, so any disagreement between them is the groove's to
+    // give up. Without this the two drift apart by the loop-length rounding
+    // once per lap, which is inaudible for a minute and obvious after ten.
+    else if (p->looper.consumeWrap()) {
         p->clk.setPositionBeats(0.0);
         p->drums.restartPattern(p->clk);
     }
@@ -1072,7 +1149,14 @@ static LV2_State_Status practice_restore(LV2_Handle                 handle,
                                 stereoBlob);
         r += size_t(tlen) * frameBytes;
     }
-    p->looper.loadEnd(len);
+    // Work the bar count out from the tempo this board was saved with: the
+    // blob carries samples, and bars are what the groove needs.
+    {
+        const double spb = double(p->rate) * 60.0 / std::max(1.0f, p->ports[P_TEMPO] ? *p->ports[P_TEMPO] : 120.0f)
+                         * std::max(1, int(p->ports[P_BEATS_PER_BAR] ? *p->ports[P_BEATS_PER_BAR] : 4.0f));
+        const int bars = (spb > 0.0) ? int(std::lround(double(len) / spb)) : 0;
+        p->looper.loadEnd(len, bars);
+    }
 
     // Make the editor redraw: the lanes are holding waveforms for audio that
     // has just been replaced wholesale.
