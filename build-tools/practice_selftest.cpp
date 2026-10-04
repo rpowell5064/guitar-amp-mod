@@ -1069,6 +1069,77 @@ int main() {
         hst.close();
     }
 
+    // ── Does the kit survive a loaded looper? ────────────────────────────────
+    // Reported from the board: "the drums sound weak when audio is recorded to
+    // the tracks". Nothing ducks the kit, so this is pure arithmetic -- every
+    // track added pushes the loop bus up and the kit stays where it is. This
+    // measures how far it falls behind, which is the number the balance has to
+    // be argued from.
+    std::printf("\nKit against a loaded looper\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[PATTERN]  = 0.0f;
+        hst.ctl[COUNT_IN] = 0.0f;
+        hst.ctl[RUN]      = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Kit alone, at its default level.
+        hst.ctl[LOOP_LEVEL] = -60.0f;
+        std::vector<float> kitOnly;
+        hst.run(barLen, &kitOnly, true);
+        const float kit = rms(kitOnly);
+        // Two sides of one constraint. The kit has to be loud enough to hold
+        // its own against a loop, and quiet enough that the loop still has
+        // somewhere to go on top of it. Drums are peaky -- a ~19 dB crest here
+        // -- so the ceiling is set by the PEAK, not the rms, and that is why
+        // "the drums are weak" cannot simply be answered by turning them up.
+        check(kit > 0.06f, "the kit carries some weight on its own",
+              "rms " + std::to_string(kit));
+        check(peak(kitOnly) < 0.80f, "and still leaves headroom for a loop on top",
+              "peak " + std::to_string(peak(kitOnly)));
+        std::printf("   kit alone: rms %.4f peak %.4f (headroom to clip: %.1f dB)\n",
+                    kit, peak(kitOnly), 20.0 * std::log10(1.0 / std::max(1e-9f, peak(kitOnly))));
+        hst.ctl[LOOP_LEVEL] = 0.0f;
+
+        auto takeOn = [&](int trk, int stateOut) {
+            hst.ctl[LOOP_TRACK] = static_cast<float>(trk);
+            hst.run(kBlock * 2);
+            hst.trigger(LOOP_REC);
+            runUntil(hst, [&]{ const long st = std::lround(hst.ctl[stateOut]);
+                               return st == 1 || st == 2; }, barLen * 2);
+            hst.run(barLen * 2);
+            const long st = std::lround(hst.ctl[stateOut]);
+            if (st == 1 || st == 2) {
+                hst.trigger(LOOP_REC);
+                runUntil(hst, [&]{ return std::lround(hst.ctl[stateOut]) == 3; }, barLen * 2);
+            }
+        };
+
+        const int outs[4] = { OUT_TRK1_STATE, OUT_TRK2_STATE, OUT_TRK3_STATE, OUT_TRK4_STATE };
+        for (int t = 0; t < 4; ++t) {
+            takeOn(t + 1, outs[t]);
+            // Loop alone, then loop + kit, so the kit's share can be inferred.
+            hst.ctl[DRUMS_LEVEL] = -60.0f;
+            std::vector<float> loopOnly;
+            hst.run(barLen, &loopOnly, true);
+            hst.ctl[DRUMS_LEVEL] = 0.0f;
+            const float lp = rms(loopOnly);
+            const double ratio = 20.0 * std::log10(std::max(1e-9f, kit) / std::max(1e-9f, lp));
+            // Not a pass/fail on the ratio in general: a loop of four loud
+            // parts SHOULD dominate a kit if that is what the player recorded,
+            // and the per-track knobs are how they decide otherwise. What is
+            // gated is the first track, where the kit being 12 dB down with a
+            // single part playing was the actual complaint.
+            if (t == 0)
+                check(ratio > -11.0, "the kit is not buried by a single track",
+                      std::to_string(ratio) + " dB under one track");
+            std::printf("   %d track(s): loop rms %.4f, kit rms %.4f -> kit sits %.1f dB under\n",
+                        t + 1, lp, kit, ratio);
+        }
+        hst.close();
+    }
+
     // ── Everything comes back together ───────────────────────────────────────
     // After a stop, the next press -- play OR record -- has to bring back every
     // track that has something on it, not just the armed one. Recording a new

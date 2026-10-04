@@ -668,7 +668,17 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     p->drums.setPattern(static_cast<int>(portValue(p, P_PATTERN, 0.0f)));
     p->drums.setSwing(portValue(p, P_SWING, 0.0f) * 0.01f);
     p->drums.setHumanize(portValue(p, P_HUMANIZE, 0.0f) * 0.01f);
-    p->drums.setMasterGain(bypassed ? 0.0f : 0.45f * dbToLin(portValue(p, P_DRUMS_LEVEL, 0.0f)));
+    // Kit level. The 0.45 this used to be was a bare magic number, and it put
+    // the kit 12.5 dB under a SINGLE track of loop at identical settings -- and
+    // every track added pushes the loop bus further up while the kit stays
+    // where it is, so by four tracks it was 16 dB down and the drums were
+    // simply gone. Measured: the kit alone peaks at 0.49 with an rms of 0.056,
+    // a 19 dB crest, so this cannot be solved by turning it up a lot -- there
+    // are only ~6 dB before the peaks clip, never mind what the loop adds on
+    // top. 0.62 takes back 2.8 dB of it and leaves the peaks at ~0.68; the
+    // rest is a balance for the player to make, which is what the per-track
+    // level knobs are for.
+    p->drums.setMasterGain(bypassed ? 0.0f : 0.62f * dbToLin(portValue(p, P_DRUMS_LEVEL, 0.0f)));
 
     const float trimKick = dbToLin(portValue(p, P_LVL_KICK, 0.0f));
     const float trimSnr  = dbToLin(portValue(p, P_LVL_SNARE, 0.0f));

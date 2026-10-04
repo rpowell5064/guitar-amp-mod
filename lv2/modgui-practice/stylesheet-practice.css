@@ -416,3 +416,14 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane[data-trk="4"].sel .px-lane-bar { color:var(--t4); }
 /* Recording: the count is the loudest thing on the lane. */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane-bar.rec { color:var(--rec); }
+
+/* ── Per-track level, on the track ──────────────────────────────────────────
+   The faders on MIX could always balance the tracks, but balancing is
+   something you do WHILE listening to the lane you are balancing, and having
+   to change page to do it is the kind of friction that stops people doing it
+   at all. Same 46px film sprite as every other knob here: these widgets are
+   sized from their background image, so a smaller one is a different asset,
+   not a smaller CSS box. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-btns { flex:0 0 58px; align-items:center; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-knob { width:52px; position:relative; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-knob .hf-knob-v { margin-top:1px; font-size:8.5px; }
