@@ -163,7 +163,8 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-view { display:none; }
 .mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=loops] .px-view-loops,
 .mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=drums] .px-view-drums,
-.mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=mix]   .px-view-mix { display:block; }
+.mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=mix]   .px-view-mix,
+.mod-pedal-guitaramp-practice{{{cns}}} [rata-role=pxview][data-tab=scales] .px-view-scales { display:block; }
 
 /* Inner sub-panels share the toolbar's material at lower contrast. */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-panel {
@@ -427,3 +428,114 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane-btns { flex:0 0 58px; align-items:center; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane-knob { width:52px; position:relative; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-lane-knob .hf-knob-v { margin-top:1px; font-size:8.5px; }
+
+
+/* ── Scales ─────────────────────────────────────────────────────────────────
+   A reference, not an instrument: it makes no sound and holds no plugin state.
+   The scale degrees are coloured rather than merely dotted, because "where is
+   the root" and "where is the third" are the two questions anyone actually
+   asks of a fretboard, and a grid of identical dots answers neither. Degree
+   colours are shared with nothing else on the panel so they never read as a
+   track or a kit group. */
+.mod-pedal-guitaramp-practice{{{cns}}}{
+    --deg-root:#ff5c8a; --deg-third:#ffc247; --deg-fifth:#49d6ff; --deg-note:#8d93a3;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbhead {
+    display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-start; margin-bottom:12px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbsel { display:flex; flex-direction:column; gap:7px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbsel-wide { flex:1 1 320px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fblabel {
+    font-size:9.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-seg { display:flex; flex-wrap:wrap; gap:4px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-segb {
+    padding:5px 11px; font-size:10.5px; font-weight:700; letter-spacing:.06em;
+    color:var(--ink2); background:rgba(255,255,255,.04); cursor:pointer;
+    border:1px solid rgba(255,255,255,.09); border-radius:6px; user-select:none;
+    transition:background .12s, color .12s, border-color .12s;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-segb:hover { color:var(--ink); background:rgba(255,255,255,.08); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-segb.on {
+    color:#0b0d12; background:var(--deg-root); border-color:var(--deg-root);
+    box-shadow:0 0 12px rgba(255,92,138,.35);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-seg-scale .px-segb.on {
+    background:var(--deg-fifth); border-color:var(--deg-fifth); box-shadow:0 0 12px rgba(73,214,255,.32);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbwrap { margin-bottom:12px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbtitle {
+    font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--ink);
+    margin-bottom:8px; text-transform:uppercase;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbnotes {
+    display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbnote {
+    padding:3px 9px; border-radius:5px; font-size:11px; font-weight:700;
+    background:rgba(255,255,255,.05); color:var(--ink2); border:1px solid rgba(255,255,255,.08);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbnote.root  { background:var(--deg-root);  color:#14070c; border-color:var(--deg-root); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbnote.third { background:var(--deg-third); color:#1a1304; border-color:var(--deg-third); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbnote.fifth { background:var(--deg-fifth); color:#04171f; border-color:var(--deg-fifth); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbwrap canvas { display:block; width:100%; height:auto; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fblegend {
+    display:flex; gap:16px; align-items:center; flex-wrap:wrap;
+    margin-top:9px; font-size:10px; color:var(--ink3);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fblegend i {
+    display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:-1px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-dot-root  { background:var(--deg-root); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-dot-third { background:var(--deg-third); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-dot-fifth { background:var(--deg-fifth); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-dot-note  { background:var(--deg-note); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbhint { margin-left:auto; font-style:italic; opacity:.75; }
+
+/* Chords in the key: a row of cards, each with its own small grid. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow {
+    display:flex; gap:10px; flex-wrap:wrap;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord {
+    background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.09);
+    border-radius:9px; padding:9px 10px 7px; min-width:86px; text-align:center;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord.tonic { border-color:var(--deg-root); background:rgba(255,92,138,.09); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord-n {
+    font-size:15px; font-weight:700; color:var(--ink); line-height:1.1;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord-r {
+    font-size:10px; font-weight:700; letter-spacing:.08em; color:var(--deg-third); margin-top:2px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord canvas { display:block; margin:7px auto 0; }
+
+/* ── A little more life across the rest of the panel ────────────────────────
+   The wordmark and the tabs were the only colour that was not information.
+   These are deliberately the only decorative ones: everything else on this
+   panel still earns its hue by meaning something. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tab[data-pxtab="scales"].on {
+    background:var(--deg-root); border-color:var(--deg-root); color:#14070c;
+}
+/* The toolbar carried one flat amber wash. A sweep through the three track
+   hues gives it some life without inventing a colour that means anything --
+   it is the same palette the lanes already use, spread along the bar. The
+   repeat/position/size lists have to stay in step with the layer count. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bar {
+    background-image: var(--hex),
+        linear-gradient(100deg, rgba(240,168,48,.16), rgba(160,123,255,.13) 52%, rgba(69,200,216,.14));
+    background-repeat: repeat, no-repeat;
+    background-size: var(--hexsz), 100% 100%;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn.rec:hover { border-color:var(--rec); color:var(--rec); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-tbtn.play:hover { border-color:var(--play); color:var(--play); }
+
+/* A recording lane should be unmistakable from across a room: the bar counter
+   is the thing the player is watching, so it pulses while the take runs. */
+@keyframes px-recpulse { 0%,100% { opacity:1; } 50% { opacity:.42; } }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane-bar.rec {
+    color:var(--rec); animation:px-recpulse 1s ease-in-out infinite; font-size:10.5px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-lane.recording {
+    border-color:var(--rec);
+    box-shadow:0 0 0 1px var(--rec), 0 0 22px rgba(255,74,74,.22), 0 4px 16px rgba(0,0,0,.45);
+}

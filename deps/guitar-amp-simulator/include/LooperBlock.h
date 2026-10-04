@@ -120,6 +120,16 @@ public:
     // 0 = record until you press again; otherwise the take closes itself
     // after this many bars.
     void setLoopBars(int bars)         noexcept { loopBarsWanted = std::max(0, bars); }
+    // Bars the take IN PROGRESS is heading for, or 0. The panel needs this to
+    // say "bar 2 of 4" while recording: the loop has no length yet, so there
+    // is nothing else to count against, and a bare "bar 2" tells the player
+    // nothing about when to expect the take to close.
+    int  takeTargetBars() const noexcept {
+        for (const auto& tr : tracks)
+            if (tr.state == State::Recording)
+                return (masterLen > 0) ? barsAtClose : loopBarsWanted;
+        return 0;
+    }
 
     // Samples until the counted-in take starts, or 0 when nothing is counting.
     // The plugin turns this into the beats the panel counts down, and into the
@@ -578,6 +588,13 @@ private:
             // the panel already shows the full number -- so the first count
             // lasts nearly twice as long as the rest and the whole thing reads
             // as an extra beat. Snapping back makes the first click immediate.
+            // The count starts ON a beat, like a drummer counting you in. Only
+            // a press that landed a HAIR after one is taken as belonging to it
+            // -- a quarter beat, so the first click is never more than that off
+            // the grid. Snapping to the nearest beat instead was tried and is
+            // wrong: a press half a beat late drags the first click half a beat
+            // off, and a count whose own first click is out of time is exactly
+            // the thing that "feels off".
             double toBeat = clk.samplesToNextBeat();
             if (toBeat > 0.75 * spBeat) toBeat -= spBeat;   // negative: just gone
             const double wait = toBeat + countBeats(clk) * spBeat;

@@ -241,6 +241,23 @@ struct Host {
         atomResetIn();
     }
 
+    // The most recent panel-state push, as the JSON the plugin sends. Scans a
+    // few blocks because the push is throttled unless something changed.
+    std::string status() {
+        const std::string STAT =
+            "https://rpowell5064.github.io/guitaramp-suite/practice#status";
+        // Long enough to span a STEP. The push only happens when something in
+        // the state actually changed, and during a free take the slowest-moving
+        // field is the groove step -- 125 ms at 120 bpm, which is ~94 blocks.
+        // A 64-block scan timed out between steps and read as "no status".
+        for (int i = 0; i < 400; ++i) {
+            for (auto& kv : notified())
+                if (kv.first == STAT) return kv.second;
+            run(kBlock);
+        }
+        return std::string();
+    }
+
     // Every patch:Set the plugin emitted this block, as property URI -> value.
     std::vector<std::pair<std::string, std::string>> notified() const {
         std::vector<std::pair<std::string, std::string>> out;
@@ -1504,6 +1521,66 @@ int main() {
         hst.run(kBlock * 2);
         check(hst.ctl[OUT_PROGRESS] < 0.02f, "and back to the top",
               "progress " + std::to_string(hst.ctl[OUT_PROGRESS]));
+        hst.close();
+    }
+
+    // ── Bar feedback while recording ─────────────────────────────────────────
+    // Reported: "we need better feedback of the bars when the user is
+    // recording -- right now it doesn't do anything". The panel reads this
+    // from the status push, so if the plugin is not counting, nothing the UI
+    // does can help.
+    std::printf("\nThe bar counter counts while recording\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN]    = 0.0f;
+        hst.ctl[LOOP_BARS]   = 4.0f;        // the shipped default
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        hst.startTransport();
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 2);
+
+        // What the take is counting TOWARDS, read while it is still running --
+        // a bare "bar 2" does not tell the player when the take will close.
+        {
+            const std::string st = hst.status();
+            const size_t t = st.find("\"tb\":");
+            check(t != std::string::npos && std::atoi(st.c_str() + t + 5) == 4,
+                  "a running take reports the length it is heading for",
+                  st.substr(0, 56));
+        }
+        hst.close();
+    }
+    {
+        // And the bar itself climbs. Free length, so the take cannot close
+        // underneath the measurement.
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;
+        hst.ctl[COUNT_IN]    = 0.0f;
+        hst.ctl[LOOP_BARS]   = 0.0f;
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        hst.startTransport();
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 2);
+
+        std::vector<int> seen;
+        for (int b = 0; b < 4; ++b) {
+            const std::string st = hst.status();
+            const size_t k = st.find("\"bar\":");
+            seen.push_back(k == std::string::npos ? -1 : std::atoi(st.c_str() + k + 6));
+            hst.run(barLen - static_cast<int64_t>(kFs * 0.1));
+        }
+        bool climbs = (seen.size() == 4);
+        for (size_t i = 0; climbs && i < seen.size(); ++i) climbs = (seen[i] == int(i) + 1);
+        std::string got;
+        for (size_t i = 0; i < seen.size(); ++i) got += (i ? "," : "") + std::to_string(seen[i]);
+        check(climbs, "the reported bar counts 1,2,3,4 through the take", got);
         hst.close();
     }
 

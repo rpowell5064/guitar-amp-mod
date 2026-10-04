@@ -62,6 +62,331 @@ function (event, funcs) {
     // Tempo span, same deal -- checked against the TTL by practice_port_check.py.
     var TEMPO_MIN = 20, TEMPO_MAX = 300;
 
+
+    // ── Scales ──────────────────────────────────────────────────────────────
+    // Ported from the user's own `modes` project so the two agree note for
+    // note: same eleven modes, same spellings (Eb/Ab/Bb, not sharps), same
+    // diatonic degrees and numerals. This tab makes no sound and holds no
+    // plugin state -- it is a reference you can leave open while playing.
+    var FB_NOTES = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+    var FB_MODES = [
+        { n: 'Ionian',           iv: [0, 2, 4, 5, 7, 9, 11] },
+        { n: 'Dorian',           iv: [0, 2, 3, 5, 7, 9, 10] },
+        { n: 'Phrygian',         iv: [0, 1, 3, 5, 7, 8, 10] },
+        { n: 'Lydian',           iv: [0, 2, 4, 6, 7, 9, 11] },
+        { n: 'Mixolydian',       iv: [0, 2, 4, 5, 7, 9, 10] },
+        { n: 'Aeolian',          iv: [0, 2, 3, 5, 7, 8, 10] },
+        { n: 'Locrian',          iv: [0, 1, 3, 5, 6, 8, 10] },
+        { n: 'Major Pentatonic', iv: [0, 2, 4, 7, 9] },
+        { n: 'Minor Pentatonic', iv: [0, 3, 5, 7, 10] },
+        { n: 'Blues Pentatonic', iv: [0, 3, 5, 6, 7, 10] },
+        { n: 'Harmonic Minor',   iv: [0, 2, 3, 5, 7, 8, 11] }
+    ];
+
+    // [semitones from the key root, quality, numeral] -- one row per mode above.
+    var FB_DEGREES = [
+        [[0,'maj','I'],[2,'min','ii'],[4,'min','iii'],[5,'maj','IV'],[7,'maj','V'],[9,'min','vi'],[11,'dim','vii\u00B0']],
+        [[0,'min','i'],[2,'min','ii'],[3,'maj','III'],[5,'maj','IV'],[7,'min','v'],[9,'dim','vi\u00B0'],[10,'maj','VII']],
+        [[0,'min','i'],[1,'maj','II'],[3,'maj','III'],[5,'min','iv'],[7,'dim','v\u00B0'],[8,'maj','VI'],[10,'min','vii']],
+        [[0,'maj','I'],[2,'maj','II'],[4,'min','iii'],[6,'dim','#iv\u00B0'],[7,'maj','V'],[9,'min','vi'],[11,'min','vii']],
+        [[0,'maj','I'],[2,'min','ii'],[4,'dim','iii\u00B0'],[5,'maj','IV'],[7,'min','v'],[9,'min','vi'],[10,'maj','VII']],
+        [[0,'min','i'],[2,'dim','ii\u00B0'],[3,'maj','III'],[5,'min','iv'],[7,'min','v'],[8,'maj','VI'],[10,'maj','VII']],
+        [[0,'dim','i\u00B0'],[1,'maj','II'],[3,'min','iii'],[5,'min','iv'],[6,'maj','V'],[8,'maj','VI'],[10,'min','vii']],
+        [[0,'maj','I'],[2,'min','ii'],[4,'min','iii'],[7,'maj','V'],[9,'min','vi']],
+        [[0,'min','i'],[3,'maj','III'],[5,'min','iv'],[7,'min','v'],[10,'maj','VII']],
+        [[0,'min','i'],[3,'maj','III'],[5,'min','iv'],[7,'min','v'],[10,'maj','VII']],
+        [[0,'min','i'],[2,'dim','ii\u00B0'],[3,'aug','III+'],[5,'min','iv'],[7,'maj','V'],[8,'maj','VI'],[11,'dim','vii\u00B0']]
+    ];
+    var FB_QUAL = { maj: [0,4,7], min: [0,3,7], dim: [0,3,6], aug: [0,4,8] };
+    var FB_SUFFIX = { maj: '', min: 'm', dim: '\u00B0', aug: '+' };
+
+    // Open strings, LOW to HIGH, as MIDI numbers. Sevens and eights add low
+    // strings; a six-string bass adds a high C as well as the low B.
+    var FB_TUNING = {
+        guitar: { 6: [40,45,50,55,59,64], 7: [35,40,45,50,55,59,64], 8: [30,35,40,45,50,55,59,64] },
+        bass:   { 4: [28,33,38,43], 5: [23,28,33,38,43], 6: [23,28,33,38,43,48] }
+    };
+    var FB_STRINGS = { guitar: [6, 7, 8], bass: [4, 5, 6] };
+
+    function fbState(icon) {
+        var st = icon.data('px_fb');
+        if (!st) {
+            st = { inst: 'guitar', strings: 6, key: 0, mode: 0 };
+            icon.data('px_fb', st);
+        }
+        return st;
+    }
+
+    function fbPitchClass(n) { return ((n % 12) + 12) % 12; }
+
+    // Which scale degree a pitch class is, or -1. Returns the INTERVAL so the
+    // caller can colour roots, thirds and fifths differently -- those three are
+    // what anyone is actually looking for on a fretboard.
+    function fbDegree(st, pc) {
+        var iv = FB_MODES[st.mode].iv;
+        for (var i = 0; i < iv.length; ++i)
+            if (fbPitchClass(st.key + iv[i]) === pc) return iv[i];
+        return -1;
+    }
+
+    function fbDegColour(interval) {
+        if (interval === 0) return '#ff5c8a';                       // root
+        if (interval === 3 || interval === 4) return '#ffc247';     // third
+        if (interval === 7) return '#49d6ff';                       // fifth
+        return '#8d93a3';
+    }
+
+    function fbSeg(icon, role, items, current, onPick) {
+        var box = el(icon, role);
+        if (!box) return;
+        var html = '';
+        for (var i = 0; i < items.length; ++i) {
+            html += '<div class="px-segb' + (items[i].v === current ? ' on' : '') +
+                    '" data-v="' + items[i].v + '">' + items[i].t + '</div>';
+        }
+        box.innerHTML = html;
+        $(box).find('.px-segb').each(function () {
+            var b = this;
+            $(b).on('click', function () {
+                onPick(b.getAttribute('data-v'));
+            });
+        });
+    }
+
+    function fbBuildControls(icon) {
+        var st = fbState(icon);
+        fbSeg(icon, 'fbinst',
+              [{ v: 'guitar', t: 'Guitar' }, { v: 'bass', t: 'Bass' }], st.inst,
+              function (v) {
+                  st.inst = v;
+                  // Keep a sensible string count: a 6-string bass and a 6-string
+                  // guitar are different instruments, so snap to the default.
+                  st.strings = FB_STRINGS[v][0];
+                  fbBuildControls(icon); fbDraw(icon);
+              });
+        fbSeg(icon, 'fbstrings',
+              FB_STRINGS[st.inst].map(function (n) { return { v: String(n), t: n + ' string' }; }),
+              String(st.strings),
+              function (v) { st.strings = parseInt(v, 10); fbBuildControls(icon); fbDraw(icon); });
+        fbSeg(icon, 'fbkey',
+              FB_NOTES.map(function (n, i) { return { v: String(i), t: n }; }), String(st.key),
+              function (v) { st.key = parseInt(v, 10); fbBuildControls(icon); fbDraw(icon); });
+        fbSeg(icon, 'fbscale',
+              FB_MODES.map(function (m, i) { return { v: String(i), t: m.n }; }), String(st.mode),
+              function (v) { st.mode = parseInt(v, 10); fbBuildControls(icon); fbDraw(icon); });
+    }
+
+    function fbDraw(icon) {
+        var st = fbState(icon);
+        var tuning = FB_TUNING[st.inst][st.strings];
+        if (!tuning) return;
+
+        R(icon, 'fbtitle').text(FB_NOTES[st.key] + ' ' + FB_MODES[st.mode].n);
+
+        // The notes of the key, in order, coloured by degree.
+        var iv = FB_MODES[st.mode].iv, nhtml = '';
+        for (var i = 0; i < iv.length; ++i) {
+            var cls = iv[i] === 0 ? ' root'
+                    : (iv[i] === 3 || iv[i] === 4) ? ' third'
+                    : iv[i] === 7 ? ' fifth' : '';
+            nhtml += '<span class="px-fbnote' + cls + '">' +
+                     FB_NOTES[fbPitchClass(st.key + iv[i])] + '</span>';
+        }
+        var nb = el(icon, 'fbnotes');
+        if (nb) nb.innerHTML = nhtml;
+
+        var c = el(icon, 'fretboard');
+        if (!c) return;
+        var g = c.getContext('2d');
+        if (!g) return;
+
+        var FRETS = 15;
+        var nStr = tuning.length;
+        var W = c.width, H = c.height;
+        var padL = 54, padR = 16, padT = 26, padB = 20;
+        var boardW = W - padL - padR, boardH = H - padT - padB;
+        var rowH = boardH / (nStr - 1);
+        var fretW = boardW / (FRETS + 1);        // +1 leaves the open-string column
+
+        g.clearRect(0, 0, W, H);
+
+        // Fret positions, and the dot markers a player navigates by.
+        var MARK = { 3: 1, 5: 1, 7: 1, 9: 1, 15: 1 }, DBL = { 12: 1 };
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        for (var f = 0; f <= FRETS; ++f) {
+            var x = padL + fretW * (f + 0.5);
+            if (MARK[f] || DBL[f]) {
+                g.fillStyle = 'rgba(255,255,255,.045)';
+                g.fillRect(padL + fretW * f, padT - 6, fretW, boardH + 12);
+            }
+            g.fillStyle = 'rgba(255,255,255,.30)';
+            g.font = '600 9px ui-sans-serif,system-ui,sans-serif';
+            g.fillText(String(f), x, padT - 14);
+        }
+
+        // Frets, then strings over them.
+        g.strokeStyle = 'rgba(255,255,255,.16)';
+        g.lineWidth = 1;
+        for (var fl = 1; fl <= FRETS + 1; ++fl) {
+            var fx = Math.round(padL + fretW * fl) + 0.5;
+            g.beginPath(); g.moveTo(fx, padT); g.lineTo(fx, padT + boardH); g.stroke();
+        }
+        // The nut is the thick one.
+        g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 3;
+        var nx = Math.round(padL + fretW) + 0.5;
+        g.beginPath(); g.moveTo(nx, padT - 4); g.lineTo(nx, padT + boardH + 4); g.stroke();
+
+        for (var sI = 0; sI < nStr; ++sI) {
+            var y = Math.round(padT + rowH * (nStr - 1 - sI)) + 0.5;
+            // Thicker low strings, as they look on the instrument.
+            g.lineWidth = 1 + (nStr - 1 - sI) * 0.22;
+            g.strokeStyle = 'rgba(255,255,255,.22)';
+            g.beginPath(); g.moveTo(padL, y); g.lineTo(padL + boardW, y); g.stroke();
+
+            g.fillStyle = 'rgba(255,255,255,.45)';
+            g.font = '700 10px ui-sans-serif,system-ui,sans-serif';
+            g.textAlign = 'right';
+            g.fillText(FB_NOTES[fbPitchClass(tuning[sI])], padL - 10, y);
+            g.textAlign = 'center';
+        }
+
+        // The notes themselves.
+        for (var s2 = 0; s2 < nStr; ++s2) {
+            var yy = padT + rowH * (nStr - 1 - s2);
+            for (var fr = 0; fr <= FRETS; ++fr) {
+                var pc = fbPitchClass(tuning[s2] + fr);
+                var deg = fbDegree(st, pc);
+                if (deg < 0) continue;
+                var cx = padL + fretW * (fr + 0.5);
+                var col = fbDegColour(deg);
+                var r = deg === 0 ? 11 : 9;
+                g.beginPath(); g.arc(cx, yy, r, 0, Math.PI * 2);
+                g.fillStyle = col; g.fill();
+                if (deg === 0) {
+                    g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,.75)'; g.stroke();
+                }
+                g.fillStyle = (deg === 0 || deg === 3 || deg === 4 || deg === 7) ? '#12141a' : '#0d0f14';
+                g.font = '700 ' + (deg === 0 ? 10 : 9) + 'px ui-sans-serif,system-ui,sans-serif';
+                g.fillText(FB_NOTES[pc], cx, yy + 0.5);
+            }
+        }
+
+        fbChords(icon, st, tuning);
+    }
+
+    // Diatonic chords of the selected key and scale, each with a small grid
+    // showing one playable shape.
+    function fbChords(icon, st, tuning) {
+        var box = el(icon, 'fbchords');
+        if (!box) return;
+        var degs = FB_DEGREES[st.mode] || [];
+        var html = '';
+        for (var i = 0; i < degs.length; ++i) {
+            var rootPc = fbPitchClass(st.key + degs[i][0]);
+            html += '<div class="px-chord' + (degs[i][0] === 0 ? ' tonic' : '') + '">' +
+                    '<div class="px-chord-n">' + FB_NOTES[rootPc] + FB_SUFFIX[degs[i][1]] + '</div>' +
+                    '<div class="px-chord-r">' + degs[i][2] + '</div>' +
+                    '<canvas data-ci="' + i + '" width="74" height="86"></canvas>' +
+                    '</div>';
+        }
+        box.innerHTML = html;
+        var cans = box.querySelectorAll('canvas');
+        for (var k = 0; k < cans.length; ++k) {
+            var idx = parseInt(cans[k].getAttribute('data-ci'), 10);
+            fbChordShape(cans[k], fbPitchClass(st.key + degs[idx][0]), degs[idx][1], tuning);
+        }
+    }
+
+    // Pick a shape: scan window positions and keep the one covering the most
+    // strings with the root lowest. Not a chord dictionary -- enough to show
+    // the player where the chord lives.
+    function fbVoicing(rootPc, quality, tuning) {
+        var want = FB_QUAL[quality].map(function (i) { return fbPitchClass(rootPc + i); });
+        var best = null, bestScore = -1;
+        for (var ws = 0; ws <= 12; ++ws) {
+            var we = (ws === 0) ? 4 : ws + 3;
+            var v = [], score = 0, lowest = -1;
+            for (var si = 0; si < tuning.length; ++si) {
+                var put = null;
+                for (var fr = ws; fr <= we; ++fr) {
+                    if (want.indexOf(fbPitchClass(tuning[si] + fr)) >= 0) { put = fr; break; }
+                }
+                v.push(put);
+                if (put !== null) {
+                    score += 1;
+                    if (lowest < 0) lowest = fbPitchClass(tuning[si] + put);
+                }
+            }
+            if (lowest === rootPc) score += 2;      // root in the bass reads as the chord
+            if (score > bestScore) { bestScore = score; best = v; }
+        }
+        return best || tuning.map(function () { return null; });
+    }
+
+    function fbChordShape(canvas, rootPc, quality, tuning) {
+        var g = canvas.getContext('2d');
+        if (!g) return;
+        var v = fbVoicing(rootPc, quality, tuning);
+        var played = v.filter(function (x) { return x !== null && x > 0; });
+        var minF = played.length ? Math.min.apply(null, played) : 1;
+        var base = Math.max(1, minF - (played.length ? 0 : 0));
+        if (played.length && Math.max.apply(null, played) - base > 3) base = minF;
+
+        var W = canvas.width, H = canvas.height;
+        var n = tuning.length;
+        var padL = 9, padR = 9, padT = 14, padB = 10;
+        var colW = (W - padL - padR) / Math.max(1, n - 1);
+        var rows = 4, rowH = (H - padT - padB) / rows;
+
+        g.clearRect(0, 0, W, H);
+        g.strokeStyle = 'rgba(255,255,255,.22)';
+        g.lineWidth = 1;
+        for (var i = 0; i < n; ++i) {
+            var x = Math.round(padL + colW * i) + 0.5;
+            g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + rows * rowH); g.stroke();
+        }
+        for (var r = 0; r <= rows; ++r) {
+            var y = Math.round(padT + rowH * r) + 0.5;
+            g.lineWidth = (r === 0 && base === 1) ? 2.5 : 1;
+            g.strokeStyle = (r === 0 && base === 1) ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.18)';
+            g.beginPath(); g.moveTo(padL, y); g.lineTo(padL + colW * (n - 1), y); g.stroke();
+        }
+        if (base > 1) {
+            g.fillStyle = 'rgba(255,255,255,.45)';
+            g.font = '700 8px ui-sans-serif,system-ui,sans-serif';
+            g.textAlign = 'left'; g.textBaseline = 'middle';
+            g.fillText(String(base), 1, padT + rowH * 0.5);
+        }
+
+        g.textAlign = 'center'; g.textBaseline = 'middle';
+        for (var si2 = 0; si2 < n; ++si2) {
+            var cx = padL + colW * si2;
+            var f = v[si2];
+            if (f === null) {
+                g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1.4;
+                g.beginPath();
+                g.moveTo(cx - 3, padT - 9); g.lineTo(cx + 3, padT - 3);
+                g.moveTo(cx + 3, padT - 9); g.lineTo(cx - 3, padT - 3);
+                g.stroke();
+                continue;
+            }
+            if (f === 0) {
+                g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.2;
+                g.beginPath(); g.arc(cx, padT - 6, 3, 0, Math.PI * 2); g.stroke();
+                continue;
+            }
+            var row = f - base;
+            if (row < 0 || row >= rows) continue;
+            var cy = padT + rowH * (row + 0.5);
+            var isRoot = fbPitchClass(tuning[si2] + f) === rootPc;
+            g.beginPath(); g.arc(cx, cy, 6, 0, Math.PI * 2);
+            g.fillStyle = isRoot ? '#ff5c8a' : '#e9edf5';
+            g.fill();
+        }
+    }
+
     // ── small helpers ────────────────────────────────────────────────────────
     function R(icon, role) { return icon.find('[rata-role=' + role + ']'); }
     function el(icon, role) { var q = R(icon, role); return q.length ? q[0] : null; }
@@ -253,6 +578,9 @@ function (event, funcs) {
         icon.data('px_st' + trk, st);
         var name = (st === 1 || st === 2) ? 'rec' : st === 3 ? 'play' : st === 4 ? 'stop' : '';
         R(icon, 'lamp' + trk).attr('data-st', name);
+        // The whole lane says it is recording, not just a 10px lamp.
+        icon.find('.px-lane[data-trk="' + trk + '"]')
+            .toggleClass('recording', st === 1 || st === 2);
         // The Rec and Play buttons light for the SELECTED track only: they are
         // per-track commands, so a lit button has to mean "this track".
         if (icon.data('px_sel') === trk) {
@@ -413,6 +741,10 @@ function (event, funcs) {
         }
         if (typeof d.pr === 'number') portApply(icon, 'out_progress', d.pr / 400);
         if (typeof d.bars === 'number') icon.data('px_bars', d.bars);
+        if (typeof d.tb === 'number' && d.tb !== icon.data('px_tbars')) {
+            icon.data('px_tbars', d.tb);
+            laneBars(icon);
+        }
         if (typeof d.bar === 'number' && d.bar !== icon.data('px_bar')) {
             icon.data('px_bar', d.bar);
             laneBars(icon);
@@ -442,8 +774,12 @@ function (event, funcs) {
             if (!out.length) continue;
             var recording = (st === 1 || st === 2);
             if (!bar || st === 0) { out.text(''); out.toggleClass('rec', false); continue; }
-            out.text(total > 0 && !recording ? ('BAR ' + bar + '/' + total)
-                                             : ('BAR ' + bar));
+            // While RECORDING the loop has no length yet, so count against the
+            // length the take is heading for. "Bar 2" on its own says nothing
+            // about when the take will close, which is the one thing a player
+            // laying down a loop is waiting to know.
+            var tgt = recording ? (icon.data('px_tbars') || 0) : total;
+            out.text(tgt > 0 ? ('BAR ' + bar + '/' + tgt) : ('BAR ' + bar));
             out.toggleClass('rec', recording);
         }
     }
@@ -845,6 +1181,11 @@ function (event, funcs) {
         });
         icon.data('px_fad', fad);
 
+        // The Scales tab is self-contained: no ports, no plugin state, so it is
+        // built once here and only redrawn when something on it is clicked.
+        fbBuildControls(icon);
+        fbDraw(icon);
+
         R(icon, 'pxtabs').find('.px-tab').each(function () {
             var self = this;
             $(self).on('click', function () {
@@ -854,7 +1195,9 @@ function (event, funcs) {
                     this.classList.toggle('on', this.getAttribute('data-pxtab') === name);
                 });
                 // Canvases laid out while hidden measure zero, so repaint on show.
-                if (name === 'loops') drawAllWaves(icon); else if (name === 'drums') drawGrid(icon);
+                if (name === 'loops') drawAllWaves(icon);
+                else if (name === 'drums') drawGrid(icon);
+                else if (name === 'scales') fbDraw(icon);
             });
         });
 
@@ -1035,7 +1378,14 @@ function (event, funcs) {
             var on = beats > 0;
             // The moment the count ends is the moment to come in, so say so
             // rather than just vanishing.
-            if (!on && icon.data('px_cibeat') > 0) {
+            // PLAY is shown whenever a count that WAS running ends. Keying it
+            // on the last number still being on screen missed it whenever the
+            // final beat and the take landed close enough together, which is
+            // most of the time -- the cue the player is actually waiting for
+            // was the one thing that did not reliably appear.
+            if (on) icon.data('px_wascount', 1);
+            if (!on && icon.data('px_wascount')) {
+                icon.data('px_wascount', 0);
                 icon.data('px_cibeat', 0);
                 var card = R(icon, 'cinum');
                 card.text('PLAY');

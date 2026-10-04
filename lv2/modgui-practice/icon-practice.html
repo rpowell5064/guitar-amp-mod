@@ -54,6 +54,7 @@
         <div class="px-tab on" data-pxtab="loops">Loops</div>
         <div class="px-tab" data-pxtab="drums">Drums</div>
         <div class="px-tab" data-pxtab="mix">Mix</div>
+        <div class="px-tab" data-pxtab="scales">Scales</div>
     </div>
 
     <div class="px-detail">
@@ -140,7 +141,7 @@
                     <div class="hf-knob" title="Quantise"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_quantize"></div><span class="hf-knob-t">Quantise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_quantize"></span></div>
                     <div class="hf-knob" title="Overdub Feedback"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_feedback"></div><span class="hf-knob-t">Feedback</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_feedback"></span></div>
                 </div>
-                <div class="px-hint">Click a lane to arm it &mdash; Rec, Undo and Clear act on that track; Play and Stop move the whole looper (use the per-track MUTE to pick what you hear). Every take counts a bar in, then the loop and the drums both restart from the top. Set Length to close the take automatically after that many bars. Drag the edges of a recorded loop to trim it &mdash; snapped to beats, hold Shift for a free drag.</div>
+                <div class="px-hint">Click a lane to arm it &mdash; Rec, Undo and Clear act on that track only; Play and Stop move everything, the loops and the drums together (use the per-track MUTE to pick what you hear). Play or Rec starts the transport; <b>Drums</b> in the header is the kit’s own on/off. Every take counts a bar in &mdash; the click is the only thing you hear while it does &mdash; then the loop and the groove both start from the top. Length closes the take automatically after that many bars; the lane counts the bars as it records. Click a recorded lane to play from that point, or drag its edges to trim &mdash; snapped to beats, hold Shift for a free drag.</div>
             </div>
 
             <!-- ══ DRUMS ══ -->
@@ -241,6 +242,46 @@
                             <div class="hf-knob" title="Hat Tone"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="hat_tone"></div><span class="hf-knob-t">Hat Tone</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="hat_tone"></span></div>
                         </div>
                     </div>
+                </div>
+            </div>
+            <div class="px-view px-view-scales">
+                <div class="px-panel px-fbhead">
+                    <div class="px-fbsel">
+                        <span class="px-fblabel">Instrument</span>
+                        <div class="px-seg" rata-role="fbinst">
+                            <div class="px-segb on" data-v="guitar">Guitar</div><div class="px-segb" data-v="bass">Bass</div>
+                        </div>
+                    </div>
+                    <div class="px-fbsel">
+                        <span class="px-fblabel">Strings</span>
+                        <div class="px-seg" rata-role="fbstrings"></div>
+                    </div>
+                    <div class="px-fbsel px-fbsel-wide">
+                        <span class="px-fblabel">Key</span>
+                        <div class="px-seg px-seg-keys" rata-role="fbkey"></div>
+                    </div>
+                    <div class="px-fbsel px-fbsel-wide">
+                        <span class="px-fblabel">Scale</span>
+                        <div class="px-seg px-seg-scale" rata-role="fbscale"></div>
+                    </div>
+                </div>
+
+                <div class="px-panel px-fbwrap">
+                    <div class="px-fbtitle" rata-role="fbtitle">C Ionian</div>
+                    <div class="px-fbnotes" rata-role="fbnotes"></div>
+                    <canvas rata-role="fretboard" width="1180" height="300"></canvas>
+                    <div class="px-fblegend">
+                        <span><i class="px-dot-root"></i>Root</span>
+                        <span><i class="px-dot-third"></i>3rd</span>
+                        <span><i class="px-dot-fifth"></i>5th</span>
+                        <span><i class="px-dot-note"></i>Other scale tone</span>
+                        <span class="px-fbhint">Open strings are the column left of the nut.</span>
+                    </div>
+                </div>
+
+                <div class="px-panel px-fbchords">
+                    <div class="px-fbtitle">Chords in this key</div>
+                    <div class="px-chordrow" rata-role="fbchords"></div>
                 </div>
             </div>
 

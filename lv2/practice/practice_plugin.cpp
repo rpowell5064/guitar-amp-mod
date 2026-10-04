@@ -406,6 +406,7 @@ static void practiceSendStatus(PracticePlugin* p) {
     j += ",\"step\":" + std::to_string(step);
     j += ",\"bars\":" + std::to_string(bars);
     j += ",\"bar\":" + std::to_string(p->looper.currentBar(p->clk));
+    j += ",\"tb\":" + std::to_string(p->looper.takeTargetBars());
     j += ",\"undo\":" + std::to_string(undo);
     // Whether the transport is moving. Not the Run switch -- that is the
     // drummer's on/off and the panel already knows it from the port.

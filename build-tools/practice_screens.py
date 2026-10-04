@@ -73,6 +73,7 @@ SHOTS = {
     "02-count-in":   ("loops", "gui({type:'change', icon:icon, symbol:'out_countin', value:3}, funcs);"),
     "03-drums":      ("drums", ""),
     "04-mix":        ("mix",   ""),
+    "05-scales":     ("scales", ""),
 }
 
 
