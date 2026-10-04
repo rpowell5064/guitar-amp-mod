@@ -1069,6 +1069,87 @@ int main() {
         hst.close();
     }
 
+    // ── Everything comes back together ───────────────────────────────────────
+    // After a stop, the next press -- play OR record -- has to bring back every
+    // track that has something on it, not just the armed one. Recording a new
+    // part over silence because the other three stayed stopped is the whole
+    // point of a looper not working.
+    std::printf("\nPlay and record bring every track back\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[DRUMS_LEVEL] = -60.0f;      // tracks only, so levels are unambiguous
+        hst.ctl[COUNT_IN]    = 1.0f;
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        auto layTake = [&](int trk, int stateOut) {
+            // Arm the track in its own block. Changing the selection and
+            // pressing record in the SAME block leaves which track the press
+            // belongs to up to the order the plugin happens to read its ports.
+            hst.ctl[LOOP_TRACK] = static_cast<float>(trk);
+            hst.run(kBlock * 2);
+            hst.trigger(LOOP_REC);
+            runUntil(hst, [&]{ return std::lround(hst.ctl[stateOut]) == 1 ||
+                                      std::lround(hst.ctl[stateOut]) == 2; }, barLen * 3);
+            hst.run(barLen * 2);
+            // A punch-in onto an EXISTING loop closes itself at the loop
+            // boundary. Pressing record again at that point does not close the
+            // take -- it starts a NEW one, which counts in and mutes
+            // everything, so every measurement after it is of the wrong thing.
+            const long st = std::lround(hst.ctl[stateOut]);
+            if (st == 1 || st == 2) {
+                hst.trigger(LOOP_REC);
+                runUntil(hst, [&]{ return std::lround(hst.ctl[stateOut]) == 3; }, barLen * 2);
+            }
+        };
+        layTake(1, OUT_TRK1_STATE);
+        layTake(2, OUT_TRK2_STATE);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 3,
+              "two tracks are laid down and playing",
+              "t1 " + std::to_string(hst.ctl[OUT_TRK1_STATE]) +
+              " t2 " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+
+        std::vector<float> both;
+        hst.run(barLen, &both, true);
+        const float twoTracks = rms(both);
+
+        // Stop everything, then PLAY.
+        hst.trigger(LOOP_STOP);
+        hst.run(static_cast<int64_t>(kFs * 0.1));
+        hst.trigger(LOOP_PLAY);
+        hst.run(kBlock * 4);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 3,
+              "PLAY restarts every track, not just the armed one",
+              "t1 " + std::to_string(hst.ctl[OUT_TRK1_STATE]) +
+              " t2 " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+        std::vector<float> afterPlay;
+        hst.run(barLen, &afterPlay, true);
+        check(rms(afterPlay) > twoTracks * 0.8f, "and both are audible again",
+              "rms " + std::to_string(rms(afterPlay)) + " vs " + std::to_string(twoTracks));
+
+        // Stop again, then RECORD a third part. The other two must come back,
+        // or the new part is being played over silence.
+        hst.trigger(LOOP_STOP);
+        hst.run(static_cast<int64_t>(kFs * 0.1));
+        hst.ctl[LOOP_TRACK] = 3.0f;
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK3_STATE]) == 1; }, barLen * 3);
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3 &&
+              std::lround(hst.ctl[OUT_TRK2_STATE]) == 3,
+              "RECORD restarts the other tracks too",
+              "t1 " + std::to_string(hst.ctl[OUT_TRK1_STATE]) +
+              " t2 " + std::to_string(hst.ctl[OUT_TRK2_STATE]));
+        std::vector<float> whileRec;
+        hst.run(barLen / 2, &whileRec, true);
+        check(rms(whileRec) > twoTracks * 0.5f,
+              "so the new part is played against them, not against silence",
+              "rms " + std::to_string(rms(whileRec)) + " vs " + std::to_string(twoTracks));
+        hst.close();
+    }
+
     // ── Stop, in a REAL session ──────────────────────────────────────────────
     // The existing stop test records with the count-in OFF and no drums. The
     // report is from a live board: groove running, counted-in take, then stop.

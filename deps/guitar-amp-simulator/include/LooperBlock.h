@@ -562,6 +562,20 @@ private:
             tr.state == State::Stopped) {
             loopCursor = 0;
             restartReq.store(true, std::memory_order_release);
+            // And bring the REST of the looper back with it. Starting a take
+            // after a stop used to arm only the track being recorded, so the
+            // new part was played over silence -- you were overdubbing onto a
+            // looper that had nothing playing. Anything with audio on it comes
+            // back; MUTE is how you choose not to hear a track, and it is left
+            // alone here because that is a decision the player already made.
+            for (int o = 0; o < kNumTracks; ++o) {
+                if (o == t) continue;
+                Track& ot = tracks[o];
+                if (ot.state == State::Stopped) {
+                    ot.state      = State::Playing;
+                    ot.targetGain = 1.0f;
+                }
+            }
         }
         switch (tr.state) {
             case State::Empty: {
