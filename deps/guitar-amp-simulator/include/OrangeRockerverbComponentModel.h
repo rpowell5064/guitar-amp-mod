@@ -101,6 +101,10 @@ private:
     // rig, so it carries its own post-power-amp HF shelf (dirty only; the clean channel is flat).
     float  dirtyHfDb_ = 7.0f;   // fit15: DIRTY presence-shelf gain (dB) above ~1.2 kHz
     double nfbStabHz_ = 60e3, fluxLim_ = 40.0;   // fit7 / fit8
+    // DIRTY tone-stack values (fit17..fit22, 2026-10-04): the drawing's C37 / C40=C41 / RV7 / RV5 / RV6 / R62, exposed
+    // as hardware-calibration hooks because the amp-only MKIII captures show more bass and treble RANGE than these
+    // printed MK1 values reproduce (joint knob fits hit the pot stops either way). Defaults = the drawing.
+    double dStackC1_ = 560e-12, dStackC2_ = 22e-9, dStackRT_ = 250e3, dStackRB_ = 500e3, dStackRM_ = 25e3, dStackRS_ = 39e3;
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
     double nfbSeriesR_ = 4.7e3;                  // fit11: R10 4k7 (+R6 10k in the other SW2 position)

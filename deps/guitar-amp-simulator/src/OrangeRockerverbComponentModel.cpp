@@ -106,7 +106,7 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
         c.coup32.prepare(fs_, 4.7e-9, Zp100 + 470e3, 220e3);
         c.v8b.prepare(fs_, { railE, 100e3, 1.5e3, 0.0, 470e3, millerC(100e3), 470e3, 0.0, 0.0, 0.0, kneeV_ });
         {   // dirty stack hangs on the V8-B plate: C37 560p, C40/C41 22n, RV7 250k, RV5 500k, RV6 25k, R62 39k
-            YehSmithToneStack::CircuitParams p{ 560e-12, 22e-9, 22e-9, 250e3, 500e3, 25e3, 39e3 + Zp100 };
+            YehSmithToneStack::CircuitParams p{ dStackC1_, dStackC2_, dStackC2_, dStackRT_, dStackRB_, dStackRM_, dStackRS_ + Zp100 };   // fit17..fit22
             c.tsDirty.prepare(fs_, p);
         }
         // ── CLEAN ──
@@ -260,6 +260,12 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit14")    { zResHz_ = std::max(40.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: OT resonance centre (Hz)
     else if (id == "fit15")    { dirtyHfDb_ = value; if (fs_ > 0.0) for (auto& c : ch_) c.dirtyHf.prepare(fs_, 1.0, std::pow(10.0, dirtyHfDb_ / 20.0), 1200.0); }   // lab: DIRTY presence shelf (dB)
     else if (id == "fit16")    { inVolts_ = std::max(1e-4f, value); }
+    else if (id == "fit17")    { dStackC1_ = std::max(1e-12, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: dirty stack C37 (F)
+    else if (id == "fit18")    { dStackC2_ = std::max(1e-10, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: dirty stack C40 = C41 (F)
+    else if (id == "fit19")    { dStackRT_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: treble pot RV7 (ohm)
+    else if (id == "fit20")    { dStackRB_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: bass pot RV5 (ohm)
+    else if (id == "fit21")    { dStackRM_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: mid pot RV6 (ohm)
+    else if (id == "fit22")    { dStackRS_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: slope R62 (ohm)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 
