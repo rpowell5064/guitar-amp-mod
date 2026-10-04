@@ -191,6 +191,7 @@ struct PracticePlugin {
     float                    countInBeats = 0.0f;
     // Tempo and meter held for the duration of a take (see run()).
     bool                     wasCounting = false;  // count-in edge (see run())
+    bool                     drumsStopped = false; // STOP stops the groove too
     bool                     tempoHeld = false;
     float                    heldBpm   = 120.0f;
     int                      heldBpb   = 0;
@@ -654,6 +655,9 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
             p->clk.start();
             p->drums.rearm(p->clk);
             p->looper.rewind();
+            // Starting the transport always brings the groove back: otherwise
+            // a STOP earlier in the session leaves RUN looking broken too.
+            p->drumsStopped = false;
         } else {
             p->clk.stop();
         }
@@ -739,9 +743,20 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
             p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
         }
         p->looper.recordPressed(track, p->clk);
+        p->drumsStopped = false;      // a take always brings the groove back
     }
-    if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay))  p->looper.playAllPressed(p->clk);
-    if (edge(portBool(p, P_LOOP_STOP),  p->prevStop))  p->looper.stopAllPressed(p->clk);
+    // Stop means STOP. It used to stop only the looper, leaving the groove
+    // playing -- so the box carried on making a loop's worth of noise and the
+    // button looked broken. Play and a new take start it again, from the top of
+    // the pattern, which is where the loop restarts too.
+    if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay)) {
+        p->looper.playAllPressed(p->clk);
+        if (p->drumsStopped) { p->drumsStopped = false; p->drums.restartPattern(p->clk); }
+    }
+    if (edge(portBool(p, P_LOOP_STOP),  p->prevStop)) {
+        p->looper.stopAllPressed(p->clk);
+        p->drumsStopped = true;
+    }
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);
 
@@ -760,7 +775,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // to replace. The player's own dry signal is deliberately left alone: they
     // are about to play, and they need to hear themselves do it.
     const bool counting = countLeft > 0;
-    p->drums.setPatternMuted(counting);
+    p->drums.setPatternMuted(counting || p->drumsStopped);
     p->looper.setCountMute(counting);
     // Choke ONCE, on the edge. Calling this every block would re-arm the damp
     // envelope each time and hold the kit at full level instead of fading it.
@@ -829,13 +844,17 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     {
         const int64_t left = p->looper.countInSamplesLeft(p->clk);
         const double  spb  = std::max(1.0, p->clk.samplesPerBeat());
-        // Clamped for the same reason the click is: during the sub-beat
-        // lead-in the panel must show the full count (4 in four-four, 5 in
-        // five-four), not one more than the player is about to hear.
-        p->countInBeats = (left > 0)
-            ? static_cast<float>(std::min<double>(std::ceil(left / spb),
-                                                  LooperBlock::countBeats(p->clk)))
-            : 0.0f;
+        // The panel shows NOTHING until the count actually starts clicking.
+        // Showing the full number through the sub-beat lead-in made the first
+        // count last up to twice as long as the others, which reads as an
+        // extra beat at the top -- the number sat on 4, then the first click
+        // arrived and it sat on 4 again. The lead-in is at most three quarters
+        // of a beat (the press snaps back to a beat just gone), and during it
+        // the right answer is "not counting yet".
+        const int    countTo  = LooperBlock::countBeats(p->clk);
+        const double beatsRaw = (left > 0) ? std::ceil(left / spb) : 0.0;
+        p->countInBeats = (left > 0 && beatsRaw <= countTo)
+                        ? static_cast<float>(beatsRaw) : 0.0f;
         setOut(p, P_OUT_COUNTIN, p->countInBeats);
     }
     setOut(p, P_OUT_PROGRESS, p->looper.loopProgress());

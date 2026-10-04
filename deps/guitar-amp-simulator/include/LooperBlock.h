@@ -469,7 +469,14 @@ private:
             // and a half, and the panel showed three. There is nothing left to
             // meet on the old grid anyway: a take now rewinds the loop and
             // restarts the groove when it begins, so the take IS the bar line.
-            const double wait = clk.samplesToNextBeat() + countBeats(clk) * spBeat;
+            // A press a hair AFTER a beat was meant for THAT beat. Without this
+            // the count waits out most of a beat before its first click, while
+            // the panel already shows the full number -- so the first count
+            // lasts nearly twice as long as the rest and the whole thing reads
+            // as an extra beat. Snapping back makes the first click immediate.
+            double toBeat = clk.samplesToNextBeat();
+            if (toBeat > 0.75 * spBeat) toBeat -= spBeat;   // negative: just gone
+            const double wait = toBeat + countBeats(clk) * spBeat;
             tracks[t].applyAt    = clk.samplePosition() + static_cast<int64_t>(wait);
             tracks[t].lateBy     = 0;
             tracks[t].countingIn = true;

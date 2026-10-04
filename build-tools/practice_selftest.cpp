@@ -560,19 +560,29 @@ int main() {
               "and nothing has been recorded yet",
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
-        // A bar after the press (plus the sub-beat lead-in to the first click)
-        // the count has ended and the take is running.
-        hst.run(barLen / 2 + static_cast<int64_t>(kFs * 60.0 / 120.0) + kBlock * 2);
+        // Catch the exact block the take starts in. Everything after this is
+        // measured from there: the count's length depends on where in the beat
+        // the press landed, so timing the take from the PRESS bakes in one
+        // particular press and nothing else.
+        const int64_t startDelay = runUntil(hst,
+            [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 3);
+        check(startDelay >= 0, "the take starts");
+        const int64_t tookAt = hst.framesFed;
         check(std::lround(hst.ctl[OUT_COUNTIN]) == 0, "the count clears",
               "beats left " + std::to_string(hst.ctl[OUT_COUNTIN]));
         check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 1,
               "recording starts when the count ends",
               "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
 
-        // And the take is still a whole number of bars.
-        hst.run(barLen * 2 - kBlock * 2);
+        // And the take is still a whole number of bars. Measured from the block
+        // the take ACTUALLY started in, not from the press: the count's length
+        // depends on where in the beat the press landed, so counting bars from
+        // the press encodes one particular press and nothing else. (The checks
+        // above already ran past the start, so wind the 2 bars back by that.)
+        const int64_t since = hst.framesFed - tookAt;
+        hst.run(barLen * 2 - since - kBlock * 2);
         hst.trigger(LOOP_REC);
-        hst.run(kBlock);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen * 2);
         check(std::lround(hst.ctl[OUT_BARS]) == 2,
               "the counted-in take is still bar-aligned",
               "bars " + std::to_string(hst.ctl[OUT_BARS]));
@@ -980,13 +990,22 @@ int main() {
             if (off > 0.0) hst.run(static_cast<int64_t>(off * beatLen));
 
             hst.trigger(LOOP_REC);
-            hst.run(kBlock);
+            // The count starts on a beat, so there can be a short lead-in
+            // before the first click. The panel shows NOTHING during it: a
+            // number sitting there for most of a beat before the count has
+            // started reads as an extra beat at the top of the count.
+            const int64_t lead = runUntil(hst,
+                [&]{ return hst.ctl[OUT_COUNTIN] > 0.0f; }, beatLen * 2);
             const long shown = std::lround(hst.ctl[OUT_COUNTIN]);
             const std::string what = "in " + sig + ", pressing " +
                                      std::to_string(off) + " beats in counts " +
                                      std::to_string(bpb);
             check(shown == bpb, what.c_str(),
                   "panel showed " + std::to_string(shown));
+            const std::string leadWhat = "and in " + sig + " the count starts within a beat";
+            check(lead >= 0 && lead <= static_cast<int64_t>(beatLen * 0.80),
+                  leadWhat.c_str(),
+                  "lead-in " + std::to_string((double)lead / (double)beatLen) + " beats");
 
             // And it must actually LAST a bar -- a panel that says five while
             // the take starts in two is the same bug wearing a hat.
@@ -997,8 +1016,8 @@ int main() {
                 waited += kBlock;
             }
             const double beats = static_cast<double>(waited) / static_cast<double>(beatLen);
-            // Between bpb and bpb+1: the sub-beat lead-in from the press to the
-            // first click sits on top of the counted beats.
+            // Between bpb and bpb+1: any lead-in from the press to the first
+            // click sits on top of the counted beats.
             const std::string lasts = "and in " + sig + " the take begins a bar later";
             check(beats >= bpb - 0.1 && beats <= bpb + 1.1, lasts.c_str(),
                   "waited " + std::to_string(beats) + " beats");
@@ -1050,6 +1069,70 @@ int main() {
         hst.close();
     }
 
+    // ── Stop, in a REAL session ──────────────────────────────────────────────
+    // The existing stop test records with the count-in OFF and no drums. The
+    // report is from a live board: groove running, counted-in take, then stop.
+    // Everything the count-in work touched -- the tempo hold, the grid
+    // re-origin, the count mute -- sits between those two states.
+    std::printf("\nStop, after a counted-in take with drums running\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[PATTERN]  = 0.0f;
+        hst.ctl[COUNT_IN] = 1.0f;
+        hst.ctl[RUN]      = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        hst.trigger(LOOP_REC);
+        check(runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; },
+                       barLen * 3) >= 0, "the counted-in take starts");
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        check(runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; },
+                       barLen * 2) >= 0, "and closes into playback");
+
+        // What the box sounds like while it is running: the reference the
+        // "stopped" measurements below are judged against.
+        std::vector<float> runningBuf;
+        hst.run(barLen / 2, &runningBuf, true);
+        const float running = rms(runningBuf);
+        check(running > 0.02f, "the loop and groove are both audible before the press",
+              "rms " + std::to_string(running));
+        hst.trigger(LOOP_STOP);
+        // Stop is quantised, so it may wait for a bar line -- but no longer.
+        const int64_t took = runUntil(hst,
+            [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 4; }, barLen * 3);
+        check(took >= 0, "STOP actually stops the track",
+              took < 0 ? "still not stopped after 3 bars"
+                       : ("after " + std::to_string((double)took / (double)barLen) + " bars"));
+        check(took >= 0 && took <= barLen + 4 * kBlock,
+              "and within a bar of the press",
+              "took " + std::to_string((double)took / (double)barLen) + " bars");
+
+        // The bar straight after the press still has decaying tails in it --
+        // stop is not a mute, and chopping a ringing cymbal dead would be a
+        // click. What matters is that it is a fraction of what was playing.
+        std::vector<float> after;
+        hst.run(barLen, &after, true);
+        check(rms(after) < running * 0.2f, "and the noise stops with it",
+              "rms " + std::to_string(rms(after)) + " vs running " + std::to_string(running));
+
+        // A bar later there must be nothing at all: no loop, no groove.
+        std::vector<float> settled;
+        hst.run(barLen, &settled, true);
+        check(rms(settled) < 1.0e-4f, "and a bar later there is silence",
+              "rms " + std::to_string(rms(settled)));
+
+        // PLAY brings both back.
+        hst.trigger(LOOP_PLAY);
+        hst.run(barLen);
+        std::vector<float> resumed;
+        hst.run(barLen, &resumed, true);
+        check(rms(resumed) > running * 0.5f, "and PLAY brings it all back",
+              "rms " + std::to_string(rms(resumed)) + " vs running " + std::to_string(running));
+        hst.close();
+    }
+
     // ── A ringing cymbal is choked, not left to ring through ─────────────────
     // Muting the pattern only stops hits that have not happened yet. A crash
     // struck just before the press rings for seconds, straight over the count.
@@ -1079,8 +1162,9 @@ int main() {
         // Press. The next click is ~400 ms away, so 150-350 ms after the press
         // is click-free: anything there is the un-choked crash.
         hst.trigger(LOOP_REC);
-        hst.run(kBlock * 2);
-        check(hst.ctl[OUT_COUNTIN] > 0.0f, "the press actually starts a count here",
+        check(runUntil(hst, [&]{ return hst.ctl[OUT_COUNTIN] > 0.0f; },
+                       static_cast<int64_t>(kFs * 0.6)) >= 0,
+              "the press actually starts a count here",
               "beats " + std::to_string(hst.ctl[OUT_COUNTIN]));
         hst.run(static_cast<int64_t>(kFs * 0.15));
         std::vector<float> gap;
