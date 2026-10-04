@@ -134,6 +134,17 @@ enum PracticePorts {
     P_TRK2_TRIM_IN, P_TRK2_TRIM_OUT,
     P_TRK3_TRIM_IN, P_TRK3_TRIM_OUT,
     P_TRK4_TRIM_IN, P_TRK4_TRIM_OUT,
+
+    // Stereo, appended. The right channel goes on the END rather than next to
+    // the left, for the same reason everything else here does: these indices
+    // are what saved pedalboards and MIDI bindings refer to, and renumbering
+    // them has already broken boards three times. A host that only connects
+    // the left pair still works -- the right channel is optional throughout.
+    P_IN_R,
+    P_OUT_R,
+    // Fold the output to mono. For a mono rig: without it a stereo room and a
+    // stereo loop lose level and comb when the desk sums them.
+    P_MONO_SUM,
     P_N_PORTS
 };
 
@@ -568,8 +579,12 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     auto* p = static_cast<PracticePlugin*>(h);
     const int n = static_cast<int>(nframes);
 
-    const float* in  = p->ports[P_IN];
-    float*       out = p->ports[P_OUT];
+    const float* in   = p->ports[P_IN];
+    float*       out  = p->ports[P_OUT];
+    // Right is OPTIONAL at every step: a host may leave it unconnected, and a
+    // mono pedalboard should behave exactly as it did before stereo existed.
+    const float* inR  = p->ports[P_IN_R];
+    float*       outR = p->ports[P_OUT_R];
     if (!in || !out) return;
 
     // ── Editor channel ───────────────────────────────────────────────────────
@@ -832,10 +847,16 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // ── Render ───────────────────────────────────────────────────────────────
     // Dry guitar first (in and out may alias), then the loop, then the kit.
     for (int i = 0; i < n; ++i) out[i] = in[i];
+    if (outR) {
+        // A mono source feeds both sides, so plugging one cable into a stereo
+        // chain does not leave half of it silent.
+        const float* src = inR ? inR : in;
+        for (int i = 0; i < n; ++i) outR[i] = src[i];
+    }
 
     // The looper still needs the input even when bypassed would silence it;
     // feeding it keeps the pre-roll warm, and its master level is already 0.
-    p->looper.process(p->clk, in, out, n);
+    p->looper.process(p->clk, in, inR, out, outR, n);
     // A take has just begun: put the groove back to its first step so the loop
     // and the drums start together, which is the whole point of counting in.
     //
@@ -857,7 +878,19 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     // Sense the guitar before the kit is rendered: the detector must see the
     // dry playing, not the mix it is about to be folded into.
     p->drums.senseGuitar(in, n);
-    p->drums.render(p->clk, out, n);
+    p->drums.render(p->clk, out, outR, n);
+
+    // Mono fold, last of all, so it catches the dry signal, the loops and the
+    // kit's room alike. Summing to 0.5*(L+R) rather than picking one side keeps
+    // anything panned from vanishing; it is the same fold a desk would do, done
+    // where the plugin still knows what it put where.
+    if (outR && portBool(p, P_MONO_SUM)) {
+        for (int i = 0; i < n; ++i) {
+            const float m = 0.5f * (out[i] + outR[i]);
+            out[i] = m;
+            outR[i] = m;
+        }
+    }
 
     p->clk.advance(n);
 
@@ -961,14 +994,15 @@ static LV2_State_Status practice_save(LV2_Handle                 handle,
 
     // header: magic, version, rate, length, track count
     const size_t header = 4 + 4 + 4 + 8 + 4;
-    const size_t perTrk = 4 + 8 + size_t(len) * sizeof(int16_t);
+    // v2: samples are interleaved stereo, so a take is 2 shorts per frame.
+    const size_t perTrk = 4 + 8 + size_t(len) * 2 * sizeof(int16_t);
     std::vector<uint8_t> blob(header + size_t(n) * perTrk);
     uint8_t* w = blob.data();
     auto put32 = [&](uint32_t v) { std::memcpy(w, &v, 4); w += 4; };
     auto put64 = [&](int64_t v)  { std::memcpy(w, &v, 8); w += 8; };
 
     put32(PRACTICE_STATE_MAGIC);
-    put32(1);
+    put32(2);                       // 2 = interleaved stereo; 1 = mono (still read)
     put32(static_cast<uint32_t>(p->rate));
     put64(len);
     put32(static_cast<uint32_t>(n));
@@ -977,7 +1011,7 @@ static LV2_State_Status practice_save(LV2_Handle                 handle,
         put32(static_cast<uint32_t>(t));
         put64(len);
         p->looper.saveTrack(t, reinterpret_cast<int16_t*>(w));
-        w += size_t(len) * sizeof(int16_t);
+        w += size_t(len) * 2 * sizeof(int16_t);
     }
 
     store(stateHandle, p->uris.loopsKey, blob.data(), blob.size(),
@@ -1015,8 +1049,13 @@ static LV2_State_Status practice_restore(LV2_Handle                 handle,
     const uint32_t rate = get32();
     const int64_t  len  = get64();
     const uint32_t n    = get32();
-    if (ver != 1 || len <= 0 || n > uint32_t(LooperBlock::kNumTracks))
+    // v1 is mono, v2 interleaved stereo. A board saved before the looper was
+    // stereo still has to come back, or the feature costs the player every loop
+    // they had saved -- which is the one thing state exists to prevent.
+    if ((ver != 1 && ver != 2) || len <= 0 || n > uint32_t(LooperBlock::kNumTracks))
         return LV2_STATE_ERR_BAD_TYPE;
+    const bool stereoBlob = (ver >= 2);
+    const size_t frameBytes = (stereoBlob ? 2u : 1u) * sizeof(int16_t);
     // A loop recorded at another rate would play back at the wrong pitch and
     // the wrong length. Declining is honest; resampling here is not this
     // plugin's job.
@@ -1027,10 +1066,11 @@ static LV2_State_Status practice_restore(LV2_Handle                 handle,
         if (size_t(end - r) < 12) break;
         const uint32_t t    = get32();
         const int64_t  tlen = get64();
-        if (tlen <= 0 || size_t(end - r) < size_t(tlen) * sizeof(int16_t)) break;
+        if (tlen <= 0 || size_t(end - r) < size_t(tlen) * frameBytes) break;
         if (t < uint32_t(LooperBlock::kNumTracks))
-            p->looper.loadTrack(int(t), reinterpret_cast<const int16_t*>(r), tlen, 0);
-        r += size_t(tlen) * sizeof(int16_t);
+            p->looper.loadTrack(int(t), reinterpret_cast<const int16_t*>(r), tlen, 0,
+                                stereoBlob);
+        r += size_t(tlen) * frameBytes;
     }
     p->looper.loadEnd(len);
 

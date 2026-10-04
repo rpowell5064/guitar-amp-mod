@@ -56,7 +56,8 @@ enum {
     COUNT_IN = 57, OUT_COUNTIN = 58, LOOP_BARS = 59, DRUM_SPACE = 60,
     TRK1_TRIM_IN = 61, TRK1_TRIM_OUT = 62, TRK2_TRIM_IN = 63, TRK2_TRIM_OUT = 64,
     TRK3_TRIM_IN = 65, TRK3_TRIM_OUT = 66, TRK4_TRIM_IN = 67, TRK4_TRIM_OUT = 68,
-    N_PORTS = 69
+    IN_R = 69, OUT_R = 70, MONO_SUM = 71,
+    N_PORTS = 72
 };
 
 static constexpr double kFs    = 48000.0;
@@ -107,6 +108,8 @@ struct Host {
     LV2_Handle            h    = nullptr;
     float                 ctl[N_PORTS] = {};
     std::vector<float>    in, out;
+    std::vector<float>    inR, outR;   // only connected when `stereo`
+    bool                  stereo = false;
     int64_t               framesFed = 0;
 
     // Editor channel. 64 KB is comfortably more than the largest message the
@@ -116,7 +119,8 @@ struct Host {
     LV2_URID_Map          uridFeature { nullptr, uridMap };
     LV2_Feature           fUrid { LV2_URID__map, &uridFeature };
 
-    void open() {
+    void open(bool wantStereo = false) {
+        stereo = wantStereo;
         desc = lv2_descriptor(0);
         if (!desc) { std::printf("  !! lv2_descriptor(0) returned null\n"); ++failures; return; }
         const LV2_Feature* const feats[] = { &fUrid, nullptr };
@@ -125,11 +129,22 @@ struct Host {
 
         in.assign(kBlock, 0.0f);
         out.assign(kBlock, 0.0f);
+        inR.assign(kBlock, 0.0f);
+        outR.assign(kBlock, 0.0f);
         ctlBuf.assign(kAtomCap, 0);
         ntfBuf.assign(kAtomCap, 0);
         atomReset();
         desc->connect_port(h, IN,  in.data());
         desc->connect_port(h, OUT, out.data());
+        // A MONO host leaves these unconnected, which is what every pedalboard
+        // saved before stereo existed does. Both shapes have to work.
+        if (stereo) {
+            desc->connect_port(h, IN_R,  inR.data());
+            desc->connect_port(h, OUT_R, outR.data());
+        } else {
+            desc->connect_port(h, IN_R,  nullptr);
+            desc->connect_port(h, OUT_R, nullptr);
+        }
         desc->connect_port(h, CONTROL, ctlBuf.data());
         desc->connect_port(h, NOTIFY,  ntfBuf.data());
         // Everything else is an ordinary control port. The two atom ports are
@@ -137,6 +152,7 @@ struct Host {
         // read a single float as an atom sequence.
         for (int i = 2; i < N_PORTS; ++i) {
             if (i == CONTROL || i == NOTIFY) continue;
+            if (i == IN_R || i == OUT_R) continue;      // audio, wired above
             desc->connect_port(h, i, &ctl[i]);
         }
 
@@ -240,14 +256,22 @@ struct Host {
     }
 
     // Run `frames`, optionally capturing output and/or feeding silence.
-    void run(int64_t frames, std::vector<float>* capture = nullptr, bool silent = false) {
+    void run(int64_t frames, std::vector<float>* capture = nullptr, bool silent = false,
+             std::vector<float>* captureR = nullptr) {
         for (int64_t done = 0; done < frames; done += kBlock) {
-            for (int i = 0; i < kBlock; ++i)
+            for (int i = 0; i < kBlock; ++i) {
                 in[i] = silent ? 0.0f : tone(framesFed + i);
+                // A DIFFERENT signal on the right, so "the right channel is
+                // really the right channel" is answerable: a harness that fed
+                // both sides the same thing could not tell a stereo looper from
+                // a mono one copied twice.
+                if (stereo) inR[i] = silent ? 0.0f : -0.5f * tone(framesFed + i + 977);
+            }
             atomResetOut();
             desc->run(h, kBlock);
             atomResetIn();
             if (capture) capture->insert(capture->end(), out.begin(), out.end());
+            if (captureR) captureR->insert(captureR->end(), outR.begin(), outR.end());
             framesFed += kBlock;
         }
     }
@@ -1069,6 +1093,101 @@ int main() {
         hst.close();
     }
 
+    // ── Stereo ───────────────────────────────────────────────────────────────
+    // The looper sits after the amp and cab, so what reaches it is whatever
+    // stereo the chain made. Recording that to a mono buffer throws it away at
+    // the one point it is worth keeping.
+    std::printf("\nStereo\n");
+    {
+        Host hst; hst.open(true);
+        hst.ctl[DRUMS_LEVEL] = -60.0f;      // tracks only
+        hst.ctl[COUNT_IN]    = 0.0f;
+        hst.ctl[RUN]         = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Dry passthrough keeps the two sides apart.
+        std::vector<float> dryL, dryR;
+        hst.run(barLen / 4, &dryL, false, &dryR);
+        check(rms(dryL) > 0.01f && rms(dryR) > 0.01f,
+              "both channels pass audio",
+              "L " + std::to_string(rms(dryL)) + " R " + std::to_string(rms(dryR)));
+        double maxDiff = 0.0;
+        for (size_t i = 0; i < dryL.size(); ++i)
+            maxDiff = std::max(maxDiff, std::fabs(double(dryL[i]) - dryR[i]));
+        check(maxDiff > 0.01, "and they are NOT the same signal",
+              "max |L-R| " + std::to_string(maxDiff));
+
+        // Record a take, then play it back with the input silent: whatever
+        // comes out is the LOOP, and it has to still be two different channels.
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 2);
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen * 2);
+
+        std::vector<float> loopL, loopR;
+        hst.run(barLen, &loopL, true, &loopR);     // silent input: loop only
+        check(rms(loopL) > 0.01f && rms(loopR) > 0.01f,
+              "a recorded loop plays back on both channels",
+              "L " + std::to_string(rms(loopL)) + " R " + std::to_string(rms(loopR)));
+        double loopDiff = 0.0;
+        for (size_t i = 0; i < loopL.size(); ++i)
+            loopDiff = std::max(loopDiff, std::fabs(double(loopL[i]) - loopR[i]));
+        check(loopDiff > 0.01, "and the two sides were recorded SEPARATELY",
+              "max |L-R| " + std::to_string(loopDiff));
+
+        // Mono sum folds everything, including the loop.
+        hst.ctl[MONO_SUM] = 1.0f;
+        hst.run(kBlock * 2);
+        std::vector<float> monoL, monoR;
+        hst.run(barLen / 2, &monoL, true, &monoR);
+        double monoDiff = 0.0;
+        for (size_t i = 0; i < monoL.size(); ++i)
+            monoDiff = std::max(monoDiff, std::fabs(double(monoL[i]) - monoR[i]));
+        check(monoDiff < 1.0e-6, "Mono Sum makes the two channels identical",
+              "max |L-R| " + std::to_string(monoDiff));
+        check(rms(monoL) > 0.005f, "and does not silence the output",
+              "rms " + std::to_string(rms(monoL)));
+        hst.close();
+    }
+
+    // ── A mono host still works ──────────────────────────────────────────────
+    // Every pedalboard saved before stereo existed connects only the left pair.
+    // The right ports are connectionOptional and the plugin is handed nullptr
+    // for them, which is the shape that segfaults if anything assumes stereo.
+    std::printf("\nMono host (right channel never connected)\n");
+    {
+        Host hst; hst.open(false);
+        hst.ctl[COUNT_IN] = 0.0f;
+        hst.ctl[RUN]      = 1.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        std::vector<float> dry;
+        hst.run(barLen / 4, &dry);
+        check(rms(dry) > 0.01f, "audio still passes with no right channel",
+              "rms " + std::to_string(rms(dry)));
+
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 2);
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen * 2);
+        std::vector<float> loop;
+        hst.run(barLen, &loop, true);
+        check(rms(loop) > 0.01f, "and a loop records and plays back as before",
+              "rms " + std::to_string(rms(loop)));
+
+        // Mono Sum with nothing to sum must not misbehave either.
+        hst.ctl[MONO_SUM] = 1.0f;
+        std::vector<float> still;
+        hst.run(barLen / 2, &still, true);
+        check(rms(still) > 0.01f, "and Mono Sum on a mono host changes nothing",
+              "rms " + std::to_string(rms(still)));
+        hst.close();
+    }
+
     // ── Does the kit survive a loaded looper? ────────────────────────────────
     // Reported from the board: "the drums sound weak when audio is recorded to
     // the tracks". Nothing ducks the kit, so this is pure arithmetic -- every
@@ -1725,6 +1844,60 @@ int main() {
             check(std::lround(b.ctl[OUT_TRK1_STATE]) == 4,
                   "and it is stopped, not playing",
                   "state " + std::to_string(b.ctl[OUT_TRK1_STATE]));
+
+            // ── A pre-stereo (v1) blob must still load ────────────────────
+            // Built by hand: a v1 blob is MONO samples, and after the stereo
+            // change the restore path has to recognise that and put the one
+            // channel on both sides rather than reading pairs and halving the
+            // loop. Anything else silently destroys every loop a player had
+            // saved before today.
+            {
+                const int64_t len = static_cast<int64_t>(kFs);     // 1 second
+                std::vector<uint8_t> v1;
+                auto p32 = [&](uint32_t v) {
+                    for (int i = 0; i < 4; ++i) v1.push_back(uint8_t(v >> (8 * i)));
+                };
+                auto p64 = [&](int64_t v) {
+                    for (int i = 0; i < 8; ++i) v1.push_back(uint8_t(uint64_t(v) >> (8 * i)));
+                };
+                p32(0x484C5031u);                 // magic
+                p32(1);                           // VERSION 1 = mono
+                p32(static_cast<uint32_t>(kFs));
+                p64(len);
+                p32(1);                           // one track
+                p32(0);                           // track index
+                p64(len);
+                for (int64_t i = 0; i < len; ++i) {
+                    const double t = double(i) / kFs;
+                    const int16_t v = int16_t(std::lrint(std::sin(2.0 * 3.14159265 * 220.0 * t) * 12000.0));
+                    v1.push_back(uint8_t(uint16_t(v) & 0xFF));
+                    v1.push_back(uint8_t(uint16_t(v) >> 8));
+                }
+
+                // Reuse the key the plugin itself just saved under -- the
+                // biggest blob in the store is the loop -- so this does not
+                // have to guess how the host numbered its URIDs.
+                uint32_t loopKey = 0; size_t biggest = 0;
+                for (auto& kv : store.data)
+                    if (kv.second.size() > biggest) { biggest = kv.second.size(); loopKey = kv.first; }
+                Store old;
+                old.data[loopKey] = v1;
+                old.types[loopKey] = store.types[loopKey];
+
+                Host c; c.open();
+                si->restore(c.h, retrieveFn, &old, 0, nullptr);
+                c.ctl[DRUMS_LEVEL] = -60.0f;
+                c.ctl[RUN] = 1.0f;
+                c.run(kBlock);
+                c.trigger(LOOP_PLAY);
+                c.run(static_cast<int64_t>(kFs * 0.2));
+                std::vector<float> oldLoop;
+                c.run(static_cast<int64_t>(kFs * 0.5), &oldLoop, true);
+                check(rms(oldLoop) > 0.02f,
+                      "a loop saved before the looper was stereo still plays",
+                      "rms " + std::to_string(rms(oldLoop)));
+                c.close();
+            }
 
             b.trigger(LOOP_PLAY);
             b.run(barLen * 2);

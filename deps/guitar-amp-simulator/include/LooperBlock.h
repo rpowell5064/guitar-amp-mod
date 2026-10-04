@@ -65,23 +65,27 @@ public:
         trimInc  = 1.0f / std::max(1.0f, kTrimMs * 1.0e-3f * static_cast<float>(fs));
 
         for (auto& t : tracks) {
-            t.buf.assign(static_cast<size_t>(capacity), 0.0f);
+            t.buf[0].assign(static_cast<size_t>(capacity), 0.0f);
+            t.buf[1].assign(static_cast<size_t>(capacity), 0.0f);
             t.state = State::Empty;
             t.gain  = 0.0f;
         }
         // One shared undo buffer, not one per track: undo is "take back the
         // last overdub", so only the most recent pass ever needs a snapshot.
-        undoBuf.assign(static_cast<size_t>(capacity), 0.0f);
+        undoBuf[0].assign(static_cast<size_t>(capacity), 0.0f);
+        undoBuf[1].assign(static_cast<size_t>(capacity), 0.0f);
 
         preRollLen = static_cast<int64_t>(kPreRollMs * 1.0e-3f * fs);
-        preRoll.assign(static_cast<size_t>(preRollLen), 0.0f);
+        preRoll[0].assign(static_cast<size_t>(preRollLen), 0.0f);
+        preRoll[1].assign(static_cast<size_t>(preRollLen), 0.0f);
         reset();
     }
 
     // Clear every track and forget the loop length.
     void reset() noexcept {
         for (auto& t : tracks) {
-            std::fill(t.buf.begin(), t.buf.end(), 0.0f);
+            std::fill(t.buf[0].begin(), t.buf[0].end(), 0.0f);
+            std::fill(t.buf[1].begin(), t.buf[1].end(), 0.0f);
             t.state = State::Empty;
             t.gain = 0.0f; t.targetGain = 0.0f;
             t.recorded = 0;
@@ -89,7 +93,8 @@ public:
             t.countingIn = false;
             t.trimIn = 0.0f; t.trimOut = 1.0f; t.trimGain = 1.0f;
         }
-        std::fill(preRoll.begin(), preRoll.end(), 0.0f);
+        std::fill(preRoll[0].begin(), preRoll[0].end(), 0.0f);
+        std::fill(preRoll[1].begin(), preRoll[1].end(), 0.0f);
         preRollPos = 0;
         masterLen  = 0;
         loopCursor = 0;
@@ -184,12 +189,18 @@ public:
                (tracks[t].state == State::Playing || tracks[t].state == State::Stopped);
     }
 
+    // Saved INTERLEAVED (L,R,L,R...), so a take is one contiguous run and the
+    // size is simply masterLen * 2. The state blob carries a version that says
+    // which layout it is; see practice_save/practice_restore.
     void saveTrack(int t, int16_t* dst) const noexcept {
         if (!valid(t) || !dst) return;
-        const float* src = tracks[t].buf.data();
+        const float* srcL = tracks[t].buf[0].data();
+        const float* srcR = tracks[t].buf[1].data();
         for (int64_t i = 0; i < masterLen; ++i) {
-            const float v = std::clamp(src[i], -1.0f, 1.0f);
-            dst[i] = static_cast<int16_t>(std::lrint(v * 32767.0f));
+            const float l = std::clamp(srcL[i], -1.0f, 1.0f);
+            const float r = std::clamp(srcR[i], -1.0f, 1.0f);
+            dst[i * 2]     = static_cast<int16_t>(std::lrint(l * 32767.0f));
+            dst[i * 2 + 1] = static_cast<int16_t>(std::lrint(r * 32767.0f));
         }
     }
 
@@ -201,10 +212,22 @@ public:
         frozen.store(true, std::memory_order_release);
         reset();
     }
-    void loadTrack(int t, const int16_t* src, int64_t len, int stateCode) noexcept {
+    // `stereo` says how `src` is laid out: interleaved pairs, or a single mono
+    // run written by a version of this plugin that had one channel. A mono take
+    // is loaded into BOTH sides, which is exactly what it sounded like then.
+    void loadTrack(int t, const int16_t* src, int64_t len, int stateCode,
+                   bool stereo = true) noexcept {
         if (!valid(t) || !src || len <= 0 || len > capacity) return;
-        float* dst = tracks[t].buf.data();
-        for (int64_t i = 0; i < len; ++i) dst[i] = float(src[i]) * (1.0f / 32767.0f);
+        float* dstL = tracks[t].buf[0].data();
+        float* dstR = tracks[t].buf[1].data();
+        for (int64_t i = 0; i < len; ++i) {
+            if (stereo) {
+                dstL[i] = float(src[i * 2])     * (1.0f / 32767.0f);
+                dstR[i] = float(src[i * 2 + 1]) * (1.0f / 32767.0f);
+            } else {
+                dstL[i] = dstR[i] = float(src[i]) * (1.0f / 32767.0f);
+            }
+        }
         // Restored takes come back STOPPED, never playing. Loading a pedalboard
         // should not start making noise on its own.
         tracks[t].state      = State::Stopped;
@@ -277,7 +300,8 @@ public:
     // a bar later, and it is always deliberate (a long press on the hardware).
     void clearTrack(int t) noexcept {
         if (!valid(t)) return;
-        std::fill(tracks[t].buf.begin(), tracks[t].buf.end(), 0.0f);
+        std::fill(tracks[t].buf[0].begin(), tracks[t].buf[0].end(), 0.0f);
+        std::fill(tracks[t].buf[1].begin(), tracks[t].buf[1].end(), 0.0f);
         tracks[t].state      = State::Empty;
         tracks[t].targetGain = 0.0f;
         tracks[t].recorded   = 0;
@@ -300,9 +324,11 @@ public:
     // press of an undo footswitch should do.
     void undo(int t) noexcept {
         if (!valid(t) || !undoReady || undoTrack != t || masterLen <= 0) return;
-        float* a = tracks[t].buf.data();
-        float* b = undoBuf.data();
-        for (int64_t i = 0; i < masterLen; ++i) std::swap(a[i], b[i]);
+        for (int c = 0; c < 2; ++c) {
+            float* a = tracks[t].buf[c].data();
+            float* b = undoBuf[c].data();
+            for (int64_t i = 0; i < masterLen; ++i) std::swap(a[i], b[i]);
+        }
         ++waveGen;
     }
 
@@ -316,8 +342,9 @@ public:
         // torn mix of before and after. Detecting that and declining is far
         // better than offering an undo that restores the wrong audio.
         const uint32_t gen0 = overdubGen.load(std::memory_order_acquire);
-        std::memcpy(undoBuf.data(), tracks[t].buf.data(),
-                    static_cast<size_t>(masterLen) * sizeof(float));
+        for (int c = 0; c < 2; ++c)
+            std::memcpy(undoBuf[c].data(), tracks[t].buf[c].data(),
+                        static_cast<size_t>(masterLen) * sizeof(float));
         if (overdubGen.load(std::memory_order_acquire) != gen0) {
             undoReady = false; undoTrack = -1;
             return;
@@ -377,7 +404,10 @@ public:
         if (!valid(t) || masterLen <= 0 || n <= 0) return false;
         if (tracks[t].state == State::Empty) return false;
 
-        const float* buf = tracks[t].buf.data();
+        // Drawn from whichever side is louder at each point: a lane that
+        // showed only the left would look empty for anything panned hard right.
+        const float* bufL = tracks[t].buf[0].data();
+        const float* bufR = tracks[t].buf[1].data();
         const int64_t span = masterLen;
         for (int i = 0; i < n; ++i) {
             const int64_t a = span * i / n;
@@ -387,7 +417,8 @@ public:
             // UI asks for a few hundred pixels, so reading every sample would
             // cost far more than the picture is worth.
             const int64_t step = std::max<int64_t>(1, (b - a) / 64);
-            for (int64_t k = a; k < b; k += step) pk = std::max(pk, std::fabs(buf[k]));
+            for (int64_t k = a; k < b; k += step)
+                pk = std::max(pk, std::max(std::fabs(bufL[k]), std::fabs(bufR[k])));
             out[i] = std::min(1.0f, pk);
         }
         return true;
@@ -401,7 +432,11 @@ public:
     // Records from `in` and ADDS loop playback into `out`. `in` and `out` may
     // be the same buffer: the plugin passes the guitar through separately, so
     // this block only ever adds its own playback on top.
-    void process(const TransportClock& clk, const float* in, float* out, int n) noexcept {
+    // inR/outR may be null: a mono host, or a mono source feeding a stereo
+    // looper. Both channels are still recorded, so a loop taken while the
+    // chain was mono still plays back correctly once it is not.
+    void process(const TransportClock& clk, const float* inL, const float* inR,
+                 float* outL, float* outR, int n) noexcept {
         if (n <= 0 || capacity <= 0) return;
         // A state load is rewriting the buffers from the host's thread. Produce
         // nothing and read nothing until it has finished.
@@ -425,14 +460,17 @@ public:
                 if (rel <= cursor) applyAction(t);
             }
 
-            renderSegment(in, out, cursor, segEnd);
+            renderSegment(inL, inR, outL, outR, cursor, segEnd);
             cursor = segEnd;
         }
     }
 
 private:
     struct Track {
-        std::vector<float> buf;
+        // One buffer per channel. The looper sits after the amp and cab,
+        // so what reaches it is whatever stereo the chain made -- a mono
+        // loop would throw that away at the one point it is worth keeping.
+        std::vector<float> buf[2];
         State   state{State::Empty};
         Action  pending{Action::None};
         int64_t applyAt{0};
@@ -629,8 +667,10 @@ private:
         const int64_t have = std::min(tr.lateBy, seamLen);
         for (int64_t i = 0; i < have; ++i) {
             const float w = static_cast<float>(i) / static_cast<float>(seamLen);
-            float& head = tr.buf[static_cast<size_t>(i)];
-            head = head * w + tr.buf[static_cast<size_t>(masterLen + i)] * (1.0f - w);
+            for (int c = 0; c < 2; ++c) {
+                float& head = tr.buf[c][static_cast<size_t>(i)];
+                head = head * w + tr.buf[c][static_cast<size_t>(masterLen + i)] * (1.0f - w);
+            }
         }
 
         if (have < seamLen) {
@@ -670,23 +710,27 @@ private:
                 if (dst < 0) dst += masterLen;
             }
             if (dst >= 0 && dst < capacity)
-                tr.buf[static_cast<size_t>(dst)] = preRoll[static_cast<size_t>(src)];
+                tr.buf[0][static_cast<size_t>(dst)] = preRoll[0][static_cast<size_t>(src)];
+                tr.buf[1][static_cast<size_t>(dst)] = preRoll[1][static_cast<size_t>(src)];
         }
         tr.recorded = count;
     }
 
-    void renderSegment(const float* in, float* out, int from, int to) noexcept {
+    void renderSegment(const float* inL, const float* inR,
+                       float* outL, float* outR, int from, int to) noexcept {
         const int len = to - from;
         if (len <= 0) return;
 
         for (int i = from; i < to; ++i) {
-            const float x = in ? in[i] : 0.0f;
-            float mix = 0.0f;
+            const float xL = inL ? inL[i] : 0.0f;
+            const float xR = inR ? inR[i] : xL;      // mono source: both sides alike
+            float mixL = 0.0f, mixR = 0.0f;
 
             // Rolling input history for late-press recovery. Written for every
             // sample regardless of state: the whole point is having audio from
             // before anything was armed.
-            preRoll[static_cast<size_t>(preRollPos)] = x;
+            preRoll[0][static_cast<size_t>(preRollPos)] = xL;
+            preRoll[1][static_cast<size_t>(preRollPos)] = xR;
             if (++preRollPos >= preRollLen) preRollPos = 0;
 
             for (int t = 0; t < kNumTracks; ++t) {
@@ -725,7 +769,10 @@ private:
                         // Before a master length exists the take grows; after
                         // one exists a punch-in wraps with the loop.
                         const int64_t pos = (masterLen > 0) ? loopCursor : tr.recorded;
-                        if (pos < capacity) tr.buf[static_cast<size_t>(pos)] = x;
+                        if (pos < capacity) {
+                            tr.buf[0][static_cast<size_t>(pos)] = xL;
+                            tr.buf[1][static_cast<size_t>(pos)] = xR;
+                        }
                         ++tr.recorded;
                         if (masterLen == 0) {
                             // A fixed-length take closes itself on the bar it
@@ -755,22 +802,32 @@ private:
                     }
                     case State::Overdubbing: {
                         if (masterLen > 0 && loopCursor < masterLen) {
-                            float& s = tr.buf[static_cast<size_t>(loopCursor)];
-                            s = s * feedback + x;
-                            mix += s * tr.level * tr.gain * trimG;
+                            const float g = tr.level * tr.gain * trimG;
+                            float& sL = tr.buf[0][static_cast<size_t>(loopCursor)];
+                            float& sR = tr.buf[1][static_cast<size_t>(loopCursor)];
+                            sL = sL * feedback + xL;
+                            sR = sR * feedback + xR;
+                            mixL += sL * g;
+                            mixR += sR * g;
                         }
                         break;
                     }
                     case State::Playing: {
-                        if (masterLen > 0 && loopCursor < masterLen)
-                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain * trimG;
+                        if (masterLen > 0 && loopCursor < masterLen) {
+                            const float g = tr.level * tr.gain * trimG;
+                            mixL += tr.buf[0][static_cast<size_t>(loopCursor)] * g;
+                            mixR += tr.buf[1][static_cast<size_t>(loopCursor)] * g;
+                        }
                         break;
                     }
                     case State::Stopped:
                         // Still fading out from the last ramp; keep feeding it
                         // so the stop isn't a hard cut.
-                        if (tr.gain > 0.0f && masterLen > 0 && loopCursor < masterLen)
-                            mix += tr.buf[static_cast<size_t>(loopCursor)] * tr.level * tr.gain * trimG;
+                        if (tr.gain > 0.0f && masterLen > 0 && loopCursor < masterLen) {
+                            const float g = tr.level * tr.gain * trimG;
+                            mixL += tr.buf[0][static_cast<size_t>(loopCursor)] * g;
+                            mixR += tr.buf[1][static_cast<size_t>(loopCursor)] * g;
+                        }
                         break;
                     case State::Empty:
                     default: break;
@@ -781,12 +838,15 @@ private:
             // is continuous instead of a step.
             if (sealing > 0 && sealTrack >= 0) {
                 const float w = static_cast<float>(sealCursor) / static_cast<float>(seamLen);
-                float& head = tracks[sealTrack].buf[static_cast<size_t>(sealCursor)];
-                head = head * w + x * (1.0f - w);
+                float& headL = tracks[sealTrack].buf[0][static_cast<size_t>(sealCursor)];
+                float& headR = tracks[sealTrack].buf[1][static_cast<size_t>(sealCursor)];
+                headL = headL * w + xL * (1.0f - w);
+                headR = headR * w + xR * (1.0f - w);
                 if (++sealCursor >= seamLen) { sealing = 0; sealTrack = -1; }
             }
 
-            out[i] += mix * masterLevel;
+            if (outL) outL[i] += mixL * masterLevel;
+            if (outR) outR[i] += mixR * masterLevel;
 
             // Advance the loop once per sample, shared by every track.
             if (masterLen > 0) {
@@ -796,8 +856,8 @@ private:
     }
 
     Track   tracks[kNumTracks];
-    std::vector<float> undoBuf;
-    std::vector<float> preRoll;
+    std::vector<float> undoBuf[2];
+    std::vector<float> preRoll[2];
     int64_t preRollLen{0}, preRollPos{0};
 
     double  fs{48000.0};

@@ -310,11 +310,23 @@ public:
     // ── Render ───────────────────────────────────────────────────────────────
     // ADDS the kit into out[0..n). Voices always render, even when the
     // transport is stopped, so a decaying crash isn't cut off by hitting stop.
-    void render(const TransportClock& clk, float* out, int n) noexcept {
+    // outR may be null (mono host). The voices are mono and fanned to both
+    // sides -- a kit is one source in one room -- and the ROOM is what runs
+    // in stereo, which is where a kit's width actually comes from.
+    void render(const TransportClock& clk, float* out, float* outR, int n) noexcept {
         if (n <= 0) return;
         if (size_t(n) > scratch.size()) scratch.assign(size_t(n), 0.0f);   // host grew the block
         float* buf = scratch.data();
         std::fill(buf, buf + n, 0.0f);
+        // Room wet, kept per side. Only filled when the room is actually on;
+        // haveWet says so, rather than paying to zero two buffers every block.
+        if (wetLBuf.size() < size_t(n)) {
+            wetLBuf.assign(size_t(n), 0.0f);
+            wetRBuf.assign(size_t(n), 0.0f);
+        }
+        float* wetL = wetLBuf.data();
+        float* wetR = wetRBuf.data();
+        bool   haveWet = false;
 
         if (clk.running()) {
             clockSamplePos = clk.samplePosition();
@@ -372,8 +384,14 @@ public:
             float* b = sendB.data();
             for (int i = 0; i < n; ++i) a[i] = sendHp.process(buf[i]);
             std::copy(a, a + n, b);
-            float* bp[1] = { b };
-            room.process(bp, bp, n, 1);        // block adds dry: b = a + wet
+            // Stereo room. The send is mono (the kit is), so both sides are
+            // fed the same thing and the reverb's own decorrelation is what
+            // opens it up -- which is exactly how a room works on a real kit.
+            if (roomR.size() < size_t(n)) roomR.assign(size_t(n), 0.0f);
+            float* b2 = roomR.data();
+            std::copy(a, a + n, b2);
+            float* bp[2] = { b, b2 };
+            room.process(bp, bp, n, outR ? 2 : 1);   // block adds dry: b = a + wet
             // Calibrated against a measured trade-off. An audible room
             // NECESSARILY raises the level between hits — that is what a room
             // does, and it is what "the hits run through together" is. The
@@ -385,7 +403,10 @@ public:
             // default 30%, which reads as ambience and lifts the gaps by only
             // ~2 dB. Wide open it is ~12 dB under and unmistakably a room —
             // that is the player's call to make, not the default.
-            for (int i = 0; i < n; ++i) buf[i] += (b[i] - a[i]) * roomAmt * 1.2f;
+            // Wet only, kept per side so the two differ.
+            for (int i = 0; i < n; ++i) wetL[i] = (b[i] - a[i]) * roomAmt * 1.2f;
+            if (outR) for (int i = 0; i < n; ++i) wetR[i] = (b2[i] - a[i]) * roomAmt * 1.2f;
+            haveWet = true;
         }
 
         // Bus mute, for STOP. The room sits AFTER the voices, so choking every
@@ -402,7 +423,11 @@ public:
             if (busGain <= 0.0f && busFlush) { busFlush = false; hardSilence(); }
         }
 
-        for (int i = 0; i < n; ++i) out[i] += buf[i] * master;
+        for (int i = 0; i < n; ++i) {
+            const float dry = buf[i] * master;
+            out[i] += dry + (haveWet ? wetL[i] * master : 0.0f);
+            if (outR) outR[i] += dry + (haveWet ? wetR[i] * master : 0.0f);
+        }
     }
 
     // Everything off, now: used by STOP. The ramp is what makes it clickless;
@@ -775,6 +800,7 @@ private:
     int      patternIdx{0};
     float    swing{0.0f}, humanize{0.0f};
     bool     patternMuted{false};   // groove held silent (count-in); see setPatternMuted
+    std::vector<float> roomR, wetLBuf, wetRBuf;   // stereo room scratch
     // Bus mute for STOP (see stopSound). ~12 ms at 48 kHz.
     float    busGain{1.0f}, busTarget{1.0f}, busInc{1.0f / 576.0f};
     bool     busFlush{false};
