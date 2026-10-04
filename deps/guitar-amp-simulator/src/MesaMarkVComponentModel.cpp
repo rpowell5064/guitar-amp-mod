@@ -128,7 +128,7 @@ void MesaMarkVComponentModel::buildStages() noexcept {
         {
             // TMB straight off the plate: the plate impedance is the stack's source
             // (APPROX: folded into the slope resistor, as the Friedman clean does).
-            YehSmithToneStack::CircuitParams p = YehSmithToneStack::kMesaMarkVCh3;
+            YehSmithToneStack::CircuitParams p{ stC1_, stC2_, stC3_, stRT_, stRB_, stRM_, stRS_ };   // = kMesaMarkVCh3 unless fit20..26 moved them
             p.R4 += Zp150;
             c.ts.prepare(fs_, p);
             // C18 180p from the plate straight to the R23/R24 node (bright bypass
@@ -348,6 +348,13 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit17")    { masterMid_ = std::clamp(value, 0.02f, 0.9f); }
     else if (id == "fit18")    { geqTaperMid_ = value;   for (auto& ch : ch_) ch.geq.setTaperMid(value); }
     else if (id == "fit19")    { geqReturnOhms_ = value; for (auto& ch : ch_) ch.geq.setReturnOhms(value); }
+    else if (id == "fit20")    { stC1_ = std::max(1e-12, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: ch3 stack C1 (treble cap)
+    else if (id == "fit21")    { stC2_ = std::max(1e-10, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: ch3 stack C2 (bass cap)
+    else if (id == "fit22")    { stC3_ = std::max(1e-10, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: ch3 stack C3 (mid cap)
+    else if (id == "fit23")    { stRT_ = std::max(1e3, double(value));   if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: treble pot (ohm)
+    else if (id == "fit24")    { stRB_ = std::max(1e3, double(value));   if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: bass pot (ohm)
+    else if (id == "fit25")    { stRM_ = std::max(100.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: mid pot (ohm)
+    else if (id == "fit26")    { stRS_ = std::max(100.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: slope resistor (ohm)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     else if (id.size() == 4 && id.compare(0, 3, "geq") == 0) {
         const int b = id[3] - '0';

@@ -212,6 +212,7 @@ inline void korenEvalT(const KorenP* T, double Vgk, double Vpk,
 // ── Common-cathode stage, volts in / volts out ───────────────────────────────
 class CCStageV {
 public:
+    void setGridKnee(double v) noexcept { p_.gridKneeV = std::max(0.0, v); }   // lab hook (EVH fit9): knee width, 0 = hard kink
     struct Params {
         double Vcc;    // plate supply node (V) — per-stage, from the amp's rail map
         double Ra;     // plate load (Ω)
@@ -409,6 +410,7 @@ private:
 // ── Cathode follower, volts in / volts out (output across Rk) ────────────────
 class CFStageV {
 public:
+    void setGridKnee(double v) noexcept { p_.gridKneeV = std::max(0.0, v); }   // lab hook (EVH fit9): knee width, 0 = hard kink
     struct Params {
         double Vcc;      // plate rail (plate ties directly to it)
         double Rk;       // cathode load (Ω)

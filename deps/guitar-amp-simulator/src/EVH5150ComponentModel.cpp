@@ -218,8 +218,16 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
+    applyKnee();
     recalcPots();
     reset();
+}
+
+void EVH5150ComponentModel::applyKnee() noexcept {
+    for (auto& c : ch_) {
+        for (evhcomp::CCStageV* st : { &c.v1a, &c.v2a, &c.v2b, &c.v3a, &c.v3b, &c.v4a, &c.v1b, &c.v5a, &c.v5b, &c.v6a }) st->setGridKnee(kneeV_);
+        c.v4b.setGridKnee(kneeV_); c.v6b.setGridKnee(kneeV_);
+    }
 }
 
 void EVH5150ComponentModel::recalcPots() noexcept {
@@ -373,6 +381,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "fit6")    { zResHz_ = value; applyZRes(); }   // lab: reflected-impedance peak centre (Hz)
     else if (id == "fit7")    { zResQ_  = value; applyZRes(); }   // lab: its Q (how much survives at 50-80 Hz)
     else if (id == "fit8")    { zResDb_ = value; applyZRes(); }   // lab: its height (dB)
+    else if (id == "fit9")    { kneeV_ = std::max(0.0f, value); applyKnee(); }   // lab: grid-conduction knee width (V), all triode stages
     else if (id == "fit4")    { blueHfDb_ = value;   // lab: CH2 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0); }
     else if (id == "involts") { inVolts_  = value; }

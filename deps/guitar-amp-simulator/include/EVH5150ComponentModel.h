@@ -118,6 +118,8 @@ private:
     // relative terms, so trimming it recovers bass as well as removing edge.
     // (derivation kept out of the public tree)
     float redHfDb_  = 5.0f;    // CH3 presence-shelf gain (dB) above ~1 kHz
+    float kneeV_    = 0.0f;    // fit9 (2026-10-04): grid-conduction knee width (V) on every triode stage; 0 = the hard kink (bit-identical). The
+                               // real Red/Blue captures clip near-symmetrically at 1 kHz (h2 6-10 %) where the twin makes 25-33 % evens.
     // CH2 (Blue) shares Red's open-loop character but with less lost top; its own
     // post-power-amp presence shelf (gated to Blue, not the CH1/Green relay state).
     float blueHfDb_ = 6.0f;    // CH2 presence-shelf gain (dB) above ~1 kHz
@@ -186,6 +188,7 @@ private:
 
     void recalcPots() noexcept;   // gain/tone-pot-dependent pieces
     void applyZRes() noexcept { for (auto& c : ch_) c.pa.setZRes(zResHz_, zResDb_, zResQ_); }
+    void applyKnee() noexcept;   // fit9: push kneeV_ into every triode stage
     // Reflected speaker impedance, revised 2026-09-26 (user: "missing some tight lowend").
     // 120 Hz / Q 0.9 was a single narrow peak; a real cab's LF impedance rise is a broad
     // PLATEAU that is still well up at 50-80 Hz, where a Q 0.9 peak at 120 Hz has already

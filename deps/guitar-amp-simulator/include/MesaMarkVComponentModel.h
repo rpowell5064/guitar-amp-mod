@@ -93,6 +93,10 @@ private:
     // reference amp simply runs a lower Volume 1 cannot be settled from the sheet.
     // Without it a −58 dBFS rig hum floor rails the channel at 60 Hz.
     float inVolts_    = 0.003f;
+    // Channel-3 pre-gain tone stack (fit20..fit26, 2026-10-04): the drawing's kMesaMarkVCh3 values {C1 1n, C2 100n,
+    // C3 47n, treble 200k, bass 250k, mid 10k, slope 100k} exposed as hooks — every cab-less capture shows a 3 dB
+    // hole at 315 Hz and a 110 Hz distortion deficit that no other hook moves. Defaults = the drawing.
+    double stC1_ = 1.0e-9, stC2_ = 0.1e-6, stC3_ = 0.047e-6, stRT_ = 200e3, stRB_ = 250e3, stRM_ = 10e3, stRS_ = 100e3;
     float outScalePa_ = 0.0030f;
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..):
