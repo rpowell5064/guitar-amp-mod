@@ -138,6 +138,17 @@ public:
     // loaded kit does not cover (and for the whole kit when none is loaded).
     // Choking only the resynth left a crash ringing straight through the
     // count on exactly those paths.
+    // Clear every tail there is. Only safe where the output is already at
+    // zero: it is a hard reset, not a fade.
+    void hardSilence() noexcept {
+        resynth.reset();
+        kick.reset(); snare.reset(); rim.reset();
+        tomHi.reset(); tomMid.reset(); tomFloor.reset();
+        hat.reset(); crash.reset(); ride.reset();
+        buzz.reset(); room.reset(); sendHp.reset();
+        queueCount = 0;
+    }
+
     void chokeKit(float ms = 25.0f) noexcept {
         resynth.chokeAll(ms);
         crash.choke(); ride.choke(); hat.choke();
@@ -149,6 +160,12 @@ public:
         // The snare wires are excited sympathetically by the low drums and ring
         // on their own envelope, so they outlive every voice that set them off.
         buzz.reset();
+        // And the bus tail. The room is a second or more of the kit, applied
+        // AFTER the voices, so choking every voice still leaves it spilling
+        // into the silence the player just asked for. Clearing a reverb that
+        // is already being faded to nothing by the choke is inaudible.
+        room.reset();
+        sendHp.reset();
         queueCount = 0;
     }
     bool patternIsMuted() const noexcept  { return patternMuted; }
@@ -371,8 +388,28 @@ public:
             for (int i = 0; i < n; ++i) buf[i] += (b[i] - a[i]) * roomAmt * 1.2f;
         }
 
+        // Bus mute, for STOP. The room sits AFTER the voices, so choking every
+        // voice still leaves it spilling -- and the choke itself feeds it for
+        // another few milliseconds on the way down. Ramping the whole bus is
+        // the only thing that actually silences the kit, and once it has
+        // reached zero the state is cleared so nothing is waiting to resume.
+        if (busGain != busTarget || busGain < 1.0f) {
+            for (int i = 0; i < n; ++i) {
+                if (busGain < busTarget)      busGain = std::min(busTarget, busGain + busInc);
+                else if (busGain > busTarget) busGain = std::max(busTarget, busGain - busInc);
+                buf[i] *= busGain;
+            }
+            if (busGain <= 0.0f && busFlush) { busFlush = false; hardSilence(); }
+        }
+
         for (int i = 0; i < n; ++i) out[i] += buf[i] * master;
     }
+
+    // Everything off, now: used by STOP. The ramp is what makes it clickless;
+    // the flush at the bottom of it is what makes it silent rather than merely
+    // quiet. Playing again lifts the gain back immediately.
+    void stopSound() noexcept { busTarget = 0.0f; busFlush = true; }
+    void resumeSound() noexcept { busTarget = 1.0f; busFlush = false; busGain = 1.0f; }
 
     // Manual hit, e.g. auditioning a voice from the GUI. Fires immediately.
     void triggerNow(int inst, float velocity) noexcept {
@@ -738,6 +775,9 @@ private:
     int      patternIdx{0};
     float    swing{0.0f}, humanize{0.0f};
     bool     patternMuted{false};   // groove held silent (count-in); see setPatternMuted
+    // Bus mute for STOP (see stopSound). ~12 ms at 48 kHz.
+    float    busGain{1.0f}, busTarget{1.0f}, busInc{1.0f / 576.0f};
+    bool     busFlush{false};
     int64_t  nextScanStep{kNoStep};
     double   lastStepsPerBeat{-1.0};
     int64_t  clockSamplePos{0};

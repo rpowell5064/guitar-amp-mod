@@ -658,6 +658,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
             // Starting the transport always brings the groove back: otherwise
             // a STOP earlier in the session leaves RUN looking broken too.
             p->drumsStopped = false;
+            p->drums.resumeSound();
         } else {
             p->clk.stop();
         }
@@ -744,18 +745,30 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         }
         p->looper.recordPressed(track, p->clk);
         p->drumsStopped = false;      // a take always brings the groove back
+        p->drums.resumeSound();       // ...and the kit audible again, click included
     }
     // Stop means STOP. It used to stop only the looper, leaving the groove
     // playing -- so the box carried on making a loop's worth of noise and the
     // button looked broken. Play and a new take start it again, from the top of
     // the pattern, which is where the loop restarts too.
     if (edge(portBool(p, P_LOOP_PLAY),  p->prevPlay)) {
+        // playAllPressed() raises the restart request, so the groove restart
+        // and the grid re-origin happen on the shared path below -- the same
+        // one a take uses. Restarting the pattern here as well would put the
+        // drums a block out from the loop.
         p->looper.playAllPressed(p->clk);
-        if (p->drumsStopped) { p->drumsStopped = false; p->drums.restartPattern(p->clk); }
+        p->drumsStopped = false;
+        p->drums.resumeSound();
     }
     if (edge(portBool(p, P_LOOP_STOP),  p->prevStop)) {
         p->looper.stopAllPressed(p->clk);
         p->drumsStopped = true;
+        // Stop means SILENCE, now. Muting the pattern only stops the next hit,
+        // and choking the voices still leaves the room spilling -- it sits
+        // after them, and the choke feeds it on the way down. Ramping the whole
+        // kit bus to zero and flushing it at the bottom is what actually makes
+        // the box quiet when the player asks it to be.
+        p->drums.stopSound();
     }
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);

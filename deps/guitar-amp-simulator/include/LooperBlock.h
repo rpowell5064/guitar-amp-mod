@@ -231,11 +231,40 @@ public:
     // the looper plays, not that one lane of four does. Use the per-track mutes
     // to pick what you hear -- that is what they are for, and it does not lose
     // your place in the others.
+    // STOP IS IMMEDIATE. Not quantised: a stop that waits for the next bar line
+    // is up to a bar of the thing you just asked to stop, which reads as the
+    // button not working. Everything else here is quantised because it has to
+    // land in time musically; stopping does not -- you have stopped playing.
+    // The gain still ramps (kFadeMs), so immediate means "this block", not a
+    // click.
     void stopAllPressed(const TransportClock& clk) noexcept {
-        for (int t = 0; t < kNumTracks; ++t) schedule(t, Action::Stop, clk);
+        for (int t = 0; t < kNumTracks; ++t) {
+            tracks[t].pending    = Action::Stop;
+            tracks[t].barLen     = static_cast<int64_t>(clk.samplesPerBar());
+            tracks[t].applyAt    = clk.samplePosition();
+            tracks[t].lateBy     = 0;
+            // A take being counted in is cancelled outright: there is nothing
+            // to stop yet, and leaving the count armed would start recording
+            // a bar after the player pressed stop.
+            tracks[t].countingIn = false;
+        }
     }
+    // PLAY starts everything together, from the top, now. Three reasons it
+    // cannot just un-stop the tracks: the loop cursor keeps advancing while
+    // the looper is stopped, so resuming would drop you in mid-phrase; the
+    // groove restarts from bar one, so the two would be out of phase with each
+    // other; and quantising the press means up to a bar of silence after
+    // asking for sound. Same contract as a take: the press IS bar one.
     void playAllPressed(const TransportClock& clk) noexcept {
-        for (int t = 0; t < kNumTracks; ++t) schedule(t, Action::Play, clk);
+        for (int t = 0; t < kNumTracks; ++t) {
+            tracks[t].pending    = Action::Play;
+            tracks[t].barLen     = static_cast<int64_t>(clk.samplesPerBar());
+            tracks[t].applyAt    = clk.samplePosition();
+            tracks[t].lateBy     = 0;
+            tracks[t].countingIn = false;
+        }
+        loopCursor = 0;
+        restartReq.store(true, std::memory_order_release);
     }
 
     // Raised when a take begins, so the plugin can put the groove back to its

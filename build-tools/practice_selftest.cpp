@@ -1079,6 +1079,11 @@ int main() {
         Host hst; hst.open();
         hst.ctl[PATTERN]  = 0.0f;
         hst.ctl[COUNT_IN] = 1.0f;
+        // A real board has the room up. It sits AFTER the voices, so it is the
+        // one thing a voice choke cannot reach -- and a second of room spilling
+        // into the silence is exactly what "stop doesn't stop" sounds like.
+        hst.ctl[DRUM_ROOM]      = 35.0f;
+        hst.ctl[DRUM_ROOM_SIZE] = 60.0f;
         hst.ctl[RUN]      = 1.0f;
         hst.run(kBlock);
         const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
@@ -1109,23 +1114,57 @@ int main() {
               "and within a bar of the press",
               "took " + std::to_string((double)took / (double)barLen) + " bars");
 
-        // The bar straight after the press still has decaying tails in it --
-        // stop is not a mute, and chopping a ringing cymbal dead would be a
-        // click. What matters is that it is a fraction of what was playing.
+        // IMMEDIATELY. The gains ramp and the kit is choked rather than cut, so
+        // allow 50 ms for that to finish -- but after it, nothing. A stop that
+        // takes a bar, or that leaves a cymbal ringing for seconds, is the
+        // button not working as far as the player is concerned.
+        std::vector<float> fade;
+        hst.run(static_cast<int64_t>(kFs * 0.05), &fade, true);
         std::vector<float> after;
-        hst.run(barLen, &after, true);
-        check(rms(after) < running * 0.2f, "and the noise stops with it",
+        hst.run(static_cast<int64_t>(kFs * 0.25), &after, true);
+        check(rms(after) < 1.0e-3f, "and ALL sound stops within 50 ms",
               "rms " + std::to_string(rms(after)) + " vs running " + std::to_string(running));
+        check(peak(after) < 0.01f, "with nothing left ringing",
+              "peak " + std::to_string(peak(after)));
 
-        // A bar later there must be nothing at all: no loop, no groove.
+        // Still nothing a bar later.
         std::vector<float> settled;
         hst.run(barLen, &settled, true);
-        check(rms(settled) < 1.0e-4f, "and a bar later there is silence",
+        check(rms(settled) < 1.0e-4f, "and still silent a bar later",
               "rms " + std::to_string(rms(settled)));
 
-        // PLAY brings both back.
+        // RECORD must bring the groove back too -- and it is the path that
+        // matters most, because after a stop the next thing a player does is
+        // usually record, not press play. The groove returns when the TAKE
+        // starts, not at the press: the count-in is deliberately silent.
+        {
+            hst.ctl[LOOP_TRACK] = 2.0f;
+            hst.trigger(LOOP_REC);
+            check(runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK2_STATE]) == 1; },
+                           barLen * 3) >= 0, "a take starts after a stop");
+            hst.run(barLen / 2);
+            std::vector<float> rec;
+            hst.run(barLen / 2, &rec, true);
+            check(rms(rec) > 0.01f, "and the groove is running again once it does",
+                  "rms " + std::to_string(rms(rec)));
+            // Put it back to a stopped state for the PLAY check below.
+            hst.trigger(LOOP_STOP);
+            hst.run(static_cast<int64_t>(kFs * 0.10));
+            hst.ctl[LOOP_TRACK] = 1.0f;
+        }
+
+        // PLAY brings both back -- TOGETHER, and from the top. The loop cursor
+        // keeps advancing while the looper is stopped, so a play that merely
+        // un-stops the tracks drops you in mid-phrase with the groove starting
+        // at bar one: in phase on the meter, out of phase in the room.
         hst.trigger(LOOP_PLAY);
-        hst.run(barLen);
+        hst.run(kBlock * 2);
+        check(hst.ctl[OUT_PROGRESS] < 0.02f, "PLAY restarts the loop from the top",
+              "progress " + std::to_string(hst.ctl[OUT_PROGRESS]));
+        check(std::lround(hst.ctl[OUT_STEP]) <= 1,
+              "and the groove with it, in the same breath",
+              "step " + std::to_string(hst.ctl[OUT_STEP]));
+
         std::vector<float> resumed;
         hst.run(barLen, &resumed, true);
         check(rms(resumed) > running * 0.5f, "and PLAY brings it all back",
