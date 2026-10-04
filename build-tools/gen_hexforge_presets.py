@@ -214,6 +214,10 @@ PEAK_CAP_BY_NAME = {
     # full scale on a low-frequency pluck while their DI measurement sits on the class cap.
     "Candlelit Clean": -3.0,
     "Frayed Justice":  -3.0,
+    # 2026-10-04 (user: "barely cuts"): a clean Hiwatt with a 24 dB crest on the DI; the -1 dBFS cap left it 12 dB
+    # under the clean target. +6 dBFS hands the pick peak to the output limiter (0.98 ceiling), as the bass class
+    # already does at +5: out -17.6 -> -10.8, +6.8 dB. (An 8:1 compressor measured inert on the peak.)
+    "Berlin Wall Pulse": 6.0,
 }
 def apply_levels():
     path = os.path.join(HERE, "preset_levels.json")

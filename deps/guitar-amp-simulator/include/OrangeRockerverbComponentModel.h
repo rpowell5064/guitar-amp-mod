@@ -90,8 +90,13 @@ private:
     // ESTIMATE-class constants (lab hooks fit0..).
     float  gainMidA_  = 0.15f;   // fit0: the A1M0 / 500KA audio law (printed "A")
     double railA_ = 400.0;       // fit1: rectified B+ (290-0-290 VAC, no TP printed)
-    double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 25.0, raa_ = 4000.0;   // fit2..fit6
-    double zResHz_ = 160.0;   // fit14: OT low-resonance centre frequency (Hz) — the bump sits in the low-mids, not the sub-bass
+    // zResDb / zResHz (fit4 / fit14): the reflected speaker-impedance bump at the OT. Re-fitted 2026-10-04
+    // against the amp-only Rockerverb DI captures (dirty gain 3/5/7 and clean, all four): the former
+    // 11 dB at 160 Hz left +2 dB at 125 Hz and +3 dB at 200 Hz on every take (both channels, the
+    // "dark"/muddy low-mids); 7 dB at 130 Hz brings the 50-315 Hz bands within ~1.2 dB mean and halves
+    // the clean channel's spectral error (5.4 % -> 2.7 %). The top end is untouched.
+    double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 7.0, idleMa_ = 25.0, raa_ = 4000.0;   // fit2..fit6
+    double zResHz_ = 130.0;   // fit14: OT low-resonance centre frequency (Hz) — the bump sits in the low-mids, not the sub-bass
     // Dirty-channel presence: the OD channel sits darker than the rest of the amp roster in the
     // rig, so it carries its own post-power-amp HF shelf (dirty only; the clean channel is flat).
     float  dirtyHfDb_ = 7.0f;   // fit15: DIRTY presence-shelf gain (dB) above ~1.2 kHz

@@ -178,6 +178,10 @@ def bank_floyd():
     #   0.72 feedback plus a quarter at 0.15), which is not the same thing — the Seraph runs both
     #   taps in one machine with its own Dotted 8th pattern and ducking, and that is the version
     #   the user liked. Settings restored verbatim from the pre-rework row.
+    # 2026-10-04 (user: "needs to be hotter, it barely cuts"): measured rms -27.8 / peak -3.4 dBFS at out -20 — a
+    #   24 dB crest (the Hiwatt passes the pick transient clean), so the -1 dBFS class peak cap parked it 12 dB under
+    #   the clean target. An 8:1 compressor was tried and measured inert (peak -3.2 either way), so the comp stays; its peak cap goes
+    #   to +6 dBFS (the output limiter's job; the bass class already runs at +5) — see PEAK_CAP_BY_NAME. +6.8 dB hotter.
     preset(4, 1, "Berlin Wall Pulse", cls="clean", chain=["gt", "cp", "dr", "md", "amp", "cab", "dl"], rig=WALL,
            cp=comp("5 Creature Amp", -28, "4:1", FAST, MED),
            dr={"model": "Tube Chauffeur", "drive": 0.25, "tone": 0.45, "level": 0.6, "mix": 1.0},
@@ -386,11 +390,12 @@ def bank_mastodon():
            dl=dig(quarter(132), 0.3, 0.2, 0.6), rv=plate(0.12, 1.6), gt=gate(-55))
     # D Solar Monolith — Sunn O))): Model Ts are "a loud, powerful, clean amp that takes pedals really well" (A); the grind is the
     #   Life Pedal + sheer volume; feedback is compositional, so no gate; octave kept low for chord drones (A, manual).
-    preset(6, 3, "Solar Monolith", cls="sunn", chain=["dr", "amp", "cab", "dl", "rv"], rig=CAVE,
-           dr={"model": "New Dawn", "drive": 0.7, "tone": 0.4, "level": 0.65, "mix": 1.0, "octave": 0.25},
-           amp={"model": "Doom Daddy", "sunn_link": "Parallel", "sunn_bright1": 0, "sunn_bright2": 0, "gain": 0.85, "sunn_vol2": 0.85,
-                "bass": 0.8, "mid": 0.5, "treble": 0.5, "presence": 0.4, "master": 0.9, "sag": 0.7},
-           cab={"lowcut": 40, "highcut": 6000}, dl=tape(420, 0.5, 0.2, 0.7), rv=ambient(0.25, 6.0, 40, 0.6))
+    # 2026-10-04: the rework row above was a redesign (6 kHz high cut, bass 0.8, gain 0.85, Cave rig) that played
+    # MUFFLED next to the Sunn the user had dialled in by ear (rev 122 bake: 10.5 kHz high cut, gain 0.62,
+    # Subtle speaker drive). Ship the user's own dial-in from the 2026-09-24 capture, verbatim.
+    # keep_level=False: the tone is the user's, the level joins the set (the bake's -26 dB out predates the rev-160
+    # loudness pass; measured 2026-10-04 it lands peak-capped at -20.4, +2.2 dB over the rev-160 row the user had been playing).
+    legacy(6, 3, cls="sunn", keep_level=False)   # Solar Monolith — the user's build
 
 # ═══ Bank 8 (index 7) — A PERFECT CIRCLE + PERIPHERY ═══
 def bank_apc_periphery():

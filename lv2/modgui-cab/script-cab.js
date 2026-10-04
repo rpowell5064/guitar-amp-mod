@@ -93,7 +93,11 @@ function (event, funcs) {
     var RIG_IR_URI = 'https://rpowell5064.github.io/guitaramp-suite/cab#irfile';
     var RIGS = [
         ['Tight 57',       'single 57 on the cap, dry',          '@factory',    80, 16000, 1, 0.05, 0.05, 0, 0.12, 0.35, 0, 0, 3, 0, 0,   0,    0.35, 0, 0],
-        ['57 + Ribbon',    'the classic pair, honest offset',     '@factory',    80, 16000, 1, 0.15, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.3, 0.15, 0.40, 0, 0],
+        // 2026-10-04: '57 + Ribbon' re-measured (lab cab_rig_delta). The old row blended an UN-ALIGNED ribbon at 40 %
+        // (57 at .15, ribbon at .30/.15): the 83 us offset combed the presence band, -4.4 dB @ 2 kHz, -8.9 @ 3.15 kHz,
+        // -5.9 @ 5 kHz against the on-cap 57 — every preset on this row (16) went dark in the rev-160 rework. Now
+        // time-aligned, blend .25, ribbon at .15: -0.8 / -1.8 / -2.5 dB in the same bands, +0.7 dB of ribbon body below 125 Hz.
+        ['57 + Ribbon',    'the classic pair, time-aligned',      '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 0, 3, 3, 0.15, 0.15, 0.25, 1, 0],
         ['Studio Pair',    'aligned 57 + ribbon, console chain',  '@factory',    80, 16000, 1, 0.10, 0.05, 0, 0.12, 0.35, 0, 1, 3, 3, 0.2, 0.10, 0.35, 1, 0],
         ['Live Room Pair', '57 + far ribbon, live room',          '@factory',    80, 16000, 1, 0.20, 0.15, 1, 0.30, 0.60, 2, 0, 3, 3, 0.2, 0.50, 0.40, 0, 0],
         ['Chime Pair',     '57 + far condenser, small room',      '@vox2x12',    80, 16000, 1, 0.30, 0.20, 1, 0.15, 0.30, 2, 0, 3, 4, 0,   0.60, 0.35, 0, 0],
