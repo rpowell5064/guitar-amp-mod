@@ -201,29 +201,44 @@ function (event, funcs) {
         var g = c.getContext('2d');
         if (!g) return;
 
-        var FRETS = 15;
+        // Twelve frets, not fifteen: one octave is the shape a player learns,
+        // and the three extra columns were costing every note on the neck a
+        // third of its width. The canvas is sized to the NECK rather than fixed,
+        // so an 8-string gets a taller board instead of thinner strings.
+        var FRETS = 12;
         var nStr = tuning.length;
-        var W = c.width, H = c.height;
-        var padL = 54, padR = 16, padT = 26, padB = 20;
-        var boardW = W - padL - padR, boardH = H - padT - padB;
-        var rowH = boardH / (nStr - 1);
+        var padL = 62, padR = 20, padT = 36, padB = 30;
+        var rowH = 48;
+        var W = 1180, H = padT + rowH * (nStr - 1) + padB;
+        if (c.width !== W) c.width = W;
+        if (c.height !== H) c.height = H;
+        var boardW = W - padL - padR, boardH = rowH * (nStr - 1);
         var fretW = boardW / (FRETS + 1);        // +1 leaves the open-string column
 
         g.clearRect(0, 0, W, H);
 
         // Fret positions, and the dot markers a player navigates by.
-        var MARK = { 3: 1, 5: 1, 7: 1, 9: 1, 15: 1 }, DBL = { 12: 1 };
+        var MARK = { 3: 1, 5: 1, 7: 1, 9: 1 }, DBL = { 12: 1 };
         g.textAlign = 'center';
         g.textBaseline = 'middle';
         for (var f = 0; f <= FRETS; ++f) {
             var x = padL + fretW * (f + 0.5);
+            // Inlays where a guitar has them, drawn BEHIND the strings as faint
+            // dots rather than a shaded column -- a player finds position by
+            // the dots, and a tinted stripe competed with the notes.
             if (MARK[f] || DBL[f]) {
-                g.fillStyle = 'rgba(255,255,255,.045)';
-                g.fillRect(padL + fretW * f, padT - 6, fretW, boardH + 12);
+                g.fillStyle = 'rgba(255,255,255,.085)';
+                var midY = padT + boardH / 2;
+                if (DBL[f]) {
+                    g.beginPath(); g.arc(x, midY - rowH * 0.62, 7, 0, Math.PI * 2); g.fill();
+                    g.beginPath(); g.arc(x, midY + rowH * 0.62, 7, 0, Math.PI * 2); g.fill();
+                } else {
+                    g.beginPath(); g.arc(x, midY, 7, 0, Math.PI * 2); g.fill();
+                }
             }
-            g.fillStyle = 'rgba(255,255,255,.30)';
-            g.font = '600 9px ui-sans-serif,system-ui,sans-serif';
-            g.fillText(String(f), x, padT - 14);
+            g.fillStyle = (MARK[f] || DBL[f]) ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.34)';
+            g.font = '700 11px ui-sans-serif,system-ui,sans-serif';
+            g.fillText(String(f), x, padT - 19);
         }
 
         // Frets, then strings over them.
@@ -245,10 +260,10 @@ function (event, funcs) {
             g.strokeStyle = 'rgba(255,255,255,.22)';
             g.beginPath(); g.moveTo(padL, y); g.lineTo(padL + boardW, y); g.stroke();
 
-            g.fillStyle = 'rgba(255,255,255,.45)';
-            g.font = '700 10px ui-sans-serif,system-ui,sans-serif';
+            g.fillStyle = 'rgba(255,255,255,.62)';
+            g.font = '800 13px ui-sans-serif,system-ui,sans-serif';
             g.textAlign = 'right';
-            g.fillText(FB_NOTES[fbPitchClass(tuning[sI])], padL - 10, y);
+            g.fillText(FB_NOTES[fbPitchClass(tuning[sI])], padL - 14, y);
             g.textAlign = 'center';
         }
 
@@ -261,14 +276,18 @@ function (event, funcs) {
                 if (deg < 0) continue;
                 var cx = padL + fretW * (fr + 0.5);
                 var col = fbDegColour(deg);
-                var r = deg === 0 ? 11 : 9;
+                var isKey = (deg === 0 || deg === 3 || deg === 4 || deg === 7);
+                var r = deg === 0 ? 16 : (isKey ? 14 : 12);
+                // A dark halo so a note never sits on a fret line or an inlay.
+                g.beginPath(); g.arc(cx, yy, r + 2, 0, Math.PI * 2);
+                g.fillStyle = 'rgba(7,8,11,.92)'; g.fill();
                 g.beginPath(); g.arc(cx, yy, r, 0, Math.PI * 2);
                 g.fillStyle = col; g.fill();
                 if (deg === 0) {
-                    g.lineWidth = 2; g.strokeStyle = 'rgba(255,255,255,.75)'; g.stroke();
+                    g.lineWidth = 2.5; g.strokeStyle = 'rgba(255,255,255,.85)'; g.stroke();
                 }
-                g.fillStyle = (deg === 0 || deg === 3 || deg === 4 || deg === 7) ? '#12141a' : '#0d0f14';
-                g.font = '700 ' + (deg === 0 ? 10 : 9) + 'px ui-sans-serif,system-ui,sans-serif';
+                g.fillStyle = '#0b0d12';
+                g.font = '800 ' + (deg === 0 ? 13 : 12) + 'px ui-sans-serif,system-ui,sans-serif';
                 g.fillText(FB_NOTES[pc], cx, yy + 0.5);
             }
         }
@@ -288,7 +307,7 @@ function (event, funcs) {
             html += '<div class="px-chord' + (degs[i][0] === 0 ? ' tonic' : '') + '">' +
                     '<div class="px-chord-n">' + FB_NOTES[rootPc] + FB_SUFFIX[degs[i][1]] + '</div>' +
                     '<div class="px-chord-r">' + degs[i][2] + '</div>' +
-                    '<canvas data-ci="' + i + '" width="74" height="86"></canvas>' +
+                    '<canvas data-ci="' + i + '"></canvas>' +
                     '</div>';
         }
         box.innerHTML = html;
@@ -319,7 +338,12 @@ function (event, funcs) {
                     if (lowest < 0) lowest = fbPitchClass(tuning[si] + put);
                 }
             }
-            if (lowest === rootPc) score += 2;      // root in the bass reads as the chord
+            // Root in the bass reads as the chord, but only mildly: weighted
+            // any higher it dragged every chord up the neck hunting for a root
+            // on the low string. Open C and open Am are what someone learning
+            // the key wants to see, and they do not have their root in the bass.
+            if (lowest === rootPc) score += 0.5;
+            score -= ws * 0.5;                     // and prefer the first position
             if (score > bestScore) { bestScore = score; best = v; }
         }
         return best || tuning.map(function () { return null; });
@@ -328,36 +352,58 @@ function (event, funcs) {
     function fbChordShape(canvas, rootPc, quality, tuning) {
         var g = canvas.getContext('2d');
         if (!g) return;
-        var v = fbVoicing(rootPc, quality, tuning);
-        var played = v.filter(function (x) { return x !== null && x > 0; });
-        var minF = played.length ? Math.min.apply(null, played) : 1;
-        var base = Math.max(1, minF - (played.length ? 0 : 0));
-        if (played.length && Math.max.apply(null, played) - base > 3) base = minF;
-
-        var W = canvas.width, H = canvas.height;
         var n = tuning.length;
-        var padL = 9, padR = 9, padT = 14, padB = 10;
-        var colW = (W - padL - padR) / Math.max(1, n - 1);
-        var rows = 4, rowH = (H - padT - padB) / rows;
+        var v = fbVoicing(rootPc, quality, tuning);
+
+        var fretted = [];
+        var anyOpen = false;
+        for (var q = 0; q < v.length; ++q) {
+            if (v[q] === 0) anyOpen = true;
+            else if (v[q] !== null) fretted.push(v[q]);
+        }
+        // An OPEN chord is at the nut by definition, so it is drawn there with
+        // real fret numbers. Labelling it "2fr" because its lowest fretted note
+        // happens to be the 2nd fret is a contradiction, and it moves the
+        // shape away from where the hand actually goes.
+        var ROWS = 5;
+        var base = 1;
+        if (!anyOpen && fretted.length) {
+            base = Math.min.apply(null, fretted);
+            var span = Math.max.apply(null, fretted) - base;
+            if (span >= ROWS) base = Math.min.apply(null, fretted);   // show what fits
+        }
+
+        // Size the grid to the instrument rather than a fixed box: a bass has
+        // four strings and an eight-string has eight, and one width cannot
+        // serve both without crowding one of them.
+        var colW = 21, rowH = 25;
+        var padL = 20, padR = 16, padT = 26, padB = 12;
+        var W = padL + colW * (n - 1) + padR;
+        var H = padT + rowH * ROWS + padB;
+        if (canvas.width !== W) canvas.width = W;
+        if (canvas.height !== H) canvas.height = H;
 
         g.clearRect(0, 0, W, H);
-        g.strokeStyle = 'rgba(255,255,255,.22)';
+
+        // Strings (vertical), low string on the LEFT as every chart draws them.
+        g.strokeStyle = 'rgba(255,255,255,.26)';
         g.lineWidth = 1;
         for (var i = 0; i < n; ++i) {
             var x = Math.round(padL + colW * i) + 0.5;
-            g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + rows * rowH); g.stroke();
+            g.beginPath(); g.moveTo(x, padT); g.lineTo(x, padT + rowH * ROWS); g.stroke();
         }
-        for (var r = 0; r <= rows; ++r) {
+        for (var r = 0; r <= ROWS; ++r) {
             var y = Math.round(padT + rowH * r) + 0.5;
-            g.lineWidth = (r === 0 && base === 1) ? 2.5 : 1;
-            g.strokeStyle = (r === 0 && base === 1) ? 'rgba(255,255,255,.6)' : 'rgba(255,255,255,.18)';
+            var nut = (r === 0 && base === 1);
+            g.lineWidth   = nut ? 3.5 : 1;
+            g.strokeStyle = nut ? 'rgba(255,255,255,.72)' : 'rgba(255,255,255,.2)';
             g.beginPath(); g.moveTo(padL, y); g.lineTo(padL + colW * (n - 1), y); g.stroke();
         }
         if (base > 1) {
-            g.fillStyle = 'rgba(255,255,255,.45)';
-            g.font = '700 8px ui-sans-serif,system-ui,sans-serif';
-            g.textAlign = 'left'; g.textBaseline = 'middle';
-            g.fillText(String(base), 1, padT + rowH * 0.5);
+            g.fillStyle = 'rgba(255,255,255,.62)';
+            g.font = '800 11px ui-sans-serif,system-ui,sans-serif';
+            g.textAlign = 'right'; g.textBaseline = 'middle';
+            g.fillText(String(base), padL - 6, padT + rowH * 0.5);
         }
 
         g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -365,23 +411,25 @@ function (event, funcs) {
             var cx = padL + colW * si2;
             var f = v[si2];
             if (f === null) {
-                g.strokeStyle = 'rgba(255,255,255,.3)'; g.lineWidth = 1.4;
+                g.strokeStyle = 'rgba(255,255,255,.42)'; g.lineWidth = 1.8;
                 g.beginPath();
-                g.moveTo(cx - 3, padT - 9); g.lineTo(cx + 3, padT - 3);
-                g.moveTo(cx + 3, padT - 9); g.lineTo(cx - 3, padT - 3);
+                g.moveTo(cx - 4, padT - 15); g.lineTo(cx + 4, padT - 7);
+                g.moveTo(cx + 4, padT - 15); g.lineTo(cx - 4, padT - 7);
                 g.stroke();
                 continue;
             }
             if (f === 0) {
-                g.strokeStyle = 'rgba(255,255,255,.55)'; g.lineWidth = 1.2;
-                g.beginPath(); g.arc(cx, padT - 6, 3, 0, Math.PI * 2); g.stroke();
+                g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = 1.7;
+                g.beginPath(); g.arc(cx, padT - 11, 4.4, 0, Math.PI * 2); g.stroke();
                 continue;
             }
             var row = f - base;
-            if (row < 0 || row >= rows) continue;
+            if (row < 0 || row >= ROWS) continue;
             var cy = padT + rowH * (row + 0.5);
             var isRoot = fbPitchClass(tuning[si2] + f) === rootPc;
-            g.beginPath(); g.arc(cx, cy, 6, 0, Math.PI * 2);
+            // Small enough to sit INSIDE its cell with air around it: the dot
+            // is a position, not a blob, and two of them must never touch.
+            g.beginPath(); g.arc(cx, cy, 7, 0, Math.PI * 2);
             g.fillStyle = isRoot ? '#ff5c8a' : '#e9edf5';
             g.fill();
         }

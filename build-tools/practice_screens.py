@@ -146,7 +146,7 @@ def main():
         png = os.path.join(outdir, name + ".png")
         before = os.path.getmtime(png) if os.path.exists(png) else -1.0
         r = subprocess.run([CHROME, "--headless", "--disable-gpu", "--hide-scrollbars",
-                            "--window-size=1320,900", "--virtual-time-budget=2500",
+                            "--window-size=1320,1180", "--virtual-time-budget=2500",
                             "--default-background-color=00000000",
                             "--screenshot=" + png,
                             "file:///" + hp.replace("\\", "/")],

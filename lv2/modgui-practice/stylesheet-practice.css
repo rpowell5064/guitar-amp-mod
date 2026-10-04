@@ -539,3 +539,19 @@
     border-color:var(--rec);
     box-shadow:0 0 0 1px var(--rec), 0 0 22px rgba(255,74,74,.22), 0 4px 16px rgba(0,0,0,.45);
 }
+
+
+/* Chord cards: room to breathe. 86px of card around a 74px grid was tight for
+   six strings and unreadable for eight -- the grid and the name were fighting
+   for the same space. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow { gap:14px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord {
+    min-width:0; padding:12px 14px 12px; border-radius:11px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord-n { font-size:19px; letter-spacing:.02em; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord-r { font-size:11px; margin-top:3px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord canvas { margin-top:9px; }
+/* The board is drawn at its natural size and scaled to the panel; letting it
+   grow past that only softens it. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbwrap canvas { max-width:1180px; margin:0 auto; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbnote { font-size:12.5px; padding:4px 11px; }
