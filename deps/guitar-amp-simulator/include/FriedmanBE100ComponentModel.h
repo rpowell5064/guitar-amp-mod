@@ -130,8 +130,8 @@ private:
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 56.6, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; rated-output anchor for the 100 W core)
     bool   biasShift_ = true;                    // fit11 (lab only)
-    double kneeV_ = 1.39;                        // fit12: grid-conduction knee width (V) — 2026-10-04: 0.15 -> 1.39, fitted by 1 kHz harmonic
-                                                 //        profile on the 9 [14,2dBu] HBE captures after the follower fix (mean |dh| 13.8 -> 12.7, shape 1.92 -> 1.84)
+    double kneeV_ = 0.15;                        // fit12: grid-conduction knee width (V). 2026-10-04: a 1.39 V knee scored better on the mean
+                                                 //        harmonic error but put 16/32/39 % evens back at the output through the follower; kept at 0.15.
     double lutSpan_ = 60.0;                      // fit13: EL34 grid LUT half-span (V)
     int    probeTap_ = -1;                       // fit14 (lab): return this tap instead of the speaker
     bool   miller_ = true;                       // fit15: 12AX7 Miller/input capacitance at each grid
