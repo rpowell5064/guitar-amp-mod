@@ -96,7 +96,7 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
         // (V4-A's NFB output impedance is small); DC 550/1110 sets the bias.
         c.cfDiv3 = float(220e3 / (560e3 + 220e3));
         c.v4b.prepare(fs_, { kRailX, 100e3, c.v4a.biasVp() * (550.0 / 1110.0),
-                             165e3 /*(R59)||R58*/ });
+                             165e3 /*(R59)||R58*/, 0.0, nullptr, true /*joint grid solve, 2026-10-04*/ });
         // Stack feed: R61 43k series, R83 33k + C43 .01µF shunt to ground.
         // Exact Thevenin voltage shelf; the residual frequency-dependent source
         // impedance (43k LF → 19k HF) is folded into the stack slope as the
@@ -196,7 +196,7 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
                                1.0 / (2.0 * M_PI * 0.22e-6 * (430e3 + 150e3)));
             c.v6b.prepare(fs_, { kRailX, 100e3 /*R91*/,
                                  c.v6a.biasVp() * (shDC / (430e3 + shDC)),
-                                 91e3 /*(Zp+R96)||shAC*/ });
+                                 91e3 /*(Zp+R96)||shAC*/, 0.0, nullptr, true /*joint grid solve, 2026-10-04*/ });
         }
         // Stack feed mirrors CH3's: R97 43k series with R104 43k + C58 .01uF
         // to ground (retrace 2026-09-09) — exact Thevenin shelf, mid-band Zth

@@ -120,7 +120,7 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
         // ── shared: R4 220k → C4 220n → V7-A CF (R16 1M) ──
         c.coup4.prepare(fs_, 220e-9, 220e3 + 50e3, 1e6);
         // V7-A follower: grid held at D × R14/(R17+R14) = 33k/253k (C11 decoupled, R16 1M), R15 22k cathode load.
-        c.v7a.prepare(fs_, { railD, 22e3, railD * 33.0 / 253.0, 220e3, kneeV_ });   // ECC81 as 12AX7 (see header)
+        c.v7a.prepare(fs_, { railD, 22e3, railD * 33.0 / 253.0, 220e3, kneeV_, nullptr, true /*joint grid solve, 2026-10-04: fitted with it*/ });   // ECC81 as 12AX7 (see header)
         // C5 220n → R6 150k → R13 68k (send) → C1 220n → R7 68k → R20 1M (return): loop bypassed → one divider
         c.coup5.prepare(fs_, 220e-9, 150e3 + 68e3, par(68e3, 1e6));
         c.v7b.prepare(fs_, { railD, 56e3, 1.5e3, 0.0, 68e3, millerC(56e3), 68e3, 0.0, 0.0, 0.0, kneeV_ });

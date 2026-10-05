@@ -423,12 +423,14 @@ public:
         // with the grid conducting at REST). The grid diode is then solved together
         // with the cathode each sample (and at bias), which is what bootstraps the
         // follower's input: Zin ~ rgk·(1 + gm·Rk) instead of rgk.
-        // DEFAULT ON since 2026-10-04: the previous-sample clamp fires on every fast
-        // rising slope (at 192 kHz a 130 V / 1 kHz swing moves ~4 V per sample against a
-        // 0.7 V knee), which rectified the signal — measured on the Friedman BE-100 twin
-        // at 1 kHz: h2 22 % / h4 40 % / h6 39 % at the output where the real amp has
-        // 11 / 14 / 14; with the joint solve 5 / 11 / 14. Off = the old clamp.
-        bool gridJoint = true;
+        // 2026-10-04: the previous-sample clamp fires on every fast rising slope (at
+        // 192 kHz a 130 V / 1 kHz swing moves ~4 V per sample against a 0.7 V knee) and
+        // rectified the signal on the Friedman twin (h2/h4/h6 22/40/39 % at the output,
+        // real amp 11/14/14; joint solve 5/11/14). It is switched ON per follower where
+        // that was verified (Friedman V3B, EVH V4B/V6B, Rockerverb V7A). A global default
+        // was tried and REVERTED the same night: it cost low end where the follower drives
+        // the tone stack directly (Vox -4 dB, JCM800 -2 dB, Plexi -1 dB at 50-80 Hz, bass 0.9).
+        bool gridJoint = false;
     };
 
     void prepare(double /*fs*/, const Params& p) noexcept {
