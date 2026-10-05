@@ -1,13 +1,13 @@
 {
  "Andalusian Slice": {
   "idx": 62,
-  "peak": -4.65,
-  "rms": -17.82
+  "peak": -4.63,
+  "rms": -18.02
  },
  "Anyone Can Play Guitar": {
   "idx": 49,
-  "peak": 1.37,
-  "rms": -13.27
+  "peak": 0.57,
+  "rms": -12.85
  },
  "Apache Echo": {
   "idx": 37,
@@ -16,18 +16,18 @@
  },
  "Berlin Wall Pulse": {
   "idx": 17,
-  "peak": -0.24,
+  "peak": -0.25,
   "rms": -19.04
  },
  "Blackwing Rise": {
   "idx": 60,
-  "peak": -0.93,
+  "peak": -0.96,
   "rms": -13.78
  },
  "Bottle Jangle": {
   "idx": 33,
-  "peak": -3.13,
-  "rms": -17.02
+  "peak": -3.06,
+  "rms": -17.09
  },
  "Boxed Bones": {
   "idx": 63,
@@ -36,8 +36,8 @@
  },
  "Bridge Vibe": {
   "idx": 32,
-  "peak": -7.53,
-  "rms": -22.62
+  "peak": -7.56,
+  "rms": -22.53
  },
  "Broken Crush": {
   "idx": 46,
@@ -46,7 +46,7 @@
  },
  "Brown Sound '84": {
   "idx": 69,
-  "peak": -2.1,
+  "peak": -2.06,
   "rms": -13.47
  },
  "Candlelit Clean": {
@@ -71,8 +71,8 @@
  },
  "Clean": {
   "idx": 0,
-  "peak": 0.85,
-  "rms": -15.5
+  "peak": -0.82,
+  "rms": -15.03
  },
  "Come As Water": {
   "idx": 7,
@@ -81,17 +81,17 @@
  },
  "Con Molars": {
   "idx": 47,
-  "peak": -4.26,
-  "rms": -15.78
+  "peak": -4.56,
+  "rms": -16.26
  },
  "Crunch": {
   "idx": 1,
-  "peak": -5.19,
-  "rms": -18.07
+  "peak": -5.83,
+  "rms": -18.54
  },
  "Dark Side Air": {
   "idx": 16,
-  "peak": 2.09,
+  "peak": 2.08,
   "rms": -14.07
  },
  "Desert Robot": {
@@ -101,13 +101,13 @@
  },
  "Disco Chuck": {
   "idx": 35,
-  "peak": 2.98,
-  "rms": -16.37
+  "peak": 1.85,
+  "rms": -14.88
  },
  "Dreamlit Shimmer": {
   "idx": 29,
-  "peak": 2.38,
-  "rms": -15.0
+  "peak": 1.06,
+  "rms": -15.21
  },
  "Flatliner": {
   "idx": 30,
@@ -136,28 +136,28 @@
  },
  "Glide Wall": {
   "idx": 41,
-  "peak": -5.49,
-  "rms": -19.1
+  "peak": -5.64,
+  "rms": -19.34
  },
  "Gravity Lead": {
   "idx": 19,
-  "peak": 0.99,
-  "rms": -13.56
+  "peak": -1.07,
+  "rms": -13.69
  },
  "Grunge Drop": {
   "idx": 55,
-  "peak": -8.45,
-  "rms": -22.91
+  "peak": -8.9,
+  "rms": -22.9
  },
  "Hand in Cloud": {
   "idx": 66,
-  "peak": 0.17,
-  "rms": -19.21
+  "peak": -1.82,
+  "rms": -19.02
  },
  "Hazy Solo": {
   "idx": 21,
-  "peak": -3.77,
-  "rms": -21.24
+  "peak": -4.04,
+  "rms": -21.42
  },
  "Helsinki Clean": {
   "idx": 76,
@@ -191,13 +191,13 @@
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 6.5,
-  "rms": -8.94
+  "peak": 5.48,
+  "rms": -8.55
  },
  "Imperial Lead": {
   "idx": 13,
-  "peak": -5.4,
-  "rms": -24.06
+  "peak": -5.6,
+  "rms": -23.7
  },
  "Imperial Rhythm": {
   "idx": 12,
@@ -211,8 +211,8 @@
  },
  "Jungle Sleaze": {
   "idx": 71,
-  "peak": -9.15,
-  "rms": -23.46
+  "peak": -9.46,
+  "rms": -24.1
  },
  "Knights of Fuzz": {
   "idx": 57,
@@ -226,13 +226,13 @@
  },
  "Little Feather": {
   "idx": 22,
-  "peak": -5.5,
-  "rms": -21.39
+  "peak": -4.88,
+  "rms": -21.51
  },
  "March Stabs": {
   "idx": 44,
-  "peak": 2.88,
-  "rms": -9.66
+  "peak": 2.65,
+  "rms": -11.23
  },
  "Marionette Master": {
   "idx": 52,
@@ -241,13 +241,13 @@
  },
  "Mauve Haze": {
   "idx": 20,
-  "peak": -3.86,
-  "rms": -21.14
+  "peak": -3.85,
+  "rms": -21.01
  },
  "Moondust Glam": {
   "idx": 39,
-  "peak": -1.4,
-  "rms": -14.51
+  "peak": -1.1,
+  "rms": -14.45
  },
  "Motor City": {
   "idx": 74,
@@ -256,13 +256,13 @@
  },
  "Nevermind Verse": {
   "idx": 5,
-  "peak": 0.15,
-  "rms": -19.21
+  "peak": -0.69,
+  "rms": -17.39
  },
  "Nevermind Wall": {
   "idx": 6,
-  "peak": 4.88,
-  "rms": -7.75
+  "peak": 2.5,
+  "rms": -9.42
  },
  "Numb Sustain": {
   "idx": 18,
@@ -271,8 +271,8 @@
  },
  "Plug-In Junior": {
   "idx": 56,
-  "peak": -8.33,
-  "rms": -24.36
+  "peak": -7.73,
+  "rms": -24.07
  },
  "Prayer Djent": {
   "idx": 31,
@@ -281,8 +281,8 @@
  },
  "Quarter-Tone Lead": {
   "idx": 48,
-  "peak": -2.19,
-  "rms": -16.89
+  "peak": -2.27,
+  "rms": -17.14
  },
  "Regal Solo": {
   "idx": 43,
@@ -296,8 +296,8 @@
  },
  "Retro Poland": {
   "idx": 58,
-  "peak": -5.39,
-  "rms": -23.58
+  "peak": -8.7,
+  "rms": -23.71
  },
  "Rhythm": {
   "idx": 2,
@@ -326,23 +326,23 @@
  },
  "Sister's Singer": {
   "idx": 70,
-  "peak": -0.35,
+  "peak": -0.16,
   "rms": -13.49
  },
  "Skye (No Mod)": {
   "idx": 25,
-  "peak": -6.08,
-  "rms": -17.24
+  "peak": -5.88,
+  "rms": -17.38
  },
  "Skye Crusher": {
   "idx": 24,
-  "peak": -10.01,
-  "rms": -21.88
+  "peak": -9.85,
+  "rms": -22.18
  },
  "Skye Soar": {
   "idx": 26,
-  "peak": -8.25,
-  "rms": -23.03
+  "peak": -9.44,
+  "rms": -23.1
  },
  "Solar Monolith": {
   "idx": 27,
@@ -356,8 +356,8 @@
  },
  "Spectrum Rhythm": {
   "idx": 53,
-  "peak": 3.03,
-  "rms": -10.92
+  "peak": 3.0,
+  "rms": -11.13
  },
  "Spiral Out": {
   "idx": 61,
@@ -376,8 +376,8 @@
  },
  "Surf Splash": {
   "idx": 36,
-  "peak": -5.59,
-  "rms": -24.01
+  "peak": -5.74,
+  "rms": -21.35
  },
  "Sweet Dispersion": {
   "idx": 64,
@@ -396,7 +396,7 @@
  },
  "World Went Away": {
   "idx": 45,
-  "peak": -7.25,
-  "rms": -21.45
+  "peak": -7.4,
+  "rms": -20.81
  }
 }
