@@ -384,7 +384,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "fit7")    { zResQ_  = value; applyZRes(); }   // lab: its Q (how much survives at 50-80 Hz)
     else if (id == "fit8")    { zResDb_ = value; applyZRes(); }   // lab: its height (dB)
     else if (id == "fit9")    { kneeV_ = std::max(0.0f, value); applyKnee(); }   // lab: grid-conduction knee width (V), all triode stages
-    else if (id == "fit10")   { probeTap_ = std::clamp(int(value + 0.5f) - 1, -1, kNTaps - 1); }   // lab: 0 = off, 1..12 = tap0..tap11 replaces the output
+    else if (id == "fit10")   { probeTap_ = std::clamp(int(value + 0.5f) - 1, -1, ChState::kNTaps - 1); }   // lab: 0 = off, 1..12 = tap0..tap11 replaces the output
     else if (id == "fit4")    { blueHfDb_ = value;   // lab: CH2 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0); }
     else if (id == "involts") { inVolts_  = value; }
