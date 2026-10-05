@@ -490,10 +490,11 @@ enum HexForgePort {
     HF_AMP_EVHCOMP,
     HF_AMP_DYNLOAD,
     HF_IT_MAINS,
+    HF_IT_GUITAR,
     HF_MIDI_IN,
     HF_N_PORTS
 };
-static_assert(HF_N_PORTS == 495, "port count drift");
+static_assert(HF_N_PORTS == 496, "port count drift");
 
 static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "in_l", "in_r", "out_l", "out_r", "control", "notify",
@@ -578,5 +579,5 @@ static const char* const HF_PORT_SYM[HF_N_PORTS] = {
     "cpu_dl2", "cpu_rv2", "cpu_wh2", "cpu_oc2", "cpu_eq2", "cpu_cab2",
     "cal_cmd", "cal_trim_offs", "cal_floor_offs", "cal_state", "cal_progress", "out_voice",
     "fv_locut", "fv_prox", "fv_pres", "fv_fizz", "out_phase", "amp_evhcomp",
-    "amp_dynload", "it_mains", "midi_in",
+    "amp_dynload", "it_mains", "it_guitar", "midi_in",
 };

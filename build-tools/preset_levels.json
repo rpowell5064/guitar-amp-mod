@@ -6,8 +6,8 @@
  },
  "Anyone Can Play Guitar": {
   "idx": 49,
-  "peak": 2.86,
-  "rms": -12.87
+  "peak": 2.46,
+  "rms": -13.71
  },
  "Apache Echo": {
   "idx": 37,
@@ -56,13 +56,13 @@
  },
  "Cardinal Lead": {
   "idx": 15,
-  "peak": -6.42,
-  "rms": -18.37
+  "peak": -7.06,
+  "rms": -18.29
  },
  "Cardinal Rhythm": {
   "idx": 14,
-  "peak": -7.22,
-  "rms": -18.24
+  "peak": -7.35,
+  "rms": -18.4
  },
  "Castaway Groove": {
   "idx": 51,
@@ -71,8 +71,8 @@
  },
  "Clean": {
   "idx": 0,
-  "peak": 0.55,
-  "rms": -15.27
+  "peak": 4.44,
+  "rms": -14.95
  },
  "Come As Water": {
   "idx": 7,
@@ -101,13 +101,13 @@
  },
  "Disco Chuck": {
   "idx": 35,
-  "peak": 4.0,
-  "rms": -14.59
+  "peak": 9.97,
+  "rms": -13.25
  },
  "Dreamlit Shimmer": {
   "idx": 29,
-  "peak": 4.2,
-  "rms": -14.62
+  "peak": 7.42,
+  "rms": -14.39
  },
  "Flatliner": {
   "idx": 30,
@@ -141,8 +141,8 @@
  },
  "Gravity Lead": {
   "idx": 19,
-  "peak": -0.4,
-  "rms": -13.76
+  "peak": 2.94,
+  "rms": -13.35
  },
  "Grunge Drop": {
   "idx": 55,
@@ -151,8 +151,8 @@
  },
  "Hand in Cloud": {
   "idx": 66,
-  "peak": 0.47,
-  "rms": -19.56
+  "peak": 2.27,
+  "rms": -19.88
  },
  "Hazy Solo": {
   "idx": 21,
@@ -191,8 +191,8 @@
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 9.91,
-  "rms": -6.39
+  "peak": 11.1,
+  "rms": -5.96
  },
  "Imperial Lead": {
   "idx": 13,
@@ -236,8 +236,8 @@
  },
  "Marionette Master": {
   "idx": 52,
-  "peak": -5.67,
-  "rms": -19.97
+  "peak": -6.04,
+  "rms": -20.62
  },
  "Mauve Haze": {
   "idx": 20,
@@ -256,13 +256,13 @@
  },
  "Nevermind Verse": {
   "idx": 5,
-  "peak": 0.16,
-  "rms": -18.8
+  "peak": 1.61,
+  "rms": -20.99
  },
  "Nevermind Wall": {
   "idx": 6,
-  "peak": 3.09,
-  "rms": -9.02
+  "peak": 6.26,
+  "rms": -7.02
  },
  "Numb Sustain": {
   "idx": 18,
@@ -296,8 +296,8 @@
  },
  "Retro Poland": {
   "idx": 58,
-  "peak": -7.57,
-  "rms": -24.78
+  "peak": -5.7,
+  "rms": -26.13
  },
  "Rhythm": {
   "idx": 2,
@@ -351,8 +351,8 @@
  },
  "Spectrum Lead": {
   "idx": 54,
-  "peak": -5.3,
-  "rms": -17.41
+  "peak": -5.48,
+  "rms": -17.61
  },
  "Spectrum Rhythm": {
   "idx": 53,
@@ -376,8 +376,8 @@
  },
  "Surf Splash": {
   "idx": 36,
-  "peak": -5.78,
-  "rms": -22.05
+  "peak": -3.84,
+  "rms": -23.84
  },
  "Sweet Dispersion": {
   "idx": 64,

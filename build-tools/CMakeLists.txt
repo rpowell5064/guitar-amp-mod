@@ -38,6 +38,16 @@ target_include_directories(hexforge_golden PRIVATE
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_golden PRIVATE GuitarAmpSim)
 
+# Bass A/B harness (2026-10-05): per preset, the chain-output band change for amp_bass 0.1 -> 0.9.
+add_executable(hexforge_bassab
+    "${CMAKE_CURRENT_SOURCE_DIR}/hexforge_bassab.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge/hexforge_plugin.cpp")
+target_include_directories(hexforge_bassab PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+    ${HF_LV2_INCLUDE})
+target_link_libraries(hexforge_bassab PRIVATE GuitarAmpSim)
+
 # Amp-cycle memory harness (2026-09-11): same plugin TU, cycles every amp model
 # with the Lab component toggle / Engine Quality / Rig B; build with ASan.
 add_executable(hexforge_ampcycle

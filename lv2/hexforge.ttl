@@ -143,6 +143,8 @@
     a pg:Group ; lv2:symbol "g_nail" ; lv2:name "Nail" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq>
     a pg:Group ; lv2:symbol "g_eq" ; lv2:name "EQ" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_itmore>
+    a pg:Group ; lv2:symbol "g_itmore" ; lv2:name "Input Trim More" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2>
     a pg:Group ; lv2:symbol "g_dr2" ; lv2:name "Drive 2" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr2more>
@@ -221,7 +223,7 @@ A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory r
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 272 ;
+    lv2:microVersion 273 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -1792,7 +1794,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 195 ; lv2:symbol "it_load" ; lv2:name "IT Pickup Load" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_itmore> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
@@ -3939,17 +3941,26 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 493 ; lv2:symbol "it_mains" ; lv2:name "IT Mains" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_it> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_itmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
         lv2:scalePoint [ rdfs:label "60 Hz" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "50 Hz" ; rdf:value 1 ]
     ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 494 ; lv2:symbol "it_guitar" ; lv2:name "IT Guitar" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_itmore> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Default" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Telecaster" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Hot Pickups" ; rdf:value 2 ]
+    ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 494 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 495 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -4867,5 +4878,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
             lv2:index 450 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load"
         ] , [
             lv2:index 451 ; lv2:symbol "it_mains" ; lv2:name "IT Mains"
+        ] , [
+            lv2:index 452 ; lv2:symbol "it_guitar" ; lv2:name "IT Guitar"
         ]
     ] .

@@ -138,7 +138,12 @@ private:
     struct ChState {
         evhcomp::CCStageV   v1a;
         YehSmithToneStack   ts;
-        evhcomp::RCDividerV c18;        // 180p bright bypass plate → divider node
+        evhcomp::RCDividerV c18;        // C18 180p bright bypass: treble-pot TOP → R23/R24 divider node
+        evhcomp::ShelfV     c18src;     // the treble-pot top node vs the plate: the 1 nF treble caps (C14 250p ‖ C15 750p)
+                                        // against the 200k pot + bass network (first-order HP ≈ 720 Hz). The drawing
+                                        // (MVPRE1, sheet 2) takes C18 from that node, NOT from the plate: wired from the
+                                        // plate the bypass out-shouted the stack below 300 Hz and nulled the BASS knob
+                                        // (user 2026-10-05: "its bass does absolutely nothing"; measured +0.3 dB over the knob).
         double              divW = 0.6; // R22+R23 into R24+R25
         evhcomp::CCStageV   v1b;
         evhcomp::RCDividerV coup20;     // C20 → R35

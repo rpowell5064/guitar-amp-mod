@@ -26,10 +26,19 @@
         </div>
 
         <div class="hf-tabpanels">
-            <!-- INPUT TAB: gain (0) + phase (1) + hum filter (2) -->
+            <!-- INPUT TAB: guitar preset (10) + gain (0) + phase (1) + hum filter (2) + mains (9) -->
             <div class="hf-tabpanel hf-tab-active" rata-role="panel" data-tab="input">
                 <div class="hf-agroup">
                     <div class="hf-agroup-body">
+                        {{#controls.10}}
+                        <div class="hf-sel-wrap" title="Which guitar is plugged in: Default = the trim as set; Telecaster = the '59 Bucker voicing + 2 dB so a Tele bridge coil does not read thin; Hot Pickups = a hot modern humbucker tamed back to a PAF">
+                            <span class="hf-sel-label">{{name}}</span>
+                            <div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                            </div>
+                        </div>
+                        {{/controls.10}}
                         {{#controls.0}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.0}}
                         {{#controls.1}}<div class="hf-sw" title="{{name}}"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="hf-sw-t">{{name}}</span></div>{{/controls.1}}
                         {{#controls.2}}<div class="hf-sw" title="{{name}}"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="hf-sw-t">{{name}}</span></div>{{/controls.2}}

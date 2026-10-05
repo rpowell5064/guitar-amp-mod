@@ -67,7 +67,10 @@ private:
     bool  bright_ = false;
 
     // Level calibration (the free parameters; fit against the '65 Deluxe Reverb captures).
-    float inVolts_    = 0.0576f;  // fit1: jack volts per unit — fitted 2026-10-04 by THD at 110 Hz + 1 kHz on the 9 captures (22 -> 10 points)
+    float inVolts_    = 0.0145f;  // fit1: jack volts per unit. The capture fit (0.0576, by THD on 9 captures) is on the
+                                  //       CAPTURE's input scale, which is unknown (no dBu in the files) and read 12 dB hotter
+                                  //       than the device: by ear the amp was "pretty distorted after 5" where the real amp is
+                                  //       clean with hair. 12 dB down (2026-10-05) = the device scale; knob 5 is the clean edge.
     float outScalePa_ = 1.0f / 58.0f;   // speaker-node volts -> units (22 W into 8 Ω = 18.8 Vpk ≈ 0.32 units)
     bool  dynLoad_ = false;
 

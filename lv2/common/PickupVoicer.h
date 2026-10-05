@@ -15,13 +15,14 @@
 // (utility) plugin — keep this the single copy so the tuned curves never drift.
 struct PickupVoicer {
     enum { kMaxBands = 5 };
+    enum { kGuitarBase = 2 };   // recipe(kGuitarBase + g) = the Input Trim GUITAR preset g (1 Telecaster, 2 Hot Pickups)
     enum BandKind { OFF, PEAK, LOSHELF, HISHELF };
     struct Band   { BandKind kind; double fc, dB, Q; };
     struct Recipe { Band band[kMaxBands]; double levelDb; };
 
     // model 0='59 Bucker (PAF), 1=Norse Hammer (Ragnarok), 2=Modern Flux (Fishman Modern)
     static const Recipe& recipe(int model) noexcept {
-        static const Recipe kR[3] = {
+        static const Recipe kR[kGuitarBase + 3] = {   // 3 HB models + the 2 GUITAR presets
             // '59 Bucker — warm, mid-forward, smooth rolled-off top
             {{ {PEAK,2000.0,+2.5,0.9}, {PEAK,4500.0,-5.0,1.8}, {HISHELF,4000.0,-13.0,0.0},
                {OFF,0,0,0}, {OFF,0,0,0} }, 4.0},
@@ -31,8 +32,20 @@ struct PickupVoicer {
             // Modern Flux — active hi-fi: tight bass, mid scoop, broad presence dip, extended top
             {{ {LOSHELF,95.0,-2.0,0.0}, {PEAK,450.0,-3.0,1.0}, {PEAK,4800.0,-8.0,1.1},
                {HISHELF,7000.0,+1.0,0.0}, {OFF,0,0,0} }, 5.5},
+            // ── GUITAR presets (Input Trim "Guitar" selector, 2026-10-05; kGuitarBase + 1/2) ──
+            // Telecaster — the '59 Bucker voicing with 2 dB more level, so a Tele bridge coil
+            // lands where a humbucker guitar does instead of reading thin.
+            {{ {PEAK,2000.0,+2.5,0.9}, {PEAK,4500.0,-5.0,1.8}, {HISHELF,4000.0,-13.0,0.0},
+               {OFF,0,0,0}, {OFF,0,0,0} }, 6.0},
+            // Hot Pickups — a hot modern bridge humbucker (ceramic / active) brought back to a
+            // PAF: the ideal |H_paf| / |H_hot| correction fitted to 0.84 dB over 80 Hz-8 kHz
+            // (tools/guitar_presets.py): the crisp extended top rolled off, a touch of 3 kHz
+            // body back, and the output pulled down to vintage level (-4 dB: a hot bridge
+            // pickup sits 4-6 dB above a PAF; the pure model match says -1.4).
+            {{ {LOSHELF,85.0,-0.8,0.0}, {PEAK,2100.0,+0.9,2.0}, {PEAK,3000.0,+2.1,1.4},
+               {PEAK,5000.0,-2.4,0.7}, {HISHELF,6800.0,-3.3,0.0} }, -4.0},
         };
-        return kR[(model < 0 || model > 2) ? 0 : model];
+        return kR[(model < 0 || model > kGuitarBase + 2) ? 0 : model];
     }
 
     BiquadFilter f[kMaxBands];

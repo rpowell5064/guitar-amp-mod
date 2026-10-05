@@ -134,6 +134,9 @@ void MesaMarkVComponentModel::buildStages() noexcept {
             // C18 180p from the plate straight to the R23/R24 node (bright bypass
             // around the stack + R22/R23): a series cap into that node's impedance.
             c.c18.prepare(fs_, 180e-12, Zp150, par(570e3, 386e3));
+            // C18 hangs off the treble-pot top (after C14 ‖ C15 = 1 nF), not the plate: that node is the
+            // plate through the treble caps against the 200k pot + the bass/mid network (~20k at LF).
+            c.c18src.prepare(fs_, 0.0, 1.0, 1.0 / (2.0 * M_PI * 1.0e-9 * (200e3 + 20e3)));
         }
         // ── V1B: R27 100k from E, R26 1k5 ‖ C19A 0.47µ; source = the divider node (~230k).
         c.v1b.prepare(fs_, { kRailE, 100e3, 1.5e3, ckV1b_, 230e3, millerC(100e3), 230e3, 0.0, 0.0, 0.0, kneeV_ });
@@ -234,7 +237,7 @@ void MesaMarkVComponentModel::reset() noexcept {
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
     for (auto& c : ch_) {
-        c.v1a.reset(); c.ts.reset(); c.c18.reset(); c.v1b.reset(); c.coup20.reset(); c.bleed.reset();
+        c.v1a.reset(); c.ts.reset(); c.c18.reset(); c.c18src.reset(); c.v1b.reset(); c.coup20.reset(); c.bleed.reset();
         c.v5a.reset(); c.coup37.reset(); c.c38lp.reset(); c.v4b.reset(); c.coup28.reset();
         c.c27lift.reset(); c.n2lp.reset(); c.v3a.reset(); c.coup33.reset(); c.v6a.reset();
         c.coup43.reset(); c.v6b.reset(); c.coup50.reset(); c.coup56.reset(); c.pa.reset(); c.dnr.reset();
@@ -260,7 +263,7 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
     // V1A → stack on the plate (+ the C18 bypass) → R22/R23 → R24/R25 node.
     const double plate = c.v1a.process(v);
     tap(0, plate);
-    double s = c.ts.process(float(plate)) * c.divW + (c18On_ ? c.c18.process(float(plate)) : 0.0);
+    double s = c.ts.process(float(plate)) * c.divW + (c18On_ ? c.c18.process(c.c18src.process(float(plate))) : 0.0);   // C18 from the treble-pot top
     tap(1, s);
     s = c.v1b.process(s);
     tap(2, s);

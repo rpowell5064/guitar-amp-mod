@@ -1,4 +1,5 @@
 #include "ToneStackComponent.h"
+#include <cmath>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Type specifications
@@ -96,10 +97,22 @@ void ToneStackComponent::prepare(double sampleRate, Type type) noexcept {
     recalc();
 }
 
+// Knob -> pot position for the exact (circuit) path. Bass and treble pots in these stacks
+// are AUDIO taper (Fender 250kA / Marshall 220kA + 1MA / Vox 1MA / Mesa 250kA): at half
+// rotation the wiper sits at ~15 % of the track, not 50 %. The knob had been handed to the
+// solver as a LINEAR pot (pot = knob), which left the real Fender/Marshall network moving
+// 80 Hz by 3 dB and 200 Hz by half a dB over the whole knob, and nothing at all between
+// 0.3 and 0.7 (user, 2026-10-05: "I can sweep the bass and can't tell the difference").
+// The component twins already use this taper, so the shipped models now read the knob the
+// same way the twins do. Mid pots are linear and stay as they were.
+static inline float stackPotTaper(float knob) noexcept {
+    return std::pow(std::clamp(knob, 0.0f, 1.0f), std::log(0.15f) / std::log(0.5f));
+}
+
 void ToneStackComponent::setBass(float v) noexcept {
     bass_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
-    if (useExact_) { if (type_ == Type::Vox) voxExact_.setBass(bass_); else exact_.setBass(bass_); }
+    if (useExact_) { if (type_ == Type::Vox) voxExact_.setBass(stackPotTaper(bass_)); else exact_.setBass(stackPotTaper(bass_)); }
 }
 
 void ToneStackComponent::setMid(float v) noexcept {
@@ -116,7 +129,7 @@ void ToneStackComponent::setMid(float v) noexcept {
 void ToneStackComponent::setTreble(float v) noexcept {
     treble_ = std::clamp(v, 0.0f, 1.0f);
     recalc();
-    if (useExact_) { if (type_ == Type::Vox) voxExact_.setTreble(treble_); else exact_.setTreble(treble_); }
+    if (useExact_) { if (type_ == Type::Vox) voxExact_.setTreble(stackPotTaper(treble_)); else exact_.setTreble(stackPotTaper(treble_)); }
 }
 
 void ToneStackComponent::setPresence(float v) noexcept {
@@ -130,17 +143,17 @@ void ToneStackComponent::setExact(bool on) noexcept {
     if (useExact_) {
         if (type_ == Type::Vox) {
             voxExact_.prepare(sampleRate_);
-            voxExact_.setBass(bass_);
-            voxExact_.setTreble(treble_);
+            voxExact_.setBass(stackPotTaper(bass_));
+            voxExact_.setTreble(stackPotTaper(treble_));
             // real Top Boost has no mid control; the knob survives as a clean
             // post-EQ (flat at noon) so existing presets keep their settings
             voxMidF_.setCoeffs(Filters::peaking(1000.0, (static_cast<double>(mid_) - 0.5) * 2.0 * 10.0, 1.0, sampleRate_));
         } else {
             exact_.prepare(sampleRate_, type_ == Type::Marshall ? YehSmithToneStack::kMarshallJCM800
                                                                  : YehSmithToneStack::kBassman59);
-            exact_.setBass(bass_);
+            exact_.setBass(stackPotTaper(bass_));
             exact_.setMid(mid_);
-            exact_.setTreble(treble_);
+            exact_.setTreble(stackPotTaper(treble_));
         }
     }
 }
@@ -152,9 +165,9 @@ void ToneStackComponent::setExactCircuit(bool on, const YehSmithToneStack::Circu
     useExact_ = on && (type_ == Type::Fender || type_ == Type::Marshall || type_ == Type::Recto);
     if (useExact_) {
         exact_.prepare(sampleRate_, params);
-        exact_.setBass(bass_);
+        exact_.setBass(stackPotTaper(bass_));
         exact_.setMid(mid_);
-        exact_.setTreble(treble_);
+        exact_.setTreble(stackPotTaper(treble_));
     }
 }
 

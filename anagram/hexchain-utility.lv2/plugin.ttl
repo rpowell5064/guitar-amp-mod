@@ -38,7 +38,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 35 ;   # 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: Input Trim humbucker voicing was INAUDIBLE out of the box — hb_amount defaulted to 0.0 (a true bypass) while the Humbucker toggle defaulted ON, so neither the toggle nor HB Model did anything. Now toggle-off / amount-1.0, matching Hex Forge. 33: MAINS selector (60 / 50 Hz) for the hum comb, port 11, default 60 = bit-identical. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
+    lv2:microVersion 36 ;   # 36: GUITAR preset selector (Default / Telecaster / Hot Pickups), appended after the reset port (2026-10-05)   # 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: Input Trim humbucker voicing was INAUDIBLE out of the box — hb_amount defaulted to 0.0 (a true bypass) while the Humbucker toggle defaulted ON, so neither the toggle nor HB Model did anything. Now toggle-off / amount-1.0, matching Hex Forge. 33: MAINS selector (60 / 50 Hz) for the hum comb, port 11, default 60 = bit-identical. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -142,4 +142,18 @@ Free and open source (GPL-3).""" ;
         lv2:index 13 ; lv2:symbol "reset" ; lv2:name "Reset" ;
         lv2:designation kx:Reset ;
         lv2:portProperty lv2:toggled, pprops:trigger ;
-        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0] .
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # GUITAR preset (2026-10-05): which instrument is plugged in. 0 Default = the trim as
+        # set; 1 Telecaster = the '59 Bucker voicing + 2 dB so a Tele bridge coil does not read
+        # thin; 2 Hot Pickups = a hot modern bridge humbucker tamed back to a PAF (top rolled
+        # off, -4 dB). Appended after the designated enabled port so no existing index moves.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 14 ; lv2:symbol "guitar" ; lv2:name "Guitar" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/utility#g_input> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:scalePoint [ rdfs:label "Default" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Telecaster" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Hot Pickups" ; rdf:value 2 ]
+    ] .
