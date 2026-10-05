@@ -106,7 +106,7 @@ private:
     // 2026-09-10 gain-law pass: 1.0 V/unit at the jack (was the EVH's 0.35) — the
     // lever that lifted the whole knob, not just its lower half: BE g25/noon/gmax
     // 31.9/27.2/22.8 -> 20.6/16.9/20.3 %, HBE 25.5/17.0/16.5 -> 17.2/14.0/16.9 %.
-    float inVolts_    = 1.00f;
+    float inVolts_    = 0.39f;   // 2026-10-05: ladder fit (BE/HBE GAIN 1..MAX, by shape+THD; the pack is captured hot)
     float outScalePa_ = 0.0054f;   // loudness parity vs the FM9 grids (BE +1.9 / HBE +0.1 dB split)
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants exposed to the lab harness as fit0..fit5 so the
@@ -130,7 +130,7 @@ private:
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 56.6, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; rated-output anchor for the 100 W core)
     bool   biasShift_ = true;                    // fit11 (lab only)
-    double kneeV_ = 0.15;                        // fit12: grid-conduction knee width (V). 2026-10-04: a 1.39 V knee scored better on the mean
+    double kneeV_ = 0.97;                        // fit12 — 2026-10-05 ladder fit 0.15 -> 0.97: the real amp sits at a soft 53 % THD where the twin reached 120 %;: grid-conduction knee width (V). 2026-10-04: a 1.39 V knee scored better on the mean
                                                  //        harmonic error but put 16/32/39 % evens back at the output through the follower; kept at 0.15.
     double lutSpan_ = 60.0;                      // fit13: EL34 grid LUT half-span (V)
     int    probeTap_ = -1;                       // fit14 (lab): return this tap instead of the speaker
@@ -141,7 +141,7 @@ private:
                                                  //        biases the CF at Vgk +0.6 V (0.1 V from grid conduction); a real one sits ~-1 V.
     evhcomp::KorenP cfTube_{ 100.0, 1.4, 1060.0, 600.0, 300.0 };
     bool   cfJoint_ = true;                      // fit19 (0 = the old previous-sample clamp, for A/B): solve the V3B grid diode JOINTLY with its cathode each sample (the SVT follower's
-    float  paDrive_ = 1.0f;        // fit40 (2026-10-05): drive scale into the power stage. The twins were driving their
+    float  paDrive_ = 0.51f;       // fit40 (ladder fit 0.51) (2026-10-05): drive scale into the power stage. The twins were driving their
                                    //       power section harder than the real amp at the same MASTER (the stack's bass
                                    //       travel was being compressed away at master .6); calibrated per twin by the
                                    //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).

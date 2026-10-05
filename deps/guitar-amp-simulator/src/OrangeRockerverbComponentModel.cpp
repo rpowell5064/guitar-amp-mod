@@ -142,11 +142,11 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
 void OrangeRockerverbComponentModel::recalcPots() noexcept {
     if (fs_ <= 0.0) return;
     const float tD = std::clamp(treble_, 0.0f, 1.0f);            // RV7 250KB linear
-    const float bD = audioTaper(bass_, gainMidA_);               // RV5 500KA
+    const float bD = audioTaper(bass_, potMidA_);                // RV5 500KA (audio taper; its 3->7 travel matched the real MKIII grid at 0.15)
     const float mD = std::clamp(mid_, 0.0f, 1.0f);               // RV6 25KB linear
     const float tC = std::clamp(treble_, 0.0f, 1.0f);            // RV3 250KB linear
-    const float bC = audioTaper(bass_, gainMidA_);               // RV2 250KA
-    const double g = std::max(0.002, double(audioTaper(gainSmooth_.getCurrentValue(), gainMidA_)));
+    const float bC = audioTaper(bass_, cleanBassMid_);           // RV2 250KA (its own law: the clean grid reads 2 dB less travel than the dirty)
+    const double g = std::max(0.002, double(audioTaper(gainSmooth_.getCurrentValue(), potMidA_)));   // clean VOLUME RV1 (not fitted: the grid is the dirty channel)
     for (auto& c : ch_) {
         c.tsDirty.setTreble(tD); c.tsDirty.setBass(bD); c.tsDirty.setMid(mD);
         c.tsClean.setTreble(tC); c.tsClean.setBass(bC); c.tsClean.setMid(1.0f);   // fixed 6k8 = "mid pot" at max
@@ -202,7 +202,7 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
         v = c.v8b.process(v);
         tap(4, v);
         v = c.tsDirty.process(float(v));
-        v *= audioTaper(masterSmooth_.getCurrentValue(), gainMidA_);   // VOLUME RV8 500KA
+        v *= audioTaper(masterSmooth_.getCurrentValue(), potMidA_);    // VOLUME RV8 500KA
         tap(5, v);
     } else {
         v = c.v10a.process(v);
@@ -265,7 +265,9 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit19")    { dStackRT_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: treble pot RV7 (ohm)
     else if (id == "fit20")    { dStackRB_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: bass pot RV5 (ohm)
     else if (id == "fit21")    { dStackRM_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: mid pot RV6 (ohm)
-    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
+    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }
+    else if (id == "fit42")    { cleanBassMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: CLEAN bass pot law
+    else if (id == "fit41")    { potMidA_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: BASS/master pot law   // lab + calibration: power-stage drive scale
     else if (id == "fit22")    { dStackRS_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: slope R62 (ohm)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }

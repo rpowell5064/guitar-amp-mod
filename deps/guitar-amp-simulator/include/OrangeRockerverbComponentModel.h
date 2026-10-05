@@ -84,11 +84,13 @@ private:
     bool  clean_ = false;     // plugin channel: <= 0.5 dirty, > 0.5 clean
 
     // Level calibration.
-    float inVolts_    = 0.78f;   // 2026-10-04: fitted by 1 kHz harmonic profile against the MKIII DI captures (was 1.00)
+    float inVolts_    = 0.394f;  // 2026-10-05: fitted by SHAPE over the 33-capture MKIII grid slice (was 0.78); 2026-10-04: fitted by 1 kHz harmonic profile against the MKIII DI captures (was 1.00)
     float outScalePa_ = 0.0030f;
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
-    float  gainMidA_  = 0.15f;   // fit0: the A1M0 / 500KA audio law (printed "A")
+    float  cleanBassMid_ = 0.15f; // fit42: CLEAN bass RV2 250KA law
+    float  potMidA_   = 0.10f;   // fit41: the DIRTY BASS RV5 500KA + master RV8 + clean VOLUME law. 0.10 reproduces the real MKIII bass 3->7 travel (+7.1/+6.0/+4.7/+2.5 vs real +7.2/+6.1/+4.6/+2.3 dB at 50/80/125/200 Hz)
+    float  gainMidA_  = 0.90f;   // fit0: the DIRTY GAIN law ONLY (both gangs). 2026-10-05 fitted over the MKIII grid (0.15 -> 0.90; the real MKIII is already 46 % THD at gain 3; decoupled from the bass/master pots, which stay audio) — fit0: the A1M0 / 500KA audio law (printed "A")
     double railA_ = 400.0;       // fit1: rectified B+ (290-0-290 VAC, no TP printed)
     // zResDb / zResHz (fit4 / fit14): the reflected speaker-impedance bump at the OT. Re-fitted 2026-10-04
     // against the amp-only Rockerverb DI captures (dirty gain 3/5/7 and clean, all four): the former
@@ -99,7 +101,7 @@ private:
     double zResHz_ = 130.0;   // fit14: OT low-resonance centre frequency (Hz) — the bump sits in the low-mids, not the sub-bass
     // Dirty-channel presence: the OD channel sits darker than the rest of the amp roster in the
     // rig, so it carries its own post-power-amp HF shelf (dirty only; the clean channel is flat).
-    float  dirtyHfDb_ = 7.0f;   // fit15: DIRTY presence-shelf gain (dB) above ~1.2 kHz
+    float  dirtyHfDb_ = 2.67f;  // 2026-10-05: grid fit (7.0 -> 2.67); fit15: DIRTY presence-shelf gain (dB) above ~1.2 kHz
     double nfbStabHz_ = 60e3, fluxLim_ = 40.0;   // fit7 / fit8
     // DIRTY tone-stack values (fit17..fit22, 2026-10-04): the drawing's C37 / C40=C41 / RV7 / RV5 / RV6 / R62, exposed
     // as hardware-calibration hooks because the amp-only MKIII captures show more bass and treble RANGE than these
@@ -108,7 +110,7 @@ private:
     double kneeV_ = 0.77;                        // fit9 — 2026-10-04: grid-conduction knee softened 0.15 -> 0.77 V, fitted with inVolts by harmonic
                                                  //        profile on the gain-5 dirty captures: mean |dh2..h9| 6.7 -> 2.0 points (V8-A clipped too asymmetrically)
     int    probeTap_ = -1;                       // fit10 (lab)
-    float  paDrive_ = 0.35f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED (x0.2 cost the capture match (shape 1.74 -> 2.68); x0.35 = shape 2.54, THD err 9.8, bass 9.2/8.2/6.2/3.3 (vs 4.5/4.7/3.9/1.5 at x1)): master .6 kept 4.7/3.9/1.5 of 11.7/8.9/5.5 at x1.0 (the most compressed twin); 11.2/9.5/4.0 at x0.2. The twins were driving their
+    float  paDrive_ = 0.681f;      // fit40 (grid fit 0.681 with the gain law decoupled) (2026-10-05): drive scale into the power stage. CALIBRATED (x0.2 cost the capture match (shape 1.74 -> 2.68); x0.35 = shape 2.54, THD err 9.8, bass 9.2/8.2/6.2/3.3 (vs 4.5/4.7/3.9/1.5 at x1)): master .6 kept 4.7/3.9/1.5 of 11.7/8.9/5.5 at x1.0 (the most compressed twin); 11.2/9.5/4.0 at x0.2. The twins were driving their
                                    //       power section harder than the real amp at the same MASTER (the stack's bass
                                    //       travel was being compressed away at master .6); calibrated per twin by the
                                    //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).
