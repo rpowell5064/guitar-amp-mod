@@ -1,8 +1,8 @@
 {
  "Andalusian Slice": {
   "idx": 62,
-  "peak": -4.63,
-  "rms": -18.02
+  "peak": -3.34,
+  "rms": -19.03
  },
  "Anyone Can Play Guitar": {
   "idx": 49,
@@ -41,8 +41,8 @@
  },
  "Broken Crush": {
   "idx": 46,
-  "peak": 5.35,
-  "rms": -9.02
+  "peak": -0.41,
+  "rms": -15.66
  },
  "Brown Sound '84": {
   "idx": 69,
@@ -51,23 +51,23 @@
  },
  "Candlelit Clean": {
   "idx": 8,
-  "peak": -14.34,
-  "rms": -31.64
+  "peak": -21.39,
+  "rms": -41.36
  },
  "Cardinal Lead": {
   "idx": 15,
-  "peak": -7.06,
-  "rms": -18.29
+  "peak": -7.61,
+  "rms": -18.5
  },
  "Cardinal Rhythm": {
   "idx": 14,
-  "peak": -7.35,
-  "rms": -18.4
+  "peak": -8.37,
+  "rms": -19.07
  },
  "Castaway Groove": {
   "idx": 51,
-  "peak": -3.41,
-  "rms": -14.81
+  "peak": -6.59,
+  "rms": -19.29
  },
  "Clean": {
   "idx": 0,
@@ -81,13 +81,13 @@
  },
  "Con Molars": {
   "idx": 47,
-  "peak": -4.56,
-  "rms": -16.26
+  "peak": -3.34,
+  "rms": -15.64
  },
  "Crunch": {
   "idx": 1,
-  "peak": -5.83,
-  "rms": -18.54
+  "peak": -4.59,
+  "rms": -18.68
  },
  "Dark Side Air": {
   "idx": 16,
@@ -111,8 +111,8 @@
  },
  "Flatliner": {
   "idx": 30,
-  "peak": -3.67,
-  "rms": -18.15
+  "peak": -9.35,
+  "rms": -23.7
  },
  "Forest Wash": {
   "idx": 34,
@@ -121,8 +121,8 @@
  },
  "Frayed Justice": {
   "idx": 68,
-  "peak": -5.39,
-  "rms": -18.78
+  "peak": -6.54,
+  "rms": -21.01
  },
  "Fridge Grind": {
   "idx": 73,
@@ -136,8 +136,8 @@
  },
  "Glide Wall": {
   "idx": 41,
-  "peak": -5.64,
-  "rms": -19.34
+  "peak": -2.27,
+  "rms": -15.22
  },
  "Gravity Lead": {
   "idx": 19,
@@ -146,8 +146,8 @@
  },
  "Grunge Drop": {
   "idx": 55,
-  "peak": -8.9,
-  "rms": -22.9
+  "peak": -6.74,
+  "rms": -22.38
  },
  "Hand in Cloud": {
   "idx": 66,
@@ -181,8 +181,8 @@
  },
  "Holy Smoke": {
   "idx": 23,
-  "peak": -4.68,
-  "rms": -16.76
+  "peak": -6.07,
+  "rms": -18.1
  },
  "Homesick Saucer": {
   "idx": 65,
@@ -191,8 +191,8 @@
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 11.1,
-  "rms": -5.96
+  "peak": 10.33,
+  "rms": -6.0
  },
  "Imperial Lead": {
   "idx": 13,
@@ -211,18 +211,18 @@
  },
  "Jungle Sleaze": {
   "idx": 71,
-  "peak": -9.46,
-  "rms": -24.1
+  "peak": -7.34,
+  "rms": -22.84
  },
  "Knights of Fuzz": {
   "idx": 57,
-  "peak": 2.13,
-  "rms": -12.44
+  "peak": -1.76,
+  "rms": -17.32
  },
  "Lead": {
   "idx": 3,
-  "peak": -3.03,
-  "rms": -15.47
+  "peak": -4.73,
+  "rms": -18.03
  },
  "Little Feather": {
   "idx": 22,
@@ -231,13 +231,13 @@
  },
  "March Stabs": {
   "idx": 44,
-  "peak": 2.65,
-  "rms": -11.23
+  "peak": 0.19,
+  "rms": -13.97
  },
  "Marionette Master": {
   "idx": 52,
-  "peak": -6.04,
-  "rms": -20.62
+  "peak": -6.92,
+  "rms": -22.29
  },
  "Mauve Haze": {
   "idx": 20,
@@ -271,8 +271,8 @@
  },
  "Plug-In Junior": {
   "idx": 56,
-  "peak": -7.73,
-  "rms": -24.07
+  "peak": -7.23,
+  "rms": -23.7
  },
  "Prayer Djent": {
   "idx": 31,
@@ -281,8 +281,8 @@
  },
  "Quarter-Tone Lead": {
   "idx": 48,
-  "peak": -2.27,
-  "rms": -17.14
+  "peak": -0.48,
+  "rms": -17.84
  },
  "Regal Solo": {
   "idx": 43,
@@ -301,8 +301,8 @@
  },
  "Rhythm": {
   "idx": 2,
-  "peak": -3.89,
-  "rms": -17.18
+  "peak": -9.03,
+  "rms": -23.71
  },
  "Round Trip": {
   "idx": 72,
@@ -311,18 +311,18 @@
  },
  "Sermon Crunch": {
   "idx": 9,
-  "peak": -10.56,
-  "rms": -25.15
+  "peak": -10.49,
+  "rms": -27.14
  },
  "Sermon Rhythm": {
   "idx": 10,
-  "peak": -4.05,
-  "rms": -16.34
+  "peak": -6.36,
+  "rms": -19.88
  },
  "Sermon Solo": {
   "idx": 11,
-  "peak": -3.68,
-  "rms": -16.65
+  "peak": -6.3,
+  "rms": -19.26
  },
  "Sister's Singer": {
   "idx": 70,
@@ -331,18 +331,18 @@
  },
  "Skye (No Mod)": {
   "idx": 25,
-  "peak": -5.88,
-  "rms": -17.38
+  "peak": -5.45,
+  "rms": -17.67
  },
  "Skye Crusher": {
   "idx": 24,
-  "peak": -9.85,
-  "rms": -22.18
+  "peak": -9.08,
+  "rms": -22.56
  },
  "Skye Soar": {
   "idx": 26,
-  "peak": -9.44,
-  "rms": -23.1
+  "peak": -7.17,
+  "rms": -22.25
  },
  "Solar Monolith": {
   "idx": 27,
@@ -351,8 +351,8 @@
  },
  "Spectrum Lead": {
   "idx": 54,
-  "peak": -5.48,
-  "rms": -17.61
+  "peak": -6.45,
+  "rms": -18.14
  },
  "Spectrum Rhythm": {
   "idx": 53,
@@ -366,8 +366,8 @@
  },
  "Stockholm Riff": {
   "idx": 59,
-  "peak": -2.8,
-  "rms": -16.97
+  "peak": -6.0,
+  "rms": -20.83
  },
  "Streets Chime": {
   "idx": 42,
@@ -391,8 +391,8 @@
  },
  "Winterborn": {
   "idx": 50,
-  "peak": 0.34,
-  "rms": -12.92
+  "peak": -1.99,
+  "rms": -16.66
  },
  "World Went Away": {
   "idx": 45,
