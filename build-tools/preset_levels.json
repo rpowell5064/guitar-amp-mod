@@ -56,13 +56,13 @@
  },
  "Cardinal Lead": {
   "idx": 15,
-  "peak": -6.48,
-  "rms": -17.69
+  "peak": -7.12,
+  "rms": -18.22
  },
  "Cardinal Rhythm": {
   "idx": 14,
-  "peak": -7.21,
-  "rms": -19.35
+  "peak": -7.72,
+  "rms": -19.21
  },
  "Castaway Groove": {
   "idx": 51,
@@ -236,8 +236,8 @@
  },
  "Marionette Master": {
   "idx": 52,
-  "peak": -6.66,
-  "rms": -23.55
+  "peak": -7.03,
+  "rms": -23.22
  },
  "Mauve Haze": {
   "idx": 20,
@@ -351,7 +351,7 @@
  },
  "Spectrum Lead": {
   "idx": 54,
-  "peak": -5.99,
+  "peak": -6.5,
   "rms": -18.05
  },
  "Spectrum Rhythm": {

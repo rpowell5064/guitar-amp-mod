@@ -222,9 +222,9 @@ void MesaMarkVComponentModel::recalcGeq() noexcept {
 }
 
 void MesaMarkVComponentModel::recalcPots() noexcept {
-    const float t = audioTaper(treble_, 0.15f);   // 200KA
-    const float b = audioTaper(bass_,   0.15f);   // 250KA
-    const float m = audioTaper(mid_,    0.15f);   // 10KA
+    const float t = audioTaper(treble_, trebleMid_);   // 200KA (law: fit32)
+    const float b = audioTaper(bass_,   bassMid_);     // 250KA (law: fit33)
+    const float m = audioTaper(mid_,    midMid_);      // 10KA (law: fit31)
     // Treble wiper source Z into the R22/R23 → R24/R25 divider.
     const double Rwt = double(t) * (1.0 - double(t)) * 200e3;
     for (auto& c : ch_) {
@@ -362,6 +362,9 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit28")    { ckV1b_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V1B cathode bypass (F)
     else if (id == "fit29")    { ckV5a_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V5A cathode bypass (F)
     else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
+    else if (id == "fit31")    { midMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }      // lab: MID pot law
+    else if (id == "fit32")    { trebleMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: TREBLE pot law
+    else if (id == "fit33")    { bassMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }     // lab: BASS pot law
     else if (id == "fit30")    { c20_   = std::max(1e-10, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: C20 coupling (F)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     else if (id.size() == 4 && id.compare(0, 3, "geq") == 0) {

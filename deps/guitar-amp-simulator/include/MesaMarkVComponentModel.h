@@ -123,6 +123,11 @@ private:
     double otHfHz_ = 80e3, zHfDb_ = 7.0, zResDb_ = 2.0, idleMa_ = 40.0, raa_ = 4200.0;
     double nfbStabHz_ = 60e3, fluxLim_ = 53.7;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
+    float  midMid_ = 0.77f, trebleMid_ = 0.50f, bassMid_ = 0.15f;   // pot laws (fraction at noon): fit31/32/33.
+                                   // 2026-10-05: MID and TREBLE fitted by shape over all 7 channel captures at their noon dials
+                                   // (mid 0.15 -> 0.77, treble 0.15 -> 0.50: the fit asked 0.77 for the treble too but with the 1 nF treble cap (C14 250p ‖ C15 750p, drawing) a treble pot above ~50 % takes the BASS pot's authority above 100 Hz — 0.50 keeps the channel tones within ~2 dB and 3 dB of bass travel at 125 Hz; the Mark's low-end control is the GEQ 80 Hz slider. The 315 Hz low-mid hole / 800 Hz bump at noon was the stacks' scoop with
+                                   // audio-taper mids at 15 %): all-channel mean shape 4.97 -> 2.91 dB. BASS kept at the audio taper
+                                   // (the fit ran to its floor because the capturer's bass sits low, not because the law is).
     int    probeTap_ = -1;                       // fit10 (lab)
     float  paDrive_ = 0.50f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED (x0.3 cost the ch3 capture match (shape 1.92 -> 2.50, THD err 23 -> 38); x0.5 keeps 1.96 / 24.5 with most of the bass gain): master .6 kept 7.8/5.8/1.7 of 9.0/9.3/4.9 (80/125/200 Hz) at x1.0; 8.1/7.4/2.9 at x0.3 (the ch3 cascade is the other half). The twins were driving their
                                    //       power section harder than the real amp at the same MASTER (the stack's bass
