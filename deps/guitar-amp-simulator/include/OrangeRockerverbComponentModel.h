@@ -108,6 +108,10 @@ private:
     double kneeV_ = 0.77;                        // fit9 — 2026-10-04: grid-conduction knee softened 0.15 -> 0.77 V, fitted with inVolts by harmonic
                                                  //        profile on the gain-5 dirty captures: mean |dh2..h9| 6.7 -> 2.0 points (V8-A clipped too asymmetrically)
     int    probeTap_ = -1;                       // fit10 (lab)
+    float  paDrive_ = 0.35f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED (x0.2 cost the capture match (shape 1.74 -> 2.68); x0.35 = shape 2.54, THD err 9.8, bass 9.2/8.2/6.2/3.3 (vs 4.5/4.7/3.9/1.5 at x1)): master .6 kept 4.7/3.9/1.5 of 11.7/8.9/5.5 at x1.0 (the most compressed twin); 11.2/9.5/4.0 at x0.2. The twins were driving their
+                                   //       power section harder than the real amp at the same MASTER (the stack's bass
+                                   //       travel was being compressed away at master .6); calibrated per twin by the
+                                   //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).
     double nfbSeriesR_ = 4.7e3;                  // fit11: R10 4k7 (+R6 10k in the other SW2 position)
     bool   c42On_ = true;                        // fit12 (lab bisection)
     double railDropScale_ = 1.0;                 // fit13: scale on the derived dropper-chain drops

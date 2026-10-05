@@ -304,7 +304,7 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
     e = c.clampPi.process(e);                                  // 4744 ×4 before R209/C56
     e = c.coup56.process(float(e));
     tap(10, e);
-    const double out = c.pa.process(e);
+    const double out = c.pa.process(e * paDrive_);
     tap(11, out);
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
     return c.dnr.process(float(out * outScalePa_), true);   // channel 3 is always high-gain
@@ -361,6 +361,7 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit27")    { ckV1a_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V1A cathode bypass (F)
     else if (id == "fit28")    { ckV1b_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V1B cathode bypass (F)
     else if (id == "fit29")    { ckV5a_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V5A cathode bypass (F)
+    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit30")    { c20_   = std::max(1e-10, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: C20 coupling (F)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     else if (id.size() == 4 && id.compare(0, 3, "geq") == 0) {

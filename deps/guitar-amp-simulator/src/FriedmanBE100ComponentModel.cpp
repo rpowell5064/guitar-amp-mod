@@ -326,7 +326,7 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
         s = c.coup9.process(float(s));             // C9 → R15/R22 (÷2)
         s = c.coup31c.process(float(s));           // C31 → R37
         tap(7, s);
-        out = c.pa.process(s);
+        out = c.pa.process(s * paDrive_);
         tap(8, out);
     } else {
         double s;
@@ -370,7 +370,7 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
         s *= audioTaper(masterSmooth_.getCurrentValue(), kAudioMid);   // MASTER wiper
         tap(7, s);
         s = c.coup31.process(float(s));            // C31 → R37 (loop bypassed)
-        out = c.pa.process(s);
+        out = c.pa.process(s * paDrive_);
         tap(8, out);
     }
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
@@ -416,6 +416,7 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit16")    { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
     else if (id == "fit17")    { ltpIters_ = std::max(1, int(value + 0.5f)); for (auto& c : ch_) c.pa.setLtpIters(ltpIters_); }   // lab: LTP coupled sweeps
     else if (id == "fit18")    { cfCurrentScale_ = std::max(0.1f, value); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V3B follower current scale
+    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit19")    { cfJoint_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: joint grid/cathode solve on the V3B follower
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // No resonance/depth control on the BE-100.

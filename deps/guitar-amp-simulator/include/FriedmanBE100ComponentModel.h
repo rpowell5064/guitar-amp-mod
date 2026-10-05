@@ -141,6 +141,10 @@ private:
                                                  //        biases the CF at Vgk +0.6 V (0.1 V from grid conduction); a real one sits ~-1 V.
     evhcomp::KorenP cfTube_{ 100.0, 1.4, 1060.0, 600.0, 300.0 };
     bool   cfJoint_ = true;                      // fit19 (0 = the old previous-sample clamp, for A/B): solve the V3B grid diode JOINTLY with its cathode each sample (the SVT follower's
+    float  paDrive_ = 1.0f;        // fit40 (2026-10-05): drive scale into the power stage. The twins were driving their
+                                   //       power section harder than the real amp at the same MASTER (the stack's bass
+                                   //       travel was being compressed away at master .6); calibrated per twin by the
+                                   //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).
                                                  //        method). The default clamps against the PREVIOUS sample's cathode: at 192 kHz a 130 V
                                                  //        1 kHz swing moves ~4 V per sample, so the clamp fires on every positive slope (evens).
     // 12AX7 datasheet capacitances: Cgp 1.7 pF, Cgk 1.6 pF. Reflected at the

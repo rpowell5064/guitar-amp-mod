@@ -224,7 +224,7 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
     v = c.coup6.process(float(v));
     v = c.coup3.process(float(v));
     tap(7, v);
-    double out = c.pa.process(v);
+    double out = c.pa.process(v * paDrive_);
     if (!clean_) out = c.dirtyHf.process(float(out));   // DIRTY-only presence restore (post power-amp)
     tap(8, out);
     if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);
@@ -265,6 +265,7 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit19")    { dStackRT_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: treble pot RV7 (ohm)
     else if (id == "fit20")    { dStackRB_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: bass pot RV5 (ohm)
     else if (id == "fit21")    { dStackRM_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: mid pot RV6 (ohm)
+    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit22")    { dStackRS_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: slope R62 (ohm)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }

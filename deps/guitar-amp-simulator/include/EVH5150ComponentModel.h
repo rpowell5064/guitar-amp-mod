@@ -119,6 +119,10 @@ private:
     // (derivation kept out of the public tree)
     float redHfDb_  = 5.0f;    // CH3 presence-shelf gain (dB) above ~1 kHz
     int   probeTap_ = -1;      // fit10 (lab): -1 off, else the tap whose waveform replaces the output
+    float  paDrive_ = 0.35f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED (capture THD error 21.9 -> 9.4 at x0.35 (best), shape 2.16 -> 1.86): master .6 kept 8.8/7.7/5.8 of 10.4/9.8/7.6 at x1.0; 9.9/9.0/7.1 at x0.5. The twins were driving their
+                                   //       power section harder than the real amp at the same MASTER (the stack's bass
+                                   //       travel was being compressed away at master .6); calibrated per twin by the
+                                   //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).
     float kneeV_    = 0.0f;    // fit9 (2026-10-04): grid-conduction knee width (V) on every triode stage; 0 = the hard kink (bit-identical). The
                                // real Red/Blue captures clip near-symmetrically at 1 kHz (h2 6-10 %) where the twin makes 25-33 % evens.
     // CH2 (Blue) shares Red's open-loop character but with less lost top; its own

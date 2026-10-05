@@ -124,6 +124,10 @@ private:
     double nfbStabHz_ = 60e3, fluxLim_ = 53.7;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
+    float  paDrive_ = 0.50f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED (x0.3 cost the ch3 capture match (shape 1.92 -> 2.50, THD err 23 -> 38); x0.5 keeps 1.96 / 24.5 with most of the bass gain): master .6 kept 7.8/5.8/1.7 of 9.0/9.3/4.9 (80/125/200 Hz) at x1.0; 8.1/7.4/2.9 at x0.3 (the ch3 cascade is the other half). The twins were driving their
+                                   //       power section harder than the real amp at the same MASTER (the stack's bass
+                                   //       travel was being compressed away at master .6); calibrated per twin by the
+                                   //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).
     double presPot_ = 10e3;                      // fit11: CH3 presence rheostat (value not printed)
     double clampV_ = 10.0;                       // fit12: EQ amplifier swing limit (V, +24 V rail); 0 = off
     bool   c18On_ = true, bleedOn_ = true, liftOn_ = true;   // fit13/14/15 (lab: HF path bisection)

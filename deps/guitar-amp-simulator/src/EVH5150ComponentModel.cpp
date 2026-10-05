@@ -331,7 +331,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         tap(9, v);
         v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // THREE VOLUME 1M-30A
         tap(10, v);
-        if (ownPa_) { v = c.pa.process(v * kPaBufGain); v = c.redHf.process(float(v)); tap(11, v); if (probeTap_ >= 0) return float(c.tapLast[probeTap_]); return float(v * outScalePa_); }   // CH3 open-loop presence restore (post power-amp)
+        if (ownPa_) { v = c.pa.process(v * kPaBufGain * paDrive_); v = c.redHf.process(float(v)); tap(11, v); if (probeTap_ >= 0) return float(c.tapLast[probeTap_]); return float(v * outScalePa_); }   // CH3 open-loop presence restore (post power-amp)
         if (probeTap_ >= 0) return float(c.tapLast[probeTap_]);
         return float(c.redHf.process(float(v)) * outScale_);
     } else {
@@ -361,7 +361,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // CH1/2 VOL 1M-30A
         tap(10, v);
         // Blue (CH2) presence restore, post power-amp; the CH1/Green relay state is left flat.
-        if (ownPa_) { v = c.pa.process(v * kPaBufGain); if (!greenLegs_) v = c.blueHf.process(float(v)); tap(11, v); if (probeTap_ >= 0) return float(c.tapLast[probeTap_]); return float(v * outScalePa_); }
+        if (ownPa_) { v = c.pa.process(v * kPaBufGain * paDrive_); if (!greenLegs_) v = c.blueHf.process(float(v)); tap(11, v); if (probeTap_ >= 0) return float(c.tapLast[probeTap_]); return float(v * outScalePa_); }
         if (probeTap_ >= 0) return float(c.tapLast[probeTap_]);
         return float((greenLegs_ ? v : c.blueHf.process(float(v))) * outScale_);
     }
@@ -384,6 +384,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
     else if (id == "fit7")    { zResQ_  = value; applyZRes(); }   // lab: its Q (how much survives at 50-80 Hz)
     else if (id == "fit8")    { zResDb_ = value; applyZRes(); }   // lab: its height (dB)
     else if (id == "fit9")    { kneeV_ = std::max(0.0f, value); applyKnee(); }   // lab: grid-conduction knee width (V), all triode stages
+    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit10")   { probeTap_ = std::clamp(int(value + 0.5f) - 1, -1, ChState::kNTaps - 1); }   // lab: 0 = off, 1..12 = tap0..tap11 replaces the output
     else if (id == "fit4")    { blueHfDb_ = value;   // lab: CH2 presence shelf (dB)
         if (fs_ > 0.0) for (auto& c : ch_) c.blueHf.prepare(fs_, 1.0, std::pow(10.0, blueHfDb_ / 20.0), 1000.0); }

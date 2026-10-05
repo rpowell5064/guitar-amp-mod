@@ -185,7 +185,7 @@ float JCM800ComponentModel::processSample(float x, int channel) noexcept {
     tap(5, v);
     v *= audioTaper(masterSmooth_.getCurrentValue(), 0.15f);   // VR2 1M log master
     tap(6, v);
-    v = c.pa.process(v);                   // LTP + 4x EL34 + NFB + OT
+    v = c.pa.process(v * paDrive_);        // LTP + 4x EL34 + NFB + OT (paDrive_: fit40)
     tap(7, v);
     return float(v * outScalePa_);
 }
@@ -203,6 +203,7 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
+    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit3")     { fluxSatV_ = value;   // lab: OT core saturation, peak volts at 40 Hz
         if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_;
             pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
