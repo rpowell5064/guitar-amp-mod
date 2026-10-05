@@ -31,8 +31,8 @@
  },
  "Boxed Bones": {
   "idx": 63,
-  "peak": -9.75,
-  "rms": -21.71
+  "peak": -6.78,
+  "rms": -21.45
  },
  "Bridge Vibe": {
   "idx": 32,
@@ -51,8 +51,8 @@
  },
  "Candlelit Clean": {
   "idx": 8,
-  "peak": -21.39,
-  "rms": -41.36
+  "peak": -8.21,
+  "rms": -29.25
  },
  "Cardinal Lead": {
   "idx": 15,
@@ -181,8 +181,8 @@
  },
  "Holy Smoke": {
   "idx": 23,
-  "peak": -6.07,
-  "rms": -18.1
+  "peak": -5.05,
+  "rms": -19.3
  },
  "Homesick Saucer": {
   "idx": 65,
@@ -201,8 +201,8 @@
  },
  "Imperial Rhythm": {
   "idx": 12,
-  "peak": -5.83,
-  "rms": -19.92
+  "peak": -5.82,
+  "rms": -20.56
  },
  "Innerspeaker Swirl": {
   "idx": 40,
@@ -221,8 +221,8 @@
  },
  "Lead": {
   "idx": 3,
-  "peak": -4.73,
-  "rms": -18.03
+  "peak": -4.34,
+  "rms": -17.29
  },
  "Little Feather": {
   "idx": 22,
@@ -276,8 +276,8 @@
  },
  "Prayer Djent": {
   "idx": 31,
-  "peak": -9.95,
-  "rms": -22.54
+  "peak": -12.45,
+  "rms": -25.57
  },
  "Quarter-Tone Lead": {
   "idx": 48,
@@ -311,18 +311,18 @@
  },
  "Sermon Crunch": {
   "idx": 9,
-  "peak": -10.49,
-  "rms": -27.14
+  "peak": -10.7,
+  "rms": -23.82
  },
  "Sermon Rhythm": {
   "idx": 10,
-  "peak": -6.36,
-  "rms": -19.88
+  "peak": -4.81,
+  "rms": -17.73
  },
  "Sermon Solo": {
   "idx": 11,
-  "peak": -6.3,
-  "rms": -19.26
+  "peak": -5.36,
+  "rms": -18.49
  },
  "Sister's Singer": {
   "idx": 70,
@@ -361,8 +361,8 @@
  },
  "Spiral Out": {
   "idx": 61,
-  "peak": -8.19,
-  "rms": -19.01
+  "peak": -5.15,
+  "rms": -19.04
  },
  "Stockholm Riff": {
   "idx": 59,
@@ -386,8 +386,8 @@
  },
  "Vanishing Drive": {
   "idx": 28,
-  "peak": -6.07,
-  "rms": -23.35
+  "peak": -5.53,
+  "rms": -24.25
  },
  "Winterborn": {
   "idx": 50,
