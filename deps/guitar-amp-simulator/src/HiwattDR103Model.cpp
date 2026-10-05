@@ -18,7 +18,7 @@ void HiwattDR103Model::prepare(double oversampledSampleRate, int /*maxBlockSize*
         c.inputBright.setCoeffs(Filters::highshelf(1800.0, 6.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kFenderV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(75.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(hpf12Hz_, oversampledFs_));
         c.stage2.prepare(oversampledFs_, TriodeComponent::kFenderV2);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Marshall);
@@ -46,7 +46,7 @@ void HiwattDR103Model::prepare(double oversampledSampleRate, int /*maxBlockSize*
         // trim the hump (brightShelf slot repurposed — it was set to 0 dB/unused).
         c.brightShelf.setCoeffs(Filters::peaking(180.0, -2.6, 0.8, oversampledFs_));
         c.presencePk.setCoeffs(Filters::peaking(2400.0, 9.0, 0.5, oversampledFs_));
-        c.bodyShelf.setCoeffs(Filters::lowshelf(90.0, 5.5, oversampledFs_));
+        c.bodyShelf.setCoeffs(Filters::lowshelf(90.0, bodyDb_, oversampledFs_));
     }
     reset();
 }
@@ -84,11 +84,11 @@ float HiwattDR103Model::processSample(float x, int channel) noexcept {
 
     // Stage 1: clean, high headroom — low drive multiplier so it barely breaks up even
     // wide open (the Hiwatt "stays clean and loud" character).
-    x = c.stage1.process(x * (0.4f + g * 1.3f)) * 0.92f * kCouple12;
+    x = c.stage1.process(x * (0.4f + g * 1.3f) * driveScale_) * 0.92f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2: still clean, only the faintest edge at max.
-    x = c.stage2.process(x * (0.5f + g * 1.1f)) * 0.90f;
+    x = c.stage2.process(x * (0.5f + g * 1.1f) * driveScale_) * 0.90f;
     x *= kPreToneGain;
 
     // British tonestack + presence
@@ -120,6 +120,9 @@ void HiwattDR103Model::setParameter(const std::string& id, float value) noexcept
     else if (id == "mid")      { mid_    = value; for (auto& c : ch_) c.tonestack.setMid(value); }
     else if (id == "treble")   { treble_ = value; for (auto& c : ch_) c.tonestack.setTreble(value); }
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.tonestack.setPresence(value); }
+    else if (id == "fit0")     { hpf12Hz_ = std::max(5.0f, value); if (oversampledFs_ > 0.0) for (auto& c : ch_) c.inter12HPF.setCoeffs(Filters::highpass1pole(hpf12Hz_, oversampledFs_)); }
+    else if (id == "fit1")     { driveScale_ = std::max(0.05f, value); }
+    else if (id == "fit2")     { bodyDb_ = value; if (oversampledFs_ > 0.0) for (auto& c : ch_) c.bodyShelf.setCoeffs(Filters::lowshelf(90.0, bodyDb_, oversampledFs_)); }
 }
 
 float HiwattDR103Model::getParameter(const std::string& id) const noexcept {

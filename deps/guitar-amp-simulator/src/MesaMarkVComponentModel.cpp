@@ -124,7 +124,7 @@ void MesaMarkVComponentModel::buildStages() noexcept {
     for (auto& c : ch_) {
         // ── V1A: R5 150k from E, R2+R3 3k ‖ C1 0.47µ; no grid stopper (ferrite bead).
         //    Grid source = the pickup/DI (ESTIMATE 10k for the conduction clamp).
-        c.v1a.prepare(fs_, { kRailE, 150e3, 3.0e3, 0.47e-6, 10e3, millerC(150e3), 10e3, 0.0, 0.0, 0.0, kneeV_ });
+        c.v1a.prepare(fs_, { kRailE, 150e3, 3.0e3, ckV1a_, 10e3, millerC(150e3), 10e3, 0.0, 0.0, 0.0, kneeV_ });
         {
             // TMB straight off the plate: the plate impedance is the stack's source
             // (APPROX: folded into the slope resistor, as the Friedman clean does).
@@ -136,8 +136,8 @@ void MesaMarkVComponentModel::buildStages() noexcept {
             c.c18.prepare(fs_, 180e-12, Zp150, par(570e3, 386e3));
         }
         // ── V1B: R27 100k from E, R26 1k5 ‖ C19A 0.47µ; source = the divider node (~230k).
-        c.v1b.prepare(fs_, { kRailE, 100e3, 1.5e3, 0.47e-6, 230e3, millerC(100e3), 230e3, 0.0, 0.0, 0.0, kneeV_ });
-        c.coup20.prepare(fs_, 0.047e-6, Zp100, 100e3);                    // C20 → R35
+        c.v1b.prepare(fs_, { kRailE, 100e3, 1.5e3, ckV1b_, 230e3, millerC(100e3), 230e3, 0.0, 0.0, 0.0, kneeV_ });
+        c.coup20.prepare(fs_, c20_, Zp100, 100e3);                    // C20 → R35
         // ── N1 → N2 bleed: R36 3M3 ‖ C24 20p into N2's 87k shunt.
         {
             const double rsh = par(680e3, 100e3);
@@ -147,7 +147,7 @@ void MesaMarkVComponentModel::buildStages() noexcept {
         }
         // ── V5A: R54 82k from C, R53 1k5 ‖ C36 2µ2; grid from the GAIN wiper (noon Z
         //    ≈ 300k, ESTIMATE-class fixed) with C35 120p grid-cathode.
-        c.v5a.prepare(fs_, { kRailC, 82e3, 1.5e3, 2.2e-6, 300e3, 120e-12 + millerC(82e3), 300e3, 0.0, 0.0, 0.0, kneeV_ });
+        c.v5a.prepare(fs_, { kRailC, 82e3, 1.5e3, ckV5a_, 300e3, 120e-12 + millerC(82e3), 300e3, 0.0, 0.0, 0.0, kneeV_ });
         c.coup37.prepare(fs_, 0.02e-6, Zp82 + 270e3, 68e3);              // C37 → R55 / R56
         c.c38lp.prepare(fs_, 1.0, 0.0, 1.0 / (2.0 * M_PI * 0.001e-6 * par(270e3 + Zp82, 68e3)));
         // ── V4B: R40 270k from C, R57 3k3 (C40 0.22µ bypass = CH3 BRIGHT); C39 120p.
@@ -355,6 +355,10 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit24")    { stRB_ = std::max(1e3, double(value));   if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: bass pot (ohm)
     else if (id == "fit25")    { stRM_ = std::max(100.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: mid pot (ohm)
     else if (id == "fit26")    { stRS_ = std::max(100.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: slope resistor (ohm)
+    else if (id == "fit27")    { ckV1a_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V1A cathode bypass (F)
+    else if (id == "fit28")    { ckV1b_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V1B cathode bypass (F)
+    else if (id == "fit29")    { ckV5a_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V5A cathode bypass (F)
+    else if (id == "fit30")    { c20_   = std::max(1e-10, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: C20 coupling (F)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     else if (id.size() == 4 && id.compare(0, 3, "geq") == 0) {
         const int b = id[3] - '0';

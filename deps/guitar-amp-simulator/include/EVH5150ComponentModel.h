@@ -118,6 +118,7 @@ private:
     // relative terms, so trimming it recovers bass as well as removing edge.
     // (derivation kept out of the public tree)
     float redHfDb_  = 5.0f;    // CH3 presence-shelf gain (dB) above ~1 kHz
+    int   probeTap_ = -1;      // fit10 (lab): -1 off, else the tap whose waveform replaces the output
     float kneeV_    = 0.0f;    // fit9 (2026-10-04): grid-conduction knee width (V) on every triode stage; 0 = the hard kink (bit-identical). The
                                // real Red/Blue captures clip near-symmetrically at 1 kHz (h2 6-10 %) where the twin makes 25-33 % evens.
     // CH2 (Blue) shares Red's open-loop character but with less lost top; its own

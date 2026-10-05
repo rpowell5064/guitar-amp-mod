@@ -14,7 +14,7 @@ void PeaveyBackstageModel::prepare(double oversampledSampleRate, int /*maxBlockS
         c.inputHPF.setCoeffs(Filters::highpass1pole(35.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kFenderV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(140.0, oversampledFs_));  // pre-CLIP bass cut: lows distort less than mids/highs (capture trait)
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(hpf12Hz_, oversampledFs_));  // pre-CLIP bass cut: lows distort less than mids/highs (capture trait)
         c.stage2.prepare(oversampledFs_, TriodeComponent::kFenderV2);
 
         c.tonestack.prepare(oversampledFs_, ToneStackComponent::Type::Fender);
@@ -31,7 +31,7 @@ void PeaveyBackstageModel::prepare(double oversampledSampleRate, int /*maxBlockS
         c.ssClipPre.setCoeffs(Filters::lowpass1pole(6000.0, oversampledFs_));   // tame the hard-clip fizz
         c.airLP.setCoeffs(Filters::lowpass1pole(11000.0, oversampledFs_));      // small combo top roll-off
         c.brightShelf.setCoeffs(Filters::highshelf(2600.0, 6.0, oversampledFs_));// "Bright" switch (baked ON)
-        c.bodyShelf.setCoeffs(Filters::lowshelf(200.0, 3.0, oversampledFs_));    // "Thick" switch — restores low body after the pre-clip cut (baked ON)
+        c.bodyShelf.setCoeffs(Filters::lowshelf(200.0, bodyDb_, oversampledFs_));    // "Thick" switch — restores low body after the pre-clip cut (baked ON)
     }
     reset();
 }
@@ -85,7 +85,7 @@ float PeaveyBackstageModel::processSample(float x, int channel) noexcept {
     // the NAM offset by -10 dB and THD engaged too late (10% vs the amp's 26-34%,
     // which is near-level-independent). Drive the clipper to the capture's operating
     // point and make up the output (tanh rails, so the makeup restores DI level).
-    x = std::tanh(x * 3.2f * (2.5f + gEff * 55.0f)) * 0.62f * 1.9f;
+    x = std::tanh(x * 3.2f * driveScale_ * (2.5f + gEff * 55.0f)) * 0.62f * 1.9f;
 
     x *= kPreToneGain;
 
@@ -111,6 +111,9 @@ float PeaveyBackstageModel::processSample(float x, int channel) noexcept {
 
 void PeaveyBackstageModel::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
+    else if (id == "fit0")     { hpf12Hz_ = std::max(5.0f, value); if (oversampledFs_ > 0.0) for (auto& c : ch_) c.inter12HPF.setCoeffs(Filters::highpass1pole(hpf12Hz_, oversampledFs_)); }
+    else if (id == "fit1")     { driveScale_ = std::max(0.05f, value); }
+    else if (id == "fit2")     { bodyDb_ = value; if (oversampledFs_ > 0.0) for (auto& c : ch_) c.bodyShelf.setCoeffs(Filters::lowshelf(200.0, bodyDb_, oversampledFs_)); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }

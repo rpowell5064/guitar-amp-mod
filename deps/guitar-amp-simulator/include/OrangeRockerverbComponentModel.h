@@ -84,7 +84,7 @@ private:
     bool  clean_ = false;     // plugin channel: <= 0.5 dirty, > 0.5 clean
 
     // Level calibration.
-    float inVolts_    = 1.00f;
+    float inVolts_    = 0.78f;   // 2026-10-04: fitted by 1 kHz harmonic profile against the MKIII DI captures (was 1.00)
     float outScalePa_ = 0.0030f;
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..).
@@ -105,7 +105,8 @@ private:
     // as hardware-calibration hooks because the amp-only MKIII captures show more bass and treble RANGE than these
     // printed MK1 values reproduce (joint knob fits hit the pot stops either way). Defaults = the drawing.
     double dStackC1_ = 560e-12, dStackC2_ = 22e-9, dStackRT_ = 250e3, dStackRB_ = 500e3, dStackRM_ = 25e3, dStackRS_ = 39e3;
-    double kneeV_ = 0.15;                        // fit9
+    double kneeV_ = 0.77;                        // fit9 — 2026-10-04: grid-conduction knee softened 0.15 -> 0.77 V, fitted with inVolts by harmonic
+                                                 //        profile on the gain-5 dirty captures: mean |dh2..h9| 6.7 -> 2.0 points (V8-A clipped too asymmetrically)
     int    probeTap_ = -1;                       // fit10 (lab)
     double nfbSeriesR_ = 4.7e3;                  // fit11: R10 4k7 (+R6 10k in the other SW2 position)
     bool   c42On_ = true;                        // fit12 (lab bisection)

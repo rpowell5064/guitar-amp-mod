@@ -422,9 +422,13 @@ public:
         // load demands more current than the tube passes at Vgk <= 0, so it runs
         // with the grid conducting at REST). The grid diode is then solved together
         // with the cathode each sample (and at bias), which is what bootstraps the
-        // follower's input: Zin ~ rgk·(1 + gm·Rk) instead of rgk. Off = the original
-        // previous-sample clamp (bit-identical).
-        bool gridJoint = false;
+        // follower's input: Zin ~ rgk·(1 + gm·Rk) instead of rgk.
+        // DEFAULT ON since 2026-10-04: the previous-sample clamp fires on every fast
+        // rising slope (at 192 kHz a 130 V / 1 kHz swing moves ~4 V per sample against a
+        // 0.7 V knee), which rectified the signal — measured on the Friedman BE-100 twin
+        // at 1 kHz: h2 22 % / h4 40 % / h6 39 % at the output where the real amp has
+        // 11 / 14 / 14; with the joint solve 5 / 11 / 14. Off = the old clamp.
+        bool gridJoint = true;
     };
 
     void prepare(double /*fs*/, const Params& p) noexcept {

@@ -42,6 +42,10 @@ private:
     float presence_ = 0.5f;
     float master_   = 0.7f;   // "Post"
     float sag_      = 0.05f;  // solid-state: stiff supply, essentially no sag
+    // Lab hooks (2026-10-04): vs the labelled captures the clipper runs ~2x too hot at 1 kHz (87 vs 47 %) while 110 Hz matches.
+    float hpf12Hz_    = 140.0f; // fit0: pre-clip high-pass corner (Hz)
+    float driveScale_ = 0.29f;  // fit1 (2026-10-04: 1.0 -> 0.29 by THD at 110 Hz + 1 kHz on 8 labelled captures: THD error 29 -> 23, shape unchanged; the clipper ran 2x too hot at 1 kHz): multiplies the saturation drive
+    float bodyDb_     = 3.0f;   // fit2: "Thick" low-shelf gain @ 200 Hz
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

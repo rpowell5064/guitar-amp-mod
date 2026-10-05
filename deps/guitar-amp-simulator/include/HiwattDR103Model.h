@@ -39,6 +39,11 @@ private:
     float presence_ = 0.5f;
     float master_   = 0.7f;
     float sag_      = 0.12f;  // stiff Partridge supply — minimal sag
+    // Lab hooks (2026-10-04, capture-anchoring): the real DR103 distorts 1 kHz ~2.5x more than 110 Hz at the same input
+    // (29 vs 11.6 % at -12 dBFS) while this model made 2.7 vs 5.4 %: the clipper sees too much low end and too little drive.
+    float hpf12Hz_   = 52.0f;  // fit0 (2026-10-04: 75 -> 52 and drive x1.89, fitted by THD at 110 Hz + 1 kHz on 7 DI captures: shape 4.1 -> 3.2 dB, THD error 32 -> 27): inter-stage high-pass corner ahead of stage 2 (Hz)
+    float driveScale_ = 1.89f; // fit1: multiplies both stage drives
+    float bodyDb_    = 5.5f;   // fit2: post low-shelf gain @ 90 Hz (restores the body the pre-clip cut removed)
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

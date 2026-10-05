@@ -176,7 +176,8 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         // ── V3B cathode follower: R31 100k, grid DC-coupled to V3A's plate.
         //    Its grid conducts against V3A's plate impedance (R27 ‖ rp) — the
         //    Marshall-family CF clip that rounds the positive peaks. ──
-        c.v3b.prepare(fs_, { railV3_, 100e3, c.v3a.biasVp(), Zp100, kneeV_ });
+        cfTube_ = evhcomp::KorenP{ 100.0, 1.4, 1060.0 / std::max(0.1, cfCurrentScale_), 600.0, 300.0 };
+        c.v3b.prepare(fs_, { railV3_, 100e3, c.v3a.biasVp(), Zp100, kneeV_, cfCurrentScale_ == 1.0 ? nullptr : &cfTube_, cfJoint_ });
         {
             // CF output impedance at bias (tube physics): 1/(gm + 1/rp + 1/Rk).
             double Ia, dg, dp;
@@ -208,6 +209,7 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         c.pa.prepare(fs_, friedmanPowerParams(railPI_, otHfHz_, zHfDb_, zResDb_, idleMa_, nfbStabHz_, iaScale_, nfbScale_, fluxLim_, otLfHz_, biasShift_, kneeV_, lutSpan_));
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
+        c.pa.setLtpIters(ltpIters_);
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -412,6 +414,9 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit14")    { probeTap_ = static_cast<int>(value + 0.5f) - 1; }   // 0 = off, 1..9 = tap0..tap8
     else if (id == "fit15")    { miller_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }
     else if (id == "fit16")    { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
+    else if (id == "fit17")    { ltpIters_ = std::max(1, int(value + 0.5f)); for (auto& c : ch_) c.pa.setLtpIters(ltpIters_); }   // lab: LTP coupled sweeps
+    else if (id == "fit18")    { cfCurrentScale_ = std::max(0.1f, value); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V3B follower current scale
+    else if (id == "fit19")    { cfJoint_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: joint grid/cathode solve on the V3B follower
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // No resonance/depth control on the BE-100.
 }

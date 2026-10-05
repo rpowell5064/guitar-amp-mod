@@ -130,10 +130,19 @@ private:
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 56.6, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; rated-output anchor for the 100 W core)
     bool   biasShift_ = true;                    // fit11 (lab only)
-    double kneeV_ = 0.15;                        // fit12: grid-conduction knee width (V)
+    double kneeV_ = 1.39;                        // fit12: grid-conduction knee width (V) — 2026-10-04: 0.15 -> 1.39, fitted by 1 kHz harmonic
+                                                 //        profile on the 9 [14,2dBu] HBE captures after the follower fix (mean |dh| 13.8 -> 12.7, shape 1.92 -> 1.84)
     double lutSpan_ = 60.0;                      // fit13: EL34 grid LUT half-span (V)
     int    probeTap_ = -1;                       // fit14 (lab): return this tap instead of the speaker
     bool   miller_ = true;                       // fit15: 12AX7 Miller/input capacitance at each grid
+    // 2026-10-04 lab hooks for the 1 kHz even-harmonic excess (tap trace: evens born at the V3B follower, doubled in the PA):
+    int    ltpIters_ = 1;                        // fit17: coupled LTP sweeps per sample in PushPullPowerV (1 = original)
+    double cfCurrentScale_ = 1.0;                // fit18: V3B follower tube current scale (Kg1 / scale). The shared 12AX7
+                                                 //        biases the CF at Vgk +0.6 V (0.1 V from grid conduction); a real one sits ~-1 V.
+    evhcomp::KorenP cfTube_{ 100.0, 1.4, 1060.0, 600.0, 300.0 };
+    bool   cfJoint_ = true;                      // fit19 (0 = the old previous-sample clamp, for A/B): solve the V3B grid diode JOINTLY with its cathode each sample (the SVT follower's
+                                                 //        method). The default clamps against the PREVIOUS sample's cathode: at 192 kHz a 130 V
+                                                 //        1 kHz swing moves ~4 V per sample, so the clamp fires on every positive slope (evens).
     // 12AX7 datasheet capacitances: Cgp 1.7 pF, Cgk 1.6 pF. Reflected at the
     // grid as Cgk + Cgp·(1 + A), A = µ·Ra/(Ra + rp), against the HF Thevenin
     // source resistance of that grid — a real ~10 kHz pole at V3A (which the

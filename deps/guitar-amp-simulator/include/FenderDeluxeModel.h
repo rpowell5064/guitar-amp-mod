@@ -44,6 +44,11 @@ private:
     float presence_ = 0.45f; // warm but not dark; AB763 is characteristically clean-bright
     float master_   = 0.65f;
     float sag_      = 0.45f; // tube rectifier (5AR4) with under-rated PSU — meaningful sag
+    // Lab hooks (2026-10-04): the real '65 Deluxe distorts 1 kHz far more than 110 Hz (19 vs 6 % at -12 dBFS, CLEAN preset)
+    // where this model made 0.8 vs 6.3 %: the clipper sees the wrong spectrum.
+    float hpf12Hz_    = 52.0f;  // fit0 (2026-10-04: 40 -> 52 and drive x1.41 by THD at 110 Hz + 1 kHz on 9 captures: shape 4.0 -> 3.6, THD error 27 -> 24): inter-stage high-pass corner (Hz)
+    float driveScale_ = 1.41f;  // fit1: multiplies both stage drives
+    float bassDb_     = 4.5f;   // fit2: post bass-restore shelf gain @ 85 Hz
 
     LinearSmoother gainSmooth_, masterSmooth_;
 

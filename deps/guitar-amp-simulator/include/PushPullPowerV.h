@@ -79,6 +79,7 @@ public:
         // sets the DC point only; the AC tail term is dropped so the pair behaves as a
         // common-cathode differential through ltpRk alone.
         bool   ltpTailBypassed = false;
+        int    ltpIters = 1;       // Gauss-Seidel sweeps of the two coupled LTP sides per sample (lab, 2026-10-04); 1 = the original
         // Cathode bias for the output stage (2026-09-11, Vox AC30: R24 50 Ω ‖ C11 250µ
         // shared by the quad). 0 = fixed bias. When set, the shared cathode voltage
         // follows the averaged cathode current through R·C, so hard drive pushes the
@@ -210,6 +211,7 @@ public:
     void setSagDepth (float v) noexcept { sagDepth_  = std::clamp(v, 0.0f, 1.0f); }
     // Phase 5: runtime toggle of the dynamic load (the driver state is cleared on
     // engage so it starts at rest) and the cab row the amp is driving.
+    void setLtpIters(int n) noexcept { p_.ltpIters = std::max(1, n); }   // lab hook
     void setDynLoad(bool on) noexcept { if (on && !dynLoad_) spkZ_.reset(); dynLoad_ = on; }
     bool dynLoad() const noexcept { return dynLoad_; }
     void setSpeakerRow(const SpeakerParams& sp) noexcept { p_.spk = sp; if (fs_ > 0.0) spkZ_.prepare(fs_, loadRow()); }
@@ -242,7 +244,7 @@ public:
         const double vgA = vin * p_.piInDiv;
         const double vgB = -nfb;    // secondary polarity chosen so the loop is negative
         double IaA = IaOpA_, IaB = IaOpB_;
-        for (int it = 0; it < 1; ++it) {
+        for (int it = 0; it < std::max(1, p_.ltpIters); ++it) {
             IaA = ltpSolveSide(vgA, IaA, IaB, p_.ltpRaA);
             IaB = ltpSolveSide(vgB, IaB, IaA, p_.ltpRaB);
         }

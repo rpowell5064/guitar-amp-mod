@@ -14,7 +14,7 @@ void FenderDeluxeModel::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.inputHPF.setCoeffs(Filters::highpass1pole(35.0, oversampledFs_));
 
         c.stage1.prepare(oversampledFs_, TriodeComponent::kFenderV1);
-        c.inter12HPF.setCoeffs(Filters::highpass1pole(40.0, oversampledFs_));
+        c.inter12HPF.setCoeffs(Filters::highpass1pole(hpf12Hz_, oversampledFs_));
 
         c.stage2.prepare(oversampledFs_, TriodeComponent::kFenderV2);
 
@@ -55,7 +55,7 @@ void FenderDeluxeModel::prepare(double oversampledSampleRate, int /*maxBlockSize
         c.voiceShelf.setCoeffs(Filters::highshelf(1900.0, 19.0, oversampledFs_));        // treble recovery (was 2800/+13)
         c.voiceCut.setCoeffs(Filters::peaking(4400.0, -14.0, 3.2, oversampledFs_));      // presence-region dip
         c.voiceMidBoost.setCoeffs(Filters::peaking(950.0, 6.5, 0.9, oversampledFs_));    // low-mid restore
-        c.voiceBassShelf.setCoeffs(Filters::lowshelf(85.0, 4.5, oversampledFs_));        // bass restore
+        c.voiceBassShelf.setCoeffs(Filters::lowshelf(85.0, bassDb_, oversampledFs_));     // bass restore (fit2)
     }
     reset();
 }
@@ -93,12 +93,12 @@ float FenderDeluxeModel::processSample(float x, int channel) noexcept {
     // Stage 1: clean Fender input stage — barely saturating at noon, light bloom at max.
     // Range [0.4, 2.5]: at noon (g=0.5) drive = 1.05 (linear region),
     //                   at max  (g=1.0) drive = 2.5  (soft compression onset).
-    x = c.stage1.process(x * (0.4f + g * 2.1f)) * 0.92f * kCouple12;
+    x = c.stage1.process(x * (0.4f + g * 2.1f) * driveScale_) * 0.92f * kCouple12;
     x = c.inter12HPF.process(x);
 
     // Stage 2: edge-of-breakup character at high gain only.
     // Range [0.5, 2.4]: stays clean through noon, breaks up softly at max.
-    x = c.stage2.process(x * (0.5f + g * 1.9f)) * 0.88f;
+    x = c.stage2.process(x * (0.5f + g * 1.9f) * driveScale_) * 0.88f;
     x *= kPreToneGain;
 
     // Fender tonestack
@@ -127,6 +127,9 @@ float FenderDeluxeModel::processSample(float x, int channel) noexcept {
 
 void FenderDeluxeModel::setParameter(const std::string& id, float value) noexcept {
     if      (id == "gain")     { gain_   = value; gainSmooth_.setTargetValue(value); }
+    else if (id == "fit0")     { hpf12Hz_ = std::max(5.0f, value); if (oversampledFs_ > 0.0) for (auto& c : ch_) c.inter12HPF.setCoeffs(Filters::highpass1pole(hpf12Hz_, oversampledFs_)); }
+    else if (id == "fit1")     { driveScale_ = std::max(0.05f, value); }
+    else if (id == "fit2")     { bassDb_ = value; if (oversampledFs_ > 0.0) for (auto& c : ch_) c.voiceBassShelf.setCoeffs(Filters::lowshelf(85.0, bassDb_, oversampledFs_)); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "sag")      { sag_    = value; }
     else if (id == "bass")     { bass_   = value; for (auto& c : ch_) c.tonestack.setBass(value); }

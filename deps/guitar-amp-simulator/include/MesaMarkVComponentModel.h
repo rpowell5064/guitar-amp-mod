@@ -97,6 +97,10 @@ private:
     // C3 47n, treble 200k, bass 250k, mid 10k, slope 100k} exposed as hooks — every cab-less capture shows a 3 dB
     // hole at 315 Hz and a 110 Hz distortion deficit that no other hook moves. Defaults = the drawing.
     double stC1_ = 1.0e-9, stC2_ = 0.1e-6, stC3_ = 0.047e-6, stRT_ = 200e3, stRB_ = 250e3, stRM_ = 10e3, stRS_ = 100e3;
+    // Pre-GEQ low-end shapers (fit27..fit30, 2026-10-04): the cathode bypass caps of V1A / V1B / V5A and the C20 coupling
+    // cap. The per-capture GEQ fit wants +8..10 dB at 240 Hz relative to 80 Hz on every capture, i.e. the twin passes too
+    // much 80 Hz into the gain stages; these set that transition. Defaults = the drawing.
+    double ckV1a_ = 0.47e-6, ckV1b_ = 0.47e-6, ckV5a_ = 2.2e-6, c20_ = 0.047e-6;
     float outScalePa_ = 0.0030f;
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
     // ESTIMATE-class constants (lab hooks fit0..):
