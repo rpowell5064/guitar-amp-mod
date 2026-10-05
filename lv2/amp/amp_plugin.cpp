@@ -98,7 +98,7 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 10.50f, 5.70f, 3.60f, 0.0f, 11.70f, 0.0f, 12.10f, 0.0f, 4.89f, 0.0f, 4.93f, -2.50f, 0.47f, 0.0f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 10.50f, 5.70f, 3.60f, 0.0f, 11.70f, 0.0f, 12.10f, 0.0f, 4.89f, 0.0f, 4.93f, -2.00f, 0.47f, 0.0f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.40f, 10.40f, 4.20f, 0.00f, -2.80f, -4.50f, -5.50f },
     { 3.20f, 1.40f, 0.40f, 0.00f, -0.20f, -0.30f, -0.50f },
@@ -111,7 +111,7 @@ static const float kCompGainDb[16][7] = {
     { -2.12f, -1.63f, -0.68f, -0.00f, 0.50f, 0.89f, 1.17f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.90f, 0.99f, 0.49f, -0.00f, -0.19f, -0.24f, -0.23f },
-    { 0.10f, 0.20f, 0.10f, 0.00f, -0.10f, -0.20f, -0.10f },
+    { 3.20f, 1.40f, 0.50f, 0.00f, -0.30f, -0.40f, -0.40f },
     { 0.31f, 0.84f, 0.64f, -0.00f, 0.11f, 0.26f, 0.39f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.77f, 0.13f, -0.02f, -0.00f, 0.06f, 0.12f, 0.15f },
@@ -129,7 +129,7 @@ static const float kCompMasterDb[16][4] = {
     { -3.57f, -1.34f, -0.00f, 0.49f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -4.29f, -1.67f, -0.00f, 0.65f },
-    { 9.50f, 1.10f, 0.00f, -0.20f },
+    { 14.10f, 2.60f, 0.00f, -0.40f },
     { 14.10f, 2.86f, -0.00f, -0.02f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -7.89f, -3.15f, -0.00f, 1.17f },
