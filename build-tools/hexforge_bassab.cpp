@@ -104,10 +104,13 @@ static void bands(const std::vector<float>& x, double sr, const double* fc, int 
 int main(int argc, char** argv) {
     const double RATE = 48000.0; const uint32_t NF = 64;
     const int SETTLE_BLOCKS = 1500, MEAS_BLOCKS = 1500;   // 2 s settle, 2 s measure
-    bool compOn = true; std::vector<int> want; double inDb = -24.0;
+    bool compOn = true; std::vector<int> want; double inDb = -24.0; std::vector<std::string> sets; const char* wavPath = nullptr; std::vector<float> wav; double wavGain = 1.0;
     for (int a = 1; a < argc; ++a) {
         if (!strcmp(argv[a], "--nocomp")) { compOn = false; continue; }
         if (!strcmp(argv[a], "--in") && a + 1 < argc) { inDb = atof(argv[++a]); continue; }
+        if (!strcmp(argv[a], "--wav") && a + 1 < argc) { wavPath = argv[++a]; continue; }
+        if (!strcmp(argv[a], "--set") && a + 1 < argc) { sets.push_back(argv[++a]); continue; }   // sym=value applied after each recall (a host knob move)
+        if (!strcmp(argv[a], "--wavgain") && a + 1 < argc) { wavGain = std::pow(10.0, atof(argv[++a]) / 20.0); continue; }
         long v = strtol(argv[a], nullptr, 10); if (v >= 0 && v <= 127) want.push_back((int)v);
     }
     if (want.empty()) for (int k = 0; k < 80; ++k) want.push_back(k);
@@ -139,8 +142,38 @@ int main(int argc, char** argv) {
     }
     if (d->activate) d->activate(inst);
     uint32_t lcg = 0x2545F491u; const double amp = std::pow(10.0, inDb / 20.0) * std::sqrt(3.0);   // uniform noise, RMS = inDb
+    if (wavPath) {   // PCM 16/24/32 or float32 WAV, first channel, native level (+ --wavgain dB), looped
+        FILE* f = fopen(wavPath, "rb"); if (!f) { fprintf(stderr, "cannot open %s\n", wavPath); return 2; }
+        std::vector<uint8_t> b; { uint8_t t[65536]; size_t n; while ((n = fread(t, 1, sizeof t, f)) > 0) b.insert(b.end(), t, t + n); } fclose(f);
+        size_t pos = 12; int ch = 1, bits = 16, fmt = 1;
+        while (pos + 8 <= b.size()) {
+            const uint32_t sz = b[pos+4] | (b[pos+5] << 8) | (b[pos+6] << 16) | ((uint32_t)b[pos+7] << 24);
+            if (!memcmp(&b[pos], "fmt ", 4)) { fmt = b[pos+8] | (b[pos+9] << 8); ch = b[pos+10] | (b[pos+11] << 8); bits = b[pos+22] | (b[pos+23] << 8); }
+            else if (!memcmp(&b[pos], "data", 4)) {
+                const size_t bps = bits / 8, frames = sz / (bps * ch);
+                for (size_t i = 0; i < frames; ++i) {
+                    const uint8_t* q = &b[pos + 8 + i * bps * ch]; double v = 0;
+                    if (fmt == 3 && bits == 32) { float fv; memcpy(&fv, q, 4); v = fv; }
+                    else if (bits == 16) v = (int16_t)(q[0] | (q[1] << 8)) / 32768.0;
+                    else if (bits == 24) { int32_t x = (q[0] << 8) | (q[1] << 16) | (q[2] << 24); v = (x >> 8) / 8388608.0; }
+                    else if (bits == 32) { int32_t x; memcpy(&x, q, 4); v = x / 2147483648.0; }
+                    wav.push_back((float)(v * wavGain));
+                }
+                break;
+            }
+            pos += 8 + sz + (sz & 1);
+        }
+        double pk = 0, sq = 0; for (float v : wav) { pk = std::max(pk, (double)std::fabs(v)); sq += (double)v * v; }
+        fprintf(stderr, "wav: %zu frames, peak %.1f dBFS, rms %.1f dBFS\n", wav.size(), 20 * log10(pk + 1e-12), 20 * log10(std::sqrt(sq / std::max<size_t>(1, wav.size())) + 1e-12));
+        if (wav.empty()) return 2;
+    }
+    size_t wavPos = 0;
     auto runBlock = [&]() {
-        for (uint32_t k = 0; k < NF; ++k) { lcg = lcg * 1664525u + 1013904223u; float s = (float)(((double)(lcg >> 8) / 8388608.0 - 1.0) * amp); ainL[k] = s; ainR[k] = s; }
+        for (uint32_t k = 0; k < NF; ++k) {
+            float s;
+            if (!wav.empty()) { s = wav[wavPos]; if (++wavPos >= wav.size()) wavPos = 0; }
+            else { lcg = lcg * 1664525u + 1013904223u; s = (float)(((double)(lcg >> 8) / 8388608.0 - 1.0) * amp); }
+            ainL[k] = s; ainR[k] = s; }
         outSeq(notify); d->run(inst, NF);
         while (!g_resp.empty()) { auto r = std::move(g_resp.front()); g_resp.pop_front(); if (g_worker && g_worker->work_response) g_worker->work_response(inst, (uint32_t)r.size(), r.data()); }
         if (g_worker && g_worker->end_run) g_worker->end_run(inst);
@@ -150,11 +183,22 @@ int main(int argc, char** argv) {
     printf("# chain-output band change, bass 0.9 vs 0.1 (dB), uniform noise %.0f dBFS RMS in, %s\n", inDb, compOn ? "Component Build ON" : "shipped models");
     printf("%-4s %-26s      ", "idx", "preset"); for (int b = 0; b < NB; ++b) printf("%6.0f", fc[b]); printf("   rms.1  rms.9\n");
     for (int k : want) {
-        val[HF_PS_GOTO] = (float)k; for (int s = 0; s < SETTLE_BLOCKS; ++s) runBlock();
+        val[HF_PS_GOTO] = (float)k; for (int s = 0; s < SETTLE_BLOCKS / 2; ++s) runBlock();
+        for (const std::string& sv : sets) {   // --set sym=value: a host move after the recall
+            const size_t eq = sv.find('='); if (eq == std::string::npos) continue;
+            const std::string sym = sv.substr(0, eq); const float v = (float)atof(sv.c_str() + eq + 1); bool ok = false;
+            for (int i = 0; i < HF_N_PORTS; ++i) if (HF_PORT_SYM[i] && sym == HF_PORT_SYM[i]) {
+                // the override layer only takes a CHANGE of the host value as a knob move, so step through a
+                // distinct value first (a target of 0 on a port the harness never touched would otherwise be a no-op)
+                val[i] = v + 0.37f; for (int s = 0; s < 8; ++s) runBlock(); val[i] = v; ok = true; break; }
+            if (!ok) fprintf(stderr, "unknown port %s\n", sym.c_str());
+        }
+        for (int s = 0; s < SETTLE_BLOCKS / 2; ++s) runBlock();
         double db[2][NB], rms[2];
         for (int side = 0; side < 2; ++side) {
             val[HF_AMP_BASS] = side ? 0.9f : 0.1f;
             lcg = 0x2545F491u;   // SAME noise realisation for both knob positions: the band deltas are then transfer differences
+            wavPos = 0;
             for (int s = 0; s < SETTLE_BLOCKS / 2; ++s) runBlock();
             std::vector<float> y; y.reserve(MEAS_BLOCKS * NF); double sq = 0;
             for (int s = 0; s < MEAS_BLOCKS; ++s) { runBlock(); for (uint32_t i = 0; i < NF; ++i) { y.push_back(aoutL[i]); sq += (double)aoutL[i] * aoutL[i]; } }
