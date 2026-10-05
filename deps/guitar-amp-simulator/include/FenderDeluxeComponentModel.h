@@ -71,7 +71,10 @@ private:
     float outScalePa_ = 1.0f / 58.0f;   // speaker-node volts -> units (22 W into 8 Ω = 18.8 Vpk ≈ 0.32 units)
     bool  dynLoad_ = false;
 
-    float  gainMid_ = 0.19f;       // fit0: VOLUME 1MA law, fitted with the jack volts (0.19 at half rotation)
+    float  gainMid_ = 0.10f;       // fit0: VOLUME 1MA law — a 1M audio-taper pot sits at ~10 % of its track at half
+                                   //       rotation. (The capture fit had asked for 0.19, but the capture dials were
+                                   //       preset-word guesses and that put the clean breakup point at knob 0.38; by ear
+                                   //       the real amp is clean-with-hair at 5 and crunching from 6-7, which 0.10 gives.)
     double zResDb_  = 3.5;         // fit2: OT/speaker low-resonance depth (dB): shape fit gave 4.7, the joint knob fit still read +1.5..2 dB at 125-200 Hz -> 3.5
     double fluxSatV_ = 18.8;       // fit3: OT core saturation anchor, 22 W into 8 Ω
     double piCapF_  = 0.001e-6;    // fit4: the PI coupling cap (.001µ on the sheet)

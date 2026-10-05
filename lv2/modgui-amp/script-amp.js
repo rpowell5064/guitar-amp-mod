@@ -66,7 +66,7 @@ function (event, funcs) {
         icon.find('[rata-role=plexivol2]').toggleClass('mod-hidden', m !== 10);
         icon.find('[rata-role=jcmsir34]').toggleClass('mod-hidden', m !== 1);
         // For Sunn the shared Gain knob IS the Normal-channel volume; for the Plexi it's Vol I.
-        icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (nam ? 'Output' : 'Gain')));
+        icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (nam ? 'Output' : (m === 0 || m === 8 ? 'Volume' : 'Gain'))));
         // Cali V (11): 9-mode channel switcher + 5-band graphic EQ
         icon.find('[rata-role=mesagroup]').toggleClass('mod-hidden', m !== 11);
         // Diamond Plate (12): 8-mode channel switcher + Variac/Rectifier feel switches

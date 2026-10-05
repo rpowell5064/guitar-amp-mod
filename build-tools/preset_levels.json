@@ -6,8 +6,8 @@
  },
  "Anyone Can Play Guitar": {
   "idx": 49,
-  "peak": 0.57,
-  "rms": -12.85
+  "peak": 2.86,
+  "rms": -12.87
  },
  "Apache Echo": {
   "idx": 37,
@@ -71,8 +71,8 @@
  },
  "Clean": {
   "idx": 0,
-  "peak": -0.82,
-  "rms": -15.03
+  "peak": 0.55,
+  "rms": -15.27
  },
  "Come As Water": {
   "idx": 7,
@@ -101,13 +101,13 @@
  },
  "Disco Chuck": {
   "idx": 35,
-  "peak": 1.85,
-  "rms": -14.88
+  "peak": 4.0,
+  "rms": -14.59
  },
  "Dreamlit Shimmer": {
   "idx": 29,
-  "peak": 1.06,
-  "rms": -15.21
+  "peak": 4.2,
+  "rms": -14.62
  },
  "Flatliner": {
   "idx": 30,
@@ -141,8 +141,8 @@
  },
  "Gravity Lead": {
   "idx": 19,
-  "peak": -1.07,
-  "rms": -13.69
+  "peak": -0.4,
+  "rms": -13.76
  },
  "Grunge Drop": {
   "idx": 55,
@@ -151,8 +151,8 @@
  },
  "Hand in Cloud": {
   "idx": 66,
-  "peak": -1.82,
-  "rms": -19.02
+  "peak": 0.47,
+  "rms": -19.56
  },
  "Hazy Solo": {
   "idx": 21,
@@ -191,8 +191,8 @@
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 5.48,
-  "rms": -8.55
+  "peak": 9.91,
+  "rms": -6.39
  },
  "Imperial Lead": {
   "idx": 13,
@@ -256,13 +256,13 @@
  },
  "Nevermind Verse": {
   "idx": 5,
-  "peak": -0.69,
-  "rms": -17.39
+  "peak": 0.16,
+  "rms": -18.8
  },
  "Nevermind Wall": {
   "idx": 6,
-  "peak": 2.5,
-  "rms": -9.42
+  "peak": 3.09,
+  "rms": -9.02
  },
  "Numb Sustain": {
   "idx": 18,
@@ -296,8 +296,8 @@
  },
  "Retro Poland": {
   "idx": 58,
-  "peak": -8.7,
-  "rms": -23.71
+  "peak": -7.57,
+  "rms": -24.78
  },
  "Rhythm": {
   "idx": 2,
@@ -376,8 +376,8 @@
  },
  "Surf Splash": {
   "idx": 36,
-  "peak": -5.74,
-  "rms": -21.35
+  "peak": -5.78,
+  "rms": -22.05
  },
  "Sweet Dispersion": {
   "idx": 64,
