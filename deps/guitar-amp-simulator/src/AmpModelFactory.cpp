@@ -23,6 +23,7 @@
 #include "AmpegSVTComponentModel.h"
 #include "OrangeAD200BModel.h"
 #include "MarshallPlexiComponentModel.h"
+#include "FenderDeluxeComponentModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -50,6 +51,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::AmpegSVTComponent: return std::make_unique<AmpegSVTComponentModel>();
         case ModelID::OrangeAD200B:      return std::make_unique<OrangeAD200BModel>();
         case ModelID::MarshallPlexiComponent: return std::make_unique<MarshallPlexiComponentModel>();
+        case ModelID::FenderDeluxeComponent: return std::make_unique<FenderDeluxeComponentModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -98,6 +100,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::AmpegSVTComponent: return "Ampeg SVT Component";
         case ModelID::OrangeAD200B:      return "Citrus 200";
         case ModelID::MarshallPlexiComponent: return "Marshall 1959 Super Lead Component";
+        case ModelID::FenderDeluxeComponent: return "Fender Deluxe Reverb Component";
         default:                           return "Unknown";
     }
 }
@@ -132,6 +135,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::AmpegSVTComponent: return 5;  // 6550 sextet
         case ModelID::OrangeAD200B:      return 5;  // 6550 quad
         case ModelID::MarshallPlexiComponent: return 1;  // 4x EL34 (Unicord 70-6-11, July 1970)
+        case ModelID::FenderDeluxeComponent: return 4;  // 2x 6V6GT (AB763)
         default:                           return 1;
     }
 }
@@ -183,5 +187,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Ampeg SVT Component") return ModelID::AmpegSVTComponent;
     if (name == "Citrus 200")          return ModelID::OrangeAD200B;
     if (name == "Marshall 1959 Super Lead Component") return ModelID::MarshallPlexiComponent;
+    if (name == "Fender Deluxe Reverb Component") return ModelID::FenderDeluxeComponent;
     return ModelID::SunnModelT;
 }

@@ -43,6 +43,7 @@ public:
         // is listed in getAllModelNames but keeps an out-of-line ID.
         OrangeAD200B = 22,
         MarshallPlexiComponent = 23,
+        FenderDeluxeComponent = 24,
     };
 
     static constexpr int kNumModels = 15;

@@ -75,10 +75,11 @@ static const float kModelMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f,
 // ── Component builds (2026-09-23, mirrors Hex Forge v48+) ───────────────────
 // Amps that have a schematic-exact twin. Keep in sync with HAS_COMP in script-amp.js.
 static inline bool hasComponentModel(int m) noexcept {
-    return m == 1 || m == 2 || m == 4 || m == 6 || m == 8 || m == 10 || m == 11 || m == 12 || m == 14;
+    return m == 0 || m == 1 || m == 2 || m == 4 || m == 6 || m == 8 || m == 10 || m == 11 || m == 12 || m == 14;
 }
 static inline AmpModel componentAmpFor(int m) noexcept {
     switch (m) {
+        case 0:  return AmpModel::DeluxeComp;
         case 1:  return AmpModel::JCM800Comp;
         case 2:  return AmpModel::EVH5150Comp;
         case 4:  return AmpModel::RockerverbComp;
@@ -97,9 +98,9 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 0.0f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.89f, 0.0f, 4.93f, -2.92f, 0.47f, 0.0f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 1.40f, 4.43f, 2.72f, 0.0f, 11.72f, 0.0f, 7.15f, 0.0f, 4.89f, 0.0f, 4.93f, -2.92f, 0.47f, 0.0f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 4.40f, 0.90f, 0.00f, 0.00f, 0.30f, 0.70f, 1.00f },
     { 0.57f, 0.80f, 0.46f, -0.00f, -0.32f, -0.59f, -0.82f },
     { -2.48f, -0.71f, -0.14f, -0.00f, 0.04f, 0.01f, -0.05f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
@@ -117,7 +118,7 @@ static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };
 static const float kCompMasterDb[16][4] = {
-    { 0.00f, 0.00f, 0.00f, 0.00f },
+    { -10.90f, -4.90f, 0.00f, 2.20f },
     { 17.04f, 3.73f, -0.00f, -0.98f },
     { -8.34f, -2.77f, -0.00f, 0.85f },
     { 0.00f, 0.00f, 0.00f, 0.00f },

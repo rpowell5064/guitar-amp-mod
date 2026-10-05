@@ -111,7 +111,7 @@ function (event, funcs) {
     // Component Build (2026-09-23): the ENGINE group shows only for models with a
     // schematic-exact twin (keep HAS_COMP in sync with hasComponentModel in amp_plugin.cpp);
     // with the twin on, its own power section runs and the shared Power Amp face hides.
-    var HAS_COMP = { 1: 1, 2: 1, 4: 1, 6: 1, 8: 1, 10: 1, 11: 1, 12: 1, 14: 1 };
+    var HAS_COMP = { 0: 1, 1: 1, 2: 1, 4: 1, 6: 1, 8: 1, 10: 1, 11: 1, 12: 1, 14: 1 };
     function update_comp(icon) {
         var m = icon.data('amp_model'); if (m == null) m = 0;
         var has = !!HAS_COMP[m];
