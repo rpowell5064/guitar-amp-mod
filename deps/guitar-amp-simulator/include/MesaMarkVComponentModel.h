@@ -123,7 +123,13 @@ private:
     double otHfHz_ = 80e3, zHfDb_ = 7.0, zResDb_ = 2.0, idleMa_ = 40.0, raa_ = 4200.0;
     double nfbStabHz_ = 60e3, fluxLim_ = 53.7;   // fit7 / fit8
     double kneeV_ = 0.15;                        // fit9
-    float  midMid_ = 0.77f, trebleMid_ = 0.50f, bassMid_ = 0.15f;   // pot laws (fraction at noon): fit31/32/33.
+    double c18SrcHz_ = 723.0;     // fit34: the treble-pot-top node's HP corner vs the plate (C14+C15 1 nF against the 200k pot + bass network)
+    float  midMid_ = 0.90f, trebleMid_ = 0.15f, bassMid_ = 0.15f;   // pot laws (fraction at noon): fit31/32/33.
+                                   // 2026-10-05 (late): TREBLE held on its audio taper (0.15) — the earlier 0.50/0.77 matched the
+                                   // noon captures equally (2.90 dB) but put the treble pot at 70 % on the user's presets, where the
+                                   // 1 nF treble cap takes the front BASS pot's authority (chain: bass .1->.9 = -2 dB at 125-200 Hz);
+                                   // at 0.15 the front bass keeps +3..+5 dB at 100-125 Hz and the MID law carries the noon tone (0.90).
+                                   // The Mark's low-end control is the GEQ 80 Hz slider: on the chain it adds 8/14/12 dB at 80/125/200.
                                    // 2026-10-05: MID and TREBLE fitted by shape over all 7 channel captures at their noon dials
                                    // (mid 0.15 -> 0.77, treble 0.15 -> 0.50: the fit asked 0.77 for the treble too but with the 1 nF treble cap (C14 250p ‖ C15 750p, drawing) a treble pot above ~50 % takes the BASS pot's authority above 100 Hz — 0.50 keeps the channel tones within ~2 dB and 3 dB of bass travel at 125 Hz; the Mark's low-end control is the GEQ 80 Hz slider. The 315 Hz low-mid hole / 800 Hz bump at noon was the stacks' scoop with
                                    // audio-taper mids at 15 %): all-channel mean shape 4.97 -> 2.91 dB. BASS kept at the audio taper

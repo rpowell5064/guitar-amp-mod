@@ -136,7 +136,7 @@ void MesaMarkVComponentModel::buildStages() noexcept {
             c.c18.prepare(fs_, 180e-12, Zp150, par(570e3, 386e3));
             // C18 hangs off the treble-pot top (after C14 ‖ C15 = 1 nF), not the plate: that node is the
             // plate through the treble caps against the 200k pot + the bass/mid network (~20k at LF).
-            c.c18src.prepare(fs_, 0.0, 1.0, 1.0 / (2.0 * M_PI * 1.0e-9 * (200e3 + 20e3)));
+            c.c18src.prepare(fs_, 0.0, 1.0, c18SrcHz_);   // treble-pot top vs plate: 1 nF against ~220k = 723 Hz (fit34)
         }
         // ── V1B: R27 100k from E, R26 1k5 ‖ C19A 0.47µ; source = the divider node (~230k).
         c.v1b.prepare(fs_, { kRailE, 100e3, 1.5e3, ckV1b_, 230e3, millerC(100e3), 230e3, 0.0, 0.0, 0.0, kneeV_ });
@@ -362,6 +362,7 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     else if (id == "fit28")    { ckV1b_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V1B cathode bypass (F)
     else if (id == "fit29")    { ckV5a_ = std::max(0.0, double(value)); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V5A cathode bypass (F)
     else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
+    else if (id == "fit34")    { c18SrcHz_ = std::clamp(double(value), 50.0, 5000.0); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: C18 source corner (Hz)
     else if (id == "fit31")    { midMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }      // lab: MID pot law
     else if (id == "fit32")    { trebleMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: TREBLE pot law
     else if (id == "fit33")    { bassMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }     // lab: BASS pot law
