@@ -528,7 +528,17 @@ function (event, funcs) {
 
         var W_ = icon.data('px_wave') || {};
         var pk = W_.t && W_.t[trk - 1];
+        var st0 = icon.data('px_st' + trk) || 0;
+        var recording = (st0 === 1 || st0 === 2);
+        // Which bars to rule. The loop's own length once there is one; before
+        // that, the length the running take is heading for, then the Length
+        // setting -- so an empty lane still shows the grid a take will land
+        // on, and a take shows the bars it is filling as it fills them. A
+        // free-length take has no total, so its grid grows a bar at a time.
         var bars = W_.bars || 0;
+        if (!bars && recording) bars = icon.data('px_tbars') || 0;
+        if (!bars) bars = icon.data('px_lenbars') || 0;
+        if (!bars) bars = Math.max(4, recording ? (icon.data('px_bar') || 0) : 0);
 
         // Bar rules first, so the waveform is drawn over them rather than
         // fighting them for the same pixels. The CURRENT bar is shaded and
@@ -560,7 +570,9 @@ function (event, funcs) {
         g.strokeStyle = 'rgba(255,255,255,.10)';
         g.beginPath(); g.moveTo(0, mid + 0.5); g.lineTo(W, mid + 0.5); g.stroke();
 
-        R(icon, 'empty' + trk).css('display', (pk && pk.length) ? 'none' : '');
+        // "Empty" stays on an empty lane, over the bar rules; it comes off the
+        // moment a take starts, since the lane is being filled.
+        R(icon, 'empty' + trk).css('display', ((pk && pk.length) || recording) ? 'none' : '');
         if (pk && pk.length) {
             // The track's own colour, full strength when it is the armed one and
             // dimmed when it is not -- so "which track is this" and "which am I
@@ -834,6 +846,7 @@ function (event, funcs) {
         if (typeof d.tb === 'number' && d.tb !== icon.data('px_tbars')) {
             icon.data('px_tbars', d.tb);
             laneBars(icon);
+            drawAllWaves(icon);       // the recording lane rules the bars it is heading for
         }
         if (typeof d.bar === 'number' && d.bar !== icon.data('px_bar')) {
             icon.data('px_bar', d.bar);
@@ -911,6 +924,9 @@ function (event, funcs) {
                     wrap.find('.mod-enumerated-selected').text(
                         (opt.textContent || '').replace(/^\s+|\s+$/g, ''));
                     setPort(icon, sym, v);
+                    // The echo is not dependable (see patParse), so the lanes
+                    // take the new length from the pick itself.
+                    if (sym === 'loop_bars') { icon.data('px_lenbars', Math.round(v)); drawAllWaves(icon); }
                 }
                 wrap[0].classList.remove('open');
                 e.stopPropagation();
@@ -1420,7 +1436,12 @@ function (event, funcs) {
         faderSet(icon, sym, value);
 
         if (sym === 'pattern')   { selLabel(icon, 'selgroove', value); return; }
-        if (sym === 'loop_bars') { selLabel(icon, 'sellen', value); return; }
+        if (sym === 'loop_bars') {
+            selLabel(icon, 'sellen', value);
+            icon.data('px_lenbars', Math.round(value));
+            drawAllWaves(icon);       // empty lanes rule the bars a take will fill
+            return;
+        }
         if (sym === 'loop_track') { selectTrack(icon, clamp(Math.round(value), 1, 4), false); return; }
         if (sym === 'run')        { R(icon, 'runpill').toggleClass('on', value > 0.5); return; }
         if (sym === 'tempo_sync') {
