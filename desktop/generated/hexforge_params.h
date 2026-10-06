@@ -114,7 +114,7 @@ static const HfScalePoint kHfSp_dr2_b7k_attack[] = { { "Flat", 0.0f }, { "Boost"
 static const HfScalePoint kHfSp_cab_mic2type[] = { { "Off", 0.0f }, { "Dynamic 57", 1.0f }, { "Dynamic 421", 2.0f }, { "Ribbon", 3.0f }, { "Condenser", 4.0f } };
 static const HfScalePoint kHfSp_rb_cabmic2type[] = { { "Off", 0.0f }, { "Dynamic 57", 1.0f }, { "Dynamic 421", 2.0f }, { "Ribbon", 3.0f }, { "Condenser", 4.0f } };
 static const HfScalePoint kHfSp_it_mains[] = { { "60 Hz", 0.0f }, { "50 Hz", 1.0f } };
-static const HfScalePoint kHfSp_it_guitar[] = { { "Default", 0.0f }, { "Telecaster", 1.0f }, { "Hot Pickups", 2.0f } };
+static const HfScalePoint kHfSp_it_guitar[] = { { "Default", 0.0f }, { "Single Coil", 1.0f }, { "Hot Pickups", 2.0f } };
 
 static const HfDesktopParam kHfDesktopParams[] = {
     { 6, "bypass", "Bypass", "Global", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },

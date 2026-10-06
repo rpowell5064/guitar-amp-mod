@@ -15,7 +15,7 @@
 // (utility) plugin — keep this the single copy so the tuned curves never drift.
 struct PickupVoicer {
     enum { kMaxBands = 5 };
-    enum { kGuitarBase = 2 };   // recipe(kGuitarBase + g) = the Input Trim GUITAR preset g (1 Telecaster, 2 Hot Pickups)
+    enum { kGuitarBase = 2 };   // recipe(kGuitarBase + g) = the Input Trim GUITAR preset g (1 Single Coil, 2 Hot Pickups)
     enum BandKind { OFF, PEAK, LOSHELF, HISHELF };
     struct Band   { BandKind kind; double fc, dB, Q; };
     struct Recipe { Band band[kMaxBands]; double levelDb; };
@@ -33,7 +33,7 @@ struct PickupVoicer {
             {{ {LOSHELF,95.0,-2.0,0.0}, {PEAK,450.0,-3.0,1.0}, {PEAK,4800.0,-8.0,1.1},
                {HISHELF,7000.0,+1.0,0.0}, {OFF,0,0,0} }, 5.5},
             // ── GUITAR presets (Input Trim "Guitar" selector, 2026-10-05; kGuitarBase + 1/2) ──
-            // Telecaster — the '59 Bucker voicing with 2 dB more level, so a Tele bridge coil
+            // Single Coil — the '59 Bucker voicing with 2 dB more level, so a single-coil bridge pickup
             // lands where a humbucker guitar does instead of reading thin.
             {{ {PEAK,2000.0,+2.5,0.9}, {PEAK,4500.0,-5.0,1.8}, {HISHELF,4000.0,-13.0,0.0},
                {OFF,0,0,0}, {OFF,0,0,0} }, 6.0},

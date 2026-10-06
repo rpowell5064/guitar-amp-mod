@@ -611,7 +611,7 @@ struct HexForge {
     float             itMainsCur = 60.0f;  // mains the hum/detector combs are tuned to; starts at the
                                          // prepared 60 Hz so the default path re-tunes NOTHING (bit-identical)
     PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
-    PickupVoicer      trimGuitar;       // GUITAR preset layer (global it_guitar: Default / Telecaster / Hot Pickups), 2026-10-05
+    PickupVoicer      trimGuitar;       // GUITAR preset layer (global it_guitar: Default / Single Coil / Hot Pickups), 2026-10-05
     PickupLoadSim     trimLoad;         // pickup/cable/input-impedance sim (v24, default off)
     OutputBoost       trimBoost;        // pickup-agnostic output boost + beef (Input Trim)
     NoiseGateBlock    gate;

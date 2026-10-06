@@ -31,7 +31,7 @@
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
     rdfs:comment """Low-CPU noise gate for high-gain rigs.
 
-A clean, low-CPU noise gate with threshold and timing controls. Detection is decoupled from the fade, so it clamps hum and hiss promptly without chopping your sustain or truncating decay tails — in front of or after high-gain amps. Runs comfortably on every target including 32-bit Pi.
+A clean, low-CPU noise gate with threshold and timing controls. Its hum detector is switchable for 50 or 60 Hz mains. Detection is decoupled from the fade, so it clamps hum and hiss promptly without chopping your sustain or truncating decay tails — in front of or after high-gain amps. Runs comfortably on every target including 32-bit Pi.
 
 Free and open source (GPL-3).""" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;

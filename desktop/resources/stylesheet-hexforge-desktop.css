@@ -1506,3 +1506,13 @@
 .mod-pedal-guitaramp-hexforge .hf-rig-in.on { display: block; }
 .mod-pedal-guitaramp-hexforge .hf-rig-in input { width: 100%; box-sizing: border-box; background: rgba(0,0,0,.6); color: #fff; border: 1px solid var(--acc); border-radius: 3px; font: inherit; font-size: 12px; padding: 3px 6px; outline: none; }
 .mod-pedal-guitaramp-hexforge .hf-rig-in span { display: block; font-size: 9px; color: #8b96a8; margin-top: 3px; }
+
+/* ── Input Trim GUITAR readout (2026-10-06): what the chosen guitar preset applies ── */
+.mod-pedal-guitaramp-hexforge .hf-gnote {
+    flex: 1 1 100%; max-width: 560px; margin-top: 2px; padding: 7px 10px 8px; text-align: left;
+    border-left: 2px solid var(--acc, #6eaf87); background: rgba(255,255,255,.035); border-radius: 0 6px 6px 0;
+    font-size: 10px; line-height: 1.45; color: #aeb6c2; letter-spacing: .2px;
+}
+.mod-pedal-guitaramp-hexforge .hf-gnote b { display: block; font-size: 10.5px; font-weight: 800; color: #e7ebf2; letter-spacing: .4px; margin-bottom: 3px; }
+.mod-pedal-guitaramp-hexforge .hf-gnote span { display: block; }
+.mod-pedal-guitaramp-hexforge .hf-gnote span + span { margin-top: 2px; }

@@ -32,7 +32,7 @@ enum UtilPorts {
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,              // KosmOS: kx:Reset trigger
 #endif
-    P_GUITAR,             // GUITAR preset (2026-10-05): 0 Default, 1 Telecaster ('59 voicing + 2 dB),
+    P_GUITAR,             // GUITAR preset (2026-10-05): 0 Default, 1 Single Coil ('59 voicing + 2 dB),
                           // 2 Hot Pickups (a hot modern humbucker tamed back to a PAF). Appended
                           // AFTER the designated enabled port so no existing index moves.
     P_N_PORTS
@@ -63,7 +63,7 @@ struct OutputBoost {
 struct UtilityPlugin {
     HumNotchComb hum;
     PickupVoicer voice;        // single-coil -> humbucker voicing
-    PickupVoicer guitar;       // GUITAR preset layer (Default / Telecaster / Hot Pickups)
+    PickupVoicer guitar;       // GUITAR preset layer (Default / Single Coil / Hot Pickups)
     PickupLoadSim load;        // pickup loading / input impedance (v24 fidelity)
     OutputBoost  boost;        // clean boost + low-mid beef
     float*       ports[P_N_PORTS] = {};

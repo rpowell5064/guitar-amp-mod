@@ -21,7 +21,7 @@ PEDALS = {
     "comp":   ("comp.ttl",    500, 446),
     "modfx":  ("modfx.ttl",   460, 490),
     "reverb": ("reverb.ttl",  480, 636),   # + Tank group 2026-07-25
-    "utility":("utility.ttl", 440, 376),
+    "utility":("utility.ttl", 440, 440),
     "fuzz":   ("fuzz.ttl",    420, 448),
     "nail":   ("nail.ttl",    360, 485),
     "octave": ("octave.ttl",  400, 490),

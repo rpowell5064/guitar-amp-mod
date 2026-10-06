@@ -31,8 +31,8 @@
                 <div class="hf-agroup">
                     <div class="hf-agroup-body">
                         {{#controls.10}}
-                        <div class="hf-sel-wrap" title="Which guitar is plugged in: Default = the trim as set; Telecaster = the '59 Bucker voicing + 2 dB so a Tele bridge coil does not read thin; Hot Pickups = a hot modern humbucker tamed back to a PAF">
-                            <span class="hf-sel-label">{{name}}</span>
+                        <div class="hf-sel-wrap" title="Changes the character of the guitar plugged in: Default = the trim as set; Single Coil = the '59 Bucker voicing + 2 dB so a single-coil bridge pickup does not read thin; Hot Pickups = a hot modern humbucker tamed back to a PAF">
+                            <span class="hf-sel-label">{{name}} &middot; character</span>
                             <div class="hf-sel mod-enumerated" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
                                 <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
                                 <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
@@ -52,6 +52,8 @@
                         </div>
                         {{/controls.9}}
                     </div>
+                    <!-- What the chosen guitar preset applies: filled by the script (guitarNote). -->
+                    <div class="hf-gnote" rata-role="gnote" aria-live="polite"><b>Default</b><span>No change: the Input Trim exactly as its controls are set.</span></div>
                 </div>
             </div>
             <!-- HUMBUCKER TAB: enable (5) + model (3) + amount (4) -->

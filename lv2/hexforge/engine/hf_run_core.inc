@@ -201,7 +201,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     }
     const bool  itHB      = *p->ports[HF_IT_HUMBK] > 0.5f;
     // GUITAR preset (global tail port, a property of the instrument plugged in, never
-    // preset-captured): 0 Default = bypass (bit-identical), 1 Telecaster = the '59 voicing
+    // preset-captured): 0 Default = bypass (bit-identical), 1 Single Coil = the '59 voicing
     // + 2 dB, 2 Hot Pickups = a hot modern humbucker tamed back to a PAF. Sits right after
     // the pickup load / hum comb, BEFORE the preset's own voicing and boost.
     const int   itGuitar  = p->ports[HF_IT_GUITAR] ? std::clamp(int(*p->ports[HF_IT_GUITAR] + 0.5f), 0, 2) : 0;
