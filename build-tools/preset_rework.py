@@ -144,14 +144,14 @@ def bank_ghost_impera():
            amp={"model": "Beardo BE", "fr_channel": "HBE", "fr_fat": 0, "fr_c45": 0, "fr_sat": 0,   # HBE: BE alone is short of gain here (user 2026-09-24)
                 "gain": 0.55, "bass": 0.5, "mid": 0.55, "treble": 0.6, "presence": 0.55, "master": 0.5, "sag": 0.3},
            cab={"highcut": 8000}, eq=eqm(**{"100": 1, "200": -1, "400": 0, "800": 0, "1k6": 0, "3k2": 1.5, "level": 0}), gt=gate(-48))
-    # B Imperial Lead — "for most of the solos I borrowed an old DOD Preamp 250" (A); the album's lead amps were the BE-100 and
-    #   Forge's Mark IIC+ (A). The user dropped the Plexi/sag version 2026-10-05: IIC+ mode set the Mesa way — faceplate bass low
-    #   (10:30), treble at noon-ish, lows from the GEQ 80 band, presence below 11:00 for single notes (owner's manual pp. 24-25, 34-37).
-    preset(3, 1, "Imperial Lead", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=STUDIO,
-           dr={"model": "Preamp 250", "drive": 0.55, "tone": 0.5, "level": 0.7, "mix": 1.0},
-           amp={"model": "Cali V", "mv_mode": "IIC+", "mv_eqpreset": "Custom", "mv_geq0": 0.85, "mv_geq1": 0.5, "mv_geq2": 0.4, "mv_geq3": 0.6, "mv_geq4": 0.55,
-                "gain": 0.6, "bass": 0.3, "mid": 0.45, "treble": 0.55, "presence": 0.35, "master": 0.5, "sag": 0.2},
-           cab={"lowcut": 90, "highcut": 7500}, dl=dig(dotted8(128), 0.3, 0.2, 0.5), rv=plate(0.2, 2.0, 40), gt=gate(-50))
+    # B Imperial Lead — "for most of the solos I borrowed an old DOD Preamp 250 … the same pedal Yngwie Malmsteen used with his
+    #   Plexis" into the studio's Plexis (A). User 2026-10-05: keep the Plexi but "explore the settings better" and less sag.
+    #   Yngwie's recipe = a DIMED jumpered 1959 (Vol I up, Vol II blended, mid high, presence low) with the 250 as a push, not
+    #   a fuzz: the amp makes the saturation (the front-end-boost fizz lesson), the pedal just tightens the pick.
+    preset(3, 1, "Imperial Lead", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=GBROOM,
+           dr={"model": "Preamp 250", "drive": 0.4, "tone": 0.5, "level": 0.7, "mix": 1.0},
+           amp={"model": "Plexiglass", "gain": 0.85, "pl_vol2": 0.5, "pl_variac": 0, "bass": 0.45, "mid": 0.7, "treble": 0.6, "presence": 0.4, "master": 1.0, "sag": 0.3},
+           cab={"lowcut": 90, "highcut": 7000}, dl=dig(dotted8(128), 0.3, 0.2, 0.5), rv=plate(0.2, 2.0, 40), gt=gate(-50))
     # C Cardinal Rhythm — Skeletá: "a Mesa Boogie IIC+ … the same one James Hetfield used", MD421s (A, SoS); shallow V.
     #   Mesa rules (manual 2026-10-05): high-gain chording = BASS 10:00-11:00 and "look for additional low end using the Graphic EQ",
     #   TREBLE 12:00-1:00 (it gates the MID/BASS signal), PRESENCE 9:00-11:30, MASTER ~10:30. Faceplate = "Attitude" factory sample.
