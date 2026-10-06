@@ -55,6 +55,23 @@
 /* No scrollbars anywhere in the block — panels grow instead (Hex Forge does the
    same). The step grid in particular must never gain one. */
 .mod-pedal-guitaramp-practice{{{cns}}} *::-webkit-scrollbar { width:0 !important; height:0 !important; display:none; }
+/* ...except where scrolling is the point: the dropdown lists and the chord
+   row. Those get the Hex Chain bar -- thin, rounded, amber thumb on a faint
+   track, the same as Hex Forge's option lists. */
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow { scrollbar-width:thin; scrollbar-color:var(--acc) rgba(255,255,255,.12); overscroll-behavior:contain; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list::-webkit-scrollbar,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow::-webkit-scrollbar { width:9px !important; height:9px !important; display:block !important; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-track,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow::-webkit-scrollbar-track { background:rgba(255,255,255,.06); border-radius:6px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-thumb,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow::-webkit-scrollbar-thumb { background:var(--acc); border-radius:6px; border:2px solid rgba(8,9,13,.9); }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-thumb:hover,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow::-webkit-scrollbar-thumb:hover { filter:brightness(1.18); }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-corner,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow::-webkit-scrollbar-corner { background:transparent; }
+.mod-pedal-guitaramp-practice{{{cns}}} .mod-enumerated-list::-webkit-scrollbar-button,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow::-webkit-scrollbar-button { width:0; height:0; display:none; }
 
 /* The drag handle covers the whole block so it can be moved from any blank
    area. It MUST stay at z-index 0 or it floats above the controls: every knob,
@@ -444,7 +461,12 @@
     display:flex; flex-wrap:wrap; gap:18px 26px; align-items:flex-start; margin-bottom:12px;
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-fbsel { display:flex; flex-direction:column; gap:7px; }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-fbsel-wide { flex:1 1 320px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbsel-dd { flex:0 0 auto; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbdd { font-size:12px; line-height:2.2; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbdd-key   { width:120px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbdd-scale { width:200px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbdd .mod-enumerated-list { max-height:440px; }   /* all twelve keys, no fold */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-fbdd .mod-enumerated-list > div.on { color:var(--acc); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-fblabel {
     font-size:9.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--ink3);
 }
@@ -457,11 +479,12 @@
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-segb:hover { color:var(--ink); background:rgba(255,255,255,.08); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-segb.on {
-    color:#0b0d12; background:var(--deg-root); border-color:var(--deg-root);
-    box-shadow:0 0 12px rgba(255,92,138,.35);
-}
-.mod-pedal-guitaramp-practice{{{cns}}} .px-seg-scale .px-segb.on {
-    background:var(--deg-fifth); border-color:var(--deg-fifth); box-shadow:0 0 12px rgba(73,214,255,.32);
+    /* The panel's own accent, as every other selected pill and tab here. The
+       degree colours are reserved for the board: a saturated pink behind dark
+       text was hard to read at the pedalboard's zoom, and it also made the
+       selected button look like a root note. */
+    color:#0b0d12; background:var(--acc); border-color:var(--acc);
+    box-shadow:0 2px 10px rgba(0,0,0,.45);
 }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-fbwrap { margin-bottom:12px; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-fbtitle {
@@ -494,13 +517,17 @@
 
 /* Chords in the key: a row of cards, each with its own small grid. */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-chordrow {
-    display:flex; gap:10px; flex-wrap:wrap;
+    /* One row, always: seven cards on an 8-string do not fit, and wrapping put
+       the tonic on one line and the dominant on the next. Scroll instead. */
+    display:flex; gap:10px; flex-wrap:nowrap; overflow-x:auto; overflow-y:hidden;
+    padding-bottom:10px;
 }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord { flex:0 0 auto; }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-chord {
     background:rgba(255,255,255,.035); border:1px solid rgba(255,255,255,.09);
     border-radius:9px; padding:9px 10px 7px; min-width:86px; text-align:center;
 }
-.mod-pedal-guitaramp-practice{{{cns}}} .px-chord.tonic { border-color:var(--deg-root); background:rgba(255,92,138,.09); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-chord.tonic { border-color:var(--deg-root); box-shadow:0 0 0 1px rgba(255,92,138,.35); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-chord-n {
     font-size:15px; font-weight:700; color:var(--ink); line-height:1.1;
 }
@@ -513,9 +540,8 @@
    The wordmark and the tabs were the only colour that was not information.
    These are deliberately the only decorative ones: everything else on this
    panel still earns its hue by meaning something. */
-.mod-pedal-guitaramp-practice{{{cns}}} .px-tab[data-pxtab="scales"].on {
-    background:var(--deg-root); border-color:var(--deg-root); color:#14070c;
-}
+/* (The Scales tab once wore the root pink; dark text on it did not read at
+   the pedalboard's zoom, so it is amber like its two siblings.) */
 /* The toolbar carried one flat amber wash. A sweep through the three track
    hues gives it some life without inventing a colour that means anything --
    it is the same palette the lanes already use, spread along the bar. The

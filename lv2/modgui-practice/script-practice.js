@@ -112,7 +112,9 @@ function (event, funcs) {
     function fbState(icon) {
         var st = icon.data('px_fb');
         if (!st) {
-            st = { inst: 'guitar', strings: 6, key: 0, mode: 0 };
+            // A Dorian: the user's own default, and the mode most guitar
+            // players reach for first.
+            st = { inst: 'guitar', strings: 6, key: 9, mode: 1 };
             icon.data('px_fb', st);
         }
         return st;
@@ -154,6 +156,46 @@ function (event, funcs) {
         });
     }
 
+    // Key and Scale: the same dropdown the groove picker uses, minus the port.
+    // The document click handler in `start` closes any open .px-sel, so these
+    // close on an outside click the same way the groove list does.
+    function fbSelect(icon, role, items, current, onPick) {
+        var wrap = el(icon, role);
+        if (!wrap) return;
+        var cur = wrap.querySelector('.mod-enumerated-selected');
+        var list = wrap.querySelector('.mod-enumerated-list');
+        if (!cur || !list) return;
+        var html = '', label = '';
+        for (var i = 0; i < items.length; ++i) {
+            var on = items[i].v === current;
+            if (on) label = items[i].t;
+            html += '<div class="' + (on ? 'on' : '') + '" data-v="' + items[i].v + '">' +
+                    items[i].t + '</div>';
+        }
+        list.innerHTML = html;
+        cur.textContent = label;
+        wrap.classList.remove('open');
+        // The selected box is bound once; the controls are rebuilt on every
+        // pick and a second handler would toggle the list straight shut again.
+        if (!wrap.getAttribute('data-bound')) {
+            wrap.setAttribute('data-bound', '1');
+            $(cur).on('click', function (e) {
+                var was = wrap.classList.contains('open');
+                selClose(icon);
+                if (!was) wrap.classList.add('open');
+                e.stopPropagation();
+            });
+        }
+        $(list).find('div').each(function () {
+            var o = this;
+            $(o).on('click', function (e) {
+                wrap.classList.remove('open');
+                e.stopPropagation();
+                onPick(o.getAttribute('data-v'));
+            });
+        });
+    }
+
     function fbBuildControls(icon) {
         var st = fbState(icon);
         fbSeg(icon, 'fbinst',
@@ -169,10 +211,10 @@ function (event, funcs) {
               FB_STRINGS[st.inst].map(function (n) { return { v: String(n), t: n + ' string' }; }),
               String(st.strings),
               function (v) { st.strings = parseInt(v, 10); fbBuildControls(icon); fbDraw(icon); });
-        fbSeg(icon, 'fbkey',
+        fbSelect(icon, 'fbkey',
               FB_NOTES.map(function (n, i) { return { v: String(i), t: n }; }), String(st.key),
               function (v) { st.key = parseInt(v, 10); fbBuildControls(icon); fbDraw(icon); });
-        fbSeg(icon, 'fbscale',
+        fbSelect(icon, 'fbscale',
               FB_MODES.map(function (m, i) { return { v: String(i), t: m.n }; }), String(st.mode),
               function (v) { st.mode = parseInt(v, 10); fbBuildControls(icon); fbDraw(icon); });
     }

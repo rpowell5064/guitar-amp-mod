@@ -256,18 +256,28 @@
                         <span class="px-fblabel">Strings</span>
                         <div class="px-seg" rata-role="fbstrings"></div>
                     </div>
-                    <div class="px-fbsel px-fbsel-wide">
+                    <!-- Key and Scale are dropdowns in the groove picker's clothes:
+                         twelve keys and eleven modes as button rows took two full
+                         lines of the panel and pushed the board down. Port-less;
+                         the script fills and opens them. -->
+                    <div class="px-fbsel px-fbsel-dd">
                         <span class="px-fblabel">Key</span>
-                        <div class="px-seg px-seg-keys" rata-role="fbkey"></div>
+                        <div class="mod-enumerated px-sel px-fbdd px-fbdd-key" rata-role="fbkey">
+                            <div class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list"></div>
+                        </div>
                     </div>
-                    <div class="px-fbsel px-fbsel-wide">
+                    <div class="px-fbsel px-fbsel-dd">
                         <span class="px-fblabel">Scale</span>
-                        <div class="px-seg px-seg-scale" rata-role="fbscale"></div>
+                        <div class="mod-enumerated px-sel px-fbdd px-fbdd-scale" rata-role="fbscale">
+                            <div class="mod-enumerated-selected"></div>
+                            <div class="mod-enumerated-list"></div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="px-panel px-fbwrap">
-                    <div class="px-fbtitle" rata-role="fbtitle">C Ionian</div>
+                    <div class="px-fbtitle" rata-role="fbtitle">A Dorian</div>
                     <div class="px-fbnotes" rata-role="fbnotes"></div>
                     <canvas rata-role="fretboard" width="1180" height="300"></canvas>
                     <div class="px-fblegend">
