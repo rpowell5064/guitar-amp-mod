@@ -110,7 +110,8 @@ window.onerror = function(m,s,l){ window.__ERR__ = 'line ' + l + ': ' + m; };
   var gui = __SCRIPT__;
   window.__SET__ = [];
   var funcs = { set_port_value:function(s,v){ window.__SET__.push([s,v]); },
-                patch_set:function(){}, patch_get:function(){} };
+                patch_set:function(u,t,v){ if (window.__PUTS__ && /groove_put/.test(u)) window.__PUTS__.push(v); },
+                patch_get:function(){} };
   try {
     gui({type:'start', icon:icon, ports:__PORTS__, parameters:[]}, funcs);
     gui({type:'change', icon:icon, uri:'x#waveform', value:__WAVE__}, funcs);
@@ -142,7 +143,10 @@ __INTERACT__
   var r = document.createElement('div');
   r.id = 'result';
   r.textContent = JSON.stringify({err: window.__ERR__, ink: window.__INK__,
-                                  groove: (document.querySelector('[rata-role=selgroove] .mod-enumerated-selected')||{}).textContent || '',
+                                  groove: (document.querySelector('[rata-role=gvname]')||{}).value || '',
+                                  nitems: window.__NITEMS__,
+                                  puts: window.__PUTS__,
+                                  libitems: window.__LIBITEMS__,
                                   length: (document.querySelector('[rata-role=sellen] .mod-enumerated-selected')||{}).textContent || '',
                                   status: (document.querySelector('[rata-role=patstatus]')||{}).textContent || '',
                                   bars:   (document.querySelector('[rata-role=barsread]')||{}).textContent || '',
@@ -222,13 +226,23 @@ GATE_INTERACT = """
     // unusable because mod-ui's custom-select never opened, and nothing here
     // noticed -- a select that cannot be opened looks identical to one that can.
     if (window.__TAB__ === 'drums') {
-      var sel = document.querySelector('[rata-role=selgroove]');
-      if (sel) {
-        sel.querySelector('.mod-enumerated-selected').dispatchEvent(new MouseEvent('click', {bubbles:true}));
-        window.__OPENED__ = sel.classList.contains('open');
-        var opts = sel.querySelectorAll('[mod-role=enumeration-option]');
-        if (opts.length > 3) opts[3].dispatchEvent(new MouseEvent('click', {bubbles:true}));
-        window.__PICKED__ = sel.querySelector('.mod-enumerated-selected').textContent;
+      // The groove strip: open the browser, pick the fourth factory groove.
+      var tg = document.querySelector('[rata-role=gvtoggle]');
+      if (tg) {
+        tg.dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        window.__OPENED__ = document.querySelector('[rata-role=gvmenu]').classList.contains('open');
+        var items = document.querySelectorAll('[rata-role=gvlist] .px-gv-item[data-kind=factory]');
+        window.__NITEMS__ = items.length;
+        if (items.length > 3) items[3].dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        window.__PICKED__ = (document.querySelector('[rata-role=gvname]')||{}).value;
+        // And a save: the grid goes out as a named groove of the player's own.
+        window.__PUTS__ = [];
+        var nf = document.querySelector('[rata-role=gvname]');
+        nf.value = 'Gate Beat';
+        document.querySelector('[rata-role=gvsave]').dispatchEvent(new MouseEvent('click', {bubbles:true}));
+        // The plugin answers a save with the library index; replay that.
+        gui({type:'change', icon:icon, uri:'x#userlib', value:'{"names":["Gate Beat"]}'}, funcs);
+        window.__LIBITEMS__ = document.querySelectorAll('[rata-role=gvlist] .px-gv-item[data-kind=user]').length;
       }
     }
     // The end of the count is the cue to come in, so it must SAY so rather
@@ -475,12 +489,19 @@ def main():
               r["groove"])
         check("Rock 8ths" in r["status"], "the status line names the factory groove",
               r["status"])
-        check(r.get("selOpened") is True, "the groove dropdown opens when clicked")
+        check(r.get("selOpened") is True, "the groove browser opens when clicked")
+        check((r.get("nitems") or 0) >= 30, "and lists the factory grooves",
+              "%s items" % r.get("nitems"))
         picked = r.get("patternSets") or []
-        check(len(picked) == 1, "picking an option writes the pattern port",
+        check(len(picked) == 1, "picking a groove writes the pattern port",
               "%d write(s): %s" % (len(picked), picked))
         check(bool(r.get("selPicked")) and r.get("selPicked") != "Rock 8ths",
-              "and the box shows what was picked", str(r.get("selPicked")))
+              "and the name field shows what was picked", str(r.get("selPicked")))
+        puts = r.get("puts") or []
+        check(len(puts) == 1 and '"name":"Gate Beat"' in puts[0] and '"lanes":[' in puts[0],
+              "SAVE posts the grid as a named groove", str(puts)[:120])
+        check(r.get("libitems") == 1, "and the library index lists it in the browser",
+              str(r.get("libitems")))
 
     print("\nDRUMS (8 bars / 128 steps)")
     r = run_tab("drumslong", outdir)

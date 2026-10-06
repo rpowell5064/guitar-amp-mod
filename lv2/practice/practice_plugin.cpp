@@ -17,11 +17,20 @@
 #include "TransportClock.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cmath>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <fstream>
 #include <new>
 #include <string>
 #include <vector>
+#ifdef _WIN32
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
 
 #define PRACTICE_URI "https://rpowell5064.github.io/guitaramp-suite/practice"
 
@@ -161,6 +170,11 @@ enum PracticePorts {
 #define PRACTICE_SEEK_URI     PRACTICE_URI "#seek"
 // Live panel state. See the note at practiceSendStatus().
 #define PRACTICE_STATUS_URI   PRACTICE_URI "#status"
+// The player's own grooves (see "Groove library" below).
+#define PRACTICE_USERLIB_URI  PRACTICE_URI "#userlib"
+#define PRACTICE_GPUT_URI     PRACTICE_URI "#groove_put"
+#define PRACTICE_GDEL_URI     PRACTICE_URI "#groove_del"
+#define PRACTICE_GGET_URI     PRACTICE_URI "#groove_get"
 // State keys. The loops are the only thing here a user cannot rebuild from
 // a control value, so they are what state exists to carry.
 #define PRACTICE_LOOPS_KEY    PRACTICE_URI "#loopState"
@@ -172,12 +186,34 @@ struct PracticeURIs {
     LV2_URID pattern, waveform, midifile, status, seek;
     LV2_URID atom_Float;
     LV2_URID atom_Chunk, loopsKey, patternKey;
+    LV2_URID userlib, groovePut, grooveDel, grooveGet;
 };
 
 // Undo snapshots are a memcpy of the whole loop (up to 23 MB), so they go to
 // the worker thread. Quantisation gives us most of a bar of notice before the
 // overdub actually starts.
-struct WorkMsg { int track; };
+// Worker jobs. The undo snapshot was the only one; the groove library added
+// two more, so the message carries a type.
+enum { kWorkUndo = 0, kWorkLib = 1, kWorkFree = 2 };
+struct WorkMsg { int type; int arg; void* ptr; };
+
+// ── Groove library ───────────────────────────────────────────────────────────
+// The player's own grooves, saved from the grid by name. A library, not board
+// state: a beat you built is yours to use on every pedalboard, the way Hex
+// Forge's presets are, so it lives in a file under the same config directory
+// ($HOME/.config/hexchain) rather than in the host's per-board save. One line
+// per groove, "name<TAB>json", the json being exactly what the editor sent --
+// the plugin never parses it beyond what practiceApplyPattern already does.
+//
+// The RT thread only ever READS a library; every change builds a new one on
+// the worker thread, writes the file, and hands the pointer back, so a save
+// never allocates or blocks in run(). The old library is freed by the worker.
+struct GrooveLib {
+    std::vector<std::string> names;
+    std::vector<std::string> jsons;
+    std::string              namesJson;   // {"names":[...]} prebuilt for the RT thread to send
+};
+enum { kLibJobs = 4, kLibJobCap = 8192, kLibMaxGrooves = 128 };
 
 // The UI draws a few hundred pixels per track, not a few million samples.
 static constexpr int kWavePoints = 256;
@@ -202,6 +238,14 @@ struct PracticePlugin {
     bool                     wantSendAll = false;
     std::string              patternJson;      // last pattern the editor sent
     int                      sentPattern = -1; // built-in groove last pushed to the editor
+    // Groove library (see above). lib is read on the RT thread and swapped
+    // there from a worker response; the jobs ring carries the editor's save
+    // and delete requests to the worker without allocating in run().
+    GrooveLib*               lib = nullptr;
+    bool                     wantSendLib = false;
+    char                     libJob[kLibJobs][kLibJobCap] = {};
+    int                      libJobType[kLibJobs] = {};
+    std::atomic<int>         libJobBusy[kLibJobs] = {};
     int                      lastCountBeat = -1;  // last count-in beat already clicked
     int                      lastMetroBeat = -1;  // last beat the metronome clicked on
     bool                     wasMetro      = false; // metronome edge (see run())
@@ -289,6 +333,128 @@ static void practiceMapURIs(PracticePlugin* p) {
     p->uris.atom_Chunk         = m->map(m->handle, LV2_ATOM__Chunk);
     p->uris.loopsKey           = m->map(m->handle, PRACTICE_LOOPS_KEY);
     p->uris.patternKey         = m->map(m->handle, PRACTICE_PATTERN_KEY);
+    p->uris.userlib            = m->map(m->handle, PRACTICE_USERLIB_URI);
+    p->uris.groovePut          = m->map(m->handle, PRACTICE_GPUT_URI);
+    p->uris.grooveDel          = m->map(m->handle, PRACTICE_GDEL_URI);
+    p->uris.grooveGet          = m->map(m->handle, PRACTICE_GGET_URI);
+}
+
+// ── Groove library: file, index, jobs ────────────────────────────────────────
+static void grooveMakeDir(const std::string& d) {
+#ifdef _WIN32
+    _mkdir(d.c_str());
+#else
+    ::mkdir(d.c_str(), 0755);
+#endif
+}
+static std::string grooveLibDir() {
+    const char* home = std::getenv("HOME");
+    return (home && home[0]) ? std::string(home) + "/.config/hexchain" : std::string("/tmp");
+}
+static std::string grooveLibPath() { return grooveLibDir() + "/scratchpad-grooves.txt"; }
+
+static void grooveJsonEscape(std::string& out, const std::string& s) {
+    for (char ch : s) {
+        if (ch == '"' || ch == '\\') out += '\\';
+        if (static_cast<unsigned char>(ch) < 0x20) { out += ' '; continue; }
+        out += ch;
+    }
+}
+static void grooveLibIndex(GrooveLib& L) {
+    L.namesJson = "{\"names\":[";
+    for (size_t i = 0; i < L.names.size(); ++i) {
+        if (i) L.namesJson += ',';
+        L.namesJson += '"';
+        grooveJsonEscape(L.namesJson, L.names[i]);
+        L.namesJson += '"';
+    }
+    L.namesJson += "]}";
+}
+// A name is one line of the file, so it cannot carry a tab or a newline.
+static std::string grooveCleanName(std::string n) {
+    for (char& ch : n) if (ch == '\t' || ch == '\n' || ch == '\r') ch = ' ';
+    while (!n.empty() && n.back() == ' ') n.pop_back();
+    size_t b = 0; while (b < n.size() && n[b] == ' ') ++b;
+    n.erase(0, b);
+    if (n.size() > 48) n.resize(48);
+    return n;
+}
+// The "name" field of a groove the editor sent, unescaped.
+static std::string grooveNameOf(const std::string& json) {
+    const size_t k = json.find("\"name\"");
+    if (k == std::string::npos) return "";
+    size_t q = json.find('"', json.find(':', k) + 1);
+    if (q == std::string::npos) return "";
+    std::string out;
+    for (size_t i = q + 1; i < json.size(); ++i) {
+        if (json[i] == '\\' && i + 1 < json.size()) { out += json[++i]; continue; }
+        if (json[i] == '"') break;
+        out += json[i];
+    }
+    return grooveCleanName(out);
+}
+static GrooveLib* grooveLibLoad() {
+    auto* L = new(std::nothrow) GrooveLib;
+    if (!L) return nullptr;
+    std::ifstream f(grooveLibPath());
+    std::string line;
+    while (f && std::getline(f, line) && L->names.size() < kLibMaxGrooves) {
+        const size_t t = line.find('\t');
+        if (t == std::string::npos || t == 0) continue;
+        L->names.push_back(line.substr(0, t));
+        L->jsons.push_back(line.substr(t + 1));
+    }
+    grooveLibIndex(*L);
+    return L;
+}
+static void grooveLibSave(const GrooveLib& L) {
+    grooveMakeDir(grooveLibDir().substr(0, grooveLibDir().rfind('/')));   // $HOME/.config
+    grooveMakeDir(grooveLibDir());
+    const std::string path = grooveLibPath(), tmp = path + ".tmp";
+    FILE* f = std::fopen(tmp.c_str(), "wb");
+    if (!f) return;
+    for (size_t i = 0; i < L.names.size(); ++i) {
+        std::fputs(L.names[i].c_str(), f); std::fputc('\t', f);
+        std::fputs(L.jsons[i].c_str(), f); std::fputc('\n', f);
+    }
+    std::fclose(f);
+    std::remove(path.c_str());
+    std::rename(tmp.c_str(), path.c_str());
+}
+// Build the library that results from one job (save or delete), write it, and
+// return it. nullptr means nothing changed. Worker thread, or run() in a host
+// without a worker -- where blocking is the host's own choice.
+static GrooveLib* grooveLibApply(const GrooveLib* cur, int type, const char* text) {
+    auto* L = new(std::nothrow) GrooveLib;
+    if (!L) return nullptr;
+    if (cur) { L->names = cur->names; L->jsons = cur->jsons; }
+    const std::string payload(text ? text : "");
+    bool changed = false;
+    if (type == 1) {                                   // save: upsert by name
+        std::string name = grooveNameOf(payload);
+        if (name.empty()) name = "Groove " + std::to_string(L->names.size() + 1);
+        size_t at = L->names.size();
+        for (size_t i = 0; i < L->names.size(); ++i) if (L->names[i] == name) { at = i; break; }
+        if (at == L->names.size()) {
+            if (L->names.size() >= kLibMaxGrooves) { delete L; return nullptr; }
+            L->names.push_back(name); L->jsons.push_back(payload);
+        } else {
+            L->jsons[at] = payload;
+        }
+        changed = true;
+    } else if (type == 2) {                            // delete by name
+        const std::string name = grooveCleanName(payload);
+        for (size_t i = 0; i < L->names.size(); ++i)
+            if (L->names[i] == name) {
+                L->names.erase(L->names.begin() + long(i));
+                L->jsons.erase(L->jsons.begin() + long(i));
+                changed = true; break;
+            }
+    }
+    if (!changed) { delete L; return nullptr; }
+    grooveLibIndex(*L);
+    grooveLibSave(*L);
+    return L;
 }
 
 static void practiceSendString(PracticePlugin* p, LV2_URID prop, const char* s) {
@@ -555,6 +721,10 @@ static LV2_Handle practice_instantiate(const LV2_Descriptor*, double rate,
         lv2_atom_forge_init(&p->forge, p->map);
     }
 
+    // The player's saved grooves. Read here, off the audio thread, so the
+    // editor's first patch:Get already has the index.
+    p->lib = grooveLibLoad();
+
     p->rate = rate;
     p->clk.prepare(rate);
     p->drums.prepare(rate);
@@ -578,13 +748,89 @@ static void practice_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 // ── Worker: undo snapshot off the RT thread ─────────────────────────────────
 
-static LV2_Worker_Status practice_work(LV2_Handle h, LV2_Worker_Respond_Function,
-                                       LV2_Worker_Respond_Handle, uint32_t, const void* data) {
+static LV2_Worker_Status practice_work(LV2_Handle h, LV2_Worker_Respond_Function respond,
+                                       LV2_Worker_Respond_Handle handle, uint32_t, const void* data) {
     auto* p = static_cast<PracticePlugin*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
-    // snapshotForUndo declines the snapshot itself if the overdub beat it.
-    p->looper.snapshotForUndo(msg->track);
+    switch (msg->type) {
+        case kWorkUndo:
+            // snapshotForUndo declines the snapshot itself if the overdub beat it.
+            p->looper.snapshotForUndo(msg->arg);
+            break;
+        case kWorkLib: {
+            const int slot = msg->arg;
+            if (slot < 0 || slot >= kLibJobs) break;
+            GrooveLib* nl = grooveLibApply(p->lib, p->libJobType[slot], p->libJob[slot]);
+            p->libJobBusy[slot].store(0, std::memory_order_release);
+            if (nl && respond) respond(handle, sizeof(nl), &nl);
+            else delete nl;
+            break;
+        }
+        case kWorkFree:
+            delete static_cast<GrooveLib*>(msg->ptr);
+            break;
+    }
     return LV2_WORKER_SUCCESS;
+}
+
+// A new library arrives from the worker: swap it in (RT context, so the only
+// reader is this thread) and send the old one back to be freed.
+static void practiceInstallLib(PracticePlugin* p, GrooveLib* nl) {
+    GrooveLib* old = p->lib;
+    p->lib = nl;
+    p->wantSendLib = true;
+    if (!old) return;
+    if (p->schedule) {
+        WorkMsg m{ kWorkFree, 0, old };
+        p->schedule->schedule_work(p->schedule->handle, sizeof(m), &m);
+    } else {
+        delete old;
+    }
+}
+static LV2_Worker_Status practice_work_response(LV2_Handle h, uint32_t size, const void* data) {
+    auto* p = static_cast<PracticePlugin*>(h);
+    if (size != sizeof(GrooveLib*) || !data) return LV2_WORKER_ERR_UNKNOWN;
+    practiceInstallLib(p, *static_cast<GrooveLib* const*>(data));
+    return LV2_WORKER_SUCCESS;
+}
+
+// Queue a save (type 1) or delete (type 2) from the editor. Copies the text
+// into a free slot of the ring and hands the slot number to the worker. A host
+// with no worker gets the job done right here -- blocking is that host's own
+// choice, and a library that silently cannot save is worse.
+static void practiceQueueLibJob(PracticePlugin* p, int type, const char* text) {
+    if (!text) return;
+    int slot = -1;
+    for (int i = 0; i < kLibJobs; ++i) {
+        int expect = 0;
+        if (p->libJobBusy[i].compare_exchange_strong(expect, 1, std::memory_order_acq_rel)) { slot = i; break; }
+    }
+    if (slot < 0) return;                 // four saves in flight: drop this one
+    std::strncpy(p->libJob[slot], text, kLibJobCap - 1);
+    p->libJob[slot][kLibJobCap - 1] = 0;
+    p->libJobType[slot] = type;
+    if (p->schedule) {
+        WorkMsg m{ kWorkLib, slot, nullptr };
+        if (p->schedule->schedule_work(p->schedule->handle, sizeof(m), &m) == LV2_WORKER_SUCCESS) return;
+        p->libJobBusy[slot].store(0, std::memory_order_release);
+        return;
+    }
+    GrooveLib* nl = grooveLibApply(p->lib, type, p->libJob[slot]);
+    p->libJobBusy[slot].store(0, std::memory_order_release);
+    if (nl) practiceInstallLib(p, nl);
+}
+
+// Recall one of the player's grooves by name: it becomes the live user pattern
+// exactly as if the editor had just sent it.
+static void practiceRecallGroove(PracticePlugin* p, const char* name) {
+    const GrooveLib* L = p->lib;
+    if (!L || !name) return;
+    for (size_t i = 0; i < L->names.size(); ++i) {
+        if (L->names[i] != name) continue;
+        practiceApplyPattern(p, L->jsons[i].c_str());
+        p->sentPattern = -1;               // force the echo even if a user pattern was already live
+        return;
+    }
 }
 
 // ── Audio ────────────────────────────────────────────────────────────────────
@@ -634,6 +880,12 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
 
                 if (key == p->uris.pattern && val->type == p->uris.atom_String)
                     practiceApplyPattern(p, reinterpret_cast<const char*>(val + 1));
+                else if (key == p->uris.groovePut && val->type == p->uris.atom_String)
+                    practiceQueueLibJob(p, 1, reinterpret_cast<const char*>(val + 1));
+                else if (key == p->uris.grooveDel && val->type == p->uris.atom_String)
+                    practiceQueueLibJob(p, 2, reinterpret_cast<const char*>(val + 1));
+                else if (key == p->uris.grooveGet && val->type == p->uris.atom_String)
+                    practiceRecallGroove(p, reinterpret_cast<const char*>(val + 1));
                 else if (key == p->uris.seek && val->type == p->uris.atom_Float) {
                     // Move the loop AND the grid together. Seeking the audio
                     // but leaving the groove where it was would put the two in
@@ -836,7 +1088,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         // Ask for the undo snapshot BEFORE arming, so the copy overlaps the
         // wait for the bar line instead of the overdub itself.
         if (p->schedule && p->looper.wouldOverdub(track)) {
-            WorkMsg msg{ track };
+            WorkMsg msg{ kWorkUndo, track, nullptr };
             p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
         }
         p->looper.recordPressed(track, p->clk);
@@ -1069,6 +1321,12 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
             p->sentPattern = patIdx;
             p->sentUser    = useUser;
         }
+        // The library index: on open, and whenever a save or delete landed.
+        if (p->wantSendAll || p->wantSendLib) {
+            practiceSendString(p, p->uris.userlib,
+                               p->lib ? p->lib->namesJson.c_str() : "{\"names\":[]}");
+            p->wantSendLib = false;
+        }
         p->wantSendAll = false;
         lv2_atom_forge_pop(&p->forge, &notifyFrame);
     }
@@ -1212,10 +1470,14 @@ static LV2_State_Status practice_restore(LV2_Handle                 handle,
     return LV2_STATE_SUCCESS;
 }
 
-static void practice_cleanup(LV2_Handle h) { delete static_cast<PracticePlugin*>(h); }
+static void practice_cleanup(LV2_Handle h) {
+    auto* p = static_cast<PracticePlugin*>(h);
+    delete p->lib;
+    delete p;
+}
 
 static const void* practice_extension_data(const char* uri) {
-    static const LV2_Worker_Interface worker = { practice_work, nullptr, nullptr };
+    static const LV2_Worker_Interface worker = { practice_work, practice_work_response, nullptr };
     // state:interface has been declared in the TTL since the first release but
     // was never returned here, so every host asked for it and got nothing --
     // which is why loops did not survive a reload.

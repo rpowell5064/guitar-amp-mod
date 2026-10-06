@@ -148,28 +148,44 @@
 
             <!-- ══ DRUMS ══ -->
             <div class="px-view px-view-drums">
-                <div class="px-drow">
-                    {{#controls.6}}
+                <!-- Groove strip, in Hex Forge's preset-strip idiom: step through
+                     the grooves, name the one on the grid, SAVE it as your own,
+                     or browse them all. The factory names come from the TTL's
+                     scale points (the hidden list below) so the 30 grooves stay
+                     in one place; the player's saved grooves arrive from the
+                     plugin's library. The Pattern port keeps its hidden binding
+                     so MIDI addressing of factory grooves still works. -->
+                <div class="px-gv" rata-role="gvstrip">
                     <span class="px-tlabel">Groove</span>
-                    <!-- Driven by the script, NOT by mod-ui's custom-select: that
-                         widget never opened on this host, so the groove could not
-                         be changed at all. The Mustache still generates the
-                         options from the TTL's scale points so the 30 grooves
-                         stay in one place. The port keeps a hidden binding so
-                         MIDI addressing still works. -->
-                    <div class="mod-enumerated px-sel" rata-role="selgroove" data-sym="{{symbol}}" style="min-width:190px">
+                    <button type="button" class="px-gv-btn" rata-role="gvprev" title="Previous groove" aria-label="Previous groove">&#9664;</button>
+                    <input type="text" class="px-gv-name" rata-role="gvname" maxlength="48" spellcheck="false" placeholder="(unnamed)" aria-label="Groove name" title="Groove name &mdash; type and press Enter to save the grid under it" />
+                    <button type="button" class="px-gv-btn" rata-role="gvnext" title="Next groove" aria-label="Next groove">&#9654;</button>
+                    <button type="button" class="px-gv-btn px-gv-save" rata-role="gvsave" title="Save the grid as a groove of your own, under this name">SAVE</button>
+                    <button type="button" class="px-gv-btn px-gv-toggle" rata-role="gvtoggle" title="Browse all grooves" aria-haspopup="true">&#8801;</button>
+                    <span class="px-gv-spacer"></span>
+                    <div class="px-pill" rata-role="btnmidi">Import MIDI</div>
+                    <input type="file" class="px-file" rata-role="midifile" accept=".mid,.midi,audio/midi" />
+                    <div class="px-pill" rata-role="btnrevert">Revert to factory</div>
+                    <div class="px-pill" rata-role="btnclearpat">Clear grid</div>
+                    <div class="px-gv-menu" rata-role="gvmenu" role="menu" aria-label="All grooves">
+                        <div class="px-gv-head">
+                            <input type="text" class="px-gv-search" rata-role="gvsearch" spellcheck="false" placeholder="Search&hellip;" aria-label="Search grooves" />
+                            <span class="px-gv-count" rata-role="gvcount"></span>
+                        </div>
+                        <div class="px-gv-list" rata-role="gvlist" role="listbox"></div>
+                    </div>
+                </div>
+                {{#controls.6}}
+                <div class="px-hidden">
+                    <div class="mod-enumerated" rata-role="selgroove" data-sym="{{symbol}}">
                         <div class="mod-enumerated-selected"></div>
                         <div class="mod-enumerated-list">
                             {{#scalePoints}}<div mod-role="enumeration-option" mod-parameter-value="{{value}}">{{label}}</div>{{/scalePoints}}
                         </div>
                     </div>
-                    <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div></div>
-                    {{/controls.6}}
-                    <div class="px-pill" rata-role="btnmidi">Import MIDI</div>
-                    <input type="file" class="px-file" rata-role="midifile" accept=".mid,.midi,audio/midi" />
-                    <div class="px-pill" rata-role="btnrevert">Revert to factory</div>
-                    <div class="px-pill" rata-role="btnclearpat">Clear grid</div>
+                    <div mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div>
                 </div>
+                {{/controls.6}}
 
                 <div class="px-grid"><canvas rata-role="grid" width="912" height="392"></canvas></div>
                 <div class="px-status" rata-role="patstatus"></div>
@@ -189,7 +205,7 @@
                     <div class="hf-knob" title="Humanise"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="humanize"></div><span class="hf-knob-t">Humanise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="humanize"></span></div>
                     <div class="hf-knob" title="Beats / Bar"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="beats_per_bar"></div><span class="hf-knob-t">Beats / Bar</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="beats_per_bar"></span></div>
                 </div>
-                <div class="px-hint">Click a cell to cycle rest → soft → normal → accent; right-click clears it. Editing takes the groove over from the factory pattern — Revert puts it back.</div>
+                <div class="px-hint">Click a cell to cycle rest → soft → normal → accent; right-click clears it. Editing takes the groove over from the factory pattern — Revert puts it back. Name it and press SAVE (or Enter) to keep it as one of your own; your grooves live in the list under <b>&#8801;</b> on every board.</div>
             </div>
 
             <!-- ══ MIX ══ -->

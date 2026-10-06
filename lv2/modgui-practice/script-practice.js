@@ -10,6 +10,11 @@ function (event, funcs) {
     var WAVEFORM_URI = BASE + '#waveform';
     var STATUS_URI   = BASE + '#status';
     var SEEK_URI     = BASE + '#seek';
+    // The player's groove library: an index of names in, save/delete/recall out.
+    var USERLIB_URI  = BASE + '#userlib';
+    var GPUT_URI     = BASE + '#groove_put';
+    var GDEL_URI     = BASE + '#groove_del';
+    var GGET_URI     = BASE + '#groove_get';
 
     // Instrument rows, in the order the plugin's Instrument enum defines them.
     // Laid out high-to-low the way a drummer reads a chart: cymbals on top,
@@ -947,16 +952,189 @@ function (event, funcs) {
             if (L && typeof L.i === 'number') lanes[L.i] = '' + (L.s || '');
         }
         icon.data('px_pat', { spb: spb, bars: bars, lanes: lanes, builtin: !!d.builtin });
-        patStatus(icon, d.builtin ? ('Factory groove — ' + (d.name || '')) : 'Edited pattern');
-        // Label the picker from the PLUGIN's own message rather than waiting for
+        // Label the strip from the PLUGIN's own message rather than waiting for
         // a port echo. mod-ui does not reliably echo a programmatic port write
         // back as an event (it did not here, on the device), but the pattern
         // push always arrives — it is what redrew this grid.
-        if (d.builtin && d.name) {
-            var box = R(icon, 'selgroove').find('.mod-enumerated-selected');
-            if (box.length) box.text(d.name);
+        if (d.builtin) {
+            icon.data('px_cur', { kind: 'factory', name: d.name || '', idx: d.idx || 0 });
+            patStatus(icon, 'Factory groove — ' + (d.name || ''));
+        } else if (d.user && d.name) {
+            icon.data('px_cur', { kind: 'user', name: d.name });
+            patStatus(icon, 'Your groove — ' + d.name);
+        } else {
+            var cur0 = icon.data('px_cur') || {};
+            icon.data('px_cur', { kind: 'edit', name: cur0.name || '', idx: cur0.idx });
+            patStatus(icon, 'Edited — unsaved. SAVE keeps it under the name above.');
         }
+        gvRender(icon);
         drawGrid(icon);
+    }
+
+    // ── groove strip ─────────────────────────────────────────────────────────
+    // Hex Forge's preset strip, for grooves: prev/next, a name, SAVE, and a
+    // browser of everything. Factory grooves are the Pattern port's scale
+    // points (so selecting one is a port write, and MIDI can still do it);
+    // the player's own are the plugin's library, recalled by name.
+    function gvFactory(icon) {
+        var out = [];
+        R(icon, 'selgroove').find('[mod-role=enumeration-option]').each(function () {
+            out.push({ kind: 'factory',
+                       idx: Math.round(parseFloat(this.getAttribute('mod-parameter-value'))),
+                       name: (this.textContent || '').replace(/^\s+|\s+$/g, '') });
+        });
+        return out;
+    }
+    function gvAll(icon) {
+        var lib = icon.data('px_lib') || [];
+        return gvFactory(icon).concat(lib.map(function (n) { return { kind: 'user', name: n }; }));
+    }
+    function gvSame(a, b) {
+        if (!a || !b) return false;
+        if (a.kind === 'user' || b.kind === 'user') return a.kind === b.kind && a.name === b.name;
+        return a.idx === b.idx;
+    }
+    function gvPick(icon, item) {
+        if (!item) return;
+        if (item.kind === 'factory') {
+            // The plugin answers with the pattern, which repaints the grid and
+            // labels the strip; set the name now so the strip never lags.
+            icon.data('px_cur', { kind: 'factory', name: item.name, idx: item.idx });
+            setPort(icon, 'pattern', item.idx);
+        } else {
+            icon.data('px_cur', { kind: 'user', name: item.name });
+            if (funcs && typeof funcs.patch_set === 'function') funcs.patch_set(GGET_URI, 's', item.name);
+        }
+        gvRender(icon);
+        gvClose(icon);
+    }
+    function gvStep(icon, dir) {
+        var all = gvAll(icon); if (!all.length) return;
+        var cur = icon.data('px_cur'), at = -1;
+        for (var i = 0; i < all.length; ++i) if (gvSame(all[i], cur)) { at = i; break; }
+        // An unsaved edit steps from the groove it was made on.
+        if (at < 0 && cur && cur.kind === 'edit') {
+            for (var k = 0; k < all.length; ++k)
+                if ((cur.idx !== undefined && all[k].kind === 'factory' && all[k].idx === cur.idx) ||
+                    (all[k].kind === 'user' && all[k].name === cur.name)) { at = k; break; }
+        }
+        gvPick(icon, all[(at + dir + all.length) % all.length]);
+    }
+    // Save the grid under the name in the field. A user groove of that name is
+    // overwritten (that is "save"); a factory name is left alone and the copy
+    // gets a suffix, so the factory list never looks like it was edited.
+    function gvSave(icon) {
+        var p = icon.data('px_pat'); if (!p) return;
+        var nf = el(icon, 'gvname');
+        var name = ((nf && nf.value) || '').replace(/^\s+|\s+$/g, '').replace(/[\t\r\n]/g, ' ');
+        var lib = icon.data('px_lib') || [];
+        if (!name) name = 'Groove ' + (lib.length + 1);
+        var fac = gvFactory(icon);
+        for (var f = 0; f < fac.length; ++f) if (fac[f].name === name) { name += ' (mine)'; break; }
+        if (name.length > 48) name = name.substring(0, 48);
+        var steps = p.spb * p.bars, out = [];
+        for (var k in p.lanes) {
+            if (!p.lanes.hasOwnProperty(k)) continue;
+            var s = p.lanes[k];
+            if (!s || !/[^.]/.test(s)) continue;
+            while (s.length < steps) s += '.';
+            out.push({ i: parseInt(k, 10), s: s.substring(0, steps) });
+        }
+        if (funcs && typeof funcs.patch_set === 'function')
+            funcs.patch_set(GPUT_URI, 's', JSON.stringify({ name: name, user: 1, spb: p.spb, bars: p.bars, lanes: out }));
+        icon.data('px_cur', { kind: 'user', name: name });
+        if (nf) nf.value = name;
+        patStatus(icon, 'Saved — ' + name);
+        gvRender(icon);
+    }
+    function gvDelete(icon, name) {
+        if (funcs && typeof funcs.patch_set === 'function') funcs.patch_set(GDEL_URI, 's', name);
+        patStatus(icon, 'Deleted — ' + name);
+    }
+    function gvClose(icon) {
+        var m = el(icon, 'gvmenu'); if (m) m.classList.remove('open');
+        var tg = el(icon, 'gvtoggle'); if (tg) tg.classList.remove('on');
+    }
+    function gvRender(icon) {
+        var cur = icon.data('px_cur') || {};
+        var nf = el(icon, 'gvname');
+        // Never overwrite a name the player is in the middle of typing.
+        if (nf && document.activeElement !== nf) nf.value = cur.name || '';
+        var box = el(icon, 'gvlist'); if (!box) return;
+        var q = ((el(icon, 'gvsearch') || {}).value || '').toLowerCase();
+        var fac = gvFactory(icon), lib = icon.data('px_lib') || [];
+        var html = '', shown = 0;
+        var esc = function (s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;'); };
+        html += '<div class="px-gv-sec">Factory</div>';
+        for (var i = 0; i < fac.length; ++i) {
+            if (q && fac[i].name.toLowerCase().indexOf(q) < 0) continue;
+            var onF = (cur.kind === 'factory' || cur.kind === 'edit') && cur.idx === fac[i].idx && cur.kind !== 'edit';
+            html += '<div class="px-gv-item' + (onF ? ' on' : '') + '" data-kind="factory" data-idx="' + fac[i].idx + '">' +
+                    '<b>' + (fac[i].idx + 1) + '</b>' + esc(fac[i].name) + '</div>';
+            ++shown;
+        }
+        html += '<div class="px-gv-sec">My grooves' + (lib.length ? '' : ' <i>— none yet: name the grid and press SAVE</i>') + '</div>';
+        for (var u = 0; u < lib.length; ++u) {
+            if (q && lib[u].toLowerCase().indexOf(q) < 0) continue;
+            var onU = cur.kind === 'user' && cur.name === lib[u];
+            html += '<div class="px-gv-item user' + (onU ? ' on' : '') + '" data-kind="user" data-name="' + esc(lib[u]) + '">' +
+                    esc(lib[u]) + '<span class="px-gv-x" title="Delete this groove">&times;</span></div>';
+            ++shown;
+        }
+        box.innerHTML = html;
+        var cnt = el(icon, 'gvcount');
+        if (cnt) cnt.textContent = fac.length + ' factory · ' + lib.length + ' saved';
+        $(box).find('.px-gv-item').each(function () {
+            var it = this;
+            $(it).on('click', function (e) {
+                e.stopPropagation();
+                if ($(e.target).closest('.px-gv-x').length) {
+                    // Two clicks to delete: the first arms, the second does it.
+                    var x = $(e.target).closest('.px-gv-x')[0];
+                    if (x.classList.contains('sure')) gvDelete(icon, it.getAttribute('data-name'));
+                    else { x.classList.add('sure'); x.textContent = 'delete?'; }
+                    return;
+                }
+                if (it.getAttribute('data-kind') === 'user')
+                    gvPick(icon, { kind: 'user', name: it.getAttribute('data-name') });
+                else
+                    gvPick(icon, { kind: 'factory', idx: parseInt(it.getAttribute('data-idx'), 10),
+                                   name: it.textContent.replace(/^\d+/, '') });
+            });
+        });
+    }
+    function libParse(icon, json) {
+        var d = null;
+        try { d = JSON.parse(json); } catch (e) { return; }
+        if (!d || !d.names) return;
+        icon.data('px_lib', d.names);
+        gvRender(icon);
+    }
+    function bindGrooveStrip(icon) {
+        var strip = el(icon, 'gvstrip'); if (!strip) return;
+        // Clicks inside the strip must not reach the document handler that
+        // closes the browser; the browser closes itself on a pick.
+        $(strip).on('click', function (e) { e.stopPropagation(); });
+        R(icon, 'gvprev').on('click', function () { gvStep(icon, -1); });
+        R(icon, 'gvnext').on('click', function () { gvStep(icon, +1); });
+        R(icon, 'gvsave').on('click', function () { gvSave(icon); });
+        R(icon, 'gvtoggle').on('click', function () {
+            var m = el(icon, 'gvmenu'); if (!m) return;
+            var open = !m.classList.contains('open');
+            m.classList.toggle('open', open);
+            this.classList.toggle('on', open);
+            if (open) { gvRender(icon); var s = el(icon, 'gvsearch'); if (s) s.focus(); }
+        });
+        var nf = el(icon, 'gvname');
+        if (nf) nf.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); gvSave(icon); nf.blur(); }
+            e.stopPropagation();
+        });
+        var sf = el(icon, 'gvsearch');
+        if (sf) {
+            sf.addEventListener('input', function () { gvRender(icon); });
+            sf.addEventListener('keydown', function (e) { e.stopPropagation(); });
+        }
     }
 
     // Post the grid back to the plugin. Empty lanes are dropped: the plugin's
@@ -975,7 +1153,10 @@ function (event, funcs) {
         if (funcs && typeof funcs.patch_set === 'function')
             funcs.patch_set(PATTERN_URI, 's', JSON.stringify({ spb: p.spb, bars: p.bars, lanes: out }));
         p.builtin = false;
-        patStatus(icon, 'Edited pattern');
+        var cur = icon.data('px_cur') || {};
+        if (cur.kind !== 'edit') icon.data('px_cur', { kind: 'edit', name: cur.name || '', idx: cur.idx });
+        patStatus(icon, 'Edited — unsaved. SAVE keeps it under the name above.');
+        gvRender(icon);
     }
 
     function gridHit(icon, ev, clear) {
@@ -1383,9 +1564,9 @@ function (event, funcs) {
 
         bindTempo(icon);
         bindTrim(icon);
-        bindSelect(icon, 'selgroove');
+        bindGrooveStrip(icon);
         bindSelect(icon, 'sellen');
-        $(document).on('click', function () { selClose(icon); });
+        $(document).on('click', function () { selClose(icon); gvClose(icon); });
         selectTrack(icon, 1, false);
         drawGrid(icon);
         drawAllWaves(icon);
@@ -1407,12 +1588,14 @@ function (event, funcs) {
                 if (pr.uri.indexOf('#pattern') >= 0) patParse(icon, pr.value);
                 else if (pr.uri.indexOf('#waveform') >= 0) waveParse(icon, pr.value);
                 else if (pr.uri.indexOf('#status') >= 0) statusParse(icon, pr.value);
+                else if (pr.uri.indexOf('#userlib') >= 0) libParse(icon, pr.value);
             }
         }
         if (funcs && typeof funcs.patch_get === 'function') {
             funcs.patch_get(WAVEFORM_URI);
             funcs.patch_get(PATTERN_URI);
             funcs.patch_get(STATUS_URI);
+            funcs.patch_get(USERLIB_URI);
         }
 
     } else if (event.type == 'change') {
@@ -1426,6 +1609,7 @@ function (event, funcs) {
             if (event.uri.indexOf('#waveform') >= 0) waveParse(event.icon, event.value);
             else if (event.uri.indexOf('#pattern') >= 0) patParse(event.icon, event.value);
             else if (event.uri.indexOf('#status') >= 0) statusParse(event.icon, event.value);
+            else if (event.uri.indexOf('#userlib') >= 0) libParse(event.icon, event.value);
         } else if (event.symbol) {
             portApply(event.icon, event.symbol, parseFloat(event.value));
         }

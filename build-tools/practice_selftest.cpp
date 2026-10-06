@@ -26,7 +26,10 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 extern "C" const LV2_Descriptor* lv2_descriptor(uint32_t index);
@@ -1307,6 +1310,90 @@ int main() {
               "and the metronome is not clicking over it",
               "rms " + std::to_string(rms(groove)) + " vs " + std::to_string(rms(grooveNoMetro)));
         hst.close();
+    }
+
+    // ── Groove library ───────────────────────────────────────────────────────
+    // The player's own grooves: saved by name into a file, listed back to the
+    // editor, recalled by name, there on a fresh instance, and deletable. This
+    // host offers no worker, so the plugin takes its synchronous path -- the
+    // same code, run in place.
+    std::printf("\nGroove library\n");
+    {
+        const std::string LIB = "https://rpowell5064.github.io/guitaramp-suite/practice#userlib";
+        const std::string PUT = "https://rpowell5064.github.io/guitaramp-suite/practice#groove_put";
+        const std::string DEL = "https://rpowell5064.github.io/guitaramp-suite/practice#groove_del";
+        const std::string GET = "https://rpowell5064.github.io/guitaramp-suite/practice#groove_get";
+        const std::string PAT = "https://rpowell5064.github.io/guitaramp-suite/practice#pattern";
+        // Isolate the file: a throwaway HOME.
+        const std::string home = "/tmp/practice_selftest_home_" + std::to_string(static_cast<long>(::getpid()));
+        ::mkdir(home.c_str(), 0755);
+        const char* oldHome = std::getenv("HOME");
+        const std::string oldHomeS = oldHome ? oldHome : "";
+        ::setenv("HOME", home.c_str(), 1);
+        auto libOf = [&](Host& h) {
+            std::string lib;
+            for (auto& m : h.notified()) if (m.first == LIB) lib = m.second;
+            return lib;
+        };
+
+        Host hst; hst.open();
+        hst.sendPatchGet();
+        hst.run(kBlock);
+        std::string lib0 = libOf(hst);
+        check(lib0.find("\"names\":[]") != std::string::npos, "a fresh library is empty",
+              lib0.substr(0, 40));
+
+        hst.sendPatchSet(PUT.c_str(),
+            "{\"name\":\"My Beat\",\"user\":1,\"spb\":16,\"bars\":1,\"lanes\":[{\"i\":1,\"s\":\"....X.......X...\"}]}");
+        hst.run(kBlock);
+        std::string lib1 = libOf(hst);
+        check(lib1.find("\"My Beat\"") != std::string::npos, "saving a groove lists it", lib1.substr(0, 60));
+        check(std::ifstream(home + "/.config/hexchain/scratchpad-grooves.txt").good(),
+              "and it is on disk under ~/.config/hexchain");
+
+        // Recall by name after moving to a factory groove.
+        hst.ctl[PATTERN] = 3.0f;
+        hst.run(kBlock);
+        hst.sendPatchSet(GET.c_str(), "My Beat");
+        hst.run(kBlock);
+        std::string got;
+        for (auto& m : hst.notified()) if (m.first == PAT) got = m.second;
+        check(got.find("\"My Beat\"") != std::string::npos && got.find("\"user\":1") != std::string::npos,
+              "recalling it by name puts it on the grid as the player's own", got.substr(0, 60));
+
+        // Save over it with a new grid: still one entry, new content.
+        hst.sendPatchSet(PUT.c_str(),
+            "{\"name\":\"My Beat\",\"user\":1,\"spb\":16,\"bars\":1,\"lanes\":[{\"i\":0,\"s\":\"X...X...X...X...\"}]}");
+        hst.run(kBlock);
+        std::string lib2 = libOf(hst);
+        check(lib2 == "{\"names\":[\"My Beat\"]}", "saving under the same name overwrites, not duplicates", lib2);
+
+        // A fresh instance reads the file.
+        {
+            Host h2; h2.open();
+            h2.sendPatchGet();
+            h2.run(kBlock);
+            std::string libN = libOf(h2);
+            check(libN.find("\"My Beat\"") != std::string::npos, "a new instance finds the saved groove", libN);
+            h2.sendPatchSet(GET.c_str(), "My Beat");
+            h2.run(kBlock);
+            std::string got2;
+            for (auto& m : h2.notified()) if (m.first == PAT) got2 = m.second;
+            check(got2.find("X...X...X...X...") != std::string::npos, "with the content last saved", got2.substr(0, 80));
+            h2.close();
+        }
+
+        hst.sendPatchSet(DEL.c_str(), "My Beat");
+        hst.run(kBlock);
+        std::string lib3 = libOf(hst);
+        check(lib3.find("\"names\":[]") != std::string::npos, "deleting it empties the library", lib3);
+        hst.close();
+
+        std::remove((home + "/.config/hexchain/scratchpad-grooves.txt").c_str());
+        ::rmdir((home + "/.config/hexchain").c_str());
+        ::rmdir((home + "/.config").c_str());
+        ::rmdir(home.c_str());
+        if (oldHome) ::setenv("HOME", oldHomeS.c_str(), 1); else ::unsetenv("HOME");
     }
 
     // ── A mono host still works ──────────────────────────────────────────────
