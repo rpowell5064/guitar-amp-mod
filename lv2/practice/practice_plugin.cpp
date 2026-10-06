@@ -157,6 +157,10 @@ enum PracticePorts {
     // Metronome (2026-10-06). With the Drums switch off the box clicks on
     // every beat while the transport runs. Appended, as everything is.
     P_METRONOME,        // toggled, default on
+    // Drums transport (2026-10-06): play and stop the KIT on its own, from
+    // the Drums tab or a footswitch, without moving the loops. Triggers.
+    P_DRUMS_PLAY,
+    P_DRUMS_STOP,
     P_N_PORTS
 };
 
@@ -268,6 +272,8 @@ struct PracticePlugin {
     bool prevRec   = false;
     bool prevPlay  = false;
     bool prevStop  = false;
+    bool prevDPlay = false;
+    bool prevDStop = false;
     bool prevClear = false;
     bool prevUndo  = false;
 
@@ -582,6 +588,8 @@ static void practiceSendStatus(PracticePlugin* p) {
     // Whether the transport is moving. Not the Run switch -- that is the
     // drummer's on/off and the panel already knows it from the port.
     j += ",\"tr\":" + std::to_string(p->transportOn ? 1 : 0);
+    // Whether the KIT is playing: the Drums tab's own Play/Stop light by this.
+    j += ",\"dp\":" + std::to_string((p->drumsEnabled && !p->drumsStopped && p->transportOn) ? 1 : 0);
     j += ",\"pr\":" + std::to_string(prq);
     j += ",\"st\":[";
     for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
@@ -1126,6 +1134,43 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         // kit bus to zero and flushing it at the bottom is what actually makes
         // the box quiet when the player asks it to be.
         p->drums.stopSound();
+    }
+    // ── Drums on their own ──────────────────────────────────────────────────
+    // Play the kit without touching the loops: start the clock if it is
+    // stopped, leave every track where it is. Stop silences the kit, and if
+    // nothing else is playing the clock stops with it -- a transport running
+    // for nobody would leave the bar counter and the playhead sweeping on in
+    // silence. The Drums switch (Run) is the same "is there a drummer" state
+    // these set; the panel writes it alongside so the pill follows.
+    if (edge(portBool(p, P_DRUMS_PLAY), p->prevDPlay)) {
+        if (!p->clk.running()) {
+            p->clk.reset();
+            p->clk.start();
+            p->drums.rearm(p->clk);
+            p->transportOn = true;
+        }
+        // The Run port is left alone: a footswitch may fire this with Run
+        // still off, and faking Run's last value made the next block read
+        // "Run went off" and undo the press. A real Run edge later still wins.
+        p->drumsEnabled = true;
+        p->drumsStopped = false;
+        p->drums.resumeSound();
+        p->drums.restartPattern(p->clk);
+    }
+    if (edge(portBool(p, P_DRUMS_STOP), p->prevDStop)) {
+        p->drumsEnabled = false;
+        p->drums.stopSound();
+        bool anyLoop = false;
+        for (int t = 0; t < LooperBlock::kNumTracks; ++t) {
+            const auto s = p->looper.trackState(t);
+            if (s == LooperBlock::State::Playing || s == LooperBlock::State::Recording ||
+                s == LooperBlock::State::Overdubbing) anyLoop = true;
+        }
+        if (!anyLoop && !p->looper.counting()) {
+            p->clk.stop();
+            p->transportOn  = false;
+            p->drumsStopped = true;
+        }
     }
     if (edge(portBool(p, P_LOOP_CLEAR), p->prevClear)) p->looper.clearTrack(track);
     if (edge(portBool(p, P_LOOP_UNDO),  p->prevUndo))  p->looper.undo(track);

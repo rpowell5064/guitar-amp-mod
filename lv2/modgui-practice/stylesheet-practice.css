@@ -730,3 +730,30 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-gv-list::-webkit-scrollbar-button { width:0; height:0; display:none; }
 /* The voicing row has thirteen knobs with two-word names; give each the width its label needs. */
 .mod-pedal-guitaramp-practice{{{cns}}} .px-knobs .hf-knob { width:82px; }
+
+
+/* ── Bar card (2026-10-06): the counter opens the meter and the loop length ──
+   One card for one idea -- how long a bar is and how many make the loop --
+   instead of a knob on one tab and a dropdown on another. */
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bargrab { cursor:pointer; position:relative; padding:2px 8px; margin:-2px -8px; border-radius:8px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bargrab:hover,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bargrab.open { background:rgba(255,255,255,.05); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barmeta {
+    font-size:9px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink3);
+    white-space:nowrap; align-self:flex-end; padding-bottom:5px;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bargrab:hover .px-barmeta,
+.mod-pedal-guitaramp-practice{{{cns}}} .px-bargrab.open .px-barmeta { color:var(--acc); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop {
+    display:none; position:absolute; top:44px; left:0; z-index:80; width:420px; cursor:default;
+    background:#0d1016; border:1px solid rgba(240,168,48,.55); border-radius:9px; padding:12px 14px 12px;
+    box-shadow:0 14px 34px rgba(0,0,0,.62); text-align:left;
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop.open { display:block; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop-sec { display:flex; flex-direction:column; gap:7px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop-sec + .px-barpop-sec { margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,.10); }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop-t {
+    font-size:9.5px; font-weight:800; letter-spacing:1.4px; text-transform:uppercase; color:var(--ink2);
+}
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop .px-segb { min-width:34px; text-align:center; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-barpop-hint { font-size:10px; color:#8d949f; line-height:1.5; letter-spacing:.2px; }

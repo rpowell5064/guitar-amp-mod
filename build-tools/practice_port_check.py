@@ -63,6 +63,7 @@ SYMBOLS = {
     # Stereo, appended at the end so existing port indices never move.
     "P_IN_R": "in_r", "P_OUT_R": "out_r", "P_MONO_SUM": "mono_sum",
     "P_METRONOME": "metronome",
+    "P_DRUMS_PLAY": "drums_play", "P_DRUMS_STOP": "drums_stop",
 }
 
 errors = []

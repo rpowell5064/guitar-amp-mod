@@ -866,6 +866,7 @@ function (event, funcs) {
         // on their own. It is not the Run switch -- that is the drummer's
         // on/off and the pill already follows its port.
         if (typeof d.tr === 'number') icon.data('px_running', d.tr > 0.5);
+        if (typeof d.dp === 'number') R(icon, 'btndplay').toggleClass('armed', d.dp > 0.5);
         if (typeof d.ci === 'number') portApply(icon, 'out_countin', d.ci);
     }
 
@@ -1102,6 +1103,92 @@ function (event, funcs) {
                                    name: it.textContent.replace(/^\d+/, '') });
             });
         });
+    }
+    // ── bar card: time signature + loop length ──────────────────────────────
+    // Both are ports; the card is just a second face for them next to the
+    // counter they shape. The meter shows as N/4 up to seven beats and N/8
+    // above -- the plugin only counts beats, so the tempo is per counted beat
+    // either way, but 6/8 and 12/8 are what a player calls those bars.
+    var BPB_CHOICES = [2, 3, 4, 5, 6, 7, 9, 12];
+    function bpbLabel(n) { return n + '/' + (n >= 8 || n === 6 ? 8 : 4); }
+    function barLenLabel(icon, v) {
+        var lab = null;
+        R(icon, 'sellen').find('[mod-role=enumeration-option]').each(function () {
+            if (Math.round(parseFloat(this.getAttribute('mod-parameter-value'))) === v)
+                lab = (this.textContent || '').replace(/^\s+|\s+$/g, '');
+        });
+        return lab || (v + ' bars');
+    }
+    function barMeta(icon) {
+        var bpb = icon.data('px_bpb') || 4, len = icon.data('px_lenbars');
+        if (len === undefined) len = 4;
+        var m = el(icon, 'barmeta');
+        if (m) m.textContent = bpbLabel(bpb) + ' \u00b7 ' + barLenLabel(icon, len).toLowerCase();
+        var sb = el(icon, 'segbpb'), sl = el(icon, 'seglen');
+        if (sb) $(sb).find('.px-segb').each(function () {
+            this.classList.toggle('on', parseInt(this.getAttribute('data-v'), 10) === bpb);
+        });
+        if (sl) $(sl).find('.px-segb').each(function () {
+            this.classList.toggle('on', parseInt(this.getAttribute('data-v'), 10) === len);
+        });
+    }
+    function barPopClose(icon) {
+        var p = el(icon, 'barpop'); if (p) p.classList.remove('open');
+        var g = el(icon, 'bargrab'); if (g) g.classList.remove('open');
+    }
+    function bindBarCard(icon) {
+        var grab = el(icon, 'bargrab'), pop = el(icon, 'barpop');
+        if (!grab || !pop) return;
+        // Fill the two rows once. The length row copies the hidden list so the
+        // options stay the TTL's.
+        var sb = el(icon, 'segbpb'), sl = el(icon, 'seglen');
+        if (sb) {
+            var hb = '';
+            for (var i = 0; i < BPB_CHOICES.length; ++i)
+                hb += '<div class="px-segb" data-v="' + BPB_CHOICES[i] + '">' + bpbLabel(BPB_CHOICES[i]) + '</div>';
+            sb.innerHTML = hb;
+            $(sb).find('.px-segb').each(function () {
+                var b = this;
+                $(b).on('click', function (e) {
+                    e.stopPropagation();
+                    var v = parseInt(b.getAttribute('data-v'), 10);
+                    icon.data('px_bpb', v);
+                    setPort(icon, 'beats_per_bar', v);
+                    barMeta(icon);
+                });
+            });
+        }
+        if (sl) {
+            var hl = '';
+            R(icon, 'sellen').find('[mod-role=enumeration-option]').each(function () {
+                var v = Math.round(parseFloat(this.getAttribute('mod-parameter-value')));
+                var t = (this.textContent || '').replace(/^\s+|\s+$/g, '').replace(/ bars?$/, '');
+                hl += '<div class="px-segb" data-v="' + v + '">' + t + '</div>';
+            });
+            sl.innerHTML = hl;
+            $(sl).find('.px-segb').each(function () {
+                var b = this;
+                $(b).on('click', function (e) {
+                    e.stopPropagation();
+                    var v = parseInt(b.getAttribute('data-v'), 10);
+                    icon.data('px_lenbars', v);
+                    selLabel(icon, 'sellen', v);
+                    setPort(icon, 'loop_bars', v);
+                    barMeta(icon);
+                    drawAllWaves(icon);      // empty lanes rule the bars a take will fill
+                });
+            });
+        }
+        $(grab).on('click', function (e) {
+            e.stopPropagation();
+            if ($(e.target).closest('.px-barpop').length) return;
+            var open = !pop.classList.contains('open');
+            selClose(icon); gvClose(icon);
+            pop.classList.toggle('open', open);
+            grab.classList.toggle('open', open);
+            if (open) barMeta(icon);
+        });
+        barMeta(icon);
     }
     function libParse(icon, json) {
         var d = null;
@@ -1508,6 +1595,10 @@ function (event, funcs) {
         R(icon, 'btnrec').on('click',   function () { pulse(icon, 'loop_rec'); });
         R(icon, 'btnplay').on('click',  function () { pulse(icon, 'loop_play'); });
         R(icon, 'btnstop').on('click',  function () { pulse(icon, 'loop_stop'); });
+        // The kit's own transport. Writing the Drums switch alongside keeps the
+        // header pill honest about whether there is a drummer.
+        R(icon, 'btndplay').on('click', function () { setPort(icon, 'run', 1); R(icon, 'runpill').toggleClass('on', true);  pulse(icon, 'drums_play'); });
+        R(icon, 'btndstop').on('click', function () { setPort(icon, 'run', 0); R(icon, 'runpill').toggleClass('on', false); pulse(icon, 'drums_stop'); });
         R(icon, 'btnundo').on('click',  function () { pulse(icon, 'loop_undo'); });
         R(icon, 'btnclear').on('click', function () { pulse(icon, 'loop_clear'); });
 
@@ -1565,8 +1656,8 @@ function (event, funcs) {
         bindTempo(icon);
         bindTrim(icon);
         bindGrooveStrip(icon);
-        bindSelect(icon, 'sellen');
-        $(document).on('click', function () { selClose(icon); gvClose(icon); });
+        bindBarCard(icon);
+        $(document).on('click', function () { selClose(icon); gvClose(icon); barPopClose(icon); });
         selectTrack(icon, 1, false);
         drawGrid(icon);
         drawAllWaves(icon);
@@ -1623,6 +1714,7 @@ function (event, funcs) {
         if (sym === 'loop_bars') {
             selLabel(icon, 'sellen', value);
             icon.data('px_lenbars', Math.round(value));
+            barMeta(icon);
             drawAllWaves(icon);       // empty lanes rule the bars a take will fill
             return;
         }
@@ -1668,7 +1760,7 @@ function (event, funcs) {
         if (sym === 'mono_sum')  { R(icon, 'monopill').toggleClass('on', value > 0.5); return; }
         if (sym === 'metronome') { R(icon, 'metropill').toggleClass('on', value > 0.5); return; }
 
-        if (sym === 'beats_per_bar') { icon.data('px_bpb', Math.max(1, Math.round(value))); return; }
+        if (sym === 'beats_per_bar') { icon.data('px_bpb', Math.max(1, Math.round(value))); barMeta(icon); return; }
 
         if (sym === 'out_countin') {
             var beats = Math.round(value);

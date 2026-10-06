@@ -38,9 +38,45 @@
 
         <span class="px-div" aria-hidden="true"></span>
 
-        <div class="px-tgroup">
+        <!-- The bar counter is also where the meter and the loop length are
+             set: click it and a card drops with both. They used to live on
+             two different tabs (a knob on Drums, a dropdown on Loops), which
+             is two places to look for one idea -- how long is a bar, how
+             many make the loop. The Length options come from the hidden list
+             below so they stay a copy of the TTL's scale points. -->
+        <div class="px-tgroup px-bargrab" rata-role="bargrab" title="Click to set the time signature and the loop length">
             <span class="px-tlabel">Bar</span>
             <span class="px-bars" rata-role="barsread">1 . 1</span>
+            <span class="px-barmeta" rata-role="barmeta">4/4 &middot; 4 bars</span>
+            <div class="px-barpop" rata-role="barpop" role="dialog" aria-label="Time signature and loop length">
+                <div class="px-barpop-sec">
+                    <span class="px-barpop-t">Time signature</span>
+                    <div class="px-seg" rata-role="segbpb"></div>
+                </div>
+                <div class="px-barpop-sec">
+                    <span class="px-barpop-t">Loop length</span>
+                    <div class="px-seg" rata-role="seglen"></div>
+                    <span class="px-barpop-hint">A take closes itself after this many bars. Free records until you press Rec again.</span>
+                </div>
+            </div>
+        </div>
+        <div class="px-hidden">
+            <div class="mod-enumerated" rata-role="sellen" data-sym="loop_bars">
+                <div class="mod-enumerated-selected">4 bars</div>
+                <div class="mod-enumerated-list">
+                    <div mod-role="enumeration-option" mod-parameter-value="0">Free</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="1">1 bar</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="2">2 bars</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="4">4 bars</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="8">8 bars</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="12">12 bars</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="16">16 bars</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="24">24 bars</div>
+                    <div mod-role="enumeration-option" mod-parameter-value="32">32 bars</div>
+                </div>
+            </div>
+            <div mod-role="input-control-port" mod-port-symbol="loop_bars"></div>
+            <div mod-role="input-control-port" mod-port-symbol="beats_per_bar"></div>
         </div>
         <div class="px-pill" rata-role="countpill" title="Count a bar in before the first take">Count-in</div>
         <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="count_in"></div></div>
@@ -124,26 +160,10 @@
                 </div>
 
                 <div class="px-drow" style="justify-content:center; margin-top:14px;">
-                    <span class="px-tlabel">Length</span>
-                    <div class="mod-enumerated px-sel" rata-role="sellen" data-sym="loop_bars" style="min-width:120px">
-                        <div class="mod-enumerated-selected">Free</div>
-                        <div class="mod-enumerated-list">
-                            <div mod-role="enumeration-option" mod-parameter-value="0">Free</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="1">1 bar</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="2">2 bars</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="4">4 bars</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="8">8 bars</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="12">12 bars</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="16">16 bars</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="24">24 bars</div>
-                            <div mod-role="enumeration-option" mod-parameter-value="32">32 bars</div>
-                        </div>
-                    </div>
-                    <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="loop_bars"></div></div>
                     <div class="hf-knob" title="Quantise"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_quantize"></div><span class="hf-knob-t">Quantise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_quantize"></span></div>
                     <div class="hf-knob" title="Overdub Feedback"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_feedback"></div><span class="hf-knob-t">Feedback</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_feedback"></span></div>
                 </div>
-                <div class="px-hint">Click a lane to arm it &mdash; Rec, Undo and Clear act on that track only; Play and Stop move everything, the loops and the drums together (use the per-track MUTE to pick what you hear). Play or Rec starts the transport; <b>Drums</b> in the header is the kit’s own on/off; with it off, <b>Click</b> gives you a metronome on every beat instead. Every take counts a bar in &mdash; the click is the only thing you hear while it does &mdash; then the loop and the groove both start from the top. Length closes the take automatically after that many bars; the lane counts the bars as it records. Click a recorded lane to play from that point, or drag its edges to trim &mdash; snapped to beats, hold Shift for a free drag.</div>
+                <div class="px-hint">Click a lane to arm it &mdash; Rec, Undo and Clear act on that track only; Play and Stop move everything, the loops and the drums together (use the per-track MUTE to pick what you hear). Play or Rec starts the transport; <b>Drums</b> in the header is the kit’s own on/off; with it off, <b>Click</b> gives you a metronome on every beat instead. Every take counts a bar in &mdash; the click is the only thing you hear while it does &mdash; then the loop and the groove both start from the top. The loop length (set from the bar counter in the header) closes the take automatically after that many bars; the lane counts the bars as it records. Click a recorded lane to play from that point, or drag its edges to trim &mdash; snapped to beats, hold Shift for a free drag.</div>
             </div>
 
             <!-- ══ DRUMS ══ -->
@@ -200,12 +220,19 @@
                     <span class="px-key-item"><span class="px-key-sw k4"></span>Accent</span>
                 </div>
 
+                <!-- The kit's own transport. Play starts the groove without
+                     moving the loops; Stop silences it (and the clock, if
+                     nothing else is playing). Both also write the Drums switch
+                     so the header pill agrees. -->
+                <div class="px-drow px-dtrans" style="justify-content:center; margin-top:14px;">
+                    <div class="px-tbtn play" rata-role="btndplay" title="Play the drums on their own"><span class="px-gly tri"></span>Play</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="drums_play"></div></div>
+                    <div class="px-tbtn" rata-role="btndstop" title="Stop the drums"><span class="px-gly square"></span>Stop</div><div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="drums_stop"></div></div>
+                </div>
                 <div class="px-drow" style="justify-content:center; margin-top:12px;">
                     <div class="hf-knob" title="Swing"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="swing"></div><span class="hf-knob-t">Swing</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="swing"></span></div>
                     <div class="hf-knob" title="Humanise"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="humanize"></div><span class="hf-knob-t">Humanise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="humanize"></span></div>
-                    <div class="hf-knob" title="Beats / Bar"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="beats_per_bar"></div><span class="hf-knob-t">Beats / Bar</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="beats_per_bar"></span></div>
                 </div>
-                <div class="px-hint">Click a cell to cycle rest → soft → normal → accent; right-click clears it. Editing takes the groove over from the factory pattern — Revert puts it back. Name it and press SAVE (or Enter) to keep it as one of your own; your grooves live in the list under <b>&#8801;</b> on every board.</div>
+                <div class="px-hint"><b>Play</b> here runs the kit on its own, without moving the loops; <b>Stop</b> silences it. Click a cell to cycle rest → soft → normal → accent; right-click clears it. Editing takes the groove over from the factory pattern — Revert puts it back. Name it and press SAVE (or Enter) to keep it as one of your own; your grooves live in the list under <b>&#8801;</b> on every board.</div>
             </div>
 
             <!-- ══ MIX ══ -->

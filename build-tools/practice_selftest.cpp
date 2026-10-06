@@ -61,7 +61,8 @@ enum {
     TRK3_TRIM_IN = 65, TRK3_TRIM_OUT = 66, TRK4_TRIM_IN = 67, TRK4_TRIM_OUT = 68,
     IN_R = 69, OUT_R = 70, MONO_SUM = 71,
     METRONOME = 72,
-    N_PORTS = 73
+    DRUMS_PLAY = 73, DRUMS_STOP = 74,
+    N_PORTS = 75
 };
 
 static constexpr double kFs    = 48000.0;
@@ -1394,6 +1395,64 @@ int main() {
         ::rmdir((home + "/.config").c_str());
         ::rmdir(home.c_str());
         if (oldHome) ::setenv("HOME", oldHomeS.c_str(), 1); else ::unsetenv("HOME");
+    }
+
+    // ── Drums on their own ───────────────────────────────────────────────────
+    // The Drums tab's Play and Stop move the kit and nothing else.
+    std::printf("\nDrums on their own\n");
+    {
+        Host hst; hst.open();
+        hst.ctl[RUN] = 0.0f;
+        hst.ctl[METRONOME] = 0.0f;
+        hst.ctl[COUNT_IN]  = 0.0f;
+        hst.run(kBlock);
+        const int64_t barLen = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+
+        // Nothing is running. Drums Play starts the kit and only the kit.
+        hst.trigger(DRUMS_PLAY);
+        hst.run(kBlock * 4);
+        std::vector<float> kit;
+        hst.run(barLen, &kit, true);
+        check(rms(kit) > 0.01f, "Drums Play starts the groove from a stopped box",
+              "rms " + std::to_string(rms(kit)));
+        check(std::lround(hst.ctl[OUT_STEP]) >= 0, "and the sequencer is moving",
+              "step " + std::to_string(hst.ctl[OUT_STEP]));
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 0, "without touching the loops",
+              "track 1 state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+
+        // Drums Stop with nothing else playing: silence, and the clock stops.
+        hst.trigger(DRUMS_STOP);
+        hst.run(static_cast<int64_t>(kFs * 0.2));
+        std::vector<float> quiet;
+        hst.run(barLen / 2, &quiet, true);
+        check(rms(quiet) < 1.0e-4f, "Drums Stop silences the kit", "rms " + std::to_string(rms(quiet)));
+        const float stepA = hst.ctl[OUT_STEP];
+        hst.run(barLen / 2);
+        check(hst.ctl[OUT_STEP] == stepA, "and the clock stops when nothing else is playing",
+              "step " + std::to_string(stepA) + " -> " + std::to_string(hst.ctl[OUT_STEP]));
+
+        // With a loop playing, Drums Stop leaves the loop alone.
+        hst.ctl[RUN] = 0.0f;
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 1; }, barLen * 2);
+        hst.run(barLen * 2);
+        hst.trigger(LOOP_REC);
+        runUntil(hst, [&]{ return std::lround(hst.ctl[OUT_TRK1_STATE]) == 3; }, barLen * 2);
+        hst.trigger(DRUMS_PLAY);
+        hst.run(kBlock * 4);
+        std::vector<float> both;
+        hst.run(barLen, &both, true);
+        check(rms(both) > 0.05f, "Drums Play over a playing loop adds the kit", "rms " + std::to_string(rms(both)));
+        hst.trigger(DRUMS_STOP);
+        hst.run(static_cast<int64_t>(kFs * 0.2));
+        std::vector<float> loopOnly;
+        hst.run(barLen, &loopOnly, true);
+        check(rms(loopOnly) > 0.01f && rms(loopOnly) < rms(both),
+              "Drums Stop takes the kit out and leaves the loop playing",
+              "rms " + std::to_string(rms(loopOnly)) + " (with kit " + std::to_string(rms(both)) + ")");
+        check(std::lround(hst.ctl[OUT_TRK1_STATE]) == 3, "the loop is still playing",
+              "state " + std::to_string(hst.ctl[OUT_TRK1_STATE]));
+        hst.close();
     }
 
     // ── A mono host still works ──────────────────────────────────────────────
