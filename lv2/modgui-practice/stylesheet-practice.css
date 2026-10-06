@@ -729,4 +729,4 @@
 .mod-pedal-guitaramp-practice{{{cns}}} .px-gv-list::-webkit-scrollbar-thumb { background:var(--acc); border-radius:6px; border:2px solid rgba(8,9,13,.9); }
 .mod-pedal-guitaramp-practice{{{cns}}} .px-gv-list::-webkit-scrollbar-button { width:0; height:0; display:none; }
 /* The voicing row has thirteen knobs with two-word names; give each the width its label needs. */
-.mod-pedal-guitaramp-practice{{{cns}}} .px-knobs .hf-knob { width:86px; }
+.mod-pedal-guitaramp-practice{{{cns}}} .px-knobs .hf-knob { width:82px; }
