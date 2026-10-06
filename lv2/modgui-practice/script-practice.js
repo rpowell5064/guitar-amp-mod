@@ -1319,6 +1319,11 @@ function (event, funcs) {
             $(this).toggleClass('on', on);
             setPort(icon, 'count_in', on ? 1 : 0);
         });
+        R(icon, 'metropill').on('click', function () {
+            var on = !$(this).hasClass('on');
+            $(this).toggleClass('on', on);
+            setPort(icon, 'metronome', on ? 1 : 0);
+        });
         R(icon, 'monopill').on('click', function () {
             var on = !$(this).hasClass('on');
             $(this).toggleClass('on', on);
@@ -1456,6 +1461,7 @@ function (event, funcs) {
         }
         if (sym === 'count_in') { R(icon, 'countpill').toggleClass('on', value > 0.5); return; }
         if (sym === 'mono_sum')  { R(icon, 'monopill').toggleClass('on', value > 0.5); return; }
+        if (sym === 'metronome') { R(icon, 'metropill').toggleClass('on', value > 0.5); return; }
 
         if (sym === 'beats_per_bar') { icon.data('px_bpb', Math.max(1, Math.round(value))); return; }
 

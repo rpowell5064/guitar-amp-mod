@@ -58,7 +58,7 @@ GROOVE = json.dumps({
 # symbol, value -- the state a real session would be in
 PORTS = [
     ("beats_per_bar", 4), ("tempo", 96), ("pattern", 21), ("run", 1),
-    ("count_in", 1), ("loop_bars", 4), ("drums_level", -3), ("drum_space", 40),
+    ("count_in", 1), ("metronome", 1), ("loop_bars", 4), ("drums_level", -3), ("drum_space", 40),
     ("out_trk1_state", 3), ("out_trk2_state", 3), ("out_trk3_state", 4),
     ("out_progress", 0.38), ("out_step", 11), ("out_undo_avail", 1),
     ("trk3_trim_in", 0.25), ("trk3_trim_out", 0.75),

@@ -57,7 +57,8 @@ enum {
     TRK1_TRIM_IN = 61, TRK1_TRIM_OUT = 62, TRK2_TRIM_IN = 63, TRK2_TRIM_OUT = 64,
     TRK3_TRIM_IN = 65, TRK3_TRIM_OUT = 66, TRK4_TRIM_IN = 67, TRK4_TRIM_OUT = 68,
     IN_R = 69, OUT_R = 70, MONO_SUM = 71,
-    N_PORTS = 72
+    METRONOME = 72,
+    N_PORTS = 73
 };
 
 static constexpr double kFs    = 48000.0;
@@ -162,6 +163,7 @@ struct Host {
         ctl[SNARE_DECAY] = 0.20f; ctl[SNARE_SNAPPY] = 60.0f;
         ctl[HAT_DECAY] = 0.45f; ctl[HAT_TONE] = 50.0f;
         ctl[COUNT_IN] = 0.0f;   // off unless a test asks for it
+        ctl[METRONOME] = 1.0f;  // the TTL default: on
         ctl[DRUM_SPACE] = 0.0f; // ditto: it would skew every drum level below
         ctl[TRK1_TRIM_OUT] = 1.0f; ctl[TRK2_TRIM_OUT] = 1.0f;
         ctl[TRK3_TRIM_OUT] = 1.0f; ctl[TRK4_TRIM_OUT] = 1.0f;
@@ -1212,6 +1214,101 @@ int main() {
         hst.close();
     }
 
+    // ── Metronome ────────────────────────────────────────────────────────────
+    // With the drums off, pressing Play or Record still gives the player a
+    // pulse: a click on every beat for as long as the box runs. The checks are
+    // that it is there, that it is ON THE BEAT (four a bar, not a free-running
+    // tick), that the toggle removes it, that Stop silences it, and that a
+    // drummer replaces it rather than playing over it.
+    std::printf("\nMetronome\n");
+    {
+        const int64_t barLen  = static_cast<int64_t>(kFs * 60.0 / 120.0 * 4.0);
+        const int64_t beatLen = barLen / 4;
+        // Count the onsets in a capture: a block whose energy jumps well above
+        // the previous one, with half a beat of refractory so one click's
+        // attack and body do not count twice.
+        auto onsets = [&](const std::vector<float>& v) {
+            int n = 0; int64_t last = -beatLen;
+            float prev = 0.0f;
+            for (size_t i = 0; i + kBlock <= v.size(); i += kBlock) {
+                float e = 0.0f;
+                for (int k = 0; k < kBlock; ++k) e += v[i + k] * v[i + k];
+                e /= float(kBlock);
+                if (e > 4.0f * prev + 1.0e-6f && int64_t(i) - last >= beatLen / 2) { ++n; last = int64_t(i); }
+                prev = e;
+            }
+            return n;
+        };
+
+        Host hst; hst.open();
+        hst.ctl[RUN] = 0.0f;                 // no drummer
+        hst.run(kBlock);
+        hst.startTransport();                // Play with the drums off
+        std::vector<float> click;
+        hst.run(barLen * 2, &click, true);
+        check(rms(click) > 0.002f, "Play with the drums off gives a click",
+              "rms " + std::to_string(rms(click)));
+        const int n2 = onsets(click);
+        check(n2 >= 7 && n2 <= 9, "and it clicks once a beat",
+              std::to_string(n2) + " onsets in two bars (want 8)");
+
+        // The toggle.
+        hst.ctl[METRONOME] = 0.0f;
+        hst.run(beatLen);                    // let the last click die away
+        std::vector<float> off;
+        hst.run(barLen, &off, true);
+        check(rms(off) < 1.0e-4f, "the toggle silences it",
+              "rms " + std::to_string(rms(off)));
+        hst.ctl[METRONOME] = 1.0f;
+        std::vector<float> back;
+        hst.run(barLen, &back, true);
+        check(rms(back) > 0.002f, "and brings it back mid-run",
+              "rms " + std::to_string(rms(back)));
+
+        // Stop means silence, the metronome included.
+        hst.trigger(LOOP_STOP);
+        hst.run(beatLen);
+        std::vector<float> stopped;
+        hst.run(barLen, &stopped, true);
+        check(rms(stopped) < 1.0e-4f, "Stop silences the metronome",
+              "rms " + std::to_string(rms(stopped)));
+
+        // Record from stopped: the count-in clicks first, then the take has
+        // the metronome under it. Either way there is a pulse the whole time.
+        hst.ctl[COUNT_IN] = 1.0f;
+        hst.trigger(LOOP_REC);
+        std::vector<float> take;
+        hst.run(barLen * 3, &take, true);
+        check(rms(take) > 0.002f, "Record from stopped: count-in then metronome, never silent",
+              "rms " + std::to_string(rms(take)));
+        int quietBars = 0;
+        for (int b = 0; b < 3; ++b) {
+            std::vector<float> bar(take.begin() + b * barLen, take.begin() + (b + 1) * barLen);
+            if (rms(bar) < 1.0e-4f) ++quietBars;
+        }
+        check(quietBars == 0, "every bar of it has a pulse",
+              std::to_string(quietBars) + " silent bar(s) of 3");
+
+        // A drummer takes the beat over: switching the drums on must not add
+        // the click on top of the groove, and the groove must be audible.
+        hst.ctl[RUN] = 1.0f;
+        hst.run(kBlock);
+        std::vector<float> groove;
+        hst.run(barLen * 2, &groove, true);
+        check(rms(groove) > 0.01f, "the groove plays with the drums on",
+              "rms " + std::to_string(rms(groove)));
+        // Same groove, metronome toggled OFF: if the click had been riding on
+        // top, the two captures would differ.
+        hst.ctl[METRONOME] = 0.0f;
+        hst.run(kBlock);
+        std::vector<float> grooveNoMetro;
+        hst.run(barLen * 2, &grooveNoMetro, true);
+        check(std::fabs(rms(groove) - rms(grooveNoMetro)) < 0.25f * rms(groove),
+              "and the metronome is not clicking over it",
+              "rms " + std::to_string(rms(groove)) + " vs " + std::to_string(rms(grooveNoMetro)));
+        hst.close();
+    }
+
     // ── A mono host still works ──────────────────────────────────────────────
     // Every pedalboard saved before stereo existed connects only the left pair.
     // The right ports are connectionOptional and the plugin is handed nullptr
@@ -1386,6 +1483,9 @@ int main() {
         hst.ctl[COUNT_IN]  = 0.0f;
         hst.ctl[LOOP_BARS] = 0.0f;
         hst.ctl[RUN]       = 0.0f;          // no drummer
+        // ...and no metronome either: with the drums off the box clicks by
+        // default (its own section above), and this section is about the KIT.
+        hst.ctl[METRONOME] = 0.0f;
         hst.run(kBlock);
         hst.startTransport();               // but the box IS running
 

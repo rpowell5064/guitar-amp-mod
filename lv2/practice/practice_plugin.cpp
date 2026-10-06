@@ -145,6 +145,9 @@ enum PracticePorts {
     // Fold the output to mono. For a mono rig: without it a stereo room and a
     // stereo loop lose level and comb when the desk sums them.
     P_MONO_SUM,
+    // Metronome (2026-10-06). With the Drums switch off the box clicks on
+    // every beat while the transport runs. Appended, as everything is.
+    P_METRONOME,        // toggled, default on
     P_N_PORTS
 };
 
@@ -200,6 +203,8 @@ struct PracticePlugin {
     std::string              patternJson;      // last pattern the editor sent
     int                      sentPattern = -1; // built-in groove last pushed to the editor
     int                      lastCountBeat = -1;  // last count-in beat already clicked
+    int                      lastMetroBeat = -1;  // last beat the metronome clicked on
+    bool                     wasMetro      = false; // metronome edge (see run())
     std::string              lastStatus;          // last panel state pushed
     int64_t                  lastStatusAt = 0;
     float                    countInBeats = 0.0f;
@@ -716,6 +721,13 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         } else {
             // Off means off, tails included -- the same silence Stop gives.
             p->drums.stopSound();
+            // ...unless the metronome is about to take the beat over, in which
+            // case the bus has to stay up or the click goes down with the kit.
+            // Choke what is ringing instead, so the handover is a short fade.
+            if (portBool(p, P_METRONOME, true) && p->clk.running() && !p->drumsStopped) {
+                p->drums.chokeKit();
+                p->drums.resumeSound();
+            }
         }
     }
 
@@ -845,7 +857,8 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         // drums a block out from the loop.
         p->looper.playAllPressed(p->clk);
         p->drumsStopped = false;
-        if (p->drumsEnabled) p->drums.resumeSound();
+        // The kit bus carries the metronome too, so it comes back for either.
+        if (p->drumsEnabled || portBool(p, P_METRONOME, true)) p->drums.resumeSound();
     }
     if (stopEdge) {
         p->looper.stopAllPressed(p->clk);
@@ -943,6 +956,7 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
         // bar position is the plugin's own -- so there is nothing to fight.
         p->clk.setPositionBeats(0.0);
         p->drums.restartPattern(p->clk);
+        p->lastMetroBeat = -1;        // beat one of the take gets its click
     }
     // Every lap, put the groove back on the loop's own downbeat. Once a loop
     // exists IT is the clock that matters: the tracks are fixed audio and the
@@ -952,7 +966,39 @@ static void practice_run(LV2_Handle h, uint32_t nframes) {
     else if (p->looper.consumeWrap()) {
         p->clk.setPositionBeats(0.0);
         p->drums.restartPattern(p->clk);
+        p->lastMetroBeat = -1;
     }
+
+    // ── Metronome ────────────────────────────────────────────────────────────
+    // No drummer, but still a pulse. With the Drums switch off the box clicks
+    // on every beat while the transport runs -- recording, overdubbing or just
+    // playing along -- accented on the one. The same two voices as the
+    // count-in, so the count hands over to the metronome without changing
+    // sound, and it rides the kit bus so Drums Level is its level too. The
+    // count-in owns the beats while it runs; the groove owns them whenever
+    // there IS a drummer, so the two never click over each other. Fired at
+    // block granularity, like the count.
+    const bool metro = portBool(p, P_METRONOME, true) && !p->drumsEnabled &&
+                       !p->drumsStopped && p->clk.running() && !counting && !bypassed;
+    if (metro) {
+        if (!p->wasMetro) {
+            // Coming in after a Stop, or switched on mid-run: the bus may be
+            // down. resumeSound is idempotent when it is already up.
+            p->drums.resumeSound();
+            p->lastMetroBeat = -1;
+        }
+        const int beat = static_cast<int>(std::floor(p->clk.beatPosition() + 1.0e-9));
+        if (beat != p->lastMetroBeat) {
+            p->lastMetroBeat = beat;
+            const int  bpb      = std::max(1, p->clk.beatsPerBar());
+            const bool downbeat = (beat % bpb) == 0;
+            p->drums.triggerNow(downbeat ? INST_SIDESTICK : INST_HAT_CLOSED,
+                                downbeat ? 1.0f : 0.6f);
+        }
+    } else {
+        p->lastMetroBeat = -1;
+    }
+    p->wasMetro = metro;
     // Sense the guitar before the kit is rendered: the detector must see the
     // dry playing, not the mix it is about to be folded into.
     p->drums.senseGuitar(in, n);

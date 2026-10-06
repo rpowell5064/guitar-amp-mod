@@ -44,6 +44,8 @@
         </div>
         <div class="px-pill" rata-role="countpill" title="Count a bar in before the first take">Count-in</div>
         <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="count_in"></div></div>
+        <div class="px-pill" rata-role="metropill" title="Metronome: a click on every beat while the box runs with the drums off">Click</div>
+        <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="metronome"></div></div>
         <div class="px-pill" rata-role="monopill" title="Fold the output to mono, for a mono rig">Mono</div>
         <div class="px-hidden"><div mod-role="input-control-port" mod-port-symbol="mono_sum"></div></div>
         <div class="px-pill" rata-role="runpill" title="Drums on or off. Play and Stop run the whole box.">Drums</div>
@@ -141,7 +143,7 @@
                     <div class="hf-knob" title="Quantise"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_quantize"></div><span class="hf-knob-t">Quantise</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_quantize"></span></div>
                     <div class="hf-knob" title="Overdub Feedback"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="loop_feedback"></div><span class="hf-knob-t">Feedback</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="loop_feedback"></span></div>
                 </div>
-                <div class="px-hint">Click a lane to arm it &mdash; Rec, Undo and Clear act on that track only; Play and Stop move everything, the loops and the drums together (use the per-track MUTE to pick what you hear). Play or Rec starts the transport; <b>Drums</b> in the header is the kit’s own on/off. Every take counts a bar in &mdash; the click is the only thing you hear while it does &mdash; then the loop and the groove both start from the top. Length closes the take automatically after that many bars; the lane counts the bars as it records. Click a recorded lane to play from that point, or drag its edges to trim &mdash; snapped to beats, hold Shift for a free drag.</div>
+                <div class="px-hint">Click a lane to arm it &mdash; Rec, Undo and Clear act on that track only; Play and Stop move everything, the loops and the drums together (use the per-track MUTE to pick what you hear). Play or Rec starts the transport; <b>Drums</b> in the header is the kit’s own on/off; with it off, <b>Click</b> gives you a metronome on every beat instead. Every take counts a bar in &mdash; the click is the only thing you hear while it does &mdash; then the loop and the groove both start from the top. Length closes the take automatically after that many bars; the lane counts the bars as it records. Click a recorded lane to play from that point, or drag its edges to trim &mdash; snapped to beats, hold Shift for a free drag.</div>
             </div>
 
             <!-- ══ DRUMS ══ -->

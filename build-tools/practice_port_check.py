@@ -62,6 +62,7 @@ SYMBOLS = {
     "P_TRK1_TRIM_IN": "trk1_trim_in", "P_TRK1_TRIM_OUT": "trk1_trim_out", "P_TRK2_TRIM_IN": "trk2_trim_in", "P_TRK2_TRIM_OUT": "trk2_trim_out", "P_TRK3_TRIM_IN": "trk3_trim_in", "P_TRK3_TRIM_OUT": "trk3_trim_out", "P_TRK4_TRIM_IN": "trk4_trim_in", "P_TRK4_TRIM_OUT": "trk4_trim_out",
     # Stereo, appended at the end so existing port indices never move.
     "P_IN_R": "in_r", "P_OUT_R": "out_r", "P_MONO_SUM": "mono_sum",
+    "P_METRONOME": "metronome",
 }
 
 errors = []
