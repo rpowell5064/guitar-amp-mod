@@ -205,6 +205,9 @@ int main(int argc, char** argv) {
             rms[side] = 20 * std::log10(std::sqrt(sq / y.size()) + 1e-12);
             bands(y, RATE, fc, NB, db[side]);
         }
+        if (getenv("HF_ABS")) {   // absolute band levels (dBFS) at bass .1 and .9 instead of the delta
+            printf("%-4d abs@bass.1 ", k); for (int b = 0; b < NB; ++b) printf("%6.1f", db[0][b]); printf("  rms %6.1f\n", rms[0]);
+            printf("%-4d abs@bass.9 ", k); for (int b = 0; b < NB; ++b) printf("%6.1f", db[1][b]); printf("  rms %6.1f\n", rms[1]); fflush(stdout); continue; }
         printf("%-4d %-26s      ", k, "");
         for (int b = 0; b < NB; ++b) printf("%+6.1f", db[1][b] - db[0][b]);
         printf("  %6.1f %6.1f\n", rms[0], rms[1]); fflush(stdout);
