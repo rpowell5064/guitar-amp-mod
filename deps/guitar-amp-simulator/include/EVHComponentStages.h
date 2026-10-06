@@ -688,6 +688,7 @@ struct ShelfV {
     }
     void  reset() noexcept { hp_.reset(); }
     float process(float x) noexcept { return gLo_ * x + dG_ * hp_.process(x); }
+    float peek(float x) const noexcept { return gLo_ * x + dG_ * hp_.peek(x); }
     float gLo_ = 1.0f, dG_ = 0.0f;
     BiquadFilter hp_;
 };

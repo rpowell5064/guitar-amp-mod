@@ -83,6 +83,11 @@ private:
     // the flux domain that boost is excessive, and far less of it is right.
     // (derivation kept out of the public tree)
     float zResDb_  = 2.0f;
+    // HF loop terms (fit20/21/22). 2026-10-06, re-fitted over the seven captures once the power stage's feedback loop
+    // was closed without its sample delay and the phase inverter solved as a pair: the HF loss the loop needs now sits
+    // in the OT corner (22 k -> 12 k) and a smaller reflected-load HF rise (8 -> 5.3 dB); the stability lag is off
+    // (200 k). Mean shape 1.75 -> 1.27 dB, worst 2.73 -> 1.89.
+    double otHfHz_ = 12e3, zHfDb_ = 5.33, nfbStabHz_ = 200e3;
     double fluxSatV_ = 56.6;   // fit3: OT core saturation, peak volts at 40 Hz (100 W into 16 ohms)
     float  paDrive_ = 0.30f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED: master .6 kept 9.0/7.7/5.2 dB of the stack's 13.5/10.8/8.3 (80/125/200 Hz) at x1.0; 12.2/9.6/7.1 at x0.3. The twins were driving their
                                    //       power section harder than the real amp at the same MASTER (the stack's bass

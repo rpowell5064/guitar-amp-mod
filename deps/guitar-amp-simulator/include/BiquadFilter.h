@@ -25,6 +25,12 @@ public:
         s2 = co.b2 * xd - co.a2 * y;
         return static_cast<float>(y);
     }
+    // The output this sample WOULD have for x, without advancing (a delay-free loop needs the
+    // memory term of a filter chain before the input that closes the loop is known).
+    float peek(float x) const noexcept { return static_cast<float>(co.b0 * double(x) + s1); }
+    struct State { double s1, s2; };
+    State getState() const noexcept { return { s1, s2 }; }
+    void  setState(const State& st) noexcept { s1 = st.s1; s2 = st.s2; }
 
 private:
     BiquadCoeffs co;

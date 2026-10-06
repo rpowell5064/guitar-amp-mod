@@ -185,10 +185,12 @@ void MarshallPlexiComponentModel::buildStages() noexcept {
             c.ts.prepare(fs_, tp);
         }
         c.coupPI.prepare(fs_, 22e-9, kZthStack + 33e3, 1e6);   // .022 into the 1M grid leak
-        c.pa.prepare(fs_, plexiPowerParams(rb.PI, rb.B, rb.screen, idleB, raa_, double(presence_), zResDb_));
+        { auto pp = plexiPowerParams(rb.PI, rb.B, rb.screen, idleB, raa_, double(presence_), zResDb_);
+          pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_; c.pa.prepare(fs_, pp); }
         if (ci == 0) endB_.pa = c.pa.opPoint();
         c.pa.copyLut(c.lutB);
-        c.pa.prepare(fs_, plexiPowerParams(ra.PI, ra.B, ra.screen, idleA, raa_, double(presence_), zResDb_));
+        { auto pp = plexiPowerParams(ra.PI, ra.B, ra.screen, idleA, raa_, double(presence_), zResDb_);
+          pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_; c.pa.prepare(fs_, pp); }
         if (ci == 0) endA_.pa = c.pa.opPoint();
         c.pa.setPresence(presence_);   // inert (presDepth 0): presence is the NFB split
         c.pa.setSagDepth(sag_);
@@ -362,6 +364,9 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit5")     { idleMa_ = value;      rebuildAll(); }
     else if (id == "fit6")     { raa_ = value;         rebuildAll(); }
     else if (id == "fit7")     { zResDb_ = value;     rebuildAll(); }   // lab: reflected LF resonance depth (dB)
+    else if (id == "fit20")    { otHfHz_ = value;     rebuildAll(); }   // lab: OT HF corner
+    else if (id == "fit21")    { zHfDb_ = value;      rebuildAll(); }   // lab: reflected-load HF rise (dB)
+    else if (id == "fit22")    { nfbStabHz_ = value;  rebuildAll(); }   // lab: loop stability lag
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 

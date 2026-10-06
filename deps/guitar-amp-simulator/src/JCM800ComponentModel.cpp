@@ -56,9 +56,9 @@ PushPullPowerV::Params jcmPowerParams() {
     // â”€â”€ OT + speaker load (same estimate class as the EVH's) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     // These four are ESTIMATE-class (no OT/speaker data on the drawings) and
     // are therefore calibrated against the hardware probe, as the EVH's were.
-    p.otLfHz = 30.0;  p.otHfHz = 22e3;
+    p.otLfHz = 30.0;  p.otHfHz = 12e3;      // overridden by the model's otHfHz_ (fit20); see the header
     p.zResHz = 110.0; p.zResDb = 11.0; p.zResQ = 0.9;
-    p.zHfHz  = 3000.0; p.zHfDb = 8.0;
+    p.zHfHz  = 3000.0; p.zHfDb = 5.33;     // overridden by the model's zHfDb_ (fit21)
     // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
     // 100 W quad EL34 into the 16 ohm tap -> sqrt(2*100*16) = 56.6 V peak. The old fixed-voltage limit
     // sat far below this, so the core saturated from a fraction of rated power.
@@ -112,7 +112,7 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             p.R4 += kZthStack;
             c.ts.prepare(fs_, p);
         }
-        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); }
+        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); }
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -205,10 +205,14 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
     else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit3")     { fluxSatV_ = value;   // lab: OT core saturation, peak volts at 40 Hz
-        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_;
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_;
             pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
     else if (id == "fit2")     { zResDb_  = value;   // lab: OT low-resonance depth (dB)
-        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_;
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_;
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
+    else if (id == "fit20" || id == "fit21" || id == "fit22") {   // lab: HF loop terms (OT corner, load HF rise, stability lag)
+        if (id == "fit20") otHfHz_ = value; else if (id == "fit21") zHfDb_ = value; else nfbStabHz_ = value;
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_;
             pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // The 2203 has no channel switch and no resonance control.

@@ -126,7 +126,7 @@ private:
     // compensate, which is why correcting saturation alone first made things worse — it had
     // been masking this. (derivation kept out of the public tree)
     double otHfHz_ = 80e3, zHfDb_ = 12.0, zResDb_ = 2.0, bplus_ = 470.0, idleMa_ = 35.0;
-    double nfbStabHz_ = 60e3, iaScale_ = 2.2;   // fit6 / fit7
+    double nfbStabHz_ = 200e3, iaScale_ = 2.2;  // fit6 / fit7 — 2026-10-06: the stability lag is off (60 k -> 200 k) now the loop is closed without a delay; refit 2.06 -> 1.98
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 56.6, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; rated-output anchor for the 100 W core)
     bool   biasShift_ = true;                    // fit11 (lab only)

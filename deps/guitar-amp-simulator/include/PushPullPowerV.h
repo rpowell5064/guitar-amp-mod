@@ -3,6 +3,8 @@
 #include "BiquadFilter.h"
 #include "SpeakerModel.h"
 #include <cmath>
+#include <cstdlib>
+#include <cstdio>
 #include <algorithm>
 
 #ifndef M_PI
@@ -151,6 +153,9 @@ public:
             1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
         c89HP_.setCoeffs(Filters::highpass1pole(
             1.0 / (2.0 * M_PI * 0.047e-6 * 1e6), fs_));
+        // Lab A/B only: EVHCOMP_IMPLICIT=0 restores the one-sample-delayed feedback loop.
+        if (const char* e = std::getenv("EVHCOMP_IMPLICIT")) implicitLoop_ = std::atof(e) != 0.0;
+        if (std::getenv("EVHCOMP_JOINTONLY")) jointOnly_ = true;        // lab: joint LTP solve, delayed loop
         piCapActive_ = p_.piPlateCap > 0.0;
         if (piCapActive_) {
             const double zpA = 1.0 / (1.0 / p_.ltpRaA + 1.0 / 62.5e3);
@@ -173,6 +178,7 @@ public:
         otLP_.setCoeffs(Filters::lowpass1pole(p_.otHfHz, fs_));
         zRes_.setCoeffs(Filters::peaking(p_.zResHz, p_.zResDb, p_.zResQ, fs_));
         zHF_.setCoeffs(Filters::highshelf(p_.zHfHz, p_.zHfDb, fs_));
+        recalcLoopGains();
         fluxPhiMax_ = p_.fluxSatV / (2.0 * M_PI * p_.fluxRefHz);   // peak volt-seconds at saturation
         fluxLeak_   = std::exp(-2.0 * M_PI * 20.0 / fs_);          // 20 Hz leak = winding resistance
         spkZ_.prepare(fs_, loadRow()); dynLoad_ = p_.dynLoad;
@@ -184,7 +190,7 @@ public:
 
     void reset() noexcept {
         IaOpA_ = IaOpB_ = ltpIaBiasA_;
-        nfbPrev_ = 0.0f;
+        nfbPrev_ = 0.0f; loopL_ = 0.0;
         scrEnv_ = 2.0 * p_.idleTarget * p_.screenFrac;
         scrIdle_ = scrEnv_;
         scrFactor_ = 1.0;
@@ -206,6 +212,7 @@ public:
         p_.nfbLoDiv = loDiv; p_.nfbDiv = hiDiv; p_.nfbLoHz = hz;
         nfbLoActive_ = loDiv > 0.0 && hz > 0.0;
         if (nfbLoActive_ && fs_ > 0.0) nfbLoShelf_.prepare(fs_, loDiv, hiDiv, hz);
+        if (fs_ > 0.0) recalcLoopGains();
     }
     void setResonance(float v) noexcept { resonance_ = std::clamp(v, 0.0f, 1.0f); recalcNfb(); }
     void setSagDepth (float v) noexcept { sagDepth_  = std::clamp(v, 0.0f, 1.0f); }
@@ -235,24 +242,169 @@ public:
     }
 
     // vin: PI input volts. Returns speaker-node volts.
+    //
+    // THE LOOP IS CLOSED WITHOUT A SAMPLE DELAY (2026-10-06). The feedback chain's state holds
+    // the speaker node up to the previous sample; its output for THIS sample is its memory term
+    // plus beta0 x spk[n], where beta0 is the chain's instantaneous feedthrough. The stage is
+    // evaluated at the delayed guess, its small-signal gain D = d(spk)/d(nfb) is read at that
+    // operating point (LTP coupling, grid clamp, valve table, output-path feedthrough), and the
+    // linear implicit solution spk = (spk1 - L*spk[n-1]) / (1 - L), L = D*beta0, replaces the
+    // delayed one. The chain is then advanced with the true output. With negative feedback L < 0,
+    // so the division is always well conditioned. Why: a one-sample delay at the oversampled
+    // rate is 40 degrees of extra lag at 20 kHz, and with the loop gain these amps really have at
+    // HF (the speaker's inductive rise is inside the loop) the explicit loop oscillated at 16-22
+    // kHz whenever the presence control let the HF feedback through; the real circuits do not.
+    // EVHCOMP_IMPLICIT=0 restores the delayed loop (lab A/B).
     double process(double vin) noexcept {
-        const float nfbRaw = c89HP_.process(nfbStabLP_.process(
-            resoShelf_.process(presShelf_.process(nfbPrev_ * float(p_.nfbTap)))));
-        const double nfb = nfbLoActive_ ? double(nfbLoShelf_.process(nfbRaw))
-                                        : nfbRaw * p_.nfbDiv;
+        double nfb;
+        if (!implicitLoop_) {
+            const float nfbRaw = c89HP_.process(nfbStabLP_.process(
+                resoShelf_.process(presShelf_.process(nfbPrev_ * float(p_.nfbTap)))));
+            nfb = nfbLoActive_ ? double(nfbLoShelf_.process(nfbRaw)) : nfbRaw * p_.nfbDiv;
+        } else {
+            // memory term of the chain, evaluated without advancing it (the real chain advances
+            // with the true output below)
+            const float raw = c89HP_.peek(nfbStabLP_.peek(resoShelf_.peek(presShelf_.peek(0.0f))));
+            const double mem = nfbLoActive_ ? double(nfbLoShelf_.peek(raw)) : raw * p_.nfbDiv;
+            nfb = mem + beta0_ * nfbPrev_;        // = the delayed chain output (linear chain)
+        }
 
         const double vgA = vin * p_.piInDiv;
         const double vgB = -nfb;    // secondary polarity chosen so the loop is negative
         double IaA = IaOpA_, IaB = IaOpB_;
-        for (int it = 0; it < std::max(1, p_.ltpIters); ++it) {
-            IaA = ltpSolveSide(vgA, IaA, IaB, p_.ltpRaA);
-            IaB = ltpSolveSide(vgB, IaB, IaA, p_.ltpRaB);
+        if (implicitLoop_) {
+            ltpSolveJoint(vgA, vgB, IaA, IaB);
+        } else {
+            for (int it = 0; it < std::max(1, p_.ltpIters); ++it) {
+                IaA = ltpSolveSide(vgA, IaA, IaB, p_.ltpRaA);
+                IaB = ltpSolveSide(vgB, IaB, IaA, p_.ltpRaB);
+            }
         }
         IaOpA_ = IaA; IaOpB_ = IaB;
-        double gA = c118HP_.process(float(p_.ltpVcc - IaA * p_.ltpRaA - ltpVpBiasA_));
-        double gB = c119HP_.process(float(p_.ltpVcc - IaB * p_.ltpRaB - ltpVpBiasB_));
+        double dgA = 0.0, dgB = 0.0;
+        if (implicitLoop_) {                                      // every sample: a held Jacobian leaves HF junk on clean paths
+            // LTP small-signal response of both plates to the feedback grid: the pair's own
+            // Jacobian at the solved point (one valve evaluation per side), coupled through the
+            // shared tail. gB = dIaB/dvgB on its own, cB = dIaB/dIaA, cA = dIaA/dIaB.
+            // The pair is solved jointly (ltpSolveJoint), so a feedback step moves BOTH plates within
+            // the sample: the coupled partials through the shared tail. gB = dIaB/dvgB on its own,
+            // cB = dIaB/dIaA, cA = dIaA/dIaB.
+            double gA_, cA, gB_, cB;
+            ltpLinearize(vgA, IaA, IaB, p_.ltpRaA, gA_, cA);
+            ltpLinearize(vgB, IaB, IaA, p_.ltpRaB, gB_, cB);
+            const double den  = 1.0 - cA * cB;
+            const double dIaB = (std::abs(den) > 1e-6) ? gB_ / den : gB_;
+            const double dIaA = cA * dIaB;
+            dgA = -dIaA * p_.ltpRaA;            // raw plate volts per volt of vgB (the plate filters run inside each pass)
+            dgB = -dIaB * p_.ltpRaB;
+        }
+        const double rawA = p_.ltpVcc - IaA * p_.ltpRaA - ltpVpBiasA_;
+        const double rawB = p_.ltpVcc - IaB * p_.ltpRaB - ltpVpBiasB_;
+        if (!implicitLoop_ || jointOnly_) {
+            double gA = c118HP_.process(float(rawA));
+            double gB = c119HP_.process(float(rawB));
+            if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
+            const double out = driveOutput(gA, gB);
+            if (jointOnly_) {   // the delayed chain must still advance (the implicit branch used peek)
+                const float raw = c89HP_.process(nfbStabLP_.process(
+                    resoShelf_.process(presShelf_.process(float(out) * float(p_.nfbTap)))));
+                if (nfbLoActive_) nfbLoShelf_.process(raw);
+            }
+            return out * p_.outTrim;
+        }
+
+        // Pass 1 at the delayed guess, with every state it touches snapshotted first.
+        const LoopState snap = saveLoopState();
+        double gA = c118HP_.process(float(rawA));
+        double gB = c119HP_.process(float(rawB));
         if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
-        return driveOutput(gA, gB) * p_.outTrim;
+        const double spkPrev = nfbPrev_;
+        const double spk1 = driveOutput(gA, gB);                 // F at the delayed guess
+        // Secant derivative of the stage along the direction the feedback will actually move:
+        // a lean pass at the chain's response to spk1 itself.
+        const double d1 = beta0_ * (spk1 - spkPrev);
+        double spkStar = spk1;
+        {
+            if (std::abs(d1) > 1e-7 * (1.0 + std::abs(spk1))) {   // a measurable step: re-measure the secant
+                restoreLoopState(snap);
+                const double spk2 = driveOutputLean(c118Peek(rawA - dgA * d1), c119Peek(rawB - dgB * d1));
+                const double D = (spk2 - spk1) / d1;              // d(spk)/d(nfb) across the real step
+                loopL_ = std::clamp(D * beta0_, -30.0, 0.0);        // negative feedback: L <= 0 (a positive secant is a clipping artefact)
+            }
+            spkStar = (spk1 - loopL_ * spkPrev) / (1.0 - loopL_);
+        }
+        const double dNfb = beta0_ * (spkStar - spkPrev);        // the feedback the stage should have seen
+
+        // Final pass: the same sample again from the snapshot, at the implicit feedback, so every
+        // signal-path state (plate filters, valve table, OT path, core flux) is advanced
+        // consistently. The LTP is linearised about its solve; the slow envelopes (bias network,
+        // cathode average, screen sag) keep their first-pass advance; the driver keeps its ratio.
+        restoreLoopState(snap);
+        double spk = driveOutputLean(c118Peek(rawA - dgA * dNfb), c119Peek(rawB - dgB * dNfb));
+        {
+            // The implicit solution lies between the delayed guess and the previous output; a lean
+            // pass landing well outside that bracket means the linearised PI step failed (the output
+            // tubes in gross non-linearity, where tiny grid moves swing a difference of two large
+            // currents). That sample is then the delayed loop's own: the stage at the guess.
+            const double lo = std::min(std::min(spk1, spkPrev), spkStar), hi = std::max(std::max(spk1, spkPrev), spkStar);
+            const double m  = 0.5 * std::abs(spk1 - spkPrev) + 0.1 * std::abs(spk1) + 1e-6;
+            if (spk < lo - m || spk > hi + m) {
+                ++loopFallbacks_;
+                restoreLoopState(snap);
+                spk = driveOutputLean(c118Peek(rawA), c119Peek(rawB));
+            }
+        }
+        nfbPrev_ = float(spk);
+        const float raw = c89HP_.process(nfbStabLP_.process(
+            resoShelf_.process(presShelf_.process(float(spk) * float(p_.nfbTap)))));
+        if (nfbLoActive_) nfbLoShelf_.process(raw);
+        return spk * p_.outTrim;
+    }
+    struct LoopState {
+        BiquadFilter::State c118, c119, piA, piB, zHF, zRes, otLP, otHP;
+        double fluxInt, cathShift;
+    };
+    LoopState saveLoopState() const noexcept {
+        return { c118HP_.getState(), c119HP_.getState(), piCapA_.getState(), piCapB_.getState(),
+                 zHF_.getState(), zRes_.getState(), otLP_.getState(), otHP_.getState(), fluxInt_, cathShiftLast_ };
+    }
+    void restoreLoopState(const LoopState& s) noexcept {
+        c118HP_.setState(s.c118); c119HP_.setState(s.c119); piCapA_.setState(s.piA); piCapB_.setState(s.piB);
+        zHF_.setState(s.zHF); zRes_.setState(s.zRes); otLP_.setState(s.otLP); otHP_.setState(s.otHP);
+        fluxInt_ = s.fluxInt;
+    }
+    // The lean passes move the PI plates by a LINEARISED amount; a hard slew can ask for more
+    // swing than the valve has, so the plate is held to its physical range (cut-off at the rail,
+    // saturation at 1 % of the rail across the load) before the plate filters.
+    double c118Peek(double rawA) noexcept {
+        rawA = std::clamp(rawA, p_.ltpVcc * 0.01 - ltpVpBiasA_, p_.ltpVcc - ltpVpBiasA_);
+        double g = c118HP_.process(float(rawA));
+        if (piCapActive_) g = piCapA_.process(float(g));
+        return g;
+    }
+    double c119Peek(double rawB) noexcept {
+        rawB = std::clamp(rawB, p_.ltpVcc * 0.01 - ltpVpBiasB_, p_.ltpVcc - ltpVpBiasB_);
+        double g = c119HP_.process(float(rawB));
+        if (piCapActive_) g = piCapB_.process(float(g));
+        return g;
+    }
+    // The signal path of driveOutput() only, at the implicit feedback: grid clamp, valve table,
+    // OT path and core flux. biasShift_/cathShift/scrFactor_ keep their first-pass values (slow
+    // envelopes; the guess-to-solution difference is one sample's worth of change) and the
+    // dynamic driver keeps its first-pass ratio.
+    double driveOutputLean(double gA, double gB) noexcept {
+        gA = gridClamp(gA) - biasShift_ - cathShiftLast_;
+        gB = gridClamp(gB) - biasShift_ - cathShiftLast_;
+        const double iP = lut(gA) * p_.imbalance;
+        const double iN = lut(gB);
+        double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
+        if (dynLoad_) spk *= zRatio_;
+        spk = zHF_.process(zRes_.process(float(spk)));
+        spk = otLP_.process(otHP_.process(float(spk)));
+        fluxInt_ = fluxInt_ * fluxLeak_ + spk / fs_;
+        spk *= fluxGain_;                       // the core gain of pass 1 (flux moves slowly; no tanh here)
+        nfbPrev_ = float(spk);
+        return spk;
     }
 
     // Externally driven output stage (2026-09-12, SVT: cathodyne + 12BH7 drivers
@@ -309,8 +461,10 @@ private:
             cathShift = (cathAvg_ - cathIdle_) * p_.cathodeBiasR;
             if (cathShift < 0.0) cathShift = 0.0;
         }
+        cathShiftLast_ = cathShift;
         gA = gridClamp(gA) - biasShift_ - cathShift;
         gB = gridClamp(gB) - biasShift_ - cathShift;
+        gEffA_ = gA; gEffB_ = gB;
 
         const double iP = lut(gA) * p_.imbalance;
         const double iN = lut(gB);
@@ -318,17 +472,27 @@ private:
         cathLast_ = (2.0 * outIdle_ * p_.tubesPerSide + iP / std::max(1e-9, p_.imbalance) + iN) * (1.0 + p_.screenFrac);
 
         // Screen sag: droppers + reservoir, output following ~Vg2^1.5.
+        // scrI is the stage's WHOLE screen current (lut_ is a side × tubesPerSide), but the
+        // dropper is one resistor PER TUBE, so the droop a tube sees is its own current × R:
+        // the conducting side's per-tube share. In class AB the cut-off side adds ~nothing, so
+        // the sum of sides ≈ the conducting side, divided by the tubes on it. (Until 2026-10-05
+        // the whole stage's current ran through one tube's resistor — a quad drooped four times
+        // the circuit, 6 dB of static level at the drawn 1k and 16 dB at sag .6.)
         {
             const double scrI = (std::abs(iP) + std::abs(iN)
                                + 2.0 * outIdle_ * p_.tubesPerSide) * p_.screenFrac;
             scrEnv_ += (scrI > scrEnv_ ? (1.0 - sagAtk_) : (1.0 - sagRel_)) * (scrI - scrEnv_);
-            const double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) * p_.screenR)
+            const double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) / p_.tubesPerSide * p_.screenR)
                                * (sagDepth_ / 0.3);
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / p_.vg2), 1.5);
         }
 
         double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
-        if (dynLoad_) spk = spkZ_.loadVolts(spk, p_.spk.vDriver);   // Phase 5: the driver's large-signal behaviour (small-signal matched out)
+        if (dynLoad_) {
+            const double before = spk;
+            spk = spkZ_.loadVolts(spk, p_.spk.vDriver);   // Phase 5: the driver's large-signal behaviour (small-signal matched out)
+            zRatio_ = (std::abs(before) > 1e-9) ? spk / before : 1.0;   // the lean second pass reuses it
+        }
         spk = zHF_.process(zRes_.process(float(spk)));               // the amp's anchored reflected-impedance curve, both ways
         spk = otLP_.process(otHP_.process(float(spk)));
         // ── OT CORE SATURATION, IN THE FLUX DOMAIN (rewritten 2026-09-26) ────────
@@ -353,7 +517,8 @@ private:
         {
             fluxInt_ = fluxInt_ * fluxLeak_ + spk / fs_;          // volts -> volt-seconds
             const double ph = std::abs(fluxInt_) / fluxPhiMax_;
-            if (ph > 1e-6) spk *= std::tanh(ph) / ph;
+            fluxGain_ = (ph > 1e-6) ? std::tanh(ph) / ph : 1.0;
+            spk *= fluxGain_;
         }
         nfbPrev_ = float(spk);
         return spk;
@@ -397,6 +562,59 @@ private:
         ltpVpBiasB_  = p_.ltpVcc - ltpIaBiasA_ * p_.ltpRaB;
     }
 
+    // Small-signal partials of one LTP side at its solved point: dIa/dvg and dIa/dIother.
+    // Residual f = Ia - iK(vgk, vpk) with vK = tailV + (Ia + Iother)·Rk (+ dI·Rtail);
+    // df/dIa = 1 + dg·dVk + dp·(Ra + dVk), df/dvg = -dg, df/dIother = (dg + dp)·dVk.
+    void ltpLinearize(double vg, double Ia, double Iother, double Ra, double& dIa_dvg, double& dIa_dIo) noexcept {
+        const double dI = (Ia + Iother) - ltpIBiasTot_;
+        const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
+        double iK, dg, dp;
+        korenEvalT(nullptr, ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
+        const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
+        const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
+        if (std::abs(fp) < 1e-30) { dIa_dvg = 0.0; dIa_dIo = 0.0; return; }
+        dIa_dvg = dg / fp;
+        dIa_dIo = -(dg + dp) * dVk / fp;
+    }
+    // Both sides of the pair at once: a 2x2 Newton on (IaA, IaB) with the shared tail in the
+    // Jacobian. The sequential per-side solve (ltpSolveSide, kept for the delayed loop) lets side A
+    // see side B's current one sample late — a hidden delay inside the feedback loop; the pair in
+    // the circuit moves together. Warm-started from the previous sample, 2-3 iterations converge.
+    void ltpSolveJoint(double vgA, double vgB, double& IaA, double& IaB) noexcept {
+        const double maxA = p_.ltpVcc / p_.ltpRaA * 0.99, maxB = p_.ltpVcc / p_.ltpRaB * 0.99;
+        const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
+        const double ia0 = std::clamp(IaA, 0.0, maxA), ib0 = std::clamp(IaB, 0.0, maxB);
+        IaA = ia0; IaB = ib0;
+        const double stepCapA = 0.25 * maxA, stepCapB = 0.25 * maxB;
+        bool converged = false;
+        for (int it = 0; it < 6; ++it) {
+            const double dI = (IaA + IaB) - ltpIBiasTot_;
+            const double vK = ltpTailV_ + (IaA + IaB) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
+            double iKA, dgA, dpA, iKB, dgB, dpB;
+            korenEvalT(nullptr, ltpTailV_ + vgA - vK, (p_.ltpVcc - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(nullptr, ltpTailV_ + vgB - vK, (p_.ltpVcc - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            const double fA = IaA - iKA, fB = IaB - iKB;
+            const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
+            const double jBA = (dgB + dpB) * dVk,                         jBB = 1.0 + dgB * dVk + dpB * (p_.ltpRaB + dVk);
+            const double det = jAA * jBB - jAB * jBA;
+            if (std::abs(det) < 1e-30) break;
+            double sA = ( jBB * fA - jAB * fB) / det;
+            double sB = (-jBA * fA + jAA * fB) / det;
+            sA = std::clamp(sA, -stepCapA, stepCapA);
+            sB = std::clamp(sB, -stepCapB, stepCapB);
+            IaA = std::clamp(IaA - sA, 0.0, maxA);
+            IaB = std::clamp(IaB - sB, 0.0, maxB);
+            if ((std::abs(fA) < 1e-10 && std::abs(fB) < 1e-10) || (std::abs(sA) < 1e-8 && std::abs(sB) < 1e-8)) { converged = true; break; }
+            if (it == 5 && std::abs(sA) < 1e-5 && std::abs(sB) < 1e-5) converged = true;
+        }
+        if (!converged) {   // a hard slew the Newton could not settle: the sequential sweep from the warm start
+            IaA = ia0; IaB = ib0;
+            for (int it = 0; it < 3; ++it) {
+                IaA = ltpSolveSide(vgA, IaA, IaB, p_.ltpRaA);
+                IaB = ltpSolveSide(vgB, IaB, IaA, p_.ltpRaB);
+            }
+        }
+    }
     double ltpSolveSide(double vg, double Ia, double Iother, double Ra) noexcept {
         const double maxIa = p_.ltpVcc / Ra * 0.99;
         Ia = std::clamp(Ia, 0.0, maxIa);
@@ -477,6 +695,20 @@ private:
         return lutBlend_ >= 1.0 ? vbT : va + lutBlend_ * (vbT - va);
     }
 
+    template <class F> static double feedthrough(const F& f) noexcept { F c = f; c.reset(); return double(c.process(1.0f)); }
+    double chainFeedthrough() const noexcept {
+        evhcomp::ShelfV pres = presShelf_, reso = resoShelf_, lo = nfbLoShelf_;
+        BiquadFilter stab = nfbStabLP_, c89 = c89HP_;
+        pres.reset(); reso.reset(); lo.reset(); stab.reset(); c89.reset();
+        const float raw = c89.process(stab.process(reso.process(pres.process(float(p_.nfbTap)))));
+        return nfbLoActive_ ? double(lo.process(raw)) : raw * p_.nfbDiv;
+    }
+    void recalcLoopGains() noexcept {
+        ftA_ = feedthrough(c118HP_) * (piCapActive_ ? feedthrough(piCapA_) : 1.0);
+        ftB_ = feedthrough(c119HP_) * (piCapActive_ ? feedthrough(piCapB_) : 1.0);
+        ftOut_ = feedthrough(zRes_) * feedthrough(zHF_) * feedthrough(otHP_) * feedthrough(otLP_);
+        beta0_ = chainFeedthrough();
+    }
     double gridClamp(double vg) const noexcept {
         return CCStageV::clampGrid(vg, -vBias_ + 0.7,
                                    CCStageV::kRgDiode / (CCStageV::kRgDiode + p_.gridFeedR), p_.gridKneeV);
@@ -495,6 +727,7 @@ private:
         } else {
             resoShelf_.prepare(fs_, 1.0, 1.0, 20.0);   // inert
         }
+        if (fs_ > 0.0) beta0_ = chainFeedthrough();
     }
 
     Params p_{};
@@ -522,6 +755,17 @@ private:
     double cathAlpha_ = 0.0, cathIdle_ = 0.0, cathAvg_ = 0.0, cathLast_ = 0.0;
 
     float presence_ = 0.5f, resonance_ = 0.5f, sagDepth_ = 0.3f;
+    bool   implicitLoop_ = true;                 // delay-free loop closure (see process())
+    double ftA_ = 1.0, ftB_ = 1.0, ftOut_ = 1.0, beta0_ = 0.0;
+    double gEffA_ = 0.0, gEffB_ = 0.0, fluxGain_ = 1.0, zRatio_ = 1.0, cathShiftLast_ = 0.0;
+    double loopL_ = 0.0;                         // the secant loop coefficient, carried when a step is too small to measure
+    bool   jointOnly_ = false;                   // lab A/B: joint PI solve with the delayed loop
+    unsigned long loopFallbacks_ = 0;            // samples where the bracket guard reverted to the delayed loop
+public:
+    unsigned long loopFallbacks() const noexcept { return loopFallbacks_; }
+private:
+
+
     ShelfV presShelf_, resoShelf_, nfbLoShelf_;
     bool   nfbLoActive_ = false;
     BiquadFilter piCapA_, piCapB_;

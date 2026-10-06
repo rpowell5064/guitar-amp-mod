@@ -85,6 +85,7 @@ private:
     // and Friedman settled on, rather than chasing the last tenth against a single reference.
     // (derivation kept out of the public tree)
     double zResDb_     = 2.0;
+    double otHfHz_ = 22e3, zHfDb_ = 8.0, nfbStabHz_ = 20e3;   // fit20/21/22: the HF loop terms (the plexiPowerParams values)
 
     // ── The two variac positions, solved at build time ───────────────────────
     struct RailSet { double B, screen, PI, V2, V1, iV1, iV2, iPI; };
