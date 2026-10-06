@@ -63,7 +63,6 @@ struct OutputBoost {
 struct UtilityPlugin {
     HumNotchComb hum;
     PickupVoicer voice;        // single-coil -> humbucker voicing
-    PickupVoicer guitar;       // GUITAR preset layer (Default / Single Coil / Hot Pickups)
     PickupLoadSim load;        // pickup loading / input impedance (v24 fidelity)
     OutputBoost  boost;        // clean boost + low-mid beef
     float*       ports[P_N_PORTS] = {};
@@ -106,7 +105,6 @@ static void util_run(LV2_Handle h, uint32_t n) {
             p->hum   = HumNotchComb{};  p->hum.prepare(p->sr, p->mainsCur);
             p->load  = PickupLoadSim{}; p->load.prepare(p->sr);
             p->voice = PickupVoicer{};
-            p->guitar = PickupVoicer{};
             p->boost = OutputBoost{};
         }
     } else p->resetLatch = false;
@@ -132,18 +130,17 @@ static void util_run(LV2_Handle h, uint32_t n) {
     float*       dst     = p->ports[P_OUT];
 
     // Recompute voicing/boost only when their params change (cheap, guarded inside).
-    const int   guitar   = p->ports[P_GUITAR] ? std::min(2, std::max(0, static_cast<int>(*p->ports[P_GUITAR] + 0.5f))) : 0;
-    if (guitar)  p->guitar.prepare(p->sr, PickupVoicer::kGuitarBase + guitar, 1.0f);
-    if (hbOn)    p->voice.prepare(p->sr, hbModel, hbAmount);
+    // GUITAR preset: the panel writes Humbucker / HB Model / HB Amount / Gain for it
+    // (2026-10-06); nothing to process here. HB Model 3 = "Hot -> PAF".
+    if (hbOn)    p->voice.prepare(p->sr, PickupVoicer::hbRecipe(hbModel), hbAmount);
     if (boostOn) p->boost.prepare(p->sr, *p->ports[P_BOOST_AMT]);
     p->load.set(p->ports[P_PICKUP_LOAD] ? *p->ports[P_PICKUP_LOAD] : 0.0f);
 
-    // Chain (matches the Hex Forge Input Trim order): hum -> GUITAR preset -> humbucker voice -> boost -> gain/phase.
+    // Chain (matches the Hex Forge Input Trim order): hum -> humbucker voice -> boost -> gain/phase.
     for (uint32_t i = 0; i < n; ++i) {
         float x = src[i];
         x = p->load.process(x);   // pickup loading: physically first (guitar/cable interface)
         if (humOn)   x = p->hum.process(x);
-        if (guitar)  x = p->guitar.process(x);   // GUITAR preset layer (which instrument is plugged in)
         if (hbOn)    x = p->voice.process(x);
         if (boostOn) x = p->boost.process(x);
         dst[i] = x * scale;

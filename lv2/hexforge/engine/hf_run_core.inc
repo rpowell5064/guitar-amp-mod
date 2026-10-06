@@ -200,14 +200,11 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->gate2.setParameter("mainsHz", itMains);
     }
     const bool  itHB      = *p->ports[HF_IT_HUMBK] > 0.5f;
-    // GUITAR preset (global tail port, a property of the instrument plugged in, never
-    // preset-captured): 0 Default = bypass (bit-identical), 1 Single Coil = the '59 voicing
-    // + 2 dB, 2 Hot Pickups = a hot modern humbucker tamed back to a PAF. Sits right after
-    // the pickup load / hum comb, BEFORE the preset's own voicing and boost.
-    const int   itGuitar  = p->ports[HF_IT_GUITAR] ? std::clamp(int(*p->ports[HF_IT_GUITAR] + 0.5f), 0, 2) : 0;
-    if (itGuitar > 0) p->trimGuitar.prepare(p->rate, PickupVoicer::kGuitarBase + itGuitar, 1.0f);
+    // GUITAR preset (global tail port): since 2026-10-06 the PANEL writes the Humbucker /
+    // HB Model / HB Amount / Gain controls for it and the plugin runs no layer of its own,
+    // so what the preset does is visible on the knobs. HB Model 3 = "Hot -> PAF".
     const int   itHBModel = (int)(*p->ports[HF_IT_HBMODEL] + 0.5f);
-    if (itHB) p->trimVoice.prepare(p->rate, itHBModel, *p->ports[HF_IT_HBAMT]);   // recompute on model/amount change
+    if (itHB) p->trimVoice.prepare(p->rate, PickupVoicer::hbRecipe(itHBModel), *p->ports[HF_IT_HBAMT]);   // recompute on model/amount change
     const bool  itBoost   = *p->ports[HF_IT_BOOST] > 0.5f;
     if (itBoost) p->trimBoost.prepare(p->rate, *p->ports[HF_IT_BOOSTAMT]);
     // Gate
@@ -1000,7 +997,6 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             for (int i=0;i<len;++i) {
                 float x = p->trimLoad.process(L[i]);   // pickup loading: physically first
                 if (itHum) x = p->trimHum.process(x);
-                if (itGuitar) x = p->trimGuitar.process(x);  // GUITAR preset layer (global)
                 if (itHB)    x = p->trimVoice.process(x);   // single-coil -> humbucker voicing
                 if (itBoost) x = p->trimBoost.process(x);   // output boost + beef
                 x *= itGain;

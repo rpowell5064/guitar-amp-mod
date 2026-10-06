@@ -15,7 +15,13 @@
 // (utility) plugin — keep this the single copy so the tuned curves never drift.
 struct PickupVoicer {
     enum { kMaxBands = 5 };
-    enum { kGuitarBase = 2 };   // recipe(kGuitarBase + g) = the Input Trim GUITAR preset g (1 Single Coil, 2 Hot Pickups)
+    enum { kGuitarBase = 2 };   // recipe(kGuitarBase + g): 3 = the old Single Coil layer (unused), 4 = "Hot -> PAF"
+    // HB Model port value -> recipe index. Models 0-2 are the three humbuckers;
+    // model 3 ("Hot -> PAF", 2026-10-06) is the hot-humbucker-tamed-to-a-PAF
+    // curve that used to be the hidden Hot Pickups layer. The GUITAR selector
+    // now writes the HB Model / HB Amount / Gain controls instead of running a
+    // layer of its own, so what it does is visible on the panel.
+    static int hbRecipe(int model) noexcept { return model == 3 ? kGuitarBase + 2 : model; }
     enum BandKind { OFF, PEAK, LOSHELF, HISHELF };
     struct Band   { BandKind kind; double fc, dB, Q; };
     struct Recipe { Band band[kMaxBands]; double levelDb; };

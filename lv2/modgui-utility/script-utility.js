@@ -11,29 +11,57 @@ function (event, funcs) {
     }
 
 
-    // ── GUITAR readout ───────────────────────────────────────────────────────
-    // The Guitar selector changes the CHARACTER of the guitar plugged in. It is
-    // a fixed layer in the plugin (PickupVoicer kR[3], kR[4]), not a set of
-    // knob moves, so the panel spells out exactly what it applies: the level it
-    // adds at the input, the voicing bands, and which controls it leaves alone.
-    // Keep these numbers in step with lv2/common/PickupVoicer.h.
-    var GUITAR_NOTE = [
-        { h: 'Default', rows: ['No change: the Input Trim exactly as its controls are set.'] },
+    // Dropdown label sync: mod-ui does not always repaint a custom-select after a
+    // programmatic write, so set the visible label from the option list by hand.
+    function selSync(icon, sym, val) {
+        icon.find('.mod-enumerated[mod-port-symbol="' + sym + '"]').each(function () {
+            var sel = this.querySelector('.mod-enumerated-selected'), lab = null;
+            var opts = this.querySelectorAll('[mod-role=enumeration-option]');
+            for (var i = 0; i < opts.length; ++i)
+                if (Math.round(parseFloat(opts[i].getAttribute('mod-port-value'))) === Math.round(val)) lab = opts[i].textContent;
+            if (sel && lab != null) sel.textContent = lab;
+        });
+    }
+
+    // ── GUITAR preset: writes the controls ───────────────────────────────────
+    // The Guitar selector changes the CHARACTER of the guitar plugged in by
+    // setting the Input Trim's own controls, so every knob and toggle it uses
+    // is visible and can be nudged afterwards. (It used to be a hidden
+    // processing layer -- the user could not see what it did.) Single Coil is
+    // the '59 Bucker voicing at 100 % plus 2 dB of Gain; Hot Pickups is the
+    // Hot -> PAF voicing at 100 % with 4 dB taken off. Default puts the
+    // voicing off and the Gain at 0.
+    var GUITAR_SET = [
+        { h: 'Default \u2014 no character change',
+          w: [['humbucker', 0, 'Humbucker', 'OFF'], ['gain_db', 0, 'Gain', '0.0 dB']] },
         { h: 'Single coil \u2192 humbucker character',
-          rows: ['Input level: +6 dB (a single coil sits well under a humbucker).',
-                 'Voicing: the \u201959 Bucker humbucker curve \u2014 2 kHz +2.5 dB, 4.5 kHz \u22125 dB, top shelf \u221213 dB above 4 kHz.',
-                 'Gain, Phase, Hum Filter, Pickup Load: as set. Humbucker Voicing and Clean Boost: as set, applied after this.'] },
+          w: [['gain_db', 2, 'Gain', '+2.0 dB'], ['humbucker', 1, 'Humbucker', 'ON'],
+              ['hb_model', 0, 'HB Model', '\u201959 Bucker'], ['hb_amount', 1, 'HB Amount', '100 %']] },
         { h: 'Hot humbucker \u2192 vintage PAF character',
-          rows: ['Input level: \u22124 dB (a hot bridge pickup sits 4\u20136 dB above a PAF).',
-                 'Voicing: 85 Hz shelf \u22120.8 dB, 2.1 kHz +0.9, 3 kHz +2.1, 5 kHz \u22122.4, top shelf \u22123.3 dB above 6.8 kHz.',
-                 'Gain, Phase, Hum Filter, Pickup Load: as set. Humbucker Voicing and Clean Boost: as set, applied after this.'] }
+          w: [['gain_db', -4, 'Gain', '\u22124.0 dB'], ['humbucker', 1, 'Humbucker', 'ON'],
+              ['hb_model', 3, 'HB Model', 'Hot \u2192 PAF'], ['hb_amount', 1, 'HB Amount', '100 %']] }
     ];
     function guitarNote(icon, v) {
         var box = icon.find('[rata-role=gnote]'); if (!box.length) return;
-        var g = GUITAR_NOTE[Math.max(0, Math.min(2, Math.round(parseFloat(v) || 0)))];
-        var html = '<b>' + g.h + '</b>';
-        for (var i = 0; i < g.rows.length; ++i) html += '<span>' + g.rows[i] + '</span>';
+        var g = GUITAR_SET[Math.max(0, Math.min(2, Math.round(parseFloat(v) || 0)))];
+        var html = '<b>' + g.h + '</b><span class="hf-gnote-k">Sets</span>';
+        for (var i = 0; i < g.w.length; ++i)
+            html += '<span><i>' + g.w[i][2] + '</i> \u2192 ' + g.w[i][3] + '</span>';
+        html += '<span class="hf-gnote-k">Leaves as set</span><span>Phase, Hum Filter, Mains, Pickup Load, Clean Boost.</span>';
         box[0].innerHTML = html;
+    }
+    // Write the preset's controls to the host. `fns` is the modgui function set.
+    function guitarApply(icon, v, fns) {
+        guitarNote(icon, v);
+        if (!fns || typeof fns.set_port_value !== 'function') return;
+        var g = GUITAR_SET[Math.max(0, Math.min(2, Math.round(parseFloat(v) || 0)))];
+        var pvm = icon.data('hf_portv');
+        for (var i = 0; i < g.w.length; ++i) {
+            fns.set_port_value(g.w[i][0], g.w[i][1]);
+            if (pvm) pvm[g.w[i][0]] = g.w[i][1];
+            if (typeof syncSel === 'function') syncSel(icon, g.w[i][0], g.w[i][1]);
+            else selSync(icon, g.w[i][0], g.w[i][1]);
+        }
     }
 
     if (event.type == 'start') {
@@ -50,6 +78,6 @@ function (event, funcs) {
         });
         set_tab(icon, 'input');
     } else if (event.type == 'change') {
-        if (event.symbol === 'guitar') guitarNote(event.icon, event.value);
+        if (event.symbol === 'guitar') guitarApply(event.icon, event.value, funcs);   // the selector writes its controls
     }
 }

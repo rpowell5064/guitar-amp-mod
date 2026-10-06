@@ -15,7 +15,7 @@ struct HfDesktopParam {
     const HfScalePoint* sp; int nsp;
 };
 
-static const HfScalePoint kHfSp_it_hbmodel[] = { { "'59 Bucker", 0.0f }, { "Norse Hammer", 1.0f }, { "Modern Flux", 2.0f } };
+static const HfScalePoint kHfSp_it_hbmodel[] = { { "'59 Bucker", 0.0f }, { "Norse Hammer", 1.0f }, { "Modern Flux", 2.0f }, { "Hot → PAF", 3.0f } };
 static const HfScalePoint kHfSp_gt_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_cp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
 static const HfScalePoint kHfSp_cp_type[] = { { "5 Creature Amp", 0.0f }, { "Once76", 1.0f } };
@@ -126,7 +126,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 12, "it_hum", "IT Hum Filter", "Input Trim", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
     { 13, "it_humbk", "IT Humbucker", "Input Trim", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 14, "it_hbamt", "IT HB Amount", "Input Trim", 0.0f, 1.0f, 1.0f, "f", HFD_PARAM, nullptr, 0 },
-    { 15, "it_hbmodel", "IT HB Model", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_PARAM, kHfSp_it_hbmodel, int(sizeof(kHfSp_it_hbmodel)/sizeof(HfScalePoint)) },
+    { 15, "it_hbmodel", "IT HB Model", "Input Trim", 0.0f, 3.0f, 0.0f, "e", HFD_PARAM, kHfSp_it_hbmodel, int(sizeof(kHfSp_it_hbmodel)/sizeof(HfScalePoint)) },
     { 16, "it_boost", "IT Boost", "Input Trim", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 17, "it_boostamt", "IT Boost Amt", "Input Trim", 0.0f, 12.0f, 4.0f, "db", HFD_PARAM, nullptr, 0 },
     { 18, "gt_pos", "Gate Position", "Gate", 1.0f, 24.0f, 1.0f, "e", HFD_INTERNAL, kHfSp_gt_pos, int(sizeof(kHfSp_gt_pos)/sizeof(HfScalePoint)) },
