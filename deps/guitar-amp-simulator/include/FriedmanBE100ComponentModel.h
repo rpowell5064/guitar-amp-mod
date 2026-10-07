@@ -100,6 +100,7 @@ private:
     float master_ = 0.5f, presence_ = 0.5f, sag_ = 0.3f;
     int   channel_ = CH_BE;
     bool  fat_ = false, c45_ = false, sat_ = false, voice_ = false;
+    bool  paLegacy_ = false;   // lab A/B ("palegacy"): the rev-189 power stage with its 60 k stability lag
     int   bright_ = 0;   // 0 off / 1 = C11 220p / 2 = C12 100p (clean channel)
 
     // Level calibration (free parameters).

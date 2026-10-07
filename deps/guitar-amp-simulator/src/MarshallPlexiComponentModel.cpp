@@ -343,6 +343,7 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
+    else if (id == "palegacy") { for (auto& c : ch_) c.pa.setLegacyPa(value > 0.5f); }   // lab A/B: the rev-189 power stage (2026-10-07)
     else if (id == "variac")   {
         // The switch only moves the glide target; advanceSmoothing() walks there.
         // Before any audio has run (a preset recall, a fresh build) it lands directly.

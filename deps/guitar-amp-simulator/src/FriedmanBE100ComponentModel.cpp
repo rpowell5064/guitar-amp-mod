@@ -206,7 +206,8 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         c.coup31c.prepare(fs_, 22e-9, par(470e3, 470e3), 1e6);       // C31 → R37 1M
 
         // ── Power section ──
-        c.pa.prepare(fs_, friedmanPowerParams(railPI_, otHfHz_, zHfDb_, zResDb_, idleMa_, nfbStabHz_, iaScale_, nfbScale_, fluxLim_, otLfHz_, biasShift_, kneeV_, lutSpan_));
+        c.pa.prepare(fs_, friedmanPowerParams(railPI_, otHfHz_, zHfDb_, zResDb_, idleMa_, paLegacy_ ? 60e3 : nfbStabHz_, iaScale_, nfbScale_, fluxLim_, otLfHz_, biasShift_, kneeV_, lutSpan_));
+        c.pa.setLegacyPa(paLegacy_);   // lab A/B: the rev-189 power stage
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         c.pa.setLtpIters(ltpIters_);
@@ -386,6 +387,7 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.pa.setPresence(value); }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
+    else if (id == "palegacy") { const bool b = value > 0.5f; if (b != paLegacy_) { paLegacy_ = b; if (fs_ > 0.0) { buildStages(); recalcPots(); } } }   // lab A/B: rev-189 power stage
     else if (id == "channel")  {
         const int nc = std::clamp(static_cast<int>(value + 0.5f), 0, 2);
         if (nc != channel_) { channel_ = nc; if (fs_ > 0.0) prepSwitches(); }

@@ -323,6 +323,7 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
+    else if (id == "palegacy") { for (auto& c : ch_) c.pa.setLegacyPa(value > 0.5f); }   // lab A/B: the rev-189 power stage (2026-10-07)
     else if (id == "mode")     {
         int nm = std::clamp(static_cast<int>(value + 0.5f), 0, 8);
         if (nm < 6) nm = 6;                       // phase 1: channel 3 only

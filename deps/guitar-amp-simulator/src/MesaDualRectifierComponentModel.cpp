@@ -277,6 +277,7 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
     }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(std::min(1.0f, sag_ + (rectTube_ ? float(rectSag_) : 0.0f))); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
+    else if (id == "palegacy") { for (auto& c : ch_) c.pa.setLegacyPa(value > 0.5f); }   // lab A/B: the rev-189 power stage (2026-10-07)
     else if (id == "mode")     {
         const int nm = std::clamp(static_cast<int>(value + 0.5f), 0, 7);
         const int nl = ldrFor(nm);

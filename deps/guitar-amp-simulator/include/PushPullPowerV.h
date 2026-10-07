@@ -216,6 +216,17 @@ public:
     }
     void setResonance(float v) noexcept { resonance_ = std::clamp(v, 0.0f, 1.0f); recalcNfb(); }
     void setSagDepth (float v) noexcept { sagDepth_  = std::clamp(v, 0.0f, 1.0f); }
+    // Lab A/B (2026-10-07, user: "the JCM800 and Friedman BE/HBE are missing gain" after rev 190):
+    // the rev-189 power stage — the stage's whole screen current through ONE tube's resistor (a
+    // quad drooped four times the circuit: ~6 dB of static level at the drawn dropper, 16 dB at
+    // sag .6 — a heavy compressor), the feedback loop closed through the previous sample and the
+    // phase inverter solved one side after the other (the solver's phase-lagged currents added
+    // their own grind at hard drive). Measured against the real amps the rev-191 stage is the
+    // closer one (JCM800 within 5 THD points at every level; the old one 10-27 over), but the
+    // player's ears get the vote: this switch brings the old stage back for an on-device A/B.
+    // Off = bit-identical to rev 191.
+    void setLegacyPa(bool on) noexcept { legacyPa_ = on; implicitLoop_ = !on; }
+    bool legacyPa() const noexcept { return legacyPa_; }
     // Phase 5: runtime toggle of the dynamic load (the driver state is cleared on
     // engage so it starts at rest) and the cab row the amp is driving.
     void setLtpIters(int n) noexcept { p_.ltpIters = std::max(1, n); }   // lab hook
@@ -482,7 +493,7 @@ private:
             const double scrI = (std::abs(iP) + std::abs(iN)
                                + 2.0 * outIdle_ * p_.tubesPerSide) * p_.screenFrac;
             scrEnv_ += (scrI > scrEnv_ ? (1.0 - sagAtk_) : (1.0 - sagRel_)) * (scrI - scrEnv_);
-            const double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) / p_.tubesPerSide * p_.screenR)
+            const double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) / (legacyPa_ ? 1.0 : p_.tubesPerSide) * p_.screenR)
                                * (sagDepth_ / 0.3);
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / p_.vg2), 1.5);
         }
@@ -756,6 +767,7 @@ private:
 
     float presence_ = 0.5f, resonance_ = 0.5f, sagDepth_ = 0.3f;
     bool   implicitLoop_ = true;                 // delay-free loop closure (see process())
+    bool   legacyPa_ = false;                    // lab A/B: the rev-189 stage (setLegacyPa)
     double ftA_ = 1.0, ftB_ = 1.0, ftOut_ = 1.0, beta0_ = 0.0;
     double gEffA_ = 0.0, gEffB_ = 0.0, fluxGain_ = 1.0, zRatio_ = 1.0, cathShiftLast_ = 0.0;
     double loopL_ = 0.0;                         // the secant loop coefficient, carried when a step is too small to measure

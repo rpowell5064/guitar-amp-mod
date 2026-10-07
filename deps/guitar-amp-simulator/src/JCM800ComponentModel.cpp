@@ -112,7 +112,7 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             p.R4 += kZthStack;
             c.ts.prepare(fs_, p);
         }
-        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); }
+        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); }
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -199,21 +199,27 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "presence") { presence_ = value; for (auto& c : ch_) c.pa.setPresence(value); }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
+    else if (id == "palegacy") {   // lab A/B: the rev-189 power stage + the HF loop terms it was fitted with (22 k / 8 dB / 20 k)
+        const bool b = value > 0.5f;
+        if (b != paLegacy_) { paLegacy_ = b;
+            if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
+                pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); c.pa.setSagDepth(sag_); c.pa.setDynLoad(dynLoad_); } }
+    }
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
     else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit3")     { fluxSatV_ = value;   // lab: OT core saturation, peak volts at 40 Hz
-        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_;
-            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); } }
     else if (id == "fit2")     { zResDb_  = value;   // lab: OT low-resonance depth (dB)
-        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_;
-            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); } }
     else if (id == "fit20" || id == "fit21" || id == "fit22") {   // lab: HF loop terms (OT corner, load HF rise, stability lag)
         if (id == "fit20") otHfHz_ = value; else if (id == "fit21") zHfDb_ = value; else nfbStabHz_ = value;
-        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_;
-            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setPresence(presence_); } }
+        if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // The 2203 has no channel switch and no resonance control.
 }

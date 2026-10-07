@@ -604,7 +604,8 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 490, "out_phase", "Output Phase Invert", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
     { 491, "amp_evhcomp", "Component Model", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
     { 492, "amp_dynload", "Dynamic Load", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 493, "it_mains", "IT Mains", "Input Trim", 0.0f, 1.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_mains, int(sizeof(kHfSp_it_mains)/sizeof(HfScalePoint)) },
-    { 494, "it_guitar", "IT Guitar", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_guitar, int(sizeof(kHfSp_it_guitar)/sizeof(HfScalePoint)) },
+    { 493, "amp_palegacy", "Rev 189 Power Stage", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 494, "it_mains", "IT Mains", "Input Trim", 0.0f, 1.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_mains, int(sizeof(kHfSp_it_mains)/sizeof(HfScalePoint)) },
+    { 495, "it_guitar", "IT Guitar", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_guitar, int(sizeof(kHfSp_it_guitar)/sizeof(HfScalePoint)) },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));

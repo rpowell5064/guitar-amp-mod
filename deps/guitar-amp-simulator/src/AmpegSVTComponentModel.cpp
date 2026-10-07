@@ -437,6 +437,7 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
     else if (id == "midfreq")  { const int m = std::clamp(int(std::lround(value)), 0, 2); if (m != midFreq_) { midFreq_ = m; if (fs_ > 0.0) for (auto& c : ch_) buildMid(c); } }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }   // Phase 5
+    else if (id == "palegacy") { for (auto& c : ch_) c.pa.setLegacyPa(value > 0.5f); }   // lab A/B: the rev-189 power stage (2026-10-07)
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { stackMid_ = std::clamp(value, 0.02f, 0.9f); if (fs_ > 0.0) for (auto& c : ch_) buildStack(c); }

@@ -385,6 +385,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             a2->setParameter("master",    *p->ports[HF_RB_MASTER]);
             a2->setParameter("sag",       *p->ports[HF_RB_SAG]);
             a2->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 (shared global toggle)
+            a2->setParameter("palegacy",  p->ports[HF_AMP_PALEGACY] ? *p->ports[HF_AMP_PALEGACY] : 0.0f);  // lab A/B (shared global toggle)
             if (rbM != kFriedmanIdx) a2->setParameter("channel", *p->ports[HF_RB_CHANNEL]);   // Friedman: own port below (see main rig)
             a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
             if (rbM == kFriedmanIdx) {
@@ -515,6 +516,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     amp->setParameter("master",    *p->ports[HF_AMP_MASTER]);
     amp->setParameter("sag",       *p->ports[HF_AMP_SAG]);
     amp->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 lab toggle (global tail)
+    amp->setParameter("palegacy",  p->ports[HF_AMP_PALEGACY] ? *p->ports[HF_AMP_PALEGACY] : 0.0f);  // lab A/B: the rev-189 power stage (global tail, 2026-10-07)
     // The Friedman takes its channel from its OWN port below; sending the generic
     // amp_channel first made the component build (which re-prepares its relay-
     // switched stages on every real change) flip 0->HBE EVERY BLOCK = a 1.5 kHz
