@@ -107,7 +107,23 @@ private:
     // 2026-09-10 gain-law pass: 1.0 V/unit at the jack (was the EVH's 0.35) — the
     // lever that lifted the whole knob, not just its lower half: BE g25/noon/gmax
     // 31.9/27.2/22.8 -> 20.6/16.9/20.3 %, HBE 25.5/17.0/16.5 -> 17.2/14.0/16.9 %.
-    float inVolts_    = 1.0f;    // 2026-10-07: re-anchored to the dBu-CALIBRATED HBE captures ("... hg [14,2dBu]") by THD across
+    // 2026-10-07 (evening): KNEE-ANCHORED. Every earlier value (0.35 .. 1.0) was fitted by THD at
+    // -24..-6 dBFS, where a high-gain channel is fully saturated and the THD reads the SAME for any
+    // drive within 20 dB -- the fit was blind to where clipping starts, and the twin clipped 12-20 dB
+    // later than the real amp (HBE at noon read as crunch). Measured instead where 1 kHz THD crosses
+    // 30 % against the BE and HBE gain ladders (-72..-12 dBFS rows): at the ladder's own scale
+    // (0 dBFS = +19 dBu, 9.76 V/unit) the twin's knee lands within 0.3 dB of the real amp at BE 6/9
+    // and HBE 2/5 -- so the stage chain is right. The DEVICE's full scale is a separate number: set
+    // so the BE channel clips where the shipped model the user tuned by ear clips (BE 6/9 within
+    // 0.3 dB at the playing level), which puts 0 dBFS at +6 dBu (2 Vrms, 2.8 Vpk). HBE at noon then
+    // starts clipping 7 dB earlier than that model did (the real amp's HBE sits 12 dB hotter than
+    // BE 6; the old model had it at 4.6), and the top of the gain knob steepens to the real law.
+    // Lab: feed the reference at its own scale with --refgain -13 (19 dBu pack) / -8 (14.2 dBu).
+    float inVolts_    = 2.8f;
+    float hbeTrim_    = 1.5f;    // HBE feed scalar (ESTIMATE-class, fit20): with the drawn V1A + R5/R6 pad the
+                                 // HBE knee still sits 3-4 dB above the real one at gain 2-6 while BE matches, so
+                                 // the stage model (the cold 2.7k/320k point) is ~3.5 dB short on that stage.
+    float inVoltsOld_ = 1.0f;    // (history) 2026-10-07 morning: re-anchored to the dBu-CALIBRATED HBE captures ("... hg [14,2dBu]") by THD across
                                  // input levels (lab fitlevers fit16/fit12, then checked -24..-6 dBFS): at 1.0 the twin sits within
                                  // 2 THD points of them everywhere (was 10-20 under at the playing level), and the BE channel's
                                  // low-level reading meets the BE ladder (gain 4 @ -24: 22 % -> 58 %, capture 55 %). The 2026-10-05
@@ -120,7 +136,7 @@ private:
     // the baked values. (fit0 gain-pot mid fraction, fit1 OT HF corner, fit2
     // speaker HF shelf dB, fit3 speaker resonance dB, fit4 post-choke B+,
     // fit5 EL34 idle mA.)
-    float  gainMid_ = 0.30f;   // VR4 law: g25/noon/g75/gmax specESR sweep 2026-09-10 (0.15..0.35)
+    float  gainMid_ = 0.25f;   // VR4 law: 2026-10-07 fitted to the knee ladders (BE g2/6/9, HBE g1-6: 0.24-0.26); was 0.30 from a specESR sweep
     // otHfHz / zHfDb / nfbStabHz were CALIBRATED 2026-09-10 against the FM9
     // presence swing (|1+T|: 7.1/9.3/10.2/9.0 dB at 2k/3.1k/5k/8k) with the
     // lab friedman_loopgain probe; the JCM-era 22k/8 dB/20k set drove this

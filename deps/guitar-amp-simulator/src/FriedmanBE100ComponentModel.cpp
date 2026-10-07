@@ -335,7 +335,7 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
             s = c.v1a.process(v);
             s = c.v1aSnub.process(float(s));
             tap(0, s);
-            s = c.hbeCoup.process(float(s));       // C3 / R5 1M / R6 68k
+            s = c.hbeCoup.process(float(s)) * hbeTrim_;   // C3 / R5 1M / R6 68k (+ the ESTIMATE-class HBE trim)
         } else {
             s = v;                                 // RELAY1 4-8: the jack straight to R7
         }
@@ -419,6 +419,7 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
     else if (id == "fit17")    { ltpIters_ = std::max(1, int(value + 0.5f)); for (auto& c : ch_) c.pa.setLtpIters(ltpIters_); }   // lab: LTP coupled sweeps
     else if (id == "fit18")    { cfCurrentScale_ = std::max(0.1f, value); if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: V3B follower current scale
     else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
+    else if (id == "fit20")    { hbeTrim_ = std::max(0.1f, value); }   // lab: HBE feed trim (knee ladder)
     else if (id == "fit19")    { cfJoint_ = value > 0.5f; if (fs_ > 0.0) { buildStages(); recalcPots(); } }   // lab: joint grid/cathode solve on the V3B follower
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // No resonance/depth control on the BE-100.
