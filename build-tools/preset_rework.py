@@ -94,6 +94,8 @@ def bank_stock():
 # ═══ Bank 2 (index 1) — NIRVANA · Nevermind (+ Brian May's rhythm sound in A) ═══
 def bank_nirvana():
     # A Regal Sustain — May: AC30 Normal channel "about 9.5" (A), Cut 0 (B), Rangemaster full (A) → Chime Pair, Physical.
+    # User 2026-10-07: NO Doubler on the Regal presets. Both are baked user saves (preset_user_saves.json)
+    # with out_doubler 0; keep it 0 if this preset is ever re-authored here.
     preset(1, 0, "Regal Sustain", cls="dirty", chain=["gt", "dr", "amp", "cab", "rv"], rig=CHIME,
            dr={"model": "Treble Ranger", "drive": 1.0, "tone": 0.5, "level": 1.0, "mix": 1.0},
            amp={"model": "Chime Thirty", "gain": 0.95, "bass": 0.5, "mid": 0.5, "treble": 0.4, "presence": 0.05, "master": 1.0, "sag": 0.65},
@@ -265,6 +267,8 @@ def bank_psych():
     # D Regal Solo — May's lead: same cranked AC30 + booster; the Brighton Rock canon = 800 ms + 1600 ms Echoplexes.
     #   2026-09-24 (user): the second Echoplex (Delay 2 at 1600 ms) is gone — it kept repeating with the main
     #   delay switched off and the long tape repeats read as noise. One tape echo, a single 800 ms slap.
+    # User 2026-10-07: NO Doubler on the Regal presets. Both are baked user saves (preset_user_saves.json)
+    # with out_doubler 0; keep it 0 if this preset is ever re-authored here.
     preset(10, 3, "Regal Solo", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=CHIME,
            dr={"model": "Treble Ranger", "drive": 1.0, "tone": 0.5, "level": 1.0, "mix": 1.0},
            amp={"model": "Chime Thirty", "gain": 0.95, "bass": 0.5, "mid": 0.55, "treble": 0.4, "presence": 0.05, "master": 1.0, "sag": 0.65},
