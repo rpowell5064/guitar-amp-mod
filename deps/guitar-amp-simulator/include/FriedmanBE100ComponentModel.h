@@ -119,7 +119,12 @@ private:
     // starts clipping 7 dB earlier than that model did (the real amp's HBE sits 12 dB hotter than
     // BE 6; the old model had it at 4.6), and the top of the gain knob steepens to the real law.
     // Lab: feed the reference at its own scale with --refgain -13 (19 dBu pack) / -8 (14.2 dBu).
-    float inVolts_    = 2.8f;
+    // 2026-10-07 (night): 2.8 -> 5.6 with the grid knee widened to 1.5 V. The wider knee starts clipping
+    // 5 dB later for the same drive; 5.6 puts the BE 6 clip point exactly where rev 193 had it (30 % THD
+    // at -44.5 dBFS, the ear anchor) and HBE 5 within 1.5 dB, so the player hears the rev-193 gain with
+    // the corrected clipping shape. (The two capture packs disagree by ~10 dB on where the amp clips
+    // once their stated/assumed dBu are applied, so the ear anchor is the one that is kept.)
+    float inVolts_    = 5.6f;
     float hbeTrim_    = 1.5f;    // HBE feed scalar (ESTIMATE-class, fit20): with the drawn V1A + R5/R6 pad the
                                  // HBE knee still sits 3-4 dB above the real one at gain 2-6 while BE matches, so
                                  // the stage model (the cold 2.7k/320k point) is ~3.5 dB short on that stage.
@@ -152,7 +157,11 @@ private:
     double nfbScale_ = 1.0;                      // fit8 (lab only: 0 = open loop)
     double fluxLim_ = 56.6, otLfHz_ = 30.0;      // fit9 / fit10 (OT estimates; rated-output anchor for the 100 W core)
     bool   biasShift_ = true;                    // fit11 (lab only)
-    double kneeV_ = 0.75;                        // fit12 — 2026-10-05 ladder fit 0.15 -> 0.97: the real amp sits at a soft 53 % THD where the twin reached 120 %;: grid-conduction knee width (V). 2026-10-04: a 1.39 V knee scored better on the mean   // 2026-10-07: 0.97 -> 0.75 with the inVolts re-anchor (lab fit by THD on the calibrated HBE captures)
+    // 2026-10-07 (night): 0.75 -> 1.5. Against the 14.2 dBu "hg" capture fed at its own scale the twin
+    // at 0.75 read 53 % THD at -60 dBFS where the amp reads 26 (and 79 vs 64 at -48); at 1.5 the 1 kHz
+    // ladder sits within 2 points from -60 to -24 (26/64/83/88 vs 26/64/81/87) and the -12 dBFS harmonic
+    // profile lands on the amp (h3 63/60, h5 43/41, h7 29/31). 3.0 over-softens (9 % at -60).
+    double kneeV_ = 1.5;                        // fit12 — 2026-10-05 ladder fit 0.15 -> 0.97: the real amp sits at a soft 53 % THD where the twin reached 120 %;: grid-conduction knee width (V). 2026-10-04: a 1.39 V knee scored better on the mean   // 2026-10-07: 0.97 -> 0.75 with the inVolts re-anchor (lab fit by THD on the calibrated HBE captures)
                                                  //        harmonic error but put 16/32/39 % evens back at the output through the follower; kept at 0.15.
     double lutSpan_ = 60.0;                      // fit13: EL34 grid LUT half-span (V)
     int    probeTap_ = -1;                       // fit14 (lab): return this tap instead of the speaker

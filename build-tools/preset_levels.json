@@ -1,8 +1,8 @@
 {
  "Andalusian Slice": {
   "idx": 62,
-  "peak": -5.93,
-  "rms": -18.67
+  "peak": -6.55,
+  "rms": -19.2
  },
  "Anyone Can Play Guitar": {
   "idx": 49,
@@ -31,8 +31,8 @@
  },
  "Boxed Bones": {
   "idx": 63,
-  "peak": -8.53,
-  "rms": -19.91
+  "peak": -8.42,
+  "rms": -19.99
  },
  "Bridge Vibe": {
   "idx": 32,
@@ -81,13 +81,13 @@
  },
  "Con Molars": {
   "idx": 47,
-  "peak": -5.93,
-  "rms": -17.45
+  "peak": -6.72,
+  "rms": -17.59
  },
  "Crunch": {
   "idx": 1,
-  "peak": -8.59,
-  "rms": -21.68
+  "peak": -8.34,
+  "rms": -21.11
  },
  "Dark Side Air": {
   "idx": 16,
@@ -136,8 +136,8 @@
  },
  "Glide Wall": {
   "idx": 41,
-  "peak": -6.41,
-  "rms": -19.32
+  "peak": -7.06,
+  "rms": -19.97
  },
  "Gravity Lead": {
   "idx": 19,
@@ -146,8 +146,8 @@
  },
  "Grunge Drop": {
   "idx": 55,
-  "peak": -8.71,
-  "rms": -21.66
+  "peak": -8.56,
+  "rms": -21.99
  },
  "Hand in Cloud": {
   "idx": 66,
@@ -201,8 +201,8 @@
  },
  "Imperial Rhythm": {
   "idx": 12,
-  "peak": -7.64,
-  "rms": -20.26
+  "peak": -8.02,
+  "rms": -20.39
  },
  "Innerspeaker Swirl": {
   "idx": 40,
@@ -211,8 +211,8 @@
  },
  "Jungle Sleaze": {
   "idx": 71,
-  "peak": -5.74,
-  "rms": -17.86
+  "peak": -5.97,
+  "rms": -18.46
  },
  "Knights of Fuzz": {
   "idx": 57,
@@ -231,8 +231,8 @@
  },
  "March Stabs": {
   "idx": 44,
-  "peak": -7.94,
-  "rms": -22.2
+  "peak": -8.43,
+  "rms": -21.4
  },
  "Marionette Master": {
   "idx": 52,
@@ -271,18 +271,18 @@
  },
  "Plug-In Junior": {
   "idx": 56,
-  "peak": -6.46,
-  "rms": -17.72
+  "peak": -6.61,
+  "rms": -18.54
  },
  "Prayer Djent": {
   "idx": 31,
-  "peak": -11.69,
-  "rms": -24.98
+  "peak": -11.77,
+  "rms": -24.96
  },
  "Quarter-Tone Lead": {
   "idx": 48,
-  "peak": -4.58,
-  "rms": -18.68
+  "peak": -4.87,
+  "rms": -19.11
  },
  "Regal Solo": {
   "idx": 43,
@@ -331,18 +331,18 @@
  },
  "Skye (No Mod)": {
   "idx": 25,
-  "peak": -4.8,
-  "rms": -16.1
+  "peak": -5.48,
+  "rms": -16.61
  },
  "Skye Crusher": {
   "idx": 24,
-  "peak": -8.85,
-  "rms": -20.21
+  "peak": -9.53,
+  "rms": -20.74
  },
  "Skye Soar": {
   "idx": 26,
-  "peak": -5.46,
-  "rms": -17.87
+  "peak": -6.05,
+  "rms": -18.45
  },
  "Solar Monolith": {
   "idx": 27,
@@ -361,8 +361,8 @@
  },
  "Spiral Out": {
   "idx": 61,
-  "peak": -7.46,
-  "rms": -18.28
+  "peak": -7.55,
+  "rms": -18.41
  },
  "Stockholm Riff": {
   "idx": 59,
@@ -386,8 +386,8 @@
  },
  "Vanishing Drive": {
   "idx": 28,
-  "peak": -5.75,
-  "rms": -19.86
+  "peak": -5.71,
+  "rms": -19.73
  },
  "Winterborn": {
   "idx": 50,

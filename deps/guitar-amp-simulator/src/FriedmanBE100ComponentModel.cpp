@@ -210,6 +210,7 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         c.pa.setLegacyPa(paLegacy_);   // lab A/B: the rev-189 power stage
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
+        c.pa.setDynLoad(dynLoad_);   // PushPullPowerV::prepare resets it to the Params default (off); lab re-prepares were losing it
         c.pa.setLtpIters(ltpIters_);
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;

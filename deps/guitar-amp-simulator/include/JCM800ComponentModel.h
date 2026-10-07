@@ -85,6 +85,15 @@ private:
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
 
     float gainMid_ = 0.25f;   // VR1 1M log: fraction at half rotation (fit0 in the lab harness)
+    evhcomp::KorenP v1bTube_{ 100.0, 1.4, 1060.0, 600.0, 300.0 };   // lab (fit4/fit5): cold-clipper tube set; used only when v1bTubeOn_
+    bool v1bTubeOn_ = false;
+    int  probeTap_ = -1;
+    // 2026-10-07: ON. The follower's previous-sample grid clamp (see CFStageV::Params) rectified the
+    // signal at tiny levels: with every stage ahead of it clean, the twin read 16-27 % THD at 1 kHz from
+    // -72 dBFS up (the real amp 0.8-8 %), a crunch on every quiet note and decay. The joint solve takes
+    // that to 1.3 / 15 % at -72 / -60 (real 0.8 / 5.8). Cost: 50-125 Hz read 1.1-1.5 dB lower (the
+    // follower's bootstrapped input loads V2a's plate at LF), accepted.
+    bool cfJoint_ = true;   // lab (fit19): V2b follower joint grid-conduction solve   // lab (fit14): return one tap instead of the output
     // Output-transformer low-resonance depth (dB) at ~110 Hz. Sets the low-mid weight;
     // the printed value humped the low-mids, so it is a tuning lever. fit2 in the lab harness.
     // zResDb REVISED 2026-09-26, AFTER the OT saturation stage was corrected. The two belong
@@ -99,6 +108,9 @@ private:
     // (200 k). Mean shape 1.75 -> 1.27 dB, worst 2.73 -> 1.89.
     double otHfHz_ = 12e3, zHfDb_ = 5.33, nfbStabHz_ = 200e3;
     bool   paLegacy_ = false;   // lab A/B ("palegacy"): the rev-189 power stage with its 22 k / 8 dB / 20 k loop terms
+    // 2026-10-07: MEASURED NOT the 110 Hz over-clipper (rows identical at 56.6 / 85 / off with the
+    // Dynamic Load kept on); that excess is the dynamic load's speaker-impedance peak. Kept at the
+    // rated-output anchor.
     double fluxSatV_ = 56.6;   // fit3: OT core saturation, peak volts at 40 Hz (100 W into 16 ohms)
     float  paDrive_ = 0.30f;       // fit40 (2026-10-05): drive scale into the power stage. CALIBRATED: master .6 kept 9.0/7.7/5.2 dB of the stack's 13.5/10.8/8.3 (80/125/200 Hz) at x1.0; 12.2/9.6/7.1 at x0.3. The twins were driving their
                                    //       power section harder than the real amp at the same MASTER (the stack's bass

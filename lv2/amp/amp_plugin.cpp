@@ -98,7 +98,7 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 10.50f, 2.80f, 3.60f, 0.0f, 10.40f, 0.0f, 1.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, 0.0f, 10.40f, 0.0f, 1.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
     { 0.00f, 0.20f, 0.05f, 0.00f, 0.00f, 0.00f, -0.05f },   // JCM800 corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8): presets 62/1/24 at -24/-34 dBFS RMS, the twin's own gain-knob loudness law now sits within 0.2 dB of the shipped model (the old row {6.6 3.3 1.2 0 -.7 -1.2 -1.5} was compensating the wrong input scale); previously re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
@@ -142,7 +142,7 @@ static const float kCompModeDb[16][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -0.00f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f },   // Rockerverb CLEAN channel: +23.2 dB vs the shipped at gain .5 / master .7 (re-measured 2026-10-05 after the grid fit) minus the dirty mk 11.7
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
-    { 9.30f, 0.00f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f },   // Friedman: Clean / BE / HBE relative to BE (2026-10-07 evening: Clean re-measured in-plugin at gain .5 with inVolts 2.8, 13.6 -> 9.3; its volume law now spans 20 dB over .3-.7, not representable in a row)
+    { 7.80f, 0.00f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f },   // Friedman: Clean / BE / HBE relative to BE (2026-10-07 night: Clean 9.3 -> 7.8 after the knee-width/scale change, re-measured in-plugin with its own gain row; evening: Clean re-measured in-plugin at gain .5 with inVolts 2.8, 13.6 -> 9.3; its volume law now spans 20 dB over .3-.7, not representable in a row)
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
@@ -160,10 +160,16 @@ static inline float compLerp(const float* xs, const float* ys, int n, float x) n
     const float t = (x - xs[i]) / (xs[i + 1] - xs[i]);
     return ys[i] + t * (ys[i + 1] - ys[i]);
 }
+// Friedman CLEAN channel (algo 6, sel 0): its own gain-knob loudness row. The twin's clean VOLUME is a
+// real 1MA pot into a linear channel (35 dB of loudness over the knob, no compression), the shipped
+// model's clean holds within 13 dB; measured in-plugin 2026-10-07 at the playing level (-24 dBFS RMS)
+// on Vanishing Drive forced to Clean, shipped - twin at gain .2..  .8, added to the shared row.
+static const float kCompFrCleanGainDb[7] = { 7.40f, 6.10f, 3.15f, 0.00f, -3.45f, -5.75f, -7.30f };
 static inline float compParity(int algo, float gainKnob, float masterKnob, float sel) noexcept {
     const int si = (int)(sel + 0.5f);
+    const float* gainRow = (algo == 6 && si == 0) ? kCompFrCleanGainDb : kCompGainDb[algo];
     const float db = kCompMkDb[algo]
-                   + compLerp(kCompGainKnob,   kCompGainDb[algo],   7, gainKnob)
+                   + compLerp(kCompGainKnob,   gainRow,             7, gainKnob)
                    + compLerp(kCompMasterKnob, kCompMasterDb[algo], 4, masterKnob)
                    + kCompModeDb[algo][si < 0 ? 0 : (si > 8 ? 8 : si)];
     return (db == 0.0f) ? 1.0f : std::pow(10.0f, db / 20.0f);

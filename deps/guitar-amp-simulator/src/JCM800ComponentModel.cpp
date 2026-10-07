@@ -89,7 +89,13 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             c.coup3.prepare(fs_, 0.022e-6, Zp, 470e3);
         }
         // â”€â”€ V1b: R7 100k, R6 10k UNBYPASSED (the cold clipper) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        c.v1b.prepare(fs_, { kRailV1, 100e3, 10e3, 0.0, 0.0, 0.0, 470e3 });
+        {   // lab hook (2026-10-07, fit4/fit5): a runtime tube set for the cold clipper only -- its cutoff
+            // sharpness (Kp) and mu are the levers behind the soft ~27 % THD shelf the twin shows 12 dB
+            // below the real amp's knee; off (nullptr) = the shared 12AX7, bit-identical.
+            evhcomp::CCStageV::Params p{ kRailV1, 100e3, 10e3, 0.0, 0.0, 0.0, 470e3 };
+            p.tube = v1bTubeOn_ ? &v1bTube_ : nullptr;
+            c.v1b.prepare(fs_, p);
+        }
         {
             const double rpEff = kRp + 101.0 * 10e3;
             const double Zp1b  = 1.0 / (1.0 / 100e3 + 1.0 / rpEff);
@@ -106,7 +112,11 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
         c.v2a.prepare(fs_, { kRailV2, 100e3, 820.0, 0.0, 0.0, 0.0, 470e3 });
         // â”€â”€ V2b: cathode follower, R13 100k, grid off V2a's plate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         c.cfDiv = 1.0f;
-        c.v2b.prepare(fs_, { kRailV2, 100e3, c.v2a.biasVp(), 100e3 });
+        {
+            evhcomp::CFStageV::Params cp{ kRailV2, 100e3, c.v2a.biasVp(), 100e3 };
+            cp.gridJoint = cfJoint_;   // lab (fit19): joint grid-conduction solve, see CFStageV::Params
+            c.v2b.prepare(fs_, cp);
+        }
         {
             YehSmithToneStack::CircuitParams p = YehSmithToneStack::kMarshallJCM800;
             p.R4 += kZthStack;
@@ -115,6 +125,7 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
         { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); }
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
+        c.pa.setDynLoad(dynLoad_);   // PushPullPowerV::prepare resets it to the Params default (off)
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -160,7 +171,8 @@ void JCM800ComponentModel::advanceSmoothing() noexcept {
 
 float JCM800ComponentModel::processSample(float x, int channel) noexcept {
     auto& c = ch_[channel];
-    auto tap = [&c](int i, double v) { c.tapAcc[i] += v * v; };
+    double probeVal = 0.0;
+    auto tap = [&c, this, &probeVal](int i, double v) { c.tapAcc[i] += v * v; if (i == probeTap_) probeVal = v; };
     c.tapN++;
 
     // Input jack â†’ R3 68k against the R2 1M grid leak.
@@ -187,6 +199,7 @@ float JCM800ComponentModel::processSample(float x, int channel) noexcept {
     tap(6, v);
     v = c.pa.process(v * paDrive_);        // LTP + 4x EL34 + NFB + OT (paDrive_: fit40)
     tap(7, v);
+    if (probeTap_ >= 0) return float(probeVal * outScalePa_ * 0.05);   // lab (fit14): one stage's output instead of the amp's
     return float(v * outScalePa_);
 }
 
@@ -209,17 +222,21 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
+    else if (id == "fit19")    { cfJoint_ = value > 0.5f; if (fs_ > 0.0) prepare(fs_, 0); }   // lab: CF joint grid solve
+    else if (id == "fit14")    { probeTap_ = static_cast<int>(value + 0.5f) - 1; }   // lab: 0 = off, 1..8 = tap0..tap7
+    else if (id == "fit4")     { v1bTube_.kp = std::max(50.0, double(value)); v1bTubeOn_ = true; if (fs_ > 0.0) prepare(fs_, 0); }   // lab: cold clipper Kp (cutoff sharpness)
+    else if (id == "fit5")     { v1bTube_.mu = std::max(10.0, double(value)); v1bTubeOn_ = true; if (fs_ > 0.0) prepare(fs_, 0); }   // lab: cold clipper mu
     else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }   // lab + calibration: power-stage drive scale
     else if (id == "fit3")     { fluxSatV_ = value;   // lab: OT core saturation, peak volts at 40 Hz
         if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
-            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); } }
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); c.pa.setSagDepth(sag_); c.pa.setDynLoad(dynLoad_); } }
     else if (id == "fit2")     { zResDb_  = value;   // lab: OT low-resonance depth (dB)
         if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
-            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); } }
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); c.pa.setSagDepth(sag_); c.pa.setDynLoad(dynLoad_); } }
     else if (id == "fit20" || id == "fit21" || id == "fit22") {   // lab: HF loop terms (OT corner, load HF rise, stability lag)
         if (id == "fit20") otHfHz_ = value; else if (id == "fit21") zHfDb_ = value; else nfbStabHz_ = value;
         if (fs_ > 0.0) for (auto& c : ch_) { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_;
-            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); } }
+            pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); c.pa.setPresence(presence_); c.pa.setSagDepth(sag_); c.pa.setDynLoad(dynLoad_); } }
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
     // The 2203 has no channel switch and no resonance control.
 }
