@@ -98,7 +98,7 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 10.50f, 5.20f, 3.60f, 0.0f, 10.40f, 0.0f, 5.20f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 10.50f, 5.20f, 3.60f, 0.0f, 10.40f, 0.0f, 1.60f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
     { 6.60f, 3.30f, 1.20f, 0.00f, -0.70f, -1.20f, -1.50f },   // JCM800 re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
@@ -106,7 +106,7 @@ static const float kCompGainDb[16][7] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
-    { -1.80f, -1.35f, -0.70f, 0.00f, -0.55f, -1.05f, -1.40f },   // Friedman re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
+    { -4.95f, -3.00f, -1.35f, 0.00f, -0.05f, -0.15f, -0.20f },   // Friedman re-measured 2026-10-07 with inVolts 1.0 / knee .75 (-24 dBFS, tone knobs at noon; mean of BE and HBE)
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 1.60f, 0.40f, 0.20f, 0.00f, -0.10f, -0.30f, -0.30f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
@@ -119,18 +119,18 @@ static const float kCompGainDb[16][7] = {
 };
 static const float kCompMasterDb[16][4] = {
     { -7.40f, -2.90f, 0.00f, 1.10f },
-    { 27.40f, 11.20f, 0.00f, -3.00f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },   // master row ZEROED 2026-10-07: the twin's own master law shows through (a master must get louder turned up); the row had cancelled it against the shipped model's level-invariant master and INVERTED the knob in use. Preset loudness is folded per preset on the twins anyway.
     { -7.50f, -0.90f, 0.00f, -1.80f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
-    { 19.20f, 3.80f, 0.00f, -0.20f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },   // Rockerverb: master row zeroed 2026-10-07 (it inverted the master in use: Recto -6.6 dB from .5 to full, Mark V / Rockerverb -1.7)
     { 0.00f, 0.00f, 0.00f, 0.00f },
-    { 26.10f, 10.15f, 0.00f, -3.25f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },   // Friedman: same, 2026-10-07
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -1.30f, -0.40f, 0.00f, 0.10f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -3.10f, -0.90f, 0.00f, 0.20f },
-    { 13.90f, 2.40f, 0.00f, -0.40f },
-    { 24.20f, 8.50f, 0.00f, -0.50f },
+    { 0.00f, 0.00f, 0.00f, 0.00f },   // Mark V: master row zeroed 2026-10-07 (it inverted the master in use: Recto -6.6 dB from .5 to full, Mark V / Rockerverb -1.7)
+    { 0.00f, 0.00f, 0.00f, 0.00f },   // Recto: master row zeroed 2026-10-07 (it inverted the master in use: Recto -6.6 dB from .5 to full, Mark V / Rockerverb -1.7)
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -7.89f, -3.15f, -0.00f, 1.17f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
@@ -142,7 +142,7 @@ static const float kCompModeDb[16][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -0.00f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f },   // Rockerverb CLEAN channel: +23.2 dB vs the shipped at gain .5 / master .7 (re-measured 2026-10-05 after the grid fit) minus the dirty mk 11.7
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
-    { 19.30f, 0.00f, -3.50f, -3.50f, -3.50f, -3.50f, -3.50f, -3.50f, -3.50f },
+    { 13.60f, 0.00f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f, -1.20f },   // Friedman: Clean / BE / HBE relative to BE (2026-10-07, inVolts 1.0)
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
