@@ -4562,7 +4562,7 @@
   "2026-09-27: Jungle Sleaze delay restored to the PRE-REWORK capture in preset_base.json (user: 'a delay more like its last version'): dl_time 483.900 -> 470.000; dl_feedback 0.500 -> 0.550; dl_mix 0.450 -> 0.385; dl_width 0.600 -> 0.505. The 2026-09-24 rework had made it wetter with fewer repeats and wider; the version the user lived with was drier, narrower and had a longer repeat tail.",
   "2026-09-27: Streets Chime dr_level 0.60 -> 0.68 (NOT the full 0.818 restoration). Measured finding: the AC30 in this preset is so deep in compression that a 0.76 dB cut at the pedal moved the preset's output rms by only 0.07 dB \u2014 so the Green Man's level here behaves as AMP DRIVE, not volume. That is why restoring the boost's full pre-change output made it snap on hard playing (2.7 dB more drive into an already-compressed amp) while barely changing loudness. 0.68 gives back about half the drive at a cost of well under 1 dB of level; 0.60 is the guaranteed-clean setting if it still snaps. A faster compressor attack was tried and reverted (the golden peak rose).",
   "2026-10-05: re-laid out by symbol for the new port it_guitar at index 494 (values carried over; the new port takes its generator default 0)",
-  "2026-10-07: re-laid out by symbol for the new port amp_palegacy at index 493 (values carried over; the new port takes its generator default 0)"
+  "2026-10-07: re-laid out by symbol for the new port amp_palegacy at index 495 (values carried over; the new port takes its generator default 0)"
  ],
  "syms": [
   "in_l",
@@ -5058,9 +5058,9 @@
   "out_phase",
   "amp_evhcomp",
   "amp_dynload",
-  "amp_palegacy",
   "it_mains",
   "it_guitar",
+  "amp_palegacy",
   "midi_in"
  ]
 }

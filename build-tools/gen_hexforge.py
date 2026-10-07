@@ -800,12 +800,6 @@ ctrl.append(mkport("AMP_EVHCOMP", "amp_evhcomp", "Component Model", "t", 0, 1, 1
 # and hot-coil damping loss all inside the feedback loop. Same GLOBAL-tail
 # pattern as the Component toggle; default OFF = bit-identical. Migrated v51.
 ctrl.append(mkport("AMP_DYNLOAD", "amp_dynload", "Dynamic Load", "t", 0, 1, 1, None, "Dyn Load"))   # default ON (small-signal transparent since ef1fd0c)
-# LAB A/B (2026-10-07, user: the JCM800 and Friedman twins "missing gain" after the rev-190 power-stage
-# fixes): bring the rev-189 power stage back -- per-stage screen droop (the heavy compressor), the
-# one-sample-delayed feedback loop and the sequential phase-inverter solve, plus the JCM/Friedman
-# HF loop terms those were fitted with. GLOBAL tail port like Dynamic Load; default OFF = rev 191,
-# bit-identical. Applies to every twin on the shared push-pull stage.
-ctrl.append(mkport("AMP_PALEGACY", "amp_palegacy", "Rev 189 Power Stage", "t", 0, 1, 0, None, "PA '189"))
 # MAINS FREQUENCY (2026-09-25, user request for the 50 Hz countries): re-tunes the
 # Input Trim hum comb, both gate detector combs and the calibration's hum reference
 # to the 50 Hz harmonic series. GLOBAL tail port (a venue property, never
@@ -819,6 +813,12 @@ ctrl.append(mkport("IT_MAINS", "it_mains", "IT Mains", "e", 0, 1, 0, [("60 Hz", 
 # Since 2026-10-06 the PANEL writes those controls (and re-applies them after a preset
 # recall); the plugin no longer processes this port itself -- what it does is on the knobs.
 ctrl.append(mkport("IT_GUITAR", "it_guitar", "IT Guitar", "e", 0, 2, 0, [("Default", 0), ("Single Coil", 1), ("Hot Pickups", 2)], "Guitar"))
+# LAB A/B (2026-10-07, user: the JCM800 and Friedman twins "missing gain" after the rev-190 power-stage
+# fixes): bring the rev-189 power stage back -- per-stage screen droop (the heavy compressor), the
+# one-sample-delayed feedback loop and the sequential phase-inverter solve, plus the JCM/Friedman
+# HF loop terms those were fitted with. GLOBAL tail port, appended LAST (after it_guitar) so no existing index moves; default OFF = rev 191,
+# bit-identical. Applies to every twin on the shared push-pull stage.
+ctrl.append(mkport("AMP_PALEGACY", "amp_palegacy", "Rev 189 Power Stage", "t", 0, 1, 0, None, "PA '189"))
 # (The 2026-08-22 dbg_evhfit re-tune LAB lived here for mv195 only; CANCELED
 # unused by the user — the EVH keeps the 2026-08-19 baked blend 0.8875.)
 

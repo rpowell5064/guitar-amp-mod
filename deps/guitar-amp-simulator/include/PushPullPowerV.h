@@ -493,8 +493,12 @@ private:
             const double scrI = (std::abs(iP) + std::abs(iN)
                                + 2.0 * outIdle_ * p_.tubesPerSide) * p_.screenFrac;
             scrEnv_ += (scrI > scrEnv_ ? (1.0 - sagAtk_) : (1.0 - sagRel_)) * (scrI - scrEnv_);
-            const double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) / (legacyPa_ ? 1.0 : p_.tubesPerSide) * p_.screenR)
-                               * (sagDepth_ / 0.3);
+            double droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) / p_.tubesPerSide * p_.screenR)
+                         * (sagDepth_ / 0.3);
+            // Lab A/B: the rev-189 stage put the whole stage's screen current through one tube's
+            // resistor. Kept as a separate branch so the shipping path's arithmetic is untouched
+            // (bit-identical goldens).
+            if (legacyPa_) droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) * p_.screenR) * (sagDepth_ / 0.3);
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / p_.vg2), 1.5);
         }
 
