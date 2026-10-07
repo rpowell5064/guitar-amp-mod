@@ -1,8 +1,8 @@
 {
  "Andalusian Slice": {
   "idx": 62,
-  "peak": -4.41,
-  "rms": -19.97
+  "peak": -5.93,
+  "rms": -18.67
  },
  "Anyone Can Play Guitar": {
   "idx": 49,
@@ -81,13 +81,13 @@
  },
  "Con Molars": {
   "idx": 47,
-  "peak": -4.12,
-  "rms": -16.4
+  "peak": -5.93,
+  "rms": -17.45
  },
  "Crunch": {
   "idx": 1,
-  "peak": -8.03,
-  "rms": -22.62
+  "peak": -8.59,
+  "rms": -21.68
  },
  "Dark Side Air": {
   "idx": 16,
@@ -136,8 +136,8 @@
  },
  "Glide Wall": {
   "idx": 41,
-  "peak": -4.96,
-  "rms": -17.84
+  "peak": -6.41,
+  "rms": -19.32
  },
  "Gravity Lead": {
   "idx": 19,
@@ -146,8 +146,8 @@
  },
  "Grunge Drop": {
   "idx": 55,
-  "peak": -9.28,
-  "rms": -24.51
+  "peak": -8.71,
+  "rms": -21.66
  },
  "Hand in Cloud": {
   "idx": 66,
@@ -211,8 +211,8 @@
  },
  "Jungle Sleaze": {
   "idx": 71,
-  "peak": -5.43,
-  "rms": -18.08
+  "peak": -5.74,
+  "rms": -17.86
  },
  "Knights of Fuzz": {
   "idx": 57,
@@ -231,8 +231,8 @@
  },
  "March Stabs": {
   "idx": 44,
-  "peak": -7.57,
-  "rms": -21.65
+  "peak": -7.94,
+  "rms": -22.2
  },
  "Marionette Master": {
   "idx": 52,
@@ -271,8 +271,8 @@
  },
  "Plug-In Junior": {
   "idx": 56,
-  "peak": -2.34,
-  "rms": -14.64
+  "peak": -6.46,
+  "rms": -17.72
  },
  "Prayer Djent": {
   "idx": 31,
@@ -281,8 +281,8 @@
  },
  "Quarter-Tone Lead": {
   "idx": 48,
-  "peak": -4.16,
-  "rms": -20.75
+  "peak": -4.58,
+  "rms": -18.68
  },
  "Regal Solo": {
   "idx": 43,
@@ -331,18 +331,18 @@
  },
  "Skye (No Mod)": {
   "idx": 25,
-  "peak": -4.36,
-  "rms": -16.15
+  "peak": -4.8,
+  "rms": -16.1
  },
  "Skye Crusher": {
   "idx": 24,
-  "peak": -7.97,
-  "rms": -20.5
+  "peak": -8.85,
+  "rms": -20.21
  },
  "Skye Soar": {
   "idx": 26,
-  "peak": -4.39,
-  "rms": -18.03
+  "peak": -5.46,
+  "rms": -17.87
  },
  "Solar Monolith": {
   "idx": 27,

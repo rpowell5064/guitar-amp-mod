@@ -70,7 +70,17 @@ private:
     // 0.35 V/unit inherited from the EVH calibration; 0.70 V improves every take
     // (g25/noon/gmax 16.1/26.2/26.1 -> 14.7/18.1/19.8 % at master 0.7), where the
     // VR1 pot law only helped below noon.
-    float inVolts_    = 0.70f;
+    // 2026-10-07 (evening): KNEE-ANCHORED like the Friedman twin. 0.70 came from THD at -24..-6 dBFS,
+    // rows that sit in saturation at any drive within 20 dB, so the fit never saw where clipping
+    // starts: the twin crossed 30 % THD at 1 kHz 14 dB later than the shipped model at every gain
+    // (10 / 5 / 2.5) and 30 dB later than the real amp's capture at preamp volume 10. At the
+    // captures' own scale (0 dBFS = +19 dBu, 9.76 V/unit) the stage chain lands the real knee
+    // within 1 dB, so the chain is right; 2.8 V/unit is the DEVICE full scale (0 dBFS = +6 dBu),
+    // the same number the Friedman twin settled on from its own ear anchor, and puts the twin's
+    // knee within 2 dB of the shipped model's at every gain. Known shape residuals left open: a
+    // soft ~27 % THD shelf 12 dB below the knee (the real amp reads 6-8 % there) and 110 Hz THD
+    // about twice the real amp's at saturation. Lab: --refgain -13 feeds the capture at its scale.
+    float inVolts_    = 2.8f;
     float outScalePa_ = 0.0048f;
     bool  dynLoad_ = false;   // Phase 5 (2026-09-21): dynamic speaker load in the power section (lab toggle)
 

@@ -98,10 +98,10 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 10.50f, 5.20f, 3.60f, 0.0f, 10.40f, 0.0f, 1.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 10.50f, 2.80f, 3.60f, 0.0f, 10.40f, 0.0f, 1.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
-    { 6.60f, 3.30f, 1.20f, 0.00f, -0.70f, -1.20f, -1.50f },   // JCM800 re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
+    { 0.00f, 0.20f, 0.05f, 0.00f, 0.00f, 0.00f, -0.05f },   // JCM800 corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8): presets 62/1/24 at -24/-34 dBFS RMS, the twin's own gain-knob loudness law now sits within 0.2 dB of the shipped model (the old row {6.6 3.3 1.2 0 -.7 -1.2 -1.5} was compensating the wrong input scale); previously re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 4.40f, 1.90f, 0.70f, 0.00f, -0.40f, -0.70f, -1.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
