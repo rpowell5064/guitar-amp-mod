@@ -98,15 +98,15 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 10.50f, 3.60f, 3.60f, 0.0f, 10.40f, 0.0f, 18.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 10.50f, 5.20f, 3.60f, 0.0f, 10.40f, 0.0f, 5.20f, 0.0f, 4.50f, 0.0f, 1.40f, -2.80f, -3.00f, 0.0f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
-    { 4.50f, 1.90f, 0.60f, 0.00f, -0.40f, -0.60f, -0.90f },
+    { 6.60f, 3.30f, 1.20f, 0.00f, -0.70f, -1.20f, -1.50f },   // JCM800 re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 4.40f, 1.90f, 0.70f, 0.00f, -0.40f, -0.70f, -1.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
-    { 12.20f, 7.70f, 3.50f, 0.00f, -3.70f, -6.50f, -8.80f },
+    { -1.80f, -1.35f, -0.70f, 0.00f, -0.55f, -1.05f, -1.40f },   // Friedman re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 1.60f, 0.40f, 0.20f, 0.00f, -0.10f, -0.30f, -0.30f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
@@ -119,12 +119,12 @@ static const float kCompGainDb[16][7] = {
 };
 static const float kCompMasterDb[16][4] = {
     { -7.40f, -2.90f, 0.00f, 1.10f },
-    { 27.40f, 10.80f, 0.00f, -2.70f },
+    { 27.40f, 11.20f, 0.00f, -3.00f },
     { -7.50f, -0.90f, 0.00f, -1.80f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { 19.20f, 3.80f, 0.00f, -0.20f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
-    { -1.20f, -0.30f, 0.00f, 0.20f },
+    { 26.10f, 10.15f, 0.00f, -3.25f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
     { -1.30f, -0.40f, 0.00f, 0.10f },
     { 0.00f, 0.00f, 0.00f, 0.00f },
@@ -142,7 +142,7 @@ static const float kCompModeDb[16][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -0.00f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f, 11.50f },   // Rockerverb CLEAN channel: +23.2 dB vs the shipped at gain .5 / master .7 (re-measured 2026-10-05 after the grid fit) minus the dirty mk 11.7
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
-    { -0.00f, -3.92f, -4.68f, -4.68f, -4.68f, -4.68f, -4.68f, -4.68f, -4.68f },
+    { 19.30f, 0.00f, -3.50f, -3.50f, -3.50f, -3.50f, -3.50f, -3.50f, -3.50f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },

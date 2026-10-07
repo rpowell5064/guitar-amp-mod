@@ -104,9 +104,10 @@ static void bands(const std::vector<float>& x, double sr, const double* fc, int 
 int main(int argc, char** argv) {
     const double RATE = 48000.0; const uint32_t NF = 64;
     const int SETTLE_BLOCKS = 1500, MEAS_BLOCKS = 1500;   // 2 s settle, 2 s measure
-    bool compOn = true; std::vector<int> want; double inDb = -24.0; std::vector<std::string> sets; const char* wavPath = nullptr; std::vector<float> wav; double wavGain = 1.0;
+    bool compOn = true; bool keepBass = false; std::vector<int> want; double inDb = -24.0; std::vector<std::string> sets; const char* wavPath = nullptr; std::vector<float> wav; double wavGain = 1.0;
     for (int a = 1; a < argc; ++a) {
         if (!strcmp(argv[a], "--nocomp")) { compOn = false; continue; }
+        if (!strcmp(argv[a], "--keepbass")) { keepBass = true; continue; }   // measure at the preset's own bass (both "sides" identical)
         if (!strcmp(argv[a], "--in") && a + 1 < argc) { inDb = atof(argv[++a]); continue; }
         if (!strcmp(argv[a], "--wav") && a + 1 < argc) { wavPath = argv[++a]; continue; }
         if (!strcmp(argv[a], "--set") && a + 1 < argc) { sets.push_back(argv[++a]); continue; }   // sym=value applied after each recall (a host knob move)
@@ -196,7 +197,7 @@ int main(int argc, char** argv) {
         for (int s = 0; s < SETTLE_BLOCKS / 2; ++s) runBlock();
         double db[2][NB], rms[2];
         for (int side = 0; side < 2; ++side) {
-            val[HF_AMP_BASS] = side ? 0.9f : 0.1f;
+            if (!keepBass) val[HF_AMP_BASS] = side ? 0.9f : 0.1f;   // --keepbass: a loudness probe, not a bass A/B
             lcg = 0x2545F491u;   // SAME noise realisation for both knob positions: the band deltas are then transfer differences
             wavPos = 0;
             for (int s = 0; s < SETTLE_BLOCKS / 2; ++s) runBlock();
