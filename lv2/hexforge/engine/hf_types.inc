@@ -403,13 +403,16 @@ struct OutputBoost {
 // ── Movable-block identity ────────────────────────────────────────────────────
 enum Block { B_GATE, B_COMP, B_FUZZ, B_DRIVE, B_AMP, B_CAB, B_MODFX, B_DELAY, B_REVERB, B_WAH, B_OCTAVE, B_NAIL, B_EQ, B_DRIVE2,
              // X2 second instances (2026-07-30): a clone of every movable effect
-             B_GATE2, B_COMP2, B_FUZZ2, B_NAIL2, B_MODFX2, B_DELAY2, B_REVERB2, B_WAH2, B_OCTAVE2, B_EQ2, B_COUNT };
+             B_GATE2, B_COMP2, B_FUZZ2, B_NAIL2, B_MODFX2, B_DELAY2, B_REVERB2, B_WAH2, B_OCTAVE2, B_EQ2,
+             B_CLAW,   // 25th movable (2026-10-07): the Claw noise maker
+             B_COUNT };
 static const int kPosPort[B_COUNT] = {
     HF_GT_POS, HF_CP_POS, HF_FZ_POS, HF_DR_POS, HF_AMP_POS,
     HF_CAB_POS, HF_MD_POS, HF_DL_POS, HF_RV_POS, HF_WH_POS, HF_OC_POS, HF_NAIL_POS,
     HF_EQ_POS, HF_DR2_POS,
     HF_GT2_POS, HF_CP2_POS, HF_FZ2_POS, HF_NAIL2_POS, HF_MD2_POS,
     HF_DL2_POS, HF_RV2_POS, HF_WH2_POS, HF_OC2_POS, HF_EQ2_POS,
+    HF_CLAW_POS,
 };
 static const int kEnablePort[B_COUNT] = {
     HF_GT_ENABLE, HF_CP_ENABLE, HF_FZ_ENABLE, HF_DR_ENABLE, HF_AMP_ENABLE,
@@ -417,6 +420,7 @@ static const int kEnablePort[B_COUNT] = {
     HF_EQ_ENABLE, HF_DR2_ENABLE,
     HF_GT2_ENABLE, HF_CP2_ENABLE, HF_FZ2_ENABLE, HF_NAIL2_ENABLE, HF_MD2_ENABLE,
     HF_DL2_ENABLE, HF_RV2_ENABLE, HF_WH2_ENABLE, HF_OC2_ENABLE, HF_EQ2_ENABLE,
+    HF_CLAW_ENABLE,
 };
 // enable = chain membership (1 = in chain, 0 = removed/palette); bypass = active(0)/
 // bypassed(1). A block runs iff enable==1 && bypass==0. Bypassed blocks stay in the chain
@@ -427,6 +431,7 @@ static const int kBypassPort[B_COUNT] = {
     HF_EQ_BYPASS, HF_DR2_BYPASS,
     HF_GT2_BYPASS, HF_CP2_BYPASS, HF_FZ2_BYPASS, HF_NAIL2_BYPASS, HF_MD2_BYPASS,
     HF_DL2_BYPASS, HF_RV2_BYPASS, HF_WH2_BYPASS, HF_OC2_BYPASS, HF_EQ2_BYPASS,
+    HF_CLAW_BYPASS,
 };
 
 // ── 6-band graphic EQ block (2026-07-23) ─────────────────────────────────────
@@ -494,6 +499,8 @@ static const int kSwWatch[] = {
     HF_AMP_PL_VARIAC, HF_RB_PL_VARIAC,
     // v43: SIR #34 mod (adds/removes a whole gain stage)
     HF_AMP_SIR34, HF_RB_SIR34,
+    // v52: Claw mode (each mode is its own engine)
+    HF_CLAW_MODE,
 };
 static constexpr int kSwWatchN = int(sizeof(kSwWatch) / sizeof(kSwWatch[0]));
 static_assert(kSwWatchN <= 96, "grow swWatchPrev[]");   // grown 64->96 (2026-09-21: Cab Mic 2 + Dynamic Load switches)
@@ -655,6 +662,7 @@ struct HexForge {
     std::unique_ptr<OversamplingWrapper> nail;        // industrial distortion (NailDistortion, oversampled)
     AutoOutput        autoOut;        // auto-leveling clip protection on the master output
     GraphicEQ         eq;              // 6-band graphic EQ block (movable, v23)
+    ClawNoise         claw;            // four-mode noise maker (movable, v52)
     // ── X2 second instances (2026-07-30, v38): a clone of every movable effect.
     // Always constructed (matches the drive2 precedent); processed only when the
     // block is enabled, so idle cost is zero and RAM is the only standing price.

@@ -185,6 +185,8 @@
     a pg:Group ; lv2:symbol "g_oc2" ; lv2:name "Octave 2" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2>
     a pg:Group ; lv2:symbol "g_eq2" ; lv2:name "EQ 2" .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw>
+    a pg:Group ; lv2:symbol "g_claw" ; lv2:name "Claw" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch>
     a pg:Group ; lv2:symbol "g_footswitch" ; lv2:name "Footswitches" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets>
@@ -211,7 +213,7 @@
 
 Hex Forge is the flagship — the whole Hex Chain signal chain in a SINGLE plugin, rebuilt around a modern node-chain interface: every block is a card you tap to edit, drag to reorder, and click to bypass, with per-model faceplates, live tone readouts and a built-in strobe tuner.
 
-The blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, a 6-band graphic EQ, modulation, delay, reverb, wah, octave and the industrial 'Nail' stage — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:
+The blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, a 6-band graphic EQ, modulation, delay, reverb, wah, octave, the industrial 'Nail' stage and the four-mode 'Claw' noise maker (noise bursts, a self-oscillating feedback loop, a chaotic ring modulator, a shortwave heterodyne) — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:
 
 - AMP: FOURTEEN original voicings (clean to modern high-gain — plus the Blue Liner, a classic all-tube 300 W BASS head with Ultra-Lo/Ultra-Hi switches and a 3-position mid selector), including the Cali V — a 9-mode three-channel switcher with a 5-band graphic EQ — the chrome-clad Diamond Plate with 8 high-gain modes plus Bold/Spongy variac and Silicon/Tube rectifier feel switches, and the Plexiglass with its jumpered Vol I + Vol II channels; every voicing rides a modeled power amp, with hum filtering and decay-aware noise conditioning on the hot channels.
 - DRIVE: ELEVEN overdrive/boost/distortion voicings, from the green mid-hump legend and the mythical gold horse to the starved-tube Tube Chauffeur, the germanium Treble Ranger and the Helsinki Grind parallel-blend BASS preamp.
@@ -223,7 +225,7 @@ A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory r
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 276 ;
+    lv2:microVersion 277 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -340,7 +342,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 18 ; lv2:symbol "gt_pos" ; lv2:name "Gate Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 1 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 1 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -364,7 +366,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 19 ; lv2:symbol "gt_enable" ; lv2:name "Gate Enable" ;
@@ -406,7 +409,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 25 ; lv2:symbol "cp_pos" ; lv2:name "Comp Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 2 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 2 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -430,7 +433,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 26 ; lv2:symbol "cp_enable" ; lv2:name "Comp Enable" ;
@@ -487,7 +491,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 34 ; lv2:symbol "fz_pos" ; lv2:name "Fuzz Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 3 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 3 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -511,7 +515,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 35 ; lv2:symbol "fz_enable" ; lv2:name "Fuzz Enable" ;
@@ -575,7 +580,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 44 ; lv2:symbol "dr_pos" ; lv2:name "Drive Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dr> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 4 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 4 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -599,7 +604,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 45 ; lv2:symbol "dr_enable" ; lv2:name "Drive Enable" ;
@@ -654,7 +660,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 52 ; lv2:symbol "amp_pos" ; lv2:name "Amp Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_amp> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 5 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 5 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -678,7 +684,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 53 ; lv2:symbol "amp_enable" ; lv2:name "Amp Enable" ;
@@ -859,7 +866,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 81 ; lv2:symbol "cab_pos" ; lv2:name "Cabinet Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cab> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -883,7 +890,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 82 ; lv2:symbol "cab_enable" ; lv2:name "Cabinet Enable" ;
@@ -912,7 +920,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 86 ; lv2:symbol "md_pos" ; lv2:name "Modulation Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 7 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 7 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -936,7 +944,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 87 ; lv2:symbol "md_enable" ; lv2:name "Modulation Enable" ;
@@ -983,7 +992,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 93 ; lv2:symbol "dl_pos" ; lv2:name "Delay Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 8 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 8 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -1007,7 +1016,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 94 ; lv2:symbol "dl_enable" ; lv2:name "Delay Enable" ;
@@ -1104,7 +1114,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 107 ; lv2:symbol "rv_pos" ; lv2:name "Reverb Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 9 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 9 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -1128,7 +1138,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 108 ; lv2:symbol "rv_enable" ; lv2:name "Reverb Enable" ;
@@ -1171,7 +1182,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 115 ; lv2:symbol "wh_pos" ; lv2:name "Wah Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 10 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 10 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -1195,7 +1206,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 116 ; lv2:symbol "wh_enable" ; lv2:name "Wah Enable" ;
@@ -1240,7 +1252,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 123 ; lv2:symbol "oc_pos" ; lv2:name "Octave Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 11 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 11 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -1264,7 +1276,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 124 ; lv2:symbol "oc_enable" ; lv2:name "Octave Enable" ;
@@ -1384,7 +1397,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 143 ; lv2:symbol "nail_pos" ; lv2:name "Nail Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 12 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 12 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -1408,7 +1421,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 144 ; lv2:symbol "nail_enable" ; lv2:name "Nail Enable" ;
@@ -1700,7 +1714,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 184 ; lv2:symbol "eq_pos" ; lv2:name "EQ Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 6 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -1724,7 +1738,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 185 ; lv2:symbol "eq_enable" ; lv2:name "EQ Enable" ;
@@ -2390,7 +2405,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 279 ; lv2:symbol "gt2_pos" ; lv2:name "Gate 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_gt2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 15 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 15 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -2414,7 +2429,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 280 ; lv2:symbol "gt2_enable" ; lv2:name "Gate 2 Enable" ;
@@ -2462,7 +2478,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 287 ; lv2:symbol "cp2_pos" ; lv2:name "Comp 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cp2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 16 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 16 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -2486,7 +2502,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 288 ; lv2:symbol "cp2_enable" ; lv2:name "Comp 2 Enable" ;
@@ -2549,7 +2566,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 297 ; lv2:symbol "fz2_pos" ; lv2:name "Fuzz 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_fz2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 17 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 17 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -2573,7 +2590,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 298 ; lv2:symbol "fz2_enable" ; lv2:name "Fuzz 2 Enable" ;
@@ -2648,7 +2666,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 309 ; lv2:symbol "nail2_pos" ; lv2:name "Nail 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_nail2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 18 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 18 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -2672,7 +2690,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 310 ; lv2:symbol "nail2_enable" ; lv2:name "Nail 2 Enable" ;
@@ -2721,7 +2740,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 317 ; lv2:symbol "md2_pos" ; lv2:name "Modulation 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_md2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 19 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 19 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -2745,7 +2764,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 318 ; lv2:symbol "md2_enable" ; lv2:name "Modulation 2 Enable" ;
@@ -2833,7 +2853,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 329 ; lv2:symbol "dl2_pos" ; lv2:name "Delay 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_dl2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 20 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 20 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -2857,7 +2877,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 330 ; lv2:symbol "dl2_enable" ; lv2:name "Delay 2 Enable" ;
@@ -2980,7 +3001,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 346 ; lv2:symbol "rv2_pos" ; lv2:name "Reverb 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_rv2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 21 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 21 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -3004,7 +3025,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 347 ; lv2:symbol "rv2_enable" ; lv2:name "Reverb 2 Enable" ;
@@ -3075,7 +3097,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 358 ; lv2:symbol "wh2_pos" ; lv2:name "Wah 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_wh2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 22 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 22 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -3099,7 +3121,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 359 ; lv2:symbol "wh2_enable" ; lv2:name "Wah 2 Enable" ;
@@ -3150,7 +3173,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 367 ; lv2:symbol "oc2_pos" ; lv2:name "Octave 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_oc2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 23 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 23 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -3174,7 +3197,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 368 ; lv2:symbol "oc2_enable" ; lv2:name "Octave 2 Enable" ;
@@ -3224,7 +3248,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:index 375 ; lv2:symbol "eq2_pos" ; lv2:name "EQ 2 Position" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
-        lv2:default 24 ; lv2:minimum 1 ; lv2:maximum 24 ;
+        lv2:default 24 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
         lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
         lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
@@ -3248,7 +3272,8 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
         lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
         lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
-        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ]
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 376 ; lv2:symbol "eq2_enable" ; lv2:name "EQ 2 Enable" ;
@@ -3600,348 +3625,432 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 431 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
+        lv2:index 431 ; lv2:symbol "claw_pos" ; lv2:name "Claw Position" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
+        lv2:default 25 ; lv2:minimum 1 ; lv2:maximum 25 ;
+        lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "2" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "3" ; rdf:value 3 ] ;
+        lv2:scalePoint [ rdfs:label "4" ; rdf:value 4 ] ;
+        lv2:scalePoint [ rdfs:label "5" ; rdf:value 5 ] ;
+        lv2:scalePoint [ rdfs:label "6" ; rdf:value 6 ] ;
+        lv2:scalePoint [ rdfs:label "7" ; rdf:value 7 ] ;
+        lv2:scalePoint [ rdfs:label "8" ; rdf:value 8 ] ;
+        lv2:scalePoint [ rdfs:label "9" ; rdf:value 9 ] ;
+        lv2:scalePoint [ rdfs:label "10" ; rdf:value 10 ] ;
+        lv2:scalePoint [ rdfs:label "11" ; rdf:value 11 ] ;
+        lv2:scalePoint [ rdfs:label "12" ; rdf:value 12 ] ;
+        lv2:scalePoint [ rdfs:label "13" ; rdf:value 13 ] ;
+        lv2:scalePoint [ rdfs:label "14" ; rdf:value 14 ] ;
+        lv2:scalePoint [ rdfs:label "15" ; rdf:value 15 ] ;
+        lv2:scalePoint [ rdfs:label "16" ; rdf:value 16 ] ;
+        lv2:scalePoint [ rdfs:label "17" ; rdf:value 17 ] ;
+        lv2:scalePoint [ rdfs:label "18" ; rdf:value 18 ] ;
+        lv2:scalePoint [ rdfs:label "19" ; rdf:value 19 ] ;
+        lv2:scalePoint [ rdfs:label "20" ; rdf:value 20 ] ;
+        lv2:scalePoint [ rdfs:label "21" ; rdf:value 21 ] ;
+        lv2:scalePoint [ rdfs:label "22" ; rdf:value 22 ] ;
+        lv2:scalePoint [ rdfs:label "23" ; rdf:value 23 ] ;
+        lv2:scalePoint [ rdfs:label "24" ; rdf:value 24 ] ;
+        lv2:scalePoint [ rdfs:label "25" ; rdf:value 25 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 432 ; lv2:symbol "claw_enable" ; lv2:name "Claw Enable" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 433 ; lv2:symbol "claw_mode" ; lv2:name "Claw Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:scalePoint [ rdfs:label "Hiss" ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Howl" ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Butterfly" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Shortwave" ; rdf:value 3 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 434 ; lv2:symbol "claw_feed" ; lv2:name "Claw Feed" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 435 ; lv2:symbol "claw_pitch" ; lv2:name "Claw Pitch" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 436 ; lv2:symbol "claw_grit" ; lv2:name "Claw Grit" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 437 ; lv2:symbol "claw_blend" ; lv2:name "Claw Blend" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 438 ; lv2:symbol "claw_level" ; lv2:name "Claw Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:default 0.707 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 439 ; lv2:symbol "claw_grab" ; lv2:name "Claw Grab" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 440 ; lv2:symbol "claw_bypass" ; lv2:name "Claw Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 441 ; lv2:symbol "sw_a" ; lv2:name "Preset A" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 432 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
+        lv2:index 442 ; lv2:symbol "sw_b" ; lv2:name "Preset B" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 433 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
+        lv2:index 443 ; lv2:symbol "sw_c" ; lv2:name "Preset C" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 434 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
+        lv2:index 444 ; lv2:symbol "sw_d" ; lv2:name "Preset D" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 435 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
+        lv2:index 445 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 436 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
+        lv2:index 446 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 437 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
+        lv2:index 447 ; lv2:symbol "ps_save" ; lv2:name "Save Preset" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 438 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
+        lv2:index 448 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 439 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
+        lv2:index 449 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 440 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
+        lv2:index 450 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 441 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
+        lv2:index 451 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 442 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
+        lv2:index 452 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 127
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 443 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
+        lv2:index 453 ; lv2:symbol "ps_bank" ; lv2:name "Active Bank" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 31
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 444 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
+        lv2:index 454 ; lv2:symbol "ps_slot" ; lv2:name "Active Slot" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets> ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 3
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 445 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
+        lv2:index 455 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 446 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
+        lv2:index 456 ; lv2:symbol "in_meter" ; lv2:name "Input Level" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 447 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
+        lv2:index 457 ; lv2:symbol "out_meter" ; lv2:name "Output Level" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 448 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
+        lv2:index 458 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 449 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
+        lv2:index 459 ; lv2:symbol "tuner_on" ; lv2:name "Tuner" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 450 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
+        lv2:index 460 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 451 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
+        lv2:index 461 ; lv2:symbol "tuner_note" ; lv2:name "Tuner Note" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:portProperty lv2:integer ;
         lv2:default -1 ; lv2:minimum -1 ; lv2:maximum 11
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 452 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
+        lv2:index 462 ; lv2:symbol "tuner_cents" ; lv2:name "Tuner Cents" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_tuner> ;
         lv2:default 0.0 ; lv2:minimum -50.0 ; lv2:maximum 50.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 453 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
+        lv2:index 463 ; lv2:symbol "cpu_gt" ; lv2:name "CPU Gate" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 454 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
+        lv2:index 464 ; lv2:symbol "cpu_cp" ; lv2:name "CPU Comp" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 455 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
+        lv2:index 465 ; lv2:symbol "cpu_fz" ; lv2:name "CPU Fuzz" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 456 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
+        lv2:index 466 ; lv2:symbol "cpu_dr" ; lv2:name "CPU Drive" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 457 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
+        lv2:index 467 ; lv2:symbol "cpu_amp" ; lv2:name "CPU Amp" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 458 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
+        lv2:index 468 ; lv2:symbol "cpu_cab" ; lv2:name "CPU Cab" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 459 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
+        lv2:index 469 ; lv2:symbol "cpu_md" ; lv2:name "CPU Mod" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 460 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
+        lv2:index 470 ; lv2:symbol "cpu_dl" ; lv2:name "CPU Delay" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 461 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
+        lv2:index 471 ; lv2:symbol "cpu_rv" ; lv2:name "CPU Reverb" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 462 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
+        lv2:index 472 ; lv2:symbol "cpu_wh" ; lv2:name "CPU Wah" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 463 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
+        lv2:index 473 ; lv2:symbol "cpu_oc" ; lv2:name "CPU Octave" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 464 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
+        lv2:index 474 ; lv2:symbol "cpu_nail" ; lv2:name "CPU Nail" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 465 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
+        lv2:index 475 ; lv2:symbol "cpu_eq" ; lv2:name "CPU EQ" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 466 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
+        lv2:index 476 ; lv2:symbol "cpu_total" ; lv2:name "CPU Total" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 467 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive 2" ;
+        lv2:index 477 ; lv2:symbol "cpu_dr2" ; lv2:name "CPU Drive 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 468 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
+        lv2:index 478 ; lv2:symbol "cpu_rigb" ; lv2:name "CPU Rig B" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 469 ; lv2:symbol "cpu_gt2" ; lv2:name "CPU Gate 2" ;
+        lv2:index 479 ; lv2:symbol "cpu_gt2" ; lv2:name "CPU Gate 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 470 ; lv2:symbol "cpu_cp2" ; lv2:name "CPU Comp 2" ;
+        lv2:index 480 ; lv2:symbol "cpu_cp2" ; lv2:name "CPU Comp 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 471 ; lv2:symbol "cpu_fz2" ; lv2:name "CPU Fuzz 2" ;
+        lv2:index 481 ; lv2:symbol "cpu_fz2" ; lv2:name "CPU Fuzz 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 472 ; lv2:symbol "cpu_nail2" ; lv2:name "CPU Nail 2" ;
+        lv2:index 482 ; lv2:symbol "cpu_nail2" ; lv2:name "CPU Nail 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 473 ; lv2:symbol "cpu_md2" ; lv2:name "CPU Modulation 2" ;
+        lv2:index 483 ; lv2:symbol "cpu_md2" ; lv2:name "CPU Modulation 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 474 ; lv2:symbol "cpu_dl2" ; lv2:name "CPU Delay 2" ;
+        lv2:index 484 ; lv2:symbol "cpu_dl2" ; lv2:name "CPU Delay 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 475 ; lv2:symbol "cpu_rv2" ; lv2:name "CPU Reverb 2" ;
+        lv2:index 485 ; lv2:symbol "cpu_rv2" ; lv2:name "CPU Reverb 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 476 ; lv2:symbol "cpu_wh2" ; lv2:name "CPU Wah 2" ;
+        lv2:index 486 ; lv2:symbol "cpu_wh2" ; lv2:name "CPU Wah 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 477 ; lv2:symbol "cpu_oc2" ; lv2:name "CPU Octave 2" ;
+        lv2:index 487 ; lv2:symbol "cpu_oc2" ; lv2:name "CPU Octave 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 478 ; lv2:symbol "cpu_eq2" ; lv2:name "CPU EQ 2" ;
+        lv2:index 488 ; lv2:symbol "cpu_eq2" ; lv2:name "CPU EQ 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 479 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
+        lv2:index 489 ; lv2:symbol "cpu_cab2" ; lv2:name "CPU Cab 2" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 480 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command" ;
+        lv2:index 490 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         lv2:portProperty lv2:integer, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 9
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 481 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset" ;
+        lv2:index 491 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -12.0 ; lv2:maximum 12.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 482 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset" ;
+        lv2:index 492 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         units:unit units:db ;
         lv2:default 0.0 ; lv2:minimum -20.0 ; lv2:maximum 20.0
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 483 ; lv2:symbol "cal_state" ; lv2:name "Cal State" ;
+        lv2:index 493 ; lv2:symbol "cal_state" ; lv2:name "Cal State" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         lv2:portProperty lv2:integer ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 5
     ] , [
         a lv2:ControlPort, lv2:OutputPort ;
-        lv2:index 484 ; lv2:symbol "cal_progress" ; lv2:name "Cal Progress" ;
+        lv2:index 494 ; lv2:symbol "cal_progress" ; lv2:name "Cal Progress" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_calibrate> ;
         lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 485 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR" ;
+        lv2:index 495 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 486 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut" ;
+        lv2:index 496 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:hz ;
         lv2:default 100.75 ; lv2:minimum 40.0 ; lv2:maximum 140.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 487 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip" ;
+        lv2:index 497 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:db ;
         lv2:default 1.815 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 488 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip" ;
+        lv2:index 498 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:db ;
         lv2:default 3.225 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 489 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt" ;
+        lv2:index 499 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_outvoice> ;
         units:unit units:db ;
         lv2:default 2.7 ; lv2:minimum 0.0 ; lv2:maximum 6.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 490 ; lv2:symbol "out_phase" ; lv2:name "Output Phase Invert" ;
+        lv2:index 500 ; lv2:symbol "out_phase" ; lv2:name "Output Phase Invert" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 491 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model" ;
+        lv2:index 501 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 492 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load" ;
+        lv2:index 502 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 493 ; lv2:symbol "it_mains" ; lv2:name "IT Mains" ;
+        lv2:index 503 ; lv2:symbol "it_mains" ; lv2:name "IT Mains" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_itmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1 ;
@@ -3949,7 +4058,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "50 Hz" ; rdf:value 1 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 494 ; lv2:symbol "it_guitar" ; lv2:name "IT Guitar" ;
+        lv2:index 504 ; lv2:symbol "it_guitar" ; lv2:name "IT Guitar" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_itmore> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
@@ -3958,16 +4067,21 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         lv2:scalePoint [ rdfs:label "Hot Pickups" ; rdf:value 2 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
-        lv2:index 495 ; lv2:symbol "amp_palegacy" ; lv2:name "Rev 189 Power Stage" ;
+        lv2:index 505 ; lv2:symbol "amp_palegacy" ; lv2:name "Rev 189 Power Stage" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_ampmore> ;
         lv2:portProperty lv2:toggled ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
+    ] , [
+        a lv2:ControlPort, lv2:OutputPort ;
+        lv2:index 506 ; lv2:symbol "cpu_claw" ; lv2:name "CPU Claw" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_cpu> ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 100.0
     ] , [
         a lv2:InputPort, atom:AtomPort ;
         atom:bufferType atom:Sequence ;
         atom:supports midi:MidiEvent ;
         rsz:minimumSize 4096 ;
-        lv2:index 496 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
+        lv2:index 507 ; lv2:symbol "midi_in" ; lv2:name "MIDI In"
     ] ;
 
     modgui:gui [
@@ -3980,7 +4094,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         modgui:brand "Hex Chain" ;
         modgui:label "Hex Forge" ;
         modgui:model "mod-pedal-guitaramp-hexforge" ;
-        modgui:monitoredOutputs [ lv2:symbol "clip" ] , [ lv2:symbol "ps_bank" ] , [ lv2:symbol "ps_slot" ] , [ lv2:symbol "in_meter" ] , [ lv2:symbol "out_meter" ] , [ lv2:symbol "tuner_note" ] , [ lv2:symbol "tuner_cents" ] , [ lv2:symbol "cpu_gt" ] , [ lv2:symbol "cpu_cp" ] , [ lv2:symbol "cpu_fz" ] , [ lv2:symbol "cpu_dr" ] , [ lv2:symbol "cpu_amp" ] , [ lv2:symbol "cpu_cab" ] , [ lv2:symbol "cpu_md" ] , [ lv2:symbol "cpu_dl" ] , [ lv2:symbol "cpu_rv" ] , [ lv2:symbol "cpu_wh" ] , [ lv2:symbol "cpu_oc" ] , [ lv2:symbol "cpu_nail" ] , [ lv2:symbol "cpu_eq" ] , [ lv2:symbol "cpu_total" ] , [ lv2:symbol "cpu_dr2" ] , [ lv2:symbol "cpu_rigb" ] , [ lv2:symbol "cpu_gt2" ] , [ lv2:symbol "cpu_cp2" ] , [ lv2:symbol "cpu_fz2" ] , [ lv2:symbol "cpu_nail2" ] , [ lv2:symbol "cpu_md2" ] , [ lv2:symbol "cpu_dl2" ] , [ lv2:symbol "cpu_rv2" ] , [ lv2:symbol "cpu_wh2" ] , [ lv2:symbol "cpu_oc2" ] , [ lv2:symbol "cpu_eq2" ] , [ lv2:symbol "cpu_cab2" ] , [ lv2:symbol "cal_state" ] , [ lv2:symbol "cal_progress" ] ;
+        modgui:monitoredOutputs [ lv2:symbol "clip" ] , [ lv2:symbol "ps_bank" ] , [ lv2:symbol "ps_slot" ] , [ lv2:symbol "in_meter" ] , [ lv2:symbol "out_meter" ] , [ lv2:symbol "tuner_note" ] , [ lv2:symbol "tuner_cents" ] , [ lv2:symbol "cpu_gt" ] , [ lv2:symbol "cpu_cp" ] , [ lv2:symbol "cpu_fz" ] , [ lv2:symbol "cpu_dr" ] , [ lv2:symbol "cpu_amp" ] , [ lv2:symbol "cpu_cab" ] , [ lv2:symbol "cpu_md" ] , [ lv2:symbol "cpu_dl" ] , [ lv2:symbol "cpu_rv" ] , [ lv2:symbol "cpu_wh" ] , [ lv2:symbol "cpu_oc" ] , [ lv2:symbol "cpu_nail" ] , [ lv2:symbol "cpu_eq" ] , [ lv2:symbol "cpu_total" ] , [ lv2:symbol "cpu_dr2" ] , [ lv2:symbol "cpu_rigb" ] , [ lv2:symbol "cpu_gt2" ] , [ lv2:symbol "cpu_cp2" ] , [ lv2:symbol "cpu_fz2" ] , [ lv2:symbol "cpu_nail2" ] , [ lv2:symbol "cpu_md2" ] , [ lv2:symbol "cpu_dl2" ] , [ lv2:symbol "cpu_rv2" ] , [ lv2:symbol "cpu_wh2" ] , [ lv2:symbol "cpu_oc2" ] , [ lv2:symbol "cpu_eq2" ] , [ lv2:symbol "cpu_cab2" ] , [ lv2:symbol "cal_state" ] , [ lv2:symbol "cal_progress" ] , [ lv2:symbol "cpu_claw" ] ;
         modgui:port [
             lv2:index 0 ; lv2:symbol "bypass" ; lv2:name "Bypass"
         ] , [
@@ -4830,64 +4944,84 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
         ] , [
             lv2:index 423 ; lv2:symbol "rb_cabmic2pol" ; lv2:name "Rig B Cab Mic 2 Polarity"
         ] , [
-            lv2:index 424 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
+            lv2:index 424 ; lv2:symbol "claw_pos" ; lv2:name "Claw Position"
         ] , [
-            lv2:index 425 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
+            lv2:index 425 ; lv2:symbol "claw_enable" ; lv2:name "Claw Enable"
         ] , [
-            lv2:index 426 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
+            lv2:index 426 ; lv2:symbol "claw_mode" ; lv2:name "Claw Mode"
         ] , [
-            lv2:index 427 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
+            lv2:index 427 ; lv2:symbol "claw_feed" ; lv2:name "Claw Feed"
         ] , [
-            lv2:index 428 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
+            lv2:index 428 ; lv2:symbol "claw_pitch" ; lv2:name "Claw Pitch"
         ] , [
-            lv2:index 429 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
+            lv2:index 429 ; lv2:symbol "claw_grit" ; lv2:name "Claw Grit"
         ] , [
-            lv2:index 430 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
+            lv2:index 430 ; lv2:symbol "claw_blend" ; lv2:name "Claw Blend"
         ] , [
-            lv2:index 431 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
+            lv2:index 431 ; lv2:symbol "claw_level" ; lv2:name "Claw Level"
         ] , [
-            lv2:index 432 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
+            lv2:index 432 ; lv2:symbol "claw_grab" ; lv2:name "Claw Grab"
         ] , [
-            lv2:index 433 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
+            lv2:index 433 ; lv2:symbol "claw_bypass" ; lv2:name "Claw Bypass"
         ] , [
-            lv2:index 434 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
+            lv2:index 434 ; lv2:symbol "sw_a" ; lv2:name "Preset A"
         ] , [
-            lv2:index 435 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
+            lv2:index 435 ; lv2:symbol "sw_b" ; lv2:name "Preset B"
         ] , [
-            lv2:index 436 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
+            lv2:index 436 ; lv2:symbol "sw_c" ; lv2:name "Preset C"
         ] , [
-            lv2:index 437 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
+            lv2:index 437 ; lv2:symbol "sw_d" ; lv2:name "Preset D"
         ] , [
-            lv2:index 438 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
+            lv2:index 438 ; lv2:symbol "ps_bank_up" ; lv2:name "Bank Up"
         ] , [
-            lv2:index 439 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
+            lv2:index 439 ; lv2:symbol "ps_bank_dn" ; lv2:name "Bank Down"
         ] , [
-            lv2:index 440 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command"
+            lv2:index 440 ; lv2:symbol "ps_save" ; lv2:name "Save Preset"
         ] , [
-            lv2:index 441 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset"
+            lv2:index 441 ; lv2:symbol "ps_move_up" ; lv2:name "Move Earlier"
         ] , [
-            lv2:index 442 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset"
+            lv2:index 442 ; lv2:symbol "ps_move_dn" ; lv2:name "Move Later"
         ] , [
-            lv2:index 443 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR"
+            lv2:index 443 ; lv2:symbol "ps_backup" ; lv2:name "Backup Presets"
         ] , [
-            lv2:index 444 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut"
+            lv2:index 444 ; lv2:symbol "ps_restore" ; lv2:name "Restore Presets"
         ] , [
-            lv2:index 445 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip"
+            lv2:index 445 ; lv2:symbol "ps_goto" ; lv2:name "Go To Preset"
         ] , [
-            lv2:index 446 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip"
+            lv2:index 446 ; lv2:symbol "out_auto" ; lv2:name "Output Auto-Limit"
         ] , [
-            lv2:index 447 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt"
+            lv2:index 447 ; lv2:symbol "out_mono" ; lv2:name "Output Mono Sum"
         ] , [
-            lv2:index 448 ; lv2:symbol "out_phase" ; lv2:name "Output Phase Invert"
+            lv2:index 448 ; lv2:symbol "tuner_on" ; lv2:name "Tuner"
         ] , [
-            lv2:index 449 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model"
+            lv2:index 449 ; lv2:symbol "tuner_mute" ; lv2:name "Tuner Mute"
         ] , [
-            lv2:index 450 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load"
+            lv2:index 450 ; lv2:symbol "cal_cmd" ; lv2:name "Calibrate Command"
         ] , [
-            lv2:index 451 ; lv2:symbol "it_mains" ; lv2:name "IT Mains"
+            lv2:index 451 ; lv2:symbol "cal_trim_offs" ; lv2:name "Cal Trim Offset"
         ] , [
-            lv2:index 452 ; lv2:symbol "it_guitar" ; lv2:name "IT Guitar"
+            lv2:index 452 ; lv2:symbol "cal_floor_offs" ; lv2:name "Cal Floor Offset"
         ] , [
-            lv2:index 453 ; lv2:symbol "amp_palegacy" ; lv2:name "Rev 189 Power Stage"
+            lv2:index 453 ; lv2:symbol "out_voice" ; lv2:name "Output Voice FRFR"
+        ] , [
+            lv2:index 454 ; lv2:symbol "fv_locut" ; lv2:name "FRFR Low Cut"
+        ] , [
+            lv2:index 455 ; lv2:symbol "fv_prox" ; lv2:name "FRFR Prox Dip"
+        ] , [
+            lv2:index 456 ; lv2:symbol "fv_pres" ; lv2:name "FRFR Pres Dip"
+        ] , [
+            lv2:index 457 ; lv2:symbol "fv_fizz" ; lv2:name "FRFR Fizz Tilt"
+        ] , [
+            lv2:index 458 ; lv2:symbol "out_phase" ; lv2:name "Output Phase Invert"
+        ] , [
+            lv2:index 459 ; lv2:symbol "amp_evhcomp" ; lv2:name "Component Model"
+        ] , [
+            lv2:index 460 ; lv2:symbol "amp_dynload" ; lv2:name "Dynamic Load"
+        ] , [
+            lv2:index 461 ; lv2:symbol "it_mains" ; lv2:name "IT Mains"
+        ] , [
+            lv2:index 462 ; lv2:symbol "it_guitar" ; lv2:name "IT Guitar"
+        ] , [
+            lv2:index 463 ; lv2:symbol "amp_palegacy" ; lv2:name "Rev 189 Power Stage"
         ]
     ] .

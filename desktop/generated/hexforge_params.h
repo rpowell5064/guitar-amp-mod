@@ -16,32 +16,32 @@ struct HfDesktopParam {
 };
 
 static const HfScalePoint kHfSp_it_hbmodel[] = { { "'59 Bucker", 0.0f }, { "Norse Hammer", 1.0f }, { "Modern Flux", 2.0f }, { "Hot → PAF", 3.0f } };
-static const HfScalePoint kHfSp_gt_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
-static const HfScalePoint kHfSp_cp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_gt_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
+static const HfScalePoint kHfSp_cp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_cp_type[] = { { "5 Creature Amp", 0.0f }, { "Once76", 1.0f } };
 static const HfScalePoint kHfSp_cp_ratio[] = { { "2:1", 0.0f }, { "4:1", 1.0f }, { "8:1", 2.0f }, { "20:1", 3.0f }, { "Limit", 4.0f } };
-static const HfScalePoint kHfSp_fz_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_fz_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_fz_pedal[] = { { "Italian Hero", 0.0f }, { "I Know It", 1.0f }, { "Octavius", 2.0f }, { "Fuzz Zachary", 3.0f } };
 static const HfScalePoint kHfSp_fz_mode[] = { { "Delta", 0.0f }, { "Ovis", 1.0f }, { "Gotham", 2.0f }, { "Cold War", 3.0f }, { "Red Bear", 4.0f }, { "Boutique", 5.0f } };
-static const HfScalePoint kHfSp_dr_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_dr_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_dr_model[] = { { "Green Man", 0.0f }, { "New Dawn", 1.0f }, { "Dear Rodent Boy", 2.0f }, { "Neural (NAM)", 3.0f }, { "Grunge DS", 4.0f }, { "Gilded Horse", 5.0f }, { "Super Nova", 6.0f }, { "Preamp 250", 7.0f }, { "Echo Primer", 8.0f }, { "Tube Chauffeur", 9.0f }, { "Helsinki Grind", 10.0f }, { "Treble Ranger", 11.0f } };
-static const HfScalePoint kHfSp_amp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_amp_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_amp_model[] = { { "Clean Meanie", 0.0f }, { "Crunchy McCrunchFace", 1.0f }, { "Gainzilla", 2.0f }, { "Doom Daddy", 3.0f }, { "Tangerang", 4.0f }, { "Neural (NAM)", 5.0f }, { "Beardo BE", 6.0f }, { "Hi-Volt", 7.0f }, { "Chime Thirty", 8.0f }, { "Backline Plus", 9.0f }, { "Plexiglass", 10.0f }, { "Cali V", 11.0f }, { "Diamond Plate", 12.0f }, { "Tremont 15", 13.0f }, { "Blue Liner", 14.0f }, { "Citrus 200", 15.0f } };
 static const HfScalePoint kHfSp_amp_sunn_link[] = { { "Independent", 0.0f }, { "Parallel", 1.0f }, { "Series", 2.0f } };
 static const HfScalePoint kHfSp_amp_pamp_tube[] = { { "6L6GC", 0.0f }, { "EL34", 1.0f }, { "EL84", 2.0f }, { "KT88", 3.0f }, { "6V6", 4.0f }, { "6550", 5.0f } };
-static const HfScalePoint kHfSp_cab_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
-static const HfScalePoint kHfSp_md_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_cab_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
+static const HfScalePoint kHfSp_md_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_md_type[] = { { "Lush-2", 0.0f }, { "Uni-Verse", 1.0f }, { "Phaser", 2.0f }, { "Flanger", 3.0f }, { "Tremolo", 4.0f }, { "Rotary", 5.0f }, { "Nevermind Chorus", 6.0f }, { "Seasick Vibe", 7.0f }, { "Script Phaser", 8.0f } };
-static const HfScalePoint kHfSp_dl_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_dl_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_dl_type[] = { { "Digital", 0.0f }, { "Tape", 1.0f }, { "Echo Wreck", 2.0f }, { "Seraph", 3.0f }, { "Vintage Echo", 4.0f } };
 static const HfScalePoint kHfSp_dl_heads[] = { { "1: Head 1", 0.0f }, { "2: Head 2", 1.0f }, { "3: Head 3", 2.0f }, { "4: Head 4", 3.0f }, { "5: Heads 1+2", 4.0f }, { "6: Heads 2+3", 5.0f }, { "7: Heads 3+4", 6.0f }, { "8: Heads 1+2+3", 7.0f }, { "9: Heads 2+3+4", 8.0f }, { "10: Heads 1+3+4", 9.0f }, { "11: All Heads", 10.0f }, { "12: All + Dense", 11.0f } };
 static const HfScalePoint kHfSp_dl_pattern[] = { { "Unison", 0.0f }, { "Dotted 8th", 1.0f }, { "Triplet", 2.0f }, { "Eighth", 3.0f } };
-static const HfScalePoint kHfSp_rv_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
-static const HfScalePoint kHfSp_wh_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_rv_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
+static const HfScalePoint kHfSp_wh_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_wh_type[] = { { "Auto", 0.0f }, { "Fixed", 1.0f } };
-static const HfScalePoint kHfSp_oc_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_oc_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_amp_fr_channel[] = { { "Clean", 0.0f }, { "BE", 1.0f }, { "HBE", 2.0f } };
-static const HfScalePoint kHfSp_nail_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_nail_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_nail_mode[] = { { "Broke", 0.0f }, { "Dahnward", 1.0f }, { "Delicate", 2.0f }, { "Con Molars", 3.0f }, { "Tusk", 4.0f } };
 static const HfScalePoint kHfSp_dl_div[] = { { "1/2", 0.0f }, { "1/4.", 1.0f }, { "1/4", 2.0f }, { "1/4T", 3.0f }, { "1/8.", 4.0f }, { "1/8", 5.0f }, { "1/8T", 6.0f }, { "1/16", 7.0f } };
 static const HfScalePoint kHfSp_md_div[] = { { "1/2", 0.0f }, { "1/4.", 1.0f }, { "1/4", 2.0f }, { "1/4T", 3.0f }, { "1/8.", 4.0f }, { "1/8", 5.0f }, { "1/8T", 6.0f }, { "1/16", 7.0f } };
@@ -54,7 +54,7 @@ static const HfScalePoint kHfSp_amp_rc_rect[] = { { "Silicon", 0.0f }, { "Tube",
 static const HfScalePoint kHfSp_amp_mt_mode[] = { { "Clean", 0.0f }, { "Crunch", 1.0f }, { "Lead", 2.0f } };
 static const HfScalePoint kHfSp_amp_mt_bright[] = { { "Off", 0.0f }, { "On", 1.0f } };
 static const HfScalePoint kHfSp_cab_voice[] = { { "Room", 0.0f }, { "Studio", 1.0f } };
-static const HfScalePoint kHfSp_eq_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_eq_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_eq_preset[] = { { "Manual", 0.0f }, { "Clean Sparkle", 1.0f }, { "De-Mud", 2.0f }, { "Classic Rock", 3.0f }, { "Metal Rhythm", 4.0f }, { "Lead Cut", 5.0f }, { "Cocked Wah", 6.0f } };
 static const HfScalePoint kHfSp_rv_density[] = { { "Classic", 0.0f }, { "Dense", 1.0f } };
 static const HfScalePoint kHfSp_rv_type[] = { { "Plate", 0.0f }, { "Spring", 1.0f }, { "Ambient", 2.0f } };
@@ -78,32 +78,32 @@ static const HfScalePoint kHfSp_rb_pamp_tube[] = { { "6L6GC", 0.0f }, { "EL34", 
 static const HfScalePoint kHfSp_rb_cabroomdense[] = { { "Classic", 0.0f }, { "Dense", 1.0f }, { "Space", 2.0f } };
 static const HfScalePoint kHfSp_rb_cabvoice[] = { { "Room", 0.0f }, { "Studio", 1.0f } };
 static const HfScalePoint kHfSp_rb_cabspkdrive[] = { { "Off", 0.0f }, { "Subtle", 1.0f }, { "Full", 2.0f }, { "Physical", 3.0f } };
-static const HfScalePoint kHfSp_gt2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
-static const HfScalePoint kHfSp_cp2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_gt2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
+static const HfScalePoint kHfSp_cp2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_cp2_type[] = { { "5 Creature Amp", 0.0f }, { "Once76", 1.0f } };
 static const HfScalePoint kHfSp_cp2_ratio[] = { { "2:1", 0.0f }, { "4:1", 1.0f }, { "8:1", 2.0f }, { "20:1", 3.0f }, { "Limit", 4.0f } };
-static const HfScalePoint kHfSp_fz2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_fz2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_fz2_pedal[] = { { "Italian Hero", 0.0f }, { "I Know It", 1.0f }, { "Octavius", 2.0f }, { "Fuzz Zachary", 3.0f } };
 static const HfScalePoint kHfSp_fz2_mode[] = { { "Delta", 0.0f }, { "Ovis", 1.0f }, { "Gotham", 2.0f }, { "Cold War", 3.0f }, { "Red Bear", 4.0f }, { "Boutique", 5.0f } };
-static const HfScalePoint kHfSp_nail2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_nail2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_nail2_mode[] = { { "Broke", 0.0f }, { "Dahnward", 1.0f }, { "Delicate", 2.0f }, { "Con Molars", 3.0f }, { "Tusk", 4.0f } };
-static const HfScalePoint kHfSp_md2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_md2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_md2_type[] = { { "Lush-2", 0.0f }, { "Uni-Verse", 1.0f }, { "Phaser", 2.0f }, { "Flanger", 3.0f }, { "Tremolo", 4.0f }, { "Rotary", 5.0f }, { "Nevermind Chorus", 6.0f }, { "Seasick Vibe", 7.0f }, { "Script Phaser", 8.0f } };
 static const HfScalePoint kHfSp_md2_div[] = { { "1/2", 0.0f }, { "1/4.", 1.0f }, { "1/4", 2.0f }, { "1/4T", 3.0f }, { "1/8.", 4.0f }, { "1/8", 5.0f }, { "1/8T", 6.0f }, { "1/16", 7.0f } };
 static const HfScalePoint kHfSp_md2_shape[] = { { "Bias", 0.0f }, { "Opto", 1.0f }, { "Harmonic", 2.0f } };
-static const HfScalePoint kHfSp_dl2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_dl2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_dl2_type[] = { { "Digital", 0.0f }, { "Tape", 1.0f }, { "Echo Wreck", 2.0f }, { "Seraph", 3.0f }, { "Vintage Echo", 4.0f } };
 static const HfScalePoint kHfSp_dl2_heads[] = { { "1: Head 1", 0.0f }, { "2: Head 2", 1.0f }, { "3: Head 3", 2.0f }, { "4: Head 4", 3.0f }, { "5: Heads 1+2", 4.0f }, { "6: Heads 2+3", 5.0f }, { "7: Heads 3+4", 6.0f }, { "8: Heads 1+2+3", 7.0f }, { "9: Heads 2+3+4", 8.0f }, { "10: Heads 1+3+4", 9.0f }, { "11: All Heads", 10.0f }, { "12: All + Dense", 11.0f } };
 static const HfScalePoint kHfSp_dl2_pattern[] = { { "Unison", 0.0f }, { "Dotted 8th", 1.0f }, { "Triplet", 2.0f }, { "Eighth", 3.0f } };
 static const HfScalePoint kHfSp_dl2_div[] = { { "1/2", 0.0f }, { "1/4.", 1.0f }, { "1/4", 2.0f }, { "1/4T", 3.0f }, { "1/8.", 4.0f }, { "1/8", 5.0f }, { "1/8T", 6.0f }, { "1/16", 7.0f } };
-static const HfScalePoint kHfSp_rv2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_rv2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_rv2_density[] = { { "Classic", 0.0f }, { "Dense", 1.0f } };
 static const HfScalePoint kHfSp_rv2_type[] = { { "Plate", 0.0f }, { "Spring", 1.0f }, { "Ambient", 2.0f } };
-static const HfScalePoint kHfSp_wh2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_wh2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_wh2_type[] = { { "Auto", 0.0f }, { "Fixed", 1.0f } };
-static const HfScalePoint kHfSp_oc2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_oc2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_oc2_interval[] = { { "1/4 Up", 0.0f }, { "1/4 Dn", 1.0f }, { "Neutral 2nd", 2.0f }, { "Neutral 3rd", 3.0f }, { "Neutral 6th", 4.0f }, { "Octave +1/4", 5.0f } };
-static const HfScalePoint kHfSp_eq2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f } };
+static const HfScalePoint kHfSp_eq2_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
 static const HfScalePoint kHfSp_eq2_preset[] = { { "Manual", 0.0f }, { "Clean Sparkle", 1.0f }, { "De-Mud", 2.0f }, { "Classic Rock", 3.0f }, { "Metal Rhythm", 4.0f }, { "Lead Cut", 5.0f }, { "Cocked Wah", 6.0f } };
 static const HfScalePoint kHfSp_amp_sv_midfreq[] = { { "220 Hz", 0.0f }, { "800 Hz", 1.0f }, { "3 kHz", 2.0f } };
 static const HfScalePoint kHfSp_rb_sv_midfreq[] = { { "220 Hz", 0.0f }, { "800 Hz", 1.0f }, { "3 kHz", 2.0f } };
@@ -113,6 +113,8 @@ static const HfScalePoint kHfSp_dr2_b7k_grunt[] = { { "Fat", 0.0f }, { "Raw", 1.
 static const HfScalePoint kHfSp_dr2_b7k_attack[] = { { "Flat", 0.0f }, { "Boost", 1.0f }, { "Cut", 2.0f } };
 static const HfScalePoint kHfSp_cab_mic2type[] = { { "Off", 0.0f }, { "Dynamic 57", 1.0f }, { "Dynamic 421", 2.0f }, { "Ribbon", 3.0f }, { "Condenser", 4.0f } };
 static const HfScalePoint kHfSp_rb_cabmic2type[] = { { "Off", 0.0f }, { "Dynamic 57", 1.0f }, { "Dynamic 421", 2.0f }, { "Ribbon", 3.0f }, { "Condenser", 4.0f } };
+static const HfScalePoint kHfSp_claw_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "3", 3.0f }, { "4", 4.0f }, { "5", 5.0f }, { "6", 6.0f }, { "7", 7.0f }, { "8", 8.0f }, { "9", 9.0f }, { "10", 10.0f }, { "11", 11.0f }, { "12", 12.0f }, { "13", 13.0f }, { "14", 14.0f }, { "15", 15.0f }, { "16", 16.0f }, { "17", 17.0f }, { "18", 18.0f }, { "19", 19.0f }, { "20", 20.0f }, { "21", 21.0f }, { "22", 22.0f }, { "23", 23.0f }, { "24", 24.0f }, { "25", 25.0f } };
+static const HfScalePoint kHfSp_claw_mode[] = { { "Hiss", 0.0f }, { "Howl", 1.0f }, { "Butterfly", 2.0f }, { "Shortwave", 3.0f } };
 static const HfScalePoint kHfSp_it_mains[] = { { "60 Hz", 0.0f }, { "50 Hz", 1.0f } };
 static const HfScalePoint kHfSp_it_guitar[] = { { "Default", 0.0f }, { "Single Coil", 1.0f }, { "Hot Pickups", 2.0f } };
 
@@ -129,14 +131,14 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 15, "it_hbmodel", "IT HB Model", "Input Trim", 0.0f, 3.0f, 0.0f, "e", HFD_PARAM, kHfSp_it_hbmodel, int(sizeof(kHfSp_it_hbmodel)/sizeof(HfScalePoint)) },
     { 16, "it_boost", "IT Boost", "Input Trim", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 17, "it_boostamt", "IT Boost Amt", "Input Trim", 0.0f, 12.0f, 4.0f, "db", HFD_PARAM, nullptr, 0 },
-    { 18, "gt_pos", "Gate Position", "Gate", 1.0f, 24.0f, 1.0f, "e", HFD_INTERNAL, kHfSp_gt_pos, int(sizeof(kHfSp_gt_pos)/sizeof(HfScalePoint)) },
+    { 18, "gt_pos", "Gate Position", "Gate", 1.0f, 25.0f, 1.0f, "e", HFD_INTERNAL, kHfSp_gt_pos, int(sizeof(kHfSp_gt_pos)/sizeof(HfScalePoint)) },
     { 19, "gt_enable", "Gate Enable", "Gate", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
     { 20, "gt_thresh", "Gate Threshold", "Gate", -80.0f, 0.0f, -60.0f, "db", HFD_PARAM, nullptr, 0 },
     { 21, "gt_attack", "Gate Attack", "Gate", 0.1f, 50.0f, 2.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 22, "gt_hold", "Gate Hold", "Gate", 0.0f, 500.0f, 120.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 23, "gt_release", "Gate Release", "Gate", 10.0f, 2000.0f, 250.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 24, "gt_hyst", "Gate Hysteresis", "Gate", 0.0f, 20.0f, 8.0f, "db", HFD_PARAM, nullptr, 0 },
-    { 25, "cp_pos", "Comp Position", "Compressor", 1.0f, 24.0f, 2.0f, "e", HFD_INTERNAL, kHfSp_cp_pos, int(sizeof(kHfSp_cp_pos)/sizeof(HfScalePoint)) },
+    { 25, "cp_pos", "Comp Position", "Compressor", 1.0f, 25.0f, 2.0f, "e", HFD_INTERNAL, kHfSp_cp_pos, int(sizeof(kHfSp_cp_pos)/sizeof(HfScalePoint)) },
     { 26, "cp_enable", "Comp Enable", "Compressor", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 27, "cp_type", "Comp Type", "Compressor", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_cp_type, int(sizeof(kHfSp_cp_type)/sizeof(HfScalePoint)) },
     { 28, "cp_thresh", "Comp Threshold", "Compressor", -60.0f, 0.0f, -18.0f, "db", HFD_PARAM, nullptr, 0 },
@@ -145,7 +147,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 31, "cp_release", "Comp Release", "Compressor", 0.0f, 10.0f, 5.0f, "f", HFD_PARAM, nullptr, 0 },
     { 32, "cp_knee", "Comp Knee", "Compressor", 0.0f, 10.0f, 3.0f, "f", HFD_PARAM, nullptr, 0 },
     { 33, "cp_makeup", "Comp Makeup", "Compressor", 0.0f, 10.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
-    { 34, "fz_pos", "Fuzz Position", "Fuzz", 1.0f, 24.0f, 3.0f, "e", HFD_INTERNAL, kHfSp_fz_pos, int(sizeof(kHfSp_fz_pos)/sizeof(HfScalePoint)) },
+    { 34, "fz_pos", "Fuzz Position", "Fuzz", 1.0f, 25.0f, 3.0f, "e", HFD_INTERNAL, kHfSp_fz_pos, int(sizeof(kHfSp_fz_pos)/sizeof(HfScalePoint)) },
     { 35, "fz_enable", "Fuzz Enable", "Fuzz", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 36, "fz_pedal", "Fuzz Pedal", "Fuzz", 0.0f, 3.0f, 0.0f, "e", HFD_PARAM, kHfSp_fz_pedal, int(sizeof(kHfSp_fz_pedal)/sizeof(HfScalePoint)) },
     { 37, "fz_mode", "Fuzz Variant", "Fuzz", 0.0f, 5.0f, 2.0f, "e", HFD_PARAM, kHfSp_fz_mode, int(sizeof(kHfSp_fz_mode)/sizeof(HfScalePoint)) },
@@ -155,7 +157,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 41, "fz_bias", "Fuzz Bias", "Fuzz", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 42, "fz_inputtrim", "Fuzz Input Trim", "Fuzz", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 43, "fz_getemp", "Fuzz Ge Temp", "Fuzz", 0.0f, 1.0f, 0.4f, "f", HFD_PARAM, nullptr, 0 },
-    { 44, "dr_pos", "Drive Position", "Drive", 1.0f, 24.0f, 4.0f, "e", HFD_INTERNAL, kHfSp_dr_pos, int(sizeof(kHfSp_dr_pos)/sizeof(HfScalePoint)) },
+    { 44, "dr_pos", "Drive Position", "Drive", 1.0f, 25.0f, 4.0f, "e", HFD_INTERNAL, kHfSp_dr_pos, int(sizeof(kHfSp_dr_pos)/sizeof(HfScalePoint)) },
     { 45, "dr_enable", "Drive Enable", "Drive", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 46, "dr_model", "Drive Model", "Drive", 0.0f, 11.0f, 0.0f, "e", HFD_PARAM, kHfSp_dr_model, int(sizeof(kHfSp_dr_model)/sizeof(HfScalePoint)) },
     { 47, "dr_drive", "Drive Drive", "Drive", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -163,7 +165,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 49, "dr_level", "Drive Level", "Drive", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 50, "dr_mix", "Drive Mix", "Drive", 0.0f, 1.0f, 1.0f, "f", HFD_PARAM, nullptr, 0 },
     { 51, "dr_octave", "Drive Octave", "Drive", 0.0f, 1.0f, 0.3f, "f", HFD_PARAM, nullptr, 0 },
-    { 52, "amp_pos", "Amp Position", "Amp", 1.0f, 24.0f, 5.0f, "e", HFD_INTERNAL, kHfSp_amp_pos, int(sizeof(kHfSp_amp_pos)/sizeof(HfScalePoint)) },
+    { 52, "amp_pos", "Amp Position", "Amp", 1.0f, 25.0f, 5.0f, "e", HFD_INTERNAL, kHfSp_amp_pos, int(sizeof(kHfSp_amp_pos)/sizeof(HfScalePoint)) },
     { 53, "amp_enable", "Amp Enable", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
     { 54, "amp_model", "Amp Model", "Amp", 0.0f, 15.0f, 1.0f, "e", HFD_PARAM, kHfSp_amp_model, int(sizeof(kHfSp_amp_model)/sizeof(HfScalePoint)) },
     { 55, "amp_gain", "Amp Gain", "Amp", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -192,19 +194,19 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 78, "amp_sunn_treble2", "Amp Brite Treble", "Amp", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 79, "amp_sunn_bright1", "Amp Bright I", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 80, "amp_sunn_bright2", "Amp Bright II", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 81, "cab_pos", "Cabinet Position", "Cabinet", 1.0f, 24.0f, 6.0f, "e", HFD_INTERNAL, kHfSp_cab_pos, int(sizeof(kHfSp_cab_pos)/sizeof(HfScalePoint)) },
+    { 81, "cab_pos", "Cabinet Position", "Cabinet", 1.0f, 25.0f, 6.0f, "e", HFD_INTERNAL, kHfSp_cab_pos, int(sizeof(kHfSp_cab_pos)/sizeof(HfScalePoint)) },
     { 82, "cab_enable", "Cabinet Enable", "Cabinet", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
     { 83, "cab_lowcut", "Cabinet Low Cut", "Cabinet", 20.0f, 500.0f, 80.0f, "hz", HFD_PARAM, nullptr, 0 },
     { 84, "cab_highcut", "Cabinet High Cut", "Cabinet", 2000.0f, 20000.0f, 16000.0f, "hz", HFD_PARAM, nullptr, 0 },
     { 85, "cab_mix", "Cabinet Mix", "Cabinet", 0.0f, 1.0f, 1.0f, "f", HFD_PARAM, nullptr, 0 },
-    { 86, "md_pos", "Modulation Position", "Modulation", 1.0f, 24.0f, 7.0f, "e", HFD_INTERNAL, kHfSp_md_pos, int(sizeof(kHfSp_md_pos)/sizeof(HfScalePoint)) },
+    { 86, "md_pos", "Modulation Position", "Modulation", 1.0f, 25.0f, 7.0f, "e", HFD_INTERNAL, kHfSp_md_pos, int(sizeof(kHfSp_md_pos)/sizeof(HfScalePoint)) },
     { 87, "md_enable", "Modulation Enable", "Modulation", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 88, "md_type", "Modulation Type", "Modulation", 0.0f, 8.0f, 0.0f, "e", HFD_PARAM, kHfSp_md_type, int(sizeof(kHfSp_md_type)/sizeof(HfScalePoint)) },
     { 89, "md_rate", "Modulation Rate", "Modulation", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 90, "md_depth", "Modulation Depth", "Modulation", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 91, "md_mix", "Modulation Mix", "Modulation", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 92, "md_width", "Modulation Width", "Modulation", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
-    { 93, "dl_pos", "Delay Position", "Delay", 1.0f, 24.0f, 8.0f, "e", HFD_INTERNAL, kHfSp_dl_pos, int(sizeof(kHfSp_dl_pos)/sizeof(HfScalePoint)) },
+    { 93, "dl_pos", "Delay Position", "Delay", 1.0f, 25.0f, 8.0f, "e", HFD_INTERNAL, kHfSp_dl_pos, int(sizeof(kHfSp_dl_pos)/sizeof(HfScalePoint)) },
     { 94, "dl_enable", "Delay Enable", "Delay", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
     { 95, "dl_type", "Delay Type", "Delay", 0.0f, 4.0f, 0.0f, "e", HFD_PARAM, kHfSp_dl_type, int(sizeof(kHfSp_dl_type)/sizeof(HfScalePoint)) },
     { 96, "dl_time", "Delay Time", "Delay", 1.0f, 2000.0f, 250.0f, "ms", HFD_PARAM, nullptr, 0 },
@@ -218,7 +220,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 104, "dl_ducking", "Delay Ducking", "Delay", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 105, "dl_moddepth", "Delay Mod Depth", "Delay", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 106, "dl_modrate", "Delay Mod Rate", "Delay", 0.0f, 1.0f, 0.3f, "f", HFD_PARAM, nullptr, 0 },
-    { 107, "rv_pos", "Reverb Position", "Reverb", 1.0f, 24.0f, 9.0f, "e", HFD_INTERNAL, kHfSp_rv_pos, int(sizeof(kHfSp_rv_pos)/sizeof(HfScalePoint)) },
+    { 107, "rv_pos", "Reverb Position", "Reverb", 1.0f, 25.0f, 9.0f, "e", HFD_INTERNAL, kHfSp_rv_pos, int(sizeof(kHfSp_rv_pos)/sizeof(HfScalePoint)) },
     { 108, "rv_enable", "Reverb Enable", "Reverb", 0.0f, 1.0f, 1.0f, "t", HFD_PARAM, nullptr, 0 },
     { 109, "rv_predelay", "Reverb Pre-Delay", "Reverb", 0.0f, 100.0f, 10.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 110, "rv_decay", "Reverb Decay", "Reverb", 0.1f, 8.0f, 1.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -226,7 +228,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 112, "rv_moddepth", "Reverb Mod Depth", "Reverb", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 113, "rv_modrate", "Reverb Mod Rate", "Reverb", 0.01f, 5.0f, 0.8f, "f", HFD_PARAM, nullptr, 0 },
     { 114, "rv_mix", "Reverb Mix", "Reverb", 0.0f, 1.0f, 0.15f, "f", HFD_PARAM, nullptr, 0 },
-    { 115, "wh_pos", "Wah Position", "Wah", 1.0f, 24.0f, 10.0f, "e", HFD_INTERNAL, kHfSp_wh_pos, int(sizeof(kHfSp_wh_pos)/sizeof(HfScalePoint)) },
+    { 115, "wh_pos", "Wah Position", "Wah", 1.0f, 25.0f, 10.0f, "e", HFD_INTERNAL, kHfSp_wh_pos, int(sizeof(kHfSp_wh_pos)/sizeof(HfScalePoint)) },
     { 116, "wh_enable", "Wah Enable", "Wah", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 117, "wh_type", "Wah Mode", "Wah", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_wh_type, int(sizeof(kHfSp_wh_type)/sizeof(HfScalePoint)) },
     { 118, "wh_freq", "Wah Freq", "Wah", 0.0f, 1.0f, 0.4f, "f", HFD_PARAM, nullptr, 0 },
@@ -234,7 +236,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 120, "wh_sens", "Wah Sens", "Wah", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 121, "wh_q", "Wah Resonance", "Wah", 0.0f, 1.0f, 0.6f, "f", HFD_PARAM, nullptr, 0 },
     { 122, "wh_mix", "Wah Mix", "Wah", 0.0f, 1.0f, 0.8f, "f", HFD_PARAM, nullptr, 0 },
-    { 123, "oc_pos", "Octave Position", "Octave", 1.0f, 24.0f, 11.0f, "e", HFD_INTERNAL, kHfSp_oc_pos, int(sizeof(kHfSp_oc_pos)/sizeof(HfScalePoint)) },
+    { 123, "oc_pos", "Octave Position", "Octave", 1.0f, 25.0f, 11.0f, "e", HFD_INTERNAL, kHfSp_oc_pos, int(sizeof(kHfSp_oc_pos)/sizeof(HfScalePoint)) },
     { 124, "oc_enable", "Octave Enable", "Octave", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 125, "oc_up", "Octave Octave Up", "Octave", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 126, "oc_down", "Octave Sub Octave", "Octave", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -254,7 +256,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 140, "rv_bypass", "Reverb Bypass", "Reverb", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 141, "wh_bypass", "Wah Bypass", "Wah", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 142, "oc_bypass", "Octave Bypass", "Octave", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 143, "nail_pos", "Nail Position", "Nail", 1.0f, 24.0f, 12.0f, "e", HFD_INTERNAL, kHfSp_nail_pos, int(sizeof(kHfSp_nail_pos)/sizeof(HfScalePoint)) },
+    { 143, "nail_pos", "Nail Position", "Nail", 1.0f, 25.0f, 12.0f, "e", HFD_INTERNAL, kHfSp_nail_pos, int(sizeof(kHfSp_nail_pos)/sizeof(HfScalePoint)) },
     { 144, "nail_enable", "Nail Enable", "Nail", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 145, "nail_mode", "Nail Mode", "Nail", 0.0f, 4.0f, 2.0f, "e", HFD_PARAM, kHfSp_nail_mode, int(sizeof(kHfSp_nail_mode)/sizeof(HfScalePoint)) },
     { 146, "nail_drive", "Nail Drive", "Nail", 0.0f, 1.0f, 0.6f, "f", HFD_PARAM, nullptr, 0 },
@@ -295,7 +297,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 181, "amp_mt_bright", "Amp MT Bright", "Amp", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_amp_mt_bright, int(sizeof(kHfSp_amp_mt_bright)/sizeof(HfScalePoint)) },
     { 182, "cab_voice", "Cab Voice", "Cabinet", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_cab_voice, int(sizeof(kHfSp_cab_voice)/sizeof(HfScalePoint)) },
     { 183, "out_doubler", "Output Doubler", "Output", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 184, "eq_pos", "EQ Position", "EQ", 1.0f, 24.0f, 6.0f, "e", HFD_INTERNAL, kHfSp_eq_pos, int(sizeof(kHfSp_eq_pos)/sizeof(HfScalePoint)) },
+    { 184, "eq_pos", "EQ Position", "EQ", 1.0f, 25.0f, 6.0f, "e", HFD_INTERNAL, kHfSp_eq_pos, int(sizeof(kHfSp_eq_pos)/sizeof(HfScalePoint)) },
     { 185, "eq_enable", "EQ Enable", "EQ", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 186, "eq_preset", "EQ Preset", "EQ", 0.0f, 6.0f, 0.0f, "e", HFD_PARAM, kHfSp_eq_preset, int(sizeof(kHfSp_eq_preset)/sizeof(HfScalePoint)) },
     { 187, "eq_100", "EQ 100 Hz", "EQ", -12.0f, 12.0f, 0.0f, "db", HFD_PARAM, nullptr, 0 },
@@ -390,7 +392,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 276, "rb_cabvoice", "Rig B Voice", "Rig B", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_rb_cabvoice, int(sizeof(kHfSp_rb_cabvoice)/sizeof(HfScalePoint)) },
     { 277, "rb_cabspkdrive", "Rig B Speaker Drive", "Rig B", 0.0f, 3.0f, 0.0f, "e", HFD_PARAM, kHfSp_rb_cabspkdrive, int(sizeof(kHfSp_rb_cabspkdrive)/sizeof(HfScalePoint)) },
     { 278, "rb_cab2on", "Cab 2 In Chain", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 279, "gt2_pos", "Gate 2 Position", "Gate 2", 1.0f, 24.0f, 15.0f, "e", HFD_INTERNAL, kHfSp_gt2_pos, int(sizeof(kHfSp_gt2_pos)/sizeof(HfScalePoint)) },
+    { 279, "gt2_pos", "Gate 2 Position", "Gate 2", 1.0f, 25.0f, 15.0f, "e", HFD_INTERNAL, kHfSp_gt2_pos, int(sizeof(kHfSp_gt2_pos)/sizeof(HfScalePoint)) },
     { 280, "gt2_enable", "Gate 2 Enable", "Gate 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 281, "gt2_thresh", "Gate 2 Threshold", "Gate 2", -80.0f, 0.0f, -60.0f, "db", HFD_PARAM, nullptr, 0 },
     { 282, "gt2_attack", "Gate 2 Attack", "Gate 2", 0.1f, 50.0f, 2.0f, "ms", HFD_PARAM, nullptr, 0 },
@@ -398,7 +400,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 284, "gt2_release", "Gate 2 Release", "Gate 2", 10.0f, 2000.0f, 250.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 285, "gt2_hyst", "Gate 2 Hysteresis", "Gate 2", 0.0f, 20.0f, 8.0f, "db", HFD_PARAM, nullptr, 0 },
     { 286, "gt2_bypass", "Gate 2 Bypass", "Gate 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 287, "cp2_pos", "Comp 2 Position", "Comp 2", 1.0f, 24.0f, 16.0f, "e", HFD_INTERNAL, kHfSp_cp2_pos, int(sizeof(kHfSp_cp2_pos)/sizeof(HfScalePoint)) },
+    { 287, "cp2_pos", "Comp 2 Position", "Comp 2", 1.0f, 25.0f, 16.0f, "e", HFD_INTERNAL, kHfSp_cp2_pos, int(sizeof(kHfSp_cp2_pos)/sizeof(HfScalePoint)) },
     { 288, "cp2_enable", "Comp 2 Enable", "Comp 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 289, "cp2_type", "Comp 2 Type", "Comp 2", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_cp2_type, int(sizeof(kHfSp_cp2_type)/sizeof(HfScalePoint)) },
     { 290, "cp2_thresh", "Comp 2 Threshold", "Comp 2", -60.0f, 0.0f, -18.0f, "db", HFD_PARAM, nullptr, 0 },
@@ -408,7 +410,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 294, "cp2_knee", "Comp 2 Knee", "Comp 2", 0.0f, 10.0f, 3.0f, "f", HFD_PARAM, nullptr, 0 },
     { 295, "cp2_makeup", "Comp 2 Makeup", "Comp 2", 0.0f, 10.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 296, "cp2_bypass", "Comp 2 Bypass", "Comp 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 297, "fz2_pos", "Fuzz 2 Position", "Fuzz 2", 1.0f, 24.0f, 17.0f, "e", HFD_INTERNAL, kHfSp_fz2_pos, int(sizeof(kHfSp_fz2_pos)/sizeof(HfScalePoint)) },
+    { 297, "fz2_pos", "Fuzz 2 Position", "Fuzz 2", 1.0f, 25.0f, 17.0f, "e", HFD_INTERNAL, kHfSp_fz2_pos, int(sizeof(kHfSp_fz2_pos)/sizeof(HfScalePoint)) },
     { 298, "fz2_enable", "Fuzz 2 Enable", "Fuzz 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 299, "fz2_pedal", "Fuzz 2 Pedal", "Fuzz 2", 0.0f, 3.0f, 0.0f, "e", HFD_PARAM, kHfSp_fz2_pedal, int(sizeof(kHfSp_fz2_pedal)/sizeof(HfScalePoint)) },
     { 300, "fz2_mode", "Fuzz 2 Variant", "Fuzz 2", 0.0f, 5.0f, 2.0f, "e", HFD_PARAM, kHfSp_fz2_mode, int(sizeof(kHfSp_fz2_mode)/sizeof(HfScalePoint)) },
@@ -420,7 +422,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 306, "fz2_getemp", "Fuzz 2 Ge Temp", "Fuzz 2", 0.0f, 1.0f, 0.4f, "f", HFD_PARAM, nullptr, 0 },
     { 307, "fz2_gvol", "Fuzz 2 Guitar Vol", "Fuzz 2", 0.05f, 1.0f, 1.0f, "f", HFD_PARAM, nullptr, 0 },
     { 308, "fz2_bypass", "Fuzz 2 Bypass", "Fuzz 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 309, "nail2_pos", "Nail 2 Position", "Nail 2", 1.0f, 24.0f, 18.0f, "e", HFD_INTERNAL, kHfSp_nail2_pos, int(sizeof(kHfSp_nail2_pos)/sizeof(HfScalePoint)) },
+    { 309, "nail2_pos", "Nail 2 Position", "Nail 2", 1.0f, 25.0f, 18.0f, "e", HFD_INTERNAL, kHfSp_nail2_pos, int(sizeof(kHfSp_nail2_pos)/sizeof(HfScalePoint)) },
     { 310, "nail2_enable", "Nail 2 Enable", "Nail 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 311, "nail2_mode", "Nail 2 Mode", "Nail 2", 0.0f, 4.0f, 2.0f, "e", HFD_PARAM, kHfSp_nail2_mode, int(sizeof(kHfSp_nail2_mode)/sizeof(HfScalePoint)) },
     { 312, "nail2_drive", "Nail 2 Drive", "Nail 2", 0.0f, 1.0f, 0.6f, "f", HFD_PARAM, nullptr, 0 },
@@ -428,7 +430,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 314, "nail2_texture", "Nail 2 Texture", "Nail 2", 0.0f, 1.0f, 0.4f, "f", HFD_PARAM, nullptr, 0 },
     { 315, "nail2_level", "Nail 2 Level", "Nail 2", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 316, "nail2_bypass", "Nail 2 Bypass", "Nail 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 317, "md2_pos", "Modulation 2 Position", "Mod 2", 1.0f, 24.0f, 19.0f, "e", HFD_INTERNAL, kHfSp_md2_pos, int(sizeof(kHfSp_md2_pos)/sizeof(HfScalePoint)) },
+    { 317, "md2_pos", "Modulation 2 Position", "Mod 2", 1.0f, 25.0f, 19.0f, "e", HFD_INTERNAL, kHfSp_md2_pos, int(sizeof(kHfSp_md2_pos)/sizeof(HfScalePoint)) },
     { 318, "md2_enable", "Modulation 2 Enable", "Mod 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 319, "md2_type", "Modulation 2 Type", "Mod 2", 0.0f, 8.0f, 0.0f, "e", HFD_PARAM, kHfSp_md2_type, int(sizeof(kHfSp_md2_type)/sizeof(HfScalePoint)) },
     { 320, "md2_rate", "Modulation 2 Rate", "Mod 2", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -440,7 +442,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 326, "md2_offset", "Modulation 2 Center Delay", "Mod 2", 0.0f, 100.0f, 0.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 327, "md2_shape", "Modulation 2 Shape", "Mod 2", 0.0f, 2.0f, 0.0f, "e", HFD_PARAM, kHfSp_md2_shape, int(sizeof(kHfSp_md2_shape)/sizeof(HfScalePoint)) },
     { 328, "md2_bypass", "Modulation 2 Bypass", "Mod 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 329, "dl2_pos", "Delay 2 Position", "Delay 2", 1.0f, 24.0f, 20.0f, "e", HFD_INTERNAL, kHfSp_dl2_pos, int(sizeof(kHfSp_dl2_pos)/sizeof(HfScalePoint)) },
+    { 329, "dl2_pos", "Delay 2 Position", "Delay 2", 1.0f, 25.0f, 20.0f, "e", HFD_INTERNAL, kHfSp_dl2_pos, int(sizeof(kHfSp_dl2_pos)/sizeof(HfScalePoint)) },
     { 330, "dl2_enable", "Delay 2 Enable", "Delay 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 331, "dl2_type", "Delay 2 Type", "Delay 2", 0.0f, 4.0f, 0.0f, "e", HFD_PARAM, kHfSp_dl2_type, int(sizeof(kHfSp_dl2_type)/sizeof(HfScalePoint)) },
     { 332, "dl2_time", "Delay 2 Time", "Delay 2", 1.0f, 2000.0f, 250.0f, "ms", HFD_PARAM, nullptr, 0 },
@@ -457,7 +459,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 343, "dl2_sync", "Delay 2 Sync", "Delay 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 344, "dl2_div", "Delay 2 Div", "Delay 2", 0.0f, 7.0f, 5.0f, "e", HFD_PARAM, kHfSp_dl2_div, int(sizeof(kHfSp_dl2_div)/sizeof(HfScalePoint)) },
     { 345, "dl2_bypass", "Delay 2 Bypass", "Delay 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 346, "rv2_pos", "Reverb 2 Position", "Reverb 2", 1.0f, 24.0f, 21.0f, "e", HFD_INTERNAL, kHfSp_rv2_pos, int(sizeof(kHfSp_rv2_pos)/sizeof(HfScalePoint)) },
+    { 346, "rv2_pos", "Reverb 2 Position", "Reverb 2", 1.0f, 25.0f, 21.0f, "e", HFD_INTERNAL, kHfSp_rv2_pos, int(sizeof(kHfSp_rv2_pos)/sizeof(HfScalePoint)) },
     { 347, "rv2_enable", "Reverb 2 Enable", "Reverb 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 348, "rv2_predelay", "Reverb 2 Pre-Delay", "Reverb 2", 0.0f, 100.0f, 10.0f, "ms", HFD_PARAM, nullptr, 0 },
     { 349, "rv2_decay", "Reverb 2 Decay", "Reverb 2", 0.1f, 8.0f, 1.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -469,7 +471,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 355, "rv2_type", "Reverb 2 Type", "Reverb 2", 0.0f, 2.0f, 0.0f, "e", HFD_PARAM, kHfSp_rv2_type, int(sizeof(kHfSp_rv2_type)/sizeof(HfScalePoint)) },
     { 356, "rv2_bloom", "Reverb 2 Bloom", "Reverb 2", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
     { 357, "rv2_bypass", "Reverb 2 Bypass", "Reverb 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 358, "wh2_pos", "Wah 2 Position", "Wah 2", 1.0f, 24.0f, 22.0f, "e", HFD_INTERNAL, kHfSp_wh2_pos, int(sizeof(kHfSp_wh2_pos)/sizeof(HfScalePoint)) },
+    { 358, "wh2_pos", "Wah 2 Position", "Wah 2", 1.0f, 25.0f, 22.0f, "e", HFD_INTERNAL, kHfSp_wh2_pos, int(sizeof(kHfSp_wh2_pos)/sizeof(HfScalePoint)) },
     { 359, "wh2_enable", "Wah 2 Enable", "Wah 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 360, "wh2_type", "Wah 2 Mode", "Wah 2", 0.0f, 1.0f, 0.0f, "e", HFD_PARAM, kHfSp_wh2_type, int(sizeof(kHfSp_wh2_type)/sizeof(HfScalePoint)) },
     { 361, "wh2_freq", "Wah 2 Freq", "Wah 2", 0.0f, 1.0f, 0.4f, "f", HFD_PARAM, nullptr, 0 },
@@ -478,7 +480,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 364, "wh2_q", "Wah 2 Resonance", "Wah 2", 0.0f, 1.0f, 0.6f, "f", HFD_PARAM, nullptr, 0 },
     { 365, "wh2_mix", "Wah 2 Mix", "Wah 2", 0.0f, 1.0f, 0.8f, "f", HFD_PARAM, nullptr, 0 },
     { 366, "wh2_bypass", "Wah 2 Bypass", "Wah 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 367, "oc2_pos", "Octave 2 Position", "Octave 2", 1.0f, 24.0f, 23.0f, "e", HFD_INTERNAL, kHfSp_oc2_pos, int(sizeof(kHfSp_oc2_pos)/sizeof(HfScalePoint)) },
+    { 367, "oc2_pos", "Octave 2 Position", "Octave 2", 1.0f, 25.0f, 23.0f, "e", HFD_INTERNAL, kHfSp_oc2_pos, int(sizeof(kHfSp_oc2_pos)/sizeof(HfScalePoint)) },
     { 368, "oc2_enable", "Octave 2 Enable", "Octave 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 369, "oc2_up", "Octave 2 Octave Up", "Octave 2", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 370, "oc2_down", "Octave 2 Sub Octave", "Octave 2", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
@@ -486,7 +488,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 372, "oc2_micro", "Octave 2 Micro", "Octave 2", 0.0f, 1.0f, 0.0f, "f", HFD_PARAM, nullptr, 0 },
     { 373, "oc2_interval", "Octave 2 Interval", "Octave 2", 0.0f, 5.0f, 0.0f, "e", HFD_PARAM, kHfSp_oc2_interval, int(sizeof(kHfSp_oc2_interval)/sizeof(HfScalePoint)) },
     { 374, "oc2_bypass", "Octave 2 Bypass", "Octave 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 375, "eq2_pos", "EQ 2 Position", "EQ 2", 1.0f, 24.0f, 24.0f, "e", HFD_INTERNAL, kHfSp_eq2_pos, int(sizeof(kHfSp_eq2_pos)/sizeof(HfScalePoint)) },
+    { 375, "eq2_pos", "EQ 2 Position", "EQ 2", 1.0f, 25.0f, 24.0f, "e", HFD_INTERNAL, kHfSp_eq2_pos, int(sizeof(kHfSp_eq2_pos)/sizeof(HfScalePoint)) },
     { 376, "eq2_enable", "EQ 2 Enable", "EQ 2", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 377, "eq2_preset", "EQ 2 Preset", "EQ 2", 0.0f, 6.0f, 0.0f, "e", HFD_PARAM, kHfSp_eq2_preset, int(sizeof(kHfSp_eq2_preset)/sizeof(HfScalePoint)) },
     { 378, "eq2_100", "EQ 2 100 Hz", "EQ 2", -12.0f, 12.0f, 0.0f, "db", HFD_PARAM, nullptr, 0 },
@@ -542,70 +544,81 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 428, "rb_cabmic2lvl", "Rig B Cab Mic 2 Blend", "Rig B", 0.0f, 1.0f, 0.35f, "f", HFD_PARAM, nullptr, 0 },
     { 429, "rb_cabmic2align", "Rig B Cab Mic 2 Align", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
     { 430, "rb_cabmic2pol", "Rig B Cab Mic 2 Polarity", "Rig B", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
-    { 431, "sw_a", "Preset A", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 432, "sw_b", "Preset B", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 433, "sw_c", "Preset C", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 434, "sw_d", "Preset D", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 435, "ps_bank_up", "Bank Up", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 436, "ps_bank_dn", "Bank Down", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 437, "ps_save", "Save Preset", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 438, "ps_move_up", "Move Earlier", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 439, "ps_move_dn", "Move Later", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 440, "ps_backup", "Backup Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 441, "ps_restore", "Restore Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
-    { 442, "ps_goto", "Go To Preset", "Presets", -1.0f, 127.0f, -1.0f, "i", HFD_COMMAND, nullptr, 0 },
-    { 443, "ps_bank", "Active Bank", "Presets", 0.0f, 31.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 444, "ps_slot", "Active Slot", "Presets", 0.0f, 3.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 445, "out_auto", "Output Auto-Limit", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 446, "in_meter", "Input Level", "", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 447, "out_meter", "Output Level", "Output", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 448, "out_mono", "Output Mono Sum", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 449, "tuner_on", "Tuner", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 450, "tuner_mute", "Tuner Mute", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 451, "tuner_note", "Tuner Note", "Tuner", -1.0f, 11.0f, -1.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 452, "tuner_cents", "Tuner Cents", "Tuner", -50.0f, 50.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 453, "cpu_gt", "CPU Gate", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 454, "cpu_cp", "CPU Comp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 455, "cpu_fz", "CPU Fuzz", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 456, "cpu_dr", "CPU Drive", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 457, "cpu_amp", "CPU Amp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 458, "cpu_cab", "CPU Cab", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 459, "cpu_md", "CPU Mod", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 460, "cpu_dl", "CPU Delay", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 461, "cpu_rv", "CPU Reverb", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 462, "cpu_wh", "CPU Wah", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 463, "cpu_oc", "CPU Octave", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 464, "cpu_nail", "CPU Nail", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 465, "cpu_eq", "CPU EQ", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 466, "cpu_total", "CPU Total", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 467, "cpu_dr2", "CPU Drive 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 468, "cpu_rigb", "CPU Rig B", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 469, "cpu_gt2", "CPU Gate 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 470, "cpu_cp2", "CPU Comp 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 471, "cpu_fz2", "CPU Fuzz 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 472, "cpu_nail2", "CPU Nail 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 473, "cpu_md2", "CPU Modulation 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 474, "cpu_dl2", "CPU Delay 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 475, "cpu_rv2", "CPU Reverb 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 476, "cpu_wh2", "CPU Wah 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 477, "cpu_oc2", "CPU Octave 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 478, "cpu_eq2", "CPU EQ 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 479, "cpu_cab2", "CPU Cab 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 480, "cal_cmd", "Calibrate Command", "Calibration", 0.0f, 9.0f, 0.0f, "i", HFD_COMMAND, nullptr, 0 },
-    { 481, "cal_trim_offs", "Cal Trim Offset", "Calibration", -12.0f, 12.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
-    { 482, "cal_floor_offs", "Cal Floor Offset", "Calibration", -20.0f, 20.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
-    { 483, "cal_state", "Cal State", "Calibration", 0.0f, 5.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
-    { 484, "cal_progress", "Cal Progress", "Calibration", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
-    { 485, "out_voice", "Output Voice FRFR", "Output", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 486, "fv_locut", "FRFR Low Cut", "Output Voice", 40.0f, 140.0f, 100.75f, "hz", HFD_SETTING, nullptr, 0 },
-    { 487, "fv_prox", "FRFR Prox Dip", "Output Voice", 0.0f, 6.0f, 1.815f, "db", HFD_SETTING, nullptr, 0 },
-    { 488, "fv_pres", "FRFR Pres Dip", "Output Voice", 0.0f, 6.0f, 3.225f, "db", HFD_SETTING, nullptr, 0 },
-    { 489, "fv_fizz", "FRFR Fizz Tilt", "Output Voice", 0.0f, 6.0f, 2.7f, "db", HFD_SETTING, nullptr, 0 },
-    { 490, "out_phase", "Output Phase Invert", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 491, "amp_evhcomp", "Component Model", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 492, "amp_dynload", "Dynamic Load", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
-    { 493, "it_mains", "IT Mains", "Input Trim", 0.0f, 1.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_mains, int(sizeof(kHfSp_it_mains)/sizeof(HfScalePoint)) },
-    { 494, "it_guitar", "IT Guitar", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_guitar, int(sizeof(kHfSp_it_guitar)/sizeof(HfScalePoint)) },
-    { 495, "amp_palegacy", "Rev 189 Power Stage", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 431, "claw_pos", "Claw Position", "Claw", 1.0f, 25.0f, 25.0f, "e", HFD_INTERNAL, kHfSp_claw_pos, int(sizeof(kHfSp_claw_pos)/sizeof(HfScalePoint)) },
+    { 432, "claw_enable", "Claw Enable", "Claw", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 433, "claw_mode", "Claw Mode", "Claw", 0.0f, 3.0f, 1.0f, "e", HFD_PARAM, kHfSp_claw_mode, int(sizeof(kHfSp_claw_mode)/sizeof(HfScalePoint)) },
+    { 434, "claw_feed", "Claw Feed", "Claw", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
+    { 435, "claw_pitch", "Claw Pitch", "Claw", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
+    { 436, "claw_grit", "Claw Grit", "Claw", 0.0f, 1.0f, 0.3f, "f", HFD_PARAM, nullptr, 0 },
+    { 437, "claw_blend", "Claw Blend", "Claw", 0.0f, 1.0f, 0.5f, "f", HFD_PARAM, nullptr, 0 },
+    { 438, "claw_level", "Claw Level", "Claw", 0.0f, 1.0f, 0.707f, "f", HFD_PARAM, nullptr, 0 },
+    { 439, "claw_grab", "Claw Grab", "Claw", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 440, "claw_bypass", "Claw Bypass", "Claw", 0.0f, 1.0f, 0.0f, "t", HFD_PARAM, nullptr, 0 },
+    { 441, "sw_a", "Preset A", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 442, "sw_b", "Preset B", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 443, "sw_c", "Preset C", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 444, "sw_d", "Preset D", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 445, "ps_bank_up", "Bank Up", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 446, "ps_bank_dn", "Bank Down", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 447, "ps_save", "Save Preset", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 448, "ps_move_up", "Move Earlier", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 449, "ps_move_dn", "Move Later", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 450, "ps_backup", "Backup Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 451, "ps_restore", "Restore Presets", "Presets", 0.0f, 1.0f, 0.0f, "t", HFD_COMMAND, nullptr, 0 },
+    { 452, "ps_goto", "Go To Preset", "Presets", -1.0f, 127.0f, -1.0f, "i", HFD_COMMAND, nullptr, 0 },
+    { 453, "ps_bank", "Active Bank", "Presets", 0.0f, 31.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 454, "ps_slot", "Active Slot", "Presets", 0.0f, 3.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 455, "out_auto", "Output Auto-Limit", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 456, "in_meter", "Input Level", "", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 457, "out_meter", "Output Level", "Output", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 458, "out_mono", "Output Mono Sum", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 459, "tuner_on", "Tuner", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 460, "tuner_mute", "Tuner Mute", "Tuner", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 461, "tuner_note", "Tuner Note", "Tuner", -1.0f, 11.0f, -1.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 462, "tuner_cents", "Tuner Cents", "Tuner", -50.0f, 50.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 463, "cpu_gt", "CPU Gate", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 464, "cpu_cp", "CPU Comp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 465, "cpu_fz", "CPU Fuzz", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 466, "cpu_dr", "CPU Drive", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 467, "cpu_amp", "CPU Amp", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 468, "cpu_cab", "CPU Cab", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 469, "cpu_md", "CPU Mod", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 470, "cpu_dl", "CPU Delay", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 471, "cpu_rv", "CPU Reverb", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 472, "cpu_wh", "CPU Wah", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 473, "cpu_oc", "CPU Octave", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 474, "cpu_nail", "CPU Nail", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 475, "cpu_eq", "CPU EQ", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 476, "cpu_total", "CPU Total", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 477, "cpu_dr2", "CPU Drive 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 478, "cpu_rigb", "CPU Rig B", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 479, "cpu_gt2", "CPU Gate 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 480, "cpu_cp2", "CPU Comp 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 481, "cpu_fz2", "CPU Fuzz 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 482, "cpu_nail2", "CPU Nail 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 483, "cpu_md2", "CPU Modulation 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 484, "cpu_dl2", "CPU Delay 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 485, "cpu_rv2", "CPU Reverb 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 486, "cpu_wh2", "CPU Wah 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 487, "cpu_oc2", "CPU Octave 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 488, "cpu_eq2", "CPU EQ 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 489, "cpu_cab2", "CPU Cab 2", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 490, "cal_cmd", "Calibrate Command", "Calibration", 0.0f, 9.0f, 0.0f, "i", HFD_COMMAND, nullptr, 0 },
+    { 491, "cal_trim_offs", "Cal Trim Offset", "Calibration", -12.0f, 12.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
+    { 492, "cal_floor_offs", "Cal Floor Offset", "Calibration", -20.0f, 20.0f, 0.0f, "db", HFD_SETTING, nullptr, 0 },
+    { 493, "cal_state", "Cal State", "Calibration", 0.0f, 5.0f, 0.0f, "i", HFD_OUTPUT, nullptr, 0 },
+    { 494, "cal_progress", "Cal Progress", "Calibration", 0.0f, 1.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 495, "out_voice", "Output Voice FRFR", "Output", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 496, "fv_locut", "FRFR Low Cut", "Output Voice", 40.0f, 140.0f, 100.75f, "hz", HFD_SETTING, nullptr, 0 },
+    { 497, "fv_prox", "FRFR Prox Dip", "Output Voice", 0.0f, 6.0f, 1.815f, "db", HFD_SETTING, nullptr, 0 },
+    { 498, "fv_pres", "FRFR Pres Dip", "Output Voice", 0.0f, 6.0f, 3.225f, "db", HFD_SETTING, nullptr, 0 },
+    { 499, "fv_fizz", "FRFR Fizz Tilt", "Output Voice", 0.0f, 6.0f, 2.7f, "db", HFD_SETTING, nullptr, 0 },
+    { 500, "out_phase", "Output Phase Invert", "Output", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 501, "amp_evhcomp", "Component Model", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 502, "amp_dynload", "Dynamic Load", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 503, "it_mains", "IT Mains", "Input Trim", 0.0f, 1.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_mains, int(sizeof(kHfSp_it_mains)/sizeof(HfScalePoint)) },
+    { 504, "it_guitar", "IT Guitar", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_guitar, int(sizeof(kHfSp_it_guitar)/sizeof(HfScalePoint)) },
+    { 505, "amp_palegacy", "Rev 189 Power Stage", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 506, "cpu_claw", "CPU Claw", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));

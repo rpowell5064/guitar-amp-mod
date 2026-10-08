@@ -48,6 +48,7 @@
 #include "WahBlock.h"
 #include "OctaveBlock.h"
 #include "NailDistortion.h"
+#include "ClawNoise.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 

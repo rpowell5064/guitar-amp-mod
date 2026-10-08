@@ -180,11 +180,12 @@ static void hfResetBlockTails(HexForge* p, int b) {
         case B_REVERB: p->reverb.reset(); break;
         case B_MODFX:  p->modfx.reset();  break;
         case B_CAB:    p->cab.reset();    break;
+        case B_CLAW:   p->claw.clearTails(); break;   // the Howl loop would replay otherwise
         default: break;
     }
 }
 static void hfResetTails(HexForge* p) {
-    p->delay.reset(); p->reverb.reset(); p->modfx.reset(); p->cab.reset(); p->eq.reset();
+    p->delay.reset(); p->reverb.reset(); p->modfx.reset(); p->cab.reset(); p->eq.reset(); p->claw.clearTails();
     std::fill(p->dblBuf.begin(), p->dblBuf.end(), 0.0f);
     std::fill(p->dblApA.begin(), p->dblApA.end(), 0.0f);
     std::fill(p->dblApB.begin(), p->dblApB.end(), 0.0f);

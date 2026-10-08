@@ -82,8 +82,12 @@ static_assert(HF_CAB_MIC2TYPE == HF_DR2_B7K_ATTACK + 1 && HF_CAB_MIC2POS == HF_C
               HF_CAB_MIC2DIST == HF_CAB_MIC2POS + 1 && HF_CAB_MIC2LVL == HF_CAB_MIC2DIST + 1 &&
               HF_CAB_MIC2ALIGN == HF_CAB_MIC2LVL + 1 && HF_CAB_MIC2POL == HF_CAB_MIC2ALIGN + 1 &&
               HF_RB_CABMIC2TYPE == HF_CAB_MIC2POL + 1 && HF_RB_CABMIC2POL == HF_RB_CABMIC2TYPE + 5 &&
-              HF_RB_CABMIC2POL == HF_SW_A - 1,
-              "v50: the Cab Mic 2 twelve-port tail ends the param range");
+              HF_RB_CABMIC2POL == HF_CLAW_POS - 1,
+              "v50: the Cab Mic 2 twelve-port tail (v52: the Claw group follows it)");
+static_assert(HF_CLAW_POS == HF_RB_CABMIC2POL + 1 && HF_CLAW_ENABLE == HF_CLAW_POS + 1 &&
+              HF_CLAW_MODE == HF_CLAW_ENABLE + 1 && HF_CLAW_GRAB == HF_CLAW_MODE + 6 &&
+              HF_CLAW_BYPASS == HF_CLAW_GRAB + 1 && HF_CLAW_BYPASS == HF_SW_A - 1,
+              "v52: the Claw ten-port group ends the param range");
 
 // ── migratePorts, copied verbatim from hexforge_plugin.cpp (v28) ──────────────
 // v31 inserted 14 CPU-meter outputs at HF_CPU_GT (before HF_MIDI_IN): indices at/after
@@ -91,7 +95,9 @@ static_assert(HF_CAB_MIC2TYPE == HF_DR2_B7K_ATTACK + 1 && HF_CAB_MIC2POS == HF_C
 // route through these.
 static bool inCpuGap(int i) { return i >= HF_CPU_GT && i < HF_CPU_GT + 26; }   // 14 meters + cpu_dr2 + cpu_rigb + 10 X2 meters
 static bool inOpGap(int i)  { return i == HF_OUT_PHASE; }   // v47 tail insert (default 1.0)
-static int  preCpu(int i)   { const int j = (i > HF_OUT_PHASE) ? i - 1 : i;   // undo the v47 tail insert first
+static bool inEcGap(int i)  { return i == HF_AMP_EVHCOMP || i == HF_AMP_DYNLOAD; }   // v48 / v51 tail inserts (default 0; the test copy mirrors them since 2026-10-07)
+static int  preTail(int i)  { int j = i; if (i > HF_OUT_PHASE) --j; if (i > HF_AMP_EVHCOMP) --j; if (i > HF_AMP_DYNLOAD) --j; return j; }   // undo the three tail inserts
+static int  preCpu(int i)   { const int j = preTail(i);
                               return j >= HF_CPU_GT + 26 ? j - 26 : j; }
 
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
@@ -233,6 +239,17 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // differently before and after the upgrade.
     const bool opGap = (srcVer < 47);
     const int  opAt  = HF_OUT_PHASE;
+    // v48 (2026-09-09): amp_evhcomp lab toggle at the tail; default 0 = the
+    // shipped capture-fitted EVH (bit-identical).
+    const bool ecGap = (srcVer < 48);
+    const int  ecAt  = HF_AMP_EVHCOMP;
+    const bool dynGap = (srcVer < 51);   // v51: amp_dynload global tail toggle, OFF
+    const int  dynAt  = HF_AMP_DYNLOAD;
+    // v52 (2026-10-07): the Claw ten-port group appended after Cab Mic 2 -- parked at slot 25,
+    // palette (enable 0), Howl, feed .5, pitch .5, grit .3, blend .5, level .707, grab off, active.
+    static const float clawdef[10] = {25.0f, 0.0f, 1.0f, 0.5f, 0.5f, 0.3f, 0.5f, 0.707f, 0.0f, 0.0f};
+    const bool clawGap = (srcVer < 52);
+    const int  clawAt  = HF_CLAW_POS, clawEnd = HF_CLAW_POS + 10;
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));
     int o = 0;
@@ -281,6 +298,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (b7kGap && i >= b7kAt && i < b7kEnd)     vals[i] = b7kdef[i - b7kAt]; // v49 Helsinki Grind panel: noon / Raw / Flat
         else if (m2Gap && i >= m2At && i < m2End)        vals[i] = m2def[i - m2At];   // v50 Cab Mic 2: Off, blend 0.35
         else if (opGap && i == opAt)                     vals[i] = 1.0f;             // v47 output phase INVERTED (matches real amps / the reference rig)
+        else if (ecGap && i == ecAt)                     vals[i] = 0.0f;             // v48 component-EVH lab toggle OFF
+        else if (dynGap && i == dynAt)                   vals[i] = 0.0f;             // v51 dynamic-load lab toggle OFF
+        else if (clawGap && i >= clawAt && i < clawEnd)  vals[i] = clawdef[i - clawAt]; // v52 Claw: parked, palette, Howl
         else                                             vals[i] = old[o++];
     }
 }
@@ -292,7 +312,7 @@ int main() {
     // + cab speaker drive (v28) + tremolo shape (v29) + fuzz guitar vol (v30)
     // all inserted at the end, in order.
     {
-        const int npOld = HF_N_PORTS - 260;   // v25: 209 param + 26 cpu-region inserts (v45 +6, v49 +12, v50 +12)
+        const int npOld = HF_N_PORTS - 270;   // v25: 209 param + 26 cpu-region inserts (v45 +6, v49 +12, v50 +12)
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -310,7 +330,8 @@ int main() {
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
             if (inOpGap(i))  { if (vals[i] != 1.0f) { std::printf("FAIL: out_phase gap port %d = %g (want 1)|", i, vals[i]); ++fails; break; } continue; }
-            float want = (preCpu(i) - 233 < npOld) ? static_cast<float>((preCpu(i) - 233) + 1) : 0.0f;
+            if (inEcGap(i))  { if (vals[i] != 0.0f) { std::printf("FAIL: v48/v51 tail gap port %d = %g (want 0)|", i, vals[i]); ++fails; break; } continue; }
+            float want = (preCpu(i) - 243 < npOld) ? static_cast<float>((preCpu(i) - 243) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v25 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -320,7 +341,7 @@ int main() {
 
     // ── v27 -> current: speaker drive (v28) + shape (v29) + gvol (v30) at the end.
     {
-        const int npOld = HF_N_PORTS - 257;   // v27: 206 param + 26 cpu (v45 +6, v49 +12, v50 +12)
+        const int npOld = HF_N_PORTS - 267;   // v27: 206 param + 26 cpu (v45 +6, v49 +12, v50 +12)
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -338,7 +359,8 @@ int main() {
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
             if (inOpGap(i))  { if (vals[i] != 1.0f) { std::printf("FAIL: out_phase gap port %d = %g (want 1)|", i, vals[i]); ++fails; break; } continue; }
-            float want = (preCpu(i) - 230 < npOld) ? static_cast<float>((preCpu(i) - 230) + 1) : 0.0f;
+            if (inEcGap(i))  { if (vals[i] != 0.0f) { std::printf("FAIL: v48/v51 tail gap port %d = %g (want 0)|", i, vals[i]); ++fails; break; } continue; }
+            float want = (preCpu(i) - 240 < npOld) ? static_cast<float>((preCpu(i) - 240) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v27 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -348,7 +370,7 @@ int main() {
 
     // ── v28 -> current: tremolo shape (v29) + fuzz guitar vol (v30) at the end.
     {
-        const int npOld = HF_N_PORTS - 256;   // v28: 205 param + 26 cpu (v45 +6, v49 +12, v50 +12)
+        const int npOld = HF_N_PORTS - 266;   // v28: 205 param + 26 cpu (v45 +6, v49 +12, v50 +12)
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -364,7 +386,8 @@ int main() {
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
             if (inOpGap(i))  { if (vals[i] != 1.0f) { std::printf("FAIL: out_phase gap port %d = %g (want 1)|", i, vals[i]); ++fails; break; } continue; }
-            float want = (preCpu(i) - 229 < npOld) ? static_cast<float>((preCpu(i) - 229) + 1) : 0.0f;
+            if (inEcGap(i))  { if (vals[i] != 0.0f) { std::printf("FAIL: v48/v51 tail gap port %d = %g (want 0)|", i, vals[i]); ++fails; break; } continue; }
+            float want = (preCpu(i) - 239 < npOld) ? static_cast<float>((preCpu(i) - 239) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v28 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -375,7 +398,7 @@ int main() {
     // ── v29 -> v30: Fuzz Guitar Vol (roadmap #45) inserted at the very end, alone.
     // Its default is 1.0 (NOT zero) — full guitar volume = bit-identical voicing.
     {
-        const int npOld = HF_N_PORTS - 255;   // v29: 204 param + 26 cpu (v45 +6, v49 +12, v50 +12)
+        const int npOld = HF_N_PORTS - 265;   // v29: 204 param + 26 cpu (v45 +6, v49 +12, v50 +12)
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -389,7 +412,8 @@ int main() {
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
             if (inOpGap(i))  { if (vals[i] != 1.0f) { std::printf("FAIL: out_phase gap port %d = %g (want 1)|", i, vals[i]); ++fails; break; } continue; }
-            float want = (preCpu(i) - 228 < npOld) ? static_cast<float>((preCpu(i) - 228) + 1) : 0.0f;
+            if (inEcGap(i))  { if (vals[i] != 0.0f) { std::printf("FAIL: v48/v51 tail gap port %d = %g (want 0)|", i, vals[i]); ++fails; break; } continue; }
+            float want = (preCpu(i) - 238 < npOld) ? static_cast<float>((preCpu(i) - 238) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v29 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -400,7 +424,7 @@ int main() {
     // ── v19 -> current: rc3 + mt2 + cv2 + EQ11 + fidelity2 + density1 + type/room2
     // + bloom1 + spkdrive1 + shape1 + gvol1 = 27 inserted. A v19 blob had HF_N_PORTS - 40.
     {
-        const int npOld = HF_N_PORTS - 281;   // v19: 230 param + 26 cpu (v45 +6, v49 +12, v50 +12)
+        const int npOld = HF_N_PORTS - 291;   // v19: 230 param + 26 cpu (v45 +6, v49 +12, v50 +12)
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);   // sentinels
@@ -427,7 +451,8 @@ int main() {
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (inCpuGap(i)) { if (vals[i] != 0.0f) { std::printf("FAIL: cpu gap port %d nonzero|", i); ++fails; break; } continue; }
             if (inOpGap(i))  { if (vals[i] != 1.0f) { std::printf("FAIL: out_phase gap port %d = %g (want 1)|", i, vals[i]); ++fails; break; } continue; }
-            float want = (preCpu(i) - 254 < npOld) ? static_cast<float>((preCpu(i) - 254) + 1) : 0.0f;
+            if (inEcGap(i))  { if (vals[i] != 0.0f) { std::printf("FAIL: v48/v51 tail gap port %d = %g (want 0)|", i, vals[i]); ++fails; break; } continue; }
+            float want = (preCpu(i) - 264 < npOld) ? static_cast<float>((preCpu(i) - 264) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v19 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
@@ -439,7 +464,7 @@ int main() {
     // source (oc 2 + mv 1 + geq 5 + eqpreset 1 + mdo 1 + nam 6 + rc 3 = 19) and
     // verify the first old value after each gap lands where the walk says.
     {
-        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1 + 1 + 1 + 16 + 1 + 1 + 10 + 17 + 45 + 1 + 107 + 10 + 2 + 6 + 12 + 2 + 2 + 2 + 1 + 6 + 1 + 12;  // + v49 b7k 12 // + v47 out_phase 1 // ... + v39 trims 2 + v40 6 + v41 variac 2 + v42 age 2 + v43 sir34 2 + v44 locut 1 + v45 svt 6
+        const int inserted = 2 + 1 + 5 + 1 + 1 + 6 + 3 + 2 + 2 + 11 + 2 + 1 + 2 + 1 + 1 + 1 + 1 + 16 + 1 + 1 + 10 + 17 + 45 + 1 + 107 + 10 + 2 + 6 + 12 + 2 + 2 + 2 + 1 + 6 + 1 + 12 + 10 /* v52 claw */ + 2 /* v48 evhcomp + v51 dynload tail gaps (mirrored 2026-10-07) */;  // + v49 b7k 12 // + v47 out_phase 1 // ... + v39 trims 2 + v40 6 + v41 variac 2 + v42 age 2 + v43 sir34 2 + v44 locut 1 + v45 svt 6
         const int npOld = HF_N_PORTS - inserted;
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
@@ -506,7 +531,8 @@ int main() {
                           || (i >= HF_AMP_SV_ULTRALO && i <= HF_RB_SV_MIDFREQ)
                           || (i >= HF_DR_B7K_BASS && i <= HF_DR2_B7K_ATTACK)
                           || (i >= HF_CAB_MIC2TYPE && i <= HF_RB_CABMIC2POL)
-                          || inCpuGap(i) || inOpGap(i);   // v47 out_phase tail slot
+                          || (i >= HF_CLAW_POS && i <= HF_CLAW_BYPASS)
+                          || inCpuGap(i) || inOpGap(i) || inEcGap(i);   // v47 out_phase + v48/v51 tail slots
             if (gap) continue;
             const float want = (o < npOld) ? static_cast<float>(o + 1) : 0.0f;
             if (vals[i] != want) {
@@ -523,7 +549,7 @@ int main() {
     // ── v37 -> v38: ONLY the X2 clone families insert; every old value keeps its
     // slot up to HF_GT2_POS, the clones take their parked defaults, tail shifts +119.
     {
-        const int npOld = HF_N_PORTS - 163;   // 128 param (X2 107 + v39 2 + v40 6 + v41 2 + v42 2 + v43 2 + v44 1 + v45 6) + 10 cpu inserts
+        const int npOld = HF_N_PORTS - 173;   // 128 param (X2 107 + v39 2 + v40 6 + v41 2 + v42 2 + v43 2 + v44 1 + v45 6) + 10 cpu inserts
         float vals[HF_N_PORTS];
         for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
         for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
@@ -561,17 +587,46 @@ int main() {
             static const float m2want[12] = {0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.35f, 0.0f, 0.0f};
             if (vals[HF_CAB_MIC2TYPE + k] != m2want[k]) { std::printf("FAIL: v50 Cab Mic 2 default %d = %g (want %g)\n", k, vals[HF_CAB_MIC2TYPE + k], m2want[k]); ++fails; break; }
         }
+        {
+            static const float clawwant[10] = {25.0f, 0.0f, 1.0f, 0.5f, 0.5f, 0.3f, 0.5f, 0.707f, 0.0f, 0.0f};
+            for (int k = 0; k < 10; ++k)
+                if (vals[HF_CLAW_POS + k] != clawwant[k]) { std::printf("FAIL: v52 Claw default %d = %g (want %g)\n", k, vals[HF_CLAW_POS + k], clawwant[k]); ++fails; break; }
+        }
         for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
             if (i >= HF_CPU_GT2 && i <= HF_CPU_EQ2) { if (vals[i] != 0.0f) { std::printf("FAIL: x2 cpu port %d nonzero\n", i); ++fails; break; } continue; }
             if (inOpGap(i)) { if (vals[i] != 1.0f) { ++fails; std::printf("FAIL: v37 out_phase slot %d = %g\n", i, vals[i]); break; } continue; }
-            const int jj = (i > HF_OUT_PHASE) ? i - 1 : i;   // undo the v47 tail insert
-            float want = (jj >= HF_CPU_GT2 ? jj - 162 : jj - 152) < npOld
-                       ? static_cast<float>((jj >= HF_CPU_GT2 ? jj - 162 : jj - 152) + 1) : 0.0f;
+            if (inEcGap(i)) { if (vals[i] != 0.0f) { ++fails; std::printf("FAIL: v37 v48/v51 tail slot %d = %g\n", i, vals[i]); break; } continue; }
+            const int jj = preTail(i);   // undo the v47/v48/v51 tail inserts
+            float want = (jj >= HF_CPU_GT2 ? jj - 172 : jj - 162) < npOld
+                       ? static_cast<float>((jj >= HF_CPU_GT2 ? jj - 172 : jj - 162) + 1) : 0.0f;
             if (vals[i] != want) {
                 std::printf("FAIL: v37 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break;
             }
         }
         std::printf("v37->v42: pre-insert preserved, X2 parked defaults + NAM trims + EP-3 age, tail shifted +121\n");
+    }
+
+    // ── v51 -> v52: ONLY the Claw ten-port group inserts (before SW_A); every old value
+    // keeps its slot up to HF_CLAW_POS, the group takes its parked defaults, the tail
+    // shifts +10, and the cpu_claw tail output (beyond the old blob) reads 0.
+    {
+        const int npOld = HF_N_PORTS - 11;   // 10 Claw params + the cpu_claw tail output
+        float vals[HF_N_PORTS];
+        for (int i = 0; i < HF_N_PORTS; ++i) vals[i] = 0.0f;
+        for (int i = 0; i < npOld; ++i) vals[i] = static_cast<float>(i + 1);
+        migratePorts(vals, 51);
+        for (int i = 0; i < HF_CLAW_POS; ++i)
+            if (vals[i] != static_cast<float>(i + 1)) {
+                std::printf("FAIL: v51 pre-insert port %d = %g (want %d)\n", i, vals[i], i + 1); ++fails; break;
+            }
+        static const float clawwant[10] = {25.0f, 0.0f, 1.0f, 0.5f, 0.5f, 0.3f, 0.5f, 0.707f, 0.0f, 0.0f};
+        for (int k = 0; k < 10; ++k)
+            if (vals[HF_CLAW_POS + k] != clawwant[k]) { std::printf("FAIL: v51->52 Claw default %d = %g (want %g)\n", k, vals[HF_CLAW_POS + k], clawwant[k]); ++fails; break; }
+        for (int i = HF_SW_A; i < HF_N_PORTS; ++i) {
+            const float want = (i - 10 < npOld) ? static_cast<float>(i - 10 + 1) : 0.0f;
+            if (vals[i] != want) { std::printf("FAIL: v51 post-insert port %d = %g (want %g)\n", i, vals[i], want); ++fails; break; }
+        }
+        std::printf("v51->v52: pre-insert preserved, Claw parked defaults, tail shifted +10\n");
     }
 
     std::printf("\nHF_N_PORTS=%d  HF_AMP_RC_MODE=%d  HF_CAB_VOICE=%d  HF_SW_A=%d\n",

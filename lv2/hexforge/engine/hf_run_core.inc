@@ -798,6 +798,15 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->octave.setParameter("dry",      *p->ports[HF_OC_DRY]);
     p->octave.setParameter("micro",    *p->ports[HF_OC_MICRO]);
     p->octave.setParameter("interval", *p->ports[HF_OC_INTERVAL]);
+    // Claw (v52)
+    p->claw.setBypass(false);
+    p->claw.setParameter("mode",  *p->ports[HF_CLAW_MODE]);
+    p->claw.setParameter("feed",  *p->ports[HF_CLAW_FEED]);
+    p->claw.setParameter("pitch", *p->ports[HF_CLAW_PITCH]);
+    p->claw.setParameter("grit",  *p->ports[HF_CLAW_GRIT]);
+    p->claw.setParameter("blend", *p->ports[HF_CLAW_BLEND]);
+    p->claw.setParameter("level", *p->ports[HF_CLAW_LEVEL]);
+    p->claw.setParameter("grab",  *p->ports[HF_CLAW_GRAB]);
 
     // ── X2 second instances (v38): params applied only while the block is enabled
     // (cheap idle; values re-read on the first enabled run, so nothing goes stale).
@@ -946,7 +955,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     int order[B_COUNT];
     for (int i=0;i<B_COUNT;++i) order[i] = i;
     int posv[B_COUNT];
-    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 24);  // 24 movable blocks since the X2 clones (v38) — clamp must track B_COUNT
+    for (int i=0;i<B_COUNT;++i) posv[i] = clampi(*p->ports[kPosPort[i]], 1, 25);  // 25 movable blocks since Claw (v52; 24 since the X2 clones, v38) — clamp must track B_COUNT
     // Selection sort by the TOTAL order (pos, canonical index). 2026-08-22
     // release audit: the old strict-< compare was NOT the stable tie-break its
     // comment claimed — a swap could flip two equal-pos blocks when a smaller-
@@ -1197,6 +1206,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 case B_WAH:    runMono(p->wah, L, R, len, p->mono, stereo); break;
                 case B_OCTAVE: runMono(p->octave, L, R, len, p->mono, stereo); break;
                 case B_NAIL:   runMono(*p->nail, L, R, len, p->mono, stereo); break;
+                case B_CLAW:   runMono(p->claw, L, R, len, p->mono, stereo); break;
                 case B_EQ:     p->eq.processCh(L, len, 0);
                                if (stereo) p->eq.processCh(R, len, 1); break;
                 // X2 second instances (v38)
@@ -1237,6 +1247,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 HF_CPU_EQ, HF_CPU_DR2,
                 HF_CPU_GT2, HF_CPU_CP2, HF_CPU_FZ2, HF_CPU_NAIL2, HF_CPU_MD2,
                 HF_CPU_DL2, HF_CPU_RV2, HF_CPU_WH2, HF_CPU_OC2, HF_CPU_EQ2,
+                HF_CPU_CLAW,   // tail meter (v52)
             };
             for (int b = 0; b < B_COUNT; ++b) {
                 if (p->hostPorts[kCpuPort[b]])
@@ -1497,6 +1508,7 @@ static bool hfEngineInit(HexForge* p, double rate) {
     p->reverb.prepare(rate, kMaxBlock, 2);
     p->wah.prepare(rate, kMaxBlock, 2);
     p->octave.prepare(rate, kMaxBlock, 2);
+    p->claw.prepare(rate, kMaxBlock, 2);
     p->autoOut.prepare(rate);
     p->eq.prepare(rate);
     // X2 second instances (v38)

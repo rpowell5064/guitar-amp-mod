@@ -7,7 +7,7 @@ function (event, funcs) {
     // (active/bypassed). The DSP sorts by pos and runs a block iff enable && !bypass.
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
     var BLOCKS = ['gt','gt2','cp','cp2','fz','fz2','dr','dr2','amp','cab','md','md2',
-                  'dl','dl2','rv','rv2','wh','wh2','oc','oc2','nail','nail2','eq','eq2'];
+                  'dl','dl2','rv','rv2','wh','wh2','oc','oc2','nail','nail2','eq','eq2','claw'];
     // X2 second instances (2026-07-30): each "2" block is offered in the palette
     // only while its first instance is in the chain (user rule).
     var X2 = { gt2:'gt', cp2:'cp', fz2:'fz', dr2:'dr', md2:'md', dl2:'dl',
@@ -1795,7 +1795,7 @@ function (event, funcs) {
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
                             md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2',
                             gt2:'gt2', cp2:'cp2', fz2:'fz2', nail2:'nail2', md2:'md2',
-                            dl2:'dl2', rv2:'rv2', wh2:'wh2', oc2:'oc2', eq2:'eq2' };
+                            dl2:'dl2', rv2:'rv2', wh2:'wh2', oc2:'oc2', eq2:'eq2', claw:'claw' };
             var ck = s.substring(4);
             var pct = parseFloat(event.value);
             if (ck === 'total') {

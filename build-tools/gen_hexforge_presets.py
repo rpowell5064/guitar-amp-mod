@@ -32,7 +32,7 @@ CBY     = G.CTRL_BY_SYM
 SYMS    = ["in_l", "in_r", "out_l", "out_r", "control", "notify"][:NFIXED] + [c["sym"] for c in CTRL] + ["midi_in"]
 N_PORTS = len(SYMS)
 SYM_IDX = {s: i for i, s in enumerate(SYMS)}
-LAYOUT_VER = 51                   # hfSerialize blob version this layout corresponds to (kFactoryTableVer)
+LAYOUT_VER = 52                   # hfSerialize blob version this layout corresponds to (kFactoryTableVer)
 
 BANKS, SLOTS = 32, 4
 
@@ -90,7 +90,7 @@ PRESETS = {}          # (bank, slot) -> dict(name, cls, vals, ir, ir2)
 SANITISED = []        # captured values replaced by port defaults (reported at generation)
 CLASSES = {}          # (bank, slot) -> loudness class
 BLOCKS = ["it", "gt", "cp", "fz", "dr", "amp", "cab", "md", "dl", "rv", "wh", "oc", "nail", "eq",
-          "gt2", "cp2", "fz2", "dr2", "md2", "dl2", "rv2", "wh2", "oc2", "nail2", "eq2"]
+          "gt2", "cp2", "fz2", "dr2", "md2", "dl2", "rv2", "wh2", "oc2", "nail2", "eq2", "claw"]
 MOVABLE = ["gt", "cp", "fz", "dr", "amp", "cab", "md", "dl", "rv", "wh", "oc", "nail", "eq"]   # canonical order
 
 def _blank_vals():

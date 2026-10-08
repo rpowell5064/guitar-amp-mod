@@ -86,7 +86,7 @@ int main(int argc, char** argv){
     for(int a=1;a<argc;++a) if(std::string(argv[a])=="comp") wantComp=true;
     val[HF_BYPASS]=0; val[HF_OUT_AUTO]=1; val[HF_OUT_LEVEL]=-18; val[HF_PS_GOTO]=-1;
     val[HF_IT_ENABLE]=1; val[HF_IT_HUM]=1; val[HF_IT_HUMBK]=1; val[HF_IT_BOOST]=1;
-    int ens[]={HF_GT_ENABLE,HF_CP_ENABLE,HF_FZ_ENABLE,HF_DR_ENABLE,HF_AMP_ENABLE,HF_CAB_ENABLE,HF_MD_ENABLE,HF_DL_ENABLE,HF_RV_ENABLE,HF_WH_ENABLE,HF_OC_ENABLE};
+    int ens[]={HF_GT_ENABLE,HF_CP_ENABLE,HF_FZ_ENABLE,HF_DR_ENABLE,HF_AMP_ENABLE,HF_CAB_ENABLE,HF_MD_ENABLE,HF_DL_ENABLE,HF_RV_ENABLE,HF_WH_ENABLE,HF_OC_ENABLE,HF_CLAW_ENABLE};
     for(int e:ens) val[e]=1.0f;
     val[HF_FZ_SUSTAIN]=0.7f; val[HF_FZ_VOLUME]=0.6f;
     val[HF_DR_DRIVE]=0.4f; val[HF_DR_LEVEL]=0.6f; val[HF_DR_MIX]=1.0f;
