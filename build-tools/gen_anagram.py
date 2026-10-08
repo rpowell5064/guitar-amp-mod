@@ -234,7 +234,8 @@ PLUGINS = [
     ("lv2/comp.ttl",    URI_BASE + "comp",    "CMP", "guitaramp_comp.so",    "hexchain-comp.lv2",    False),
     ("lv2/gate.ttl",    URI_BASE + "gate",    "GTE", "guitaramp_gate.so",    "hexchain-gate.lv2",    False),
     ("lv2/nail.ttl",    URI_BASE + "nail",    "NL",  "guitaramp_nail.so",    "hexchain-nail.lv2",    False),
-    ("lv2/claw.ttl",    URI_BASE + "claw",    "CLW", "guitaramp_claw.so",    "hexchain-claw.lv2",    False),
+    # SHELVED 2026-10-07
+    # ("lv2/claw.ttl",    URI_BASE + "claw",    "CLW", "guitaramp_claw.so",    "hexchain-claw.lv2",    False),
     ("lv2/utility.ttl", URI_BASE + "utility", "TRM", "guitaramp_utility.so", "hexchain-utility.lv2", False),
     # M5 — stereo (2-in/2-out, single-instance):
     ("lv2/amp.ttl",     URI_BASE + "amp",     "AMP", "guitaramp_amp.so",     "hexchain-amp.lv2",     False),

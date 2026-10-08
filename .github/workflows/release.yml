@@ -88,7 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          notes="Portable aarch64 (armv8-a) build of the Hex Chain LV2 suite for MOD / pi-Stomp (16 plugins incl. Nail, Claw + Hex Forge). Extract on your Pi and run \`install.sh\`. Dual-licensed **GPL-3.0-or-later + commercial** — see LICENSING.md."
+          notes="Portable aarch64 (armv8-a) build of the Hex Chain LV2 suite for MOD / pi-Stomp (15 plugins incl. Nail + Hex Forge). Extract on your Pi and run \`install.sh\`. Dual-licensed **GPL-3.0-or-later + commercial** — see LICENSING.md."
           # Idempotent: if the release already exists (e.g. a re-cut of the same
           # tag), refresh its asset + notes instead of failing on "already exists".
           if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then

@@ -120,7 +120,8 @@ PLUGINS = [
     ("hexchain-delay.lv2",   "Delay",  ( 60, 200, 190, 255), delay_glyph),   # #3cc8be
     ("hexchain-modfx.lv2",   "Mod",    (165, 110, 235, 255), modfx_glyph),   # #a56eeb
     ("hexchain-nail.lv2",    "Nail",   (255,  77, 158, 255), nail_glyph),    # #ff4d9e (shares fuzz)
-    ("hexchain-claw.lv2",    "Claw",   (198, 255,  61, 255), claw_glyph),    # #c6ff3d
+    # SHELVED 2026-10-07
+    # ("hexchain-claw.lv2",    "Claw",   (198, 255,  61, 255), claw_glyph),    # #c6ff3d
     ("hexchain-octave.lv2",  "Octave", (165, 110, 235, 255), octave_glyph),  # #a56eeb
     ("hexchain-reverb.lv2",  "Reverb", ( 95, 115, 225, 255), reverb_glyph),  # #5f73e1
     ("hexchain-wah.lv2",     "Wah",    (165, 110, 235, 255), wah_glyph),     # #a56eeb

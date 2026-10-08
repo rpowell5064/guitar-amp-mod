@@ -17,8 +17,15 @@ install_atomic() {
     src="$1"; dst="$2"
     cp "$src" "$dst.new" && mv -f "$dst.new" "$dst"
 }
-for f in build/guitaramp_*.so; do install_atomic "$f" "$BUNDLE/$(basename "$f")"; done
-for f in lv2/*.ttl;            do install_atomic "$f" "$BUNDLE/$(basename "$f")"; done
+# Only what lv2/manifest.ttl references: a plugin that is built but not shipped
+# (Claw, shelved 2026-10-07) must not ride along into the bundle.
+install_atomic lv2/manifest.ttl "$BUNDLE/manifest.ttl"
+for so in $(grep -oE 'guitaramp_[a-z]+\.so' lv2/manifest.ttl | sort -u); do
+    [ -f "build/$so" ] && install_atomic "build/$so" "$BUNDLE/$so"
+done
+for ttl in $(grep -oE 'seeAlso <[a-z]+\.ttl>' lv2/manifest.ttl | grep -oE '[a-z]+\.ttl' | sort -u); do
+    [ -f "lv2/$ttl" ] && install_atomic "lv2/$ttl" "$BUNDLE/$ttl"
+done
 # Practice: the resynthesised kit (parameters, not sample audio). The plugin
 # finds it via the bundle_path handed to instantiate().
 [ -f lv2/practice/drumkit.dat ] && install_atomic lv2/practice/drumkit.dat "$BUNDLE/drumkit.dat"
@@ -35,6 +42,8 @@ guis=0
 for d in lv2/modgui-*; do
     [ -d "$d" ] || continue
     name=$(basename "$d")
+    # modgui dirs only for shipped plugins (the TTL that names the dir must be in the manifest)
+    grep -lq "modgui:resourcesDirectory <$name>" $(grep -oE 'seeAlso <[a-z]+\.ttl>' lv2/manifest.ttl | grep -oE '[a-z]+\.ttl' | sed 's|^|lv2/|') 2>/dev/null || continue
     mkdir -p "$BUNDLE/$name"
     (cd "$d" && find . -type d -printf '%P\n') | while read -r sub; do
         [ -n "$sub" ] && mkdir -p "$BUNDLE/$name/$sub"

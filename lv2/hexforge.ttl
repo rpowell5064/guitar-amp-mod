@@ -185,8 +185,6 @@
     a pg:Group ; lv2:symbol "g_oc2" ; lv2:name "Octave 2" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_eq2>
     a pg:Group ; lv2:symbol "g_eq2" ; lv2:name "EQ 2" .
-<https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw>
-    a pg:Group ; lv2:symbol "g_claw" ; lv2:name "Claw" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_footswitch>
     a pg:Group ; lv2:symbol "g_footswitch" ; lv2:name "Footswitches" .
 <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_presets>
@@ -213,7 +211,7 @@
 
 Hex Forge is the flagship — the whole Hex Chain signal chain in a SINGLE plugin, rebuilt around a modern node-chain interface: every block is a card you tap to edit, drag to reorder, and click to bypass, with per-model faceplates, live tone readouts and a built-in strobe tuner.
 
-The blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, a 6-band graphic EQ, modulation, delay, reverb, wah, octave, the industrial 'Nail' stage and the four-mode 'Claw' noise maker (noise bursts, a self-oscillating feedback loop, a chaotic ring modulator, a shortwave heterodyne) — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:
+The blocks: input trim, noise gate, compressor, fuzz, drive, amp, cab, a 6-band graphic EQ, modulation, delay, reverb, wah, octave and the industrial 'Nail' stage — each independently bypassable and freely reorderable, so you build a complete board without patching a dozen plugins. And the depth inside each block is the point:
 
 - AMP: FOURTEEN original voicings (clean to modern high-gain — plus the Blue Liner, a classic all-tube 300 W BASS head with Ultra-Lo/Ultra-Hi switches and a 3-position mid selector), including the Cali V — a 9-mode three-channel switcher with a 5-band graphic EQ — the chrome-clad Diamond Plate with 8 high-gain modes plus Bold/Spongy variac and Silicon/Tube rectifier feel switches, and the Plexiglass with its jumpered Vol I + Vol II channels; every voicing rides a modeled power amp, with hum filtering and decay-aware noise conditioning on the hot channels.
 - DRIVE: ELEVEN overdrive/boost/distortion voicings, from the green mid-hump legend and the mythical gold horse to the starved-tube Tube Chauffeur, the germanium Treble Ranger and the Helsinki Grind parallel-blend BASS preamp.
@@ -225,7 +223,7 @@ A 32-bank / 128-slot preset engine ships loaded with 60+ song-inspired factory r
 
 On 64-bit/desktop targets the amp and drive slots load your own .nam captures (the cab slot is pure IR/convolution); on 32-bit (patchbox-os-arm32) NAM is hidden and the algorithmic models are used. The heaviest plugin in the suite — best on Pi 4/5 and desktop. Free and open source (GPL-3).""" ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 278 ;
+    lv2:microVersion 279 ;
 
     # Amp model rebuilds + cab IR loads run on the worker thread.
     lv2:requiredFeature urid:map , work:schedule ;
@@ -3626,7 +3624,7 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 431 ; lv2:symbol "claw_pos" ; lv2:name "Claw Position" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
         lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 25 ; lv2:minimum 1 ; lv2:maximum 25 ;
         lv2:scalePoint [ rdfs:label "1" ; rdf:value 1 ] ;
@@ -3657,14 +3655,14 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 432 ; lv2:symbol "claw_enable" ; lv2:name "Claw Enable" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
-        lv2:portProperty lv2:toggled ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 433 ; lv2:symbol "claw_mode" ; lv2:name "Claw Mode" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
-        lv2:portProperty lv2:integer, lv2:enumeration ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty lv2:integer, lv2:enumeration, pprops:notOnGUI ;
         lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
         lv2:scalePoint [ rdfs:label "Hiss" ; rdf:value 0 ] ;
         lv2:scalePoint [ rdfs:label "Howl" ; rdf:value 1 ] ;
@@ -3673,39 +3671,44 @@ On 64-bit/desktop targets the amp and drive slots load your own .nam captures (t
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 434 ; lv2:symbol "claw_feed" ; lv2:name "Claw Feed" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 435 ; lv2:symbol "claw_pitch" ; lv2:name "Claw Pitch" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 436 ; lv2:symbol "claw_grit" ; lv2:name "Claw Grit" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 437 ; lv2:symbol "claw_blend" ; lv2:name "Claw Blend" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 438 ; lv2:symbol "claw_level" ; lv2:name "Claw Level" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty pprops:notOnGUI ;
         lv2:default 0.707 ; lv2:minimum 0.0 ; lv2:maximum 1.0
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 439 ; lv2:symbol "claw_grab" ; lv2:name "Claw Grab" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
-        lv2:portProperty lv2:toggled ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 440 ; lv2:symbol "claw_bypass" ; lv2:name "Claw Bypass" ;
-        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_claw> ;
-        lv2:portProperty lv2:toggled ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/hexforge#g_master> ;
+        lv2:portProperty lv2:toggled, pprops:notOnGUI ;
         lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 1
     ] , [
         a lv2:ControlPort, lv2:InputPort ;

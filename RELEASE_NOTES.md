@@ -1,14 +1,33 @@
 # Hex Chain Release Notes
 
-## Unreleased
+## v1.21.0 — 2026-10-07
+
+The amp update, plus a practice room. Every component amp was re-measured against its
+captures at the level a guitar actually delivers and several were refitted, the Deluxe
+Reverb joins the component twins, the Mark V's controls follow the real pots, the Input
+Trim learns which guitar is plugged in, and a new plugin, Scratch Pad, puts a four-track
+looper and a drum kit on the board.
 
 ### Added
 
-- **Claw** — a four-mode noise maker that rides the guitar, as a standalone pedal and as a block in Hex Forge: Hiss (pick attacks fire bursts of pink/white noise through a resonant filter), Howl (a short feedback loop with a band-pass and clipper inside that self-oscillates past 70 % Feed), Butterfly (a Lorenz attractor ring-modulating the guitar, Pitch sets its instability) and Shortwave (a single-sideband heterodyne whistle with AM static and crackle). Grab freezes the loop, holds the noise, free-runs the attractor or stops the station drifting — footswitch-friendly. Runs at 1x with anti-aliased soft clipping and a -1 dBFS ceiling. In Hex Forge it is the 25th movable slot; no factory preset uses it yet.
+- **Scratch Pad.** A four-track looper (two minutes a track, count-in, bar-snapped non-destructive trim, loops survive a reload, a level knob on every lane) with a drum machine: thirty grooves from swing to djent, a kit resynthesised from measured drums as parameters rather than samples, cymbals that keep ringing across strikes, a metronome, a parallel-compressed drum bus with a room, a Scales tab with a readable fretboard and chord grids, and a groove library you can save your own patterns into. It runs stereo with a mono fold and costs about nine percent of a Pi 5 core.
+- **Fender Deluxe Reverb (AB763) component twin** on amp 10, fitted to '65 Deluxe captures. Its Volume knob follows the amp's audio taper, and the shared power section now applies a per-amp output-volts calibration so the Deluxe's tail no longer overdrives the open-back speaker model.
+- **Input Trim GUITAR selector** (Default / Single Coil / Hot Pickups), in Hex Forge and the standalone Input Trim. A global setting for the guitar plugged in, saved with the board rather than the preset. It writes the Gain, Humbucker, HB Model and HB Amount controls so what it does is visible on the panel, and is re-applied after every preset recall. Default switches the humbucker voicing off and leaves the Gain, your input volume, exactly as set. New HB Model "Hot → PAF" tames a hot modern bridge pickup back to a vintage one.
+- **JCM800 twin: the #34 mod is real.** The twin had ignored the mod switch since the component build shipped. It is now built from the circulated spec: the first coupling capacitor out, a 500 pF coupling, a hotter shielded input, the two bigger cathode capacitors and the .47 µF presence capacitor. Lows tighten, the top opens and the first stage clips earlier, which is what the mod does.
 
 ### Changed
 
+- **The component twins' power stage is rebuilt.** Screen sag is now per tube (quads had it four times over), the feedback loop closes without a one-sample delay and the phase inverter is solved as a pair. The Plexi and Friedman squeal and 15 kHz ringing are gone, as is a 12 dB drive error on the Friedman. The Pi cost rises between six and twenty-one percent depending on the amp.
 - **Friedman and JCM800 component twins clip where the real amps do.** Their input scales had been fitted on saturated rows and started clipping 12-30 dB late; both are now anchored on the measured clipping knee, the JCM800's cathode follower uses the joint grid solve (no more fizz on quiet notes), the Friedman's grid knee matches the calibrated capture, and the Beardo Clean channel holds a sane level across its knob.
+- **Mark V twin** follows the real pots: treble on its audio taper, the mid law fitted over all seven channel captures, channel 3 cleans up where the real amp does, the front bass keeps its 100-125 Hz authority (one capacitor had been wired from the wrong node) and the graphic equaliser's 80 Hz band behaves like the sliders. Six Mark V presets were re-dialed the Mesa way.
+- **Rockerverb twin fitted to the real knob grid; Friedman to its gain ladder; the power-stage drive calibrated on the JCM800, EVH, Mark V and Rockerverb twins.** The shipped (non-component) stacks had linear pots where the amps use audio tapers; fixed.
+- **The Master knob on five twins ran against its level row** (turning it up pulled the preset level down); the rows are zeroed and the knobs read the right way.
+- **Presets.** Every factory preset was re-measured and re-levelled after each engine change. Imperial Lead is back on the Plexi as a dimed, jumpered 1959 with sag as drawn; the Regal presets lose their Doubler; the Rockerverb and Sunn "darkness" turned out to be a rig row and a preset, not the amps, and both are fixed; Berlin Wall Pulse's peak cap comes down. Dial-ins saved on the device are preserved verbatim.
+
+### Fixed
+
+- **Cathode followers rectified quiet notes.** The follower stages solved their grid diode against the previous sample, which turned quiet notes into a fizzy half-wave. They solve it in-sample now, on the amps where it matters (JCM800, Rockerverb, Friedman).
+- **A delay in front of the amp could spike it.** Hex Forge's amp takes one input now, so a wet second channel no longer doubles into it.
 
 ## v1.20.0 — 2026-09-27
 

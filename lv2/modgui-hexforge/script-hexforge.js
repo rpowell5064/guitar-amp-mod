@@ -7,7 +7,7 @@ function (event, funcs) {
     // (active/bypassed). The DSP sorts by pos and runs a block iff enable && !bypass.
     // Input Trim is locked first; its dot toggles it_enable (it has no bypass port).
     var BLOCKS = ['gt','gt2','cp','cp2','fz','fz2','dr','dr2','amp','cab','md','md2',
-                  'dl','dl2','rv','rv2','wh','wh2','oc','oc2','nail','nail2','eq','eq2','claw'];
+                  'dl','dl2','rv','rv2','wh','wh2','oc','oc2','nail','nail2','eq','eq2'];   // ('claw' shelved 2026-10-07: ports hidden, no tile)
     // X2 second instances (2026-07-30): each "2" block is offered in the palette
     // only while its first instance is in the chain (user rule).
     var X2 = { gt2:'gt', cp2:'cp', fz2:'fz', dr2:'dr', md2:'md', dl2:'dl',
@@ -1265,8 +1265,11 @@ function (event, funcs) {
     // Hot -> PAF voicing at 100 % with 4 dB taken off. Default puts the
     // voicing off and the Gain at 0.
     var GUITAR_SET = [
-        { h: 'Default \u2014 no character change',
-          w: [['it_humbk', 0, 'Humbucker', 'OFF'], ['it_gain', 0, 'Gain', '0.0 dB']] },
+        // Default leaves the Gain (the input volume) exactly as the preset set it (user, 2026-10-07):
+        // the selector is re-applied after every preset recall, so writing 0 dB here had been
+        // stomping each preset's input volume.
+        { h: 'Default \u2014 no character change', l: 'Gain (the input volume as set), ',
+          w: [['it_humbk', 0, 'Humbucker', 'OFF']] },
         { h: 'Single coil \u2192 humbucker character',
           w: [['it_gain', 2, 'Gain', '+2.0 dB'], ['it_humbk', 1, 'Humbucker', 'ON'],
               ['it_hbmodel', 0, 'HB Model', '\u201959 Bucker'], ['it_hbamt', 1, 'HB Amount', '100 %']] },
@@ -1280,7 +1283,7 @@ function (event, funcs) {
         var html = '<b>' + g.h + '</b><span class="hf-gnote-k">Sets</span>';
         for (var i = 0; i < g.w.length; ++i)
             html += '<span><i>' + g.w[i][2] + '</i> \u2192 ' + g.w[i][3] + '</span>';
-        html += '<span class="hf-gnote-k">Leaves as set</span><span>Phase, Hum Filter, Mains, Pickup Load, Clean Boost.</span>';
+        html += '<span class="hf-gnote-k">Leaves as set</span><span>' + (g.l || '') + 'Phase, Hum Filter, Mains, Pickup Load, Clean Boost.</span>';
         box[0].innerHTML = html;
     }
     // Write the preset's controls to the host. `fns` is the modgui function set.
@@ -1795,7 +1798,7 @@ function (event, funcs) {
             var CPU_MAP = { gt:'gt', cp:'cp', fz:'fz', dr:'dr', amp:'amp', cab:'cab',
                             md:'md', dl:'dl', rv:'rv', wh:'wh', oc:'oc', nail:'nail', eq:'eq', dr2:'dr2',
                             gt2:'gt2', cp2:'cp2', fz2:'fz2', nail2:'nail2', md2:'md2',
-                            dl2:'dl2', rv2:'rv2', wh2:'wh2', oc2:'oc2', eq2:'eq2', claw:'claw' };
+                            dl2:'dl2', rv2:'rv2', wh2:'wh2', oc2:'oc2', eq2:'eq2' };
             var ck = s.substring(4);
             var pct = parseFloat(event.value);
             if (ck === 'total') {

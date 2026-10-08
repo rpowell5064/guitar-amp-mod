@@ -32,8 +32,11 @@ function (event, funcs) {
     // Hot -> PAF voicing at 100 % with 4 dB taken off. Default puts the
     // voicing off and the Gain at 0.
     var GUITAR_SET = [
-        { h: 'Default \u2014 no character change',
-          w: [['humbucker', 0, 'Humbucker', 'OFF'], ['gain_db', 0, 'Gain', '0.0 dB']] },
+        // Default leaves the Gain (the input volume) exactly as the preset set it (user, 2026-10-07):
+        // the selector is re-applied after every preset recall, so writing 0 dB here had been
+        // stomping each preset's input volume.
+        { h: 'Default \u2014 no character change', l: 'Gain (the input volume as set), ',
+          w: [['humbucker', 0, 'Humbucker', 'OFF']] },
         { h: 'Single coil \u2192 humbucker character',
           w: [['gain_db', 2, 'Gain', '+2.0 dB'], ['humbucker', 1, 'Humbucker', 'ON'],
               ['hb_model', 0, 'HB Model', '\u201959 Bucker'], ['hb_amount', 1, 'HB Amount', '100 %']] },
@@ -47,7 +50,7 @@ function (event, funcs) {
         var html = '<b>' + g.h + '</b><span class="hf-gnote-k">Sets</span>';
         for (var i = 0; i < g.w.length; ++i)
             html += '<span><i>' + g.w[i][2] + '</i> \u2192 ' + g.w[i][3] + '</span>';
-        html += '<span class="hf-gnote-k">Leaves as set</span><span>Phase, Hum Filter, Mains, Pickup Load, Clean Boost.</span>';
+        html += '<span class="hf-gnote-k">Leaves as set</span><span>' + (g.l || '') + 'Phase, Hum Filter, Mains, Pickup Load, Clean Boost.</span>';
         box[0].innerHTML = html;
     }
     // Write the preset's controls to the host. `fns` is the modgui function set.
