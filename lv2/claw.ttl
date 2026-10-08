@@ -1,0 +1,128 @@
+@prefix lv2:   <http://lv2plug.in/ns/lv2core#> .
+@prefix pg:    <http://lv2plug.in/ns/ext/port-groups#> .
+@prefix mod:   <http://moddevices.com/ns/mod#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix modgui:<http://moddevices.com/ns/modgui#> .
+@prefix doap:  <http://usefulinc.com/ns/doap#> .
+@prefix foaf:  <http://xmlns.com/foaf/0.1/> .
+
+# Port groups: generic-UI hosts (Zynthian) page the controls by these.
+<https://rpowell5064.github.io/guitaramp-suite/claw#g_claw>
+    a pg:Group ; lv2:symbol "g_claw" ; lv2:name "Claw" .
+<https://rpowell5064.github.io/guitaramp-suite/claw#g_texture>
+    a pg:Group ; lv2:symbol "g_texture" ; lv2:name "Texture" .
+
+<https://rpowell5064.github.io/guitaramp-suite/claw>
+    a lv2:Plugin, lv2:DistortionPlugin ;
+    rdfs:label "Hex Chain — Claw" ;
+    doap:name  "Hex Chain Claw" ;
+    # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
+    rdfs:comment """Four-mode noise maker that rides the guitar: noise bursts, a self-oscillating feedback loop, a chaotic ring modulator and a shortwave heterodyne.
+
+Four engines, each its own circuit: Hiss (pick attacks fire bursts of pink/white noise through a resonant filter), Howl (a short delay loop with a band-pass and a clipper inside — past 70 % Feed it self-oscillates and the guitar pushes and pulls the howl), Butterfly (a Lorenz attractor ring-modulates the guitar; Pitch sets how unstable it is, from a sleeping orbit the guitar has to kick to full chaos) and Shortwave (a single-sideband heterodyne whistle with AM static and crackle riding the signal). Controls: Mode, Feed, Pitch, Grit, Blend, Level, and a Grab toggle that freezes the loop, holds the noise, free-runs the attractor or stops the station drifting — footswitch-friendly. Runs at 1x rate with anti-aliased soft clipping and a -1 dBFS ceiling, so it is cheap on a Pi. Works standalone or as a block in the Hex Chain suite.
+
+Amp pairing: Howl and Butterfly like a loud, fairly clean amp with the Blend around half so the guitar stays underneath; Hiss and Shortwave sit well in front of a driven amp. Free and open source (GPL-3).""" ;
+    mod:label  "Claw" ;
+    mod:brand  "Hex Chain" ;
+    doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
+    doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
+                      foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
+    lv2:minorVersion 1 ;
+    lv2:microVersion 1 ;   # 1: initial (2026-10-07): four modes, Grab toggle, lv2:enabled block-enable port LAST (INVERTED sense, 1 = on).
+    lv2:optionalFeature lv2:hardRTCapable ;
+
+    lv2:port [
+        a lv2:AudioPort, lv2:InputPort ;
+        lv2:index 0 ; lv2:symbol "in" ; lv2:name "In"
+    ] , [
+        a lv2:AudioPort, lv2:OutputPort ;
+        lv2:index 1 ; lv2:symbol "out" ; lv2:name "Out"
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 2 ; lv2:symbol "mode" ; lv2:name "Mode" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_claw> ;
+        lv2:portProperty lv2:integer, lv2:enumeration ;
+        lv2:default 1 ; lv2:minimum 0 ; lv2:maximum 3 ;
+        lv2:scalePoint [ rdfs:label "Hiss"      ; rdf:value 0 ] ;
+        lv2:scalePoint [ rdfs:label "Howl"      ; rdf:value 1 ] ;
+        lv2:scalePoint [ rdfs:label "Butterfly" ; rdf:value 2 ] ;
+        lv2:scalePoint [ rdfs:label "Shortwave" ; rdf:value 3 ]
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 3 ; lv2:symbol "feed" ; lv2:name "Feed" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_claw> ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 4 ; lv2:symbol "pitch" ; lv2:name "Pitch" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_claw> ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 5 ; lv2:symbol "grit" ; lv2:name "Grit" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_texture> ;
+        lv2:default 0.3 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 6 ; lv2:symbol "blend" ; lv2:name "Blend" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_texture> ;
+        lv2:default 0.5 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 7 ; lv2:symbol "level" ; lv2:name "Level" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_claw> ;
+        lv2:default 0.707 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 8 ; lv2:symbol "grab" ; lv2:name "Grab" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_claw> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 9 ; lv2:symbol "bypass" ; lv2:name "Bypass" ;
+        pg:group <https://rpowell5064.github.io/guitaramp-suite/claw#g_claw> ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 0.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] , [
+        # Host block-enable, designated per the LV2 spec so generic-UI hosts
+        # (Zynthian, MOD, KosmOS) can bind it as the plugin's bypass switch.
+        # INVERTED relative to the "bypass" port: enabled 1 = processing on.
+        # Deliberately ungrouped and last.
+        a lv2:ControlPort, lv2:InputPort ;
+        lv2:index 10 ; lv2:symbol "enabled" ; lv2:name "Enabled" ;
+        lv2:designation lv2:enabled ;
+        lv2:portProperty lv2:toggled ;
+        lv2:default 1.0 ; lv2:minimum 0.0 ; lv2:maximum 1.0
+    ] ;
+
+    # ── Custom MOD web GUI ────────────────────────────────────────────────────
+    modgui:gui [
+        modgui:resourcesDirectory <modgui-claw> ;
+        modgui:iconTemplate <modgui-claw/icon-claw.html> ;
+        modgui:stylesheet <modgui-claw/stylesheet-claw.css> ;
+        modgui:javascript <modgui-claw/script-claw.js> ;
+        modgui:screenshot <modgui-claw/screenshot-claw.png> ;
+        modgui:thumbnail <modgui-claw/thumbnail-claw.png> ;
+        modgui:brand "Hex Chain" ;
+        modgui:label "Claw" ;
+        modgui:model "mod-pedal-guitaramp-claw" ;
+        modgui:port [
+            lv2:index 0 ; lv2:symbol "mode"   ; lv2:name "Mode"
+        ] , [
+            lv2:index 1 ; lv2:symbol "feed"   ; lv2:name "Feed"
+        ] , [
+            lv2:index 2 ; lv2:symbol "pitch"  ; lv2:name "Pitch"
+        ] , [
+            lv2:index 3 ; lv2:symbol "grit"   ; lv2:name "Grit"
+        ] , [
+            lv2:index 4 ; lv2:symbol "blend"  ; lv2:name "Blend"
+        ] , [
+            lv2:index 5 ; lv2:symbol "level"  ; lv2:name "Level"
+        ] , [
+            lv2:index 6 ; lv2:symbol "grab"   ; lv2:name "Grab"
+        ] , [
+            lv2:index 7 ; lv2:symbol "bypass" ; lv2:name "Bypass"
+        ]
+    ] .

@@ -24,6 +24,7 @@ PEDALS = {
     "utility":("utility.ttl", 440, 440),
     "fuzz":   ("fuzz.ttl",    420, 448),
     "nail":   ("nail.ttl",    360, 485),
+    "claw":   ("claw.ttl",    360, 545),   # Nail plate + a second group (Texture) for Grit/Blend/Grab
     "octave": ("octave.ttl",  400, 490),
     "wah":    ("wah.ttl",     460, 440),
     "practice":("practice.ttl", 1280, 900),  # looper/drum workstation: a work surface, not a faceplate.
@@ -74,6 +75,11 @@ def parse_controls(ttl_path):
     # for undeclared indices come back empty, and an entry whose index is past
     # the end is dropped. Rendering any other way mislabels the screenshot and,
     # worse, hides exactly the drift this render would otherwise reveal.
+    # Each entry names its port by SYMBOL (2026-10-07: it used to look the port up by the
+    # entry's index, which is only right when a stanza uses the real lv2:index values as the
+    # Practice GUI does; the pedals' stanzas are 0-based, so a Nail/Wah/Claw render picked up
+    # whichever real port shared the index and mislabelled the knobs).
+    by_symbol = {c["symbol"]: c for c in ordered}
     gui = txt.find("modgui:gui")
     if gui >= 0:
         mapped = re.findall(r'lv2:index\s+(\d+)\s*;\s*lv2:symbol\s+"([^"]*)"', txt[gui:])
@@ -82,7 +88,7 @@ def parse_controls(ttl_path):
             for idx, sym in mapped:
                 idx = int(idx)
                 if idx < len(ordered):
-                    ordered[idx] = by_index.get(idx) or {"symbol": sym, "name": sym, "sp": []}
+                    ordered[idx] = by_symbol.get(sym) or {"symbol": sym, "name": sym, "sp": []}
     return ordered
 
 # ── Mustache-lite: fill {{#controls.N}} blocks from the port list, drop runtime-only loops ────────
