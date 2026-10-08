@@ -1,4 +1,4 @@
-# refreshed 2026-10-07 night at kFactoryRev 196: the JCM800 twin now honours the SIR #34 switch, so Skye (No Mod) P025 and Jungle Sleaze P071 re-rendered; P026 (Skye Soar, the next JCM preset) changed too because the switch flipping back now re-prepares the twin at its recall, so it no longer inherits the previous preset's warmed-up power-stage state inside the 1 s settle (a render-order effect, not a voicing change); P027/P072 hash-only carry-over
+# refreshed 2026-10-08 (release night) at kFactoryRev 197: Jungle Sleaze P071 loses its Drive pedal (user, on device); P072 and P076-P078 are hash-only state carry-over (peak/rms identical). Previous: 196 (SIR #34 real on the JCM800 twin).
 P000 bank01A hash=07008fa683fe4823 peak=0.747571 rms=0.253883
 P001 bank01B hash=f3b235e2d6a3cf02 peak=0.907622 rms=0.319478
 P002 bank01C hash=c058d5a16c2aa8a3 peak=0.766913 rms=0.235597
@@ -70,14 +70,14 @@ P067 bank17D hash=beefdb146f28e6a7 peak=0.668569 rms=0.114090
 P068 bank18A hash=e2900de784b3b887 peak=0.545087 rms=0.189495
 P069 bank18B hash=f316c8bb3e689ce7 peak=0.866033 rms=0.296332
 P070 bank18C hash=0302afc1c5fc399f peak=0.563962 rms=0.192593
-P071 bank18D hash=c6b929a1ab367551 peak=0.923241 rms=0.263425
-P072 bank19A hash=ef171576261d64ef peak=1.257377 rms=0.424125
+P071 bank18D hash=95e167cff2970e98 peak=0.895499 rms=0.307093
+P072 bank19A hash=723746b628f4305b peak=1.257378 rms=0.424126
 P073 bank19B hash=2502b317b6d6b8d3 peak=1.305161 rms=0.445665
 P074 bank19C hash=f6e2988f0c388973 peak=1.597293 rms=0.628996
 P075 bank19D hash=9d2cb85d94452933 peak=0.629748 rms=0.373530
-P076 bank20A hash=9b51046c9ff92507 peak=1.612673 rms=0.538381
-P077 bank20B hash=d2f29ed139d076fb peak=0.570307 rms=0.263491
-P078 bank20C hash=149cd11a454b0433 peak=0.896518 rms=0.303765
+P076 bank20A hash=60a9b4866ed035f3 peak=1.612672 rms=0.538380
+P077 bank20B hash=f041f76f4f3e327f peak=0.570307 rms=0.263491
+P078 bank20C hash=63b115f6eacf33af peak=0.896518 rms=0.303765
 P079 bank20D hash=4a6afd07df3bdc5b peak=0.967146 rms=0.300265
 P080 bank21A hash=10b7b795b7cdfcb3 peak=0.922446 rms=0.301061
 P081 bank21B hash=375137bb7ae564cb peak=0.930064 rms=0.319050
@@ -127,4 +127,4 @@ P124 bank32A hash=5a3d79b09585340b peak=0.973255 rms=0.305696
 P125 bank32B hash=9b0fc26739556a5b peak=0.892817 rms=0.299707
 P126 bank32C hash=8b727877403db07f peak=0.841353 rms=0.311583
 P127 bank32D hash=0cf87d76e46c6893 peak=0.925947 rms=0.323268
-ALL  hash=eadb97dfa3c0ea85 presets=128
+ALL  hash=b73a917a14b0483a presets=128
