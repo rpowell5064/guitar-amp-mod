@@ -78,21 +78,36 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
 
     for (auto& c : ch_) {
         // â”€â”€ V1a: R4 100k, R1 2k7 âˆ¥ C1 0.68Âµ, R3 68k grid stop â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        c.v1a.prepare(fs_, { kRailV1, 100e3, 2.7e3, 0.68e-6, 68e3, 0.0, 68e3 });
+        {
+            // SIR #34 (sir34_): R3 68k -> 33k at the grid, and the "hot shield" -- the input run
+            // is a shielded cable whose braid is tied to V1a's PLATE (pin 1), so the cable's
+            // ~33 pF (12-14 in of RG174) sits plate-to-grid: Miller-multiplied by the stage gain
+            // (~60) it is ~2 nF against the 33k stop, a 1-pole corner near 2.4 kHz. Modelled as
+            // the stage's explicit grid capacitance (sirShieldPf_, lab fit6).
+            const double rg  = sir34_ ? 33e3 : 68e3;
+            const double cgs = sir34_ ? sirShieldPf_ * 1e-12 * (1.0 + 60.0) : 0.0;
+            c.v1a.prepare(fs_, { kRailV1, 100e3, 2.7e3, 0.68e-6, rg, cgs, rg });
+        }
         {
             const double Zp = 1.0 / (1.0 / 100e3 + 1.0 / kRp);
             // C2 100p sits plate-to-cathode: a plain 1-pole HF shunt (corner
             // ~41 kHz against the plate impedance, so nearly inert in band).
+            // SIR #34 removes C2 (spec step A).
             c.v1aSnub.prepare(fs_, 1.0, 0.0,
-                              1.0 / (2.0 * M_PI * 100e-12 * Zp));
-            // C3 .022Âµ into the preamp-volume network (R5 470k âˆ¥ VR1 1M).
-            c.coup3.prepare(fs_, 0.022e-6, Zp, 470e3);
+                              sir34_ ? 1.0e6 : 1.0 / (2.0 * M_PI * 100e-12 * Zp));
+            // C3 .022u into the preamp-volume network (R5 470k || VR1 1M).
+            // SIR #34: C3 -> 500 pF (step B, "tightens the bass and increases mids"):
+            // against the 470k || 1M network that is a ~1 kHz high-pass ahead of the cold clipper.
+            c.coup3.prepare(fs_, sir34_ ? 500e-12 : 0.022e-6, Zp, 470e3);
         }
         // â”€â”€ V1b: R7 100k, R6 10k UNBYPASSED (the cold clipper) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         {   // lab hook (2026-10-07, fit4/fit5): a runtime tube set for the cold clipper only -- its cutoff
             // sharpness (Kp) and mu are the levers behind the soft ~27 % THD shelf the twin shows 12 dB
             // below the real amp's knee; off (nullptr) = the shared 12AX7, bit-identical.
-            evhcomp::CCStageV::Params p{ kRailV1, 100e3, 10e3, 0.0, 0.0, 0.0, 470e3 };
+            // SIR #34: R6 10k bypassed by .1u (step F) -- the cold clipper gets its full gain
+            // above ~160 Hz (1/(2 pi 10k 0.1u)); it stays cold-biased, so the clip is still the
+            // 2203's asymmetric one, just hotter and brighter.
+            evhcomp::CCStageV::Params p{ kRailV1, 100e3, 10e3, sir34_ ? 0.1e-6 : 0.0, 0.0, 0.0, 470e3 };
             p.tube = v1bTubeOn_ ? &v1bTube_ : nullptr;
             c.v1b.prepare(fs_, p);
         }
@@ -109,7 +124,9 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
                             1.0 / (2.0 * M_PI * 470e-12 * (470e3 * 0.5)));
         }
         // â”€â”€ V2a: R12 100k, R9 820Î© â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-        c.v2a.prepare(fs_, { kRailV2, 100e3, 820.0, 0.0, 0.0, 0.0, 470e3 });
+        // SIR #34: R9 820R bypassed by .47u (step G, "punch and compression"; the sheet allows
+        // .47u-10u, 'start low') -- corner ~410 Hz, so the stage gains above the low mids.
+        c.v2a.prepare(fs_, { kRailV2, 100e3, 820.0, sir34_ ? 0.47e-6 : 0.0, 0.0, 0.0, 470e3 });
         // â”€â”€ V2b: cathode follower, R13 100k, grid off V2a's plate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
         c.cfDiv = 1.0f;
         {
@@ -122,7 +139,8 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             p.R4 += kZthStack;
             c.ts.prepare(fs_, p);
         }
-        { auto pp = jcmPowerParams(); pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); }
+        { auto pp = jcmPowerParams(); if (sir34_) pp.presCap = 0.47e-6;   // SIR #34 step H: C17 .1u -> .22-.68u (the presence network reaches lower)
+          pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); }
         c.pa.setPresence(presence_);
         c.pa.setSagDepth(sag_);
         c.pa.setDynLoad(dynLoad_);   // PushPullPowerV::prepare resets it to the Params default (off)
@@ -145,7 +163,10 @@ void JCM800ComponentModel::recalcPots() noexcept {
         const double Rt  = std::max(50.0, (1.0 - double(r)) * 1e6 + 470e3);
         const double gLo = Rb / (Rb + Rt);
         const double Rc  = 1.0 / (1.0 / Rt + 1.0 / Rb);
-        c.brightVR1.prepare(fs_, gLo, 1.0, 1.0 / (2.0 * M_PI * 470e-12 * Rc));
+        // SIR #34 step D: the C4 bright feed 470p -> 2200p (the sheet allows 1000-5000p, "2200p
+        // usually works fine"), so the bright shelf starts ~5x lower. (Step E removes C5, the
+        // 1n0 wiper-to-ground, which this network does not model separately.)
+        c.brightVR1.prepare(fs_, gLo, 1.0, 1.0 / (2.0 * M_PI * (sir34_ ? 2200e-12 : 470e-12) * Rc));
         c.ts.setTreble(treble_);
         c.ts.setMid(mid_);
         c.ts.setBass(audioTaper(bass_, 0.15f));   // VR5 1M log
@@ -222,6 +243,8 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
     else if (id == "outscale") { outScalePa_ = value; }
     else if (id == "fit0")     { gainMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: VR1 pot law
     else if (id == "fit1")     { inVolts_ = std::max(0.01f, value); }   // lab: jack volts per unit
+    else if (id == "sir34")    { const bool b = value > 0.5f; if (b != sir34_) { sir34_ = b; if (fs_ > 0.0) prepare(fs_, 0); } }   // SIR #34 mod (whole-preamp rebuild; the host mutes across the switch)
+    else if (id == "fit6")     { sirShieldPf_ = std::max(0.0f, value); if (fs_ > 0.0 && sir34_) prepare(fs_, 0); }   // lab: hot-shield plate-grid capacitance (pF)
     else if (id == "fit19")    { cfJoint_ = value > 0.5f; if (fs_ > 0.0) prepare(fs_, 0); }   // lab: CF joint grid solve
     else if (id == "fit14")    { probeTap_ = static_cast<int>(value + 0.5f) - 1; }   // lab: 0 = off, 1..8 = tap0..tap7
     else if (id == "fit4")     { v1bTube_.kp = std::max(50.0, double(value)); v1bTubeOn_ = true; if (fs_ > 0.0) prepare(fs_, 0); }   // lab: cold clipper Kp (cutoff sharpness)
@@ -251,6 +274,7 @@ float JCM800ComponentModel::getParameter(const std::string& id) const noexcept {
     if (id == "sag")      return sag_;
     if (id == "dynload")  return dynLoad_ ? 1.0f : 0.0f;
     if (id == "involts")  return inVolts_;
+    if (id == "sir34")    return sir34_ ? 1.0f : 0.0f;
     if (id == "outscale") return outScalePa_;
     if (id == "pa_idle_ma") return float(ch_[0].pa.outIdlemA());
     if (id == "pa_tail_v")  return float(ch_[0].pa.ltpTailV());

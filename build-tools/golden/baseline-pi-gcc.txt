@@ -1,4 +1,4 @@
-# refreshed 2026-10-07 late night at kFactoryRev 195: the seventeen Friedman/JCM800 presets re-rendered after the shape pass (JCM follower joint solve, Friedman knee 1.5 V + scale 5.6, Clean row) + re-fold; carry-over rows hash-only; P045/P064/P067 (these amps on Rig B) within 0.2 %
+# refreshed 2026-10-07 night at kFactoryRev 196: the JCM800 twin now honours the SIR #34 switch, so Skye (No Mod) P025 and Jungle Sleaze P071 re-rendered; P026 (Skye Soar, the next JCM preset) changed too because the switch flipping back now re-prepares the twin at its recall, so it no longer inherits the previous preset's warmed-up power-stage state inside the 1 s settle (a render-order effect, not a voicing change); P027/P072 hash-only carry-over
 P000 bank01A hash=07008fa683fe4823 peak=0.747571 rms=0.253883
 P001 bank01B hash=f3b235e2d6a3cf02 peak=0.907622 rms=0.319478
 P002 bank01C hash=c058d5a16c2aa8a3 peak=0.766913 rms=0.235597
@@ -24,9 +24,9 @@ P021 bank06B hash=e433916e1cfd3807 peak=0.799762 rms=0.189520
 P022 bank06C hash=df7ecdd2cb125a8d peak=0.474150 rms=0.139512
 P023 bank06D hash=475fa6bf60c96d77 peak=0.731098 rms=0.276214
 P024 bank07A hash=bec2b1ab53a09094 peak=0.839481 rms=0.276975
-P025 bank07B hash=beea8ee7a1c2056b peak=0.840030 rms=0.288507
-P026 bank07C hash=cba230e8d0ad6430 peak=0.889576 rms=0.292011
-P027 bank07D hash=526a9f5ca7ee17ae peak=0.780924 rms=0.299422
+P025 bank07B hash=e50cfb73b9ac875f peak=0.880979 rms=0.276133
+P026 bank07C hash=5acd3b98f27757d1 peak=0.843289 rms=0.278389
+P027 bank07D hash=e3b96d7bc84fe28e peak=0.780945 rms=0.299419
 P028 bank08A hash=ebf85a2fa69ca2fd peak=0.741802 rms=0.234492
 P029 bank08B hash=9692908f49bcb2d6 peak=0.640399 rms=0.210779
 P030 bank08C hash=b62105c0dcfecd13 peak=0.871315 rms=0.252504
@@ -70,8 +70,8 @@ P067 bank17D hash=beefdb146f28e6a7 peak=0.668569 rms=0.114090
 P068 bank18A hash=e2900de784b3b887 peak=0.545087 rms=0.189495
 P069 bank18B hash=f316c8bb3e689ce7 peak=0.866033 rms=0.296332
 P070 bank18C hash=0302afc1c5fc399f peak=0.563962 rms=0.192593
-P071 bank18D hash=64cc7a6209316dd5 peak=0.969735 rms=0.322971
-P072 bank19A hash=23cfde8809262d9b peak=1.257374 rms=0.424124
+P071 bank18D hash=c6b929a1ab367551 peak=0.923241 rms=0.263425
+P072 bank19A hash=ef171576261d64ef peak=1.257377 rms=0.424125
 P073 bank19B hash=2502b317b6d6b8d3 peak=1.305161 rms=0.445665
 P074 bank19C hash=f6e2988f0c388973 peak=1.597293 rms=0.628996
 P075 bank19D hash=9d2cb85d94452933 peak=0.629748 rms=0.373530
@@ -127,4 +127,4 @@ P124 bank32A hash=5a3d79b09585340b peak=0.973255 rms=0.305696
 P125 bank32B hash=9b0fc26739556a5b peak=0.892817 rms=0.299707
 P126 bank32C hash=8b727877403db07f peak=0.841353 rms=0.311583
 P127 bank32D hash=0cf87d76e46c6893 peak=0.925947 rms=0.323268
-ALL  hash=9e6f70b228c79e68 presets=128
+ALL  hash=eadb97dfa3c0ea85 presets=128

@@ -88,6 +88,16 @@ private:
     evhcomp::KorenP v1bTube_{ 100.0, 1.4, 1060.0, 600.0, 300.0 };   // lab (fit4/fit5): cold-clipper tube set; used only when v1bTubeOn_
     bool v1bTubeOn_ = false;
     int  probeTap_ = -1;
+    // SIR #34 (2026-10-07): the S.I.R. rental-fleet hot-rod of the 2203, built from the circulated
+    // spec sheet for the PCB amps (ten steps, drawing designators), not from the old model's sketch:
+    //   A remove C2 (100p plate-cathode snub)          B C3 .022u -> 500p (bass out ahead of the clipper)
+    //   C R3 68k -> 33k + the "hot shield" (input cable braid on V1a's plate = ~33 pF plate-grid)
+    //   D C4 bright feed 470p -> 2200p                 E remove C5 1n0 (wiper to ground; not modelled)
+    //   F .1u across R6 10k (cold clipper bypass)      G .47u across R9 820R (V2a bypass)
+    //   H C17 presence cap .1u -> .47u                 I/J preamp filter caps 16+16 / 32+32 uF (static rails here: not modelled)
+    // Everything is the drawn part at the drawn node; the one ESTIMATE is the shield capacitance.
+    bool  sir34_ = false;
+    float sirShieldPf_ = 33.0f;   // fit6
     // 2026-10-07: ON. The follower's previous-sample grid clamp (see CFStageV::Params) rectified the
     // signal at tiny levels: with every stage ahead of it clean, the twin read 16-27 % THD at 1 kHz from
     // -72 dBFS up (the real amp 0.8-8 %), a crunch on every quiet note and decay. The joint solve takes
