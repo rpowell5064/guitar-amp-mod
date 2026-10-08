@@ -77,6 +77,7 @@ foreach(mode default anagram)
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/delay/delay_plugin.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/modfx/modfx_plugin.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/nail/nail_plugin.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/claw/claw_plugin.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/octave/octave_plugin.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/reverb/reverb_plugin.cpp"
         "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/wah/wah_plugin.cpp"
@@ -106,6 +107,11 @@ target_link_libraries(hexforge_engine_standalone PRIVATE GuitarAmpSim)
 add_executable(practice_render "${CMAKE_CURRENT_SOURCE_DIR}/practice_render.cpp")
 target_include_directories(practice_render PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../deps/guitar-amp-simulator/include")
+
+# Claw noise block harness: per-mode renders, bit-identity between two fresh renders,
+# -1 dBFS ceiling, finite output, DC-free tail, and the cost per block.
+add_executable(claw_render "${CMAKE_CURRENT_SOURCE_DIR}/claw_render.cpp")
+target_link_libraries(claw_render PRIVATE GuitarAmpSim)
 
 # End-to-end LV2 smoke test. Statically links the plugin TU (no dlopen, so it
 # runs on Windows too) and drives it through instantiate / connect_port / run /
