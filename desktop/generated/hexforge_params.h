@@ -618,7 +618,7 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 502, "amp_dynload", "Dynamic Load", "Amp", 0.0f, 1.0f, 1.0f, "t", HFD_SETTING, nullptr, 0 },
     { 503, "it_mains", "IT Mains", "Input Trim", 0.0f, 1.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_mains, int(sizeof(kHfSp_it_mains)/sizeof(HfScalePoint)) },
     { 504, "it_guitar", "IT Guitar", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_guitar, int(sizeof(kHfSp_it_guitar)/sizeof(HfScalePoint)) },
-    { 505, "amp_palegacy", "Rev 189 Power Stage", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 505, "amp_palegacy", "Rev 189 Power Stage (retired)", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
     { 506, "cpu_claw", "CPU Claw", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));
