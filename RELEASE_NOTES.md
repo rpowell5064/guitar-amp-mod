@@ -1,5 +1,15 @@
 # Hex Chain Release Notes
 
+## Unreleased
+
+### Added
+
+- **Claw** — a four-mode noise maker that rides the guitar, as a standalone pedal and as a block in Hex Forge: Hiss (pick attacks fire bursts of pink/white noise through a resonant filter), Howl (a short feedback loop with a band-pass and clipper inside that self-oscillates past 70 % Feed), Butterfly (a Lorenz attractor ring-modulating the guitar, Pitch sets its instability) and Shortwave (a single-sideband heterodyne whistle with AM static and crackle). Grab freezes the loop, holds the noise, free-runs the attractor or stops the station drifting — footswitch-friendly. Runs at 1x with anti-aliased soft clipping and a -1 dBFS ceiling. In Hex Forge it is the 25th movable slot; no factory preset uses it yet.
+
+### Changed
+
+- **Friedman and JCM800 component twins clip where the real amps do.** Their input scales had been fitted on saturated rows and started clipping 12-30 dB late; both are now anchored on the measured clipping knee, the JCM800's cathode follower uses the joint grid solve (no more fizz on quiet notes), the Friedman's grid knee matches the calibrated capture, and the Beardo Clean channel holds a sane level across its knob.
+
 ## v1.20.0 — 2026-09-27
 
 The pedal update. Four of the drive and fuzz voicings were re-measured and corrected, the

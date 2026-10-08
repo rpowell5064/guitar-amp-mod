@@ -54,6 +54,11 @@ def nail_glyph(t):    # industrial near-square (three-mode distortion)
     v = math.sin(t * 2 * math.pi * 2.5)
     return 0.42 * (1.0 if v >= 0 else -1.0) * min(1.0, abs(v) * 6.0)
 
+def claw_glyph(t):    # noise burst riding a howl (four-mode noise maker)
+    h = 0.30 * math.sin(t * 2 * math.pi * 3.0)
+    n = ((int(t * 97.0) * 2654435761) % 1000) / 500.0 - 1.0
+    return h + 0.22 * n * (1.0 if (t % 0.5) < 0.18 else 0.25)
+
 def octave_glyph(t):  # fundamental + sub-octave stacked
     return 0.28 * math.sin(t * 2 * math.pi * 3.0) + 0.24 * math.sin(t * 2 * math.pi * 1.5)
 
@@ -115,6 +120,7 @@ PLUGINS = [
     ("hexchain-delay.lv2",   "Delay",  ( 60, 200, 190, 255), delay_glyph),   # #3cc8be
     ("hexchain-modfx.lv2",   "Mod",    (165, 110, 235, 255), modfx_glyph),   # #a56eeb
     ("hexchain-nail.lv2",    "Nail",   (255,  77, 158, 255), nail_glyph),    # #ff4d9e (shares fuzz)
+    ("hexchain-claw.lv2",    "Claw",   (198, 255,  61, 255), claw_glyph),    # #c6ff3d
     ("hexchain-octave.lv2",  "Octave", (165, 110, 235, 255), octave_glyph),  # #a56eeb
     ("hexchain-reverb.lv2",  "Reverb", ( 95, 115, 225, 255), reverb_glyph),  # #5f73e1
     ("hexchain-wah.lv2",     "Wah",    (165, 110, 235, 255), wah_glyph),     # #a56eeb

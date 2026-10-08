@@ -94,8 +94,8 @@ link. If the Anagram ever runs a 16K-page kernel, revisit.
 
 ## M5: FULL SUITE PORTED (2026-08-27)
 
-All 13 plugins now carry the Anagram treatment (was: drive+fuzz pilots).
-Shapes: **mono** (dual-mono contract) = drive, fuzz, comp, gate, nail,
+All 14 plugins now carry the Anagram treatment (was: drive+fuzz pilots).
+Shapes: **mono** (dual-mono contract) = drive, fuzz, comp, gate, nail, claw,
 utility; **stereo 2-in/2-out** (single-instance) = amp, cab, delay, modfx,
 octave, reverb, wah — both shapes KosmOS-legal. Per-plugin guards follow the
 pilot pattern (enabled/reset appended after stock ports — before atoms on

@@ -117,6 +117,29 @@
       "short": "Five-mode industrial distortion: fuzz, resonant filter, bitcrush, cab re-amp, ring-mod.",
       "long": "An industrial distortion block with five distinct topologies — each its own circuit, not one voicing knob: Broke (crude digital hard-clip with sample-rate decimation + bit-reduction), Dahnward (scooped high-gain preamp into a sweepable resonant band-pass), Delicate (a swollen, gherkin-fat fuzz with a wide filter sweep), Con Molars (a bright clip re-amped through a fixed miked-speaker voicing) and Yo, Hey Adrian! (a high-sustain clip into a switchable ring modulator). Controls: Mode, Drive, Filter, Texture, Level, plus a Ring Mod toggle for the Yo, Hey Adrian! mode. Oversampled; works standalone or in the Hex Chain suite.\n\nAmp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a cranked British master-volume half-stack is the classic move. Free and open source (GPL-3)."
     },
+    "claw": {
+      "title": "Hex Chain Claw",
+      "categories": [
+        "Distortion"
+      ],
+      "tags": [
+        "guitar",
+        "noise",
+        "feedback",
+        "chaos",
+        "ring-modulator",
+        "shortwave",
+        "experimental",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
+      "nam": false,
+      "short": "Four-mode noise maker that rides the guitar: noise bursts, a self-oscillating feedback loop, a chaotic ring modulator and a shortwave heterodyne.",
+      "long": "Four engines, each its own circuit: Hiss (pick attacks fire bursts of pink/white noise through a resonant filter), Howl (a short delay loop with a band-pass and a clipper inside — past 70 % Feed it self-oscillates and the guitar pushes and pulls the howl), Butterfly (a Lorenz attractor ring-modulates the guitar; Pitch sets how unstable it is, from a sleeping orbit the guitar has to kick to full chaos) and Shortwave (a single-sideband heterodyne whistle with AM static and crackle riding the signal). Controls: Mode, Feed, Pitch, Grit, Blend, Level, and a Grab toggle that freezes the loop, holds the noise, free-runs the attractor or stops the station drifting — footswitch-friendly. Runs at 1x rate with anti-aliased soft clipping and a -1 dBFS ceiling, so it is cheap on a Pi. Works standalone or as a block in the Hex Chain suite.\n\nAmp pairing: Howl and Butterfly like a loud, fairly clean amp with the Blend around half so the guitar stays underneath; Hiss and Shortwave sit well in front of a driven amp. Free and open source (GPL-3)."
+    },
     "gate": {
       "title": "Hex Chain Gate",
       "categories": [
