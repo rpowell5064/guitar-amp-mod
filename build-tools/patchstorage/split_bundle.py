@@ -34,6 +34,10 @@ META_PLUGINS = json.loads(
     (HERE / "plugins_meta.json").read_text(encoding="utf-8"))["plugins"]
 
 
+# Bundle-relative data files a plugin needs next to its .so (loaded via bundle_path).
+EXTRA_FILES = {"practice": ["drumkit.dat"]}
+
+
 def inject_comment(ttl_text: str, name: str) -> str:
     """Add rdfs:comment (the listing description) to the PLUGIN stanza if absent.
     Anchors on the plugin subject URI (…/guitaramp-suite/<name>>) so it is not
@@ -186,6 +190,14 @@ def main():
 
         if src_gui.is_dir():
             shutil.copytree(src_gui, dest / f"modgui-{name}")
+
+        # Data files a plugin loads from its own bundle directory (bundle_path at
+        # instantiate). Scratch Pad's drum kit is parameters, not sample audio.
+        for extra in EXTRA_FILES.get(name, ()):
+            src_extra = bundle / extra
+            if not src_extra.is_file():
+                sys.exit(f"!! {name}: {extra} missing from {bundle}")
+            shutil.copy2(src_extra, dest / extra)
 
         (dest / "manifest.ttl").write_text(
             MANIFEST_TMPL.format(name=name, so=so, ttl=ttl), encoding="utf-8")

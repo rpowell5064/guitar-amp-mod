@@ -316,6 +316,29 @@
       "nam": false,
       "short": "Analog-style sub-octave + octave-up, plus a microtonal quarter-tone shimmer voice.",
       "long": "An analog-voiced octaver: a flip-flop sub-octave plus a rectifier octave-up, blended with dry via Up, Sub and Dry controls. Monophonic tracking — clean and singing on single notes, gnarlier on chords.\n\nIt also hides something no vintage octaver did: a pitch-tracked microtonal SHIMMER voice that shifts in quarter-tone (24-TET) intervals — quarter-steps up or down, neutral 2nds, 3rds and 6ths, or an octave-and-a-quarter — for shimmering, slightly-alien lead tones that sit between the notes on the fretboard. Light on CPU; runs on every target including 32-bit Pi.\n\nWorks standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3)."
+    },
+    "practice": {
+      "title": "Hex Chain Scratch Pad",
+      "categories": [
+        "Utility"
+      ],
+      "tags": [
+        "guitar",
+        "looper",
+        "drum-machine",
+        "practice",
+        "metronome",
+        "drums",
+        "scales",
+        "pi-stomp",
+        "mod-devices",
+        "lv2",
+        "free",
+        "open-source"
+      ],
+      "nam": false,
+      "short": "Four-track looper + a synthesised drum kit (30 grooves, no samples): a practice room on the board.",
+      "long": "Four-track looper and synthesised drum machine: a practice room on the board.\n\nA four-track looper (two minutes a track) with a count-in, a bar counter, bar-snapped non-destructive trim, a level knob and mute per lane, overdub with adjustable feedback, undo, and loops that survive a reload. The looper keeps a rolling pre-roll of its input, so hitting record a fraction late still gives a loop that starts on the beat.\n\nA drum machine with thirty grooves from straight rock through gallop, d-beat, shuffle, 6/8, blast beats and djent, a metronome, swing and humanisation, a kit mix, a parallel-compressed drum bus with a room, and a groove library you can save your own patterns into. A Scales tab shows the key and scale on a readable fretboard with chord grids.\n\nThe kit is resynthesised, not sampled: every piece was analysed from recorded drums into tracked partials and a noise spectrum, so the fifteen-piece kit ships as a few megabytes of parameters instead of hundreds of megabytes of audio, every hit differs slightly, and the cymbals keep ringing across strikes. Runs stereo with a mono fold and costs about nine percent of a Pi 5 core.\n\nPlace it LAST in the chain, after amp and cab: the looper then records the signal you actually hear, and the drums are not run through your preamp.\n\nFree and open source (GPL-3)."
     }
   }
 }
