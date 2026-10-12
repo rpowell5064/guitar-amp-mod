@@ -221,7 +221,6 @@ install(TARGETS
 # All TTL files are flat in lv2/ (LV2 bundles require manifest.ttl and all
 # referenced TTLs in the same directory as the .so files)
 install(FILES
-    lv2/manifest.ttl
     lv2/gate.ttl
     lv2/comp.ttl
     lv2/drive.ttl
@@ -252,6 +251,30 @@ install(FILES lv2/practice/drumkit.dat DESTINATION ${BUNDLE_DIR})
 foreach(_m amp cab drive delay gate comp modfx reverb utility fuzz nail hexforge wah octave practice)
     install(DIRECTORY lv2/modgui-${_m} DESTINATION ${BUNDLE_DIR})
 endforeach()
+# Native X11 UI (Zynthian VNC, desktop Linux hosts): OFF by default, so the shipped
+# pi-Stomp / MOD bundle is byte-identical with or without this block. With it ON the
+# bundle also carries hexchain_ui.so + x11ui.ttl, and the manifest gains one
+# `rdfs:seeAlso <x11ui.ttl>` per plugin that has a panel: Zynthian only detects a GUI
+# in files the plugin's OWN manifest links (an add-on bundle is never seen — measured
+# 2026-10-11, see build-tools/gen_ui_ports.py).
+option(HEXCHAIN_X11UI "Build the native X11 plugin UIs (Zynthian VNC flavour)" OFF)
+if(HEXCHAIN_X11UI)
+    add_subdirectory(ui)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/lv2/manifest.ttl _hc_manifest)
+    file(READ ${CMAKE_CURRENT_SOURCE_DIR}/ui/generated/manifest-x11ui.ttl _hc_manifest_ui)
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/x11ui/manifest.ttl "${_hc_manifest}${_hc_manifest_ui}")
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/lv2/manifest.ttl
+        ${CMAKE_CURRENT_SOURCE_DIR}/ui/generated/manifest-x11ui.ttl)
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/x11ui/manifest.ttl
+                  ui/generated/x11ui.ttl
+            DESTINATION ${BUNDLE_DIR})
+    install(TARGETS hexchain_ui LIBRARY DESTINATION ${BUNDLE_DIR})
+    install(DIRECTORY ui/generated/res/ DESTINATION ${BUNDLE_DIR}/x11ui-res)
+else()
+    install(FILES lv2/manifest.ttl DESTINATION ${BUNDLE_DIR})
+endif()
+
 if(HEXCHAIN_CLAW)
     install(TARGETS guitaramp_claw LIBRARY DESTINATION ${BUNDLE_DIR})
     install(FILES lv2/claw.ttl DESTINATION ${BUNDLE_DIR})

@@ -3,6 +3,12 @@
 # Run on an aarch64 host (e.g. the pi-Stomp):
 #     bash build-tools/package_bundle.sh [VERSION]
 # Produces: dist/guitaramp-suite-v<VERSION>-aarch64.tar.gz
+#
+# X11UI=1 builds the Zynthian flavour instead (-DHEXCHAIN_X11UI=ON: the same bundle
+# plus hexchain_ui.so + x11ui.ttl, so Zynthian's VNC desktop shows each plugin's
+# panel). Needs libx11-dev + libcairo2-dev. Produces
+# dist/guitaramp-suite-zynthian-v<VERSION>-aarch64.tar.gz. Unset = the pi-Stomp
+# bundle, unchanged.
 set -euo pipefail
 
 VER="${1:-1.0.0}"
@@ -11,18 +17,29 @@ cd "$ROOT"
 BUILD="build-dist"
 STAGE="$(mktemp -d)"
 DIST="$ROOT/dist"
-PKG="guitaramp-suite-v${VER}-aarch64"
+X11UI="${X11UI:-0}"
+if [ "$X11UI" = 1 ]; then
+    BUILD="build-dist-x11"
+    PKG="guitaramp-suite-zynthian-v${VER}-aarch64"
+    X11FLAG="-DHEXCHAIN_X11UI=ON"
+    EXTRA=1   # hexchain_ui.so + x11ui.ttl
+else
+    PKG="guitaramp-suite-v${VER}-aarch64"
+    X11FLAG=""
+    EXTRA=0
+fi
 
 cleanup() { rm -rf "$STAGE"; }
 trap cleanup EXIT
 
 echo "== configure (portable: -march=armv8-a) =="
-cmake -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DGUITARAMP_PORTABLE=ON >/dev/null
+cmake -S . -B "$BUILD" -DCMAKE_BUILD_TYPE=Release -DGUITARAMP_PORTABLE=ON $X11FLAG >/dev/null
 
 echo "== build =="
 # Memory-aware parallelism: the NAM/Eigen TUs are RAM-hungry (~1.5 GB each at -O3),
 # so -j nproc OOM-kills cc1plus on a 2 GB Pi. Scale jobs to available RAM.
 JOBS="${JOBS:-}"
+memkb=0   # stays 0 when JOBS is given (it is only read for the log line)
 if [ -z "$JOBS" ]; then
     memkb=$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo 0)
     if   [ "$memkb" -lt 3000000 ]; then JOBS=1
@@ -49,8 +66,8 @@ want=$(grep -c 'lv2:binary' "$BUNDLE/manifest.ttl")
 # the TTLs that actually DECLARE one, not assumed to equal the plugin count —
 # otherwise adding a plugin before its UI exists breaks the release build.
 wantgui=$(grep -l 'modgui:gui' "$BUNDLE"/*.ttl 2>/dev/null | wc -l)
-echo "   .so=$so  ttl=$ttl  modgui=$gui   (expect $want / $((want+1)) / $wantgui)"
-if [ "$want" -lt 1 ] || [ "$so" -ne "$want" ] || [ "$ttl" -ne $((want+1)) ] || [ "$gui" -ne "$wantgui" ]; then
+echo "   .so=$so  ttl=$ttl  modgui=$gui   (expect $((want+EXTRA)) / $((want+1+EXTRA)) / $wantgui)"
+if [ "$want" -lt 1 ] || [ "$so" -ne $((want+EXTRA)) ] || [ "$ttl" -ne $((want+1+EXTRA)) ] || [ "$gui" -ne "$wantgui" ]; then
     echo "!! staged bundle incomplete — aborting"; exit 1
 fi
 if [ "$gui" -lt "$want" ]; then

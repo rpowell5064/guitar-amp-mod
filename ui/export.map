@@ -1,0 +1,7 @@
+# Linker version script for hexchain_ui.so: export ONLY the LV2 UI entry point.
+{
+  global:
+    lv2ui_descriptor;
+  local:
+    *;
+};

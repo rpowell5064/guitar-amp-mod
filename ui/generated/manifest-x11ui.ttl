@@ -1,0 +1,20 @@
+
+# ── Native X11 UI (appended by the -DHEXCHAIN_X11UI=ON build only) ──
+# Zynthian finds a plugin GUI by text-searching the files this manifest
+# points the plugin at, so the UI TTL has to be linked from HERE.
+
+<https://rpowell5064.github.io/guitaramp-suite/amp> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/cab> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/comp> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/delay> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/drive> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/fuzz> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/gate> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/hexforge> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/modfx> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/nail> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/octave> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/practice> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/reverb> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/utility> rdfs:seeAlso <x11ui.ttl> .
+<https://rpowell5064.github.io/guitaramp-suite/wah> rdfs:seeAlso <x11ui.ttl> .

@@ -5,7 +5,15 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-DEST="${LV2_DEST:-$HOME/.lv2}"
+# Zynthian: its LV2_PATH (zynthian-sys envars) holds /zynthian/zynthian-plugins/lv2 but
+# NOT ~/.lv2 or zynthian-my-data, so install where it looks, and skip the MOD restart.
+ZYNTHIAN=0
+[ -d /zynthian/zynthian-plugins ] && ZYNTHIAN=1
+if [ "$ZYNTHIAN" = 1 ]; then
+    DEST="${LV2_DEST:-/zynthian/zynthian-plugins/lv2}"
+else
+    DEST="${LV2_DEST:-$HOME/.lv2}"
+fi
 
 echo "Installing guitaramp-suite.lv2 -> $DEST"
 mkdir -p "$DEST"
@@ -28,6 +36,19 @@ if [ -d "$HERE/pedalboards" ]; then
             cp -r "$pb" "$PB/" && echo "Installed factory pedalboard: $name -> $PB"
         fi
     done
+fi
+
+if [ "$ZYNTHIAN" = 1 ]; then
+    echo
+    echo "Zynthian: installed to $DEST."
+    echo "Now open webconf -> Software -> Engines and press \"Scan for Engines\""
+    echo "(\"Search for Engines\" on oram). That re-reads which plugins have a GUI;"
+    echo "until then Zynthian keeps its cached answer and the VNC window stays empty."
+    if [ ! -f "$DEST/guitaramp-suite.lv2/x11ui.ttl" ]; then
+        echo "Note: this is the plain bundle - for the VNC plugin windows install the"
+        echo "guitaramp-suite-zynthian tarball instead."
+    fi
+    exit 0
 fi
 
 echo "Restarting MOD (mod-host, mod-ui)..."

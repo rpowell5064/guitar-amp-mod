@@ -88,8 +88,19 @@ formats. The Cabinet is pure convolution.
 - **pi-Stomp / MOD** (Pi 4 and 5, 64-bit): the portable aarch64 bundle on GitHub Releases.
   Extract it on the Pi and run `install.sh`. The factory pedalboard is pre-wired, so the
   footswitches work the moment you load it.
-- **Zynthian and other generic-UI hosts:** the same bundle; every control carries its group
-  and the enable port sits where such hosts expect it.
+- **Zynthian and other generic-UI hosts:** every control carries its group, and the enable
+  port sits where such hosts expect it. Zynthian's VNC desktop shows a plugin window only for
+  a native X11 UI (it ignores MOD's modgui), so the release also carries a
+  `guitaramp-suite-zynthian-…` tarball: the same bundle plus native panels. Its `install.sh`
+  detects Zynthian and installs into `/zynthian/zynthian-plugins/lv2` (Zynthian's LV2_PATH
+  does not include `~/.lv2`). Then press **Scan for Engines** in webconf → Software → Engines
+  (**Search for Engines** on oram): Zynthian caches which plugins have a GUI and only
+  re-reads it on that scan. Every plugin gets a native panel transcribed
+  from its modgui: the pedals with their show/hide rules, the Amp with its per-model
+  cabinet faces, the Cabinet with its rigs and mic pad, and Scratch Pad and Hex Forge
+  rebuilt as the applications they are (looper lanes, step sequencer, signal-chain editor,
+  preset browser, tuner and calibration). Build it with
+  `-DHEXCHAIN_X11UI=ON`; see [`ui/CONVERTING.md`](ui/CONVERTING.md).
 - **PatchStorage:** each plugin as its own listing for `linux-amd64`, `rpi-aarch64` and
   `patchbox-os-arm32` (NAM is hidden on the 32-bit target). The runbook is in
   [`build-tools/patchstorage/README.md`](build-tools/patchstorage/README.md).

@@ -88,3 +88,7 @@ build-tools/out_wsl_tsan/
 /out_china/
 /out_bright/
 /out_old/
+build-x11/
+build-dist-x11/
+build-wsl/
+build-audit/

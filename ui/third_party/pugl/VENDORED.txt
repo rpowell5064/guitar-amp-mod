@@ -1,0 +1,1 @@
+pugl vendored from https://github.com/lv2/pugl commit b7637149ebe53124e5be90559e02a0185bbcbd73 (2026-04-15); X11 + cairo backends only. ISC licence: see COPYING.
