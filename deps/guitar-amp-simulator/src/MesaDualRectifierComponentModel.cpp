@@ -26,7 +26,8 @@ constexpr LdrState kLdr[5] = {
 
 PushPullPowerV::Params rectoPowerParams(double railC, double railA, double otHfHz, double zHfDb, double zResDb,
                                         double idleMa, double raa, double nfbStabHz, double fluxLim, double kneeV,
-                                        double biasCapUf, bool feedback, bool moreFeedback) {
+                                        double biasCapUf, bool feedback, bool moreFeedback,
+                                        double zResHz, double zResQ, double otLfHz) {
     PushPullPowerV::Params p;
     // ── V5A/V5B LTP (POWER AMP sheet): plates R281 82k ‖ C1 120p and R104 90k ‖
     //    C2 120p from C, C3 75p across the plates; cathodes → R341 470 → R353 10k
@@ -77,8 +78,8 @@ PushPullPowerV::Params rectoPowerParams(double railC, double railA, double otHfH
     p.nfbStabHz = nfbStabHz;
 
     // ── OT + speaker (ESTIMATE class, hardware-calibrated) ─────────────────
-    p.otLfHz = 30.0;  p.otHfHz = otHfHz;
-    p.zResHz = 110.0; p.zResDb = zResDb; p.zResQ = 0.9;
+    p.otLfHz = otLfHz;  p.otHfHz = otHfHz;
+    p.zResHz = zResHz; p.zResDb = zResDb; p.zResQ = zResQ;
     p.zHfHz  = 3000.0; p.zHfDb = zHfDb;
     // OT core saturation, anchored to the rating rather than fitted (2026-09-26):
     // 100 W Dual Rectifier into the 16 ohm tap -> sqrt(2*100*16) = 56.6 V peak. The old fixed-voltage limit
@@ -171,7 +172,8 @@ void MesaDualRectifierComponentModel::buildStages() noexcept {
         c.coup28.prepare(fs_, 0.02e-6, 250e3, 1e6);                        // C28 → R214 1M (master wiper source, ESTIMATE)
         // ── Power section ──
         c.pa.prepare(fs_, rectoPowerParams(railC, railA, otHfHz_, zHfEff, zResEff, idleMa_, raa_, nfbStabHz_,
-                                           fluxLim_, kneeV_, biasCapUf_, L.feedback, L.moreFeedback));
+                                           fluxLim_, kneeV_, biasCapUf_, L.feedback, L.moreFeedback,
+                                           zResHz_, zResQ_, otLfHz_));
         c.pa.setPresence(presence_);
         c.postHf.prepare(fs_, 1.0, std::pow(10.0, (postHfDbOvr_ > -900.0 ? postHfDbOvr_ : kModePostHfDb[mi]) / 20.0), postHfHz_);   // post-PA presence (closed-loop modes)
         c.pa.setSagDepth(std::min(1.0f, sag_ + (rectTube_ ? float(rectSag_) : 0.0f)));
@@ -312,6 +314,9 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
     else if (id == "fit21")    { postHfDbOvr_ = value; if (fs_ > 0.0) buildStages(); }   // lab: post-PA shelf gain override (dB)
     else if (id == "fit22")    { postHfHz_ = std::max(200.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: post-PA shelf corner (Hz)
     else if (id == "fit23")    { paDriveOvr_ = value; }   // lab: drive into the power amp (linear) override
+    else if (id == "fit24")    { zResHz_ = std::max(20.0f, value); if (fs_ > 0.0) buildStages(); }   // lab: OT/speaker low resonance (Hz)
+    else if (id == "fit25")    { zResQ_  = std::max(0.2f, value);  if (fs_ > 0.0) buildStages(); }   // lab: its Q
+    else if (id == "fit26")    { otLfHz_ = std::max(5.0f, value);  if (fs_ > 0.0) buildStages(); }   // lab: OT low corner (Hz)
     else if (id == "tapreset") { for (auto& c : ch_) { for (auto& a : c.tapAcc) a = 0.0; c.tapN = 0; } }
 }
 
