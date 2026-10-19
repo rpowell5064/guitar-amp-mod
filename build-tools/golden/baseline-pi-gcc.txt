@@ -1,4 +1,4 @@
-# refreshed 2026-10-08 (release night) at kFactoryRev 197: Jungle Sleaze P071 loses its Drive pedal (user, on device); P072 and P076-P078 are hash-only state carry-over (peak/rms identical). Previous: 196 (SIR #34 real on the JCM800 twin).
+# refreshed 2026-10-19 (f9a8d1a): Diamond Plate twin low resonance 110 -> 55 Hz + per-mode parity; P045 World Went Away +0.48 dB, P053 Spectrum Rhythm +0.21 dB, P054 hash-only state carry-over (rms identical). Previous: kFactoryRev 197 release night.
 P000 bank01A hash=07008fa683fe4823 peak=0.747571 rms=0.253883
 P001 bank01B hash=f3b235e2d6a3cf02 peak=0.907622 rms=0.319478
 P002 bank01C hash=c058d5a16c2aa8a3 peak=0.766913 rms=0.235597
@@ -44,7 +44,7 @@ P041 bank11B hash=bf603c55415b5b0e peak=0.766163 rms=0.204389
 P042 bank11C hash=1a5ca9220b0a7029 peak=0.924928 rms=0.301375
 P043 bank11D hash=c5176ce1ef4e556b peak=0.659129 rms=0.196804
 P044 bank12A hash=f85d468d6973002b peak=0.764883 rms=0.209003
-P045 bank12B hash=d9ac91ee52bccccf peak=0.504654 rms=0.181631
+P045 bank12B hash=ee6e27c1702fe527 peak=0.502360 rms=0.192028
 P046 bank12C hash=910b66999439782f peak=0.481403 rms=0.150835
 P047 bank12D hash=7e951512ca9947f3 peak=0.745610 rms=0.216643
 P048 bank13A hash=82d6d2877840e580 peak=0.705844 rms=0.234408
@@ -52,8 +52,8 @@ P049 bank13B hash=02fd707998b90b63 peak=0.750352 rms=0.194345
 P050 bank13C hash=faa6b55ee9c11906 peak=0.764346 rms=0.285322
 P051 bank13D hash=23a5f5f36139cd97 peak=0.533543 rms=0.165646
 P052 bank14A hash=d37b11975b0bae17 peak=0.670798 rms=0.225938
-P053 bank14B hash=a298605a5a371ba7 peak=0.746680 rms=0.287247
-P054 bank14C hash=51678c060fb48367 peak=0.921895 rms=0.291955
+P053 bank14B hash=b689163e202cd6ef peak=0.779026 rms=0.294332
+P054 bank14C hash=395604aa9d3e79f7 peak=0.921904 rms=0.291954
 P055 bank14D hash=196510cab01b819b peak=0.766273 rms=0.292241
 P056 bank15A hash=54bf76350bc7b818 peak=0.721299 rms=0.238555
 P057 bank15B hash=5a1f2cf6829ee1cf peak=0.640635 rms=0.158128
@@ -127,4 +127,4 @@ P124 bank32A hash=5a3d79b09585340b peak=0.973255 rms=0.305696
 P125 bank32B hash=9b0fc26739556a5b peak=0.892817 rms=0.299707
 P126 bank32C hash=8b727877403db07f peak=0.841353 rms=0.311583
 P127 bank32D hash=0cf87d76e46c6893 peak=0.925947 rms=0.323268
-ALL  hash=b73a917a14b0483a presets=128
+ALL  hash=25eacede1acb3f08 presets=128
