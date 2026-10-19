@@ -20,7 +20,7 @@ hc::PanelSpec delayPanel()
     s.groupPadX = 16;
     s.wrap      = true;
 
-    // script-delay.js: type 0 Digital, 1 Tape, 2 Echorec, 3 Seraph, 4 EP-3.
+    // script-delay.js: type 0 Digital, 1 Tape, 2 Echorec, 3 Seraph, 4 EP-3, 5 Analog BBD.
     auto type = [](const hc::Values& v) { return int(v.get("delay_type") + 0.5f); };
     s.rows = {
         { { "Delay",

@@ -76,6 +76,9 @@ float EchoplexDelay::processSample(float x, int ch) noexcept {
     // ── Transport: glided time + worn-transport wobble ─────────────────────
     float delaySamples = timeSmoother_.current() * fs / 1000.0f;
 
+    if (modLock_ && ch > 0) {
+        delaySamples += delaySamples * lockWear_ * lockWob_;   // channel 0's transport
+    } else {
     // Wow: sine whose RATE random-walks in [0.1, 0.3] Hz — bounded ±1 by
     // construction, ±2e-5 Hz/sample walk step.
     s.wowFreqHz = std::clamp(s.wowFreqHz + s.lcg() * 2.0e-5f, 0.1f, 0.3f);
@@ -92,6 +95,8 @@ float EchoplexDelay::processSample(float x, int ch) noexcept {
     // Worn transport wobbles more: wear = 0.35 (serviced) … 1.0 (thrashed).
     const float wear = 0.35f + 0.65f * age_;
     delaySamples += delaySamples * wear * (wow * 0.0035f + flutter * 0.0008f);
+    if (modLock_) { lockWear_ = wear; lockWob_ = wow * 0.0035f + flutter * 0.0008f; }
+    }
     delaySamples  = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
 
     // ── Playback head (Hermite) through the aging repro chain ──────────────
@@ -117,6 +122,7 @@ void EchoplexDelay::setParameter(const std::string& id, float v) noexcept {
     if      (id == "timeMs")   timeMs_   = std::clamp(v, 65.0f, kMaxDelayMs);
     else if (id == "feedback") feedback_ = std::clamp(v, 0.0f, 0.95f);
     else if (id == "mix")      mix_      = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "modLock")  modLock_  = v > 0.5f;
     else if (id == "age")    { age_      = std::clamp(v, 0.0f, 1.0f); rebuildAge(); }
     else if (id == "pregain"){ pregain_  = std::clamp(v, 0.0f, 1.0f); applyPregain(); }
 }

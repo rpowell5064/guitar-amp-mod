@@ -1,6 +1,7 @@
 #pragma once
 #include "AudioBlock.h"
 #include "DR_SpringReverb.h"
+#include "StudioReverbs.h"
 #include <vector>
 #include <array>
 
@@ -31,6 +32,8 @@ public:
         // recall land on a different interference pattern — audible tail variance
         // (and ±1 dB measurement jitter on wet ambient presets). Deterministic now.
         for (int i = 0; i < kNumComb; ++i) lfoPhase[i] = lfoPhase0[i];
+        studioPlate.clear();
+        hall.clear();
     }
 
 private:
@@ -68,6 +71,15 @@ private:
     // wet 0.7071*(wetL+wetR) on both channels instead; the downstream sum then
     // leaves the wet/dry balance where stereo ears hear it. OFF = bit-identical.
     bool  monoSum    = false;
+    // Types 3/4 (2026-10-18): STUDIO PLATE (Dattorro figure-of-eight tank, mono
+    // send -> decorrelated stereo) and HALL (8-line Hadamard FDN, true stereo
+    // send). Own tanks (StudioReverbs.h), so types 0-2 stay bit-identical;
+    // Decay = RT60, Damping matched to the classic tank's HF loss per second.
+    bool  studioOn   = false;
+    bool  hallOn     = false;
+    studiorev::DattorroPlate studioPlate;
+    studiorev::FdnHall       hall;
+    void processStudio(float** in, float** out, int numSamples, int nCh) noexcept;
 
     // ---- Internal delay-line wrappers ----
     struct DelayLine {

@@ -124,11 +124,11 @@ static const hc::PortInfo kCompPorts[] = {
 };
 
 static const char* const kDelayGroups[] = { "Delay", "More", "Tape & Heads" };
-static const hc::EnumPt kDelay_e4[] = { {0.0f, "Digital"}, {1.0f, "Tape"}, {2.0f, "Echo Wreck"}, {3.0f, "Seraph"}, {4.0f, "Vintage Echo"} };
+static const hc::EnumPt kDelay_e4[] = { {0.0f, "Digital"}, {1.0f, "Tape"}, {2.0f, "Echo Wreck"}, {3.0f, "Seraph"}, {4.0f, "Vintage Echo"}, {5.0f, "Analog Echo"} };
 static const hc::EnumPt kDelay_e12[] = { {0.0f, "1: Head 1"}, {1.0f, "2: Head 2"}, {2.0f, "3: Head 3"}, {3.0f, "4: Head 4"}, {4.0f, "5: Heads 1+2"}, {5.0f, "6: Heads 2+3"}, {6.0f, "7: Heads 3+4"}, {7.0f, "8: Heads 1+2+3"}, {8.0f, "9: Heads 2+3+4"}, {9.0f, "10: Heads 1+3+4"}, {10.0f, "11: All Heads"}, {11.0f, "12: All + Dense"} };
 static const hc::EnumPt kDelay_e13[] = { {0.0f, "Unison"}, {1.0f, "Dotted 8th"}, {2.0f, "Triplet"}, {3.0f, "Eighth"} };
 static const hc::PortInfo kDelayPorts[] = {
-    { 4, "delay_type", "Type", 0.0f, 4.0f, 0.0f, 12u, "", kDelay_e4, 5, 0 },
+    { 4, "delay_type", "Type", 0.0f, 5.0f, 0.0f, 12u, "", kDelay_e4, 6, 0 },
     { 5, "time_ms", "Time", 1.0f, 2000.0f, 250.0f, 0u, "ms", nullptr, 0, 0 },
     { 6, "feedback", "Feedback", 0.0f, 0.98f, 0.4f, 0u, "", nullptr, 0, 0 },
     { 7, "mix", "Mix", 0.0f, 1.0f, 0.3f, 0u, "", nullptr, 0, 0 },
@@ -211,7 +211,7 @@ static const hc::EnumPt kHexforge_e81[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"
 static const hc::EnumPt kHexforge_e86[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
 static const hc::EnumPt kHexforge_e88[] = { {0.0f, "Lush-2"}, {1.0f, "Uni-Verse"}, {2.0f, "Phaser"}, {3.0f, "Flanger"}, {4.0f, "Tremolo"}, {5.0f, "Rotary"}, {6.0f, "Nevermind Chorus"}, {7.0f, "Seasick Vibe"}, {8.0f, "Script Phaser"} };
 static const hc::EnumPt kHexforge_e93[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
-static const hc::EnumPt kHexforge_e95[] = { {0.0f, "Digital"}, {1.0f, "Tape"}, {2.0f, "Echo Wreck"}, {3.0f, "Seraph"}, {4.0f, "Vintage Echo"} };
+static const hc::EnumPt kHexforge_e95[] = { {0.0f, "Digital"}, {1.0f, "Tape"}, {2.0f, "Echo Wreck"}, {3.0f, "Seraph"}, {4.0f, "Vintage Echo"}, {5.0f, "Analog Echo"} };
 static const hc::EnumPt kHexforge_e102[] = { {0.0f, "1: Head 1"}, {1.0f, "2: Head 2"}, {2.0f, "3: Head 3"}, {3.0f, "4: Head 4"}, {4.0f, "5: Heads 1+2"}, {5.0f, "6: Heads 2+3"}, {6.0f, "7: Heads 3+4"}, {7.0f, "8: Heads 1+2+3"}, {8.0f, "9: Heads 2+3+4"}, {9.0f, "10: Heads 1+3+4"}, {10.0f, "11: All Heads"}, {11.0f, "12: All + Dense"} };
 static const hc::EnumPt kHexforge_e103[] = { {0.0f, "Unison"}, {1.0f, "Dotted 8th"}, {2.0f, "Triplet"}, {3.0f, "Eighth"} };
 static const hc::EnumPt kHexforge_e107[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
@@ -235,7 +235,7 @@ static const hc::EnumPt kHexforge_e182[] = { {0.0f, "Room"}, {1.0f, "Studio"} };
 static const hc::EnumPt kHexforge_e184[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
 static const hc::EnumPt kHexforge_e186[] = { {0.0f, "Manual"}, {1.0f, "Clean Sparkle"}, {2.0f, "De-Mud"}, {3.0f, "Classic Rock"}, {4.0f, "Metal Rhythm"}, {5.0f, "Lead Cut"}, {6.0f, "Cocked Wah"} };
 static const hc::EnumPt kHexforge_e197[] = { {0.0f, "Classic"}, {1.0f, "Dense"} };
-static const hc::EnumPt kHexforge_e198[] = { {0.0f, "Plate"}, {1.0f, "Spring"}, {2.0f, "Ambient"} };
+static const hc::EnumPt kHexforge_e198[] = { {0.0f, "Plate"}, {1.0f, "Spring"}, {2.0f, "Ambient"}, {3.0f, "Studio Plate"}, {4.0f, "Hall"} };
 static const hc::EnumPt kHexforge_e199[] = { {0.0f, "Classic"}, {1.0f, "Dense"}, {2.0f, "Space"} };
 static const hc::EnumPt kHexforge_e201[] = { {0.0f, "Off"}, {1.0f, "Subtle"}, {2.0f, "Full"}, {3.0f, "Physical"} };
 static const hc::EnumPt kHexforge_e202[] = { {0.0f, "Bias"}, {1.0f, "Opto"}, {2.0f, "Harmonic"} };
@@ -270,13 +270,13 @@ static const hc::EnumPt kHexforge_e319[] = { {0.0f, "Lush-2"}, {1.0f, "Uni-Verse
 static const hc::EnumPt kHexforge_e325[] = { {0.0f, "1/2"}, {1.0f, "1/4."}, {2.0f, "1/4"}, {3.0f, "1/4T"}, {4.0f, "1/8."}, {5.0f, "1/8"}, {6.0f, "1/8T"}, {7.0f, "1/16"} };
 static const hc::EnumPt kHexforge_e327[] = { {0.0f, "Bias"}, {1.0f, "Opto"}, {2.0f, "Harmonic"} };
 static const hc::EnumPt kHexforge_e329[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
-static const hc::EnumPt kHexforge_e331[] = { {0.0f, "Digital"}, {1.0f, "Tape"}, {2.0f, "Echo Wreck"}, {3.0f, "Seraph"}, {4.0f, "Vintage Echo"} };
+static const hc::EnumPt kHexforge_e331[] = { {0.0f, "Digital"}, {1.0f, "Tape"}, {2.0f, "Echo Wreck"}, {3.0f, "Seraph"}, {4.0f, "Vintage Echo"}, {5.0f, "Analog Echo"} };
 static const hc::EnumPt kHexforge_e338[] = { {0.0f, "1: Head 1"}, {1.0f, "2: Head 2"}, {2.0f, "3: Head 3"}, {3.0f, "4: Head 4"}, {4.0f, "5: Heads 1+2"}, {5.0f, "6: Heads 2+3"}, {6.0f, "7: Heads 3+4"}, {7.0f, "8: Heads 1+2+3"}, {8.0f, "9: Heads 2+3+4"}, {9.0f, "10: Heads 1+3+4"}, {10.0f, "11: All Heads"}, {11.0f, "12: All + Dense"} };
 static const hc::EnumPt kHexforge_e339[] = { {0.0f, "Unison"}, {1.0f, "Dotted 8th"}, {2.0f, "Triplet"}, {3.0f, "Eighth"} };
 static const hc::EnumPt kHexforge_e344[] = { {0.0f, "1/2"}, {1.0f, "1/4."}, {2.0f, "1/4"}, {3.0f, "1/4T"}, {4.0f, "1/8."}, {5.0f, "1/8"}, {6.0f, "1/8T"}, {7.0f, "1/16"} };
 static const hc::EnumPt kHexforge_e346[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
 static const hc::EnumPt kHexforge_e354[] = { {0.0f, "Classic"}, {1.0f, "Dense"} };
-static const hc::EnumPt kHexforge_e355[] = { {0.0f, "Plate"}, {1.0f, "Spring"}, {2.0f, "Ambient"} };
+static const hc::EnumPt kHexforge_e355[] = { {0.0f, "Plate"}, {1.0f, "Spring"}, {2.0f, "Ambient"}, {3.0f, "Studio Plate"}, {4.0f, "Hall"} };
 static const hc::EnumPt kHexforge_e358[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
 static const hc::EnumPt kHexforge_e360[] = { {0.0f, "Auto"}, {1.0f, "Fixed"} };
 static const hc::EnumPt kHexforge_e367[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3"}, {4.0f, "4"}, {5.0f, "5"}, {6.0f, "6"}, {7.0f, "7"}, {8.0f, "8"}, {9.0f, "9"}, {10.0f, "10"}, {11.0f, "11"}, {12.0f, "12"}, {13.0f, "13"}, {14.0f, "14"}, {15.0f, "15"}, {16.0f, "16"}, {17.0f, "17"}, {18.0f, "18"}, {19.0f, "19"}, {20.0f, "20"}, {21.0f, "21"}, {22.0f, "22"}, {23.0f, "23"}, {24.0f, "24"}, {25.0f, "25"} };
@@ -385,7 +385,7 @@ static const hc::PortInfo kHexforgePorts[] = {
     { 92, "md_width", "Modulation Width", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 13 },
     { 93, "dl_pos", "Delay Position", 1.0f, 25.0f, 8.0f, 44u, "", kHexforge_e93, 25, 14 },
     { 94, "dl_enable", "Delay Enable", 0.0f, 1.0f, 1.0f, 2u, "", nullptr, 0, 14 },
-    { 95, "dl_type", "Delay Type", 0.0f, 4.0f, 0.0f, 12u, "", kHexforge_e95, 5, 14 },
+    { 95, "dl_type", "Delay Type", 0.0f, 5.0f, 0.0f, 12u, "", kHexforge_e95, 6, 14 },
     { 96, "dl_time", "Delay Time", 1.0f, 2000.0f, 250.0f, 0u, "ms", nullptr, 0, 14 },
     { 97, "dl_feedback", "Delay Feedback", 0.0f, 0.98f, 0.4f, 0u, "", nullptr, 0, 14 },
     { 98, "dl_mix", "Delay Mix", 0.0f, 1.0f, 0.15f, 0u, "", nullptr, 0, 14 },
@@ -488,7 +488,7 @@ static const hc::PortInfo kHexforgePorts[] = {
     { 195, "it_load", "IT Pickup Load", 0.0f, 1.0f, 0.0f, 0u, "", nullptr, 0, 23 },
     { 196, "amp_pamp_coupl", "Amp Speaker Coupling", 0.0f, 1.0f, 0.0f, 0u, "", nullptr, 0, 10 },
     { 197, "rv_density", "Reverb Density", 0.0f, 1.0f, 0.0f, 12u, "", kHexforge_e197, 2, 17 },
-    { 198, "rv_type", "Reverb Type", 0.0f, 2.0f, 0.0f, 12u, "", kHexforge_e198, 3, 17 },
+    { 198, "rv_type", "Reverb Type", 0.0f, 4.0f, 0.0f, 12u, "", kHexforge_e198, 5, 17 },
     { 199, "cab_roomdense", "Cab Room Density", 0.0f, 2.0f, 0.0f, 12u, "", kHexforge_e199, 3, 20 },
     { 200, "rv_bloom", "Reverb Bloom", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 17 },
     { 201, "cab_spkdrive", "Cab Speaker Drive", 0.0f, 3.0f, 0.0f, 12u, "", kHexforge_e201, 4, 20 },
@@ -621,7 +621,7 @@ static const hc::PortInfo kHexforgePorts[] = {
     { 328, "md2_bypass", "Modulation 2 Bypass", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 36 },
     { 329, "dl2_pos", "Delay 2 Position", 1.0f, 25.0f, 20.0f, 44u, "", kHexforge_e329, 25, 37 },
     { 330, "dl2_enable", "Delay 2 Enable", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 37 },
-    { 331, "dl2_type", "Delay 2 Type", 0.0f, 4.0f, 0.0f, 12u, "", kHexforge_e331, 5, 37 },
+    { 331, "dl2_type", "Delay 2 Type", 0.0f, 5.0f, 0.0f, 12u, "", kHexforge_e331, 6, 37 },
     { 332, "dl2_time", "Delay 2 Time", 1.0f, 2000.0f, 250.0f, 0u, "ms", nullptr, 0, 37 },
     { 333, "dl2_feedback", "Delay 2 Feedback", 0.0f, 0.98f, 0.4f, 0u, "", nullptr, 0, 37 },
     { 334, "dl2_mix", "Delay 2 Mix", 0.0f, 1.0f, 0.15f, 0u, "", nullptr, 0, 37 },
@@ -645,7 +645,7 @@ static const hc::PortInfo kHexforgePorts[] = {
     { 352, "rv2_modrate", "Reverb 2 Mod Rate", 0.01f, 5.0f, 0.8f, 0u, "", nullptr, 0, 40 },
     { 353, "rv2_mix", "Reverb 2 Mix", 0.0f, 1.0f, 0.15f, 0u, "", nullptr, 0, 39 },
     { 354, "rv2_density", "Reverb 2 Density", 0.0f, 1.0f, 0.0f, 12u, "", kHexforge_e354, 2, 40 },
-    { 355, "rv2_type", "Reverb 2 Type", 0.0f, 2.0f, 0.0f, 12u, "", kHexforge_e355, 3, 40 },
+    { 355, "rv2_type", "Reverb 2 Type", 0.0f, 4.0f, 0.0f, 12u, "", kHexforge_e355, 5, 40 },
     { 356, "rv2_bloom", "Reverb 2 Bloom", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 40 },
     { 357, "rv2_bypass", "Reverb 2 Bypass", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 40 },
     { 358, "wh2_pos", "Wah 2 Position", 1.0f, 25.0f, 22.0f, 44u, "", kHexforge_e358, 25, 41 },
@@ -918,7 +918,7 @@ static const hc::PortInfo kPracticePorts[] = {
 
 static const char* const kReverbGroups[] = { "Reverb", "Character" };
 static const hc::EnumPt kReverb_e11[] = { {0.0f, "Classic"}, {1.0f, "Dense"} };
-static const hc::EnumPt kReverb_e12[] = { {0.0f, "Plate"}, {1.0f, "Spring"}, {2.0f, "Ambient"} };
+static const hc::EnumPt kReverb_e12[] = { {0.0f, "Plate"}, {1.0f, "Spring"}, {2.0f, "Ambient"}, {3.0f, "Studio Plate"}, {4.0f, "Hall"} };
 static const hc::PortInfo kReverbPorts[] = {
     { 4, "pre_delay_ms", "Pre-Delay", 0.0f, 100.0f, 10.0f, 0u, "ms", nullptr, 0, 0 },
     { 5, "decay_time", "Decay", 0.1f, 8.0f, 1.5f, 0u, "", nullptr, 0, 0 },
@@ -928,7 +928,7 @@ static const hc::PortInfo kReverbPorts[] = {
     { 9, "mix", "Mix", 0.0f, 1.0f, 0.3f, 0u, "", nullptr, 0, 0 },
     { 10, "bypass", "Bypass", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 0 },
     { 11, "density", "Density", 0.0f, 1.0f, 0.0f, 12u, "", kReverb_e11, 2, 1 },
-    { 12, "type", "Type", 0.0f, 2.0f, 0.0f, 12u, "", kReverb_e12, 3, 0 },
+    { 12, "type", "Type", 0.0f, 4.0f, 0.0f, 12u, "", kReverb_e12, 5, 0 },
     { 13, "bloom", "Bloom", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 1 },
     { 14, "enabled", "Enabled", 0.0f, 1.0f, 1.0f, 2u, "", nullptr, 0, -1 },
 };

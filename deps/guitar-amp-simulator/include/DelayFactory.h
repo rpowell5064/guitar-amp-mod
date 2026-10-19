@@ -8,7 +8,8 @@ enum class DelayType {
     Tape     = 1,
     Echorec  = 2,
     Seraph   = 3,  // Keeley Halo-style dual delay
-    Echoplex = 4   // EP-3 tape echo w/ internal JFET preamp + Age
+    Echoplex = 4,  // EP-3 tape echo w/ internal JFET preamp + Age
+    Bbd      = 5   // compander bucket-brigade echo (BbdDelay.h)
 };
 
 class DelayFactory {

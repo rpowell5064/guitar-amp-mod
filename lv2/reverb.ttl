@@ -19,15 +19,17 @@
     rdfs:label "Hex Chain — Reverb" ;
     doap:name  "Hex Chain Reverb" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Three reverb machines in one: modulated plate, three-spring tank, and a blooming cinematic ambient wash.
+    rdfs:comment """Five reverb machines in one: modulated plate, three-spring tank, a blooming cinematic ambient wash, a studio plate and a stereo hall.
 
-Three reverb machines under one set of knobs:
+Five reverb machines under one set of knobs:
 
 - PLATE — a smooth, gently modulated tank, from tight room to long lush wash, with a Density switch: Classic keeps the familiar four-comb voicing, Dense runs a bigger eight-comb / six-diffuser tank for a lusher, less metallic tail.
 - SPRING — a three-spring tank model with real drip and boing, the outboard-unit sound that surf and early rock records were soaked in.
 - AMBIENT — a modern blooming pad reverb: a long, heavily diffused tail whose density GROWS after you stop playing, driven by a dedicated BLOOM control that scales the smear, the late-tail regeneration, the slow evolving motion and the stereo width together. Attack-softening diffusion keeps picking gentle, the modulation is slow and non-pitchy (no chorus wobble), the low end stays clean in long tails, and the width is mono-safe. Play a chord, let go, and listen to it swell.
+- STUDIO PLATE — a modern figure-of-eight plate tank: a mono send into two cross-fed halves with seven output taps per side, so the tail is dense, smooth and wide from the first reflection, without the metallic ring of a comb tank.
+- HALL — an eight-line feedback delay network with a true stereo send (a stereo chorus or delay in front stays stereo in the tail), long hall-sized lines and slow motion that smooths the modes.
 
-Pre-delay, decay, damping, modulation and a unity-gain wet/dry blend — engaging it never drops your level. All three types are loudness-matched, so switching between them keeps your place in the mix. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind.
+Pre-delay, decay, damping, modulation and a unity-gain wet/dry blend — engaging it never drops your level. All five types are loudness-matched, so switching between them keeps your place in the mix. Decay is a true RT60 on the two new types, and Damping means the same thing on every type. Heavier than the light effects but fine on Pi 4/5; usable on 32-bit Pi with headroom in mind.
 
 Free and open source (GPL-3).""" ;
     mod:label  "Reverb" ;
@@ -36,7 +38,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 35 ;   # 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 32: Tank group widgets (Type/Density/Bloom). 31: Hex Ambient type + Bloom port + the type-port TTL nesting FIX
+    lv2:microVersion 36 ;   # 36: Type gains Studio Plate (3, a figure-of-eight plate tank, mono send to decorrelated stereo) and Hall (4, an 8-line feedback delay network with a true stereo send); Decay is a true RT60 and Damping matches the classic tank on both; types 0-2 unchanged. 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 32: Tank group widgets (Type/Density/Bloom). 31: Hex Ambient type + Bloom port + the type-port TTL nesting FIX
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
@@ -104,10 +106,12 @@ Free and open source (GPL-3).""" ;
         lv2:index 12 ; lv2:symbol "type" ; lv2:name "Type" ;
         pg:group <https://rpowell5064.github.io/guitaramp-suite/reverb#g_reverb> ;
         lv2:portProperty lv2:integer, lv2:enumeration ;
-        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 2 ;
+        lv2:default 0 ; lv2:minimum 0 ; lv2:maximum 4 ;
         lv2:scalePoint [ rdfs:label "Plate"   ; rdf:value 0 ] ,
                        [ rdfs:label "Spring"  ; rdf:value 1 ] ,
-                       [ rdfs:label "Ambient" ; rdf:value 2 ]
+                       [ rdfs:label "Ambient" ; rdf:value 2 ] ,
+                       [ rdfs:label "Studio Plate" ; rdf:value 3 ] ,
+                       [ rdfs:label "Hall"    ; rdf:value 4 ]
     ] , [
         a lv2:ControlPort, lv2:InputPort ;
         lv2:index 13 ; lv2:symbol "bloom" ; lv2:name "Bloom" ;

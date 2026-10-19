@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <vector>
 #include <complex>
 
@@ -39,6 +40,19 @@ public:
 
     // Clears all running state (call after a discontinuity).
     void reset() noexcept;
+    // Take over another convolver's running state (input history, pending tail,
+    // FDL) when both hold the SAME IR - the cab's mono fast path hands channel 0's
+    // state to channel 1 on the return to stereo so R keeps its tail. Falls back
+    // to reset() if the partition layouts differ. No allocation (equal sizes).
+    void copyStateFrom(const OlaConvolver& o) noexcept {
+        if (o.irLen_ != irLen_ || o.nTail_ != nTail_ || o.Xre_.size() != Xre_.size()) { reset(); return; }
+        std::copy(o.hist_, o.hist_ + kFft, hist_);
+        std::copy(o.tail_, o.tail_ + kHop, tail_);
+        hopFill_ = o.hopFill_;
+        std::copy(o.Xre_.begin(), o.Xre_.end(), Xre_.begin());
+        std::copy(o.Xim_.begin(), o.Xim_.end(), Xim_.begin());
+        fdlPos_ = o.fdlPos_;
+    }
 
     // Process one block. in and out may alias. Any numSamples > 0.
     void process(const float* in, float* out, int numSamples) noexcept;

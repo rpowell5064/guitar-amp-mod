@@ -48,6 +48,12 @@ public:
     const char* delayName() const noexcept override { return "Echoplex EP-3"; }
 
 private:
+    // modLock (2026-10-18): channel 1+ reuse channel 0's transport wobble of the
+    // same sample, so a mono fold hears ONE tape loop instead of two differently-
+    // wobbling copies (chorus smear). Hiss stays per channel. Off = bit-identical.
+    bool  modLock_  = false;
+    float lockWob_  = 0.0f, lockWear_ = 0.0f;
+
     float timeMs_   = 310.0f;
     float feedback_ =   0.35f;
     float mix_      =   0.30f;

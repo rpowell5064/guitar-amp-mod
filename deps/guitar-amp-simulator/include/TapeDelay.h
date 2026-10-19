@@ -57,6 +57,15 @@ private:
                                     // leveled tape presets don't shift; safe to raise / expose
                                     // as a port now that the voicing is good.
 
+    // modLock (2026-10-18): one transport for every channel. The per-channel wow/
+    // flutter states are decorrelated (stereo width); when the host folds L+R to
+    // mono that turns the repeats into two differently-pitched copies = chorus
+    // smear. Locked, channel 1+ reuse channel 0's modulation of the same sample
+    // (processSample runs ch 0 first), so the repeats keep ONE pitch trajectory,
+    // like the single tape loop of the real machine. Off = bit-identical.
+    bool  modLock_ = false;
+    float lockMod_ = 0.0f;
+
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
 
     struct ChannelState {

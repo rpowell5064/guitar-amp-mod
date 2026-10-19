@@ -74,6 +74,9 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     // Authentic: aperiodic random-walk wow drift + a once-per-rotation capstan
     // periodic term (rate ∝ 1/timeMs, like real transport speed) + random-walk
     // scrape flutter — a spectrum, not a single tone. Blended by tapeVoice_.
+    float mod;
+    if (modLock_ && ch > 0) mod = lockMod_;
+    else {
     s.wowPhase     += twoPi * 0.8f / fs; if (s.wowPhase     > twoPi) s.wowPhase     -= twoPi;
     s.flutterPhase += twoPi * 6.0f / fs; if (s.flutterPhase > twoPi) s.flutterPhase -= twoPi;
     const float capRate = std::clamp(1500.0f / std::max(1.0f, timeSmoother_.current()), 2.0f, 15.0f);
@@ -91,7 +94,9 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     // sine with just a whisper of aperiodic drift = natural tape wander.
     const float modAuth = wowDepth_     * (0.85f * std::sin(s.wowPhase) + 0.15f * wowW)
                         + flutterDepth_ * (0.90f * std::sin(s.capPhase) + 0.10f * scrapeW);
-    const float mod = modOld + tapeVoice_ * (modAuth - modOld);
+    mod = modOld + tapeVoice_ * (modAuth - modOld);
+    lockMod_ = mod;
+    }
 
     delaySamples += delaySamples * mod;
     delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
@@ -134,6 +139,7 @@ void TapeDelay::setParameter(const std::string& id, float v) noexcept {
     if      (id == "timeMs")        timeMs_       = std::max(1.0f, v);
     else if (id == "feedback")      feedback_     = std::clamp(v, 0.0f, 0.98f);
     else if (id == "mix")           mix_          = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "modLock")       modLock_      = v > 0.5f;
     else if (id == "wowDepth")      wowDepth_     = std::clamp(v, 0.0f, 0.05f);
     else if (id == "flutterDepth")  flutterDepth_ = std::clamp(v, 0.0f, 0.02f);
     else if (id == "saturation")    saturation_   = std::clamp(v, 0.0f, 1.0f);

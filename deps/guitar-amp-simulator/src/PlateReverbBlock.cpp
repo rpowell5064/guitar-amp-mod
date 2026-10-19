@@ -74,6 +74,8 @@ void PlateReverbBlock::prepare(double sr, int maxBlock, int nCh) {
 
     recalcFeedback();
     recalcDamping();
+    studioPlate.prepare(sr);
+    hall.prepare(sr);
     spring.prepare(sr, maxBlock);
     springBuf.assign(static_cast<size_t>(maxBlock), 0.0f);
     syncSpring();
@@ -118,9 +120,15 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
     else if (id == "modDepth")   modDepth  = std::clamp(v, 0.0f, 1.0f);
     else if (id == "modRate")    modRate   = std::max(0.01f, v);
     else if (id == "type") {
-        // 0 = plate, 1 = spring, 2 = Hex Ambient
+        // 0 = plate, 1 = spring, 2 = Hex Ambient, 3 = Studio Plate, 4 = Hall
         const bool wantSpring  = (v > 0.5f && v <= 1.5f);
-        const bool wantAmbient = (v > 1.5f);
+        const bool wantAmbient = (v > 1.5f && v <= 2.5f);
+        const bool wantStudio  = (v > 2.5f && v <= 3.5f);
+        const bool wantHall    = (v > 3.5f);
+        if (wantStudio && !studioOn) studioPlate.clear();   // engage from silence
+        if (wantHall && !hallOn)     hall.clear();
+        studioOn = wantStudio;
+        hallOn   = wantHall;
         if (wantSpring && !springOn) spring.reset();   // engage from silence, no stale boing
         if (wantAmbient && !ambientOn) {               // engage clean: the tank lines are shared with plate
             for (auto& c : combs) { std::fill(c.dl.buf.begin(), c.dl.buf.end(), 0.0f); c.dl.writeIdx = 0; c.lastLP = 0.0f; }
@@ -162,7 +170,7 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
 
 float PlateReverbBlock::getParameter(const std::string& id) const {
     if (id == "density") return dense ? 1.0f : 0.0f;
-    if (id == "type")    return ambientOn ? 2.0f : springOn ? 1.0f : 0.0f;
+    if (id == "type")    return hallOn ? 4.0f : studioOn ? 3.0f : ambientOn ? 2.0f : springOn ? 1.0f : 0.0f;
     if (id == "drip")    return drip;
     if (id == "bloom")   return bloom;
     if (id == "preDelayMs") return preDelayMs;
@@ -188,6 +196,7 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
         return;
     }
     if (bypassed) { copyBlock(in, out, numSamples, nCh); return; }
+    if (studioOn || hallOn) { processStudio(in, out, numSamples, nCh); return; }
 
     if (ambientOn) {
         // ── HEX AMBIENT (type 2): lush blooming cinematic tail ────────────────
@@ -314,4 +323,39 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
     for (int c = 2; c < nCh; ++c)
         if (in[c] != out[c])
             for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];
+}
+
+// Types 3/4: the StudioReverbs tanks. Unity-mix law like every other type:
+// dry passes at unity, wet = tank * mix. kStudioTrim/kHallTrim hold the wet
+// level of plate type 0 at the same Mix (steady-noise energy match over
+// Decay 0.5-8 s: the Studio tank's wet level rises less with decay than the
+// comb tank's, so its trim follows ln(decay); residual within +-0.2 dB).
+static inline float studioTrim(float decay) noexcept {
+    return std::pow(10.0f, -(2.45f - 0.76f * std::log(std::max(0.1f, decay))) / 20.0f);
+}
+static constexpr float kHallTrim = 1.281f;   // +2.15 dB, flat over the Decay range
+void PlateReverbBlock::processStudio(float** in, float** out, int numSamples, int nCh) noexcept {
+    if (studioOn) studioPlate.set(decayTime, damping, modDepth, modRate, preDelayMs);
+    else          hall.set(decayTime, damping, modDepth, modRate, preDelayMs);
+    const float trim = studioOn ? studioTrim(decayTime) : kHallTrim;
+    for (int i = 0; i < numSamples; ++i) {
+        const float xl = in[0][i];
+        const float xr = (nCh >= 2) ? in[1][i] : xl;
+        float wl, wr;
+        if (studioOn) studioPlate.process(0.5f * (xl + xr), wl, wr);   // a plate is driven mono
+        else          hall.process(xl, xr, wl, wr);                    // true stereo send
+        wl *= trim; wr *= trim;
+        if (nCh >= 2) {
+            if (monoSum) {   // energy-preserving correlated wet: survives the downstream L+R fold
+                const float w = (wl + wr) * 0.70711f * mix;
+                out[0][i] = xl + w; out[1][i] = xr + w;
+            } else {
+                out[0][i] = xl + wl * mix; out[1][i] = xr + wr * mix;
+            }
+        } else {
+            out[0][i] = xl + 0.5f * (wl + wr) * mix;
+        }
+    }
+    for (int c = 2; c < nCh; ++c)
+        if (in[c] != out[c]) for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];
 }

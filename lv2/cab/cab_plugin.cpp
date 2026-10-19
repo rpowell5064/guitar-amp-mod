@@ -80,6 +80,11 @@ struct CabPlugin {
 
     char irPath[kPathMax]  = {0};
     char namPath[kPathMax] = {0};
+    // Mono fast path (2026-10-18): samples of bit-identical L/R input seen in a row.
+    // Past kMonoHoldSec the cab convolves once and fans out (CabinetBlock::
+    // processMonoToStereo, bit-identical to two identical channels); any differing
+    // block returns to stereo at once with channel 0's state handed to channel 1.
+    uint32_t monoRun = 0;
     // User-saved rigs (2026-09-22): opaque JSON the modgui keeps its MY RIGS list in.
     // Saved in State, mirrored to ~/.config/hexchain/cab-rigs.json, pushed to the host
     // once when the notify port is live (mod-ui only records host feedback).
@@ -394,9 +399,24 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->dsp.setParameter("mic2lvl",   *p->ports[P_MIC2LVL]);
         p->dsp.setParameter("mic2align", *p->ports[P_MIC2ALIGN]);
         p->dsp.setParameter("mic2pol",   *p->ports[P_MIC2POL]);
-        float* ins[2]  = { inL,  inR  };
-        float* outs[2] = { outL, outR };
-        p->dsp.process(ins, outs, static_cast<int>(n), 2);
+        // Held long enough that both channels' convolution history (IR cap 1 s) and
+        // filter states agree, so entering the fast path is seamless too.
+        constexpr double kMonoHoldSec = 1.5;
+        const bool same = (inL == inR) || std::memcmp(inL, inR, sizeof(float) * n) == 0;
+        const uint32_t hold = static_cast<uint32_t>(p->rate * kMonoHoldSec);
+        if (!same) p->monoRun = 0;
+        else if (p->monoRun < hold) p->monoRun += n;
+        if (same && p->monoRun >= hold && !bypass) {
+            for (uint32_t off = 0; off < n; off += kMaxBlock) {
+                const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
+                if (outL != inL) std::memcpy(outL + off, inL + off, sizeof(float) * len);
+                p->dsp.processMonoToStereo(outL + off, outR + off, len);
+            }
+        } else {
+            float* ins[2]  = { inL,  inR  };
+            float* outs[2] = { outL, outR };
+            p->dsp.process(ins, outs, static_cast<int>(n), 2);
+        }
     }
 
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);

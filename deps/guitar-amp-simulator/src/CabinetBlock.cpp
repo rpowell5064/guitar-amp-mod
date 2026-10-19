@@ -70,9 +70,11 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
         for (int s = 0; s < kNumSlots; ++s) loadIRIntoSlot(s);
     } else {
         const float impulse = 1.0f;
-        for (int s = 0; s < kNumSlots; ++s)
+        for (int s = 0; s < kNumSlots; ++s) {
+            slotDual_[s] = false;
             for (int c = 0; c < kMaxCh; ++c)
                 convolvers_[s][c].setIR(&impulse, 1);
+        }
     }
     irSt_.clear();
 }
@@ -91,6 +93,7 @@ void CabinetBlock::setIR(const std::vector<float>& irLeft,
 }
 
 void CabinetBlock::loadIRIntoSlot(int slot) {
+    slotDual_[slot] = (storedIR_.ch[1] != storedIR_.ch[0]);
     for (int c = 0; c < kMaxCh; ++c) {
         const auto& src = storedIR_.ch[c];
         convolvers_[slot][c].setIR(src.data(), static_cast<int>(src.size()));
@@ -286,18 +289,15 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     const int chCount = std::min(nCh, kMaxCh);
     if (monoActive_ && chCount > 1) {
         // Returning to true stereo after the mono fast path: ch1's conv/EQ state
-        // is stale — clear it (one-time; transitions coincide with user edits).
+        // is stale. The fast path only runs on a mono IR with identical channels,
+        // so ch0's state IS what ch1's would have been: hand it over (2026-10-18;
+        // this used to clear ch1, which dropped R's tail for one IR length).
         monoActive_ = false;
-        convolvers_[slot][1].reset();   // only the claimed slot: the others may be mid-load on the message thread
-        spk_[1].reset();
-        mic2_[1].reset();
-        auto& e = eqState_[1];
-        e.lowCut.reset(); e.highCut.reset(); e.micLP.reset(); e.micBite.reset();
-        e.micBody.reset(); e.distProx.reset(); e.distAir.reset();
-        e.mic2LP.reset(); e.mic2Bite.reset(); e.mic2Body.reset();
-        e.stHP.reset(); e.stLP.reset(); e.conA.reset(); e.conB.reset();
-        e.compEnv = 0.0f; e.compRef = 0.0f;
-        e.ribRing.fill(0.0f); e.distRing.fill(0.0f); e.dlyW = 0;   // item #41 rings
+        convolvers_[slot][1].copyStateFrom(convolvers_[slot][0]);   // only the claimed slot: the others may be mid-load
+        spk_[1]      = spk_[0];
+        spkState_[1] = spkState_[0];
+        mic2_[1]     = mic2_[0];
+        eqState_[1]  = eqState_[0];
     }
 
     for (int c = 0; c < chCount; ++c) {
@@ -485,6 +485,14 @@ void CabinetBlock::reset() noexcept {
 void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexcept {
     if (bypassed) { std::copy(L, L + numSamples, R); return; }
     const int slot = irSt_.claim();
+    if (slotDual_[slot]) {
+        // A true stereo IR: R must convolve with the R IR, so run the full stereo
+        // path on the identical pair (2026-10-18; this path used to give R the L IR).
+        std::copy(L, L + numSamples, R);
+        float* io[2] = { L, R };
+        process(io, io, numSamples, 2);
+        return;
+    }
     monoActive_ = true;
 
     std::copy(L, L + numSamples, dryBuf_.begin());

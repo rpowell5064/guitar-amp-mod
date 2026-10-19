@@ -734,7 +734,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->modfxDecorr = (monoOut ? 0.0f : *p->ports[HF_MD_WIDTH]) > 0.0f;
     // Delay
     p->delay.setBypass(false);
-    const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 4);
+    const int delayType = clampi(*p->ports[HF_DL_TYPE], 0, 5);
     if (delayType != p->lastDelayType) { p->lastDelayType = delayType; p->delay.setType(DelayFactory::fromIndex(delayType)); }
     // Delay clock sync: delay time = host BPM x division (else the manual Time knob).
     float dlMs = *p->ports[HF_DL_TIME];
@@ -749,6 +749,9 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->delay.setParameter("stereoWidth",  monoOut ? 0.0f : *p->ports[HF_DL_WIDTH]);
     p->delay.setParameter("wowDepth",     *p->ports[HF_DL_WOW]);
     p->delay.setParameter("flutterDepth", *p->ports[HF_DL_FLUTTER]);
+    // Mono rig: one transport for both channels (Tape + EP-3), so the folded
+    // repeats keep one pitch trajectory instead of chorusing (2026-10-18).
+    p->delay.setParameter("modLock",      monoOut ? 1.0f : 0.0f);
     // Does this delay actually produce two DIFFERENT channels? Each model
     // decorrelates by a different mechanism, and three of the five stop dead
     // when their own control is at zero:
@@ -760,12 +763,14 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     //   3 Seraph   equal-power pan of the two engines, collapsing at width 0
     //   4 Echoplex per-channel wow RATE, phase, flutter seed and hiss, with a
     //              0.35 floor on the wear term -- nothing turns it off
+    //   5 BBD      the R clock runs slower by stereoWidth; identical at width 0
     {
         const float dlW = monoOut ? 0.0f : *p->ports[HF_DL_WIDTH];
         switch (delayType) {
             case 0: case 3: p->delayDecorr = dlW > 0.0f; break;
-            case 1:         p->delayDecorr = *p->ports[HF_DL_FLUTTER] > 0.0f; break;
+            case 1:         p->delayDecorr = !monoOut && *p->ports[HF_DL_FLUTTER] > 0.0f; break;   // locked = identical channels
             case 2:         p->delayDecorr = false; break;
+            case 5:         p->delayDecorr = dlW > 0.0f; break;   // BBD: R clock offset by width only
             default:        p->delayDecorr = true; break;
         }
     }
@@ -882,7 +887,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     }
     if (*p->ports[HF_DL2_ENABLE] > 0.5f) {
         p->delay2.setBypass(false);
-        const int delay2Type = clampi(*p->ports[HF_DL2_TYPE], 0, 4);
+        const int delay2Type = clampi(*p->ports[HF_DL2_TYPE], 0, 5);
         if (delay2Type != p->lastDelay2Type) { p->lastDelay2Type = delay2Type; p->delay2.setType(DelayFactory::fromIndex(delay2Type)); }
         float dl2Ms = *p->ports[HF_DL2_TIME];
         if (*p->ports[HF_DL2_SYNC] > 0.5f) {
@@ -897,12 +902,14 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->delay2.setParameter("stereoWidth",  monoOut2 ? 0.0f : *p->ports[HF_DL2_WIDTH]);
         p->delay2.setParameter("wowDepth",     *p->ports[HF_DL2_WOW]);
         p->delay2.setParameter("flutterDepth", *p->ports[HF_DL2_FLUTTER]);
+        p->delay2.setParameter("modLock",      monoOut2 ? 1.0f : 0.0f);   // see the primary delay
         {   // same model-by-model reasoning as the primary delay above
             const float dl2W = monoOut2 ? 0.0f : *p->ports[HF_DL2_WIDTH];
             switch (delay2Type) {
                 case 0: case 3: p->delay2Decorr = dl2W > 0.0f; break;
-                case 1:         p->delay2Decorr = *p->ports[HF_DL2_FLUTTER] > 0.0f; break;
+                case 1:         p->delay2Decorr = !monoOut2 && *p->ports[HF_DL2_FLUTTER] > 0.0f; break;
                 case 2:         p->delay2Decorr = false; break;
+                case 5:         p->delay2Decorr = dl2W > 0.0f; break;
                 default:        p->delay2Decorr = true; break;
             }
         }

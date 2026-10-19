@@ -166,6 +166,10 @@ private:
 
     OlaConvolver            convolvers_[kNumSlots][kMaxCh];
     SlotState               irSt_;
+    // Per slot: the R IR differs from the L IR (a true stereo .wav). Written with
+    // the slot on the message thread before publish(); the mono fast path must
+    // not run on such a slot (it convolves channel 0 only).
+    bool                    slotDual_[kNumSlots] = {};
 
     // Stored raw IR for re-applying when prepare() is called (e.g. sample-rate change).
     struct StoredIR {
