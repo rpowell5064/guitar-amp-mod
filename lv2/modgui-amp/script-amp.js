@@ -29,7 +29,7 @@ function (event, funcs) {
         tab('voice', hasVoice);
         tab('power', hasPower);
         tab('nam', true);
-        var ok = { amp: true, voice: hasVoice, power: hasPower, nam: true };
+        var ok = { amp: true, voice: hasVoice, power: hasPower, nam: true, stage: true };
         var cur = icon.data('amp_tab') || 'amp';
         if (!ok[cur]) set_tab(icon, 'amp');
     }
@@ -95,7 +95,7 @@ function (event, funcs) {
         // switching the model (via dropdown or preset recall) to/from Neural flips the tab too.
         refresh_tabs(icon, m);
         var cur = icon.data('amp_tab') || 'amp';
-        if (nam && cur !== 'nam') set_tab(icon, 'nam');
+        if (nam && cur !== 'nam' && cur !== 'stage') set_tab(icon, 'nam');
         else if (!nam && cur === 'nam') set_tab(icon, 'amp');
         update_amp_ctls(icon);
         update_comp(icon);
@@ -240,7 +240,9 @@ function (event, funcs) {
                 if (el.classList.contains('hf-tab-gone')) return;
                 var t = el.getAttribute('data-tab');
                 var cur = icon.data('amp_model'); if (cur == null) cur = INTERNAL_DEFAULT;
-                if (t === 'nam') {
+                if (t === 'stage') {
+                    set_tab(icon, 'stage');   // Stage is every model's (NAM too): never a mode switch
+                } else if (t === 'nam') {
                     if (cur !== 5) { icon.data('amp_last_internal', cur); set_model(icon, 5); }
                     set_tab(icon, 'nam');
                 } else {

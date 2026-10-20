@@ -37,6 +37,7 @@
         <div class="hf-tab" rata-role="tab" data-tab="voice">Voicing / Channel</div>
         <div class="hf-tab" rata-role="tab" data-tab="power">Power Amp</div>
         <div class="hf-tab" rata-role="tab" data-tab="nam">Neural</div>
+        <div class="hf-tab" rata-role="tab" data-tab="stage" title="The amp in the room: the speaker driving your strings">Stage</div>
         <!-- MAINS (2026-09-25): 60 / 50 Hz for the input hum comb + gate detector. Lives on the
              tab rail (not a tab) so every model can reach it, like a rear-panel voltage selector. -->
         <span class="hf-mains" title="Mains frequency: 60 Hz (Americas) or 50 Hz (Europe, most of the world) - tunes the input hum filter and the gate detector">
@@ -297,6 +298,21 @@
                             {{#controls.47}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.47}}
                             {{#controls.21}}<div class="mod-switch pa-sw" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.21}}
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ STAGE TAB (2026-10-20, mirrors Hex Forge ADVANCED > STAGE): the loud amp driving the strings.
+             Held notes bloom into feedback on a harmonic set by where you stand; a mute stops it. ══ -->
+        <div class="hf-tabpanel" rata-role="panel" data-tab="stage">
+            <div class="hf-agroups">
+                <div class="hf-agroup">
+                    <span class="hf-agroup-title">Feedback</span>
+                    <div class="hf-agroup-body mod-knobs clearfix">
+                        {{#controls.58}}<div class="mod-knob" title="How hard the speaker drives the strings (0 = off)"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">Feedback</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.58}}
+                        {{#controls.59}}<div class="mod-knob" title="How far you stand from the cab: it picks the harmonic a note feeds back on"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">Distance</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.59}}
+                        {{#controls.60}}<div class="mod-knob" title="How long a note keeps feeding back after you stop playing"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">Sustain</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.60}}
                     </div>
                 </div>
             </div>

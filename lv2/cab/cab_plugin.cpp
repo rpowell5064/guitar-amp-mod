@@ -18,6 +18,7 @@
 #include "DefaultCabIR.h"
 #include "CabModels.h"
 #include "NamModel.h"
+#include "StageListener.h"
 #include "DenormalGuard.h"
 #include <new>
 #include <cstring>
@@ -39,6 +40,9 @@
 
 static constexpr int kPathMax  = 1024;
 static constexpr int kMaxBlock = 512;
+// Mono fast path hold: long enough that both channels' convolution history (IR cap 1 s) and filter
+// states agree, so entering the fast path is seamless.
+static constexpr double kMonoHoldSec = 1.5;
 
 enum CabPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
@@ -53,6 +57,8 @@ enum CabPorts {
     P_ENABLED,                 // lv2:designation lv2:enabled — the host's block enable,
                                // INVERTED vs Bypass (1 = on).  Placed BEFORE the atoms:
                                // mod-host breaks if control ports follow them.
+    P_LISTEN, P_LDIST, P_LROOM,   // 2026-10-20 (mv62): Stage Listen -- the cab heard standing in front of it
+                                  // (headphones), mirrors Hex Forge stage_listen/ldist/room; off = bit-identical
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,                   // KosmOS: kx:Reset trigger
 #endif
@@ -72,6 +78,9 @@ struct WorkMsg { WorkType type; char path[kPathMax]; NamModel* nam; };
 struct CabPlugin {
     double rate = 48000.0;
     CabinetBlock dsp;
+    StageListener lis;            // Stage Listen: floor, walls, room and two ears after the cab
+    bool lisWas = false;
+    uint32_t lisMonoRun = 0;      // samples of identical L/R cab output in a row (one cab vs a pair)
     NamModel*    nam = nullptr;   // when non-null + loaded, overrides the IR
 
     float* ports[P_N_PORTS]          = {};
@@ -212,6 +221,7 @@ static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
 
     p->rate = rate;
     p->dsp.prepare(rate, kMaxBlock, 2);
+    p->lis.prepare(rate);
     const std::vector<float> ir = CabModels::generate("@factory", rate);   // enriched Factory Cab (2026-07-14)
     p->dsp.setIR(ir);
     return p;
@@ -281,6 +291,7 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         if (!p->resetLatch) {
             p->resetLatch = true;
             p->dsp.prepare(p->rate, kMaxBlock, 2);
+            p->lis.reset();
             WorkMsg msg; msg.type = WORK_IR; msg.nam = nullptr;
             std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
             p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
@@ -345,6 +356,8 @@ static void cab_run(LV2_Handle h, uint32_t n) {
                         (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
     float* inL  = p->ports[P_IN_L];  float* inR  = p->ports[P_IN_R];
     float* outL = p->ports[P_OUT_L]; float* outR = p->ports[P_OUT_R];
+    // Stage Listen: the listener renders the real room, so the cab's own room ambience steps aside
+    const bool listen = !bypass && p->ports[P_LISTEN] && *p->ports[P_LISTEN] > 0.5f;
 
     if (p->nam && p->nam->isLoaded() && !bypass) {
         // ── NAM mode (overrides the IR) ── mono capture → both channels; Mix = dry/wet.
@@ -374,7 +387,7 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->dsp.setParameter("mix",       *p->ports[P_MIX]);
         p->dsp.setParameter("micpos",    *p->ports[P_MICPOS]);   // mic placement (0/0 = as-voiced)
         p->dsp.setParameter("micdist",   *p->ports[P_MICDIST]);
-        p->dsp.setParameter("roomon",    *p->ports[P_ROOMON]);   // room ambience (off = bit-identical)
+        p->dsp.setParameter("roomon",    listen ? 0.0f : *p->ports[P_ROOMON]);   // room ambience (off = bit-identical); the listener renders the room
         p->dsp.setParameter("roommix",   *p->ports[P_ROOMMIX]);
         p->dsp.setParameter("roomamt",   *p->ports[P_ROOMAMT]);
         p->dsp.setParameter("voice",     *p->ports[P_VOICE]);
@@ -401,7 +414,6 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->dsp.setParameter("mic2pol",   *p->ports[P_MIC2POL]);
         // Held long enough that both channels' convolution history (IR cap 1 s) and
         // filter states agree, so entering the fast path is seamless too.
-        constexpr double kMonoHoldSec = 1.5;
         const bool same = (inL == inR) || std::memcmp(inL, inR, sizeof(float) * n) == 0;
         const uint32_t hold = static_cast<uint32_t>(p->rate * kMonoHoldSec);
         if (!same) p->monoRun = 0;
@@ -417,6 +429,22 @@ static void cab_run(LV2_Handle h, uint32_t n) {
             float* outs[2] = { outL, outR };
             p->dsp.process(ins, outs, static_cast<int>(n), 2);
         }
+    }
+
+    // ── Stage Listen (as Hex Forge, after the cab): the player's two ears in front of it. A mono feed is
+    // one cab dead ahead; a stereo feed is a pair spread 20 degrees either side.
+    if (listen) {
+        if (!p->lisWas) { p->lis.reset(); p->lisWas = true; }
+        p->lis.setDistance(p->ports[P_LDIST] ? *p->ports[P_LDIST] : 1.0f);
+        p->lis.setRoom(p->ports[P_LROOM] ? static_cast<int>(*p->ports[P_LROOM] + 0.5f) : 1);
+        // one cab or a pair: read off the cab's own output (identical L/R for 0.5 s = one cab)
+        if (outL == outR || std::memcmp(outL, outR, sizeof(float) * n) == 0) {
+            if (p->lisMonoRun < static_cast<uint32_t>(p->rate * 0.5)) p->lisMonoRun += n;
+        } else p->lisMonoRun = 0;
+        p->lis.setStereoSpread(p->lisMonoRun >= static_cast<uint32_t>(p->rate * 0.5) ? 0.0f : 20.0f);
+        p->lis.process(outL, outR, static_cast<int>(n));
+    } else {
+        p->lisWas = false;
     }
 
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);

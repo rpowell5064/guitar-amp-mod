@@ -116,20 +116,22 @@
 
 /* ── TAB BAR (fold the stacked panels into one-at-a-time tabs) ── */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-tabs {
-    display: flex; justify-content: center; gap: 6px;
+    display: flex; justify-content: flex-start; align-items: flex-end; gap: 6px;
     margin: 14px 16px 0; position: relative; z-index: 6;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-tab {
     flex: 0 0 auto; cursor: pointer; position: relative;
     font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
     font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase;
-    color: #9aa2ad; padding: 7px 20px; border-radius: 8px 8px 0 0;
+    color: #9aa2ad; padding: 7px 14px; border-radius: 8px 8px 0 0;
     background: rgba(6,7,10,.5); border: 1px solid rgba(255,255,255,.08); border-bottom: none;
     -webkit-user-select: none; user-select: none;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-tab:hover { color: #cfe0ee; }
+/* Mains sits IN the row at its right end (2026-10-20): absolutely placed it overlapped the Neural tab by
+   ~60 px, and the fifth tab (Stage) made that worse; tab padding 20 -> 14 px makes room for all of it */
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-mains {
-    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    margin-left: auto; align-self: center; flex: 0 0 auto;
     display: inline-flex; align-items: center; gap: 6px;
 }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-tab.hf-tab-active {

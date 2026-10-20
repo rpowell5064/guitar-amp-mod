@@ -50,7 +50,7 @@ DOAP = rdflib.Namespace("http://usefulinc.com/ns/doap#")
 UNIT_SYMBOL = {
     "db": "dB", "ms": "ms", "s": "s", "hz": "Hz", "khz": "kHz", "pc": "%",
     "bpm": "BPM", "cent": "ct", "semitone12TET": "st", "degree": "°",
-    "coef": "", "frame": "", "midiNote": "", "beat": "beats", "bar": "bars",
+    "m": "m", "coef": "", "frame": "", "midiNote": "", "beat": "beats", "bar": "bars",
 }
 
 # mod:fileTypes tokens -> the extensions the X11 file browser lists.

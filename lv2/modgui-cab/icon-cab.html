@@ -88,6 +88,24 @@
                 <!-- Speaker Drive (item #40, 2026-07-28): PRE-convolution cone/coil
                      response, same compact dropdown-row pattern as Voice/Density above. -->
             </div>
+            <!-- STAGE (2026-10-20, mirrors Hex Forge ADVANCED > STAGE): Listen = the cab heard standing in
+                 front of it, for headphones. On the CABINET tab so a user IR keeps it too. -->
+            <div class="hf-agroup c-cabt-basic hf-stage">
+                <span class="hf-agroup-title">Stage</span>
+                <div class="hf-agroup-body">
+                    {{#controls.20}}<div class="hf-sw" title="Listen: the cab heard standing in front of it, for headphones (replaces the cab room)"><div class="hf-sw-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="hf-sw-t">{{name}}</span></div>{{/controls.20}}
+                    {{#controls.21}}<div class="hf-knob" title="{{name}}"><div class="hf-knob-img" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="hf-knob-t">{{name}}</span><span class="hf-knob-v" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.21}}
+                </div>
+                {{#controls.22}}
+                <div class="hf-voice-row" title="{{name}}">
+                    <span class="hf-voice-label">Room</span>
+                    <div class="mod-enumerated hf-voice-sel" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select">
+                        <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                        <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                    </div>
+                </div>
+                {{/controls.22}}
+            </div>
             <div class="hf-agroup c-cabt-shape">
                 <span class="hf-agroup-title">Speaker</span>
                 <div class="hf-agroup-body">

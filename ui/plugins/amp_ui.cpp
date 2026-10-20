@@ -17,7 +17,7 @@ enum Model {
 };
 constexpr int kInternalDefault = kCrunchy;   // leaving Neural with no remembered model
 
-enum Tab { kTabAmp, kTabVoice, kTabPower, kTabNeural };
+enum Tab { kTabAmp, kTabVoice, kTabPower, kTabNeural, kTabStage };
 
 const char* const kNames[kModels] = {
     "Clean Meanie", "Crunchy McCrunchFace", "Gainzilla", "Doom Daddy", "Tangerang", "Neural",
@@ -118,7 +118,7 @@ hc::PanelSpec ampPanel()
     };
 
     // ── Tabs: Neural is the mode switch; Voicing / Power Amp only where a model has them.
-    s.tabs       = { "Amp", "Voicing / Channel", "Power Amp", "Neural" };
+    s.tabs       = { "Amp", "Voicing / Channel", "Power Amp", "Neural", "Stage" };
     s.tabVisible = {
         {},
         [](V v) {
@@ -130,6 +130,7 @@ hc::PanelSpec ampPanel()
         },
         [](V v) { return modelOf(v) != kDoomDaddy && modelOf(v) != kNeural; },
         {},
+        {},   // Stage: every model, Neural too
     };
     auto lastInternal = std::make_shared<int>(kInternalDefault);
     s.onTab = [lastInternal](int tab, V v, const hc::PanelSpec::Setter& set) {
@@ -137,13 +138,13 @@ hc::PanelSpec ampPanel()
         if (tab == kTabNeural && m != kNeural) {
             *lastInternal = m;
             set("model", kNeural);
-        } else if (tab != kTabNeural && m == kNeural) {
+        } else if (tab != kTabNeural && tab != kTabStage && m == kNeural) {
             set("model", *lastInternal == kNeural ? kInternalDefault : *lastInternal);
         }
     };
     s.tabFollow = [](V v, int cur) {
         if (modelOf(v) == kNeural)
-            return int(kTabNeural);
+            return cur == kTabStage ? cur : int(kTabNeural);
         return cur == kTabNeural ? int(kTabAmp) : cur;
     };
 
@@ -272,6 +273,12 @@ hc::PanelSpec ampPanel()
                                  360),
                         hc::knob("nam_gain"), hc::knob("nam_vol") } },
                     kTabNeural) },
+
+        // ── Stage (2026-10-20): the speaker driving the strings
+        { hc::onTab({ "Feedback",
+                      { hc::knob("stage_fb", "Feedback"), hc::knob("stage_fbdist", "Distance"),
+                        hc::knob("stage_fbsus", "Sustain") } },
+                    kTabStage) },
     };
     return s;
 }

@@ -19,6 +19,8 @@
 #include "NoiseGateBlock.h"
 #include "HumNotchComb.h"
 #include "AmpTight.h"
+#include "StageFeedback.h"
+#include <vector>
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -62,6 +64,12 @@ static constexpr int kSvtIdx      = 14;    // Blue Liner (Ampeg SVT — bass)
 static constexpr int kAd200Idx    = 15;    // Citrus 200 (Orange AD200B Mark III — bass; own power section)
 static constexpr int kMaxModel    = 15;    // highest selectable model index (Citrus 200)
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
+static constexpr uint32_t kFbMaxN = 8192;   // Stage Feedback input buffer (a longer period runs with the loop off)
+// Stage Feedback's speaker tap is the AMP's output here, not a cab's: the plugin cannot see the cab after
+// it. Hex Forge feeds the loop after its cab and its Output level; in the band the string's body filter
+// listens to (250 Hz) the factory cab adds +13.4 dB and the factory presets sit at a median Output of
+// -15.3 dB, so the amp's own output x 0.80 (-1.9 dB) drives the loop as hard as Hex Forge's does.
+static constexpr float kFbSpkTrim = 0.80f;
 
 // 2026-08-21 tube-correctness audit (mirrors hexforge kAmpTube): Fender→6V6(4),
 // EVH→6L6(0), Sunn→KT88(3, inert — PA force-bypassed). [6] Friedman EL34;
@@ -206,6 +214,8 @@ enum AmpPorts {
                                                            // INVERTED vs Bypass (1 = on).  Placed BEFORE the atoms:
                                                            // mod-host breaks if control ports follow them.
     P_TIGHT,                                               // 2026-10-20 (mv73): Tight on the high-gain amps (mirrors Hex Forge amp_tight; 0 = off)
+    P_STAGE_FB, P_STAGE_FBDIST, P_STAGE_FBSUS,             // 2026-10-20 (mv74): Stage Feedback -- the speaker driving the strings
+                                                           // (mirrors Hex Forge stage_fb/fbdist/fbsus; 0 = off, bit-identical)
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,                                               // KosmOS: kx:Reset trigger
 #endif
@@ -244,6 +254,9 @@ struct AmpPlugin {
     AmpBlockExtended* amp = nullptr;   // double-buffered algo amp
     PowerAmpProcessor pa;
     AmpTight          tight[2];        // Tight: pre-clip high-pass + post-PA weight shelf, per channel
+    StageFeedback     fb;              // Stage Feedback: speaker -> air -> string -> pickup, added to the input
+    bool              fbWas = false;
+    std::vector<float> fbInL, fbInR;   // the input with the string's forced vibration (the host buffers stay untouched)
     NoiseGateBlock    inGate;          // input gate BEFORE the amp's ~70 dB of gain — kills amplified
                                        // input-noise hiss on high-gain tones (engages only when driven)
     HumNotchComb      inComb[2];       // 60 Hz hum comb, also pre-gain (the user's measured idle floor is
@@ -326,6 +339,8 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->lastModel = 1;
     p->pa.prepare(rate, kMaxBlock, 2);
     p->tight[0].prepare(rate); p->tight[1].prepare(rate);
+    p->fb.prepare(rate);
+    p->fbInL.assign(kFbMaxN, 0.0f); p->fbInR.assign(kFbMaxN, 0.0f);
     p->inGate.prepare(rate, kMaxBlock, 2);
     p->inComb[0].prepare(rate);
     p->inComb[1].prepare(rate);
@@ -428,6 +443,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             new (&p->pa) PowerAmpProcessor{};
             p->pa.prepare(p->rate, kMaxBlock, 2);
             p->tight[0].prepare(p->rate); p->tight[1].prepare(p->rate);
+            p->fb.reset();
             p->inGate = NoiseGateBlock{};
             p->inGate.prepare(p->rate, kMaxBlock, 2);
             p->inGate.setParameter("attack",     2.0f);
@@ -488,8 +504,33 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
         if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+        p->fbWas = false;
         return;
     }
+
+    // ── Stage Feedback (as Hex Forge): the raw input + the string's forced vibration, built in a
+    // plugin-owned buffer that everything below reads. The speaker side is fed once the block is out
+    // (feedSpeaker), so the loop latency is the acoustic delay + one period.
+    {
+        const float amt = p->ctrl[P_STAGE_FB] ? *p->ctrl[P_STAGE_FB] : 0.0f;
+        if (amt > 0.0005f && n <= kFbMaxN) {
+            if (!p->fbWas) { p->fb.reset(); p->fbWas = true; }
+            p->fb.setAmount(amt);
+            p->fb.setDistance(p->ctrl[P_STAGE_FBDIST] ? *p->ctrl[P_STAGE_FBDIST] : 1.0f);
+            p->fb.setSustain(p->ctrl[P_STAGE_FBSUS] ? *p->ctrl[P_STAGE_FBSUS] : 0.5f);
+            for (uint32_t i = 0; i < n; ++i) {
+                const float x = 0.5f * (inL[i] + inR[i]);
+                const float s = p->fb.process(x) - x;
+                p->fbInL[i] = inL[i] + s; p->fbInR[i] = inR[i] + s;
+            }
+            inL = p->fbInL.data(); inR = p->fbInR.data();
+        } else {
+            p->fbWas = false;
+        }
+    }
+    auto feedSpeaker = [p, outL, outR, n]() {
+        if (p->fbWas) for (uint32_t i = 0; i < n; ++i) p->fb.feedSample(0.5f * (outL[i] + outR[i]) * kFbSpkTrim);
+    };
 
     if (isNam) {
         // ── Neural (NAM) path ── mono capture; bypass the algo amp + power amp.
@@ -507,6 +548,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
             if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
         }
+        feedSpeaker();
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
         return;
     }
@@ -706,6 +748,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     const float mk = kModelMakeup[modelIdx]
                    * (compOn ? compParity(modelIdx, *p->ctrl[P_GAIN], *p->ctrl[P_MASTER], compSel) : 1.0f);
     if (mk != 1.0f) for (uint32_t i = 0; i < n; ++i) { outL[i] *= mk; outR[i] *= mk; }
+    feedSpeaker();
 
     if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
 }

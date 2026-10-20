@@ -136,6 +136,11 @@ hc::PanelSpec cabPanel()
                       { hc::knob("low_cut_hz"), hc::knob("high_cut_hz"), hc::knob("mix"),
                         hc::select("voice") } },
                     0) },
+        // Stage Listen (2026-10-20): the cab heard standing in front of it (headphones)
+        { hc::onTab({ "Stage",
+                      { hc::toggle("listen"), hc::knob("listen_dist"),
+                        hc::select("listen_room", "Room") } },
+                    0) },
 
         // ── Mic & Room
         { hc::onTab({ "Room",
