@@ -48,6 +48,17 @@ target_include_directories(hexforge_bassab PRIVATE
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_bassab PRIVATE GuitarAmpSim)
 
+# Stage harness (2026-10-19): a DI through a preset with the Stage layer (speaker -> string feedback
+# loop, listener render) wrapped around the whole chain at the Pi's 32-frame period; writes WAVs.
+add_executable(stage_render
+    "${CMAKE_CURRENT_SOURCE_DIR}/stage_render.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge/hexforge_plugin.cpp")
+target_include_directories(stage_render PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/hexforge"
+    "${CMAKE_CURRENT_SOURCE_DIR}/../lv2/common"
+    ${HF_LV2_INCLUDE})
+target_link_libraries(stage_render PRIVATE GuitarAmpSim)
+
 # Amp-cycle memory harness (2026-09-11): same plugin TU, cycles every amp model
 # with the Lab component toggle / Engine Quality / Rig B; build with ASan.
 add_executable(hexforge_ampcycle
