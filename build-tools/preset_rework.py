@@ -157,16 +157,18 @@ def bank_ghost_impera():
     # C Cardinal Rhythm — Skeletá: "a Mesa Boogie IIC+ … the same one James Hetfield used", MD421s (A, SoS); shallow V.
     #   Mesa rules (manual 2026-10-05): high-gain chording = BASS 10:00-11:00 and "look for additional low end using the Graphic EQ",
     #   TREBLE 12:00-1:00 (it gates the MID/BASS signal), PRESENCE 9:00-11:30, MASTER ~10:30. Faceplate = "Attitude" factory sample.
+    #   CAB LOW CUT 45 Hz on every Cali V preset (2026-10-19): the GEQ 80 Hz slider is where a Mark V keeps its bass, and a 90-100 Hz cut took 4-5 dB of it back at 80 Hz.
+    #   GAIN 0.75 (Vol 1 7.5, the documented setting) on every Cali V rhythm/lead, 0.7 under the Cardinal Lead boost (2026-10-19, user: "not enough gain"; at 0.45-0.65 low notes stayed nearly clean at playing level).
     preset(3, 2, "Cardinal Rhythm", cls="dirty", chain=["gt", "amp", "cab", "eq"], rig=TIGHT57,
            amp={"model": "Cali V", "mv_mode": "IIC+", "mv_eqpreset": "Custom", "mv_geq0": 0.9, "mv_geq1": 0.5, "mv_geq2": 0.3, "mv_geq3": 0.65, "mv_geq4": 0.6,
-                "gain": 0.65, "bass": 0.25, "mid": 0.4, "treble": 0.6, "presence": 0.4, "master": 0.5, "sag": 0.25},
-           cab={"lowcut": 90, "highcut": 8000}, eq=eqm(**{"100": 0, "200": 0, "400": 0, "800": 1, "1k6": 0, "3k2": 1, "level": 0}), gt=gate(-45))
+                "gain": 0.75, "bass": 0.25, "mid": 0.4, "treble": 0.6, "presence": 0.4, "master": 0.5, "sag": 0.25},
+           cab={"lowcut": 45, "highcut": 8000}, eq=eqm(**{"100": 0, "200": 0, "400": 0, "800": 1, "1k6": 0, "3k2": 1, "level": 0}), gt=gate(-45))
     # D Cardinal Lead — a late-70s Boss OD-1 on the solos (A) → Super Nova; IIC+ under the rhythm gain so the pedal shows.
     preset(3, 3, "Cardinal Lead", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=TIGHT57,
            dr={"model": "Super Nova", "drive": 0.55, "tone": 0.5, "level": 0.7, "mix": 1.0},
            amp={"model": "Cali V", "mv_mode": "IIC+", "mv_eqpreset": "Custom", "mv_geq0": 0.85, "mv_geq1": 0.5, "mv_geq2": 0.4, "mv_geq3": 0.6, "mv_geq4": 0.55,
-                "gain": 0.6, "bass": 0.3, "mid": 0.45, "treble": 0.55, "presence": 0.4, "master": 0.5, "sag": 0.3},
-           cab={"lowcut": 100, "highcut": 7500}, dl=dig(dotted8(125), 0.3, 0.22, 0.6), rv=plate(0.22, 2.2, 40, 0.45), gt=gate(-48))
+                "gain": 0.7, "bass": 0.3, "mid": 0.45, "treble": 0.55, "presence": 0.4, "master": 0.5, "sag": 0.3},
+           cab={"lowcut": 45, "highcut": 7500}, dl=dig(dotted8(125), 0.3, 0.22, 0.6), rv=plate(0.22, 2.2, 40, 0.45), gt=gate(-48))
 
 # ═══ Bank 5 (index 4) — PINK FLOYD (+ Gravity) ═══
 def bank_floyd():
@@ -490,8 +492,8 @@ def bank_mark():
     #   Presence 4.5, GEQ "V" (80 up / 750 deep cut / 2200 + 6600 up); 57 + omni + tube condenser array → Studio Pair.
     preset(13, 0, "Marionette Master", cls="dirty", chain=["gt", "amp", "cab", "eq"], rig=STUDIO,
            amp={"model": "Cali V", "mv_mode": "IIC+", "mv_eqpreset": "Custom", "mv_geq0": 0.9, "mv_geq1": 0.5, "mv_geq2": 0.2, "mv_geq3": 0.7, "mv_geq4": 0.7,
-                "gain": 0.5, "bass": 0.2, "mid": 0.4, "treble": 0.7, "presence": 0.45, "master": 0.5, "sag": 0.3},
-           cab={"lowcut": 70, "highcut": 9000, "spkdrive": "Off"}, eq=eqm(**{"100": 0, "200": 0, "400": -1, "800": 0, "1k6": 1, "3k2": 1, "level": 0}), gt=gate(-48))
+                "gain": 0.75, "bass": 0.2, "mid": 0.4, "treble": 0.7, "presence": 0.45, "master": 0.5, "sag": 0.3},
+           cab={"lowcut": 45, "highcut": 9000, "spkdrive": "Off"}, eq=eqm(**{"100": 0, "200": 0, "400": -1, "800": 0, "1k6": 1, "3k2": 1, "level": 0}), gt=gate(-48))
     # B Spectrum Rhythm — Colors: rackmount Dual Rectifier + Recto 4x12 (B), TS808 boost — CH3 Modern, Bold, Silicon.
     preset(13, 1, "Spectrum Rhythm", cls="dirty", chain=["gt", "dr", "amp", "cab"], rig=PAIR57R,
            dr={"model": "Green Man", "drive": 0.15, "tone": 0.55, "level": 0.85, "mix": 1.0},
@@ -501,8 +503,8 @@ def bank_mark():
     preset(13, 2, "Spectrum Lead", cls="dirty", chain=["gt", "dr", "amp", "cab", "dl", "rv"], rig=PAIR57R,
            dr={"model": "Green Man", "drive": 0.3, "tone": 0.6, "level": 0.8, "mix": 1.0},
            amp={"model": "Cali V", "mv_mode": "Mk IV", "mv_eqpreset": "Custom", "mv_geq0": 0.85, "mv_geq1": 0.55, "mv_geq2": 0.45, "mv_geq3": 0.6, "mv_geq4": 0.5,
-                "gain": 0.65, "bass": 0.3, "mid": 0.55, "treble": 0.55, "presence": 0.45, "master": 0.5, "sag": 0.35},
-           cab={"lowcut": 90, "highcut": 8000, "spkdrive": "Off"}, dl=dig(400, 0.35, 0.22, 0.6), rv=plate(0.15, 1.8, 40), gt=gate(-50))
+                "gain": 0.75, "bass": 0.3, "mid": 0.55, "treble": 0.55, "presence": 0.45, "master": 0.5, "sag": 0.35},
+           cab={"lowcut": 45, "highcut": 8000, "spkdrive": "Off"}, dl=dig(400, 0.35, 0.22, 0.6), rv=plate(0.15, 1.8, 40), gt=gate(-50))
     # D Grunge Drop — Thayil: Peavey VTM-120 (a JCM800-pattern head); "lows up, mids ~11 o'clock, treble ~2 o'clock" (A).
     preset(13, 3, "Grunge Drop", cls="dirty", chain=["gt", "amp", "cab", "rv"], rig=PAIR57R,
            amp={"model": "Crunchy McCrunchFace", "sir34": 0, "gain": 0.65, "bass": 0.7, "mid": 0.45, "treble": 0.65, "presence": 0.5, "master": 0.6, "sag": 0.45},
@@ -550,8 +552,8 @@ def bank_classic():
     # A Frayed Justice — ...And Justice: the borrowed IIC+ with a B&B EQ in the loop, triple-tracked, dry, scooped hard (B); no second amp.
     preset(17, 0, "Frayed Justice", cls="dirty", chain=["gt", "amp", "cab", "eq"], rig=TIGHT57,
            amp={"model": "Cali V", "mv_mode": "IIC+", "mv_eqpreset": "Custom", "mv_geq0": 0.9, "mv_geq1": 0.45, "mv_geq2": 0.1, "mv_geq3": 0.7, "mv_geq4": 0.75,
-                "gain": 0.55, "bass": 0.25, "mid": 0.3, "treble": 0.7, "presence": 0.5, "master": 0.5, "sag": 0.2},
-           cab={"lowcut": 80, "highcut": 8500, "spkdrive": "Off"}, eq=eqm(**{"100": 1, "200": -1, "400": -2, "800": -1, "1k6": 1, "3k2": 2, "level": 0}),
+                "gain": 0.75, "bass": 0.25, "mid": 0.3, "treble": 0.7, "presence": 0.5, "master": 0.5, "sag": 0.2},
+           cab={"lowcut": 45, "highcut": 8500, "spkdrive": "Off"}, eq=eqm(**{"100": 1, "200": -1, "400": -2, "800": -1, "1k6": 1, "3k2": 2, "level": 0}),
            gt=gate(-46, attack=0.5, hold=60, release=120), rb={"enable": 0, "cab2on": 0})
     # B Brown Sound '84 — 1968 Super Lead all six knobs on 10, variac ~90 V, Phase 90 in front, Echoplex after, 10 ms plate (A/B).
     preset(17, 1, "Brown Sound '84", cls="dirty", chain=["gt", "cp", "md", "amp", "cab", "dl", "rv"], rig=GBROOM,
