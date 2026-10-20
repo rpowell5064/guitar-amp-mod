@@ -10,7 +10,10 @@
 //   cab (on the floor, against the back wall) --> image sources of a shoebox room up to 2nd order
 //     each path: its delay r/c, 1/r spreading, the walls' absorption per bounce, the cone's
 //     off-axis roll-off at its angle, then the HEAD for its direction
-//   + a late tail (8-line FDN, lengths from the room's mean free path, RT60 from Sabine)
+//   + a late tail: the suite's Hall FDN (input diffusion, modulated lines; ringing index 10.5 against
+//     8.2 for ideal noise) set to the room's Sabine RT60 -- a bare short-line FDN rang like a tiled room
+//     (index 19-22 dB: the user heard it as "metallic, like a toilet")
+//   Walls SCATTER: a share of every bounce's energy leaves the specular path for the diffuse tail.
 //
 // The head is the Brown & Duda structural model (IEEE Trans. Speech Audio Proc. 6(5), 1998): a
 // spherical head (interaural delay by Woodworth's formula, a one-pole/one-zero head-shadow filter per
@@ -26,6 +29,7 @@
 #include <algorithm>
 #include <cmath>
 #include <vector>
+#include "StudioReverbs.h"
 
 class StageListener {
 public:
@@ -36,13 +40,12 @@ public:
         const size_t n = size_t(fs * 0.25) + 8;          // 250 ms covers 2nd-order paths in the large room
         for (auto& b : src_) b.assign(n, 0.0f);
         w_ = 0;
-        for (int i = 0; i < kFdn; ++i) fdn_[i].assign(size_t(fs * 0.08) + 8, 0.0f);
+        hall_.prepare(fs);
         configured_ = false;
     }
     void reset() {
         for (auto& b : src_) std::fill(b.begin(), b.end(), 0.0f);
-        for (auto& b : fdn_) std::fill(b.begin(), b.end(), 0.0f);
-        for (auto& z : fdnLp_) z = 0.0f;
+        hall_.clear();
         configured_ = false;   // rebuilds the paths (and their ear filters) on the next block
     }
     // compare the CLAMPED value: an out-of-range input must not read as a change on every block (each
@@ -75,28 +78,19 @@ public:
                 p.earL.push(s); p.earR.push(s);
                 el += p.earL.out(p.itdL); er += p.earR.out(p.itdR);
             }
-            // late field: feed the 8-line FDN with the direct-path signal of both cabs
-            const float mono = 0.5f * (read(src_[0], lateDelay_) + read(src_[1], lateDelay_));   // the tail starts after the direct sound
-            float o[kFdn], acc = 0.0f;
-            for (int k = 0; k < kFdn; ++k) { o[k] = fdnRead(k); acc += o[k]; }
-            acc *= 2.0f / kFdn;                                                      // Householder mixing
-            for (int k = 0; k < kFdn; ++k) {
-                float v = o[k] - acc;
-                fdnLp_[k] += fdnLpA_ * (v - fdnLp_[k]);
-                fdnWrite(k, fdnLp_[k] * fdnG_[k] + mono * kFdnIn[k]);
-            }
-            const float tl = (o[0] - o[2] + o[4] - o[6]) * lateGain_, tr = (o[1] - o[3] + o[5] - o[7]) * lateGain_;
+            // late field: both cabs, from just after the direct sound, into the true-stereo Hall FDN
+            float tl, tr;
+            hall_.process(read(src_[0], lateDelay_), read(src_[1], lateDelay_), tl, tr);
+            tl *= lateGain_; tr *= lateGain_;
             L[i] = el + tl; R[i] = er + tr;
             if (++w_ >= src_[0].size()) w_ = 0;
-            ++fdnW_;
         }
     }
 
 private:
-    static constexpr int kFdn = 8;
     static constexpr double kC = 343.0;
     static constexpr double kHeadR = 0.0875;           // head radius (m)
-    static constexpr float kFdnIn[kFdn] = { 0.35f, -0.35f, 0.35f, 0.35f, -0.35f, 0.35f, -0.35f, -0.35f };
+    static constexpr double kScatter = 0.35;           // scattered share of each bounce's reflected energy
 
     // one ear of one path: a short fractional delay line (ITD) into a head-shadow one-pole/one-zero and
     // the pinna's five echoes (Brown & Duda) -- all at the path's own angles
@@ -123,8 +117,6 @@ private:
         const size_t i = size_t(p) % n; const float f = float(p - std::floor(p));
         return b[i] * (1.0f - f) + b[(i + 1) % n] * f;
     }
-    float fdnRead(int k) const { const auto& b = fdn_[k]; return b[(fdnW_ + b.size() - fdnLen_[k]) % b.size()]; }
-    void  fdnWrite(int k, float v) { auto& b = fdn_[k]; b[fdnW_ % b.size()] = v; }
 
     // Brown & Duda head shadow for the angle between the source and the ear axis (theta, degrees):
     //   H(w) = (1 + j alpha w / 2w0) / (1 + j w / 2w0),  w0 = c/a,  alpha = 1.05 + 0.95 cos(theta * 180/150)
@@ -141,7 +133,7 @@ private:
                             B[5] = { 2, 4, 7, 11, 13 }, D[5] = { 1, 0.5, 0.5, 0.5, 0.5 };
         for (int k = 0; k < 5; ++k) {
             const double t = A[k] * std::cos(azDeg * M_PI / 360.0) * std::sin(D[k] * (90.0 - elDeg) * M_PI / 180.0) + B[k];
-            e.pd[k] = float(std::max(1.0, t * fs_ / 44100.0)); e.pr[k] = float(rho[k] * 0.35);   // 0.35: a gentle pinna
+            e.pd[k] = float(std::max(1.0, t * fs_ / 44100.0)); e.pr[k] = float(rho[k] * 0.15);   // 0.15: at 0.35 the echoes notched the top like a comb
         }
     }
 
@@ -150,7 +142,9 @@ private:
         static const double dims[3][3] = { { 4.0, 5.0, 2.7 }, { 6.0, 8.0, 3.0 }, { 10.0, 14.0, 4.5 } };
         static const double alphaWall[3] = { 0.30, 0.25, 0.22 };
         const double W = dims[room_][0], Dp = dims[room_][1], H = dims[room_][2], al = alphaWall[room_];
-        const double R = std::sqrt(1.0 - al);           // pressure reflection coefficient of each surface
+        // pressure reflection of each surface, SPECULAR share only: kScatter of the reflected energy is scattered
+        // (walls, gear, people) and lives in the diffuse tail -- mirror-perfect walls comb the tone
+        const double R = std::sqrt((1.0 - al) * (1.0 - kScatter));
         // cab: centred in width, its back 0.3 m off the back wall (y = 0), cone centre 0.5 m up;
         // listener: dist_ in front, ears 1.6 m up
         const double cy = 0.35, cz = 0.5, ly = cy + dist_, lz = 1.6;
@@ -205,26 +199,21 @@ private:
         const double rt60 = std::clamp(0.161 * V / A, 0.2, 2.5);
         const double mfp = 4.0 * V / S;                                                // mean free path (m)
         const double rRatio = std::sqrt(16.0 * M_PI * dist_ * dist_ / A);              // reverberant / direct (pressure)
-        static const double spreadL[kFdn] = { 0.71, 0.83, 0.94, 1.07, 1.19, 1.31, 1.46, 1.62 };
-        for (int k = 0; k < kFdn; ++k) {
-            int len = int(mfp / kC * fs_ * spreadL[k]) + 37 * k;
-            len = std::clamp(len, 64, int(fdn_[k].size()) - 2);
-            fdnLen_[k] = size_t(len);
-            fdnG_[k] = float(std::pow(10.0, -3.0 * len / (fs_ * rt60 * 1.45)));   // x1.45: the in-loop 5 kHz LP's share of the decay
-        }
-        fdnLpA_ = float(1.0 - std::exp(-2 * M_PI * 5000.0 / fs_));
-        // the FDN's own output at unit input sits ~kFdnIn * sqrt(N)/sqrt(1-g^2); scale so its RMS is rRatio x direct
-        const double g0 = fdnG_[3]; const double fdnRms = 0.35 * std::sqrt(1.0 / std::max(1e-3, 1.0 - g0 * g0));
-        lateGain_ = float(rRatio / std::max(fdnRms, 1e-3) * norm / std::max(dist_, 0.3f) * 0.5);
+        // the Hall FDN at the room's decay; its impulse energy is ~0.205 + 0.098 RT60 (measured, damping 0.3),
+        // so this puts the tail at rRatio x the direct sound in pressure, as the diffuse-field theory has it
+        // x1.18 on the decay and x0.5 on the level: what the impulse check measured against Sabine and the
+        // diffuse-field ratio once the tank sits in this render (lab tools/stage_listener_check)
+        hall_.set(float(rt60 * 1.18), 0.3f, 0.25f, 0.5f, 1.0f);
+        lateGain_ = float(0.5 * rRatio / std::sqrt(0.205 + 0.098 * rt60 * 1.18));
+        (void)mfp;
         // unity loudness: the render carries the whole room's energy (25 paths + the tail), so scale it back to
         // the energy of the signal it was given -- Distance and Room change the balance, never the level
         double e = 0.0; for (const Path& p : paths_) e += double(p.gain) * p.gain;
-        e /= double(nsrc); e += std::pow(rRatio, 2.0);
+        e /= double(nsrc); e += 0.25 * rRatio * rRatio;   // the tail sits at 0.5 x rRatio (see the Hall level above)
         const float og = float(1.0 / std::sqrt(std::max(e, 1e-6)));
         for (Path& p : paths_) p.gain *= og;
         lateGain_ *= og;
-        for (auto& b : fdn_) std::fill(b.begin(), b.end(), 0.0f);
-        for (auto& z : fdnLp_) z = 0.0f;
+        hall_.clear();
         configured_ = true;
     }
 
@@ -233,6 +222,6 @@ private:
     bool configured_ = false;
     std::vector<float> src_[2]; size_t w_ = 0;
     std::vector<Path> paths_;
-    std::vector<float> fdn_[kFdn]; size_t fdnLen_[kFdn] = {}; size_t fdnW_ = 0;
-    float fdnG_[kFdn] = {}, fdnLp_[kFdn] = {}, fdnLpA_ = 0.5f, lateGain_ = 0.0f, lateDelay_ = 1.0f;
+    studiorev::FdnHall hall_;
+    float lateGain_ = 0.0f, lateDelay_ = 1.0f;
 };
