@@ -802,7 +802,7 @@ static const hc::PortInfo kHexforgePorts[] = {
     { 508, "stage_fbdist", "Stage Distance", 0.3f, 5.0f, 1.0f, 0u, "", nullptr, 0, 0 },
     { 509, "stage_fbsus", "Stage Sustain", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 0 },
     { 510, "stage_listen", "Stage Listener", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 0 },
-    { 511, "stage_ldist", "Listener Distance", 0.7f, 6.0f, 2.0f, 0u, "", nullptr, 0, 0 },
+    { 511, "stage_ldist", "Listener Distance", 0.5f, 4.0f, 1.0f, 0u, "", nullptr, 0, 0 },
     { 512, "stage_room", "Listener Room", 0.0f, 2.0f, 1.0f, 12u, "", kHexforge_e512, 3, 0 },
 };
 

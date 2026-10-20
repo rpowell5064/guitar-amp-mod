@@ -1397,7 +1397,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // mono rig, two cabs either side on a stereo one), before the Output level and limiter ──
     if (stageListen) {
         if (!p->stageLisWas) { p->stageLis.reset(); p->stageLisWas = true; }
-        p->stageLis.setDistance(p->ports[HF_STAGE_LDIST] ? *p->ports[HF_STAGE_LDIST] : 2.0f);
+        p->stageLis.setDistance(p->ports[HF_STAGE_LDIST] ? *p->ports[HF_STAGE_LDIST] : 1.0f);
         p->stageLis.setRoom(p->ports[HF_STAGE_ROOM] ? (int)(*p->ports[HF_STAGE_ROOM] + 0.5f) : 1);
         p->stageLis.setStereoSpread((p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f) ? 0.0f : 20.0f);
         p->stageLis.process(outL, outR, (int)n);

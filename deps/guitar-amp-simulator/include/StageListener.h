@@ -15,6 +15,15 @@
 //     (index 19-22 dB: the user heard it as "metallic, like a toilet")
 //   Walls SCATTER: a share of every bounce's energy leaves the specular path for the diffuse tail.
 //
+// VOICED NEAR, not textbook (2026-10-20, the user: "distanced and overly reverberated" at every setting).
+// A bare diffuse-field render puts the room 5-12 dB ABOVE the cab at 1.5-3 m (the critical distance of a
+// rehearsal room is ~1 m) and the floor-level cone beams its treble under the player's ears (direct path
+// -12 dB at 4 kHz) -- correct for a microphone at head height, wrong for what a player hears: they tilt
+// the cab back at their head, the room is full of gear and people, and the ear's precedence effect
+// keeps the cab in front while the room only widens it. So: the cab is AIMED at the ears, the walls
+// absorb like a furnished room, the 2nd-order images are halved and the tail is trimmed kTailTrim below
+// the diffuse-field level -- the cab leads by ~8-12 dB at 1 m and the room grows with Stand At.
+//
 // The head is the Brown & Duda structural model (IEEE Trans. Speech Audio Proc. 6(5), 1998): a
 // spherical head (interaural delay by Woodworth's formula, a one-pole/one-zero head-shadow filter per
 // ear whose zero moves with the angle of incidence) plus their five-echo pinna model for elevation.
@@ -50,7 +59,7 @@ public:
     }
     // compare the CLAMPED value: an out-of-range input must not read as a change on every block (each
     // reconfigure rebuilds the paths and clears the tail)
-    void setDistance(float m) { m = std::clamp(m, 0.7f, 6.0f); if (m != dist_) { dist_ = m; configured_ = false; } }
+    void setDistance(float m) { m = std::clamp(m, 0.5f, 4.0f); if (m != dist_) { dist_ = m; configured_ = false; } }
     void setRoom(int r)       { r = std::clamp(r, 0, 2); if (r != room_) { room_ = r; configured_ = false; } }
     void setStereoSpread(float deg) { deg = std::clamp(deg, 0.0f, 45.0f); if (deg != spread_) { spread_ = deg; configured_ = false; } }
     // introspection for the lab check: per path {delay ms, gain dB, az, el, cone fc Hz, ITD L us, ITD R us, order}
@@ -91,6 +100,10 @@ private:
     static constexpr double kC = 343.0;
     static constexpr double kHeadR = 0.0875;           // head radius (m)
     static constexpr double kScatter = 0.35;           // scattered share of each bounce's reflected energy
+    static constexpr double kTailTrim = 0.3;           // tail re the diffuse-field level (-10.5 dB, see the header)
+    static constexpr double kOrder2 = 0.5;             // extra gain on the 2nd-order images
+    static constexpr double kRear = 0.5;               // extra gain on paths leaving the back of the cab
+    static constexpr double kFloor = 0.55;             // extra gain on paths that bounce off the floor
 
     // one ear of one path: a short fractional delay line (ITD) into a head-shadow one-pole/one-zero and
     // the pinna's five echoes (Brown & Duda) -- all at the path's own angles
@@ -140,7 +153,7 @@ private:
     void configure() {
         // room (m): width x depth x height; absorption per surface (rehearsal-room materials)
         static const double dims[3][3] = { { 4.0, 5.0, 2.7 }, { 6.0, 8.0, 3.0 }, { 10.0, 14.0, 4.5 } };
-        static const double alphaWall[3] = { 0.30, 0.25, 0.22 };
+        static const double alphaWall[3] = { 0.40, 0.35, 0.30 };   // furnished: gear, carpet, the band
         const double W = dims[room_][0], Dp = dims[room_][1], H = dims[room_][2], al = alphaWall[room_];
         // pressure reflection of each surface, SPECULAR share only: kScatter of the reflected energy is scattered
         // (walls, gear, people) and lives in the diffuse tail -- mirror-perfect walls comb the tone
@@ -153,6 +166,9 @@ private:
         for (int s = 0; s < nsrc; ++s) {
             // two cabs side by side 1.2 m apart when the rig is stereo (the spread sets their separation)
             const double cx = W / 2 + (nsrc == 2 ? (s == 0 ? -1.0 : 1.0) * std::tan(spread_ * M_PI / 180.0) * dist_ : 0.0);
+            // the cone's axis: tilted back and turned at the player's head (a tilt-back stand, as players set it)
+            double ax[3] = { W / 2 - cx, ly - cy, lz - cz };
+            { const double m = std::sqrt(ax[0] * ax[0] + ax[1] * ax[1] + ax[2] * ax[2]); for (double& v : ax) v /= m; }
             for (int nx = -2; nx <= 2; ++nx) for (int ny = -2; ny <= 2; ++ny) for (int nz = -2; nz <= 2; ++nz) {
                 const int order = std::abs(nx) + std::abs(ny) + std::abs(nz);
                 if (order > 2) continue;
@@ -165,15 +181,21 @@ private:
                 Path p; p.src = s;
                 p.delay = float(r / kC * fs_);
                 if (p.delay > float(src_[0].size() - 4)) continue;
-                p.gain = float(std::pow(R, order) / std::max(r, 0.3));
+                // a floor bounce (nz -1, or +-2 = floor and ceiling) meets carpet and a 2-cone baffle spread over
+                // 0.3 m, so it does not cancel the direct sound cleanly (the bare image notched 250 Hz by 8-12 dB)
+                const bool floorHit = nz == -1 || std::abs(nz) == 2;
+                p.gain = float(std::pow(R, order) / std::max(r, 0.3) * (order == 2 ? kOrder2 : 1.0) * (floorHit ? kFloor : 1.0));
                 // listener faces the cab (towards -y); azimuth positive to the right, elevation positive up
                 const double az = std::atan2(dx, -dy) * 180.0 / M_PI, el = std::atan2(dz, std::sqrt(dx * dx + dy * dy)) * 180.0 / M_PI;
-                // the cone's axis points at +y (into the room): the angle off that axis for this path, seen from the image
-                const double offAxis = std::acos(std::clamp((ly - iy) * (ny % 2 == 0 ? 1.0 : -1.0) / r, -1.0, 1.0));
+                // the angle off the cone's axis for this path, seen from the image (each mirror flips its axis component)
+                const double c = (-dx * ax[0] * (nx % 2 == 0 ? 1 : -1) - dy * ax[1] * (ny % 2 == 0 ? 1 : -1) - dz * ax[2] * (nz % 2 == 0 ? 1 : -1)) / r;
+                const double offAxis = std::acos(std::clamp(c, -1.0, 1.0));
                 const double sOff = std::max(std::sin(std::min(offAxis, M_PI / 2)), 0.05);
                 double fc = 1.6 * kC / (2 * M_PI * 0.07 * sOff);                       // piston, a_eff 7 cm
                 fc = std::min(fc, 16000.0) * std::pow(0.82, order);                    // walls: duller per bounce
-                if (std::cos(offAxis) < 0) fc *= 0.35;                                 // behind the cab: very dull
+                // behind the cab: very dull, and quieter -- a closed 2x12 baffle already beams forward at 250 Hz, so
+                // the back-wall image must not cancel the front at the wall's quarter-wave (it dug 10 dB at 250 Hz)
+                if (std::cos(offAxis) < 0) { fc *= 0.35; p.gain *= float(kRear); }
                 p.lpA = float(1.0 - std::exp(-2 * M_PI * fc / fs_));
                 p.az = float(az); p.el = float(el); p.fc = float(fc); p.order = order;
                 // ears at +-90 deg: the angle between the source and each ear axis
@@ -204,12 +226,29 @@ private:
         // x1.18 on the decay and x0.5 on the level: what the impulse check measured against Sabine and the
         // diffuse-field ratio once the tank sits in this render (lab tools/stage_listener_check)
         hall_.set(float(rt60 * 1.18), 0.3f, 0.25f, 0.5f, 1.0f);
-        lateGain_ = float(0.5 * rRatio / std::sqrt(0.205 + 0.098 * rt60 * 1.18));
+        lateGain_ = float(0.5 * kTailTrim * rRatio / std::sqrt(0.205 + 0.098 * rt60 * 1.18));
         (void)mfp;
         // unity loudness: the render carries the whole room's energy (25 paths + the tail), so scale it back to
         // the energy of the signal it was given -- Distance and Room change the balance, never the level
-        double e = 0.0; for (const Path& p : paths_) e += double(p.gain) * p.gain;
-        e /= double(nsrc); e += 0.25 * rRatio * rRatio;   // the tail sits at 0.5 x rRatio (see the Hall level above)
+        // The early paths are COHERENT: near the cab they add in pressure, not power (an energy sum read 4 dB
+        // quiet once the cab led the room), so take the power of their summed response over the guitar's band
+        // (100 Hz-3 kHz log-spaced, each path's delay and wall/cone low-pass) plus the tail's energy. A stereo
+        // pair is summed with the SAME signal in both cabs: the chain's two sides are nearly identical (mono
+        // amp + cab), and two cabs playing one signal add in pressure too (+4-5 dB louder than dry otherwise).
+        double e = 0.0;
+        { int nf = 0;
+          for (double f = 100.0; f <= 3000.0; f *= 1.15, ++nf) {
+              const double w = 2 * M_PI * f / fs_; double re = 0, im = 0;
+              for (const Path& p : paths_) {
+                  const double a = 1.0 - p.lpA, hr = p.lpA * (1.0 - a * std::cos(w)), hi = -p.lpA * a * std::sin(w),
+                               den = 1.0 - 2.0 * a * std::cos(w) + a * a;   // one-pole lpA / (1 - a z^-1)
+                  const double mr = hr / den * p.gain, mi = hi / den * p.gain, ph = -w * p.delay;
+                  re += mr * std::cos(ph) - mi * std::sin(ph); im += mr * std::sin(ph) + mi * std::cos(ph);
+              }
+              e += re * re + im * im;
+          }
+          e /= double(nf); }
+        e += 0.25 * kTailTrim * kTailTrim * rRatio * rRatio;   // the tail's level (see the Hall level above)
         const float og = float(1.0 / std::sqrt(std::max(e, 1e-6)));
         for (Path& p : paths_) p.gain *= og;
         lateGain_ *= og;
@@ -218,7 +257,7 @@ private:
     }
 
     double fs_ = 48000.0;
-    float dist_ = 2.0f, spread_ = 0.0f; int room_ = Medium;
+    float dist_ = 1.0f, spread_ = 0.0f; int room_ = Medium;
     bool configured_ = false;
     std::vector<float> src_[2]; size_t w_ = 0;
     std::vector<Path> paths_;
