@@ -56,8 +56,9 @@ public:
 
     void prepare(double fs) {
         fs_ = fs;
-        const size_t n = size_t(fs * 0.25) + 8;          // 250 ms covers 2nd-order paths in the large room
-        for (auto& b : src_) b.assign(n, 0.0f);
+        size_t n = 1; while (n < size_t(fs * 0.15)) n <<= 1;   // power of two (a mask, not a divide, per read); 150 ms
+        for (auto& b : src_) b.assign(n, 0.0f);                 // covers the large room's front wall
+        mask_ = n - 1;
         w_ = 0;
         hall_.prepare(fs);
         configured_ = false;
@@ -112,7 +113,7 @@ public:
             float ol = el + tl, orr = er + tr;
             for (int b = 0; b < kBands; ++b) { ol = eqL_[b].process(ol); orr = eqR_[b].process(orr); }
             L[i] = ol; R[i] = orr;
-            if (++w_ >= src_[0].size()) w_ = 0;
+            w_ = (w_ + 1) & mask_;
         }
     }
 
@@ -170,10 +171,9 @@ private:
     }
 
     float read(const std::vector<float>& b, float d) const {
-        const size_t n = b.size();
-        const double p = double(w_) - double(d) + double(n);
-        const size_t i = size_t(p) % n; const float f = float(p - std::floor(p));
-        return b[i] * (1.0f - f) + b[(i + 1) % n] * f;
+        const double p = double(w_) - double(d) + double(mask_ + 1);
+        const size_t ip = size_t(p); const float f = float(p - double(ip));
+        return b[ip & mask_] * (1.0f - f) + b[(ip + 1) & mask_] * f;
     }
 
     // Brown & Duda head shadow for the angle between the source and the ear axis (theta, degrees):
@@ -217,7 +217,10 @@ private:
             { const double m = std::sqrt(ax[0] * ax[0] + ax[1] * ax[1] + ax[2] * ax[2]); for (double& v : ax) v /= m; }
             for (int nx = -2; nx <= 2; ++nx) for (int ny = -2; ny <= 2; ++ny) for (int nz = -2; nz <= 2; ++nz) {
                 const int order = std::abs(nx) + std::abs(ny) + std::abs(nz);
-                if (order > 2) continue;
+                // first order only (CPU, 2026-10-20: 7 paths a cab, was 25): the 2nd-order images sat 20-30 dB under
+                // the direct sound, high-passed and scattered -- the Hall tail, which starts 4 ms after the direct
+                // sound, carries that density
+                if (order > 1) continue;
                 // image positions in a shoebox [0,W]x[0,Dp]x[0,H]
                 const double ix = (nx % 2 == 0) ? nx * W + cx : nx * W + (W - cx);
                 const double iy = (ny % 2 == 0) ? ny * Dp + cy : ny * Dp + (Dp - cy);
@@ -248,7 +251,7 @@ private:
                 const double thL = std::acos(std::clamp(std::cos(el * M_PI / 180) * std::sin(-az * M_PI / 180), -1.0, 1.0)) * 180 / M_PI;
                 const double thR = std::acos(std::clamp(std::cos(el * M_PI / 180) * std::sin(az * M_PI / 180), -1.0, 1.0)) * 180 / M_PI;
                 setShadow(p.earL, thL); setShadow(p.earR, thR);
-                if (order <= 1) { setPinna(p.earL, az, el); setPinna(p.earR, az, el); }
+                if (order == 0) { setPinna(p.earL, az, el); setPinna(p.earR, az, el); }   // the direct sound only: on a -12 dB reflection the pinna echoes cost 10 taps an ear for nothing audible
                 // Woodworth ITD, the far ear late: tau = a/c (theta + sin theta), theta = lateral angle
                 const double lat = std::asin(std::clamp(std::cos(el * M_PI / 180) * std::sin(az * M_PI / 180), -1.0, 1.0));
                 const double itd = kHeadR / kC * (std::fabs(lat) + std::sin(std::fabs(lat))) * fs_;
@@ -320,7 +323,7 @@ private:
     double fs_ = 48000.0;
     float dist_ = 1.0f, spread_ = 0.0f; int room_ = Medium;
     bool configured_ = false;
-    std::vector<float> src_[2]; size_t w_ = 0;
+    std::vector<float> src_[2]; size_t w_ = 0, mask_ = 0;
     std::vector<Path> paths_;
     studiorev::FdnHall hall_;
     float lateGain_ = 0.0f, lateDelay_ = 1.0f;
