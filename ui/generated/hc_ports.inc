@@ -75,6 +75,7 @@ static const hc::PortInfo kAmpPorts[] = {
     { 59, "eco", "Engine Quality", 0.0f, 1.0f, 0.0f, 12u, "", kAmp_e59, 2, 4 },
     { 60, "mains", "Mains", 0.0f, 1.0f, 0.0f, 12u, "", kAmp_e60, 2, 4 },
     { 61, "enabled", "Enabled", 0.0f, 1.0f, 1.0f, 2u, "", nullptr, 0, -1 },
+    { 62, "tight", "Tight", 0.0f, 1.0f, 0.0f, 0u, "", nullptr, 0, 0 },
 };
 
 static const hc::FileParam kCabFiles[] = { {"https://rpowell5064.github.io/guitaramp-suite/cab#irfile", "irfile", "Cabinet IR", ".wav", false}, {"https://rpowell5064.github.io/guitaramp-suite/cab#rigs", "rigs", "Saved Rigs", "", true} };
@@ -975,7 +976,7 @@ static const hc::PortInfo kWahPorts[] = {
 };
 
 static const hc::PluginInfo kPlugins[] = {
-    { "amp", "https://rpowell5064.github.io/guitaramp-suite/amp", "https://rpowell5064.github.io/guitaramp-suite/amp#x11ui", kAmpPorts, 58, 62, 63, kAmpFiles, 1, kAmpGroups, 5,
+    { "amp", "https://rpowell5064.github.io/guitaramp-suite/amp", "https://rpowell5064.github.io/guitaramp-suite/amp#x11ui", kAmpPorts, 59, 63, 64, kAmpFiles, 1, kAmpGroups, 5,
       "AMP", "16 amp models · power-amp stage", { hc::Rgb::hex(0x19e0ff), hc::Rgb::hex(0x2a3340), hc::Rgb::hex(0x161b22) } },
     { "cab", "https://rpowell5064.github.io/guitaramp-suite/cab", "https://rpowell5064.github.io/guitaramp-suite/cab#x11ui", kCabPorts, 21, 25, 26, kCabFiles, 2, kCabGroups, 4,
       "CABINET", "cabinet IRs · low / high cut · mix", { hc::Rgb::hex(0x56aaff), hc::Rgb::hex(0x24476b), hc::Rgb::hex(0x14283d) } },

@@ -72,6 +72,18 @@ bool hasComp(int m)
     }
 }
 
+// The high-gain amps that carry a Tight knob (keep in sync with hasTight in amp_plugin.cpp).
+bool hasTight(int m)
+{
+    switch (m) {
+    case kCrunchy: case kGainzilla: case kTangerang: case kBeardo:
+    case kCaliV: case kDiamond: case kTremont:
+        return true;
+    default:
+        return false;
+    }
+}
+
 hc::PanelSpec ampPanel()
 {
     hc::PanelSpec s;
@@ -184,6 +196,7 @@ hc::PanelSpec ampPanel()
         // ── Amp
         { hc::onTab({ "Preamp",
                       { hc::relabel(hc::knob("gain"), gainLabel),
+                        hc::knob("tight", {}, [](V v) { return hasTight(modelOf(v)); }),
                         hc::knob("pl_vol2", {}, is(kPlexi)),
                         hc::toggle("pl_variac", {}, is(kPlexi)),
                         hc::toggle("jcm_sir34", {}, is(kCrunchy)),

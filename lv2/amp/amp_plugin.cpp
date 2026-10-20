@@ -18,6 +18,7 @@
 #include "PowerAmpProcessor.h"
 #include "NoiseGateBlock.h"
 #include "HumNotchComb.h"
+#include "AmpTight.h"
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include <new>
@@ -71,6 +72,12 @@ static const int kModelTube[16] = { 4, 1, 0, 3, 1, 0, 1, 1, 2, 0, 1, 1, 0, 0, 5,
 // so the same makeup levels the standalone Amp (into a cab) exactly like Hex Forge. Distorted amps
 // -> equal RMS, clean amps (Fender/Hiwatt/Vox/Backline) +3 dB perceptual. Verified via amp_amplevel.
 static const float kModelMakeup[16] = { 4.89f, 1.18f, 1.48f, 3.18f, 1.19f, 1.0f, 1.14f, 4.8f, 2.05f, 4.15f, 1.49f, 2.16f, 3.4f, 3.65f, 2.83f, 1.77f };  // [14] Blue Liner: measured 2026-08-28 (hexforge_amplevel −22.0 → the −13 clean parity target; standalone lands −5.2, in family)  // [0] Fender 5.20->4.89 (2026-08-21 tube audit, mirrors hexforge kAmpMakeup): correct 6V6 runs +0.54 dB hotter at the noon anchor. Previously bumped 3.78->5.20 (2026-07-28): the item #28/#25 exact-tonestack re-voice measured ~2.8dB quieter vs NAM than the old heuristic path (nam_compare loudness: old needed x1.38, new needs x1.90) -- this restores the SAME loudness parity the re-voice's own FR-matching work didn't otherwise change; [5] NAM passthrough; [11] Cali V / [12] Diamond Plate scale all modes (per-mode makeup inside the model); [12] measured via amp_amplevel
+
+// Tight (2026-10-20, mirrors hasTight in hf_types.inc / HAS_TIGHT in script-amp.js): the high-gain amps
+// Crunchy, Gainzilla, Tangerang, Beardo BE, Cali V, Diamond Plate, Tremont 15.
+static inline bool hasTight(int m) noexcept {
+    return m == 1 || m == 2 || m == 4 || m == 6 || m == 11 || m == 12 || m == 13;
+}
 
 // ── Component builds (2026-09-23, mirrors Hex Forge v48+) ───────────────────
 // Amps that have a schematic-exact twin. Keep in sync with HAS_COMP in script-amp.js.
@@ -198,6 +205,7 @@ enum AmpPorts {
     P_ENABLED,                                             // lv2:designation lv2:enabled — the host's block enable,
                                                            // INVERTED vs Bypass (1 = on).  Placed BEFORE the atoms:
                                                            // mod-host breaks if control ports follow them.
+    P_TIGHT,                                               // 2026-10-20 (mv73): Tight on the high-gain amps (mirrors Hex Forge amp_tight; 0 = off)
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,                                               // KosmOS: kx:Reset trigger
 #endif
@@ -235,6 +243,7 @@ struct AmpPlugin {
 
     AmpBlockExtended* amp = nullptr;   // double-buffered algo amp
     PowerAmpProcessor pa;
+    AmpTight          tight[2];        // Tight: pre-clip high-pass + post-PA weight shelf, per channel
     NoiseGateBlock    inGate;          // input gate BEFORE the amp's ~70 dB of gain — kills amplified
                                        // input-noise hiss on high-gain tones (engages only when driven)
     HumNotchComb      inComb[2];       // 60 Hz hum comb, also pre-gain (the user's measured idle floor is
@@ -316,6 +325,7 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     p->amp->setAmpModel(AmpModel::MarshallJCM800);
     p->lastModel = 1;
     p->pa.prepare(rate, kMaxBlock, 2);
+    p->tight[0].prepare(rate); p->tight[1].prepare(rate);
     p->inGate.prepare(rate, kMaxBlock, 2);
     p->inComb[0].prepare(rate);
     p->inComb[1].prepare(rate);
@@ -417,6 +427,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             p->pa.~PowerAmpProcessor();
             new (&p->pa) PowerAmpProcessor{};
             p->pa.prepare(p->rate, kMaxBlock, 2);
+            p->tight[0].prepare(p->rate); p->tight[1].prepare(p->rate);
             p->inGate = NoiseGateBlock{};
             p->inGate.prepare(p->rate, kMaxBlock, 2);
             p->inGate.setParameter("attack",     2.0f);
@@ -659,6 +670,11 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     const bool  driven    = (driveKnob > 0.5f) || mesaLead || evhRed || jcmDriven || rectoHot || mt15Hot;
     p->inGate.setBypass(false);
     p->inGate.setParameter("threshold", driven ? -50.0f : -90.0f);
+    {   // Tight: high-gain amps only; 0 (and every other model) = hard bypass
+        const float t = (hasTight(modelIdx) && p->ctrl[P_TIGHT]) ? *p->ctrl[P_TIGHT] : 0.0f;
+        p->tight[0].setAmount(t); p->tight[1].setAmount(t);
+    }
+    const bool tightOn = p->tight[0].active();
 
     for (uint32_t off = 0; off < n; off += kMaxBlock) {
         const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
@@ -674,8 +690,10 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         }
         p->inGate.process(gbuf, gbuf, len, 2);  // gate the (de-hummed) input in place, then amplify
         float* outs[2] = { outL + off, outR + off };
+        if (tightOn) for (int c = 0; c < 2; ++c) { p->tight[c].update(len); p->tight[c].pre(gbuf[c], len); }
         amp->process(gbuf, outs, len, 2);
         p->pa.process(outs, outs, len, 2);
+        if (tightOn) for (int c = 0; c < 2; ++c) p->tight[c].post(outs[c], len);
         // Voicing constants below are fitted values; the derivation is not public.
         amp->setExternalSag(p->pa.getSagEnvNorm());
     }

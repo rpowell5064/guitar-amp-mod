@@ -65,6 +65,8 @@ function (event, funcs) {
         // Plexiglass (10): Vol II — the 1959's jumpered Normal-channel volume
         icon.find('[rata-role=plexivol2]').toggleClass('mod-hidden', m !== 10);
         icon.find('[rata-role=jcmsir34]').toggleClass('mod-hidden', m !== 1);
+        // Tight: the high-gain amps (keep in sync with hasTight in amp_plugin.cpp)
+        icon.find('[rata-role=tightctl]').toggleClass('mod-hidden', !({ 1: 1, 2: 1, 4: 1, 6: 1, 11: 1, 12: 1, 13: 1 })[m]);
         // For Sunn the shared Gain knob IS the Normal-channel volume; for the Plexi it's Vol I.
         icon.find('[rata-role=gainlabel]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (nam ? 'Output' : (m === 0 || m === 8 ? 'Volume' : 'Gain'))));
         // Cali V (11): 9-mode channel switcher + 5-band graphic EQ
