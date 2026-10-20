@@ -24,6 +24,14 @@
 // absorb like a furnished room, the 2nd-order images are halved and the tail is trimmed kTailTrim below
 // the diffuse-field level -- the cab leads by ~8-12 dB at 1 m and the room grows with Stand At.
 //
+// TONE-NEUTRAL (2026-10-20, the user: "listen makes the mids go away"). Mirror-perfect first reflections
+// (floor, ceiling, back and side walls) are coherent copies of the cab; together they dug 5-10 dB out of
+// 160-315 Hz (the guitar's body) and the bare head model took 5 dB off the top (a headphone is tuned so a
+// source dead ahead reads flat). So each reflection passes a short Schroeder all-pass (a furnished wall
+// scatters, it does not mirror) and an 8-band octave EQ, solved at configure from the render's own
+// response, holds the octave balance of what was played: Listen moves the cab into a room, it does not
+// re-EQ the rig. The fine comb inside each octave (the room's signature) is kept.
+//
 // The head is the Brown & Duda structural model (IEEE Trans. Speech Audio Proc. 6(5), 1998): a
 // spherical head (interaural delay by Woodworth's formula, a one-pole/one-zero head-shadow filter per
 // ear whose zero moves with the angle of incidence) plus their five-echo pinna model for elevation.
@@ -36,9 +44,11 @@
 // Input: the chain's stereo output (two cabs at +-az if it differs L/R, one cab dead ahead if mono).
 // Output: binaural stereo. Off = not called.
 #include <algorithm>
+#include <complex>
 #include <cmath>
 #include <vector>
 #include "StudioReverbs.h"
+#include "BiquadFilter.h"
 
 class StageListener {
 public:
@@ -82,7 +92,15 @@ public:
                 const float x = read(src_[p.src], p.delay);
                 // walls (per-bounce absorption LP) and the cone's off-axis roll-off, folded into one pole
                 p.lp += p.lpA * (x - p.lp);
-                const float s = p.lp * p.gain;
+                float s = p.lp * p.gain;
+                if (p.order > 0) {   // no body in the reflections: the coherent low-mid comb is what hollowed the tone
+                    p.hp1 += hpA_ * (s - p.hp1); s -= p.hp1;
+                    p.hp2 += hpA_ * (s - p.hp2); s -= p.hp2;
+                }
+                if (p.apD > 0) {   // the wall's scatter: (-g + z^-D) / (1 - g z^-D)
+                    const float dl = p.ap[(p.apW - p.apD) & 255], y = -p.apG * s + dl;
+                    p.ap[p.apW] = s + p.apG * y; p.apW = (p.apW + 1) & 255; s = y;
+                }
                 // the head: each ear has its own delay (ITD) and shadow filter
                 p.earL.push(s); p.earR.push(s);
                 el += p.earL.out(p.itdL); er += p.earR.out(p.itdR);
@@ -91,7 +109,9 @@ public:
             float tl, tr;
             hall_.process(read(src_[0], lateDelay_), read(src_[1], lateDelay_), tl, tr);
             tl *= lateGain_; tr *= lateGain_;
-            L[i] = el + tl; R[i] = er + tr;
+            float ol = el + tl, orr = er + tr;
+            for (int b = 0; b < kBands; ++b) { ol = eqL_[b].process(ol); orr = eqR_[b].process(orr); }
+            L[i] = ol; R[i] = orr;
             if (++w_ >= src_[0].size()) w_ = 0;
         }
     }
@@ -122,7 +142,32 @@ private:
             const float y = a0 * x + a1 * xz - b1 * z; xz = x; z = y; return y;
         }
     };
-    struct Path { int src = 0; float delay = 0, gain = 0, lpA = 1, lp = 0, itdL = 0, itdR = 0, az = 0, el = 0, fc = 0; int order = 0; Ear earL, earR; };
+    struct Path { int src = 0; float delay = 0, gain = 0, lpA = 1, lp = 0, itdL = 0, itdR = 0, az = 0, el = 0, fc = 0; int order = 0; Ear earL, earR;
+                  float ap[256] = {}; int apD = 0, apW = 0; float apG = 0.0f; float hp1 = 0.0f, hp2 = 0.0f; };
+    static constexpr int kBands = 8;                   // octave (a half-octave EQ chased the fine comb and did no better)
+    static constexpr double kBandHz[kBands] = { 63, 125, 250, 500, 1000, 2000, 4000, 8000 };
+    static constexpr double kBandQ = 1.41;             // octave bandwidth
+    static constexpr double kReflHpHz = 300.0;         // reflections carry no body: 2 x one-pole high-pass
+
+    // the complex response of one path at w (rad/sample) into the LEFT ear: wall/cone low-pass, scatter
+    // all-pass, travel delay, interaural delay, pinna echoes, head shadow -- the same terms process() runs
+    std::complex<double> pathResp(const Path& p, double w) const {
+        using C = std::complex<double>;
+        const C z1 = std::polar(1.0, -w);
+        const double a = 1.0 - p.lpA;
+        C h = double(p.lpA) / (1.0 - a * z1) * double(p.gain);
+        if (p.order > 0) { const double ah = 1.0 - double(hpA_); const C hp = ah * (1.0 - z1) / (1.0 - ah * z1); h *= hp * hp; }
+        auto lin = [&](double d) { const double f = d - std::floor(d); return (1.0 - f) + f * z1; };   // the reads' linear interpolation
+        h *= lin(p.delay) * lin(p.itdL);
+        if (p.apD > 0) { const C zd = std::polar(1.0, -w * p.apD); h *= (-double(p.apG) + zd) / (1.0 - double(p.apG) * zd); }
+        h *= std::polar(1.0, -w * (double(p.delay) + double(p.itdL)));
+        C pin = 1.0; for (int k = 0; k < 5; ++k) if (p.earL.pr[k] != 0.0f) pin += double(p.earL.pr[k]) * std::polar(1.0, -w * p.earL.pd[k]);
+        return h * pin * (double(p.earL.a0) + double(p.earL.a1) * z1) / (1.0 + double(p.earL.b1) * z1);
+    }
+    static double peakPow(const BiquadCoeffs& c, double w) {
+        const std::complex<double> z1 = std::polar(1.0, -w), z2 = z1 * z1;
+        return std::norm((c.b0 + c.b1 * z1 + c.b2 * z2) / (1.0 + c.a1 * z1 + c.a2 * z2));
+    }
 
     float read(const std::vector<float>& b, float d) const {
         const size_t n = b.size();
@@ -162,6 +207,7 @@ private:
         // listener: dist_ in front, ears 1.6 m up
         const double cy = 0.35, cz = 0.5, ly = cy + dist_, lz = 1.6;
         paths_.clear();
+        hpA_ = float(1.0 - std::exp(-2 * M_PI * kReflHpHz / fs_));
         const int nsrc = spread_ > 0.5f ? 2 : 1;
         for (int s = 0; s < nsrc; ++s) {
             // two cabs side by side 1.2 m apart when the rig is stereo (the spread sets their separation)
@@ -207,6 +253,10 @@ private:
                 const double lat = std::asin(std::clamp(std::cos(el * M_PI / 180) * std::sin(az * M_PI / 180), -1.0, 1.0));
                 const double itd = kHeadR / kC * (std::fabs(lat) + std::sin(std::fabs(lat))) * fs_;
                 p.itdL = float(lat > 0 ? itd : 0.0); p.itdR = float(lat < 0 ? itd : 0.0);
+                if (order >= 1) {   // incommensurate 1.4-4.9 ms scatter per reflection
+                    static const int kApD[8] = { 67, 89, 113, 139, 163, 191, 211, 233 };
+                    p.apD = std::min(250, int(kApD[paths_.size() % 8] * fs_ / 48000.0)); p.apG = 0.6f;
+                }
                 paths_.push_back(p);
             }
         }
@@ -228,27 +278,38 @@ private:
         hall_.set(float(rt60 * 1.18), 0.3f, 0.25f, 0.5f, 1.0f);
         lateGain_ = float(0.5 * kTailTrim * rRatio / std::sqrt(0.205 + 0.098 * rt60 * 1.18));
         (void)mfp;
-        // unity loudness: the render carries the whole room's energy (25 paths + the tail), so scale it back to
-        // the energy of the signal it was given -- Distance and Room change the balance, never the level
-        // The early paths are COHERENT: near the cab they add in pressure, not power (an energy sum read 4 dB
-        // quiet once the cab led the room), so take the power of their summed response over the guitar's band
-        // (100 Hz-3 kHz log-spaced, each path's delay and wall/cone low-pass) plus the tail's energy. A stereo
-        // pair is summed with the SAME signal in both cabs: the chain's two sides are nearly identical (mono
-        // amp + cab), and two cabs playing one signal add in pressure too (+4-5 dB louder than dry otherwise).
-        double e = 0.0;
-        { int nf = 0;
-          for (double f = 100.0; f <= 3000.0; f *= 1.15, ++nf) {
-              const double w = 2 * M_PI * f / fs_; double re = 0, im = 0;
-              for (const Path& p : paths_) {
-                  const double a = 1.0 - p.lpA, hr = p.lpA * (1.0 - a * std::cos(w)), hi = -p.lpA * a * std::sin(w),
-                               den = 1.0 - 2.0 * a * std::cos(w) + a * a;   // one-pole lpA / (1 - a z^-1)
-                  const double mr = hr / den * p.gain, mi = hi / den * p.gain, ph = -w * p.delay;
-                  re += mr * std::cos(ph) - mi * std::sin(ph); im += mr * std::sin(ph) + mi * std::cos(ph);
-              }
-              e += re * re + im * im;
-          }
-          e /= double(nf); }
-        e += 0.25 * kTailTrim * kTailTrim * rRatio * rRatio;   // the tail's level (see the Hall level above)
+        // TONE-NEUTRAL + unity loudness. P[b] = the power of the summed early response (every path of every
+        // cab fed the same signal: the chain's two sides are near-identical, and coherent paths add in pressure)
+        // averaged over octave b. The EQ divides each octave back to the 250 Hz-2 kHz reference (iterated: the
+        // octave peaks overlap), then one gain puts reference + tail at the input's level.
+        constexpr int kPts = 5;
+        double P[kBands], wpt[kBands][kPts];
+        for (int b = 0; b < kBands; ++b) {
+            P[b] = 0.0;
+            for (int k = 0; k < kPts; ++k) {
+                const double f = std::min(kBandHz[b] * std::pow(2.0, (k - (kPts - 1) * 0.5) / (kPts - 1)), fs_ * 0.45);
+                wpt[b][k] = 2 * M_PI * f / fs_;
+                std::complex<double> h = 0.0; for (const Path& p : paths_) h += pathResp(p, wpt[b][k]);
+                P[b] += std::norm(h) / kPts;
+            }
+        }
+        const double ref = std::pow(P[2] * P[3] * P[4] * P[5], 0.25);   // 250 Hz-2 kHz
+        double gdB[kBands]; for (int b = 0; b < kBands; ++b) gdB[b] = std::clamp(-10.0 * std::log10(P[b] / ref), -9.0, 9.0);
+        BiquadCoeffs co[kBands];
+        for (int it = 0; it < 4; ++it) {
+            for (int b = 0; b < kBands; ++b) co[b] = Filters::peaking(kBandHz[b], gdB[b], kBandQ, fs_);
+            for (int b = 0; b < kBands; ++b) {
+                double q = 0.0;
+                for (int k = 0; k < kPts; ++k) { double g = 1.0; for (int c = 0; c < kBands; ++c) g *= peakPow(co[c], wpt[b][k]); q += g / kPts; }
+                gdB[b] = std::clamp(gdB[b] - 0.8 * 10.0 * std::log10(q * P[b] / ref), -9.0, 9.0);
+            }
+        }
+        for (int b = 0; b < kBands; ++b) {
+            co[b] = Filters::peaking(kBandHz[b], gdB[b], kBandQ, fs_);
+            eqL_[b].setCoeffs(co[b]); eqR_[b].setCoeffs(co[b]); eqL_[b].reset(); eqR_[b].reset();
+            eqDb_[b] = float(gdB[b]);
+        }
+        const double e = ref + 0.25 * kTailTrim * kTailTrim * rRatio * rRatio;   // the tail's level (see the Hall level above)
         const float og = float(1.0 / std::sqrt(std::max(e, 1e-6)));
         for (Path& p : paths_) p.gain *= og;
         lateGain_ *= og;
@@ -263,4 +324,8 @@ private:
     std::vector<Path> paths_;
     studiorev::FdnHall hall_;
     float lateGain_ = 0.0f, lateDelay_ = 1.0f;
+    BiquadFilter eqL_[kBands], eqR_[kBands]; float eqDb_[kBands] = {};
+    float hpA_ = 0.04f;
+public:
+    float eqDb(int b) const { return eqDb_[b]; }   // the lab check prints the neutralising EQ
 };
