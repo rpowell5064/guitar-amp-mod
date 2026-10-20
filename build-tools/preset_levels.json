@@ -56,13 +56,13 @@
  },
  "Cardinal Lead": {
   "idx": 15,
-  "peak": -7.63,
-  "rms": -18.92
+  "peak": -6.53,
+  "rms": -18.15
  },
  "Cardinal Rhythm": {
   "idx": 14,
-  "peak": -8.59,
-  "rms": -20.37
+  "peak": -8.11,
+  "rms": -18.25
  },
  "Castaway Groove": {
   "idx": 51,
@@ -121,8 +121,8 @@
  },
  "Frayed Justice": {
   "idx": 68,
-  "peak": -6.11,
-  "rms": -20.63
+  "peak": -5.61,
+  "rms": -17.85
  },
  "Fridge Grind": {
   "idx": 73,
@@ -236,8 +236,8 @@
  },
  "Marionette Master": {
   "idx": 52,
-  "peak": -6.86,
-  "rms": -20.91
+  "peak": -4.98,
+  "rms": -18.1
  },
  "Mauve Haze": {
   "idx": 20,
@@ -351,8 +351,8 @@
  },
  "Spectrum Lead": {
   "idx": 54,
-  "peak": -5.83,
-  "rms": -17.86
+  "peak": -4.38,
+  "rms": -16.2
  },
  "Spectrum Rhythm": {
   "idx": 53,

@@ -92,7 +92,7 @@ private:
     // no service-level sensitivity, so whether the real front end is padded or the
     // reference amp simply runs a lower Volume 1 cannot be settled from the sheet.
     // Without it a −58 dBFS rig hum floor rails the channel at 60 Hz.
-    float inVolts_    = 0.0011f;  // 2026-10-05: clean-up point set to the real ch3 (capture [18dBu]: 11 % THD at 0.39 mV jack, 49 % at 1.56 mV, saturated from ~6 mV); 0.003 cleaned up ~9 dB later. The sheet-faithful cascade is ~40 dB more sensitive than the real amp at microvolt inputs; this constant carries that gap (lab reports/bass-ab-2026-10-05/markv-cleanup.txt, markv-volts-ladder.txt).
+    float inVolts_    = 0.0070f;  // 2026-10-19: +16 dB (was 0.0011). Measured on the clipping KNEE at the device scale (capture fed at refgain -12), the 0.0011 twin reached 30 % THD @1 kHz ~22 dB later than the real ch3 and stayed near-clean on low notes at playing level (user: "not enough gain"). 0.0070 puts the knee ~6 dB short of that capture, which reads hot (11 % THD at -72 dBFS), pending a second reference. Earlier: 2026-10-05: clean-up point set to the real ch3 (capture [18dBu]: 11 % THD at 0.39 mV jack, 49 % at 1.56 mV, saturated from ~6 mV); 0.003 cleaned up ~9 dB later. The sheet-faithful cascade is ~40 dB more sensitive than the real amp at microvolt inputs; this constant carries that gap (lab reports/bass-ab-2026-10-05/markv-cleanup.txt, markv-volts-ladder.txt).
     // Channel-3 pre-gain tone stack (fit20..fit26, 2026-10-04): the drawing's kMesaMarkVCh3 values {C1 1n, C2 100n,
     // C3 47n, treble 200k, bass 250k, mid 10k, slope 100k} exposed as hooks — every cab-less capture shows a 3 dB
     // hole at 315 Hz and a 110 Hz distortion deficit that no other hook moves. Defaults = the drawing.
