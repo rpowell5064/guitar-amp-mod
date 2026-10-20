@@ -344,6 +344,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     if (rbOn) {
         int rbModel = clampi(*p->ports[HF_RB_AMP], 0, kAmpModelMax);
         const bool rbNamSel = (rbModel == kAmpNamIdx);   // Neural on the B side (v39)
+        p->tight2.setAmount(hasTight(rbModel) ? *p->ports[HF_RB_TIGHT] : 0.0f);   // Amp 2 Tight (v53)
         const bool rbEco = *p->ports[HF_RB_ECO] > 0.5f;
         // The Component Model toggle is global: Amp 2 gets the schematic-exact
         // build too (2026-09-13 — it had been left on the shipped models, so the
@@ -671,6 +672,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                         : (ampAlgo == kFriedmanIdx)      ? *p->ports[HF_AMP_FR_CHANNEL]
                         : (ampAlgo == kMesaIdx)          ? *p->ports[HF_AMP_MV_MODE]
                         : (ampAlgo == kRectoIdx)         ? *p->ports[HF_AMP_RC_MODE] : 0.0f;
+    p->tight.setAmount(hasTight(ampModel) ? *p->ports[HF_AMP_TIGHT] : 0.0f);   // Tight (v53): high-gain amps only
     const float ampMakeup = kAmpMakeup[ampAlgo]
                           * (compOn ? compParity(ampAlgo, *p->ports[HF_AMP_GAIN],
                                                  *p->ports[HF_AMP_MASTER], compSel) : 1.0f);
@@ -1069,8 +1071,11 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 p->amp2Nam->processBuffer(p->rigBBuf, p->monoOut, len);
                 for (int i=0;i<len;++i) p->rigBBuf[i] = p->monoOut[i] * og;
             } else {
+            const bool tight2On = p->tight2.active();
+            if (tight2On) { p->tight2.update(len); p->tight2.pre(p->rigBBuf, len); }
             p->amp2->process(io1, io1, len, 1);
             p->pa2.process(io1, io1, len, 1);
+            if (tight2On) p->tight2.post(p->rigBBuf, len);
             p->amp2->setExternalSag(p->pa2.getSagEnvNorm());
             const int rbAlgo = (p->lastAmp2Model < 0) ? 1 : ((p->lastAmp2Model == 5) ? 1 : p->lastAmp2Model);
             const float sel2 = (rbAlgo == 2 || rbAlgo == 4) ? *p->ports[HF_RB_CHANNEL]
@@ -1167,6 +1172,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                     // harmonics that the high-gain front-ends then amplified into a fuzzy/dark/woolly
                     // voice. Removed. A hot upstream fuzz is handled by preset gain-staging (clean
                     // amps + tamed fuzz volume), not by pre-distorting every amp's input.
+                    const bool tightOn = p->tight.active();
                     if (ampModel == kAmpNamIdx && p->ampNam && p->ampNam->isLoaded()) {
                         // Neural amp: mono capture -> both; NAM Gain (input drive) + NAM Level (output), dB; no power amp.
                         const float ig=std::pow(10.0f,*p->ports[HF_AMP_NAM_GAIN]/20.0f);
@@ -1179,8 +1185,10 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                         // so run the 4x-oversampled cascade + PA ONCE and mirror — the amp is
                         // the heaviest internal DSP and this halves it. Bit-identical output.
                         float* io1[1] = { L };
+                        if (tightOn) { p->tight.update(len); p->tight.pre(L, len); }
                         amp->process(io1, io1, len, 1);
                         p->pa.process(io1, io1, len, 1);
+                        if (tightOn) p->tight.post(L, len);
                         amp->setExternalSag(p->pa.getSagEnvNorm()); // item #22, 2026-07-28
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) L[i]*=ampMakeup;
                         for (int i=0;i<len;++i) R[i]=L[i];
@@ -1200,8 +1208,10 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                         // delay or reverb) is untouched.
                         for (int i=0;i<len;++i) p->mono[i] = 0.5f*(L[i]+R[i]);
                         float* io1[1] = { p->mono };
+                        if (tightOn) { p->tight.update(len); p->tight.pre(p->mono, len); }
                         amp->process(io1, io1, len, 1);
                         p->pa.process(io1, io1, len, 1);
+                        if (tightOn) p->tight.post(p->mono, len);
                         amp->setExternalSag(p->pa.getSagEnvNorm());
                         if (ampMakeup != 1.0f) for (int i=0;i<len;++i) p->mono[i]*=ampMakeup;
                         for (int i=0;i<len;++i) { L[i]=p->mono[i]; R[i]=p->mono[i]; }
@@ -1551,6 +1561,8 @@ static bool hfEngineInit(HexForge* p, double rate) {
     p->amp->prepare(rate, kMaxBlock, 2);
     p->amp->setAmpModel(kAmpMap[1]);   // default Crunchy McCrunchFace
     p->pa.prepare(rate, kMaxBlock, 2);
+    p->tight.prepare(rate);
+    p->tight2.prepare(rate);
     p->cab.prepare(rate, kMaxBlock, 2);
     p->cab.setIR(CabModels::generate("@factory", rate));   // enriched Factory Cab (2026-07-14)
     p->modfx.prepare(rate, kMaxBlock, 2);

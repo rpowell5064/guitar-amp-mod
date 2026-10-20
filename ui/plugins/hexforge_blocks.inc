@@ -489,7 +489,10 @@ PanelSpec amp(bool two)
     if (two)
         top.push_back(hc::toggle("rb_enable", "Amp 2"));
     top.push_back(hc::wide(hc::select(ms, two ? "Amp" : "Model"), 360));
+    // Tight (v53): the seven high-gain amps -- mirrors hasTight() in hf_types.inc
+    auto tight = [m](V v) { const int k = m(v); return k == 1 || k == 2 || k == 4 || k == 6 || k == 11 || k == 12 || k == 13; };
     std::vector<Control> face = { hc::relabel(hc::knob(p + "gain"), gainLabel),
+                                  hc::knob(p + "tight", "Tight", tight),
                                   hc::knob(p + "pl_vol2", "Vol II", is(10)),
                                   hc::toggle(p + "pl_variac", "Variac", is(10)),
                                   hc::toggle(p + "sir34", "#34 Mod", is(1)) };

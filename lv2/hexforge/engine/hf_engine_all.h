@@ -47,6 +47,7 @@
 #include "PlateReverbBlock.h"
 #include "StageFeedback.h"
 #include "StageListener.h"
+#include "AmpTight.h"
 #include "WahBlock.h"
 #include "OctaveBlock.h"
 #include "NailDistortion.h"

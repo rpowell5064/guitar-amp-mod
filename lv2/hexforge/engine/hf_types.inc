@@ -106,6 +106,9 @@ static constexpr int kSvtIdx      = 14;   // Blue Liner (Ampeg SVT — bass)
 // own power section unconditionally (the shared PA is force-bypassed, as for the Sunn)
 // and hasComponentModel() stays false for it.
 static constexpr int kAd200Idx    = 15;   // Citrus 200 (Orange AD200B Mark III — bass)
+// Tight (amp_tight / rb_tight) rides the HIGH-GAIN amps only: Crunchy (JCM800), Gainzilla (5150),
+// Tangerang (Rockerverb), Beardo BE, Cali V, Diamond Plate, Tremont 15. Elsewhere it is inert.
+static inline bool hasTight(int m) { return m == 1 || m == 2 || m == 4 || m == 6 || m == 11 || m == 12 || m == 13; }
 static constexpr int kAmpModelMax = kAd200Idx;   // the amp dropdown's clamp ceiling
 // rb_cab enum: 0-5 = the guitar sentinels, 6 = "No Cab (Direct)" (FROZEN — stored
 // presets reference it), 7-10 = the bass cabs (2026-08-28, appended AFTER No Cab
@@ -640,6 +643,7 @@ struct HexForge {
     AmpBlockExtended* pendAmp2 = nullptr;
     int               pendAmp2Model = -1;
     PowerAmpProcessor pa2;                            // Rig B power amp
+    AmpTight          tight2;                         // Rig B Tight (rb_tight)
     CabinetBlock      cab2;                           // Rig B cab (built-ins only)
     int    lastAmp2Model = -1;
     bool   lastAmp2Eco   = false;
@@ -653,6 +657,7 @@ struct HexForge {
     double cpuRigB       = 0.0;                       // Rig B CPU meter accumulator (whole B path)
     double cpuCab2       = 0.0;                       // Cab 2 slice of cpuRigB (UI shows Amp 2 = rigb - cab2)
     PowerAmpProcessor pa;
+    AmpTight          tight;                          // amp_tight: lows out of the clip, weight back after
     CabinetBlock      cab;
     ModulationBlock   modfx;
     DelayBlock        delay;

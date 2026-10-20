@@ -726,6 +726,9 @@ function (event, funcs) {
             mast: !(m === 0 || m === 8 || m === 10 || m === 14 || rvClean)
         };
     }
+    // Tight (v53): Crunchy, Gainzilla, Tangerang, Beardo BE, Cali V, Diamond Plate, Tremont 15
+    // -- mirrors hasTight() in hf_types.inc.
+    function hasTight(m) { return m === 1 || m === 2 || m === 4 || m === 6 || m === 11 || m === 12 || m === 13; }
     function applyAmp(icon) {
         var m = icon.data('hf_amp_m'); if (m == null) m = 1;
         var a = icon.data('hf_amp_auto'); if (a == null) a = true;
@@ -745,6 +748,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-comp', m === 0 || m === 1 || m === 2 || m === 4 || m === 6 || m === 8 || m === 10 || m === 11 || m === 12 || m === 14);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
+        show(icon, 'amp', '.c-amp-tight', hasTight(m));   // Tight: the seven high-gain amps
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5 && m !== 15);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && m !== 15 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
@@ -786,6 +790,7 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-mast', rr.mast);
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
         show(icon, 'amp2', '.c-rb-jcm', m === 1);
+        show(icon, 'amp2', '.c-rb-tight', hasTight(m));
         show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5 && m !== 15);
         show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && m !== 15 && !a);
         var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13 || m === 14);
