@@ -36,7 +36,11 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // FRFR-10 room voice: de-close-mic EQ post-mono-sum (below), plus the
     // doubler and airFeel are auto-muted (mono speaker; the real room supplies
     // the reflections a close-mic IR lacks).
-    const bool fvOn = p->ports[HF_OUT_VOICE] && *p->ports[HF_OUT_VOICE] > 0.5f;
+    // STAGE listener (2026-10-20): the cab heard standing in front of it (headphones). It REPLACES the FRFR
+    // voice while on (that one is for a speaker in the room) and turns the cab room, doubler and Air Feel off
+    // (the listener renders the real room; the others would double it).
+    const bool stageListen = p->ports[HF_STAGE_LISTEN] && *p->ports[HF_STAGE_LISTEN] > 0.5f;
+    const bool fvOn = !stageListen && p->ports[HF_OUT_VOICE] && *p->ports[HF_OUT_VOICE] > 0.5f;
 
     // ── Preset engine: detect live edits, run commands ──
     p->sampleClock += static_cast<int64_t>(n);   // for double-tap timing
@@ -96,6 +100,28 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     float* inR  = p->ports[HF_IN_R];
     float* outL = p->ports[HF_OUT_L];
     float* outR = p->ports[HF_OUT_R];
+
+    // ── STAGE feedback (2026-10-20): the loud amp driving the strings. The raw input + the string's forced
+    // vibration is built in a plugin-owned buffer and EVERYTHING downstream reads it (tuner, calibration,
+    // both gate keys, the chain): to the rig it is the guitar's signal. The speaker side is fed after the
+    // mono sum below; the loop latency is the acoustic delay + one period. Off = the host buffers, untouched.
+    {
+        const float amt = p->ports[HF_STAGE_FB] ? *p->ports[HF_STAGE_FB] : 0.0f;
+        if (amt > 0.0005f && inL && inR && n <= p->stageInL.size()) {
+            if (!p->stageFbWas) { p->stageFb.reset(); p->stageFbWas = true; }
+            p->stageFb.setAmount(amt);
+            p->stageFb.setDistance(p->ports[HF_STAGE_FBDIST] ? *p->ports[HF_STAGE_FBDIST] : 1.0f);
+            p->stageFb.setSustain(p->ports[HF_STAGE_FBSUS] ? *p->ports[HF_STAGE_FBSUS] : 0.5f);
+            for (uint32_t i = 0; i < n; ++i) {
+                const float x = 0.5f * (inL[i] + inR[i]);
+                const float s = p->stageFb.process(x) - x;
+                p->stageInL[i] = inL[i] + s; p->stageInR[i] = inR[i] + s;
+            }
+            inL = p->stageInL.data(); inR = p->stageInR.data();
+        } else {
+            p->stageFbWas = false;
+        }
+    }
 
     // ── Strobe tuner: detect the dry input pitch when engaged; publish note + cents ──
     const bool tunerOn   = p->ports[HF_TUNER_ON]   && *p->ports[HF_TUNER_ON]   > 0.5f;
@@ -444,7 +470,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 p->pa2.setTubeType(static_cast<TubeType>(clampi(*p->ports[HF_RB_PAMP_TUBE], 0, 5)));   // 5 = 6550 (2026-08-28 Blue Liner)
             }
             p->pa2.setParameter("resonance", *p->ports[HF_RB_PAMP_RESONANCE]);
-            p->pa2.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_RB_PAMP_AIRFEEL]);   // FRFR voice: air off
+            p->pa2.setParameter("airFeel",   (fvOn || stageListen) ? 0.0f : *p->ports[HF_RB_PAMP_AIRFEEL]);   // FRFR voice: air off
             p->pa2.setParameter("coupling",  *p->ports[HF_RB_PAMP_COUPL]);
             {   // per-amp voicing rows stay authoritative for the deep internals
                 const auto d2 = PowerAmpProcessor::getDefaultsForModel(kCanonical[rbAlgo]);
@@ -470,7 +496,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             p->cab2.setParameter("mix",       *p->ports[HF_RB_CABMIX]);
             p->cab2.setParameter("micpos",    *p->ports[HF_RB_CABMICPOS]);
             p->cab2.setParameter("micdist",   *p->ports[HF_RB_CABMICDIST]);
-            p->cab2.setParameter("roomon",    *p->ports[HF_RB_CABROOMON]);
+            p->cab2.setParameter("roomon",    stageListen ? 0.0f : *p->ports[HF_RB_CABROOMON]);
             p->cab2.setParameter("roommix",   *p->ports[HF_RB_CABROOMMIX]);
             p->cab2.setParameter("roomamt",   *p->ports[HF_RB_CABROOMAMT]);
             p->cab2.setParameter("roomdense", *p->ports[HF_RB_CABROOMDENSE]);
@@ -577,7 +603,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->pa.setParameter("tracklo", d.trackLo); p->pa.setParameter("trackhi", d.trackHi);   // post-PA gain-level tracking (the reference rig)
         trackingSet = true;
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
-        p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
+        p->pa.setParameter("airFeel",   (fvOn || stageListen) ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
         desiredTube = kAmpTube[ampAlgo];
     } else {
         p->pa.setParameter("presence",  *p->ports[HF_AMP_PAMP_PRESENCE]);
@@ -586,7 +612,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         p->pa.setParameter("master",    *p->ports[HF_AMP_PAMP_MASTER]);
         p->pa.setParameter("nfb",       *p->ports[HF_AMP_PAMP_NFB]);
         p->pa.setParameter("resonance", *p->ports[HF_AMP_PAMP_RESONANCE]);
-        p->pa.setParameter("airFeel",   fvOn ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
+        p->pa.setParameter("airFeel",   (fvOn || stageListen) ? 0.0f : *p->ports[HF_AMP_PAMP_AIRFEEL]);   // FRFR voice: real room supplies the air
         desiredTube = clampi(*p->ports[HF_AMP_PAMP_TUBE], 0, 5);   // 5 = 6550 (2026-08-28 Blue Liner)
     }
     // The tracking law belongs to the AMP, not to the PA voicing, but it used to
@@ -655,7 +681,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->cab.setParameter("mix",       *p->ports[HF_CAB_MIX]);
     p->cab.setParameter("micpos",    *p->ports[HF_CAB_MICPOS]);   // mic placement (2026-07-14; 0/0 = as-voiced)
     p->cab.setParameter("micdist",   *p->ports[HF_CAB_MICDIST]);
-    p->cab.setParameter("roomon",    *p->ports[HF_CAB_ROOMON]);   // room ambience (2026-07-14; off = bit-identical)
+    p->cab.setParameter("roomon",    stageListen ? 0.0f : *p->ports[HF_CAB_ROOMON]);   // the Stage listener renders the real room   // room ambience (2026-07-14; off = bit-identical)
     p->cab.setParameter("roommix",   *p->ports[HF_CAB_ROOMMIX]);
     p->cab.setParameter("roomamt",   *p->ports[HF_CAB_ROOMAMT]);
     p->cab.setParameter("voice",     *p->ports[HF_CAB_VOICE]);   // Room / Studio (recorded chain)
@@ -1284,7 +1310,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // lag, so pitch deviation drifts through ZERO (peaks ±4-9 cents, mean 0) and the
     // wander is NON-periodic (three incommensurate slow sines ≈ human sloppiness,
     // dominant periods 4-21 s — far below any chorus LFO). Deterministic, no RNG.
-    if (p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()
+    if (!stageListen && p->ports[HF_OUT_DOUBLER] && *p->ports[HF_OUT_DOUBLER] > 0.5f && !p->dblBuf.empty()
         && !fvOn) {   // FRFR voice: doubler auto-muted (one mono speaker would comb the two takes)
         const int len = (int)p->dblBuf.size();
         const bool monoRig = p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f;
@@ -1334,6 +1360,13 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     if (p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f)
         for (uint32_t i = 0; i < n; ++i) { const float mo = 0.5f*(outL[i]+outR[i]); outL[i]=mo; outR[i]=mo; }
 
+    // STAGE feedback: what the speaker is putting into the room this period (the string hears it next) --
+    // after the Output level, as a real speaker plays after the volume control (pre-limiter, pre-listener)
+    if (p->stageFbWas) {
+        const float spkGain = dbToGain(*p->ports[HF_OUT_LEVEL]);
+        for (uint32_t i = 0; i < n; ++i) p->stageFb.feedSample(0.5f * (outL[i] + outR[i]) * spkGain);
+    }
+
     // ── Output Voice: FRFR de-close-mic EQ (2026-08-21) — post-mono-sum, pre-
     // Output. The IRs are close-mic recordings; through a flat speaker in a
     // real room that perspective reads boxy/hyped. Four levers (LAB knobs for
@@ -1358,6 +1391,18 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             outL[i] = p->fvFizz[0].process(p->fvPres[0].process(p->fvProx[0].process(p->fvHP[0].process(outL[i]))));
             outR[i] = p->fvFizz[1].process(p->fvPres[1].process(p->fvProx[1].process(p->fvHP[1].process(outR[i]))));
         }
+    }
+
+    // ── STAGE listener: the player's two ears in front of the cab (post-mono-sum: one cab dead ahead on a
+    // mono rig, two cabs either side on a stereo one), before the Output level and limiter ──
+    if (stageListen) {
+        if (!p->stageLisWas) { p->stageLis.reset(); p->stageLisWas = true; }
+        p->stageLis.setDistance(p->ports[HF_STAGE_LDIST] ? *p->ports[HF_STAGE_LDIST] : 2.0f);
+        p->stageLis.setRoom(p->ports[HF_STAGE_ROOM] ? (int)(*p->ports[HF_STAGE_ROOM] + 0.5f) : 1);
+        p->stageLis.setStereoSpread((p->ports[HF_OUT_MONO] && *p->ports[HF_OUT_MONO] > 0.5f) ? 0.0f : 20.0f);
+        p->stageLis.process(outL, outR, (int)n);
+    } else {
+        p->stageLisWas = false;
     }
 
     // ── Master output level (the "Output" stage — last in the chain) ──
@@ -1543,6 +1588,9 @@ static bool hfEngineInit(HexForge* p, double rate) {
     p->octave2.prepare(rate, kMaxBlock, 2);
     p->eq2.prepare(rate);
     p->dblBuf.assign(size_t(rate * 0.045) + 4, 0.0f);   // doubler: 28 ms base ± 7 ms wander + margin
+    p->stageFb.prepare(rate);
+    p->stageLis.prepare(rate);
+    p->stageInL.assign(8192, 0.0f); p->stageInR.assign(8192, 0.0f);   // a longer period runs with the loop off
     p->dblApA.assign(size_t(rate * 0.0053) + 2, 0.0f);  // mono-blend phase diffusers
     p->dblApB.assign(size_t(rate * 0.0089) + 2, 0.0f);
     psInitDefaults(p);   // Bank 1 / A–D pre-filled (overwritten by hf_restore if state exists)

@@ -791,6 +791,12 @@ struct HexForge {
     // mute-ramp zero point when these flip (OverdriveBlock's accepted pattern).
     bool lastFzEco = false, lastFz2Eco = false, lastNailEco = false, lastNail2Eco = false;
 
+    // Stage layer (2026-10-20): the speaker->string feedback loop and the standing-in-front listener.
+    StageFeedback stageFb;
+    StageListener stageLis;
+    std::vector<float> stageInL, stageInR;   // the raw input + the string (the host input buffer is not ours)
+    bool stageFbWas = false, stageLisWas = false;
+
     // Output doubler (fake double-track): loose-timing tap, three slow wander phases.
     std::vector<float> dblBuf;
     int    dblW = 0;

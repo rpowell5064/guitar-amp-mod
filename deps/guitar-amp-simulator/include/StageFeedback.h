@@ -88,6 +88,7 @@ public:
         return di + s;
     }
 
+    void feedSample(float y) { spk_[spkW_] = y; if (++spkW_ >= spk_.size()) spkW_ = 0; }
     // after the chain ran the block: the speaker's (mono) output
     void feedSpeaker(const float* y, int n) {
         for (int i = 0; i < n; ++i) { spk_[spkW_] = y[i]; if (++spkW_ >= spk_.size()) spkW_ = 0; }

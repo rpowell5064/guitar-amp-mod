@@ -148,7 +148,7 @@ int main(int argc, char** argv) {
     }
     silent(3000);
 
-    StageListener lis; lis.prepare(RATE); lis.setDistance(listen > 0 ? listen : 2.0f); lis.setRoom(room); lis.setStereoSpread(spread);
+    StageListener lis; lis.prepare(RATE); if (getenv("STAGE_RESET")) lis.reset(); lis.setDistance(listen > 0 ? listen : 2.0f); lis.setRoom(room); lis.setStereoSpread(spread);
     std::vector<float> oL(NF), oR(NF);
     StageFeedback fbk; fbk.prepare(RATE); fbk.setAmount(fb); fbk.setDistance(dist); fbk.setSustain(sus);
     std::vector<float> L, R; L.reserve(di.size()); R.reserve(di.size());

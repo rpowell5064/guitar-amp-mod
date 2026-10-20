@@ -45,6 +45,8 @@
 #include "DelayBlock.h"
 #include "DelayFactory.h"
 #include "PlateReverbBlock.h"
+#include "StageFeedback.h"
+#include "StageListener.h"
 #include "WahBlock.h"
 #include "OctaveBlock.h"
 #include "NailDistortion.h"

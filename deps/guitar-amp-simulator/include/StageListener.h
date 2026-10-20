@@ -39,9 +39,17 @@ public:
         for (int i = 0; i < kFdn; ++i) fdn_[i].assign(size_t(fs * 0.08) + 8, 0.0f);
         configured_ = false;
     }
-    void setDistance(float m) { if (m != dist_) { dist_ = std::clamp(m, 0.7f, 6.0f); configured_ = false; } }
-    void setRoom(int r)       { if (r != room_) { room_ = std::clamp(r, 0, 2); configured_ = false; } }
-    void setStereoSpread(float deg) { if (deg != spread_) { spread_ = std::clamp(deg, 0.0f, 45.0f); configured_ = false; } }
+    void reset() {
+        for (auto& b : src_) std::fill(b.begin(), b.end(), 0.0f);
+        for (auto& b : fdn_) std::fill(b.begin(), b.end(), 0.0f);
+        for (auto& z : fdnLp_) z = 0.0f;
+        configured_ = false;   // rebuilds the paths (and their ear filters) on the next block
+    }
+    // compare the CLAMPED value: an out-of-range input must not read as a change on every block (each
+    // reconfigure rebuilds the paths and clears the tail)
+    void setDistance(float m) { m = std::clamp(m, 0.7f, 6.0f); if (m != dist_) { dist_ = m; configured_ = false; } }
+    void setRoom(int r)       { r = std::clamp(r, 0, 2); if (r != room_) { room_ = r; configured_ = false; } }
+    void setStereoSpread(float deg) { deg = std::clamp(deg, 0.0f, 45.0f); if (deg != spread_) { spread_ = deg; configured_ = false; } }
     // introspection for the lab check: per path {delay ms, gain dB, az, el, cone fc Hz, ITD L us, ITD R us, order}
     int pathCount() { if (!configured_) configure(); return int(paths_.size()); }
     void pathInfo(int i, float* o) const {

@@ -117,6 +117,7 @@ static const HfScalePoint kHfSp_claw_pos[] = { { "1", 1.0f }, { "2", 2.0f }, { "
 static const HfScalePoint kHfSp_claw_mode[] = { { "Hiss", 0.0f }, { "Howl", 1.0f }, { "Butterfly", 2.0f }, { "Shortwave", 3.0f } };
 static const HfScalePoint kHfSp_it_mains[] = { { "60 Hz", 0.0f }, { "50 Hz", 1.0f } };
 static const HfScalePoint kHfSp_it_guitar[] = { { "Default", 0.0f }, { "Single Coil", 1.0f }, { "Hot Pickups", 2.0f } };
+static const HfScalePoint kHfSp_stage_room[] = { { "Small", 0.0f }, { "Medium", 1.0f }, { "Large", 2.0f } };
 
 static const HfDesktopParam kHfDesktopParams[] = {
     { 6, "bypass", "Bypass", "Global", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
@@ -620,5 +621,11 @@ static const HfDesktopParam kHfDesktopParams[] = {
     { 504, "it_guitar", "IT Guitar", "Input Trim", 0.0f, 2.0f, 0.0f, "e", HFD_SETTING, kHfSp_it_guitar, int(sizeof(kHfSp_it_guitar)/sizeof(HfScalePoint)) },
     { 505, "amp_palegacy", "Rev 189 Power Stage (retired)", "Amp", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
     { 506, "cpu_claw", "CPU Claw", "CPU", 0.0f, 100.0f, 0.0f, "f", HFD_OUTPUT, nullptr, 0 },
+    { 507, "stage_fb", "Stage Feedback", "", 0.0f, 1.0f, 0.0f, "f", HFD_SETTING, nullptr, 0 },
+    { 508, "stage_fbdist", "Stage Distance", "", 0.3f, 5.0f, 1.0f, "f", HFD_SETTING, nullptr, 0 },
+    { 509, "stage_fbsus", "Stage Sustain", "", 0.0f, 1.0f, 0.5f, "f", HFD_SETTING, nullptr, 0 },
+    { 510, "stage_listen", "Stage Listener", "", 0.0f, 1.0f, 0.0f, "t", HFD_SETTING, nullptr, 0 },
+    { 511, "stage_ldist", "Listener Distance", "", 0.7f, 6.0f, 2.0f, "f", HFD_SETTING, nullptr, 0 },
+    { 512, "stage_room", "Listener Room", "", 0.0f, 2.0f, 1.0f, "e", HFD_SETTING, kHfSp_stage_room, int(sizeof(kHfSp_stage_room)/sizeof(HfScalePoint)) },
 };
 static const int kHfNumDesktopParams = int(sizeof(kHfDesktopParams)/sizeof(kHfDesktopParams[0]));

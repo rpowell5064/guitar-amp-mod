@@ -295,6 +295,7 @@ static const hc::EnumPt kHexforge_e431[] = { {1.0f, "1"}, {2.0f, "2"}, {3.0f, "3
 static const hc::EnumPt kHexforge_e433[] = { {0.0f, "Hiss"}, {1.0f, "Howl"}, {2.0f, "Butterfly"}, {3.0f, "Shortwave"} };
 static const hc::EnumPt kHexforge_e503[] = { {0.0f, "60 Hz"}, {1.0f, "50 Hz"} };
 static const hc::EnumPt kHexforge_e504[] = { {0.0f, "Default"}, {1.0f, "Single Coil"}, {2.0f, "Hot Pickups"} };
+static const hc::EnumPt kHexforge_e512[] = { {0.0f, "Small"}, {1.0f, "Medium"}, {2.0f, "Large"} };
 static const hc::PortInfo kHexforgePorts[] = {
     { 6, "bypass", "Bypass", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 0 },
     { 7, "out_level", "Output Level", -60.0f, 12.0f, -20.0f, 0u, "dB", nullptr, 0, 0 },
@@ -797,6 +798,12 @@ static const hc::PortInfo kHexforgePorts[] = {
     { 504, "it_guitar", "IT Guitar", 0.0f, 2.0f, 0.0f, 12u, "", kHexforge_e504, 3, 23 },
     { 505, "amp_palegacy", "Rev 189 Power Stage (retired)", 0.0f, 1.0f, 0.0f, 34u, "", nullptr, 0, 9 },
     { 506, "cpu_claw", "CPU Claw", 0.0f, 100.0f, 0.0f, 1u, "", nullptr, 0, 47 },
+    { 507, "stage_fb", "Stage Feedback", 0.0f, 1.0f, 0.0f, 0u, "", nullptr, 0, 0 },
+    { 508, "stage_fbdist", "Stage Distance", 0.3f, 5.0f, 1.0f, 0u, "", nullptr, 0, 0 },
+    { 509, "stage_fbsus", "Stage Sustain", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 0 },
+    { 510, "stage_listen", "Stage Listener", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 0 },
+    { 511, "stage_ldist", "Listener Distance", 0.7f, 6.0f, 2.0f, 0u, "", nullptr, 0, 0 },
+    { 512, "stage_room", "Listener Room", 0.0f, 2.0f, 1.0f, 12u, "", kHexforge_e512, 3, 0 },
 };
 
 static const char* const kModfxGroups[] = { "Modulation", "More" };
@@ -980,7 +987,7 @@ static const hc::PluginInfo kPlugins[] = {
       "FUZZ", "", { hc::Rgb::hex(0xff4d9e), hc::Rgb::hex(0x6b2042), hc::Rgb::hex(0x3d1225) } },
     { "gate", "https://rpowell5064.github.io/guitaramp-suite/gate", "https://rpowell5064.github.io/guitaramp-suite/gate#x11ui", kGatePorts, 8, -1, -1, nullptr, 0, kGateGroups, 2,
       "GATE", "noise gate · hysteresis", { hc::Rgb::hex(0x8c9baf), hc::Rgb::hex(0x3a4149), hc::Rgb::hex(0x21252a) } },
-    { "hexforge", "https://rpowell5064.github.io/guitaramp-suite/hexforge", "https://rpowell5064.github.io/guitaramp-suite/hexforge#x11ui", kHexforgePorts, 501, 507, 5, kHexforgeFiles, 12, kHexforgeGroups, 50,
+    { "hexforge", "https://rpowell5064.github.io/guitaramp-suite/hexforge", "https://rpowell5064.github.io/guitaramp-suite/hexforge#x11ui", kHexforgePorts, 507, 513, 5, kHexforgeFiles, 12, kHexforgeGroups, 50,
       "HEX FORGE", "", { hc::Rgb::hex(0x19e0ff), hc::Rgb::hex(0x2a3340), hc::Rgb::hex(0x161b22) } },
     { "modfx", "https://rpowell5064.github.io/guitaramp-suite/modfx", "https://rpowell5064.github.io/guitaramp-suite/modfx#x11ui", kModfxPorts, 9, -1, -1, nullptr, 0, kModfxGroups, 2,
       "MODULATION", "chorus · rotary vibe", { hc::Rgb::hex(0xa56eeb), hc::Rgb::hex(0x452e62), hc::Rgb::hex(0x271a38) } },
