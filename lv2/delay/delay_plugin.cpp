@@ -1,4 +1,5 @@
 #include "lv2_util.h"
+#include "AnagramPortState.h"
 #include "DelayBlock.h"
 #include "DelayFactory.h"
 #include <new>
@@ -48,13 +49,17 @@ struct DelayPlugin {
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
+    AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
 #endif
 };
 
 static LV2_Handle delay_instantiate(const LV2_Descriptor*, double rate,
-                                     const char*, const LV2_Feature* const*) {
+                                     const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) DelayPlugin;
     if (!p) return nullptr;
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
     p->dsp.prepare(rate, 512, 2);
     p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
 #ifdef HEXCHAIN_ANAGRAM
@@ -80,6 +85,18 @@ static void delay_run(LV2_Handle h, uint32_t n) {
             p->lastType = -1;   // re-apply the delay type below
         }
     } else p->resetLatch = false;
+#endif
+#ifdef HEXCHAIN_ANAGRAM
+    {   // Per-type controls, as the modgui (script-delay.js update_type): wow and flutter
+        // on the tape types, the heads on the Echorec, the Seraph's rhythm and modulation,
+        // the EP-3's age.
+        const int t = p->ports[P_TYPE] ? static_cast<int>(*p->ports[P_TYPE] + 0.5f) : 0;
+        p->ui.ui(P_WOW,     t == 1 || t == 2);
+        p->ui.ui(P_FLUTTER, t == 1 || t == 2);
+        p->ui.ui(P_HEADS,   t == 2);
+        for (int q : { P_PATTERN, P_DUCK, P_MODDEP, P_MODRATE }) p->ui.ui(q, t == 3);
+        p->ui.ui(P_AGE,     t == 4);
+    }
 #endif
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.

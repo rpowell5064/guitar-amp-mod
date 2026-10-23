@@ -1,4 +1,5 @@
 #include "lv2_util.h"
+#include "AnagramPortState.h"
 #include "ModulationBlock.h"
 #include "ModulationFactory.h"
 #include "UniVibeEffect.h"
@@ -34,13 +35,17 @@ struct ModfxPlugin {
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
+    AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
 #endif
 };
 
 static LV2_Handle modfx_instantiate(const LV2_Descriptor*, double rate,
-                                     const char*, const LV2_Feature* const*) {
+                                     const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) ModfxPlugin;
     if (!p) return nullptr;
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
     UniVibeEffect::warmup();   // off the audio thread: a later switch to Uni-Verse costs no solve
     p->dsp.prepare(rate, 512, 2);
     p->dsp.setType(ModulationType::CE2_Chorus);
@@ -68,6 +73,14 @@ static void modfx_run(LV2_Handle h, uint32_t n) {
             p->lastType = -1;   // re-apply the modulation type below
         }
     } else p->resetLatch = false;
+#endif
+#ifdef HEXCHAIN_ANAGRAM
+    {   // Per-type controls, as the modgui (script-modfx.js update_type): Center Delay on
+        // the delay-line types, the waveform on the tremolo.
+        const int  t = p->ports[P_TYPE] ? static_cast<int>(*p->ports[P_TYPE] + 0.5f) : 0;
+        p->ui.ui(P_OFFSET, t == 0 || t == 3 || t == 6 || t == 7);
+        p->ui.ui(P_SHAPE,  t == 4);
+    }
 #endif
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.

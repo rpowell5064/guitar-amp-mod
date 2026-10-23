@@ -9,6 +9,7 @@
 // (drive/tone/octave are baked into the capture).
 // ─────────────────────────────────────────────────────────────────────────────
 #include "lv2_util.h"
+#include "AnagramPortState.h"
 #include "OverdriveBlock.h"
 #include "OverdriveFactory.h"
 #include "NamModel.h"
@@ -80,6 +81,7 @@ struct DrivePlugin {
     float namIn[kMaxBlock], namOut[kMaxBlock];
 #ifdef HEXCHAIN_ANAGRAM
     bool resetLatch = false;   // kx:Reset edge detect
+    AnagramPortState<P_N_PORTS> ui;   // per-model control visibility reported to the host
 #endif
 
     LV2_Worker_Schedule* schedule = nullptr;
@@ -120,6 +122,9 @@ static LV2_Handle drive_instantiate(const LV2_Descriptor*, double rate,
     if (!p->schedule || !p->map) { delete p; return nullptr; }
     mapURIs(p);
     lv2_atom_forge_init(&p->forge, p->map);
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
     p->rate = rate;
     p->dsp.prepare(rate, kMaxBlock, 1);
     p->dsp.setType(OverdriveType::TubeScreamer808);
@@ -207,7 +212,16 @@ static void drive_run(LV2_Handle h, uint32_t n) {
 
     const float* in  = p->ports[P_IN];
     float*       out = p->ports[P_OUT];
+#ifdef HEXCHAIN_ANAGRAM
+    // The device build carries neither NAM (its own neural loader covers it) nor the
+    // Helsinki Grind (left off the Anagram bundle): both slots are absent from its TTL,
+    // and a stray value runs the default pedal rather than silence.
+    int model = clampi(*p->ports[P_MODEL], 0, kMaxModel);
+    if (model == kNamIdx || model == 10) model = 0;
+    p->ui.ui(P_OCTAVE, model == 1);   // New Dawn's octave (script-drive.js)
+#else
     const int    model = clampi(*p->ports[P_MODEL], 0, kMaxModel);
+#endif
 
     bool bypassed = *p->ports[P_BYPASS] > 0.5f;
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's

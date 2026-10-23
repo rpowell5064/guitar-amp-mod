@@ -1,4 +1,5 @@
 #include "lv2_util.h"
+#include "AnagramPortState.h"
 #include "OversamplingWrapper.h"
 #include "EHXBigMuff.h"
 #include "ToneBenderMkII.h"
@@ -52,13 +53,17 @@ struct FuzzPlugin {
 #ifdef HEXCHAIN_ANAGRAM
     double rate = 48000.0;     // kept for the kx:Reset re-prepare
     bool resetLatch = false;
+    AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
 #endif
 };
 
 static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
-                                   const char*, const LV2_Feature* const*) {
+                                   const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) FuzzPlugin;
     if (!p) return nullptr;
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
     // Construct models directly (NOT via OverdriveFactory) so this plugin pulls in
     // zero NAM code — fuzz does not link NamCore, and the factory references it.
     p->ih = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
@@ -97,6 +102,18 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
             p->ff->prepare(p->rate, 512, 1);
         }
     } else p->resetLatch = false;
+#endif
+#ifdef HEXCHAIN_ANAGRAM
+    {   // Per-pedal controls, as the modgui (script-fuzz.js update_pedal): Variant is the
+        // Italian Hero's; the Tone Bender and the Fuzz Factory own bias, trim, temperature
+        // and guitar volume and have no tone control.
+        auto v = [p](int q) { return p->ports[q] ? *p->ports[q] : 0.0f; };
+        const int  pedal = static_cast<int>(v(P_PEDAL) + 0.5f);
+        const bool tbff  = (pedal == 1 || pedal == 3);
+        p->ui.ui(P_MODE, pedal == 0);
+        p->ui.ui(P_TONE, !tbff);
+        for (int q : { P_BIAS, P_TRIM, P_TEMP, P_GVOL }) p->ui.ui(q, tbff);
+    }
 #endif
 
     bool bypassed = *p->ports[P_BYPASS] > 0.5f;

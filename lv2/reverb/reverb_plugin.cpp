@@ -1,4 +1,5 @@
 #include "lv2_util.h"
+#include "AnagramPortState.h"
 #include "PlateReverbBlock.h"
 #include <new>
 
@@ -33,13 +34,17 @@ struct ReverbPlugin {
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
+    AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
 #endif
 };
 
 static LV2_Handle reverb_instantiate(const LV2_Descriptor*, double rate,
-                                      const char*, const LV2_Feature* const*) {
+                                      const char*, const LV2_Feature* const* features) {
     auto* p = new(std::nothrow) ReverbPlugin;
     if (!p) return nullptr;
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
     p->dsp.prepare(rate, 512, 2);
     p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
 #ifdef HEXCHAIN_ANAGRAM
@@ -67,6 +72,12 @@ static void reverb_run(LV2_Handle h, uint32_t n) {
             p->dsp.prepare(p->sampleRate, 512, 2);
         }
     } else p->resetLatch = false;
+#endif
+#ifdef HEXCHAIN_ANAGRAM
+    {   // Bloom shapes the Hex Ambient (type 2) only; it is inert on the other types.
+        const int t = p->ports[P_TYPE] ? static_cast<int>(*p->ports[P_TYPE] + 0.5f) : 0;
+        p->ui.ui(P_BLOOM, true, t == 2);
+    }
 #endif
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
