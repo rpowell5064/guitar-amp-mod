@@ -97,7 +97,7 @@ static void util_run(LV2_Handle h, uint32_t n) {
     auto*       p        = static_cast<UtilityPlugin*>(h);
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): reconstruct every stateful processor so a freshly
-    // paired dual-mono partner starts identical (see anagram/ANAGRAM-NOTES.md).
+    // paired dual-mono partner starts identical.
     // voice/boost re-prepare lazily below (reconstruction clears their guards).
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {

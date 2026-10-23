@@ -86,8 +86,8 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
 
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset trigger (rising edge): full state clear via re-prepare, so a
-    // freshly paired dual-mono partner starts identical (provisional — see
-    // anagram/ANAGRAM-NOTES.md; fires only on host preset/pairing events).
+    // freshly paired dual-mono partner starts identical (provisional; fires
+    // only on host preset/pairing events).
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;

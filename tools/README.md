@@ -8,7 +8,7 @@ reference them.
 What remains public is everything needed to **build, gate and deploy** the suite:
 
 * `build-tools/gen_hexforge.py` — generates the port enum, the TTL and the modgui
-* `build-tools/gen_hexforge_presets.py`, `gen_anagram.py` — generated tables/bundles
+* `build-tools/gen_hexforge_presets.py` — generated preset tables
 * `build-tools/hexforge_golden.cpp` — golden-render regression gate (128 presets)
 * `build-tools/hexforge_migrate_test.cpp` — preset-blob migration round-trip
 * `build-tools/hf_resampler_test.cpp`, `hexforge_engine_standalone.cpp`

@@ -60,7 +60,7 @@ static void modfx_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<ModfxPlugin*>(h);
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init — restarts the LFO from its
-    // deterministic initial phase (see anagram/ANAGRAM-NOTES.md).
+    // deterministic initial phase.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;

@@ -481,7 +481,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     // (fresh AmpBlockExtended swapped in, old one freed off-RT) — a few
     // blocks of stale-amp output until the swap lands, same as any model
     // change. Reconstruction allocates, but the host only fires Reset on
-    // preset/bank/pairing events (see anagram/ANAGRAM-NOTES.md).
+    // preset/bank/pairing events.
     if (p->ctrl[P_RESET] && *p->ctrl[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;

@@ -306,7 +306,7 @@ static void cab_run(LV2_Handle h, uint32_t n) {
     // kx:Reset trigger (rising edge): re-init the convolver, then rebuild the
     // active IR on the worker (prepare() drops the loaded IR; the worker
     // regenerates it from irPath — "" → the enriched Factory Cab). NAM state
-    // resets in place. See anagram/ANAGRAM-NOTES.md.
+    // resets in place.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;

@@ -72,7 +72,7 @@ static void delay_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<DelayPlugin*>(h);
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init — clears the delay lines so a
-    // rig/preset change never replays stale echoes (see anagram/ANAGRAM-NOTES.md).
+    // rig/preset change never replays stale echoes.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;

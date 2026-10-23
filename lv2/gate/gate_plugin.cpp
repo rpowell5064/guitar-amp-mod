@@ -52,7 +52,7 @@ static void gate_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<GatePlugin*>(h);
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init so a freshly paired dual-mono
-    // partner starts identical (see anagram/ANAGRAM-NOTES.md).
+    // partner starts identical.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) { p->resetLatch = true; p->dsp.prepare(p->sampleRate, 512, 1); }
     } else p->resetLatch = false;

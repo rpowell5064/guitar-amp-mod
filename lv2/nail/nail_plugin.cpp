@@ -66,7 +66,7 @@ static void nail_run(LV2_Handle h, uint32_t n) {
 
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init so a freshly paired dual-mono
-    // partner starts identical (see anagram/ANAGRAM-NOTES.md). Mode/params are
+    // partner starts identical. Mode/params are
     // re-applied every run below.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) { p->resetLatch = true; p->nail->prepare(p->sampleRate, 512, 1); }

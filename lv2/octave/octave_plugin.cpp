@@ -48,7 +48,7 @@ static void octave_connect_port(LV2_Handle h, uint32_t port, void* data) {
 static void octave_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<OctavePlugin*>(h);
 #ifdef HEXCHAIN_ANAGRAM
-    // kx:Reset (rising edge): full state re-init (see anagram/ANAGRAM-NOTES.md).
+    // kx:Reset (rising edge): full state re-init.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) { p->resetLatch = true; p->dsp.prepare(p->sampleRate, 512, 2); }
     } else p->resetLatch = false;

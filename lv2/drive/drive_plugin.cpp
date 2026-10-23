@@ -166,7 +166,7 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     // kx:Reset trigger (rising edge): clear ALL state memory so a freshly
     // paired dual-mono partner starts identical. prepare() is the full
     // re-init; it allocates, but the host only fires Reset on preset/bank/
-    // pairing events (provisional — see anagram/ANAGRAM-NOTES.md).
+    // pairing events (provisional).
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;

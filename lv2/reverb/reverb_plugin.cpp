@@ -57,7 +57,7 @@ static void reverb_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<ReverbPlugin*>(h);
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init — kills the tank tail so a
-    // rig/preset change never carries stale reverb (see anagram/ANAGRAM-NOTES.md).
+    // rig/preset change never carries stale reverb.
     // RECONSTRUCT the block, not just prepare(): prepare()'s same-size resize()
     // calls keep old delay-line content (measured 0.007 residue on the Pi).
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
