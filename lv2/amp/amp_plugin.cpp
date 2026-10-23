@@ -23,6 +23,7 @@
 #include <vector>
 #include "NamModel.h"
 #include "DenormalGuard.h"
+#include "AnagramPortState.h"
 #include <new>
 #include <cstring>
 #include <cstdint>
@@ -280,6 +281,7 @@ struct AmpPlugin {
 #ifdef HEXCHAIN_ANAGRAM
     bool resetLatch    = false;   // kx:Reset edge detect
     bool resetSwapWait = false;   // reset fired: passthrough until the fresh amp swaps in
+    AnagramPortState<P_N_PORTS> ui;   // per-model control visibility reported to the host
 #endif
 
     LV2_Worker_Schedule* schedule = nullptr;
@@ -330,6 +332,9 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     if (!p->schedule || !p->map) { delete p; return nullptr; }
     mapURIs(p);
     lv2_atom_forge_init(&p->forge, p->map);
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
 
     p->rate = rate;
     p->amp = new(std::nothrow) AmpBlockExtended;
@@ -414,6 +419,52 @@ static LV2_Worker_Status amp_work_response(LV2_Handle h, uint32_t, const void* d
     return LV2_WORKER_SUCCESS;
 }
 
+#ifdef HEXCHAIN_ANAGRAM
+// The device draws the controls itself, so the modgui's visibility rules (script-amp.js
+// update_model / update_amp_ctls / update_comp / refresh_tabs) are restated here: a control
+// is shown only when the selected model really has it. Keep the two in sync.
+static void anagramUpdateUi(AmpPlugin* p, int m) {
+    auto on = [p](int port) { return p->ctrl[port] && *p->ctrl[port] > 0.5f; };
+    const bool rvClean  = (m == 4 && on(P_CHANNEL));          // Rockerverb clean channel: no Middle / Master
+    const bool comp     = hasComponentModel(m) && on(P_COMP);
+    const bool hasPower = (m != kSunnIdx && m != kNamIdx);   // Sunn's own power section; a capture has its own
+    const bool paFace   = hasPower && !comp;                  // a component twin runs its own power section
+    const bool paManual = paFace && !on(P_PA_AUTO);
+    AnagramPortState<P_N_PORTS>& ui = p->ui;
+
+    ui.ui(P_MID,      !(m == 0 || m == 8 || rvClean));
+    ui.ui(P_PRES,     !(m == 0 || m == 4 || m == 9 || m == 13 || m == 14 || m == 15));
+    ui.ui(P_MASTER,   !(m == 0 || m == 8 || m == 10 || m == 14 || rvClean));
+    ui.ui(P_CHANNEL,  m == 2 || m == 4);
+    ui.ui(P_RESON,    m == 2);
+    ui.ui(P_TIGHT,    hasTight(m));
+    ui.ui(P_JCM_SIR34, m == 1);
+    ui.ui(P_PL_VOL2,  m == 10);
+    ui.ui(P_PL_VARIAC, m == 10);
+    for (int q : { P_SUNN_V2, P_SUNN_LNK, P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2 })
+        ui.ui(q, m == kSunnIdx);
+    for (int q : { P_FR_CHANNEL, P_FR_FAT, P_FR_C45, P_FR_SAT })
+        ui.ui(q, m == kFriedmanIdx);
+    for (int q : { P_MV_MODE, P_MV_GEQ0, P_MV_GEQ1, P_MV_GEQ2, P_MV_GEQ3, P_MV_GEQ4, P_MV_EQPRESET })
+        ui.ui(q, m == kMesaIdx);
+    for (int q : { P_RC_MODE, P_RC_VARIAC, P_RC_RECT }) ui.ui(q, m == kRectoIdx);
+    for (int q : { P_MT_MODE, P_MT_BRIGHT })            ui.ui(q, m == kMt15Idx);
+    for (int q : { P_SV_ULTRALO, P_SV_ULTRAHI, P_SV_MIDFREQ }) ui.ui(q, m == kSvtIdx);
+
+    ui.ui(P_COMP,    hasComponentModel(m));
+    ui.ui(P_DYNLOAD, comp);
+    ui.ui(P_ECO,     comp);
+    ui.ui(P_PA_AUTO,   paFace);
+    ui.ui(P_PA_BYPASS, paFace);
+    for (int q : { P_PA_TUBE, P_PA_PRES, P_PA_DEPTH, P_PA_SAG, P_PA_MASTER, P_PA_NFB, P_PA_RESON, P_PA_AIR })
+        ui.ui(q, paManual, !on(P_PA_BYPASS));
+
+    const bool fb = p->ctrl[P_STAGE_FB] && *p->ctrl[P_STAGE_FB] > 0.0005f;
+    ui.ui(P_STAGE_FBDIST, true, fb);
+    ui.ui(P_STAGE_FBSUS,  true, fb);
+}
+#endif
+
 // ── Audio ─────────────────────────────────────────────────────────────────────
 static void amp_run(LV2_Handle h, uint32_t n) {
 #ifndef HEXCHAIN_ANAGRAM
@@ -454,6 +505,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             p->inComb[1] = HumNotchComb{};   p->inComb[1].prepare(p->rate, p->mainsCur);
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
             p->lastTube = -1;   // re-apply the tube type below
+            p->ui.invalidate();  // re-report every control's state after the reset
         }
     } else p->resetLatch = false;
 #endif
@@ -487,8 +539,18 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         }
     }
 
+#ifdef HEXCHAIN_ANAGRAM_NONAM
+    // NAM is not built into this target (the device has its own neural loader): the Neural
+    // slot is absent from the TTL, and a stray 5 runs the default amp instead of silence.
+    const int  modelRaw    = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);
+    const int  modelIdx    = (modelRaw == kNamIdx) ? 1 : modelRaw;
+#else
     const int  modelIdx   = clampIdx(*p->ctrl[P_MODEL], 0, kMaxModel);
+#endif
     const bool isNam       = (modelIdx == kNamIdx);
+#ifdef HEXCHAIN_ANAGRAM
+    anagramUpdateUi(p, modelIdx);
+#endif
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     const bool fullBypass  = (*p->ctrl[P_BYPASS] > 0.5f) ||

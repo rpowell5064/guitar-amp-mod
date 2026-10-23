@@ -20,6 +20,7 @@
 #include "NamModel.h"
 #include "StageListener.h"
 #include "DenormalGuard.h"
+#include "AnagramPortState.h"
 #include <new>
 #include <cstring>
 #include <cstdint>
@@ -60,6 +61,7 @@ enum CabPorts {
     P_LISTEN, P_LDIST, P_LROOM,   // 2026-10-20 (mv62): Stage Listen -- the cab heard standing in front of it
                                   // (headphones), mirrors Hex Forge stage_listen/ldist/room; off = bit-identical
 #ifdef HEXCHAIN_ANAGRAM
+    P_CABMODEL,                // KosmOS: built-in cab list (its file browser cannot reach the @sentinels)
     P_RESET,                   // KosmOS: kx:Reset trigger
 #endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
@@ -103,6 +105,8 @@ struct CabPlugin {
     float namIn[kMaxBlock], namOut[kMaxBlock];
 #ifdef HEXCHAIN_ANAGRAM
     bool resetLatch = false;   // kx:Reset edge detect
+    int  lastCab    = -1;      // built-in cab the convolver holds (-1 = re-apply on the next run)
+    AnagramPortState<P_N_PORTS> ui;
 #endif
 
     LV2_URID_Map*        map      = nullptr;
@@ -129,6 +133,15 @@ static const char* cabSentinel(const char* path) {
     base = base ? base + 1 : path;
     return base[0] == '@' ? base : nullptr;
 }
+
+#ifdef HEXCHAIN_ANAGRAM
+// The Cab Model list (P_CABMODEL), in the modgui's built-in cab order.
+static const char* const kCabSentinels[] = {
+    "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt",
+    "@doom", "@bass810", "@bass410h", "@bass210", "@bass115",
+};
+static constexpr int kNumCabs = static_cast<int>(sizeof(kCabSentinels) / sizeof(kCabSentinels[0]));
+#endif
 
 // IR resampling upgraded linear -> windowed-sinc 2026-07-14 (lv2/common/IrResample.h):
 // linear interp baked ~-1 dB @ 10 kHz droop + imaging aliases into every 44.1 kHz IR.
@@ -217,6 +230,9 @@ static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
     if (!p->map || !p->schedule) { delete p; return nullptr; }
     mapURIs(p);
     lv2_atom_forge_init(&p->forge, p->map);
+#ifdef HEXCHAIN_ANAGRAM
+    p->ui.init(features);
+#endif
     cabLoadRigs(p);   // user rigs (State restore may replace them)
 
     p->rate = rate;
@@ -292,10 +308,14 @@ static void cab_run(LV2_Handle h, uint32_t n) {
             p->resetLatch = true;
             p->dsp.prepare(p->rate, kMaxBlock, 2);
             p->lis.reset();
-            WorkMsg msg; msg.type = WORK_IR; msg.nam = nullptr;
-            std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
-            p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+            p->lastCab = -1;   // a built-in cab is rebuilt by the Cab Model block below
+            if (p->irPath[0] && !cabSentinel(p->irPath)) {   // a user IR
+                WorkMsg msg; msg.type = WORK_IR; msg.nam = nullptr;
+                std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
+                p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
+            }
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
+            p->ui.invalidate();
         }
     } else p->resetLatch = false;
 #endif
@@ -307,7 +327,9 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         lv2_atom_forge_sequence_head(&p->forge, &seqFrame, 0);
         // push the saved rigs once per instance: mod-ui records a parameter value only from
         // host feedback and hands the last one it saw to the modgui at every GUI open
+#ifndef HEXCHAIN_ANAGRAM   // KosmOS: no rigs parameter (atom:String params are unsupported there)
         if (!p->rigsPushed) { p->rigsPushed = true; writeStringToNotify(p, u.rigs, p->rigsJson); }
+#endif
     }
     if (p->control) {
         LV2_ATOM_SEQUENCE_FOREACH(p->control, ev) {
@@ -345,10 +367,44 @@ static void cab_run(LV2_Handle h, uint32_t n) {
             } else if (obj->body.otype == u.patch_Get && haveNotify) {
                 writeFileToNotify(p, u.ir_file, p->irPath);
                 writeFileToNotify(p, u.nam_file, p->namPath);
+#ifndef HEXCHAIN_ANAGRAM
                 writeStringToNotify(p, u.rigs, p->rigsJson);
+#endif
             }
         }
     }
+
+#ifdef HEXCHAIN_ANAGRAM
+    {   // Built-in cab from the Cab Model list. A loaded user IR always wins (it is the
+        // file param); clearing it hands the convolver back to the list.
+        const bool userIr = p->irPath[0] && !cabSentinel(p->irPath);
+        if (userIr) {
+            p->lastCab = -1;
+        } else if (p->ports[P_CABMODEL]) {
+            int cab = static_cast<int>(*p->ports[P_CABMODEL] + 0.5f);
+            if (cab < 0) cab = 0; else if (cab >= kNumCabs) cab = kNumCabs - 1;
+            if (cab != p->lastCab) {
+                WorkMsg msg; msg.type = WORK_IR; msg.nam = nullptr;
+                std::strncpy(msg.path, kCabSentinels[cab], kPathMax - 1); msg.path[kPathMax - 1] = '\0';
+                if (p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg) == LV2_WORKER_SUCCESS)
+                    p->lastCab = cab;
+            }
+        }
+        // A user IR keeps the basics only (as the modgui): the mic and room
+        // controls belong to the built-in cabs.
+        auto on = [p](int port) { return p->ports[port] && *p->ports[port] > 0.5f; };
+        const bool builtIn = !userIr;
+        p->ui.ui(P_CABMODEL, true, builtIn);
+        p->ui.ui(P_MICPOS,  builtIn);
+        p->ui.ui(P_MICDIST, builtIn);
+        p->ui.ui(P_ROOMON,  builtIn);
+        for (int q : { P_ROOMMIX, P_ROOMAMT, P_ROOMDENSE }) p->ui.ui(q, builtIn, on(P_ROOMON));
+        p->ui.ui(P_MIC2TYPE, builtIn);
+        for (int q : { P_MIC2POS, P_MIC2DIST, P_MIC2LVL, P_MIC2ALIGN, P_MIC2POL }) p->ui.ui(q, builtIn, on(P_MIC2TYPE));
+        p->ui.ui(P_LDIST, true, on(P_LISTEN));
+        p->ui.ui(P_LROOM, true, on(P_LISTEN));
+    }
+#endif
 
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.

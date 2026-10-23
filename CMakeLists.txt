@@ -29,10 +29,12 @@ option(GUITARAMP_PORTABLE "Generic baseline build for redistribution" OFF)
 
 # ── Darkglass Anagram (KosmOS) target ────────────────────────────────────────
 # OFF (default) = the pi-Stomp/MOD build, byte-identical to before this option
-# existed. ON appends the KosmOS-required ports (lv2:enabled + kx:Reset) to the
-# Anagram-ported plugins (drive, fuzz) and disables DenormalGuard in them
-# (KosmOS forbids touching global CPU registers). Pair the resulting .so files
-# with the bundles from build-tools/gen_anagram.py (anagram/*.lv2/).
+# existed. ON adds the KosmOS-required kx:Reset port to every standalone plugin,
+# disables DenormalGuard (KosmOS forbids touching global CPU registers), and on
+# the amp and cab reports per-model control visibility to the host
+# (lv2/common/AnagramPortState.h) and adds the cab's built-in Cab Model list.
+# HEXCHAIN_ANAGRAM_NONAM (defined by the device build) clamps the amp's Neural
+# slot away for a target that ships without NAM.
 option(HEXCHAIN_ANAGRAM "Build the Anagram-ported plugins for Darkglass KosmOS" OFF)
 if(HEXCHAIN_ANAGRAM)
     add_compile_definitions(HEXCHAIN_ANAGRAM=1)
