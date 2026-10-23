@@ -175,6 +175,10 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
+            // RECONSTRUCT, not just prepare(): a same-size prepare() keeps old filter
+            // memory (the RAT left 8e-4 between two reset partners at 16-frame blocks).
+            p->dsp.~OverdriveBlock();
+            new (&p->dsp) OverdriveBlock{};
             p->dsp.prepare(p->rate, kMaxBlock, 1);
             p->lastModel = -1;   // re-apply model + params on the next block
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
