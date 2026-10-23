@@ -47,6 +47,11 @@ static constexpr double kMonoHoldSec = 1.5;
 
 enum CabPorts {
     P_IN_L = 0, P_IN_R, P_OUT_L, P_OUT_R,
+#ifdef HEXCHAIN_ANAGRAM
+    P_CABMODEL,                // KosmOS: built-in cab list (its file browser cannot reach the @sentinels).
+                               // First, so the device's control flow opens on it; this target's port
+                               // layout is its own (generated TTL), never shared with saved MOD boards.
+#endif
     P_LOWCUT, P_HIGHCUT, P_MIX, P_BYPASS,
     P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
     P_MICPOS, P_MICDIST,       // mic placement (2026-07-14): cap→cone-edge, close→back; 0/0 = as-voiced
@@ -61,7 +66,6 @@ enum CabPorts {
     P_LISTEN, P_LDIST, P_LROOM,   // 2026-10-20 (mv62): Stage Listen -- the cab heard standing in front of it
                                   // (headphones), mirrors Hex Forge stage_listen/ldist/room; off = bit-identical
 #ifdef HEXCHAIN_ANAGRAM
-    P_CABMODEL,                // KosmOS: built-in cab list (its file browser cannot reach the @sentinels)
     P_RESET,                   // KosmOS: kx:Reset trigger
 #endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
