@@ -76,7 +76,7 @@ static const hc::PortInfo kAmpPorts[] = {
     { 60, "mains", "Mains", 0.0f, 1.0f, 0.0f, 12u, "", kAmp_e60, 2, 4 },
     { 61, "enabled", "Enabled", 0.0f, 1.0f, 1.0f, 2u, "", nullptr, 0, -1 },
     { 62, "tight", "Tight", 0.0f, 1.0f, 0.0f, 0u, "", nullptr, 0, 0 },
-    { 63, "stage_fb", "Stage Feedback", 0.0f, 1.0f, 0.0f, 0u, "", nullptr, 0, 5 },
+    { 63, "stage_fb", "Stage Feedback", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 5 },
     { 64, "stage_fbdist", "Stage Distance", 0.3f, 5.0f, 1.0f, 0u, "m", nullptr, 0, 5 },
     { 65, "stage_fbsus", "Stage Sustain", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 5 },
 };
@@ -110,7 +110,7 @@ static const hc::PortInfo kCabPorts[] = {
     { 22, "mic2_align", "Mic 2 Align", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 3 },
     { 23, "mic2_pol", "Mic 2 Polarity", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 3 },
     { 24, "enabled", "Enabled", 0.0f, 1.0f, 1.0f, 2u, "", nullptr, 0, -1 },
-    { 25, "listen", "Listen", 0.0f, 1.0f, 0.0f, 2u, "", nullptr, 0, 4 },
+    { 25, "listen", "Listen", 0.0f, 1.0f, 1.0f, 2u, "", nullptr, 0, 4 },
     { 26, "listen_dist", "Stand At", 0.5f, 4.0f, 1.0f, 0u, "m", nullptr, 0, 4 },
     { 27, "listen_room", "Listen Room", 0.0f, 2.0f, 1.0f, 12u, "", kCab_e27, 3, 4 },
 };

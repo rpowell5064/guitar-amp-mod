@@ -46,7 +46,7 @@ public:
         std::fill(dec_.begin(), dec_.end(), 0.0f);
         aa1_.z1 = aa1_.z2 = aa2_.z1 = aa2_.z2 = body_.z1 = body_.z2 = 0.0; loss_ = 0.0f; lastS_ = 0.0f;
         winPk_ = totPk_ = 0.0f; winCnt_ = 0; floorDb_ = -55.0f; holdLeft_ = 0.0f; decayDbps_ = 8.0f; skipWin_ = 0; pending_ = 0; periodic_ = prevPeriodic_ = false; attackDb_ = -200.0f; aliveTarget_ = 0.0f;
-        period_ = periodTarget_ = 0.0; pickAmp_ = 0.0f;
+        period_ = periodTarget_ = 0.0; pickAmp_ = 0.0f; envIn_ = envSpk_ = 0.0f; gEst_ = 100.0f;
         muted_ = true; alive_ = 0.0f; hop_ = 0; prevEnvDb_ = -200.0f;
     }
 
@@ -70,6 +70,14 @@ public:
         // the coupling is band-limited around ~250 Hz; it is what makes a low note feed back on its
         // octave or twelfth rather than on a high partial
         const float air = float(body_.p(readFrac(spk_, spkW_, delay))) * (1.0f / dist_);
+        // the chain's own gain (speaker / what the chain is fed) comes back out of the loop, so the Feedback
+        // amount means the same on a clean amp and a cranked one (2026-10-29: un-normalised, a high-gain
+        // preset's +50 dB put the loop over unity at 2 % and every note rang on into the rests)
+        envIn_ += kEnvA * (std::fabs(di + lastS_) - envIn_);
+        if (envIn_ > 3e-5f) {
+            const float r = std::clamp(envSpk_ / envIn_, 0.01f, 3000.0f);
+            gEst_ += (r > gEst_ ? 0.01f : 0.0005f) * (r - gEst_);              // rises fast, falls slow: a pick
+        }                                                                     // reaches the input before the speaker
 
         float s = 0.0f;
         if (period_ > 0.0) {
@@ -77,7 +85,7 @@ public:
             const float back = readFrac(str_, strW_, period_ - 1.0);         // -1: the loss filter's delay
             const float g = muted_ ? kMuteG : loopG();
             loss_ = loss_ + kLossA * (back - loss_);                          // partials above ~3 kHz die faster
-            const float drive = coupling() * air;
+            const float drive = coupling() * air / gEst_;
             float v = drive + g * loss_;
             const float cap = std::max(0.8f * pickAmp_, 1e-5f);               // a driven string stays under its own pick
             v = cap * std::tanh(v / cap);
@@ -88,11 +96,9 @@ public:
         return di + s;
     }
 
-    void feedSample(float y) { spk_[spkW_] = y; if (++spkW_ >= spk_.size()) spkW_ = 0; }
+    void feedSample(float y) { envSpk_ += kEnvA * (std::fabs(y) - envSpk_); spk_[spkW_] = y; if (++spkW_ >= spk_.size()) spkW_ = 0; }
     // after the chain ran the block: the speaker's (mono) output
-    void feedSpeaker(const float* y, int n) {
-        for (int i = 0; i < n; ++i) { spk_[spkW_] = y[i]; if (++spkW_ >= spk_.size()) spkW_ = 0; }
-    }
+    void feedSpeaker(const float* y, int n) { for (int i = 0; i < n; ++i) feedSample(y[i]); }
 
 private:
     static constexpr int   kDecim = 4;            // YIN runs at fs/4
@@ -101,6 +107,8 @@ private:
     static constexpr int   kHop = 64;             // re-estimate every 5.3 ms
     static constexpr float kMuteG = 0.80f;        // per-period loss while muted: gone in a few periods
     static constexpr float kLossA = 0.55f;
+    static constexpr double kMaxDbps = 40.0;      // the air's drive at amount 1 (1 m, body peak)
+    static constexpr float kEnvA = 1.0f / 2400.0f; // 50 ms level followers for the chain-gain estimate
 
     struct LP2 { double b0, b1, b2, a1, a2, z1 = 0, z2 = 0;
         void set(double fs, double fc) { const double w = 2 * M_PI * fc / fs, c = std::cos(w), al = std::sin(w) / (2 * 0.7071), a0 = 1 + al;
@@ -110,9 +118,13 @@ private:
         double p(double x) { const double y = b0 * x + z1; z1 = b1 * x - a1 * y + z2; z2 = b2 * x - a2 * y; return y; } };
 
     float coupling() const {
-        // 0..1 -> -70..-20 dB: at the top a high-gain amp tips a held note into feedback within a second
-        // or so at 1 m; at the bottom it only lengthens the sustain a little.
-        return std::pow(10.0f, (-70.0f + 50.0f * amount_) / 20.0f);
+        // With the chain gain divided out, the coupling is the per-period gain the air adds to the string at
+        // the body resonance. It is set as a RATE (dB/s, 0..kMaxDbps along amount^2) so it means the same on
+        // a low E and a high e: the string's own decay is 5-30 dB/s, so low settings only lengthen a note and
+        // a held note tips into feedback once the air out-drives its damping (~amount .5 for a ringing note).
+        if (period_ <= 0.0) return 0.0f;
+        const double dbps = kMaxDbps * double(amount_) * amount_;
+        return float(1.0 - std::pow(10.0, -dbps * period_ / (20.0 * fs_)));
     }
     float loopG() const {   // per-period gain at the string's measured decay (>= 3 dB/s: a T60 of 20 s at most)
         return period_ > 0.0 ? float(std::pow(10.0, -std::max(decayDbps_, 3.0f) * period_ / (20.0 * fs_))) : 0.0f;
@@ -215,7 +227,7 @@ private:
     size_t spkW_ = 0, strW_ = 0; int decW_ = 0, decPhase_ = 0, hop_ = 0;
     LP2 aa1_, aa2_, body_;
     float lastS_ = 0.0f, winPk_ = 0.0f, totPk_ = 0.0f, floorDb_ = -55.0f; int winCnt_ = 0; bool periodic_ = false, prevPeriodic_ = false;
-    float loss_ = 0.0f;
+    float loss_ = 0.0f, envIn_ = 0.0f, envSpk_ = 0.0f, gEst_ = 100.0f;
     double period_ = 0.0, periodTarget_ = 0.0, glide_ = 0.002;
     float pickAmp_ = 0;
     bool  muted_ = true; float alive_ = 0.0f, aliveTarget_ = 0.0f;
