@@ -21,7 +21,7 @@
     rdfs:label "Hex Chain — Delay" ;
     doap:name  "Hex Chain Delay" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Digital / tape / multi-head / dual-delay echoes.
+    rdfs:comment """Digital / tape / multi-head / dual-delay / bucket-brigade echoes.
 
 Six delay machines in one block:
 

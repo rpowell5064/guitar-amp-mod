@@ -41,9 +41,9 @@
     rdfs:label "Hex Chain — Amp" ;
     doap:name  "Hex Chain Amp" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Fifteen original amp voicings — sparkling clean to modern high-gain, including two all-tube bass rigs — each with a modeled power amp, plus a NAM loader.
+    rdfs:comment """Fifteen original amp voicings, nine of them built stage-by-stage from their own circuits — sparkling clean to modern high-gain, including two all-tube bass heads — each with a modeled power amp, plus a NAM loader.
 
-A whole wall of amps in one plugin — FOURTEEN original voicings, every name a wink and every circuit tuned against real-amp captures:
+A whole wall of amps in one plugin — FIFTEEN original voicings, every name a wink and every circuit tuned against real-amp captures:
 
 - Clean Meanie — shimmering American blackface-era clean
 - Crunchy McCrunchFace — hot-rodded British master-volume crunch
@@ -58,14 +58,18 @@ A whole wall of amps in one plugin — FOURTEEN original voicings, every name a 
 - Cali V — a 9-mode, three-channel Californian switcher (Clean / Crunch / Lead) with its own 5-band graphic EQ
 - Diamond Plate — an 8-mode, three-channel chrome-plated Californian high-gain head (Raw / Vintage / Modern per channel) with Bold/Spongy variac and Silicon/Tube rectifier feel switches, tuned against real captures of a legendary high-gain American design
 - Tremont 15 — a tight, percussive lunchbox high-gain head (Clean / Crunch / Lead + bright switch) with a gain-riding bright cap on the crunch channel, tuned against real captures
-- Citrus 200 — the suite's second BASS amp: a 200-watt all-valve British bass head, one channel, four 6550s, with a passive Bass / Middle / Treble stack and a master volume
 - Blue Liner — the suite's first BASS amp: a classic all-tube 300-watt US bass head with Ultra-Lo / Ultra-Hi switches, a 3-position mid selector (220 / 800 / 3000 Hz) and a six-6550 power section — pair it with the new bass cabinets in the Cabinet plugin
+- Citrus 200 — the suite's second BASS amp: a 200-watt all-valve British bass head, one channel, four 6550s, with a passive Bass / Middle / Treble stack and a master volume
 
-Every voicing feeds a modeled power-amp section — sag, presence, depth, resonance and selectable output-tube flavors — for real cab-pushing feel and touch dynamics rather than a flat distortion. A shared tone stack keeps switching between voicings fast on stage, a built-in mains-hum filter (switchable for 50 or 60 Hz mains) and decay-aware noise conditioning keep the high-gain modes quiet between notes, and everything is oversampled with steep anti-alias filtering so the top end stays clean.
+Every voicing feeds a modeled power-amp section — sag, presence, depth, resonance and selectable output-tube flavors — for real cab-pushing feel and touch dynamics rather than a flat distortion. A shared tone stack keeps switching between voicings fast on stage, a built-in mains-hum filter and decay-aware noise conditioning keep the high-gain modes quiet between notes, and everything is oversampled with steep anti-alias filtering so the top end stays clean.
 
-On 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures alongside the fourteen algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted. Works standalone or as part of the Hex Chain suite / Hex Forge.
+On 64-bit/desktop targets a Neural (NAM) slot loads your own .nam amp captures alongside the fifteen algorithmic models; on 32-bit (patchbox-os-arm32) NAM is omitted. Works standalone or as part of the Hex Chain suite / Hex Forge.
 
-Free and open source (GPL-3).""" ;
+Free and open source (GPL-3).
+
+v1.19: nine amps (Crunchy McCrunchFace, Gainzilla, Tangerang, Beardo BE, Chime Thirty, Plexiglass, Cali V, Diamond Plate, Blue Liner) gain a COMPONENT BUILD — the circuit traced from the amp's own drawing, tube by tube, with its own power section and output transformer — on by default, with the fitted model one switch away. DYNAMIC LOAD lets that power section drive a physical speaker as its load, and ENGINE QUALITY picks 4x or 2x oversampling. New: the Citrus 200, a 200 W British-style all-tube bass head. Every amp now wears its own covered cabinet with per-model knobs.
+
+v1.22: a TIGHT knob on the seven high-gain amps keeps the low strings out of the clipping stages and puts their weight back after the power amp. A STAGE tab adds Feedback (held notes bloom and tip into feedback, as in front of a loud amp; on at 0.5 by default), Distance and Sustain. Fixed: with Component Build on, an amp without a component version rebuilt itself on every audio block, wasting CPU and, under rapid model changes, crashing the host.""" ;
     mod:label  "Amp" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;

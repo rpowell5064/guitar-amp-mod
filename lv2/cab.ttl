@@ -50,7 +50,7 @@
     rdfs:label "Hex Chain — Cabinet" ;
     doap:name  "Hex Chain Cabinet" ;
     # PatchStorage listing content (uploader reads the plugin-level rdfs:comment)
-    rdfs:comment """Cabinet sim: ten built-in cabs (guitar AND bass) + your own .wav IRs, a draggable mic-placement pad, Room/Studio voicing, and adjustable room ambience.
+    rdfs:comment """Cabinet sim: ten built-in cabs (guitar AND bass) + your own .wav IRs, a physical speaker model, a draggable two-mic placement pad, Room/Studio voicing, three room densities, and eleven rigs you can extend with your own.
 
 A convolution cabinet with a studio's worth of mic technique built in.
 
@@ -64,7 +64,11 @@ CAB VOICE picks the perspective: Room is the raw amp-in-the-room sound, Studio r
 
 Load your own .wav impulse responses through the file browser — they're resampled with windowed-sinc quality, so a 44.1 kHz IR keeps its top end intact. Low-cut, high-cut and dry/wet mix finish the voicing.
 
-Ships making sound out of the box. Free and open source (GPL-3).""" ;
+Ships making sound out of the box. Free and open source (GPL-3).
+
+v1.19: Speaker Drive gains a PHYSICAL mode — a state-based driver with excursion limits, suspension stiffening, cone breakup and cone cry, calibrated in volts to the amp driving it. MIC 2 adds a second virtual mic with its own type, position, distance, blend, time alignment and polarity, on the same pad. The SPACE room density is an image-source room with early reflections. And a RIG selector under the IR picker applies eleven factory mic/room/speaker setups — one per built-in cab — or your own, saved on the device. The panel splits into CABINET | MIC & ROOM; your own IR files get the basics.
+
+v1.22: LISTEN (on by default) plays the cab the way you hear it standing in front of it on headphones: the floor and walls of a room, the cab aimed at you, two ears. Stand At sets the distance (0.5-4 m) and Room the size; it replaces the cab's own room while on, and works with your own IRs too.""" ;
     mod:label  "Cabinet" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
