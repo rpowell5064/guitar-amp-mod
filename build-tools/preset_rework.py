@@ -175,10 +175,13 @@ def bank_floyd():
     # a DR103 at 5 is a QUIET clean amp on this DI; 6 keeps Gilmour's "very clean" with humbucker headroom
     hiwatt = {"model": "Hi-Volt", "gain": 0.6, "bass": 0.5, "mid": 0.6, "treble": 0.7, "presence": 0.6, "master": 0.8, "sag": 0.25}
     # A Dark Side Air — Breathe: Hiwatt/WEM (B), Uni-Vibe vol 100 / intensity 60 / rate 40-50 (B), Echorec, long cable (6.5 k).
+    #   2026-10-30: Echorec feedback 0.45 -> 0.8. Under the old loop (gain 2.5 x feedback) 0.45 was a
+    #   slow runaway that never decayed; with the loop fixed, 0.8 gives the long Breathe trail
+    #   (the tail falls 40 dB in about 5 s) without building up.
     preset(4, 0, "Dark Side Air", cls="clean", chain=["gt", "md", "amp", "cab", "dl", "rv"], rig=WALL,
            md={"type": "Uni-Verse", "rate": 0.45, "depth": 0.6, "mix": 1.0, "width": 0.0},
            amp=hiwatt, cab={"highcut": 6500},
-           dl={"type": "Echo Wreck", "time": quarter(64), "feedback": 0.45, "mix": 0.3, "width": 0.3},
+           dl={"type": "Echo Wreck", "time": quarter(64), "feedback": 0.8, "mix": 0.3, "width": 0.3},
            rv=plate(0.18, 2.2, 40), gt=gate(-60), rb={"enable": 0, "cab2on": 0})
     # B Berlin Wall Pulse — Run Like Hell: Dyna Comp > ST-2 boost (Tube Chauffeur stands in) > Mistress > Hiwatt;
     #   two MXR DDLs: 380 ms 7-8 repeats at unity + 507 ms one repeat (B) = dotted 8th + quarter at 117 BPM.

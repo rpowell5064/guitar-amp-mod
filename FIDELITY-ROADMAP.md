@@ -132,11 +132,11 @@
     default. Every setting from 0.4 up built into a never-ending wash (from 0.6 a
     near-full-scale one, peaks above 1.0). Now tanh(2.5x)/2.5 like the tape loop:
     the knob is the loop gain. Only Dark Side Air (fb 0.45) is affected among the
-    factory presets; its repeats now decay. Its feedback needs a by-ear re-voice.
+    factory presets; re-voiced to feedback 0.8 (kFactoryRev 200).
   - #44 plate: per-comb Jot low shelf ("lfshelf", default OFF -- re-levels the wet)
     + incommensurate per-comb LFO rates in classic mode ("lfospread", default ON).
-  - #46b plate velvet-noise input diffusion ("velvet", default OFF -- flat on noise,
-    but moved short-window preset loudness by up to ±1.6 dB; waits for a by-ear pass).
+  - #46b plate velvet-noise input diffusion ("velvet", default ON after a by-ear A/B on
+    the device; it moves short-window preset loudness by up to ±1.6 dB in the golden).
   - #43 pitch: WSOLA-aligned grain restarts ("align", default on), no added latency.
     PitchBlock is not used by any LV2 plugin (submodule/JUCE chain only).
   - #45 (second half) first pedal's input impedance loads the pickup: re-loading

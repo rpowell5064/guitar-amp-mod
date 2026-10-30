@@ -87,11 +87,11 @@ private:
     // lfoSpread ON (wet level moves < 0.1 dB, 1 kHz RT60 within ±2 %);
     // lfShelf OFF — removing LF tail energy is its point, and that re-levels the
     // wet by 0.3-1.5 dB on full-range program, so it is a per-preset choice;
-    // velvet OFF — flat on noise, but in the full chain it moved short-window
-    // preset loudness by up to ±1.6 dB, so it waits for a by-ear preset pass.
+    // velvet ON — flat on noise; in the full chain it moves short-window preset
+    // loudness by up to ±1.6 dB, and the presets were judged by ear with it on.
     bool  lfShelf    = false;
     bool  lfoSpread  = true;
-    bool  velvet     = false;
+    bool  velvet     = true;
     // Types 3/4 (2026-10-18): STUDIO PLATE (Dattorro figure-of-eight tank, mono
     // send -> decorrelated stereo) and HALL (8-line Hadamard FDN, true stereo
     // send). Own tanks (StudioReverbs.h), so types 0-2 stay bit-identical;
