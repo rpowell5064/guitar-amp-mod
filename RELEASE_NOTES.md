@@ -1,5 +1,35 @@
 # Hex Chain Release Notes
 
+## v1.22.0 — 2026-10-29
+
+The stage update. A direct rig loses two things a loud amp in a room gives you: the
+strings hearing the speaker, and the sound of the cab as you hear it standing in front
+of it. Both come back, along with a Tight knob for the high-gain amps, two new reverbs,
+an analog echo, and a fix for a standalone Amp bug that wasted CPU and could crash the host.
+
+### Added
+
+- **Stage Feedback** (Hex Forge: Advanced > Stage; standalone Amp: the new STAGE tab). The speaker drives your strings the way a loud amp does: held notes bloom and sustain, then tip into feedback on a harmonic set by how far you stand from the cab, and a mute or palm mute stops it, as in a real room. The pitch is followed from your playing, and the amp's own gain is taken out of the loop, so the amount means the same on a clean amp and a cranked one: low settings lengthen held notes and leave riffs and rests alone, the middle blooms, the top feeds back. Distance and Sustain set the harmonic and how long it holds after you stop picking.
+- **Stage Listener** (Hex Forge: Advanced > Stage; standalone Cabinet: Listen). The cab as you hear it standing in front of it on headphones: the floor and walls of a room, the cab aimed at you, two ears. Stand At 0.5-4 m and three room sizes. Voiced close and tone-neutral, within a couple of dB of the dry cab, and it replaces the cab's own room while on. Works with your own IRs.
+- **Tight knob** on the seven high-gain amps (Crunchy McCrunchFace, Gainzilla, Tangerang, Beardo BE, Cali V, Diamond Plate, Tremont 15), in Hex Forge and the standalone Amp. It keeps the low strings out of the clipping stages and puts their weight back after the power amp, so it tightens without going thin. At zero it is out of the circuit.
+- **Studio Plate and Hall reverbs.** A dense figure-of-eight studio plate with a wide stereo field, and a stereo hall. Decay is a true RT60 on both, and they are loudness-matched to the other three types.
+- **Analog Echo** delay: a compander bucket-brigade echo, 20-550 ms, whose repeats darken and grain up with every pass and with longer times.
+- **Zynthian desktop UIs.** A native X11 panel for every plugin, for hosts that cannot show MOD's web UI (shipped as the separate zynthian tarball).
+
+### Changed
+
+- **Standalone defaults.** The Cabinet's Listen is on and the Amp's Stage Feedback sits at 0.5 for new instances. Hex Forge keeps both off unless you switch them on. Boards you already saved keep their stored values.
+- **Diamond Plate twin:** its low speaker resonance moves to 55 Hz and broadens; the one-note boom below the low E on every mode except the Modern lead channel is gone.
+- **Cali V twin** reaches its gain earlier, and the five Cali V presets drop their 70-100 Hz cab low cut to 45 Hz (it was cutting the graphic EQ's 80 Hz boost back out) with their gain raised to the amp's usual lead setting. Factory presets rev 199; dial-ins saved on the device are preserved.
+- **Tape and EP-3 delays on a mono rig** run one tape transport instead of two, so a one-speaker rig hears one wobbling tape loop rather than two drifting against each other.
+- **Cabinet:** the standalone cab drops to a mono fast path when both inputs are identical, roughly halving its cost on a mono board.
+
+### Fixed
+
+- **The standalone Amp rebuilt itself on every audio block** when Component Build was on (the default) and the selected amp has no component version (Doom Daddy, Hi-Volt, Backline Plus, Tremont 15, Citrus 200). Each block threw the whole amp away and built a new one, costing CPU all the time, and switching models quickly could flood the host's worker until it crashed. Present since v1.19.0; Hex Forge was not affected.
+- **Gate, Input Trim and Fuzz controls hung outside their pedals.** The Mains selector added in v1.20.0 pushed the Gate's and Input Trim's control rows past both sides of the pedal, and the Fuzz's I Know It and Fuzz Zachary knobs did the same. The rows now wrap inside the panel and the pedals are sized to fit every model and setting.
+- **A stereo IR on a mono chain** played the left channel's IR on both sides, and returning from mono to stereo dropped the right channel's tail.
+
 ## v1.21.0 — 2026-10-07
 
 The amp update, plus a practice room. Every component amp was re-measured against its
