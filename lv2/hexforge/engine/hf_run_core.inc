@@ -701,6 +701,22 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->reverb.setParameter("density", *p->ports[HF_RV_DENSITY]);      // classic / dense tank (v25)
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
     p->reverb.setParameter("bloom",   *p->ports[HF_RV_BLOOM]);         // Hex Ambient bloom (v27)
+    // TEMPORARY velvet A/B (2026-10-30, remove once decided): ask the worker
+    // twice a second whether <configDir>/velvet_on exists; apply on change.
+    p->abPollCtr += n;
+    if (p->abPollCtr >= static_cast<uint32_t>(p->rate * 0.5)) {
+        p->abPollCtr = 0;
+        WorkMsg am; am.type = W_AB_POLL;
+        p->worker->schedule(&am, sizeof(am));
+    }
+    {
+        const int v = p->abVelvet.load(std::memory_order_relaxed);
+        if (v >= 0 && v != p->abVelvetApplied) {
+            p->reverb.setParameter("velvet",  static_cast<float>(v));
+            p->reverb2.setParameter("velvet", static_cast<float>(v));
+            p->abVelvetApplied = v;
+        }
+    }
     p->cab.setParameter("roomdense",  *p->ports[HF_CAB_ROOMDENSE]);    // classic / dense room (v26)
     {   // Speaker Drive: 0 Off / 1 Subtle / 2 Full (item #40 envelope heuristics,
         // 0.35/0.75) / 3 Physical (2026-09-21: the state-based large-signal driver
