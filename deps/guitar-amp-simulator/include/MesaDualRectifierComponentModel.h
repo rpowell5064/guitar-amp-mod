@@ -95,11 +95,9 @@ private:
     float  masterMid_ = 0.15f;   // fit1: MASTER 1M law
     double otHfHz_ = 80e3, zHfDb_ = 0.0, zResDb_ = 11.0, idleMa_ = 40.0, raa_ = 4200.0;   // fit2..fit6
     double nfbStabHz_ = 60e3, fluxLim_ = 56.6;   // fit7 / fit8
-    // OT + speaker low resonance (fit24 / fit25 / fit26). CAPTURE-FITTED 2026-10-19 against all seven
-    // amp-only mode captures (pink -24 dBFS, gain .5): the real amp's low resonance sits near 55 Hz and
-    // broad, not at the 110 Hz family default -- the twin had 6-16 dB too little at 50 Hz and up to
-    // +8 dB too much at 125 Hz (the one-note boom). Summed shape 26.9 -> 18.8 dB; held at gain .3/.8,
-    // the DI and bass .2. The OT corner was not a lever (15 vs 30 Hz: +-0.1 dB).
+    // OT + speaker low resonance (fit24 / fit25 / fit26), re-voiced 2026-10-19: near 55 Hz and broad
+    // rather than the 110 Hz family default, which put a one-note boom just above the low E on every
+    // mode outside CH3 Modern. The OT low corner is not a lever here. (derivation kept out of the public tree)
     double zResHz_ = 55.0, zResQ_ = 0.6, otLfHz_ = 30.0;
     double kneeV_ = 0.15;                        // fit9
     int    probeTap_ = -1;                       // fit10 (lab)
@@ -131,7 +129,7 @@ private:
     // the power amp (kModePostHfDb), where no loop can go unstable; in-loop it takes 0.
     static constexpr double kModeZHfDb[8]    = { -26.0,  0.0, 13.0,  0.0, 22.0,  6.0,  6.0, 12.0 };   // in-loop shelf, added to zHfDb_
     static constexpr double kModePostHfDb[8] = {   0.0, 12.0,  0.0, 12.0,  0.0,  0.0,  0.0,  0.0 };   // post-power-amp shelf (dB above ~3 kHz; +12 here matches what +18 in-loop had given)
-    static constexpr double kModeZResDb[8]   = { -11.0,  0.0, -5.0,  0.0,  0.0,  8.0,  9.0,  6.0 };   // added to zResDb_ (re-fitted per mode at 55 Hz, 2026-10-19; CH1 Pushed has no capture, held)
+    static constexpr double kModeZResDb[8]   = { -11.0,  0.0, -5.0,  0.0,  0.0,  8.0,  9.0,  6.0 };   // added to zResDb_ (re-voiced per mode at 55 Hz, 2026-10-19; CH1 Pushed held)
     static constexpr double kModeMiller[8]   = {   1.0,  1.0,  0.2,  1.0,  0.2,  1.0,  1.0,  0.2 };   // interstage Miller scale
     static constexpr bool   kModeC6[8]       = {  true, true,false, true,false, true, true,false };   // V2B plate snubber in circuit
     double postHfHz_    = 3000.0;    // post-PA shelf corner (Hz) — matches the in-loop Z-network shelf's corner (fit22)
