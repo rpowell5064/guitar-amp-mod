@@ -11,7 +11,7 @@
     background-repeat: repeat, no-repeat, no-repeat;
     background-position: center top, center top, center top;
     background-size: 28px 49px, 100% 100%, 100% 100%;
-    height: 530px;
+    height: 566px;
     width: 440px;
     position: absolute;
     border-radius: 12px;
@@ -34,7 +34,7 @@
 
 /* ── Control plate (brushed enclosure + corner screws) ── */
 .mod-pedal-guitaramp-utility{{{cns}}} .hf-plate {
-    position: relative; z-index: 5; box-sizing: border-box; min-height: 436px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
+    position: relative; z-index: 5; box-sizing: border-box; min-height: 472px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; border-radius: 12px; padding: 78px 22px 20px; margin: 78px 16px 0;
     background-image:
         linear-gradient(180deg, rgba(255,255,255,.15) 0, rgba(255,255,255,0) 20%, rgba(0,0,0,.24) 100%),
         linear-gradient(158deg, var(--encl1), var(--encl2));
