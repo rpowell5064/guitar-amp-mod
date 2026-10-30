@@ -34,16 +34,48 @@
 //   Both channels share the same drum motor state.
 //
 // ── Feedback path ─────────────────────────────────────────────────────────
-//   wet_sum → tanh(2.5 × x)  soft clip
+//   wet_sum → tanh(2.5 × x) / 2.5  soft clip, unity small-signal slope
+//             (loopUnity=1: loop gain = feedback; loopUnity=0 = the legacy
+//             un-normalised tanh(2.5x), loop gain 2.5 × feedback)
 //           → LP 3.5 kHz
 //           → HP 120 Hz
 //           → optional noise injection (noiseLevel: 0=off, 1=−60 dB)
+//
+// ── Drum swirl (drumWear) ─────────────────────────────────────────────────
+//   The Echorec's delay medium is ONE rotating drum (oxide/wire on an aluminium
+//   drum, fixed motor speed) read by four heads at fixed angles. Any once-per-
+//   revolution imperfection — drum runout, a worn or uneven band of the magnetic
+//   surface, idler/motor drive eccentricity — therefore repeats every revolution
+//   and is locked to the drum speed, unlike the aperiodic wow/flutter walks:
+//     speed:  fundamental + 2nd harmonic of the rotation rate (≈ 1000/timeMs Hz)
+//             added to currentSpeedMod_ (all heads, both channels: one drum)
+//     level:  ±0.5 dB AM per head at wear=1, phase = drum angle under that head
+//             (head-to-drum spacing loss follows the same drum section)
+//   drumWear [0,1] scales both. 0 = no swirl (bit-identical to the plain model).
+//
+// ── Valve record input (valveColor) ───────────────────────────────────────
+//   The record path is fed by a 12AX7 triode inverting gain stage with no
+//   cathode resistor (grounded cathode, grid-leak/contact bias ≈ 0 V). Positive
+//   grid swings therefore run into grid conduction almost at once while the
+//   negative side has the whole run to cutoff: a soft, ASYMMETRIC knee (mostly
+//   2nd harmonic) on the signal that gets written to the drum. Modelled as an
+//   asymmetric rational soft-clip (unity slope at 0) + a coupling-cap DC block;
+//   it colours the repeats only — the dry path stays untouched.
+//   valveColor [0,1] = drive into the knee. 0 = bypass (bit-identical).
+//
+// ── Self-oscillation (selfOsc) ────────────────────────────────────────────
+//   selfOsc=1 remaps the top of the feedback knob: values ≤ 0.9 are unchanged;
+//   0.9..0.98 (knob top) spreads to an effective loop gain 0.9..1.15. The extra
+//   gain goes IN FRONT of the loop tanh (more drive), not after it, so the
+//   runaway saturates harder but its level stays at the fb=0.9 ceiling.
+//   selfOsc=0 = the old hard clamp at 0.98.
 //
 // ── Mode selector ─────────────────────────────────────────────────────────
 //   headMask [0-15]: 4-bit bitmask, bit n activates head n+1.
 //   Named presets via EchorecMode enum.
 //
-// Parameters: timeMs, feedback, mix, headMask, wowDepth, flutterDepth, noiseLevel
+// Parameters: timeMs, feedback, mix, headMask, wowDepth, flutterDepth, noiseLevel,
+//             drumWear, valveColor, selfOsc, loopUnity
 //
 // Stereo: each channel has its own drum buffer and head EQ filters.
 //         Both channels share the same motor modulation (physically one drum).
@@ -95,9 +127,21 @@ private:
     float wowDepth_     =   0.3f;   // [0,1] → ±1% speed deviation
     float flutterDepth_ =   0.2f;   // [0,1] → ±0.5% speed deviation
     float noiseLevel_   =   0.0f;   // [0,1] → −60 dB noise at 1.0
+    float drumWear_     =   0.5f;   // [0,1] rotation-locked swirl (0 = off, bit-identical)
+    float valveColor_   =   0.3f;   // [0,1] 12AX7 record-input knee (0 = off, bit-identical)
+    bool  selfOsc_      =   true;   // knob top → loop gain 1.15 (false = old 0.98 clamp)
+    bool  loopUnity_    =   true;   // loop gain = feedback (false = legacy 2.5 × feedback)
+
+    // Swirl motion constants (wear=1). Delay modulation as a fraction of the
+    // nominal head delay; pitch deviation ≈ 2π·k·depth at k × the rotation rate.
+    static constexpr float kSwirlDepth1 = 0.0004f;  // fundamental  → ≈ ±0.25% pitch
+    static constexpr float kSwirlDepth2 = 0.00015f; // 2nd harmonic → ≈ ±0.19% pitch
+    static constexpr float kSwirlAM     = 0.0593f;  // 10^(0.5/20)−1 → ±0.5 dB peak
 
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
     float currentSpeedMod_ = 1.0f;  // cached per-sample from advanceSmoothing
+    float drumPhase_       = 0.0f;  // drum angle [0, 2π) — advances at the rotation rate
+    float swirlGain_[kNumHeads] = { 1.0f, 1.0f, 1.0f, 1.0f };  // per-head AM (shared)
 
     // ── Shared motor modulation (same for all channels) ───────────────────
     RandomWalk wowWalk_;       // fc ≈ 0.2 Hz
@@ -111,8 +155,13 @@ private:
         BiquadFilter     fbLP;               // feedback LP at 3.5 kHz
         BiquadFilter     fbHP;               // feedback HP at 120 Hz
         uint32_t         noiseSeed;          // independent noise per channel
+        float            valveDcX = 0.0f;    // record-input coupling-cap DC block
+        float            valveDcY = 0.0f;
     };
     std::array<ChannelState, kMaxCh> ch_;
 
+    float valveDcCoeff_ = 0.0f;     // 1-pole HP pole for the valve DC block
+
     void rebuildFilters() noexcept;
+    float effectiveFeedback() const noexcept;
 };

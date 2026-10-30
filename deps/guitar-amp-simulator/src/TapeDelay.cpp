@@ -29,7 +29,7 @@ void TapeDelay::prepare(double sr, int maxBlock, int numCh) {
     feedbackSmoother_.prepare(static_cast<float>(sr), 5.0f);
     mixSmoother_.prepare(static_cast<float>(sr), 5.0f);
     timeSmoother_.setImmediate(timeMs_);
-    feedbackSmoother_.setImmediate(feedback_);
+    feedbackSmoother_.setImmediate(effectiveFeedback());
     mixSmoother_.setImmediate(mix_);
 
     rebuildFilters();
@@ -37,11 +37,17 @@ void TapeDelay::prepare(double sr, int maxBlock, int numCh) {
 }
 
 void TapeDelay::reset() noexcept {
-    for (auto& c : ch_) {
+    for (int ci = 0; ci < kMaxCh; ++ci) {
+        auto& c = ch_[ci];
         std::fill(c.buf.begin(), c.buf.end(), 0.0f);
         c.writeIdx    = 0;
         c.wowPhase    = 0.0f;
-        c.capPhase    = 0.0f;
+        // Same phases + seeds as prepare(), so a mid-stream reset() is
+        // deterministic (two instances stay bit-identical after a reset).
+        c.flutterPhase = static_cast<float>(ci) * static_cast<float>(M_PI) * 0.5f;
+        c.capPhase     = 0.0f;
+        c.wowWalk.seed_    = 0x1234567u + 0x1000u * ci;
+        c.scrapeWalk.seed_ = 0x9E37u + 0x2000u * ci;
         c.tapeLPState = 0.0f;
         c.wowWalk.setImmediate(0.0f);
         c.scrapeWalk.setImmediate(0.0f);
@@ -50,13 +56,20 @@ void TapeDelay::reset() noexcept {
         c.fbHP.reset();
     }
     timeSmoother_.setImmediate(timeMs_);
-    feedbackSmoother_.setImmediate(feedback_);
+    feedbackSmoother_.setImmediate(effectiveFeedback());
     mixSmoother_.setImmediate(mix_);
+}
+
+// selfOsc remap: ≤ 0.9 passes through untouched (presets and the musical range
+// stay bit-identical); 0.9 → 0.98 (knob top) spreads linearly to 0.9 → 1.15.
+float TapeDelay::effectiveFeedback() const noexcept {
+    if (!selfOsc_ || feedback_ <= 0.9f) return feedback_;
+    return std::min(0.9f + (feedback_ - 0.9f) * 3.125f, 1.15f);
 }
 
 void TapeDelay::advanceSmoothing() noexcept {
     timeSmoother_.tick(timeMs_);
-    feedbackSmoother_.tick(feedback_);
+    feedbackSmoother_.tick(effectiveFeedback());
     mixSmoother_.tick(mix_);
 }
 
@@ -117,6 +130,11 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     if (saturation_ > 0.0f) {
         const float drive = 1.0f + saturation_ * 4.0f;
         satd = std::tanh(satd * drive) / drive;
+    } else if (selfOsc_ && feedbackSmoother_.current() > 0.9f) {
+        // No saturation dialled in, but the loop is heading past unity: fade a
+        // plain tanh in over 0.9 → 1.0 effective gain so the runaway has a limit.
+        const float k = std::min(1.0f, (feedbackSmoother_.current() - 0.9f) * 10.0f);
+        satd += k * (std::tanh(satd) - satd);
     }
 
     // Feedback voicing (2nd-order tone filters) on the recorded signal → write.
@@ -147,6 +165,7 @@ void TapeDelay::setParameter(const std::string& id, float v) noexcept {
     else if (id == "lowCutHz")    { lowCutHz_     = v; rebuildFilters(); }
     else if (id == "highCutHz")   { highCutHz_    = v; rebuildFilters(); }
     else if (id == "tapeVoice")     tapeVoice_    = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "selfOsc")       selfOsc_      = v > 0.5f;
 }
 
 float TapeDelay::getParameter(const std::string& id) const noexcept {
@@ -160,6 +179,7 @@ float TapeDelay::getParameter(const std::string& id) const noexcept {
     if (id == "lowCutHz")     return lowCutHz_;
     if (id == "highCutHz")    return highCutHz_;
     if (id == "tapeVoice")    return tapeVoice_;
+    if (id == "selfOsc")      return selfOsc_ ? 1.0f : 0.0f;
     return 0.0f;
 }
 

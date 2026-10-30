@@ -115,6 +115,36 @@
   tape sounds like tape; set 0 to A/B). Verified first echo −2.2 dB HF + 3.0 dB LF head bump,
   stable under deep wow/flutter. (Overnight-deploy note: defaulted ON to be testable.)
 
+- **2026-10-30 Phase 3 — the remaining open items (branch fidelity-phase3).** Status
+  check first: #24, #28, #36, #40, #41, #42 had already landed in July (see git log);
+  this round closes the rest of the effect-side list. Every new behaviour has its own
+  setParameter id, off = bit-identical, and every random source re-seeds on reset()
+  (identical input => identical output, the dual-mono contract).
+  - #11 Echorec swirl ("drumWear", default 0.5): rotation-locked speed modulation
+    (1/rev + 2nd harmonic, rate = 1000/timeMs) + ±0.5 dB per-head AM at the drum angle.
+  - #46a Echorec valve record input ("valveColor", default 0.3): asymmetric
+    grounded-cathode 12AX7 knee + coupling-cap DC block, repeats only.
+  - #10 self-oscillation on Tape + Echorec ("selfOsc", default on): feedback <= 0.9 is
+    untouched; 0.9..0.98 (the port top) spreads to loop gain 0.9..1.15, bounded by the
+    loop tanh.
+  - **Echorec loop-gain bug fixed ("loopUnity", default on):** the loop clip was the
+    un-normalised tanh(2.5x), so the loop gain was 2.5 x feedback -- unity at 0.4, the
+    default. Every setting from 0.4 up built into a never-ending wash (from 0.6 a
+    near-full-scale one, peaks above 1.0). Now tanh(2.5x)/2.5 like the tape loop:
+    the knob is the loop gain. Only Dark Side Air (fb 0.45) is affected among the
+    factory presets; its repeats now decay. Its feedback needs a by-ear re-voice.
+  - #44 plate: per-comb Jot low shelf ("lfshelf", default OFF -- re-levels the wet)
+    + incommensurate per-comb LFO rates in classic mode ("lfospread", default ON).
+  - #46b plate velvet-noise input diffusion ("velvet", default OFF -- flat on noise,
+    but moved short-window preset loudness by up to ±1.6 dB; waits for a by-ear pass).
+  - #43 pitch: WSOLA-aligned grain restarts ("align", default on), no added latency.
+    PitchBlock is not used by any LV2 plugin (submodule/JUCE chain only).
+  - #45 (second half) first pedal's input impedance loads the pickup: re-loading
+    biquad H_Zin/H_1M in PickupLoadSim + a Zin table, wired in the Hex Forge engine
+    (the only place that knows the chain order). Engine flag only, OFF until a port.
+  - Golden (all 128 Hex Forge presets) vs main: 10 rows change, max 0.26 dB RMS
+    (Dark Side Air: swirl + valve); the rest are hash-only re-seed carry-overs.
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).

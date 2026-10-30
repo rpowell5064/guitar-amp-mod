@@ -24,7 +24,7 @@ void EchorecDelay::prepare(double sr, int maxBlock, int numCh) {
     feedbackSmoother_.prepare(fs, 5.0f);
     mixSmoother_.prepare(fs, 5.0f);
     timeSmoother_.setImmediate(timeMs_);
-    feedbackSmoother_.setImmediate(feedback_);
+    feedbackSmoother_.setImmediate(effectiveFeedback());
     mixSmoother_.setImmediate(mix_);
 
     // Shared motor modulation — one drum shared by both channels.
@@ -43,18 +43,36 @@ void EchorecDelay::reset() noexcept {
         for (auto& eq : c.headEQ) eq.reset();
         c.fbLP.reset();
         c.fbHP.reset();
+        c.valveDcX = c.valveDcY = 0.0f;
     }
     timeSmoother_.setImmediate(timeMs_);
-    feedbackSmoother_.setImmediate(feedback_);
+    feedbackSmoother_.setImmediate(effectiveFeedback());
     mixSmoother_.setImmediate(mix_);
+    // Re-seed every noise source so a reset() mid-stream lands in exactly the
+    // state prepare() leaves (two instances stay bit-identical after a reset).
+    wowWalk_.seed_     = 0xDEADBEEFu;
+    flutterWalk_.seed_ = 0xCAFEBABEu;
+    for (int c = 0; c < kMaxCh; ++c)
+        ch_[c].noiseSeed = 0x12345678u + static_cast<uint32_t>(c) * 0xA3C5u;
     wowWalk_.setImmediate(0.0f);
     flutterWalk_.setImmediate(0.0f);
     currentSpeedMod_ = 1.0f;
+    drumPhase_       = 0.0f;
+    for (auto& g : swirlGain_) g = 1.0f;
+}
+
+// selfOsc remap of the feedback knob. ≤ 0.9 passes through untouched (every
+// preset and the whole musical range stay bit-identical); the last stretch of
+// the knob (0.9 → 0.98, the port maximum) spreads linearly to 0.9 → 1.15 so
+// the top of the knob tips the loop over unity into a bounded runaway.
+float EchorecDelay::effectiveFeedback() const noexcept {
+    if (!selfOsc_ || feedback_ <= 0.9f) return feedback_;
+    return std::min(0.9f + (feedback_ - 0.9f) * 3.125f, 1.15f);
 }
 
 void EchorecDelay::advanceSmoothing() noexcept {
     timeSmoother_.tick(timeMs_);
-    feedbackSmoother_.tick(feedback_);
+    feedbackSmoother_.tick(effectiveFeedback());
     mixSmoother_.tick(mix_);
 
     // Advance shared motor modulation (both channels read the same speed).
@@ -65,6 +83,29 @@ void EchorecDelay::advanceSmoothing() noexcept {
     // RandomWalk outputs are normalized to σ≈1, so depth=1 gives ~1% RMS deviation.
     currentSpeedMod_ = 1.0f + wowDepth_     * 0.01f  * wow
                             + flutterDepth_ * 0.005f * flutter;
+
+    // Drum swirl: rotation-locked speed + level modulation (see header). The
+    // drum turns once per H4 delay (H1..H4 = ¼..1 revolution of head arc), so
+    // the rotation rate is 1000/timeMs Hz and follows the time knob.
+    if (drumWear_ > 0.0f) {
+        const float twoPi = 2.0f * static_cast<float>(M_PI);
+        const float revHz = 1000.0f / std::max(1.0f, timeSmoother_.current());
+        drumPhase_ += twoPi * revHz * currentSpeedMod_ / static_cast<float>(sampleRate_);
+        if (drumPhase_ >= twoPi) drumPhase_ -= twoPi;
+
+        // Speed: fundamental + 2nd harmonic (eccentric drum/idler is not a pure
+        // sine). Phase offset on the 2nd keeps the shape asymmetric.
+        currentSpeedMod_ += drumWear_ * (kSwirlDepth1 * std::sin(drumPhase_)
+                                       + kSwirlDepth2 * std::sin(2.0f * drumPhase_ + 0.7f));
+
+        // Level: each head sees the drum section at (phase − head angle); the
+        // spacing loss is mostly once-around with a little 2nd-harmonic shape.
+        for (int h = 0; h < kNumHeads; ++h) {
+            const float a = drumPhase_ - twoPi * kHeadFractions[h];
+            swirlGain_[h] = 1.0f + drumWear_ * kSwirlAM
+                                 * (0.8f * std::cos(a) + 0.2f * std::cos(2.0f * a));
+        }
+    }
     currentSpeedMod_ = std::clamp(currentSpeedMod_, 0.9f, 1.1f);
 }
 
@@ -86,6 +127,8 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
     float eqHead[kNumHeads];
     for (int h = 0; h < kNumHeads; ++h)
         eqHead[h] = s.headEQ[h].process(rawHead[h]);
+    if (drumWear_ > 0.0f)
+        for (int h = 0; h < kNumHeads; ++h) eqHead[h] *= swirlGain_[h];
 
     // Crosstalk: linear bleed from adjacent heads onto each output.
     float crosstalkHead[kNumHeads];
@@ -117,7 +160,17 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
     if (headCount > 0) wet *= (1.0f / static_cast<float>(headCount));
 
     // Feedback path: tanh soft clip → LP 3.5 kHz → HP 120 Hz.
-    float fb = std::tanh(2.5f * wet);
+    // selfOsc above 0.9: the gain beyond 0.9 drives the tanh harder instead of
+    // scaling its output, so the runaway level stays bounded at the 0.9 ceiling.
+    // loopUnity: the clip is tanh(2.5x)/2.5 (unity slope at 0, as the tape loop's
+    // tanh(drive*x)/drive), so the loop gain IS the feedback knob. The legacy
+    // un-normalised tanh(2.5x) made the loop gain 2.5 x feedback: unity at 0.4,
+    // so every setting from 0.4 up sustained indefinitely instead of decaying.
+    float fbGain = feedbackSmoother_.current();
+    float fbDrive = 2.5f;
+    if (fbGain > 0.9f && selfOsc_) { fbDrive *= fbGain * (1.0f / 0.9f); fbGain = 0.9f; }
+    float fb = std::tanh(fbDrive * wet);
+    if (loopUnity_) fb *= (1.0f / 2.5f);
     fb = s.fbLP.process(fb);
     fb = s.fbHP.process(fb);
 
@@ -129,8 +182,25 @@ float EchorecDelay::processSample(float x, int ch) noexcept {
         fb += noise * noiseLevel_ * 0.001f;
     }
 
+    // Valve record input: grounded-cathode 12AX7 knee (see header). Positive
+    // grid swings meet grid conduction early (hard side), the negative side
+    // heads for the distant cutoff (soft side); both have unity slope at 0, so
+    // small signals pass at the same level. The coupling cap removes the DC
+    // the asymmetry creates.
+    float rec = x;
+    if (valveColor_ > 0.0f) {
+        const float drive = 2.0f * valveColor_;
+        const float u = drive * x;
+        const float v = (u >= 0.0f) ? u / (1.0f + u)          // grid conduction
+                                    : u / (1.0f - 0.25f * u); // toward cutoff
+        const float shaped = v / drive;
+        s.valveDcY = shaped - s.valveDcX + valveDcCoeff_ * s.valveDcY;
+        s.valveDcX = shaped;
+        rec = s.valveDcY;
+    }
+
     // Write input + scaled feedback into the drum buffer.
-    s.drumBuf[s.writeIdx] = x + feedbackSmoother_.current() * fb;
+    s.drumBuf[s.writeIdx] = rec + fbGain * fb;
     s.writeIdx = (s.writeIdx + 1) % bufLen;
 
     return x + mixSmoother_.current() * wet;   // dry unity + wet on top (no level drop)
@@ -144,6 +214,10 @@ void EchorecDelay::setParameter(const std::string& id, float v) noexcept {
     else if (id == "wowDepth")      wowDepth_     = std::clamp(v, 0.0f, 1.0f);
     else if (id == "flutterDepth")  flutterDepth_ = std::clamp(v, 0.0f, 1.0f);
     else if (id == "noiseLevel")    noiseLevel_   = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "drumWear")      drumWear_     = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "valveColor")    valveColor_   = std::clamp(v, 0.0f, 1.0f);
+    else if (id == "selfOsc")       selfOsc_      = v > 0.5f;
+    else if (id == "loopUnity")     loopUnity_    = v > 0.5f;
     // lowCutHz / highCutHz not used by Echorec (head EQ is fixed) — silently ignored.
 }
 
@@ -155,6 +229,10 @@ float EchorecDelay::getParameter(const std::string& id) const noexcept {
     if (id == "wowDepth")     return wowDepth_;
     if (id == "flutterDepth") return flutterDepth_;
     if (id == "noiseLevel")   return noiseLevel_;
+    if (id == "drumWear")     return drumWear_;
+    if (id == "valveColor")   return valveColor_;
+    if (id == "selfOsc")      return selfOsc_ ? 1.0f : 0.0f;
+    if (id == "loopUnity")    return loopUnity_ ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -176,4 +254,8 @@ void EchorecDelay::rebuildFilters() noexcept {
         c.fbLP.setCoeffs(fbLp);
         c.fbHP.setCoeffs(fbHp);
     }
+
+    // Valve-stage coupling cap: ~7 Hz 1-pole DC block.
+    valveDcCoeff_ = std::exp(-2.0f * static_cast<float>(M_PI) * 7.0f
+                             / static_cast<float>(sampleRate_));
 }

@@ -13,6 +13,37 @@ static constexpr int kAPRef[6]     = { 347, 113, 37, 59, 149, 211 };
 static constexpr int kCombRef[8]   = { 1687, 1601, 2053, 2251, 1409, 1867, 2399, 2609 };
 // LFO phase offsets so modulation on each comb is not synchronous
 static constexpr float kLFOOffset[8] = { 0.0f, 0.25f, 0.5f, 0.75f, 0.125f, 0.375f, 0.625f, 0.875f };
+// lfoSpread (2026-10-30): per-comb multipliers on modRate. Mutually irrational-
+// looking ratios (no small-integer relations within ±30 %) so the comb LFOs never
+// re-align — the shared-rate tank repeats its interference pattern every 1/modRate.
+// Mean ~1.04 so the knob's rate reads the same; max pitch excursion rises <=27 %
+// on comb 3 (±4 samples at 0.8 Hz: ~0.7 -> ~0.9 cent, still non-pitchy).
+static constexpr float kLFORatio[8] = { 1.000f, 1.137f, 0.883f, 1.271f, 0.941f, 1.063f, 0.829f, 1.193f };
+// lfShelf (2026-10-30): Jot-style absorbent filter per comb (Jot & Chaigne 1991;
+// Välimäki et al. 2012 "Fifty years of artificial reverberation"). Each comb
+// loop gain becomes a first-order low shelf with DC gain set from T60_LF =
+// kLFDecayRatio * decayTime and HF gain from decayTime, crossover kLFShelfHz.
+// Voicing target: the plate's lows die faster than its mids (tight, non-boomy
+// low end at short-to-medium decays) instead of the flat-T60 comb bank's LF
+// hang. The shelf is then re-scaled so |H(1 kHz)| equals the scalar mid gain
+// exactly: the 1 kHz RT60 is unchanged.
+static constexpr double kLFDecayRatio = 0.6;
+static constexpr double kLFShelfHz    = 300.0;
+static constexpr double kShelfAnchorHz = 1000.0;
+// velvet (2026-10-30): velvet-noise input diffuser (Karjalainen & Järveläinen
+// 2007; Alary, Politis & Välimäki 2017 velvet-noise decorrelator). 15 signed
+// pulses, one per 17-sample grid cell @25 kHz (~1470 pulses/s, 10 ms span),
+// -18 dB exponential envelope, sum of squares = 1 (energy-preserving). Fixed
+// table (deterministic on every platform): the best of a 400k-seed LCG search
+// for loudness neutrality — pink-weighted and guitar-band gain within 0.1 dB,
+// |DC gain| = 1 (the comb bank's LF resonance would otherwise re-level bassy
+// program), worst 1/3-octave ripple 2.3 dB (the tank's own ripple is far
+// larger). Pulse 0 sits at lag 0 so the pre-delay timing is unchanged.
+// 15 MACs/sample.
+static constexpr int   kVelvetRef[15]  = { 0, 22, 39, 62, 84, 99, 109, 133, 148, 162, 184, 189, 212, 221, 251 };
+static constexpr float kVelvetGain[15] = {  0.5092f, -0.4392f, -0.3787f, -0.3266f, -0.2817f,
+                                            0.2429f, -0.2095f,  0.1807f, -0.1558f,  0.1344f,
+                                           -0.1159f, -0.0999f, -0.0862f,  0.0743f, -0.0641f };
 // ── Hex Ambient (type 2, 2026-07-25) reference sets @25 kHz ──────────────────
 // Longer prime-staggered tail (~x1.6 plate, mutually prime: no coincident modes
 // = no metallic ringing) + longer diffusers + two LONG smear allpasses in front
@@ -72,6 +103,15 @@ void PlateReverbBlock::prepare(double sr, int maxBlock, int nCh) {
     }
     bloomLine.resize(static_cast<int>(sr * 0.09) + 4);
 
+    // Velvet input diffuser taps (scaled like every other reference length)
+    for (int k = 0; k < kNumVelvet; ++k)
+        velvetPos[k] = static_cast<int>(kVelvetRef[k] * scale + 0.5);
+    int vlen = 1;
+    while (vlen <= velvetPos[kNumVelvet - 1]) vlen <<= 1;
+    velvetBuf.assign(static_cast<size_t>(vlen), 0.0f);
+    velvetMask = vlen - 1;
+    velvetW = 0;
+
     recalcFeedback();
     recalcDamping();
     studioPlate.prepare(sr);
@@ -98,6 +138,30 @@ void PlateReverbBlock::recalcFeedback() {
         const double delaySec = combLengths[i] / sampleRate;
         combs[i].feedback = static_cast<float>(
             std::pow(10.0, -3.0 * delaySec / std::max(0.01, static_cast<double>(decayTime))));
+        {
+            // lfShelf coefficients (always computed; used only when the switch is on).
+            // Analog H(s) = gH (s + wz)/(s + wp), wz = Wc sqrt(gL/gH), wp = Wc sqrt(gH/gL):
+            // DC = gL, inf = gH, |H(jWc)| = sqrt(gL gH); bilinear with Wc prewarped.
+            // gL < gH < 1 and min-phase, so |H| <= gH: the loop stays passive.
+            const double gH = combs[i].feedback;
+            const double gL = std::pow(gH, 1.0 / kLFDecayRatio);   // T60_LF = ratio * T60
+            const double Wc = std::tan(M_PI * std::min(kLFShelfHz, 0.4 * sampleRate) / sampleRate);
+            const double wz = Wc * std::sqrt(gL / gH), wp = Wc * std::sqrt(gH / gL);
+            double b0 = gH * (1.0 + wz) / (1.0 + wp);
+            double b1 = gH * (wz - 1.0) / (1.0 + wp);
+            const double a1 = (wp - 1.0) / (1.0 + wp);
+            // Anchor: scale so |H(1 kHz)| = gH (the scalar gain) -> mid RT60 unchanged.
+            // Resulting HF gain gH^2/|H| < gH^(2 - 1/ratio) < 1 — still stable.
+            const double w  = 2.0 * M_PI * std::min(kShelfAnchorHz, 0.45 * sampleRate) / sampleRate;
+            const double nr = b0 + b1 * std::cos(w), ni = -b1 * std::sin(w);
+            const double dr = 1.0 + a1 * std::cos(w), di = -a1 * std::sin(w);
+            const double mag = std::sqrt((nr * nr + ni * ni) / (dr * dr + di * di));
+            const double k = (mag > 1e-12) ? gH / mag : 1.0;
+            b0 *= k; b1 *= k;
+            combs[i].shelfB0 = static_cast<float>(b0);
+            combs[i].shelfB1 = static_cast<float>(b1);
+            combs[i].shelfA1 = static_cast<float>(a1);
+        }
         // Ambient set: longer lines + the Space multiplier. The bloom recirculation
         // adds a little effective decay on top — kept stable by its band-limit +
         // gain cap (verified: tail monotone-decays at decay max + bloom max).
@@ -138,7 +202,8 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
             bloomLP = inHP = loopHP = 0.0f;
         }
         if (!wantAmbient && ambientOn) {               // leaving ambient: plate reads the same lines — clear its view too
-            for (auto& c : combs) { std::fill(c.dl.buf.begin(), c.dl.buf.end(), 0.0f); c.dl.writeIdx = 0; c.lastLP = 0.0f; }
+            for (auto& c : combs) { std::fill(c.dl.buf.begin(), c.dl.buf.end(), 0.0f); c.dl.writeIdx = 0; c.lastLP = 0.0f; c.shelfZ = 0.0f; }
+            clearVelvet();
             for (auto& a : ap)    { std::fill(a.dl.buf.begin(), a.dl.buf.end(), 0.0f); a.dl.writeIdx = 0; }
         }
         springOn  = wantSpring;
@@ -166,6 +231,17 @@ void PlateReverbBlock::setParameter(const std::string& id, float v) {
     else if (id == "mix")        { mix      = std::clamp(v, 0.0f, 1.0f); spring.setMix(mix); }
     else if (id == "drip")       { drip     = std::clamp(v, 0.0f, 1.0f); spring.setDrip(drip); }  // spring dispersion (item 31)
     else if (id == "monosum")    { monoSum  = v > 0.5f; }   // host collapses L+R downstream (spring is already correlated)
+    else if (id == "lfshelf") {      // per-comb LF shelf absorption (engage from a clean shelf state)
+        const bool want = v > 0.5f;
+        if (want && !lfShelf) for (auto& c : combs) c.shelfZ = 0.0f;
+        lfShelf = want;
+    }
+    else if (id == "lfospread")  { lfoSpread = v > 0.5f; }  // incommensurate per-comb LFO rates
+    else if (id == "velvet") {       // velvet-noise input diffuser (engage from silence)
+        const bool want = v > 0.5f;
+        if (want && !velvet) clearVelvet();
+        velvet = want;
+    }
 }
 
 float PlateReverbBlock::getParameter(const std::string& id) const {
@@ -180,6 +256,9 @@ float PlateReverbBlock::getParameter(const std::string& id) const {
     if (id == "modRate")    return modRate;
     if (id == "mix")        return mix;
     if (id == "monosum")    return monoSum ? 1.0f : 0.0f;
+    if (id == "lfshelf")    return lfShelf ? 1.0f : 0.0f;
+    if (id == "lfospread")  return lfoSpread ? 1.0f : 0.0f;
+    if (id == "velvet")     return velvet ? 1.0f : 0.0f;
     return 0.0f;
 }
 
@@ -267,6 +346,9 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
     const int   preDelLen  = static_cast<int>(preDelayMs * 0.001f * fs);
     // Maximum modulation in samples — ±4 samples at full depth
     const float maxMod     = modDepth * 4.0f;
+    // lfoSpread: per-comb increments (spread off = the shared lfoInc, bit-identical)
+    float lfoIncK[kNumComb];
+    for (int k = 0; k < kNumComb; ++k) lfoIncK[k] = lfoSpread ? lfoInc * kLFORatio[k] : lfoInc;
 
     for (int i = 0; i < numSamples; ++i) {
         // Sum stereo input to mono (reverb network is mono internally)
@@ -276,6 +358,16 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
         // Pre-delay
         preDelay.write(x);
         float s = preDelay.read(std::max(1, preDelLen));
+
+        // Velvet input diffusion: sparse signed-pulse FIR (tap 0 = this sample)
+        if (velvet) {
+            velvetBuf[static_cast<size_t>(velvetW)] = s;
+            float v = 0.0f;
+            for (int k = 0; k < kNumVelvet; ++k)
+                v += kVelvetGain[k] * velvetBuf[static_cast<size_t>((velvetW - velvetPos[k]) & velvetMask)];
+            velvetW = (velvetW + 1) & velvetMask;
+            s = v;
+        }
 
         // 4 series allpass diffusers
         const int nAP   = dense ? kNumAP   : kClassicAP;
@@ -289,13 +381,14 @@ void PlateReverbBlock::process(float** in, float** out, int numSamples, int nCh)
         // 4 parallel comb filters with modulated delay times
         float outL = 0.0f, outR = 0.0f;
         for (int k = 0; k < nComb; ++k) {
-            lfoPhase[k] += lfoInc;
+            lfoPhase[k] += lfoIncK[k];
             if (lfoPhase[k] > 2.0f * static_cast<float>(M_PI))
                 lfoPhase[k] -= 2.0f * static_cast<float>(M_PI);
 
             const float mod         = maxMod * std::sin(lfoPhase[k]);
             const float delaySamps  = static_cast<float>(combLengths[k]) + mod;
-            const float c           = combs[k].process(s, delaySamps);
+            const float c           = lfShelf ? combs[k].processShelf(s, delaySamps)
+                                              : combs[k].process(s, delaySamps);
 
             if (k % 2 == 0) outL += c; else outR += c;
         }

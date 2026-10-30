@@ -1030,6 +1030,37 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     if (p->swHold) for (int i = 0; i < B_COUNT; ++i) enabled[i] = p->swEnabledHeld[i];
     else           for (int i = 0; i < B_COUNT; ++i) p->swEnabledPrev[i] = enabled[i];
 
+    // ── Roadmap #45: the guitar's first running pedal is the pickup's load ──
+    // Only the chain knows who that is (a standalone Input Trim cannot), so the
+    // Zin lookup lives here. A bypassed block is a wire and is skipped; the first
+    // RUNNING block decides. Blocks without a circuit analysis (NAM, digital,
+    // Octavia, the opamp drives not tabled) count as hi-Z = no correction.
+    {
+        using IS = PickupLoadSim::InputStage;
+        double zin = 0.0;
+        if (p->itZinCouple) {
+            static const IS kDriveZin[kDrMax + 1] = {
+                IS::TS808, IS::HiZ, IS::ProCoRAT, IS::HiZ /* NAM */, IS::BossDS1, IS::Klon,
+                IS::HiZ, IS::HiZ, IS::HiZ, IS::HiZ, IS::HiZ, IS::Rangemaster };
+            auto fuzzZin = [](int ped) {
+                return ped == 0 ? IS::BigMuff : ped == 1 ? IS::ToneBender
+                     : ped == 3 ? IS::FuzzFactory : IS::HiZ;   // 2 = Octavia: no analysis
+            };
+            for (int oi = 0; oi < B_COUNT; ++oi) {
+                const int id = order[oi];
+                if (!enabled[id]) continue;
+                IS s = IS::HiZ;
+                if      (id == B_FUZZ)   s = fuzzZin(fuzzPedal);
+                else if (id == B_FUZZ2)  s = fuzzZin(fz2Pedal);
+                else if (id == B_DRIVE)  s = kDriveZin[driveModel];
+                else if (id == B_DRIVE2) s = (drive2Model == kDrNamIdx) ? IS::HiZ : kDriveZin[drive2Model];
+                zin = PickupLoadSim::inputZ(s);
+                break;
+            }
+        }
+        p->trimLoad.setInputZ(zin);
+    }
+
     // ── Process in <= kMaxBlock chunks; each chunk runs the whole chain ──
     for (uint32_t off=0; off<n; off+=kMaxBlock) {
         const int len = static_cast<int>((n-off > (uint32_t)kMaxBlock) ? kMaxBlock : (n-off));

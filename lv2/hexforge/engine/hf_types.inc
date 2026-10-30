@@ -628,6 +628,8 @@ struct HexForge {
                                          // prepared 60 Hz so the default path re-tunes NOTHING (bit-identical)
     PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
     PickupLoadSim     trimLoad;         // pickup/cable/input-impedance sim (v24, default off)
+    bool              itZinCouple = false;  // roadmap #45: first pedal's Zin loads the pickup.
+                                            // No port yet -> always off = bit-identical.
     OutputBoost       trimBoost;        // pickup-agnostic output boost + beef (Input Trim)
     NoiseGateBlock    gate;
     CompressorBlock   comp;

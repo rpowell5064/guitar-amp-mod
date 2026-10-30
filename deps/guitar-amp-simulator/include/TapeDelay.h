@@ -23,6 +23,17 @@
 //   flutterDepth [0, 0.02]  — fractional pitch deviation from flutter LFO
 //   saturation   [0, 1]     — feedback saturation amount
 //   tapeAge      [0, 1]     — 0=new (12 kHz HF), 1=old (2 kHz HF)
+//   selfOsc      {0, 1}     — knob-top runaway (see below)
+//
+// Self-oscillation (selfOsc=1): feedback values ≤ 0.9 are untouched; the top of
+// the knob (0.9 → 0.98, the port maximum) spreads to an effective loop gain of
+// 0.9 → 1.15, so the loop tips over unity and runs away the way a real tape echo
+// does when the repeats knob is cranked. What bounds it is the record-path tanh:
+// with saturation=0 the loop has no clipper at all, so a tanh is faded in as the
+// effective gain rises from 0.9 to 1.0 (fully in at and above unity). The tone
+// filters sit in the loop with gain ≤ 1 (no head bump in the loop — that is what
+// once compounded into static), so the limit cycle stays a bounded tape roar
+// whose pitch slides with the time knob. selfOsc=0 = the old 0.98 hard clamp.
 class TapeDelay final : public DelayBase {
 public:
     static constexpr int   kMaxCh      = 2;
@@ -65,6 +76,9 @@ private:
     // like the single tape loop of the real machine. Off = bit-identical.
     bool  modLock_ = false;
     float lockMod_ = 0.0f;
+
+    bool  selfOsc_ = true;          // knob-top runaway (false = 0.98 clamp, bit-identical)
+    float effectiveFeedback() const noexcept;
 
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
 

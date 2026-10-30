@@ -24,7 +24,8 @@ public:
         auto clear = [](DelayLine& d) { std::fill(d.buf.begin(), d.buf.end(), 0.0f); d.writeIdx = 0; };
         clear(preDelay);
         for (auto& a : ap) clear(a.dl);
-        for (auto& c : combs) { clear(c.dl); c.lastLP = 0.0f; }
+        for (auto& c : combs) { clear(c.dl); c.lastLP = 0.0f; c.shelfZ = 0.0f; }
+        clearVelvet();
         for (auto& a : smearAp) clear(a.dl);
         clear(bloomLine);
         bloomLP = inHP = loopHP = 0.0f;
@@ -71,6 +72,26 @@ private:
     // wet 0.7071*(wetL+wetR) on both channels instead; the downstream sum then
     // leaves the wet/dry balance where stereo ears hear it. OFF = bit-identical.
     bool  monoSum    = false;
+    // Plate tank voicing (2026-10-30, types 0 classic + dense only; ambient
+    // already has its own analogs — loop HP and kAmbLFORate):
+    //   lfShelf   — Jot absorbent filters: each comb's scalar loop gain becomes a
+    //               first-order low shelf so the LF T60 is ~0.6x the mid T60
+    //               (tight plate low end, no comb-bank LF hang), anchored so the
+    //               1 kHz RT60 = decayTime exactly (presets keep their length).
+    //   lfoSpread — incommensurate per-comb LFO rates (modRate x kLFORatio[k])
+    //               instead of one shared rate: the comb taps never realign, so
+    //               the tail has no periodic swirl at 1/modRate.
+    //   velvet    — 15-pulse velvet-noise FIR in front of the allpass chain
+    //               (sparse input diffusion, ~10 ms, energy-normalised).
+    // All three OFF = bit-identical to the pre-2026-10-30 tank. Defaults:
+    // lfoSpread ON (wet level moves < 0.1 dB, 1 kHz RT60 within ±2 %);
+    // lfShelf OFF — removing LF tail energy is its point, and that re-levels the
+    // wet by 0.3-1.5 dB on full-range program, so it is a per-preset choice;
+    // velvet OFF — flat on noise, but in the full chain it moved short-window
+    // preset loudness by up to ±1.6 dB, so it waits for a by-ear preset pass.
+    bool  lfShelf    = false;
+    bool  lfoSpread  = true;
+    bool  velvet     = false;
     // Types 3/4 (2026-10-18): STUDIO PLATE (Dattorro figure-of-eight tank, mono
     // send -> decorrelated stereo) and HALL (8-line Hadamard FDN, true stereo
     // send). Own tanks (StudioReverbs.h), so types 0-2 stay bit-identical;
@@ -159,6 +180,20 @@ private:
             dl.write(x + feedback * lastLP);
             return out;
         }
+
+        // lfShelf variant: the scalar feedback is replaced by a first-order low
+        // shelf H(z) = (b0 + b1 z^-1)/(1 + a1 z^-1) (TDF-II, state shelfZ) whose
+        // DC/Nyquist gains are the per-comb LF/HF loop gains (Jot absorbent filter).
+        float shelfB0 = 0.0f, shelfB1 = 0.0f, shelfA1 = 0.0f, shelfZ = 0.0f;
+
+        float processShelf(float x, float modDelaySamples) noexcept {
+            const float out = dl.readFracHermite(modDelaySamples);
+            lastLP = out * (1.0f - damping) + lastLP * damping;
+            const float y = shelfB0 * lastLP + shelfZ;
+            shelfZ = shelfB1 * lastLP - shelfA1 * y;
+            dl.write(x + y);
+            return out;
+        }
     };
 
     // Pre-delay line (stereo input summed to mono before reverb network)
@@ -184,6 +219,14 @@ private:
     // Scaled delay lengths (set in prepare())
     int apLengths[kNumAP]     = {};
     int combLengths[kNumComb] = {};
+
+    // Velvet input diffuser: pulse delays (samples, scaled in prepare()) + a
+    // power-of-two ring (mask wrap: 15 taps/sample, no modulo)
+    static constexpr int kNumVelvet = 15;
+    int                velvetPos[kNumVelvet] = {};
+    std::vector<float> velvetBuf;
+    int                velvetW = 0, velvetMask = 0;
+    void clearVelvet() noexcept { std::fill(velvetBuf.begin(), velvetBuf.end(), 0.0f); velvetW = 0; }
 
     // ── Hex Ambient extras ────────────────────────────────────────────────
     int ambApLengths[kNumAP]     = {};   // longer diffuser set (prime-staggered)
