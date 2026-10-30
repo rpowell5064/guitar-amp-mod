@@ -30,7 +30,7 @@ Free and open source (GPL-3).""" ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 31 ;   # 31: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 30: MAINS selector (60 / 50 Hz) for the detector hum comb, port 8, default 60 = bit-identical. 29: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
+    lv2:microVersion 32 ;   # 32: the knob row wraps inside the plate (the Mains selector had pushed it ~70 px off both sides of the pedal); pedal 340 -> 430 px (2026-10-29). 31: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 30: MAINS selector (60 / 50 Hz) for the detector hum comb, port 8, default 60 = bit-identical. 29: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

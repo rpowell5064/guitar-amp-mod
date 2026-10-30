@@ -315,7 +315,10 @@ static void writeNamToNotify(AmpPlugin* p) {
 
 static LV2_Worker_Status scheduleRebuild(AmpPlugin* p, int modelIdx) {
     WorkMsg msg; msg.type = WORK_LOAD; msg.modelIdx = modelIdx;
-    msg.comp = p->ctrl[P_COMP] && *p->ctrl[P_COMP] > 0.5f;
+    // gated like run()'s compOn: recorded raw, a model with no twin read as changed on EVERY block and
+    // rebuilt the amp each period (Component Build is on by default) -- 2026-10-29 that storm flooded
+    // mod-host's worker until it aborted on a corrupted free
+    msg.comp = hasComponentModel(modelIdx) && p->ctrl[P_COMP] && *p->ctrl[P_COMP] > 0.5f;
     msg.eco  = p->ctrl[P_ECO]  && *p->ctrl[P_ECO]  > 0.5f;
     const LV2_Worker_Status st = p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
     if (st == LV2_WORKER_SUCCESS) { p->lastComp = msg.comp; p->lastEco = msg.eco; }
