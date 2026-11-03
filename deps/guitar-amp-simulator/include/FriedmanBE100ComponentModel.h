@@ -85,6 +85,8 @@ public:
     void  reset()                                                 noexcept override;
     void  advanceSmoothing()                                      noexcept override;
     float processSample(float x, int channel)                     noexcept override;
+    float processSampleHt(float x, int channel) noexcept override;   // HT supply / valve extras on (2026-11-03)
+    bool  htActive() const noexcept override { return ch_[0].pa.htOn(); }
     void  setParameter(const std::string& id, float value)        noexcept override;
     float getParameter(const std::string& id) const               noexcept override;
 

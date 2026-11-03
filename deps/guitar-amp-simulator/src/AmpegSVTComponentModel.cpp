@@ -224,6 +224,18 @@ void AmpegSVTComponentModel::buildStages() noexcept {
         gCfA_ = c.cfA.smallSignalGain();
         gCfB_ = c.cfB.smallSignalGain();
         { c.pi.process(1e-3); gPiPlate_ = c.pi.plateOut() / 1e-3; gPiCath_ = c.pi.cathodeOut() / 1e-3; c.pi.reset(); }
+        {   // HT supply (2026-11-03)
+            // silicon bridge into the stacked 50u reservoir at 660 V (plates), 4k7 -> 30u node B; the PI
+            // node (15k / 40u) and the preamp chassis (82k / 40u) both off B. The screens run from their
+            // own low-impedance winding, not this chain. ESTIMATE: winding + diodes ~ 6 ohm.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.rSrc = 6.0; sp.cRes = 50e-6; sp.chokeH = 0.0; sp.cScr = 30e-6; sp.cPI = 40e-6;
+            sp.screensOffChain = true; sp.vNode1 = 462.0;
+            sp.vNode2 = railC_; sp.iNode2 = c.pv1a.biasIa() + c.pi.biasIa();
+            sp.nPre = 1; sp.vPre[0] = railPre_; sp.cPre[0] = 40e-6; sp.parentPre[0] = 1;
+            sp.iPre[0] = c.v1a.biasIa() + c.v1b.biasIa() + c.v3a.biasIa() + c.v3b.biasIa() + c.v4a.biasIa() + c.v4b.biasIa() + c.v5.biasIa();
+            c.pa.setSupplyLayout(sp, 1.0e-6, 0.5e-7);   // AC heaters on a hum-balance pot; a head
+        }
         c.pa.prepare(fs_, svtPowerParams(railA_, railE_, otHfHz_, zHfDb_, zResHz_, zResDb_, idleMa_, raa_,
                                          nfbStabHz_, fluxLim_, kneeV_, iaScale_, lutPoints_));
         c.pa.setSpeakerRow(CabModels::speakerFor("@bass810"));   // Phase 5: the cab this amp drives
@@ -417,7 +429,16 @@ float AmpegSVTComponentModel::processSample(float x, int channel) noexcept {
     return c.dnr.process(float(out * outScalePa_), gain_ > 0.5f);
 }
 
+
 void AmpegSVTComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1a.setTolerance(evhcomp::spreadTol(value, 0)); c.v3a.setTolerance(evhcomp::spreadTol(value, 1)); c.v3b.setTolerance(evhcomp::spreadTol(value, 2)); c.v4a.setTolerance(evhcomp::spreadTol(value, 3)); c.pv1a.setTolerance(evhcomp::spreadTol(value, 4)); }
+            if (id == "supply" && value <= 0.0f) { c.v1a.setRail(0.0); c.v3a.setRail(0.0); c.v3b.setRail(0.0); c.v4a.setRail(0.0); c.pv1a.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")   { master_ = value; }                 // no master on the amp
     // The host rewrites EVERY parameter on EVERY block, so these must do nothing
@@ -473,6 +494,9 @@ void AmpegSVTComponentModel::setParameter(const std::string& id, float value) no
 }
 
 float AmpegSVTComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

@@ -52,10 +52,18 @@ void OversamplingWrapper::process(float** in, float** out,
     }
 
     // ── Nonlinear processing (interleaved so SmoothedValues tick once / OS sample)
-    for (int i = 0; i < numOS; ++i) {
-        model_->advanceSmoothing();
-        for (int ch = 0; ch < numCh; ++ch)
-            upBuf_[ch][i] = model_->processSample(upBuf_[ch][i], ch);
+    if (model_->htActive()) {   // the model's extras-on path (AmpModelBase::htActive)
+        for (int i = 0; i < numOS; ++i) {
+            model_->advanceSmoothing();
+            for (int ch = 0; ch < numCh; ++ch)
+                upBuf_[ch][i] = model_->processSampleHt(upBuf_[ch][i], ch);
+        }
+    } else {
+        for (int i = 0; i < numOS; ++i) {
+            model_->advanceSmoothing();
+            for (int ch = 0; ch < numCh; ++ch)
+                upBuf_[ch][i] = model_->processSample(upBuf_[ch][i], ch);
+        }
     }
 
     // ── Downsample: anti-alias LP then decimate ───────────────────────────────

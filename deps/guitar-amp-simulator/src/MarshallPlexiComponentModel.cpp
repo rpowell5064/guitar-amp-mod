@@ -185,6 +185,17 @@ void MarshallPlexiComponentModel::buildStages() noexcept {
             c.ts.prepare(fs_, tp);
         }
         c.coupPI.prepare(fs_, 22e-9, kZthStack + 33e3, 1e6);   // .022 into the 1M grid leak
+        {   // HT supply (2026-11-03)
+            // silicon bridge into the stacked 50u reservoir (plates via the OT centre tap), choke -> 50u
+            // screens, 20k -> 100u PI, 10k -> 50u V2, 10k -> 50u V1. ESTIMATE: winding + diodes ~ 10 ohm,
+            // choke ~ 4 H.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.rSrc = 10.0; sp.cRes = 50e-6; sp.chokeH = 4.0; sp.cScr = 50e-6; sp.cPI = 100e-6;
+            sp.nPre = 2;
+            sp.vPre[0] = ra.V2; sp.cPre[0] = 50e-6; sp.iPre[0] = c.v2a.biasIa() + c.v2b.biasIa();
+            sp.vPre[1] = ra.V1; sp.cPre[1] = 50e-6; sp.iPre[1] = c.v1a.biasIa() + c.v1b.biasIa();
+            c.pa.setSupplyLayout(sp, 2.0e-6, 0.5e-7);   // AC heaters, centre tap grounded; a head
+        }
         { auto pp = plexiPowerParams(rb.PI, rb.B, rb.screen, idleB, raa_, double(presence_), zResDb_);
           pp.otHfHz = otHfHz_; pp.zHfDb = zHfDb_; pp.nfbStabHz = nfbStabHz_; c.pa.prepare(fs_, pp); }
         if (ci == 0) endB_.pa = c.pa.opPoint();
@@ -330,7 +341,16 @@ float MarshallPlexiComponentModel::processSample(float x, int channel) noexcept 
     return float(s * outScalePa_);
 }
 
+
 void MarshallPlexiComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1b.setTolerance(evhcomp::spreadTol(value, 0)); c.v1a.setTolerance(evhcomp::spreadTol(value, 1)); c.v2a.setTolerance(evhcomp::spreadTol(value, 2)); }
+            if (id == "supply" && value <= 0.0f) { c.v1a.setRail(0.0); c.v1b.setRail(0.0); c.v2a.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { if (value != gain_)   { gain_ = value;   recalcMix(false); } }
     else if (id == "vol2")     { if (value != vol2_)   { vol2_ = value;   recalcMix(false); } }
     else if (id == "master")   { master_ = value; }            // no master volume on the 1959
@@ -372,6 +392,9 @@ void MarshallPlexiComponentModel::setParameter(const std::string& id, float valu
 }
 
 float MarshallPlexiComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")      return gain_;
     if (id == "vol2")      return vol2_;
     if (id == "master")    return master_;

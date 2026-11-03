@@ -171,6 +171,20 @@ void MesaDualRectifierComponentModel::buildStages() noexcept {
         // bleed + master built in recalcPots() (presence-dependent)
         c.coup28.prepare(fs_, 0.02e-6, 250e3, 1e6);                        // C28 → R214 1M (master wiper source, ESTIMATE)
         // ── Power section ──
+        {   // HT supply (2026-11-03)
+            // RECT switch: two 5U4s or silicon, full-wave into the 110u reservoir (plates via the OT
+            // centre tap), choke -> 30u screens B, 2k7 -> 30u node C (PI, V3, the loop), then D (V2,
+            // 15k) and E (V1, 22k) both off C. ESTIMATE: 5U4 pair + winding ~ 70 ohm, silicon ~ 10 ohm,
+            // choke ~ 4 H, the loop's V4 ~ 2 mA.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.vNode1 = 454.0 * rs;   // node B as printed (vg2 is past the screen droppers)
+            sp.rSrc = rectTube_ ? 70.0 : 10.0; sp.cRes = 110e-6; sp.chokeH = 4.0; sp.cScr = 30e-6; sp.cPI = 30e-6;
+            sp.iPIExtra = c.v3a.biasIa() + c.v3b.biasIa() + 2e-3;
+            sp.nPre = 2;
+            sp.vPre[0] = railD; sp.cPre[0] = 30e-6; sp.iPre[0] = c.v2a.biasIa() + c.v2b.biasIa(); sp.parentPre[0] = 2;
+            sp.vPre[1] = railE; sp.cPre[1] = 30e-6; sp.iPre[1] = c.v1a.biasIa();                  sp.parentPre[1] = 2;
+            c.pa.setSupplyLayout(sp, 0.3e-6, 0.5e-7);   // V1 on a DC heater; a head
+        }
         c.pa.prepare(fs_, rectoPowerParams(railC, railA, otHfHz_, zHfEff, zResEff, idleMa_, raa_, nfbStabHz_,
                                            fluxLim_, kneeV_, biasCapUf_, L.feedback, L.moreFeedback,
                                            zResHz_, zResQ_, otLfHz_));
@@ -267,7 +281,16 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
     return c.dnr.process(float(out * outScalePa_), ldr_ != kOrClean);
 }
 
+
 void MesaDualRectifierComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1a.setTolerance(evhcomp::spreadTol(value, 0)); c.v2a.setTolerance(evhcomp::spreadTol(value, 1)); c.v2b.setTolerance(evhcomp::spreadTol(value, 2)); c.v3a.setTolerance(evhcomp::spreadTol(value, 3)); }
+            if (id == "supply" && value <= 0.0f) { c.v1a.setRail(0.0); c.v2a.setRail(0.0); c.v2b.setRail(0.0); c.v3a.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "bass")     { bass_ = value;   recalcPots(); }
@@ -321,6 +344,9 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
 }
 
 float MesaDualRectifierComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

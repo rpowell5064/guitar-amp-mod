@@ -195,6 +195,20 @@ void MesaMarkVComponentModel::buildStages() noexcept {
         c.geq.setReturnOhms(geqReturnOhms_);
         c.geq.prepare(fs_);
         // ── Power section ──
+        {   // HT supply (2026-11-03)
+            // 90 W silicon full-wave into the 110u reservoir (plates via the OT centre tap), choke -> 30u
+            // screen node B (+ the reverb driver), 5k6||4k7 -> 33u node C (PI, V3A, V4B, V5A, V6A, the
+            // reverb recovery), 1k -> 33u node E (V1, V2A, V3B), 47k -> 10u node D off B (the loop).
+            // ESTIMATE: winding + diodes ~ 10 ohm, choke ~ 4 H, unmodelled triodes ~ 1 mA each.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.vNode1 = 445.0;   // node B as printed (vg2 is past the screen droppers)
+            sp.rSrc = 10.0; sp.cRes = 110e-6; sp.chokeH = 4.0; sp.cScr = 30e-6; sp.cPI = 33e-6; sp.iScrExtra = 3e-3;
+            sp.iPIExtra = c.v3a.biasIa() + c.v4b.biasIa() + c.v5a.biasIa() + c.v6a.biasIa() + 1e-3;
+            sp.nPre = 2;
+            sp.vPre[0] = kRailE; sp.cPre[0] = 33e-6; sp.iPre[0] = c.v1a.biasIa() + c.v1b.biasIa() + 2e-3; sp.parentPre[0] = 2;
+            sp.vPre[1] = kRailD; sp.cPre[1] = 10e-6; sp.iPre[1] = c.v6b.biasIa(); sp.parentPre[1] = 1;
+            c.pa.setSupplyLayout(sp, 0.3e-6, 0.5e-7);   // first valves on DC heaters; a head
+        }
         c.pa.prepare(fs_, markvPowerParams(otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                            fluxLim_, kneeV_, double(presence_) * presPot_));
         c.pa.setPresence(presence_);
@@ -310,7 +324,16 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
     return c.dnr.process(float(out * outScalePa_), true);   // channel 3 is always high-gain
 }
 
+
 void MesaMarkVComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1a.setTolerance(evhcomp::spreadTol(value, 0)); c.v1b.setTolerance(evhcomp::spreadTol(value, 1)); c.v5a.setTolerance(evhcomp::spreadTol(value, 2)); c.v4b.setTolerance(evhcomp::spreadTol(value, 3)); c.v3a.setTolerance(evhcomp::spreadTol(value, 4)); c.v6a.setTolerance(evhcomp::spreadTol(value, 5)); c.v6b.setTolerance(evhcomp::spreadTol(value, 6)); }
+            if (id == "supply" && value <= 0.0f) { c.v6b.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "bass")     { bass_ = value; recalcPots(); }
@@ -377,6 +400,9 @@ void MesaMarkVComponentModel::setParameter(const std::string& id, float value) n
 }
 
 float MesaMarkVComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

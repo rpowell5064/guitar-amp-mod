@@ -145,6 +145,38 @@
   - Golden (all 128 Hex Forge presets) vs main: 10 rows change, max 0.26 dB RMS
     (Dark Side Air: swirl + valve); the rest are hash-only re-seed carry-overs.
 
+- **2026-11-03 — HT supply, heaters, microphony, valve spread on the component twins
+  (#22 supply side, #27, + new).** Every PushPullPowerV twin (Deluxe, JCM800, Plexi, AC30,
+  BE-100, Mark V, Recto, Rockerverb, SVT, AD200; not the EVH, which has its own section).
+  Model ids "supply" / "ripple" / "heaterhum" / "micro" / "spread", all 0 = off.
+  - PowerSupplyV: the HT secondary (|sin| at the mains rate) into the rectifier (silicon or
+    valve source resistance) and the reservoir, then choke -> screen node -> PI node ->
+    preamp nodes as a tree (the AC30's branches hang off the screen node). Node voltages are
+    the drawings'; each series R is derived from the printed drop and the idle current, so
+    the stages see zero deviation at rest. The output stage's live current loads it.
+  - Effects: plates move toward a second load-line table at 0.8 vb (the ceiling sags and
+    carries the ripple: the clipped-note sidebands); the screen node adds to the per-tube
+    screen droop; the PI and preamp triodes take their node as a rail offset.
+  - Sag vs ripple split at 70 Hz (2nd-order). Triodes take the slow share as an operating-
+    point move only (its DC plate shift is removed, as the coupling cap would): fed as
+    signal, the choke/filter resonance (10-20 Hz) motorboated the high-gain twins. The Mark V
+    still closed the loop through node C's and node E's triodes, so those stay on the
+    printed rail (its PI, loop stage, screens and plates take the supply).
+  - Heater hum: mains-locked 60 Hz at V1's grid, per-amp level (DC / elevated heaters low).
+    Microphony: a 3.2 kHz Q40 resonator from the speaker node into V1, bounded; inaudible
+    at physical coupling on the heads, set to a third of the howl point on the two combos.
+    Spread: a fixed deterministic set of preamp triode current tolerances + output-pair
+    idle mismatch.
+  - Measured at gain 0.6, 220 Hz burst: 1.0-2.1 dB bloom (late vs early), plate sag 20-75 V,
+    ripple sidebands -35 dBc (valve-rectified combos) to -60 dBc; no idle oscillation on any
+    twin up to gain 1.0. CPU +5 % on the twin.
+  - -ffast-math: the extras' on path lives in processSampleHt (own translation units) and
+    the stages' ...Ht builds, dispatched by OversamplingWrapper via AmpModelBase::htActive().
+    The off path is the original code, but the extra code in the twins' TUs still moves the
+    compiler's inlining: the golden changes in 16 rows by <= 0.0009 dB RMS (rounding only).
+  - Device A/B: TEMPORARY flag files supply_on / valve_on in the Hex Forge config dir (the
+    twins run whenever the Component Model toggle is on, its shipped default).
+
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
   ACTIVE now (Hermite, gate hum-reject, DC hygiene, limiter anti-alias-on-clip…).

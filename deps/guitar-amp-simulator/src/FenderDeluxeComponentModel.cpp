@@ -64,6 +64,18 @@ PushPullPowerV::Params deluxePowerParams(double railPI, double idleMa, double zR
     p.fluxRefHz = 40.0;  p.fluxSatV = fluxSatV;
     p.screenR = 470.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 470 Ω screens
     p.outTrim = 1.0;
+
+    // ── HT supply: GZ34 full-wave → 16µ reservoir (plates via the OT centre tap) → choke
+    //    → 16µ screens → 16µ PI → 16µ preamp. ESTIMATE: valve rectifier + HT winding
+    //    ≈ 160 Ω per conduction, choke ≈ 4 H. AC heaters, artificial centre tap. ──
+    p.supply.mainsHz = 60.0;
+    p.supply.rSrc  = 160.0;
+    p.supply.cRes  = 16e-6;
+    p.supply.chokeH = 4.0;
+    p.supply.cScr  = 16e-6;
+    p.supply.cPI   = 16e-6;
+    p.heaterHumV   = 2.0e-6;
+    p.microCouple  = 1.0e-5;      // a combo: the valves sit in the speaker's field (a third of the howl point)
     return p;
 }
 } // namespace
@@ -97,7 +109,21 @@ void FenderDeluxeComponentModel::buildStages() noexcept {
         // .001µ → 1M PI grid leak: the 160 Hz high-pass into the phase inverter.
         c.coupPi.prepare(fs_, piCapF_, Zp100, 1e6);
         // ── Power section ──
-        c.pa.prepare(fs_, deluxePowerParams(kRailPI, idleMa_, zResDb_, zResHz_, zHfDb_, fluxSatV_, kneeV_, imbalance_));
+        {
+            PushPullPowerV::Params pp = deluxePowerParams(kRailPI, idleMa_, zResDb_, zResHz_, zHfDb_, fluxSatV_, kneeV_, imbalance_);
+            // preamp node (250 V): the three modelled triodes + the at-rest reverb recovery and
+            // tremolo halves on the same node (≈ 1 mA each, ESTIMATE)
+            pp.supply.nPre = 1;
+            pp.supply.vPre[0] = kRailPre;
+            pp.supply.cPre[0] = 16e-6;
+            pp.supply.iPre[0] = c.v2a.biasIa() + c.v2b.biasIa() + c.v4b.biasIa() + 3.0e-3;
+            c.pa.prepare(fs_, pp);
+        }
+        c.pa.setSupply(supply_); c.pa.setRipple(ripple_); c.pa.setHeaterHum(hum_);
+        c.pa.setMicrophonic(micro_); c.pa.setTubeSpread(spread_);
+        c.v2a.setTolerance(1.0 + 0.08 * spread_);   // a fixed, deterministic valve set: + / - / +
+        c.v2b.setTolerance(1.0 - 0.10 * spread_);
+        c.v4b.setTolerance(1.0 + 0.05 * spread_);
         c.pa.setPresence(0.0f);
         c.pa.setSagDepth(sag_);
         { SpeakerParams sp = CabModels::speakerFor("@american-ob"); sp.srcR = 8.0;   // Phase 5: the open-back 12" this amp drives
@@ -164,6 +190,7 @@ float FenderDeluxeComponentModel::processSample(float x, int channel) noexcept {
     return float(v * outScalePa_);
 }
 
+
 void FenderDeluxeComponentModel::setParameter(const std::string& id, float value) noexcept {
     auto rebuild = [this]() { if (fs_ > 0.0) { buildStages(); recalcPots(); } };
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
@@ -175,6 +202,14 @@ void FenderDeluxeComponentModel::setParameter(const std::string& id, float value
     else if (id == "bright")   { bright_ = value > 0.5f; recalcPots(); }
     else if (id == "sag")      { sag_ = value; for (auto& c : ch_) c.pa.setSagDepth(value); }
     else if (id == "dynload")  { dynLoad_ = value > 0.5f; for (auto& c : ch_) c.pa.setDynLoad(dynLoad_); }
+    else if (id == "supply")   { supply_ = value; for (auto& c : ch_) c.pa.setSupply(value);
+                                 if (value <= 0.0f) for (auto& c : ch_) { c.v2a.setRail(0.0); c.v2b.setRail(0.0); c.v4b.setRail(0.0); } }
+    else if (id == "ripple")   { ripple_ = value; for (auto& c : ch_) c.pa.setRipple(value); }
+    else if (id == "heaterhum"){ hum_ = value; for (auto& c : ch_) c.pa.setHeaterHum(value); }
+    else if (id == "micro")    { micro_ = value; for (auto& c : ch_) c.pa.setMicrophonic(value); }
+    else if (id == "spread")   { spread_ = std::clamp(value, 0.0f, 1.0f);
+                                 for (auto& c : ch_) { c.pa.setTubeSpread(spread_); c.v2a.setTolerance(1.0 + 0.08 * spread_);
+                                                       c.v2b.setTolerance(1.0 - 0.10 * spread_); c.v4b.setTolerance(1.0 + 0.05 * spread_); } }
     else if (id == "palegacy") { for (auto& c : ch_) c.pa.setLegacyPa(value > 0.5f); }   // lab A/B: the rev-189 power stage (2026-10-07)
     else if (id == "involts")  { inVolts_ = value; }
     else if (id == "outscale") { outScalePa_ = value; }
@@ -206,6 +241,9 @@ float FenderDeluxeComponentModel::getParameter(const std::string& id) const noex
     if (id == "outscale") return outScalePa_;
     if (id == "pa_idle_ma") return float(ch_[0].pa.outIdlemA());
     if (id == "pa_tail_v")  return float(ch_[0].pa.ltpTailV());
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0')); // lab: derived series R
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id.size() >= 4 && id.compare(0, 3, "tap") == 0) {
         const int i = std::atoi(id.c_str() + 3);
         const auto& c = ch_[0];

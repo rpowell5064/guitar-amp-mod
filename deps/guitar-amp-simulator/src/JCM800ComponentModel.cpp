@@ -139,6 +139,16 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             p.R4 += kZthStack;
             c.ts.prepare(fs_, p);
         }
+        {   // HT supply (2026-11-03)
+            // silicon bridge into the stacked reservoir (plates via the OT centre tap), choke -> screens,
+            // then the PI/V2 node and the V1 node down the dropping chain. ESTIMATE: winding + diodes
+            // ~ 10 ohm, choke ~ 4 H, 50u-class sections.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.rSrc = 10.0; sp.cRes = 50e-6; sp.chokeH = 4.0; sp.cScr = 50e-6; sp.cPI = 50e-6;
+            sp.iPIExtra = c.v2a.biasIa() + c.v2b.biasIa();
+            sp.nPre = 1; sp.vPre[0] = kRailV1; sp.cPre[0] = 50e-6; sp.iPre[0] = c.v1a.biasIa() + c.v1b.biasIa();
+            c.pa.setSupplyLayout(sp, 2.0e-6, 0.5e-7);   // AC heaters, centre tap grounded; a head
+        }
         { auto pp = jcmPowerParams(); if (sir34_) pp.presCap = 0.47e-6;   // SIR #34 step H: C17 .1u -> .22-.68u (the presence network reaches lower)
           pp.zResDb = zResDb_; pp.otHfHz = paLegacy_ ? 22e3 : otHfHz_; pp.zHfDb = paLegacy_ ? 8.0 : zHfDb_; pp.nfbStabHz = paLegacy_ ? 20e3 : nfbStabHz_; pp.fluxSatV = fluxSatV_; c.pa.prepare(fs_, pp); c.pa.setLegacyPa(paLegacy_); }
         c.pa.setPresence(presence_);
@@ -224,7 +234,16 @@ float JCM800ComponentModel::processSample(float x, int channel) noexcept {
     return float(v * outScalePa_);
 }
 
+
 void JCM800ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1a.setTolerance(evhcomp::spreadTol(value, 0)); c.v1b.setTolerance(evhcomp::spreadTol(value, 1)); c.v2a.setTolerance(evhcomp::spreadTol(value, 2)); }
+            if (id == "supply" && value <= 0.0f) { c.v1a.setRail(0.0); c.v1b.setRail(0.0); c.v2a.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "bass")     { bass_ = value; recalcPots(); }
@@ -265,6 +284,9 @@ void JCM800ComponentModel::setParameter(const std::string& id, float value) noex
 }
 
 float JCM800ComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

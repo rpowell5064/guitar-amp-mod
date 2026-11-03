@@ -99,6 +99,16 @@ void OrangeAD200BModel::buildStages() noexcept {
         buildStack(c);
         // C14 22n from the master wiper into the RO7 grid (R33 1M).
         c.coup14.prepare(fs_, 22e-9, 150e3, 1e6);
+        {   // HT supply (2026-11-03)
+            // silicon full-wave into the reservoir (plates via the OT centre tap), choke -> screens, then
+            // the PI node and the preamp node. ESTIMATE throughout (no drawing): 100u reservoir, 4 H
+            // choke, 50u sections, winding + diodes ~ 8 ohm, the other preamp triodes ~ 2 mA.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.rSrc = 8.0; sp.cRes = 100e-6; sp.chokeH = 4.0; sp.cScr = 50e-6; sp.cPI = 50e-6;
+            sp.screensOffChain = true; sp.vNode1 = railA_ - 10.0;   // screens at 320 V: their own lower supply (ESTIMATE)
+            sp.nPre = 1; sp.vPre[0] = railV1_; sp.cPre[0] = 50e-6; sp.iPre[0] = c.ro1.biasIa() + c.ro2.biasIa() + 2e-3;
+            c.pa.setSupplyLayout(sp, 2.0e-6, 0.5e-7);   // a head
+        }
         c.pa.prepare(fs_, ad200PowerParams(railV2_, railA_, railScreen_, otHfHz_, zHfDb_, zResHz_, zResDb_,
                                            idleMa_, raa_, nfbStabHz_, fluxLim_, kneeV_, iaScale_, nfbScale_, lutPoints_));
         c.pa.setSpeakerRow(CabModels::speakerFor("@bass810"));   // Phase 5: the cab this amp drives
@@ -191,7 +201,16 @@ float OrangeAD200BModel::processSample(float x, int channel) noexcept {
     return c.dnr.process(float(out * outScalePa_), gain_ > 0.5f);
 }
 
+
 void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.ro1.setTolerance(evhcomp::spreadTol(value, 0)); c.ro2.setTolerance(evhcomp::spreadTol(value, 1)); }
+            if (id == "supply" && value <= 0.0f) { c.ro1.setRail(0.0); c.ro2.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     // Guarded on an actual change: the host rewrites every parameter every block,
@@ -231,6 +250,9 @@ void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcep
 }
 
 float OrangeAD200BModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

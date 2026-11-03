@@ -25,6 +25,13 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == W_AMP_FREE) { delete msg->amp; return true; }
     if (msg->type == W_NAM_FREE) { delete msg->nam; return true; }
+    if (msg->type == W_AB_POLL) {   // TEMPORARY HT-supply / valve A/B (see hf_types.inc)
+        int v = 0;
+        if (FILE* f = std::fopen((hfplat::configDir() + "/supply_on").c_str(), "r")) { v |= 1; std::fclose(f); }
+        if (FILE* f = std::fopen((hfplat::configDir() + "/valve_on").c_str(), "r"))  { v |= 2; std::fclose(f); }
+        p->abHt.store(v, std::memory_order_relaxed);
+        return true;
+    }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
         const char* sent = cabSentinel(msg->path);

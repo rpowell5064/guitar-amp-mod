@@ -138,6 +138,17 @@ void VoxAC30ComponentModel::buildStages() noexcept {
         // driven 6.1 dB hot and C3 47N was not in circuit at all.
         c.coup15.prepare(fs_, 47e-9, 220e3, par(220e3, 1e6));
         // cut built in recalcPots()
+        {   // HT supply (2026-11-03)
+            // GZ34 full-wave into the 47u reservoir (plates via the OT centre tap), choke -> 22u screen
+            // node; the PI (22k / 10u) and the preamp nodes branch off it in parallel. ESTIMATE: valve
+            // rectifier + winding ~ 150 ohm, choke ~ 4 H; the tremolo branch as a 2 mA screen-node load.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.rSrc = 150.0; sp.cRes = 47e-6; sp.chokeH = 4.0; sp.cScr = 22e-6; sp.cPI = 10e-6; sp.iScrExtra = 2e-3;
+            sp.nPre = 2;
+            sp.vPre[0] = preV_;        sp.cPre[0] = 10e-6; sp.iPre[0] = c.v1.biasIa();  sp.parentPre[0] = 1;
+            sp.vPre[1] = preV_ - 15.0; sp.cPre[1] = 33e-6; sp.iPre[1] = c.v11a.biasIa() + c.v11b.biasIa(); sp.parentPre[1] = 1;
+            c.pa.setSupplyLayout(sp, 2.0e-6, 1.2e-3);   // AC heaters, centre tap grounded; a combo (microphony: 1/30 of the howl point)
+        }
         c.pa.prepare(fs_, voxPowerParams(preV_, htV_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                          fluxLim_, kneeV_, cathR_, cathC_));
         { SpeakerParams sp = CabModels::speakerFor("@vox2x12"); sp.srcR = 6.0;   // Phase 5: the cab this amp drives (open-back alnico); its 85 Hz peak sits on musical difference tones, so it is damped like the NFB amps despite the AC30 having no loop
@@ -220,7 +231,16 @@ float VoxAC30ComponentModel::processSample(float x, int channel) noexcept {
     return c.dnr.process(float(out * outScalePa_), gain_ > 0.5f);
 }
 
+
 void VoxAC30ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1.setTolerance(evhcomp::spreadTol(value, 0)); c.v11a.setTolerance(evhcomp::spreadTol(value, 1)); }
+            if (id == "supply" && value <= 0.0f) { c.v1.setRail(0.0); c.v11a.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gainSmooth_.setTargetValue(value); if (value != gain_) { gain_ = value; recalcPots(); } }   // the C8 bright cap tracks the wiper
     else if (id == "master")   { master_ = value; }                 // no master on the amp
     else if (id == "bass")     { bass_ = value;   recalcPots(); }
@@ -253,6 +273,9 @@ void VoxAC30ComponentModel::setParameter(const std::string& id, float value) noe
 }
 
 float VoxAC30ComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

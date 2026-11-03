@@ -28,6 +28,17 @@
 //   * Miller capacitance beyond any explicit schematic grid cap
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Keeps an additive model's ON path out of line, so that with it OFF the caller compiles
+// exactly as it did without it (the library builds with -ffast-math: a branch inlined next
+// to the original arithmetic can change how that arithmetic is associated and rounded).
+#ifndef HT_NOINLINE
+#if defined(__GNUC__) || defined(__clang__)
+#define HT_NOINLINE __attribute__((noinline))
+#else
+#define HT_NOINLINE
+#endif
+#endif
+
 namespace evhcomp {
 
 // Koren published 12AX7 parameters (shared by every stage).
@@ -289,7 +300,14 @@ public:
     }
 
     // vgIn: grid voltage swing (V, about bias). Returns plate swing (V, inverted).
-    double process(double vgIn) noexcept {
+    // Two builds of the same stage (2026-11-03): the library compiles with -ffast-math, which
+    // may re-associate an expression, so "x + 0.0" is NOT a no-op for the bits of the terms
+    // around it. With no supply offset and the datasheet valve the original code runs as it
+    // was (bit-identical); the supply/tolerance terms live only in the other instance.
+    double process(double vgIn) noexcept { return processT<false>(vgIn); }
+    // The supply-rail / valve-tolerance build, for a model's HT path (out of line).
+    HT_NOINLINE double processHt(double vgIn) noexcept { return processT<true>(vgIn); }
+    template <bool kHt> double processT(double vgIn) noexcept {
         if (hasGridLP_) vgIn = gridLP_.process(static_cast<float>(vgIn));
         // Grid conduction: the grid sits at 0 V DC (leak to ground) while the
         // cathode sits at Vk, so the grid-cathode diode conducts when the grid
@@ -297,12 +315,19 @@ public:
         // the conducting diode) absorbs the excess drive.
         if (p_.RgSrc > 0.0)
             vgIn = clampGrid(vgIn, VkPrev_ - p_.VgBias + kVgKnee, kRgDiode / (kRgDiode + p_.RgSrc), p_.gridKneeV);
-        const double Ia = solveIa(vgIn);
+        const double Ia = solveIa<kHt>(vgIn);
         const double Vk = (Ia + Ihist_) / Gk_;
-        const double Vp = p_.Vcc - Ia * p_.Ra;
-        Ihist_ = 2.0 * Geq_ * Vk - Ihist_;
-        VkPrev_ = Vk;
-        return Vp - VpBias_;
+        if constexpr (kHt) {
+            const double Vp = (p_.Vcc + railD_) - Ia * p_.Ra;
+            Ihist_ = 2.0 * Geq_ * Vk - Ihist_;
+            VkPrev_ = Vk;
+            return (Vp - VpBias_) - railK_ * railSlow_;
+        } else {
+            const double Vp = p_.Vcc - Ia * p_.Ra;
+            Ihist_ = 2.0 * Geq_ * Vk - Ihist_;
+            VkPrev_ = Vk;
+            return Vp - VpBias_;
+        }
     }
 
     double biasVp() const noexcept { return VpBias_; }
@@ -317,6 +342,25 @@ public:
         const double dVk = VkBias - VkBias_, dIa = IaBias - IaBias_;
         p_.Vcc = Vcc; IaBias_ = IaBias; VkBias_ = VkBias; VpBias_ = VpBias;
         Ihist_ += Geq_ * dVk; VkPrev_ += dVk; IaOp_ += dIa;
+    }
+
+    // Per-sample offset of this stage's supply node from its printed voltage (V): the
+    // HT supply's sag and ripple reaching the plate resistor (2026-11-03). The valve is
+    // solved at the moved rail, so a sagging node costs the stage headroom and gain.
+    // dSlow is the sub-audio share of dV: the plate's own DC shift from it is removed from
+    // the stage's output, as the interstage coupling cap would block it — slow sag moves
+    // the operating point, while ripple (the rest) comes through as signal. 0 = bit-identical.
+    void setRail(double dV, double dSlow = 0.0) noexcept { railD_ = dV; railSlow_ = dSlow; railOn_ = (dV != 0.0 || dSlow != 0.0); }
+    // Valve-to-valve spread: this particular valve's plate current as a multiple of the
+    // published curve (1 = the datasheet valve, bit-identical). The bias is re-solved and
+    // the stage's state carried across, as retune() does.
+    HT_NOINLINE void setTolerance(double m) noexcept {
+        m = std::clamp(m, 0.5, 1.5);
+        if (m == tol_) return;
+        const double Ia0 = IaBias_, Vk0 = VkBias_;
+        tol_ = m; solveBias();
+        const double dVk = VkBias_ - Vk0;
+        Ihist_ += Geq_ * dVk; VkPrev_ += dVk; IaOp_ += IaBias_ - Ia0;
     }
 
 private:
@@ -345,6 +389,7 @@ private:
         for (int i = 0; i < 200; ++i) {
             double IaK, dg, dp;
             korenEvalT(p_.tube, p_.VgBias - Ia * p_.Rk, p_.Vcc - Ia * RaRk, IaK, dg, dp);
+            if (tol_ != 1.0) { IaK *= tol_; dg *= tol_; dp *= tol_; }
             const double f = Ia - IaK;
             if (std::abs(f) < 1e-12) break;
             const double fp = 1.0 + dg * p_.Rk + dp * RaRk;
@@ -354,25 +399,48 @@ private:
         IaBias_ = Ia;
         VkBias_ = Ia * p_.Rk;
         VpBias_ = p_.Vcc - Ia * p_.Ra;
+        solveRailK();
+    }
+
+    // The plate's DC share of a rail move, for setRail's slow part (out of line: see HT_NOINLINE).
+    HT_NOINLINE void solveRailK() noexcept {
+        const double RaRk = p_.Ra + p_.Rk;
+        const double Ia = IaBias_;
+        {   // the plate's DC share of a rail move (for setRail's slow part): one more solve at Vcc + 1
+            double I2 = Ia;
+            for (int i = 0; i < 50; ++i) {
+                double IaK, dg, dp;
+                korenEvalT(p_.tube, p_.VgBias - I2 * p_.Rk, (p_.Vcc + 1.0) - I2 * RaRk, IaK, dg, dp);
+                if (tol_ != 1.0) { IaK *= tol_; dg *= tol_; dp *= tol_; }
+                const double f = I2 - IaK;
+                if (std::abs(f) < 1e-12) break;
+                const double fp = 1.0 + dg * p_.Rk + dp * RaRk;
+                if (std::abs(fp) < 1e-30) break;
+                I2 = std::clamp(I2 - f / fp, 0.0, (p_.Vcc + 1.0) / RaRk * 0.999);
+            }
+            railK_ = ((p_.Vcc + 1.0) - I2 * p_.Ra) - VpBias_;
+        }
     }
 
     // vgOrSrc: grid swing (plain stage) or the source-side swing ahead of
     // RinFb (feedback stage — the grid voltage is then a function of Ia via
     // the plate feedback, handled inside the iteration).
-    double solveIa(double vgOrSrc) noexcept {
+    template <bool kHt> double solveIa(double vgOrSrc) noexcept {
+        const double vcc   = kHt ? p_.Vcc + railD_ : p_.Vcc;
         const double rk    = 1.0 / Gk_;
-        const double maxIa = p_.Vcc / p_.Ra * 0.99;
+        const double maxIa = vcc / p_.Ra * 0.99;
         const bool   fb    = p_.RfbP > 0.0;
         double Ia = std::clamp(IaOp_, 0.0, maxIa);
         for (int it = 0; it < kMaxIter; ++it) {
             const double Vk  = (Ia + Ihist_) / Gk_;
-            const double Vp  = p_.Vcc - Ia * p_.Ra;
+            const double Vp  = vcc - Ia * p_.Ra;
             double Vg = vgOrSrc;
             if (fb)   // grid node with plate feedback (ΔVp through RfbP)
                 Vg = (vgOrSrc / p_.RinFb + (Vp - VpBias_) / p_.RfbP) * invGfb_;
             Vg += p_.VgBias;
             double IaK, dVgk, dVpk;
             korenEvalT(p_.tube, Vg - Vk, Vp - Vk, IaK, dVgk, dVpk);
+            if constexpr (kHt) { IaK *= tol_; dVgk *= tol_; dVpk *= tol_; }
             const double f = Ia - IaK;
             double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
             if (fb) fp += dVgk * (p_.Ra / p_.RfbP) * invGfb_;
@@ -403,6 +471,9 @@ private:
     double Geq_ = 0.0, Gk_ = 1.0, Ihist_ = 0.0, IaOp_ = 0.0;
     double IaBias_ = 0.0, VpBias_ = 0.0, VkBias_ = 0.0, VkPrev_ = 0.0;
     double Gfb_ = 0.0, invGfb_ = 0.0;
+    double railD_ = 0.0, tol_ = 1.0;   // supply offset (V), valve current tolerance (2026-11-03)
+    double railSlow_ = 0.0, railK_ = 1.0;   // the offset's sub-audio share, and dVp/dVcc at the bias point
+    bool   railOn_ = false;
     BiquadFilter gridLP_;
     bool hasGridLP_ = false;
 };

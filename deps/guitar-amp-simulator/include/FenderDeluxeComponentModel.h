@@ -53,6 +53,8 @@ public:
     void  reset()                                                 noexcept override;
     void  advanceSmoothing()                                      noexcept override;
     float processSample(float x, int channel)                     noexcept override;
+    float processSampleHt(float x, int channel) noexcept override;   // HT supply / valve extras on (2026-11-03)
+    bool  htActive() const noexcept override { return ch_[0].pa.htOn(); }
     void  setParameter(const std::string& id, float value)        noexcept override;
     float getParameter(const std::string& id) const               noexcept override;
 
@@ -73,6 +75,7 @@ private:
                                   //       clean with hair. 12 dB down (2026-10-05) = the device scale; knob 5 is the clean edge.
     float outScalePa_ = 1.0f / 58.0f;   // speaker-node volts -> units (22 W into 8 Ω = 18.8 Vpk ≈ 0.32 units)
     bool  dynLoad_ = false;
+    float supply_ = 0.0f, ripple_ = 1.0f, hum_ = 0.0f, micro_ = 0.0f, spread_ = 0.0f;   // 2026-11-03, 0 = off
 
     float  gainMid_ = 0.10f;       // fit0: VOLUME 1MA law — a 1M audio-taper pot sits at ~10 % of its track at half
                                    //       rotation. (The capture fit had asked for 0.19, but the capture dials were

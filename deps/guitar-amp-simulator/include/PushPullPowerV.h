@@ -2,10 +2,12 @@
 #include "EVHComponentStages.h"
 #include "BiquadFilter.h"
 #include "SpeakerModel.h"
+#include "PowerSupplyV.h"
 #include <cmath>
 #include <cstdlib>
 #include <cstdio>
 #include <algorithm>
+#include <string>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -142,6 +144,20 @@ public:
         // amp naturally drives (default: a sealed 4x12 of V30-class cones).
         bool          dynLoad = false;
         SpeakerParams spk;
+
+        // ── HT supply (2026-11-03) ───────────────────────────────────────────
+        // The rectifier/filter chain this stage hangs off (see PowerSupplyV). Only
+        // used while setSupply() > 0; the preamp nodes are filled in by the model.
+        PowerSupplyV::Params supply;
+        double sagTableV  = 0.80;    // second plate-ceiling table at this fraction of vb
+        // AC heaters: hum volts at the first triode's grid (heater-cathode leakage and
+        // capacitance, centre-tapped string). 0 = DC heaters.
+        double heaterHumV = 2.0e-6;
+        // First-preamp-valve microphony: the cabinet's sound pressure rings the valve's
+        // electrodes at their own mechanical resonance. Grid-referred volts per speaker
+        // volt at the resonance peak (a combo's valves sit in the cab's field; a head's do not).
+        double microHz = 3200.0, microQ = 40.0, microCouple = 2.0e-7;
+        double spreadV = 1.2;        // output pair idle mismatch at full spread (grid volts, ±)
     };
 
     void prepare(double fs, const Params& p) noexcept {
@@ -167,6 +183,7 @@ public:
         solveLtpBias();
         solveOutputBias();
         buildLUT();
+        prepareHt();
         cathAlpha_ = (p_.cathodeBiasR > 0.0) ? 1.0 - std::exp(-1.0 / (p_.cathodeBiasR * p_.cathodeBiasC * fs_)) : 0.0;
         cathIdle_  = 2.0 * outIdle_ * p_.tubesPerSide * (1.0 + p_.screenFrac);
         cathAvg_   = cathIdle_;
@@ -188,6 +205,38 @@ public:
         reset();
     }
 
+    // Everything prepare() builds for the 2026-11-03 extras, out of line (see HT_NOINLINE):
+    // the sagged plate table, the supply, the ripple split and microphony filters, and each
+    // PI plate's DC share of a rail move.
+    HT_NOINLINE void prepareHt() noexcept {
+            buildSagLUT();
+            if (layoutSet_) { p_.supply = layout_; p_.heaterHumV = layoutHum_; p_.microCouple = layoutMicro_; }
+            {
+                const double iPl = 2.0 * outIdle_ * p_.tubesPerSide;
+                sup_.prepare(fs_, p_.supply, { p_.vb, p_.vg2, p_.ltpVcc, iPl, iPl * p_.screenFrac, ltpIBiasTot_ });
+                supPrepared_ = true;
+                {   // ripple / sag split: 2nd-order Butterworth high-pass at 70 Hz (RBJ)
+                    const double w = 2.0 * M_PI * 70.0 / fs_, al = std::sin(w) / (2.0 * 0.70710678), cw = std::cos(w), a0 = 1.0 + al;
+                    hpB0_ = (1.0 + cw) / 2.0 / a0; hpB1_ = -(1.0 + cw) / a0; hpB2_ = hpB0_;
+                    hpA1_ = -2.0 * cw / a0; hpA2_ = (1.0 - al) / a0;
+                }
+                if (const char* e = std::getenv("HTSUP_MASK")) railMask_ = std::atoi(e);   // lab: bit k = keep node k
+                if (const char* e = std::getenv("HTSUP_MICROX")) p_.microCouple *= std::atof(e);   // lab: microphony coupling scale
+                const double w0 = 2.0 * M_PI * std::min(p_.microHz, 0.45 * fs_) / fs_, al = std::sin(w0) / (2.0 * p_.microQ);
+                const double a0 = 1.0 + al;
+                mB0_ = al / a0; mA1_ = -2.0 * std::cos(w0) / a0; mA2_ = (1.0 - al) / a0;   // constant-peak band-pass (b1 = 0, b2 = -b0)
+            }
+            {   // each PI plate's DC share of a 1 V move of its rail (the joint solve at rest, rail + 1 V)
+                double ia0 = ltpIaBiasA_, ib0 = ltpIaBiasA_;
+                ltpRestAt(p_.ltpVcc, ia0, ib0);
+                double ia1 = ia0, ib1 = ib0;
+                ltpRestAt(p_.ltpVcc + 1.0, ia1, ib1);
+                piKA_ = std::clamp(1.0 - (ia1 - ia0) * p_.ltpRaA, 0.0, 1.0);
+                piKB_ = std::clamp(1.0 - (ib1 - ib0) * p_.ltpRaB, 0.0, 1.0);
+                if (std::getenv("HTSUP_PIK")) { std::fprintf(stderr, "piK %.3f %.3f (ia0 %.4g ia1 %.4g)\n", piKA_, piKB_, ia0, ia1); if (std::atof(std::getenv("HTSUP_PIK")) < 0) piKA_ = piKB_ = 0.0; }
+            }
+    }
+
     void reset() noexcept {
         IaOpA_ = IaOpB_ = ltpIaBiasA_;
         nfbPrev_ = 0.0f; loopL_ = 0.0;
@@ -202,7 +251,56 @@ public:
         cathAvg_ = cathIdle_; cathLast_ = cathIdle_;
         piCapA_.reset(); piCapB_.reset();
         c89HP_.reset(); c118HP_.reset(); c119HP_.reset();
+        sup_.reset();
+        for (auto& r : railD_) r = 0.0;
+        for (auto& r : railS_) r = 0.0;
+        for (auto& h : hp_) h = HpState{};
+        piRailD_ = 0.0; piRailS_ = 0.0; plateSagS_ = 0.0; scrRailD_ = 0.0; piOn_ = false;
+        m1_ = m2_ = mX1_ = mX2_ = 0.0; microOut_ = 0.0;
     }
+
+    // ── HT supply, heaters, microphony, valve spread (2026-11-03) ────────────────
+    // All additive: 0 = bit-identical to the stage without them.
+    //   supply : 0..1, the rectifier/filter chain's sag + ripple into plates, screens,
+    //            PI and (through railDelta) the preamp rails. 1 = the circuit.
+    //   ripple : 0..1, the ripple share of it (0 = sag only).
+    //   hum    : 0..1 x heaterHumV at the first grid (v1Inject()).
+    //   micro  : 0..1 x the valve microphony loop (v1Inject()).
+    //   spread : 0..1, the output pair's idle mismatch (± spreadV grid volts).
+    void setSupply(float v) noexcept {
+        const float d = std::clamp(v, 0.0f, 1.0f);
+        if (d > 0.0f && supplyDepth_ <= 0.0f) { sup_.reset(); for (auto& h : hp_) h = HpState{}; }
+        supplyDepth_ = d;
+        if (d <= 0.0f) { for (auto& r : railD_) r = 0.0; for (auto& r : railS_) r = 0.0; piRailD_ = 0.0; piRailS_ = 0.0; piOn_ = false; plateSagS_ = 0.0; scrRailD_ = 0.0; }
+    }
+    // The model's supply layout (rectifier, caps, preamp nodes) and its heater / microphony
+    // figures. Kept across every later prepare() (a model rebuilds its power stage from
+    // several places); applied now when the stage is already prepared.
+    HT_NOINLINE void setSupplyLayout(const PowerSupplyV::Params& sp, double heaterHumV, double microCouple) noexcept {
+        layout_ = sp; layoutHum_ = heaterHumV; layoutMicro_ = microCouple; layoutSet_ = true;
+        p_.supply = sp; p_.heaterHumV = heaterHumV; p_.microCouple = microCouple;
+        if (fs_ > 0.0 && lutN_ > 0 && sagSpanV_ > 0.0 && supPrepared_) {
+            const double iPl = 2.0 * outIdle_ * p_.tubesPerSide;
+            sup_.prepare(fs_, p_.supply, { p_.vb, p_.vg2, p_.ltpVcc, iPl, iPl * p_.screenFrac, ltpIBiasTot_ });
+            for (auto& h : hp_) h = HpState{};
+        }
+    }
+    void setRipple(float v)       noexcept { rippleDepth_ = std::clamp(v, 0.0f, 1.0f); }
+    void setHeaterHum(float v)    noexcept { humDepth_ = std::clamp(v, 0.0f, 1.0f); }
+    void setMicrophonic(float v)  noexcept { microDepth_ = std::clamp(v, 0.0f, 1.0f); if (microDepth_ <= 0.0f) { m1_ = m2_ = mX1_ = mX2_ = 0.0; microOut_ = 0.0; } }
+    void setTubeSpread(float v)   noexcept { spreadOff_ = double(std::clamp(v, 0.0f, 1.0f)) * p_.spreadV; }
+    // Rail offset (V) of preamp node i (PowerSupplyV::Params::vPre order); 0 while the supply is off.
+    double railDelta(int i) const noexcept { return (i >= 0 && 3 + i < kRailN) ? railD_[3 + i] : 0.0; }
+    // The same by supply node (0 = plates, 1 = screens, 2 = PI node, 3 + i = preamp node i).
+    double railNode(int k) const noexcept { return (k >= 0 && k < kRailN) ? railD_[k] : 0.0; }
+    // Its sub-audio share (for CCStageV::setRail's dSlow).
+    double railSlow(int k) const noexcept { return (k >= 0 && k < kRailN) ? railS_[k] : 0.0; }
+    // What the first triode's grid picks up from the heaters and its own microphony (V).
+    double v1Inject() const noexcept {
+        return double(humDepth_) * p_.heaterHumV * sup_.mainsSin() + microOut_;
+    }
+    bool supplyActive() const noexcept { return supplyDepth_ > 0.0f || humDepth_ > 0.0f || microDepth_ > 0.0f; }
+    const PowerSupplyV& supplyModel() const noexcept { return sup_; }
 
     void setPresence (float v) noexcept { presence_  = std::clamp(v, 0.0f, 1.0f); recalcNfb(); }
     // Live re-voice of the LF/HF feedback split, for amps whose presence control sits IN
@@ -266,7 +364,14 @@ public:
     // HF (the speaker's inductive rise is inside the loop) the explicit loop oscillated at 16-22
     // kHz whenever the presence control let the HF feedback through; the real circuits do not.
     // EVHCOMP_IMPLICIT=0 restores the delayed loop (lab A/B).
-    double process(double vin) noexcept {
+    double process(double vin) noexcept { return processT<false>(vin); }
+    // The supply / spread build of the same stage, for a model's HT path (out of line).
+    // A model runs it (and its stages' processHt) only while htOn(): with everything off,
+    // process() is the original code, untouched (-ffast-math: see HT_NOINLINE).
+    HT_NOINLINE double processHt(double vin) noexcept { return processT<true>(vin); }
+    bool htOn() const noexcept { return supplyActive() || spreadOff_ != 0.0; }
+    template <bool kHt> double processT(double vin) noexcept {
+        if constexpr (kHt) { if (supplyDepth_ > 0.0f) readRails(); }
         double nfb;
         if (!implicitLoop_) {
             const float nfbRaw = c89HP_.process(nfbStabLP_.process(
@@ -284,11 +389,11 @@ public:
         const double vgB = -nfb;    // secondary polarity chosen so the loop is negative
         double IaA = IaOpA_, IaB = IaOpB_;
         if (implicitLoop_) {
-            ltpSolveJoint(vgA, vgB, IaA, IaB);
+            ltpSolveJoint<kHt>(vgA, vgB, IaA, IaB);
         } else {
             for (int it = 0; it < std::max(1, p_.ltpIters); ++it) {
-                IaA = ltpSolveSide(vgA, IaA, IaB, p_.ltpRaA);
-                IaB = ltpSolveSide(vgB, IaB, IaA, p_.ltpRaB);
+                IaA = ltpSolveSide<kHt>(vgA, IaA, IaB, p_.ltpRaA);
+                IaB = ltpSolveSide<kHt>(vgB, IaB, IaA, p_.ltpRaB);
             }
         }
         IaOpA_ = IaA; IaOpB_ = IaB;
@@ -301,26 +406,31 @@ public:
             // the sample: the coupled partials through the shared tail. gB = dIaB/dvgB on its own,
             // cB = dIaB/dIaA, cA = dIaA/dIaB.
             double gA_, cA, gB_, cB;
-            ltpLinearize(vgA, IaA, IaB, p_.ltpRaA, gA_, cA);
-            ltpLinearize(vgB, IaB, IaA, p_.ltpRaB, gB_, cB);
+            ltpLinearize<kHt>(vgA, IaA, IaB, p_.ltpRaA, gA_, cA);
+            ltpLinearize<kHt>(vgB, IaB, IaA, p_.ltpRaB, gB_, cB);
             const double den  = 1.0 - cA * cB;
             const double dIaB = (std::abs(den) > 1e-6) ? gB_ / den : gB_;
             const double dIaA = cA * dIaB;
             dgA = -dIaA * p_.ltpRaA;            // raw plate volts per volt of vgB (the plate filters run inside each pass)
             dgB = -dIaB * p_.ltpRaB;
         }
-        const double rawA = p_.ltpVcc - IaA * p_.ltpRaA - ltpVpBiasA_;
-        const double rawB = p_.ltpVcc - IaB * p_.ltpRaB - ltpVpBiasB_;
+        // The PI's plates sit on the PI node: the valves are solved at the moved rail, and the
+        // node's sub-audio share (piRailS_) is taken back out of the swing, as the output
+        // grids' coupling caps would hold it off (the slow sag moves the operating point only).
+        double rawA = vccPI<kHt>() - IaA * p_.ltpRaA - ltpVpBiasA_;
+        double rawB = vccPI<kHt>() - IaB * p_.ltpRaB - ltpVpBiasB_;
+        if constexpr (kHt) { rawA -= piKA_ * piRailS_; rawB -= piKB_ * piRailS_; }
         if (!implicitLoop_ || jointOnly_) {
             double gA = c118HP_.process(float(rawA));
             double gB = c119HP_.process(float(rawB));
             if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
-            const double out = driveOutput(gA, gB);
+            const double out = driveOutput<kHt>(gA, gB);
             if (jointOnly_) {   // the delayed chain must still advance (the implicit branch used peek)
                 const float raw = c89HP_.process(nfbStabLP_.process(
                     resoShelf_.process(presShelf_.process(float(out) * float(p_.nfbTap)))));
                 if (nfbLoActive_) nfbLoShelf_.process(raw);
             }
+            if constexpr (kHt) { if (supplyActive()) stepSupply(out); }
             return out * p_.outTrim;
         }
 
@@ -330,7 +440,7 @@ public:
         double gB = c119HP_.process(float(rawB));
         if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
         const double spkPrev = nfbPrev_;
-        const double spk1 = driveOutput(gA, gB);                 // F at the delayed guess
+        const double spk1 = driveOutput<kHt>(gA, gB);                 // F at the delayed guess
         // Secant derivative of the stage along the direction the feedback will actually move:
         // a lean pass at the chain's response to spk1 itself.
         const double d1 = beta0_ * (spk1 - spkPrev);
@@ -338,7 +448,7 @@ public:
         {
             if (std::abs(d1) > 1e-7 * (1.0 + std::abs(spk1))) {   // a measurable step: re-measure the secant
                 restoreLoopState(snap);
-                const double spk2 = driveOutputLean(c118Peek(rawA - dgA * d1), c119Peek(rawB - dgB * d1));
+                const double spk2 = driveOutputLean<kHt>(c118Peek<kHt>(rawA - dgA * d1), c119Peek<kHt>(rawB - dgB * d1));
                 const double D = (spk2 - spk1) / d1;              // d(spk)/d(nfb) across the real step
                 loopL_ = std::clamp(D * beta0_, -30.0, 0.0);        // negative feedback: L <= 0 (a positive secant is a clipping artefact)
             }
@@ -351,7 +461,7 @@ public:
         // consistently. The LTP is linearised about its solve; the slow envelopes (bias network,
         // cathode average, screen sag) keep their first-pass advance; the driver keeps its ratio.
         restoreLoopState(snap);
-        double spk = driveOutputLean(c118Peek(rawA - dgA * dNfb), c119Peek(rawB - dgB * dNfb));
+        double spk = driveOutputLean<kHt>(c118Peek<kHt>(rawA - dgA * dNfb), c119Peek<kHt>(rawB - dgB * dNfb));
         {
             // The implicit solution lies between the delayed guess and the previous output; a lean
             // pass landing well outside that bracket means the linearised PI step failed (the output
@@ -362,13 +472,14 @@ public:
             if (spk < lo - m || spk > hi + m) {
                 ++loopFallbacks_;
                 restoreLoopState(snap);
-                spk = driveOutputLean(c118Peek(rawA), c119Peek(rawB));
+                spk = driveOutputLean<kHt>(c118Peek<kHt>(rawA), c119Peek<kHt>(rawB));
             }
         }
         nfbPrev_ = float(spk);
         const float raw = c89HP_.process(nfbStabLP_.process(
             resoShelf_.process(presShelf_.process(float(spk) * float(p_.nfbTap)))));
         if (nfbLoActive_) nfbLoShelf_.process(raw);
+        if constexpr (kHt) { if (supplyActive()) stepSupply(spk); }
         return spk * p_.outTrim;
     }
     struct LoopState {
@@ -387,14 +498,18 @@ public:
     // The lean passes move the PI plates by a LINEARISED amount; a hard slew can ask for more
     // swing than the valve has, so the plate is held to its physical range (cut-off at the rail,
     // saturation at 1 % of the rail across the load) before the plate filters.
+    template <bool kHt>
     double c118Peek(double rawA) noexcept {
-        rawA = std::clamp(rawA, p_.ltpVcc * 0.01 - ltpVpBiasA_, p_.ltpVcc - ltpVpBiasA_);
+        if constexpr (kHt) rawA = std::clamp(rawA, vccPI<kHt>() * 0.01 - ltpVpBiasA_ - piKA_ * piRailS_, vccPI<kHt>() - ltpVpBiasA_ - piKA_ * piRailS_);
+        else       rawA = std::clamp(rawA, p_.ltpVcc * 0.01 - ltpVpBiasA_, p_.ltpVcc - ltpVpBiasA_);
         double g = c118HP_.process(float(rawA));
         if (piCapActive_) g = piCapA_.process(float(g));
         return g;
     }
+    template <bool kHt>
     double c119Peek(double rawB) noexcept {
-        rawB = std::clamp(rawB, p_.ltpVcc * 0.01 - ltpVpBiasB_, p_.ltpVcc - ltpVpBiasB_);
+        if constexpr (kHt) rawB = std::clamp(rawB, vccPI<kHt>() * 0.01 - ltpVpBiasB_ - piKB_ * piRailS_, vccPI<kHt>() - ltpVpBiasB_ - piKB_ * piRailS_);
+        else       rawB = std::clamp(rawB, p_.ltpVcc * 0.01 - ltpVpBiasB_, p_.ltpVcc - ltpVpBiasB_);
         double g = c119HP_.process(float(rawB));
         if (piCapActive_) g = piCapB_.process(float(g));
         return g;
@@ -403,11 +518,13 @@ public:
     // OT path and core flux. biasShift_/cathShift/scrFactor_ keep their first-pass values (slow
     // envelopes; the guess-to-solution difference is one sample's worth of change) and the
     // dynamic driver keeps its first-pass ratio.
+    template <bool kHt>
     double driveOutputLean(double gA, double gB) noexcept {
         gA = gridClamp(gA) - biasShift_ - cathShiftLast_;
         gB = gridClamp(gB) - biasShift_ - cathShiftLast_;
-        const double iP = lut(gA) * p_.imbalance;
-        const double iN = lut(gB);
+        if constexpr (kHt) { gA += spreadOff_; gB -= spreadOff_; }
+        const double iP = lut<kHt>(gA) * p_.imbalance;
+        const double iN = lut<kHt>(gB);
         double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
         if (dynLoad_) spk *= zRatio_;
         spk = zHF_.process(zRes_.process(float(spk)));
@@ -422,7 +539,13 @@ public:
     // replace the LTP). gA/gB = the two output-tube grid swings (V, about bias).
     // Returns speaker-node volts; the caller closes its own feedback loop from
     // lastSpk(). process() above is unchanged: same operations, same order.
-    double processDriven(double gA, double gB) noexcept { return driveOutput(gA, gB) * p_.outTrim; }
+    double processDriven(double gA, double gB) noexcept { return driveOutput<false>(gA, gB) * p_.outTrim; }
+    HT_NOINLINE double processDrivenHt(double gA, double gB) noexcept {
+        if (supplyDepth_ > 0.0f) readRails();
+        const double out = driveOutput<true>(gA, gB);
+        if (supplyActive()) stepSupply(out);
+        return out * p_.outTrim;
+    }
     double lastSpk() const noexcept { return nfbPrev_; }
 
     // -- Supply glide (2026-09-15, Plexiglass variac) ------------------------------
@@ -456,6 +579,7 @@ public:
     }
 
 private:
+    template <bool kHt>
     double driveOutput(double gA, double gB) noexcept {
         // Grid conduction charges the shared fixed-bias network colder.
         {
@@ -475,10 +599,11 @@ private:
         cathShiftLast_ = cathShift;
         gA = gridClamp(gA) - biasShift_ - cathShift;
         gB = gridClamp(gB) - biasShift_ - cathShift;
+        if constexpr (kHt) { gA += spreadOff_; gB -= spreadOff_; }
         gEffA_ = gA; gEffB_ = gB;
 
-        const double iP = lut(gA) * p_.imbalance;
-        const double iN = lut(gB);
+        const double iP = lut<kHt>(gA) * p_.imbalance;
+        const double iN = lut<kHt>(gB);
         // physical cathode-current sum: class A keeps it constant, leaving class A raises it
         cathLast_ = (2.0 * outIdle_ * p_.tubesPerSide + iP / std::max(1e-9, p_.imbalance) + iN) * (1.0 + p_.screenFrac);
 
@@ -499,6 +624,7 @@ private:
             // resistor. Kept as a separate branch so the shipping path's arithmetic is untouched
             // (bit-identical goldens).
             if (legacyPa_) droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) * p_.screenR) * (sagDepth_ / 0.3);
+            if constexpr (kHt) { if (supplyDepth_ > 0.0f && !p_.supply.screensOffChain) droop -= scrRailD_; }   // the screen NODE itself moves with the supply
             scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / p_.vg2), 1.5);
         }
 
@@ -580,11 +706,12 @@ private:
     // Small-signal partials of one LTP side at its solved point: dIa/dvg and dIa/dIother.
     // Residual f = Ia - iK(vgk, vpk) with vK = tailV + (Ia + Iother)·Rk (+ dI·Rtail);
     // df/dIa = 1 + dg·dVk + dp·(Ra + dVk), df/dvg = -dg, df/dIother = (dg + dp)·dVk.
+    template <bool kHt>
     void ltpLinearize(double vg, double Ia, double Iother, double Ra, double& dIa_dvg, double& dIa_dIo) noexcept {
         const double dI = (Ia + Iother) - ltpIBiasTot_;
         const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
         double iK, dg, dp;
-        korenEvalT(nullptr, ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
+        korenEvalT(nullptr, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
         const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
         const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
         if (std::abs(fp) < 1e-30) { dIa_dvg = 0.0; dIa_dIo = 0.0; return; }
@@ -595,6 +722,30 @@ private:
     // Jacobian. The sequential per-side solve (ltpSolveSide, kept for the delayed loop) lets side A
     // see side B's current one sample late — a hidden delay inside the feedback loop; the pair in
     // the circuit moves together. Warm-started from the previous sample, 2-3 iterations converge.
+    // The pair at rest (both grids at 0) on a given rail: a plain damped Newton, out of line and
+    // separate from the per-sample solver so that prepare() does not instantiate the HT build of
+    // it next to the original (see HT_NOINLINE).
+    HT_NOINLINE void ltpRestAt(double vcc, double& IaA, double& IaB) const noexcept {
+        const double maxA = vcc / p_.ltpRaA * 0.99, maxB = vcc / p_.ltpRaB * 0.99;
+        const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
+        for (int it = 0; it < 200; ++it) {
+            const double dI = (IaA + IaB) - ltpIBiasTot_;
+            const double vK = ltpTailV_ + (IaA + IaB) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
+            double iKA, dgA, dpA, iKB, dgB, dpB;
+            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            const double fA = IaA - iKA, fB = IaB - iKB;
+            const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
+            const double jBA = (dgB + dpB) * dVk,                         jBB = 1.0 + dgB * dVk + dpB * (p_.ltpRaB + dVk);
+            const double det = jAA * jBB - jAB * jBA;
+            if (std::abs(det) < 1e-30) break;
+            const double sA = ( jBB * fA - jAB * fB) / det, sB = (-jBA * fA + jAA * fB) / det;
+            IaA = std::clamp(IaA - 0.5 * sA, 0.0, maxA);
+            IaB = std::clamp(IaB - 0.5 * sB, 0.0, maxB);
+            if (std::abs(sA) < 1e-12 && std::abs(sB) < 1e-12) break;
+        }
+    }
+    template <bool kHt>
     void ltpSolveJoint(double vgA, double vgB, double& IaA, double& IaB) noexcept {
         const double maxA = p_.ltpVcc / p_.ltpRaA * 0.99, maxB = p_.ltpVcc / p_.ltpRaB * 0.99;
         const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
@@ -606,8 +757,8 @@ private:
             const double dI = (IaA + IaB) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (IaA + IaB) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iKA, dgA, dpA, iKB, dgB, dpB;
-            korenEvalT(nullptr, ltpTailV_ + vgA - vK, (p_.ltpVcc - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
-            korenEvalT(nullptr, ltpTailV_ + vgB - vK, (p_.ltpVcc - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            korenEvalT(nullptr, ltpTailV_ + vgA - vK, (vccPI<kHt>() - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(nullptr, ltpTailV_ + vgB - vK, (vccPI<kHt>() - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
             const double fA = IaA - iKA, fB = IaB - iKB;
             const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
             const double jBA = (dgB + dpB) * dVk,                         jBB = 1.0 + dgB * dVk + dpB * (p_.ltpRaB + dVk);
@@ -625,11 +776,12 @@ private:
         if (!converged) {   // a hard slew the Newton could not settle: the sequential sweep from the warm start
             IaA = ia0; IaB = ib0;
             for (int it = 0; it < 3; ++it) {
-                IaA = ltpSolveSide(vgA, IaA, IaB, p_.ltpRaA);
-                IaB = ltpSolveSide(vgB, IaB, IaA, p_.ltpRaB);
+                IaA = ltpSolveSide<kHt>(vgA, IaA, IaB, p_.ltpRaA);
+                IaB = ltpSolveSide<kHt>(vgB, IaB, IaA, p_.ltpRaB);
             }
         }
     }
+    template <bool kHt>
     double ltpSolveSide(double vg, double Ia, double Iother, double Ra) noexcept {
         const double maxIa = p_.ltpVcc / Ra * 0.99;
         Ia = std::clamp(Ia, 0.0, maxIa);
@@ -637,7 +789,7 @@ private:
             const double dI = (Ia + Iother) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iK, dg, dp;
-            korenEvalT(nullptr, ltpTailV_ + vg - vK, (p_.ltpVcc - Ia * Ra) - vK, iK, dg, dp);
+            korenEvalT(nullptr, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
             const double f = Ia - iK;
             const double dVk = p_.ltpRk + p_.ltpRtail;
             const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
@@ -700,11 +852,70 @@ private:
         lutScale_ = double(lutN_ - 1) / (lutMax_ - lutMin_);
     }
 
+    // The same load-line table at a lower plate supply (vb x sagTableV), same grid bias
+    // (the bias supply is a separate winding) and the same idle subtracted: lut() moves
+    // toward it linearly as the reservoir drops, so a sagging supply lowers the ceiling.
+    HT_NOINLINE void buildSagLUT() noexcept {
+        const double vbS = p_.vb * p_.sagTableV;
+        const double iaHi = std::max(1e-3, 4.0 * p_.vb / std::max(1.0, p_.raa));
+        for (int i = 0; i < lutN_; ++i) {
+            const double vg = lutMin_ + (lutMax_ - lutMin_) * i / double(lutN_ - 1);
+            double lo = 0.0, hi = iaHi;
+            for (int it = 0; it < 60; ++it) {
+                const double ia = 0.5 * (lo + hi);
+                const double vpk = vbS - (ia - outIdle_) * (p_.raa / 2.0);
+                if (pentodeIa(vBias_ + vg, std::max(20.0, vpk)) > ia) lo = ia; else hi = ia;
+            }
+            lutSag_[i] = (0.5 * (lo + hi) - outIdle_) * p_.tubesPerSide;
+        }
+        sagSpanV_ = std::max(1.0, p_.vb - vbS);
+    }
+    // Node deviations of the supply -> the stage's rail terms. Each node splits into the
+    // ripple (a 70 Hz 2nd-order high-pass: the 100/120 Hz sawtooth and up) and the slow rest
+    // (the sag, and the choke / filter-cap resonance at 10-20 Hz). The slow part is kept
+    // whole; the ripple is scaled by rippleDepth_. Stages take the slow part as an operating-
+    // point move only (railSlow), so a sub-audio wobble is never amplified as signal.
+    void readRails() noexcept {
+        const int n = std::min(kRailN, sup_.nodes());
+        const double dep = supplyDepth_, rip = rippleDepth_;
+        for (int k = 0; k < n; ++k) {
+            const double d = sup_.dv(k);
+            HpState& h = hp_[k];
+            const double fast = hpB0_ * d + h.z1;           // transposed direct form II
+            h.z1 = hpB1_ * d - hpA1_ * fast + h.z2;
+            h.z2 = hpB2_ * d - hpA2_ * fast;
+            const double slow = d - fast;
+            railD_[k] = dep * (slow + rip * fast);
+            railS_[k] = dep * slow;
+            if (!((railMask_ >> k) & 1)) railS_[k] = 0.0;
+            if (!((railMask_ >> k) & 1)) railD_[k] = 0.0;
+        }
+        plateSagS_ = std::clamp(-railD_[0] / sagSpanV_, -1.0, 2.0);
+        scrRailD_  = railD_[1];
+        piRailD_   = railD_[2];
+        piRailS_   = railS_[2];
+        piOn_      = true;
+    }
+    void stepSupply(double spk) noexcept {
+        const double sf = p_.screenFrac;
+        const double iK = std::max(0.0, cathLast_);
+        sup_.step(iK / (1.0 + sf), iK * sf / (1.0 + sf), IaOpA_ + IaOpB_);
+        if (microDepth_ > 0.0f) {   // the cab's pressure on the first valve: a resonant pickup, bounded
+            const double x = double(microDepth_) * p_.microCouple * spk;
+            const double y = mB0_ * (x - mX2_) - mA1_ * m1_ - mA2_ * m2_;
+            mX2_ = mX1_; mX1_ = x; m2_ = m1_; m1_ = y;
+            microOut_ = 2e-4 * std::tanh(y / 2e-4);
+        }
+    }
+
+    template <bool kHt>
     double lut(double vg) const noexcept {
         const double x = std::clamp((vg - lutMin_) * lutScale_, 0.0, double(lutN_ - 1) - 1e-6);
         const int i = int(x);
         const double fr = x - i;
-        const double va = lut_[i] * (1.0 - fr) + lut_[i + 1] * fr;
+        double va = lut_[i] * (1.0 - fr) + lut_[i + 1] * fr;
+        if constexpr (kHt)                                       // plate supply off its idle: toward the sagged table
+            va += plateSagS_ * ((lutSag_[i] - lut_[i]) * (1.0 - fr) + (lutSag_[i + 1] - lut_[i + 1]) * fr);
         if (lutBlend_ <= 0.0) return va;                         // no glide: the original lookup
         const double vbT = lutB_[i] * (1.0 - fr) + lutB_[i + 1] * fr;
         return lutBlend_ >= 1.0 ? vbT : va + lutBlend_ * (vbT - va);
@@ -764,6 +975,8 @@ private:
     double lutBlend_ = 0.0;          // 0 = the original lookup
     double lutMin_ = -80.0, lutMax_ = 80.0;
     double lut_[kLutN] = {};
+    double lutSag_[kLutN] = {};      // the plate-ceiling table at vb x sagTableV (buildSagLUT)
+    double sagSpanV_ = 100.0;
     int    lutN_ = 1024;
     double lutScale_ = 1.0;
     double vBias_ = -52.0, outIdle_ = 0.06;
@@ -796,6 +1009,43 @@ private:
     double scrEnv_ = 0.018, scrIdle_ = 0.018, scrFactor_ = 1.0;
     double sagAtk_ = 0.0, sagRel_ = 0.0;
     double biasShift_ = 0.0, biasDecay_ = 0.0;
+
+    // HT supply + valve-side extras (2026-11-03)
+    static constexpr int kRailN = PowerSupplyV::kMaxPre + 3;
+    PowerSupplyV sup_;
+    float  supplyDepth_ = 0.0f, rippleDepth_ = 1.0f, humDepth_ = 0.0f, microDepth_ = 0.0f;
+    struct HpState { double z1 = 0.0, z2 = 0.0; };
+    HpState hp_[kRailN];
+    double hpB0_ = 1.0, hpB1_ = 0.0, hpB2_ = 0.0, hpA1_ = 0.0, hpA2_ = 0.0;
+    double railD_[kRailN] = {}, railS_[kRailN] = {};
+    int    railMask_ = -1;
+    PowerSupplyV::Params layout_{};
+    double layoutHum_ = 0.0, layoutMicro_ = 0.0;
+    bool   layoutSet_ = false, supPrepared_ = false;
+    double piKA_ = 1.0, piKB_ = 1.0;
+    double piRailD_ = 0.0, piRailS_ = 0.0, plateSagS_ = 0.0, scrRailD_ = 0.0, spreadOff_ = 0.0;
+    bool   piOn_ = false;   // the PI rail terms are live (the supply is on); off = the original expressions
+    template <bool kHt> double vccPI() const noexcept { if constexpr (kHt) return p_.ltpVcc + piRailD_; else return p_.ltpVcc; }
+    double mB0_ = 0.0, mA1_ = 0.0, mA2_ = 0.0, m1_ = 0.0, m2_ = 0.0, mX1_ = 0.0, mX2_ = 0.0, microOut_ = 0.0;
 };
+
+// The 2026-11-03 supply-side controls, routed the same way on every model that owns a
+// PushPullPowerV: "supply", "ripple", "heaterhum", "micro", "spread". Returns true when
+// the id was one of them.
+inline bool supplyParam(PushPullPowerV& pa, const std::string& id, float v) noexcept {
+    if      (id == "supply")    pa.setSupply(v);
+    else if (id == "ripple")    pa.setRipple(v);
+    else if (id == "heaterhum") pa.setHeaterHum(v);
+    else if (id == "micro")     pa.setMicrophonic(v);
+    else if (id == "spread")    pa.setTubeSpread(v);
+    else return false;
+    return true;
+}
+// Valve-to-valve spread for the i-th preamp triode of a model: a fixed, deterministic set
+// (no two neighbours alike), scaled by the spread control. 1 = the datasheet valve.
+inline double spreadTol(float spread, int i) noexcept {
+    static constexpr double kSet[8] = { +0.08, -0.10, +0.05, -0.06, +0.11, -0.04, +0.07, -0.09 };
+    return 1.0 + double(spread) * kSet[((i % 8) + 8) % 8];
+}
 
 } // namespace evhcomp

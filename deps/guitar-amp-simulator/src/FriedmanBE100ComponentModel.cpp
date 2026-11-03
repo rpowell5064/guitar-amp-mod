@@ -206,6 +206,17 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
         c.coup31c.prepare(fs_, 22e-9, par(470e3, 470e3), 1e6);       // C31 → R37 1M
 
         // ── Power section ──
+        {   // HT supply (2026-11-03)
+            // UF4007 bridge into the stacked 50u reservoir (plates via the OT centre tap), choke -> 16u5
+            // screens, 14k7 -> 100u PI (+ the loop's MOSFET branch), 10k -> 22u V3, 10k -> 22u front.
+            // ESTIMATE: winding + diodes ~ 10 ohm, choke ~ 4 H, loop branch ~ 3 mA.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.rSrc = 10.0; sp.cRes = 50e-6; sp.chokeH = 4.0; sp.cScr = 16.5e-6; sp.cPI = 100e-6; sp.iPIExtra = 3e-3;
+            sp.nPre = 2;
+            sp.vPre[0] = railV3_;  sp.cPre[0] = 22e-6; sp.iPre[0] = c.v3a.biasIa() + c.v3b.biasIa();
+            sp.vPre[1] = railV12_; sp.cPre[1] = 22e-6; sp.iPre[1] = c.v1a.biasIa() + c.v1b.biasIa() + c.v2a.biasIa() + c.v2b.biasIa();
+            c.pa.setSupplyLayout(sp, 0.5e-6, 0.5e-7);   // heaters elevated ~ +30 V; a head
+        }
         c.pa.prepare(fs_, friedmanPowerParams(railPI_, otHfHz_, zHfDb_, zResDb_, idleMa_, paLegacy_ ? 60e3 : nfbStabHz_, iaScale_, nfbScale_, fluxLim_, otLfHz_, biasShift_, kneeV_, lutSpan_));
         c.pa.setLegacyPa(paLegacy_);   // lab A/B: the rev-189 power stage
         c.pa.setPresence(presence_);
@@ -379,7 +390,16 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
     return float(out * outScalePa_);
 }
 
+
 void FriedmanBE100ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v1a.setTolerance(evhcomp::spreadTol(value, 0)); c.v1b.setTolerance(evhcomp::spreadTol(value, 1)); c.v2a.setTolerance(evhcomp::spreadTol(value, 2)); c.v2b.setTolerance(evhcomp::spreadTol(value, 3)); c.v3a.setTolerance(evhcomp::spreadTol(value, 4)); }
+            if (id == "supply" && value <= 0.0f) { c.v3a.setRail(0.0); c.v1a.setRail(0.0); c.v1b.setRail(0.0); c.v2a.setRail(0.0); c.v2b.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "bass")     { bass_ = value; recalcPots(); }
@@ -427,6 +447,9 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
 }
 
 float FriedmanBE100ComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

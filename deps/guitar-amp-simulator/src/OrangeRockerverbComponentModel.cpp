@@ -127,6 +127,20 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
         c.coup6.prepare(fs_, 220e-9, Zp56 + 1e6, 1e6);                    // C6 → R9 1M → (R26 1M via C3)
         c.coup3.prepare(fs_, 47e-9, 1.0, 1e6);                             // C3 47n → R26 1M
         // ── Power section ──
+        {   // HT supply (2026-11-03)
+            // silicon full-wave into the 100u reservoir (plates via the OT centre tap), choke -> 100u
+            // screens B (+ the reverb driver), 4k7 -> 47u PI C, 4k7 -> 47u D (V7), 4k7 -> 22u E (V8),
+            // 10k -> 22u F (V9, V10). ESTIMATE: winding + diodes ~ 15 ohm, choke ~ 4 H, the reverb
+            // driver ~ 5 mA and its recovery ~ 1 mA.
+            evhcomp::PowerSupplyV::Params sp;
+            sp.vNode1 = railB;   // the choke output (vg2 is past the screen droppers)
+            sp.rSrc = 15.0; sp.cRes = 100e-6; sp.chokeH = 4.0; sp.cScr = 100e-6; sp.cPI = 47e-6; sp.iScrExtra = 5e-3; sp.iPIExtra = 1e-3;
+            sp.nPre = 3;
+            sp.vPre[0] = railD; sp.cPre[0] = 47e-6; sp.iPre[0] = c.v7a.biasIa() + c.v7b.biasIa();
+            sp.vPre[1] = railE; sp.cPre[1] = 22e-6; sp.iPre[1] = c.v8a.biasIa() + c.v8b.biasIa();
+            sp.vPre[2] = railF; sp.cPre[2] = 22e-6; sp.iPre[2] = c.v9a.biasIa() + c.v9b.biasIa() + c.v10a.biasIa() + c.v10b.biasIa();
+            c.pa.setSupplyLayout(sp, 0.2e-6, 0.5e-7);   // preamp valves on DC heaters; a head
+        }
         { auto pp = rockerverbPowerParams(railC, railA_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                           fluxLim_, kneeV_, nfbSeriesR_);
           pp.zResHz = zResHz_; c.pa.prepare(fs_, pp); }
@@ -231,7 +245,16 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
     return c.dnr.process(float(out * outScalePa_), !clean_ && gain_ > 0.4f);
 }
 
+
 void OrangeRockerverbComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
+        for (auto& c : ch_) {
+            evhcomp::supplyParam(c.pa, id, value);
+            if (id == "spread") { c.v9a.setTolerance(evhcomp::spreadTol(value, 0)); c.v9b.setTolerance(evhcomp::spreadTol(value, 1)); c.v8a.setTolerance(evhcomp::spreadTol(value, 2)); c.v8b.setTolerance(evhcomp::spreadTol(value, 3)); c.v10a.setTolerance(evhcomp::spreadTol(value, 4)); c.v10b.setTolerance(evhcomp::spreadTol(value, 5)); c.v7b.setTolerance(evhcomp::spreadTol(value, 6)); }
+            if (id == "supply" && value <= 0.0f) { c.v7b.setRail(0.0); c.v8a.setRail(0.0); c.v8b.setRail(0.0); c.v9a.setRail(0.0); c.v9b.setRail(0.0); c.v10a.setRail(0.0); c.v10b.setRail(0.0); }
+        }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); }
     else if (id == "master")   { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "bass")     { bass_ = value;   recalcPots(); }
@@ -274,6 +297,9 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
 }
 
 float OrangeRockerverbComponentModel::getParameter(const std::string& id) const noexcept {
+    if (id.size() == 6 && id.compare(0, 5, "supdv") == 0) return float(ch_[0].pa.supplyModel().dv(id[5] - '0'));   // lab: supply node deviation (V)
+    if (id.size() == 5 && id.compare(0, 4, "supr") == 0)  return float(ch_[0].pa.supplyModel().rSeries(id[4] - '0'));
+    if (id == "supvpk") return float(ch_[0].pa.supplyModel().vPeak());
     if (id == "gain")     return gain_;
     if (id == "master")   return master_;
     if (id == "bass")     return bass_;

@@ -25,6 +25,17 @@ public:
     // Uses smoother state already advanced by advanceSmoothing().
     virtual float processSample(float x, int channel) noexcept = 0;
 
+    // Models with an out-of-line "extras on" signal path (2026-11-03: the component twins'
+    // HT supply, heater, microphony and valve-spread models). The caller runs
+    // processSampleHt() while htActive(); with the extras off it runs processSample(), which
+    // such a model leaves exactly as it was (the library builds with -ffast-math, and a
+    // branch inside the per-sample code changes how its original arithmetic is compiled).
+    // (Defined out of line in AmpModelBase.cpp: an inline default here would be emitted in
+    // every model's translation unit, with processSample() inlined into it, and that alone
+    // changes how the models' own per-sample code is compiled.)
+    virtual bool  htActive() const noexcept;
+    virtual float processSampleHt(float x, int channel) noexcept;
+
     // Parameter access — audio-thread safe when called only from the audio
     // thread (which is the contract for AudioBlock::setParameter).
     virtual void  setParameter(const std::string& id, float value) noexcept = 0;
