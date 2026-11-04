@@ -72,6 +72,7 @@ PushPullPowerV::Params jcmPowerParams() {
 void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*/) noexcept {
     fs_ = oversampledSampleRate;
     gainSmooth_.reset(fs_, 0.015);
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     masterSmooth_.reset(fs_, 0.015);
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
@@ -145,6 +146,9 @@ void JCM800ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock*
             // ~ 10 ohm, choke ~ 4 H, 50u-class sections.
             evhcomp::PowerSupplyV::Params sp;
             sp.rSrc = 10.0; sp.cRes = 50e-6; sp.chokeH = 4.0; sp.cScr = 50e-6; sp.cPI = 50e-6;
+            // supply fix (2026-11-03): silicon; HT winding ~ 10.5 ohm a half + the primary reflected
+            // (a 100 W Marshall-type transformer, measured) ~ 20 ohm; choke ESTIMATE 70 ohm; UK mains.
+            sp.rectLaw = 1; sp.rWind = 20.0; sp.chokeDcr = 70.0; sp.mainsHzFix = 50.0;
             sp.iPIExtra = c.v2a.biasIa() + c.v2b.biasIa();
             sp.nPre = 1; sp.vPre[0] = kRailV1; sp.cPre[0] = 50e-6; sp.iPre[0] = c.v1a.biasIa() + c.v1b.biasIa();
             c.pa.setSupplyLayout(sp, 2.0e-6, 0.5e-7);   // AC heaters, centre tap grounded; a head
@@ -236,6 +240,11 @@ float JCM800ComponentModel::processSample(float x, int channel) noexcept {
 
 
 void JCM800ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -319,4 +328,19 @@ float JCM800ComponentModel::getParameter(const std::string& id) const noexcept {
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void JCM800ComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 1) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1a.setTubeOverride(t); c.v1b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        // V1a's grid stopper against its input capacitance (with the #34 "hot shield" the stage
+        // already carries it as a static cap, which then moves with the gain instead)
+        c.v1a.setMiller(dynMiller_, 1.7e-12 + (sir34_ ? double(sirShieldPf_) * 1e-12 : 0.0), 1.6e-12, sir34_ ? 33e3 : 68e3);
+    }
 }

@@ -25,6 +25,15 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     const auto* msg = static_cast<const WorkMsg*>(data);
     if (msg->type == W_AMP_FREE) { delete msg->amp; return true; }
     if (msg->type == W_NAM_FREE) { delete msg->nam; return true; }
+    if (msg->type == W_AB_POLL) {   // TEMPORARY physics A/B (2026-11-03, see hf_types.inc)
+        static const char* const kAbFiles[4] = { "/miller_on", nullptr /* bit 1: OT resonance, retired */, "/pispread_on", "/rectlaw_on" };
+        const std::string dir = hfplat::configDir();
+        int v = 0;
+        for (int b = 0; b < 4; ++b)
+            if (kAbFiles[b]) if (FILE* f = std::fopen((dir + kAbFiles[b]).c_str(), "r")) { v |= (1 << b); std::fclose(f); }
+        p->abHt.store(v, std::memory_order_relaxed);
+        return true;
+    }
     if (msg->type == W_CAB_IR) {
         std::vector<float> L, R;
         const char* sent = cabSentinel(msg->path);
@@ -61,7 +70,12 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     na->setAmpModel((msg->evhComp && hasComponentModel(msg->modelIdx))
                         ? componentAmpFor(msg->modelIdx)
                         : kAmpMap[clampi(static_cast<float>(msg->modelIdx), 0, kAmpModelMax)]);
+    // Valve swap (v54): retube the fresh amp HERE -- the change rebuilds the model's stages
+    // (bias solves + output-valve tables, ~10-25 ms on a Pi 5), which must stay off the RT thread.
+    na->setParameter("v1tube", static_cast<float>(msg->v1tube));
+    na->setParameter("patube", static_cast<float>(msg->patube));
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx; reply.namSlot = msg->namSlot;   // slot 1 = Rig B (forgetting this routed B builds into the MAIN amp)
+    reply.v1tube = msg->v1tube; reply.patube = msg->patube;
     respond(handle, sizeof(reply), &reply);
     return true;
 }
@@ -94,6 +108,7 @@ static void hfWorkResponse(HexForge* p, const void* data) {
         }
         p->pendAmp2 = msg->amp;
         p->pendAmp2Model = msg->modelIdx;
+        p->pendAmp2V1 = msg->v1tube; p->pendAmp2Pa = msg->patube;
         if (p->swFadeState == 0 || p->swFadeState == 2) p->swFadeState = 1;
         return;
     }
@@ -103,6 +118,7 @@ static void hfWorkResponse(HexForge* p, const void* data) {
     }
     p->pendAmp = msg->amp;
     p->pendAmpModel = msg->modelIdx;
+    p->pendAmpV1 = msg->v1tube; p->pendAmpPa = msg->patube;
     if (p->swFadeState == 0 || p->swFadeState == 2) p->swFadeState = 1;   // re-arm during fade-in (see NAM note above)
     return;
 }
@@ -207,6 +223,7 @@ static void hfApplySwitch(HexForge* p) {
         AmpBlockExtended* old = p->amp;
         p->amp = p->pendAmp; p->pendAmp = nullptr;
         p->lastAmpModel = p->pendAmpModel;
+        p->liveAmpV1 = p->pendAmpV1; p->liveAmpPa = p->pendAmpPa;
         WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
         p->worker->schedule(&fm, sizeof(fm));
     }
@@ -214,6 +231,7 @@ static void hfApplySwitch(HexForge* p) {
         AmpBlockExtended* old = p->amp2;
         p->amp2 = p->pendAmp2; p->pendAmp2 = nullptr;
         p->lastAmp2Model = p->pendAmp2Model;
+        p->liveAmp2V1 = p->pendAmp2V1; p->liveAmp2Pa = p->pendAmp2Pa;
         p->amp2Requested = false;
         if (old) { WorkMsg fm; fm.type = W_AMP_FREE; fm.amp = old;
                    p->worker->schedule(&fm, sizeof(fm)); }

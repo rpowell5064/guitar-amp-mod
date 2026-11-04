@@ -164,6 +164,7 @@ void MarshallPlexiComponentModel::snapshotStages(GlideEnd& e) const noexcept {
 // stock position (A); the variac's top (B) is kept as operating points plus one output
 // table per channel, and the glide moves between the two.
 void MarshallPlexiComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     solveRailsAt(1.0, endA_.r);
     solveRailsAt(kVariacMaxS, endB_.r);
     snapshotStages(endA_);
@@ -191,6 +192,8 @@ void MarshallPlexiComponentModel::buildStages() noexcept {
             // choke ~ 4 H.
             evhcomp::PowerSupplyV::Params sp;
             sp.rSrc = 10.0; sp.cRes = 50e-6; sp.chokeH = 4.0; sp.cScr = 50e-6; sp.cPI = 100e-6;
+            // supply fix (2026-11-03): silicon, a 100 W Marshall-type winding ~ 20 ohm, choke ESTIMATE 70 ohm, UK mains
+            sp.rectLaw = 1; sp.rWind = 20.0; sp.chokeDcr = 70.0; sp.mainsHzFix = 50.0;
             sp.nPre = 2;
             sp.vPre[0] = ra.V2; sp.cPre[0] = 50e-6; sp.iPre[0] = c.v2a.biasIa() + c.v2b.biasIa();
             sp.vPre[1] = ra.V1; sp.cPre[1] = 50e-6; sp.iPre[1] = c.v1a.biasIa() + c.v1b.biasIa();
@@ -343,6 +346,11 @@ float MarshallPlexiComponentModel::processSample(float x, int channel) noexcept 
 
 
 void MarshallPlexiComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -443,4 +451,17 @@ float MarshallPlexiComponentModel::getParameter(const std::string& id) const noe
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void MarshallPlexiComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 1) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1a.setTubeOverride(t); c.v1b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v1a.setMiller(dynMiller_, kCgp); c.v1b.setMiller(dynMiller_, kCgp);
+    }
 }

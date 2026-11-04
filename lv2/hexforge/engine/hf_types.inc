@@ -109,6 +109,13 @@ static constexpr int kAd200Idx    = 15;   // Citrus 200 (Orange AD200B Mark III 
 // Tight (amp_tight / rb_tight) rides the HIGH-GAIN amps only: Crunchy (JCM800), Gainzilla (5150),
 // Tangerang (Rockerverb), Beardo BE, Cali V, Diamond Plate, Tremont 15. Elsewhere it is inert.
 static inline bool hasTight(int m) { return m == 1 || m == 2 || m == 4 || m == 6 || m == 11 || m == 12 || m == 13; }
+// Valve swap (amp_v1tube / amp_patube, rb_v1tube / rb_patube; v54, 2026-11-03): live only while
+// the rig runs a component build -- the Component Model toggle on and the amp has a twin, or the
+// Citrus 200 (always a component build). Elsewhere the engine sends 0/0 (stock). Mirrored by the
+// c-amp-valves / c-rb-valves rule in script-hexforge.js and hexforge_blocks.inc.
+static inline bool runsComponentBuild(int m, bool compToggle) { return (compToggle && hasComponentModel(m)) || m == kAd200Idx; }
+static constexpr int kV1TubeMax = 4;   // 12AX7 (stock) / 5751 / 12AY7 / 12AT7 / 12AU7
+static constexpr int kPaTubeMax = 5;   // Stock / EL34 / 6L6GC / 6V6GT / EL84 / KT88
 static constexpr int kAmpModelMax = kAd200Idx;   // the amp dropdown's clamp ceiling
 // rb_cab enum: 0-5 = the guitar sentinels, 6 = "No Cab (Direct)" (FROZEN — stored
 // presets reference it), 7-10 = the bass cabs (2026-08-28, appended AFTER No Cab
@@ -513,7 +520,8 @@ static_assert(kSwWatchN <= 96, "grow swWatchPrev[]");   // grown 64->96 (2026-09
 static const float kDivFactor[8] = { 2.0f, 1.5f, 1.0f, 0.66667f, 0.75f, 0.5f, 0.33333f, 0.25f };
 
 // ── Worker messaging ──────────────────────────────────────────────────────────
-enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE };
+enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE,
+                W_AB_POLL };   // W_AB_POLL: TEMPORARY physics A/B (2026-11-03), see abHt below
 struct WorkMsg {
     WorkType          type;
     AmpBlockExtended* amp = nullptr;   // AMP_LOAD reply / AMP_FREE target
@@ -521,6 +529,8 @@ struct WorkMsg {
     int               modelIdx = 0;
     bool              eco      = false;   // AMP_LOAD: build with 2x oversampling (Engine Quality)
     bool              evhComp  = false;   // AMP_LOAD: EVH(2) -> the component-model experiment
+    int               v1tube   = 0;       // AMP_LOAD (+ reply): valve swap V1 (v54), set on the fresh amp
+    int               patube   = 0;       // AMP_LOAD (+ reply): valve swap power valves (v54)
     int               namSlot  = 0;    // 0=amp 1=drive 2=cab
     char              path[kPathMax] = {0};   // CAB_IR / NAM_LOAD
 };
@@ -628,6 +638,12 @@ struct HexForge {
                                          // prepared 60 Hz so the default path re-tunes NOTHING (bit-identical)
     PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
     PickupLoadSim     trimLoad;         // pickup/cable/input-impedance sim (v24, default off)
+    // TEMPORARY physics A/B (2026-11-03, remove once decided): the worker polls <configDir>/
+    // miller_on (bit 0), pispread_on (bit 2) and rectlaw_on (bit 3); -1 = no
+    // answer yet. Until a poll answers (or after one was applied) the amp params are never sent.
+    std::atomic<int>  abHt{-1};
+    int               abHtApplied = 0;
+    uint32_t          abPollCtr = 0;
     bool              itZinCouple = false;  // roadmap #45: first pedal's Zin loads the pickup.
                                             // No port yet -> always off = bit-identical.
     OutputBoost       trimBoost;        // pickup-agnostic output boost + beef (Input Trim)
@@ -650,6 +666,9 @@ struct HexForge {
     int    lastAmp2Model = -1;
     bool   lastAmp2Eco   = false;
     bool   lastAmp2Comp  = false;       // Rig B's component-model state (2026-09-13: Amp 2 never got the toggle)
+    int    lastAmp2V1 = 0, lastAmp2Pa = 0;     // valve swap last REQUESTED from the worker (v54)
+    int    pendAmp2V1 = 0, pendAmp2Pa = 0;     // ... carried by the pending build
+    int    liveAmp2V1 = 0, liveAmp2Pa = 0;     // ... the running amp2 was built with (pushed per run)
     bool   amp2Requested = false;       // W_AMP_LOAD(B) in flight -- DO NOT re-schedule (allocation storm)
     int    lastCab2Model = -1;
     bool   rigBHeld      = false;                     // rigBBuf holds this chunk's amp-input tap
@@ -727,6 +746,7 @@ struct HexForge {
     long   cpuSamps   = 0;              // samples since last meter publish
     bool   lastEco    = false;          // last Engine Quality the amp was built with
     bool   lastEvhComp = false;         // last state of the EVH component-model lab toggle
+    int    lastAmpV1 = 0, lastAmpPa = 0;    // valve swap last REQUESTED from the worker (v54)
     int    lastGoto   = -1;             // last ps_goto target serviced
     float  meterIn = 0.0f, meterOut = 0.0f;  // smoothed peak level meters (-> in_meter/out_meter)
     float  meterSentIn = -1.0f, meterSentOut = -1.0f;  // last values pushed to UI (deadband)
@@ -793,6 +813,8 @@ struct HexForge {
     float swWatchPrev[96] = {};
     AmpBlockExtended* pendAmp = nullptr;   // worker-built amp awaiting the zero point
     int   pendAmpModel = -1;
+    int   pendAmpV1 = 0, pendAmpPa = 0;    // valve swap the pending amp was built with (v54)
+    int   liveAmpV1 = 0, liveAmpPa = 0;    // ... and the running amp (pushed per run; never a change)
     NamModel* pendNam[5] = {};             // worker-built NAM models awaiting swap (0 amp, 1 drive, 2 cab, 3 amp2, 4 drive2)
     // Fuzz/Nail Eco (v40): last-applied state -- the wrappers are REBUILT at the
     // mute-ramp zero point when these flip (OverdriveBlock's accepted pattern).

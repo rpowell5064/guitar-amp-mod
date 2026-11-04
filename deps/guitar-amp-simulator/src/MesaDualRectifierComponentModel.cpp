@@ -121,6 +121,7 @@ void MesaDualRectifierComponentModel::buildStages() noexcept {
     // Per-mode voicing (see the tables in the header). Set before any millerC() below.
     const int mi = std::clamp(mode_, 0, 7);
     voiceMiller_ = kModeMiller[mi];
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up (after the per-mode Miller scale)
     const double zHfEff  = zHfDb_  + kModeZHfDb[mi];
     const double zResEff = zResDb_ + kModeZResDb[mi];
     const double rs = railScale();
@@ -179,6 +180,10 @@ void MesaDualRectifierComponentModel::buildStages() noexcept {
             evhcomp::PowerSupplyV::Params sp;
             sp.vNode1 = 454.0 * rs;   // node B as printed (vg2 is past the screen droppers)
             sp.rSrc = rectTube_ ? 70.0 : 10.0; sp.cRes = 110e-6; sp.chokeH = 4.0; sp.cScr = 30e-6; sp.cPI = 30e-6;
+            // supply fix (2026-11-03): two 5U4GBs in parallel (44 V at 225 mA per plate on the RCA sheet:
+            // perveance 7.7e-4 each) or silicon; winding 15 ohm a half (measured) + the primary
+            // reflected ~ 25 ohm; choke ESTIMATE 70 ohm.
+            sp.rectLaw = rectTube_ ? 2 : 1; sp.valvePerv = 2.0 * 7.65e-4; sp.rWind = 25.0; sp.chokeDcr = 70.0;
             sp.iPIExtra = c.v3a.biasIa() + c.v3b.biasIa() + 2e-3;
             sp.nPre = 2;
             sp.vPre[0] = railD; sp.cPre[0] = 30e-6; sp.iPre[0] = c.v2a.biasIa() + c.v2b.biasIa(); sp.parentPre[0] = 2;
@@ -283,6 +288,11 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
 
 
 void MesaDualRectifierComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -386,4 +396,19 @@ float MesaDualRectifierComponentModel::getParameter(const std::string& id) const
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void MesaDualRectifierComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 2) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1a.setTubeOverride(t);
+        c.pa.setValve(pv);
+        // the per-mode and fitted Miller scales the static caps carry
+        const double cgp = millerScale_ * voiceMiller_ * kCgp;
+        c.v1a.setMiller(dynMiller_, cgp); c.v2a.setMiller(dynMiller_, cgp); c.v2b.setMiller(dynMiller_, cgp); c.v3a.setMiller(dynMiller_, cgp);
+    }
 }

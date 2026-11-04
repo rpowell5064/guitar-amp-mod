@@ -86,6 +86,7 @@ void OrangeAD200BModel::prepare(double oversampledSampleRate, int /*maxBlock*/) 
 }
 
 void OrangeAD200BModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     if (fs_ <= 0.0) return;
     for (auto& c : ch_) {
         // -- RO1: R5 100k plate, R4 1k5 fully bypassed by C1 22u. The grid sees
@@ -105,6 +106,8 @@ void OrangeAD200BModel::buildStages() noexcept {
             // choke, 50u sections, winding + diodes ~ 8 ohm, the other preamp triodes ~ 2 mA.
             evhcomp::PowerSupplyV::Params sp;
             sp.rSrc = 8.0; sp.cRes = 100e-6; sp.chokeH = 4.0; sp.cScr = 50e-6; sp.cPI = 50e-6;
+            // supply fix (2026-11-03): silicon, a 200 W winding ESTIMATE 12 ohm, choke ESTIMATE 70 ohm, UK mains
+            sp.rectLaw = 1; sp.rWind = 12.0; sp.chokeDcr = 70.0; sp.mainsHzFix = 50.0;
             sp.screensOffChain = true; sp.vNode1 = railA_ - 10.0;   // screens at 320 V: their own lower supply (ESTIMATE)
             sp.nPre = 1; sp.vPre[0] = railV1_; sp.cPre[0] = 50e-6; sp.iPre[0] = c.ro1.biasIa() + c.ro2.biasIa() + 2e-3;
             c.pa.setSupplyLayout(sp, 2.0e-6, 0.5e-7);   // a head
@@ -203,6 +206,11 @@ float OrangeAD200BModel::processSample(float x, int channel) noexcept {
 
 
 void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -283,4 +291,17 @@ float OrangeAD200BModel::getParameter(const std::string& id) const noexcept {
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void OrangeAD200BModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 5) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.ro1.setTubeOverride(t); c.ro2.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.ro1.setMiller(dynMiller_, kCgp, kCgk, 68e3);   // V1a's grid stopper
+    }
 }

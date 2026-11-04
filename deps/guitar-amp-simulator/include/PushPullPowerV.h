@@ -46,6 +46,8 @@
 
 namespace evhcomp {
 
+inline double spreadTol(float spread, int i) noexcept;   // valve-to-valve spread (defined below)
+
 class PushPullPowerV {
 public:
     struct Params {
@@ -160,8 +162,14 @@ public:
         double spreadV = 1.2;        // output pair idle mismatch at full spread (grid volts, ±)
     };
 
+    // A power valve the output stage can be re-valved with (2026-11-03): the Koren pentode
+    // set, the transconductance scale the twins already land each type's datasheet gm with,
+    // and the plate dissipation the automatic re-bias is set from.
+    struct PowerValve { const char* name; double mu, ex, kg1, kp, kvb, iaScale, pdW; };
+
     void prepare(double fs, const Params& p) noexcept {
         fs_ = fs; p_ = p;
+        if (valve_) applyValve();
         lutB_ = nullptr; lutBlend_ = 0.0;   // a fresh prepare starts off any supply glide
         c118HP_.setCoeffs(Filters::highpass1pole(
             1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
@@ -203,6 +211,7 @@ public:
         sagRel_    = std::exp(-1.0 / (p_.screenRelS * fs_));
         biasDecay_ = std::exp(-1.0 / (p_.biasRecovR * p_.biasCap * fs_));
         reset();
+        prepareExtras();
     }
 
     // Everything prepare() builds for the 2026-11-03 extras, out of line (see HT_NOINLINE):
@@ -288,7 +297,31 @@ public:
     void setRipple(float v)       noexcept { rippleDepth_ = std::clamp(v, 0.0f, 1.0f); }
     void setHeaterHum(float v)    noexcept { humDepth_ = std::clamp(v, 0.0f, 1.0f); }
     void setMicrophonic(float v)  noexcept { microDepth_ = std::clamp(v, 0.0f, 1.0f); if (microDepth_ <= 0.0f) { m1_ = m2_ = mX1_ = mX2_ = 0.0; microOut_ = 0.0; } }
-    void setTubeSpread(float v)   noexcept { spreadOff_ = double(std::clamp(v, 0.0f, 1.0f)) * p_.spreadV; }
+    void setTubeSpread(float v)   noexcept {
+        spreadOff_ = double(std::clamp(v, 0.0f, 1.0f)) * p_.spreadV;
+        const float s = std::clamp(v, 0.0f, 1.0f);
+        if (s != spread_) { spread_ = s; if (piSpreadOn_) solvePiSpread(); }
+    }
+    // ── 2026-11-03, second set (all additive; off = the stage as above) ───────────
+    // The phase inverter's two triode halves differ as the output pair's do: each half's
+    // current is a multiple of the curve (the spread control's ±4 / ±7 %), the pair is
+    // re-solved at rest so it idles where that pair would, and the unbalance shows up as
+    // even harmonics and a lopsided drive into the output grids.
+    HT_NOINLINE void setPiSpread(bool on) noexcept { if (on == piSpreadOn_) return; piSpreadOn_ = on; solvePiSpread(); }
+    // The supply fix (PowerSupplyV::Params::rectLaw ... mainsHzFix): re-solves the supply.
+    HT_NOINLINE void setSupplyFix(bool on) noexcept {
+        if (on == sup_.fix()) return;
+        sup_.setFix(on);
+        if (fs_ > 0.0 && supPrepared_) {
+            const double iPl = 2.0 * outIdle_ * p_.tubesPerSide;
+            sup_.prepare(fs_, p_.supply, { p_.vb, p_.vg2, p_.ltpVcc, iPl, iPl * p_.screenFrac, ltpIBiasTot_ });
+            for (auto& h : hp_) h = HpState{};
+        }
+    }
+    // Re-valve the output stage (nullptr = the amp's own valves, bit-identical). Kept across every
+    // later prepare(); the model re-prepares to apply it (bias solve + tables: not for the audio thread).
+    void setValve(const PowerValve* v) noexcept { valve_ = v; }
+    const PowerValve* valve() const noexcept { return valve_; }
     // Rail offset (V) of preamp node i (PowerSupplyV::Params::vPre order); 0 while the supply is off.
     double railDelta(int i) const noexcept { return (i >= 0 && 3 + i < kRailN) ? railD_[3 + i] : 0.0; }
     // The same by supply node (0 = plates, 1 = screens, 2 = PI node, 3 + i = preamp node i).
@@ -411,8 +444,8 @@ public:
             double gA_, cA, gB_, cB;
             if (jacOk_) { gA_ = jac_[0]; cA = jac_[1]; gB_ = jac_[2]; cB = jac_[3]; }
             else {
-                ltpLinearize<kHt>(vgA, IaA, IaB, p_.ltpRaA, gA_, cA);
-                ltpLinearize<kHt>(vgB, IaB, IaA, p_.ltpRaB, gB_, cB);
+                ltpLinearize<kHt>(vgA, IaA, IaB, p_.ltpRaA, gA_, cA, 0);
+                ltpLinearize<kHt>(vgB, IaB, IaA, p_.ltpRaB, gB_, cB, 1);
             }
             const double den  = 1.0 - cA * cB;
             const double dIaB = (std::abs(den) > 1e-6) ? gB_ / den : gB_;
@@ -426,6 +459,7 @@ public:
         double rawA = vccPI<kHt>() - IaA * p_.ltpRaA - ltpVpBiasA_;
         double rawB = vccPI<kHt>() - IaB * p_.ltpRaB - ltpVpBiasB_;
         if constexpr (kHt) { rawA -= piKA_ * piRailS_; rawB -= piKB_ * piRailS_; }
+        if constexpr (kHt) { if (piSpreadOn_) { rawA -= piDcA_; rawB -= piDcB_; } }
         if (!implicitLoop_ || jointOnly_) {
             double gA = c118HP_.process(float(rawA));
             double gB = c119HP_.process(float(rawB));
@@ -717,11 +751,12 @@ private:
     // Residual f = Ia - iK(vgk, vpk) with vK = tailV + (Ia + Iother)·Rk (+ dI·Rtail);
     // df/dIa = 1 + dg·dVk + dp·(Ra + dVk), df/dvg = -dg, df/dIother = (dg + dp)·dVk.
     template <bool kHt>
-    void ltpLinearize(double vg, double Ia, double Iother, double Ra, double& dIa_dvg, double& dIa_dIo) noexcept {
+    void ltpLinearize(double vg, double Ia, double Iother, double Ra, double& dIa_dvg, double& dIa_dIo, int side = -1) noexcept {
         const double dI = (Ia + Iother) - ltpIBiasTot_;
         const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
         double iK, dg, dp;
         korenEvalT(nullptr, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
+        if constexpr (kHt) { if (piSpreadOn_ && side >= 0) { const double t = side ? piTolB_ : piTolA_; iK *= t; dg *= t; dp *= t; } }
         const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
         const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
         if (std::abs(fp) < 1e-30) { dIa_dvg = 0.0; dIa_dIo = 0.0; return; }
@@ -770,6 +805,7 @@ private:
             double iKA, dgA, dpA, iKB, dgB, dpB;
             korenEvalT(nullptr, ltpTailV_ + vgA - vK, (vccPI<kHt>() - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
             korenEvalT(nullptr, ltpTailV_ + vgB - vK, (vccPI<kHt>() - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            if constexpr (kHt) { if (piSpreadOn_) { iKA *= piTolA_; dgA *= piTolA_; dpA *= piTolA_; iKB *= piTolB_; dgB *= piTolB_; dpB *= piTolB_; } }
             const double fA = IaA - iKA, fB = IaB - iKB;
             const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
             const double jBA = (dgB + dpB) * dVk,                         jBB = 1.0 + dgB * dVk + dpB * (p_.ltpRaB + dVk);
@@ -793,13 +829,13 @@ private:
         if (!converged) {   // a hard slew the Newton could not settle: the sequential sweep from the warm start
             IaA = ia0; IaB = ib0;
             for (int it = 0; it < 3; ++it) {
-                IaA = ltpSolveSide<kHt>(vgA, IaA, IaB, p_.ltpRaA);
-                IaB = ltpSolveSide<kHt>(vgB, IaB, IaA, p_.ltpRaB);
+                IaA = ltpSolveSide<kHt>(vgA, IaA, IaB, p_.ltpRaA, 0);
+                IaB = ltpSolveSide<kHt>(vgB, IaB, IaA, p_.ltpRaB, 1);
             }
         }
     }
     template <bool kHt>
-    double ltpSolveSide(double vg, double Ia, double Iother, double Ra) noexcept {
+    double ltpSolveSide(double vg, double Ia, double Iother, double Ra, int side = -1) noexcept {
         const double maxIa = p_.ltpVcc / Ra * 0.99;
         Ia = std::clamp(Ia, 0.0, maxIa);
         for (int it = 0; it < 3; ++it) {
@@ -807,6 +843,7 @@ private:
             const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iK, dg, dp;
             korenEvalT(nullptr, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
+            if constexpr (kHt) { if (piSpreadOn_ && side >= 0) { const double t = side ? piTolB_ : piTolA_; iK *= t; dg *= t; dp *= t; } }
             const double f = Ia - iK;
             const double dVk = p_.ltpRk + p_.ltpRtail;
             const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
@@ -830,6 +867,50 @@ private:
         if (e1 <= 0.0) return 0.0;
         return p_.iaScale * std::exp2(p_.ex * std::log2(e1)) / p_.kg1
              * std::atan(std::max(0.5, vpk) / p_.kvb);
+    }
+
+    // Re-valve (setValve): the new type's Koren set and gm scale; re-biased for that valve at
+    // this amp's plate supply -- 65 % of its rated dissipation with fixed bias, 90 % in a
+    // cathode-biased (class-A-leaning) stage, as a tech would set it.
+    HT_NOINLINE void applyValve() noexcept {
+        const PowerValve& v = *valve_;
+        p_.mu = v.mu; p_.ex = v.ex; p_.kg1 = v.kg1; p_.kp = v.kp; p_.kvb = v.kvb; p_.iaScale = v.iaScale;
+        p_.idleTarget = (p_.cathodeBiasR > 0.0 ? 0.90 : 0.65) * v.pdW / std::max(100.0, p_.vb);
+    }
+    // What prepare() rebuilds for the second set of extras (out of line, see HT_NOINLINE).
+    HT_NOINLINE void prepareExtras() noexcept {
+        if (piSpreadOn_) solvePiSpread();
+    }
+    // The PI pair at rest with this unit's two halves (piTolA_/B_): its plates' DC offsets from the
+    // matched pair's, taken back out of the swing as the coupling caps would.
+    HT_NOINLINE void solvePiSpread() noexcept {
+        piTolA_ = spreadTol(spread_, 5); piTolB_ = spreadTol(spread_, 6);
+        piDcA_ = piDcB_ = 0.0;
+        if (!piSpreadOn_ || fs_ <= 0.0) return;
+        double ia = ltpIaBiasA_, ib = ltpIaBiasA_;
+        const double vcc = p_.ltpVcc;
+        const double maxA = vcc / p_.ltpRaA * 0.99, maxB = vcc / p_.ltpRaB * 0.99;
+        const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
+        for (int it = 0; it < 200; ++it) {
+            const double dI = (ia + ib) - ltpIBiasTot_;
+            const double vK = ltpTailV_ + (ia + ib) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
+            double iKA, dgA, dpA, iKB, dgB, dpB;
+            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - ia * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - ib * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            iKA *= piTolA_; dgA *= piTolA_; dpA *= piTolA_; iKB *= piTolB_; dgB *= piTolB_; dpB *= piTolB_;
+            const double fA = ia - iKA, fB = ib - iKB;
+            const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
+            const double jBA = (dgB + dpB) * dVk,                         jBB = 1.0 + dgB * dVk + dpB * (p_.ltpRaB + dVk);
+            const double det = jAA * jBB - jAB * jBA;
+            if (std::abs(det) < 1e-30) break;
+            const double sA = ( jBB * fA - jAB * fB) / det, sB = (-jBA * fA + jAA * fB) / det;
+            ia = std::clamp(ia - 0.5 * sA, 0.0, maxA);
+            ib = std::clamp(ib - 0.5 * sB, 0.0, maxB);
+            if (std::abs(sA) < 1e-12 && std::abs(sB) < 1e-12) break;
+        }
+        piDcA_ = (vcc - ia * p_.ltpRaA) - ltpVpBiasA_;
+        piDcB_ = (vcc - ib * p_.ltpRaB) - ltpVpBiasB_;
+        IaOpA_ = ia; IaOpB_ = ib;
     }
 
     void solveOutputBias() noexcept {
@@ -1046,6 +1127,11 @@ private:
     bool   piOn_ = false;   // the PI rail terms are live (the supply is on); off = the original expressions
     template <bool kHt> double vccPI() const noexcept { if constexpr (kHt) return p_.ltpVcc + piRailD_; else return p_.ltpVcc; }
     double mB0_ = 0.0, mA1_ = 0.0, mA2_ = 0.0, m1_ = 0.0, m2_ = 0.0, mX1_ = 0.0, mX2_ = 0.0, microOut_ = 0.0;
+    // second set (2026-11-03)
+    const PowerValve* valve_ = nullptr;
+    bool   piSpreadOn_ = false;
+    float  spread_ = 0.0f;
+    double piTolA_ = 1.0, piTolB_ = 1.0, piDcA_ = 0.0, piDcB_ = 0.0;
 };
 
 // The 2026-11-03 supply-side controls, routed the same way on every model that owns a
@@ -1057,8 +1143,37 @@ inline bool supplyParam(PushPullPowerV& pa, const std::string& id, float v) noex
     else if (id == "heaterhum") pa.setHeaterHum(v);
     else if (id == "micro")     pa.setMicrophonic(v);
     else if (id == "spread")    pa.setTubeSpread(v);
+    else if (id == "pispread")  pa.setPiSpread(v > 0.5f);
+    else if (id == "rectlaw")   pa.setSupplyFix(v > 0.5f);
     else return false;
     return true;
+}
+
+// The "patube" choices (2026-11-03): 0 = the amp's own valves, then these. Koren sets as the twins
+// already use them (gm scales from the twin whose stock valve each is: EL34 the JCM800 / Plexi,
+// 6L6GC the Mesas, 6V6GT the Deluxe, EL84 the AC30, KT88 the SVT's, which lands its printed bias);
+// plate dissipation from the datasheets (6V6GT 14 W on the later RCA sheets).
+inline const PushPullPowerV::PowerValve* powerValve(int idx) noexcept {
+    static const PushPullPowerV::PowerValve kV[5] = {
+        { "EL34",  11.0, 1.35,  650.0,  60.0,  24.0, 2.2, 25.0 },
+        { "6L6GC",  8.7, 1.35, 1460.0,  48.0,  12.0, 3.0, 30.0 },
+        { "6V6GT", 10.7, 1.31, 1672.0,  41.16, 12.7, 1.0, 14.0 },
+        { "EL84",  21.6, 1.24,  401.7, 111.04, 17.9, 1.0, 12.0 },
+        { "KT88",   8.8, 1.35,  730.0,  32.0,  16.0, 1.4, 35.0 },
+    };
+    return (idx >= 1 && idx <= 5) ? &kV[idx - 1] : nullptr;
+}
+
+// The second set of twin controls (2026-11-03), parsed the same way on every twin:
+// "v1tube" 0..4 (preampValve), "patube" 0..5 (powerValve; the model maps its own type to
+// nullptr), "miller" 0/1. Returns 0 = not one of these ids, -1 = unchanged, 1 = re-apply the
+// Miller set-up, 2 = a valve changed (re-apply and re-prepare: bias solves and tables, so
+// hosts change these off the audio thread).
+inline int twinExtras2(const std::string& id, float v, int& v1Tube, int& paTube, bool& miller) noexcept {
+    if (id == "v1tube") { const int k = std::clamp(int(v + 0.5f), 0, 4); if (k == v1Tube) return -1; v1Tube = k; return 2; }
+    if (id == "patube") { const int k = std::clamp(int(v + 0.5f), 0, 5); if (k == paTube) return -1; paTube = k; return 2; }
+    if (id == "miller") { const bool b = v > 0.5f; if (b == miller) return -1; miller = b; return 1; }
+    return 0;
 }
 // Valve-to-valve spread for the i-th preamp triode of a model: a fixed, deterministic set
 // (no two neighbours alike), scaled by the spread control. 1 = the datasheet valve.

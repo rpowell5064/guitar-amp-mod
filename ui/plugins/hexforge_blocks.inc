@@ -500,6 +500,11 @@ PanelSpec amp(bool two)
         face.push_back(hc::toggle("amp_evhcomp", "Component", comp));
         face.push_back(hc::toggle("amp_dynload", "Dyn Load", comp));
     }
+    // Valve swap (v54): only while this rig runs a component build -- Component Model on with an
+    // amp that has a twin, or the Citrus 200 (always one). Mirrors runsComponentBuild() in hf_types.inc.
+    auto valves = [m, comp](V v) { return (v.get("amp_evhcomp") > 0.5f && comp(v)) || m(v) == 15; };
+    face.push_back(hc::select(p + "v1tube", "V1", valves));
+    face.push_back(hc::select(p + "patube", "Valves", valves));
     for (auto c : { hc::knob(p + "master", "Master", mast), hc::knob(p + "sag", "Sag"),
                     hc::toggle(p + "channel", "Channel", [m](V v) { return m(v) == 2 || m(v) == 4; }),
                     hc::knob(p + "resonance", "Resonance", is(2)), hc::knob(p + "bass", "Bass"),

@@ -201,6 +201,38 @@
     fitted at moderate drive and over-sags at full power (Recto plate node -132 V on the
     valve rectifier, -66 V on silicon at master 0.6); a Child-law valve drop + winding R
     and a full-power calibration should come before any preset re-level.
+- **2026-11-03 — twin extras, second set (valve swaps, dynamic Miller, supply fix, PI
+  mismatch; OT resonance tried and dropped).** All off / stock by default; the three physics
+  switches ride a TEMPORARY Hex Forge A/B (<configDir>/miller_on, pispread_on, rectlaw_on).
+  - Valve swaps (Hex Forge blob v54, mv285: amp_v1tube / amp_patube / rb_v1tube / rb_patube,
+    shown for component builds): V1 = 12AX7 / 5751 / 12AY7 / 12AT7 / 12AU7 (Koren's own
+    sets for 12AT7/12AU7, guitarix's for 12AY7, a 5751 fitted to the RCA point -- no
+    published set); power valves = Stock / EL34 / 6L6GC / 6V6GT / EL84 / KT88 with each
+    type's twin gm scale, re-biased to 65 % of rated dissipation (90 % cathode-biased).
+    Rebuilt on the worker (7-80 ms x86). Every twin x every choice renders finite.
+  - Dynamic Miller (CCStageV::setMiller, HT build): the static Miller caps the twins already
+    carry move with the stage's live gain (A collapses as the stage clips); the JCM800,
+    Deluxe and AD200 V1 stoppers get the full Cgk + Cgp(1 + A). Changes -24..-42 dB re signal
+    on the bench chord, no level change, no measurable CPU.
+  - Supply fix (PowerSupplyV::setFix): silicon drop or Child-law valve rectifier
+    (GZ34 17 V @ 250 mA, 5U4GB 44 V @ 225 mA per plate), the HT winding at measured
+    Hammond-replacement figures (Marshall-type ~20 ohm, Deluxe-type ~81 ohm), the choke at
+    its own DCR (ESTIMATE 70-150 ohm), UK twins on 50 Hz mains. FINDING (corrects the OPEN
+    note above): the plate-node sag was NOT overstated -- a square-wave-driven 100 W silicon
+    stage on a 50 uF reservoir really drops 12-16 % (Schade), consistent with the one
+    published full-power figure found (a JTM50 on a GZ34: -52 V at 47 W). The excess was the
+    SCREEN node: the choke R derived from the printed drop / modelled idle current was
+    2-5x a real choke, and the screens' full-power current ran through it (JCM800 screen
+    -21 V below the plates -> -8 V; BE-100 -43 -> -9). Full-drive level change vs the
+    linear supply: -0.7..+1.0 dB per twin. Preset re-level waits for the A/B verdict.
+  - PI mismatch (pispread): the LTP halves at the spread control's -4 / +7 %, the pair
+    re-solved at rest. -34..-47 dB re signal; the SVT (a cathodyne) is unaffected.
+  - OT leakage / winding-capacitance resonance: DROPPED. No guitar OT's peak is published
+    (Hammond's AC30 replacements: 4.6-5.1 mH leakage). Inside the twins' loops a 40 kHz /
+    Q 1.2 estimate made the BE-100 loop unstable (+78 dB at 36 kHz, +9 dB at 2 kHz) and the
+    Plexi ring (+29 dB at 22 kHz); even at 80 kHz / Q 0.7 presence 0 still rang. The twins'
+    fitted HF loop terms already carry the OT's top; adding it needs a re-fit of those terms
+    against the captures, not an estimate on top.
 
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go

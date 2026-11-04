@@ -93,6 +93,7 @@ void VoxAC30ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
 }
 
 void VoxAC30ComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     if (fs_ <= 0.0) return;
     const double Zp220 = par(220e3, kRp);
     const double zV1   = par(110e3, kRp * 0.5);        // the paralleled pair's plate impedance
@@ -144,6 +145,9 @@ void VoxAC30ComponentModel::buildStages() noexcept {
             // rectifier + winding ~ 150 ohm, choke ~ 4 H; the tremolo branch as a 2 mA screen-node load.
             evhcomp::PowerSupplyV::Params sp;
             sp.rSrc = 150.0; sp.cRes = 47e-6; sp.chokeH = 4.0; sp.cScr = 22e-6; sp.cPI = 10e-6; sp.iScrExtra = 2e-3;
+            // supply fix (2026-11-03): GZ34 (17 V at 250 mA per plate on the Philips curve: perveance
+            // 3.6e-3), winding ESTIMATE 50 ohm (a 30 W transformer), choke ESTIMATE 100 ohm, UK mains.
+            sp.rectLaw = 2; sp.valvePerv = 3.57e-3; sp.rWind = 50.0; sp.chokeDcr = 100.0; sp.mainsHzFix = 50.0;
             sp.nPre = 2;
             sp.vPre[0] = preV_;        sp.cPre[0] = 10e-6; sp.iPre[0] = c.v1.biasIa();  sp.parentPre[0] = 1;
             sp.vPre[1] = preV_ - 15.0; sp.cPre[1] = 33e-6; sp.iPre[1] = c.v11a.biasIa() + c.v11b.biasIa(); sp.parentPre[1] = 1;
@@ -233,6 +237,11 @@ float VoxAC30ComponentModel::processSample(float x, int channel) noexcept {
 
 
 void VoxAC30ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -309,4 +318,17 @@ float VoxAC30ComponentModel::getParameter(const std::string& id) const noexcept 
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void VoxAC30ComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 4) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v1.setMiller(dynMiller_, kCgp); c.v11a.setMiller(dynMiller_, kCgp);
+    }
 }

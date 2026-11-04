@@ -324,11 +324,19 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // model (each carries its own power section; the shared PA is bypassed).
     const bool compOn = p->ports[HF_AMP_EVHCOMP] && *p->ports[HF_AMP_EVHCOMP] > 0.5f
                         && hasComponentModel(ampModel);
+    // Valve swap (v54): only a component build takes it (else 0/0 = stock). A change REBUILDS
+    // the amp on the worker (the model's own rebuild is ~10-25 ms on a Pi 5, never on this thread).
+    const bool compBuild = compOn || (ampModel == kAd200Idx);
+    const int  ampV1 = compBuild ? clampi(*p->ports[HF_AMP_V1TUBE], 0, kV1TubeMax) : 0;
+    const int  ampPa = compBuild ? clampi(*p->ports[HF_AMP_PATUBE], 0, kPaTubeMax) : 0;
     if (ampIsAlgo && (ampModel != p->lastAmpModel || ecoQ != p->lastEco
-                      || compOn != p->lastEvhComp)) {   // rebuild for algo models (model / Engine Quality / lab-toggle change)
+                      || compOn != p->lastEvhComp
+                      || ampV1 != p->lastAmpV1 || ampPa != p->lastAmpPa)) {   // rebuild for algo models (model / Engine Quality / lab-toggle / valve-swap change)
         WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=ampModel; msg.eco=ecoQ; msg.evhComp=compOn;
+        msg.v1tube = ampV1; msg.patube = ampPa;
         if (p->worker->schedule(&msg, sizeof(msg)))
-            { p->lastAmpModel = ampModel; p->lastEco = ecoQ; p->lastEvhComp = compOn; }
+            { p->lastAmpModel = ampModel; p->lastEco = ecoQ; p->lastEvhComp = compOn;
+              p->lastAmpV1 = ampV1; p->lastAmpPa = ampPa; }
     }
     // ── Rig B (dual amp/cab, 2026-07-30): schedule builds + set params ──────
     const bool rbOn = *p->ports[HF_RB_ENABLE] > 0.5f;
@@ -355,12 +363,19 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         // amp2Requested guards the build-in-flight window: without it, !p->amp2
         // stays true until the crossfade swap lands and this scheduled a fresh
         // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
+        // Valve swap (v54), as on the main rig: component builds only, rebuilt on the worker.
+        const bool rbCompBuild = rbCompOn || (rbModel == kAd200Idx);
+        const int  rbV1 = rbCompBuild ? clampi(*p->ports[HF_RB_V1TUBE], 0, kV1TubeMax) : 0;
+        const int  rbPa = rbCompBuild ? clampi(*p->ports[HF_RB_PATUBE], 0, kPaTubeMax) : 0;
         if (!rbNamSel && (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco
-                          || rbCompOn != p->lastAmp2Comp || !p->amp2) && !p->amp2Requested) {
+                          || rbCompOn != p->lastAmp2Comp || !p->amp2
+                          || rbV1 != p->lastAmp2V1 || rbPa != p->lastAmp2Pa) && !p->amp2Requested) {
             WorkMsg msg; msg.type=W_AMP_LOAD; msg.modelIdx=rbModel; msg.eco=rbEco; msg.namSlot=1;
             msg.evhComp = rbCompOn;
+            msg.v1tube = rbV1; msg.patube = rbPa;
             if (p->worker->schedule(&msg, sizeof(msg)))
-                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->lastAmp2Comp = rbCompOn; p->amp2Requested = true; }
+                { p->lastAmp2Model = rbModel; p->lastAmp2Eco = rbEco; p->lastAmp2Comp = rbCompOn; p->amp2Requested = true;
+                  p->lastAmp2V1 = rbV1; p->lastAmp2Pa = rbPa; }
         }
         const int rbCab = clampi(*p->ports[HF_RB_CAB], 0, kRbCabMax);
         const bool ir2NoCab = (std::strcmp(p->ir2Path, "@nocab") == 0);   // unified picker's No Cab entry
@@ -415,6 +430,16 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             a2->setParameter("palegacy",  0.0f);   // RETIRED 2026-10-07 (the user's A/B: quieter, darker, and the old stage squeals at 21.8 kHz on the Friedman HBE at idle); the port stays for the layout, always off  // lab A/B (shared global toggle)
             a2->setParameter("supply", 1.0f); a2->setParameter("ripple", 1.0f);   // component twins (see main rig)
             a2->setParameter("heaterhum", 1.0f); a2->setParameter("micro", 1.0f); a2->setParameter("spread", 1.0f);
+            // Valve swap (v54): the values amp2 was BUILT with on the worker -- never a change here
+            // (pushing the live port would retube on the audio thread before the rebuild lands).
+            a2->setParameter("v1tube", static_cast<float>(p->liveAmp2V1));
+            a2->setParameter("patube", static_cast<float>(p->liveAmp2Pa));
+            if (p->abHt.load(std::memory_order_relaxed) > 0 || p->abHtApplied > 0) {   // TEMPORARY physics A/B (2026-11-03)
+                const int f = std::max(0, p->abHt.load(std::memory_order_relaxed));
+                a2->setParameter("miller",   (f & 1) ? 1.0f : 0.0f);
+                a2->setParameter("pispread", (f & 4) ? 1.0f : 0.0f);
+                a2->setParameter("rectlaw",  (f & 8) ? 1.0f : 0.0f);
+            }
             if (rbM != kFriedmanIdx) a2->setParameter("channel", *p->ports[HF_RB_CHANNEL]);   // Friedman: own port below (see main rig)
             a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
             if (rbM == kFriedmanIdx) {
@@ -550,6 +575,18 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // the plates, screens, PI and preamp rails; AC-heater hum, V1 microphony, valve spread.
     amp->setParameter("supply", 1.0f); amp->setParameter("ripple", 1.0f);
     amp->setParameter("heaterhum", 1.0f); amp->setParameter("micro", 1.0f); amp->setParameter("spread", 1.0f);
+    // Valve swap (v54): the values this amp was BUILT with on the worker (W_AMP_LOAD), so this is
+    // never a change -- pushing the live port instead would retube on the audio thread (~10-25 ms
+    // rebuild) in the window before the worker's rebuild lands.
+    amp->setParameter("v1tube", static_cast<float>(p->liveAmpV1));
+    amp->setParameter("patube", static_cast<float>(p->liveAmpPa));
+    if (p->abHt.load(std::memory_order_relaxed) > 0 || p->abHtApplied > 0) {   // TEMPORARY physics A/B (2026-11-03)
+        const int f = std::max(0, p->abHt.load(std::memory_order_relaxed));
+        amp->setParameter("miller",   (f & 1) ? 1.0f : 0.0f);
+        amp->setParameter("pispread", (f & 4) ? 1.0f : 0.0f);
+        amp->setParameter("rectlaw",  (f & 8) ? 1.0f : 0.0f);
+        p->abHtApplied = f;
+    }
     // The Friedman takes its channel from its OWN port below; sending the generic
     // amp_channel first made the component build (which re-prepares its relay-
     // switched stages on every real change) flip 0->HBE EVERY BLOCK = a 1.5 kHz
@@ -707,6 +744,14 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->reverb.setParameter("density", *p->ports[HF_RV_DENSITY]);      // classic / dense tank (v25)
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
     p->reverb.setParameter("bloom",   *p->ports[HF_RV_BLOOM]);         // Hex Ambient bloom (v27)
+    // TEMPORARY physics A/B (2026-11-03, remove once decided): ask the worker twice a second
+    // whether <configDir>/miller_on, pispread_on and rectlaw_on exist.
+    p->abPollCtr += n;
+    if (p->abPollCtr >= static_cast<uint32_t>(p->rate * 0.5)) {
+        p->abPollCtr = 0;
+        WorkMsg am; am.type = W_AB_POLL;
+        p->worker->schedule(&am, sizeof(am));
+    }
     p->cab.setParameter("roomdense",  *p->ports[HF_CAB_ROOMDENSE]);    // classic / dense room (v26)
     {   // Speaker Drive: 0 Off / 1 Subtle / 2 Full (item #40 envelope heuristics,
         // 0.35/0.75) / 3 Physical (2026-09-21: the state-based large-signal driver

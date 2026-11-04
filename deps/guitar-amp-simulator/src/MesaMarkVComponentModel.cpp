@@ -116,6 +116,7 @@ void MesaMarkVComponentModel::prepare(double oversampledSampleRate, int /*maxBlo
 }
 
 void MesaMarkVComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     const bool m8 = (mode_ == 7), m7 = (mode_ == 6);   // M9 (Extreme): C63 1n across the presence
                                                      // rheostat only acts above ~15 kHz — phase 2
     const double Zp150 = par(150e3, kRp), Zp100 = par(100e3, kRp), Zp82 = par(82e3, kRp);
@@ -203,6 +204,8 @@ void MesaMarkVComponentModel::buildStages() noexcept {
             evhcomp::PowerSupplyV::Params sp;
             sp.vNode1 = 445.0;   // node B as printed (vg2 is past the screen droppers)
             sp.rSrc = 10.0; sp.cRes = 110e-6; sp.chokeH = 4.0; sp.cScr = 30e-6; sp.cPI = 33e-6; sp.iScrExtra = 3e-3;
+            // supply fix (2026-11-03): silicon, a 90 W winding ESTIMATE 22 ohm, choke ESTIMATE 70 ohm
+            sp.rectLaw = 1; sp.rWind = 22.0; sp.chokeDcr = 70.0;
             sp.iPIExtra = c.v3a.biasIa() + c.v4b.biasIa() + c.v5a.biasIa() + c.v6a.biasIa() + 1e-3;
             sp.nPre = 2;
             sp.vPre[0] = kRailE; sp.cPre[0] = 33e-6; sp.iPre[0] = c.v1a.biasIa() + c.v1b.biasIa() + 2e-3; sp.parentPre[0] = 2;
@@ -326,6 +329,11 @@ float MesaMarkVComponentModel::processSample(float x, int channel) noexcept {
 
 
 void MesaMarkVComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -444,4 +452,18 @@ float MesaMarkVComponentModel::getParameter(const std::string& id) const noexcep
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void MesaMarkVComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 2) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1a.setTubeOverride(t); c.v1b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v1a.setMiller(dynMiller_, kCgp); c.v1b.setMiller(dynMiller_, kCgp); c.v5a.setMiller(dynMiller_, kCgp);
+        c.v4b.setMiller(dynMiller_, kCgp); c.v3a.setMiller(dynMiller_, kCgp); c.v6a.setMiller(dynMiller_, kCgp); c.v6b.setMiller(dynMiller_, kCgp);
+    }
 }

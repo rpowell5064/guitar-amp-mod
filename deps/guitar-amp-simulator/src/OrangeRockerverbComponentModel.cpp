@@ -80,6 +80,7 @@ void OrangeRockerverbComponentModel::prepare(double oversampledSampleRate, int /
 }
 
 void OrangeRockerverbComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     if (fs_ <= 0.0) return;
     // ── Rails, DERIVED (sheet 2/2 + power board): A = the rectified 290-0-290 VAC,
     //    B after the choke, then R1 4k7 → C, R33 4k7 → D, R34 4k7 → E, R41 10k → F
@@ -135,6 +136,8 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
             evhcomp::PowerSupplyV::Params sp;
             sp.vNode1 = railB;   // the choke output (vg2 is past the screen droppers)
             sp.rSrc = 15.0; sp.cRes = 100e-6; sp.chokeH = 4.0; sp.cScr = 100e-6; sp.cPI = 47e-6; sp.iScrExtra = 5e-3; sp.iPIExtra = 1e-3;
+            // supply fix (2026-11-03): silicon, a 50 W winding ESTIMATE 35 ohm, choke ESTIMATE 100 ohm, UK mains
+            sp.rectLaw = 1; sp.rWind = 35.0; sp.chokeDcr = 100.0; sp.mainsHzFix = 50.0;
             sp.nPre = 3;
             sp.vPre[0] = railD; sp.cPre[0] = 47e-6; sp.iPre[0] = c.v7a.biasIa() + c.v7b.biasIa();
             sp.vPre[1] = railE; sp.cPre[1] = 22e-6; sp.iPre[1] = c.v8a.biasIa() + c.v8b.biasIa();
@@ -247,6 +250,11 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
 
 
 void OrangeRockerverbComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -339,4 +347,18 @@ float OrangeRockerverbComponentModel::getParameter(const std::string& id) const 
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void OrangeRockerverbComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 0) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v9a.setTubeOverride(t); c.v9b.setTubeOverride(t); c.v10a.setTubeOverride(t); c.v10b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v9a.setMiller(dynMiller_, kCgp); c.v9b.setMiller(dynMiller_, kCgp); c.v8a.setMiller(dynMiller_, kCgp); c.v8b.setMiller(dynMiller_, kCgp);
+        c.v10a.setMiller(dynMiller_, kCgp); c.v10b.setMiller(dynMiller_, kCgp); c.v7b.setMiller(dynMiller_, kCgp);
+    }
 }

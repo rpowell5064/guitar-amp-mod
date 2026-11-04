@@ -198,8 +198,12 @@ static_assert(HF_CLAW_POS == HF_RB_CABMIC2POL + 1 && HF_CLAW_ENABLE == HF_CLAW_P
               HF_CLAW_BYPASS == HF_CLAW_GRAB + 1 && HF_CLAW_BYPASS == HF_AMP_TIGHT - 1,
               "v52: the Claw ten-port group (v53: the Tight pair follows it)");
 static_assert(HF_AMP_TIGHT == HF_CLAW_BYPASS + 1 && HF_RB_TIGHT == HF_AMP_TIGHT + 1 &&
-              HF_RB_TIGHT == HF_SW_A - 1,
-              "v53: the Tight pair ends the param range");
+              HF_RB_TIGHT == HF_AMP_V1TUBE - 1,
+              "v53: the Tight pair (v54: the valve-swap four follow it)");
+static_assert(HF_AMP_V1TUBE == HF_RB_TIGHT + 1 && HF_AMP_PATUBE == HF_AMP_V1TUBE + 1 &&
+              HF_RB_V1TUBE == HF_AMP_PATUBE + 1 && HF_RB_PATUBE == HF_RB_V1TUBE + 1 &&
+              HF_RB_PATUBE == HF_SW_A - 1,
+              "v54: the valve-swap four end the param range");
 static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     static const float vdef[5] = {0.0f, 1.0f, 0.0f, 0.0f, 4.0f};  // humbk,hbamt,hbmodel,boost,boostamt
     static const float ddef[4] = {1.0f, 0.0f, 0.0f, 0.3f};        // pattern,ducking,moddepth,modrate
@@ -397,6 +401,9 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
     // v53 (2026-10-20): amp_tight + rb_tight appended after the Claw group; 0 = off.
     const bool tgGap = (srcVer < 53);
     const int  tgAt  = HF_AMP_TIGHT, tgEnd = HF_AMP_TIGHT + 2;
+    // v54 (2026-11-03): amp_v1tube, amp_patube, rb_v1tube, rb_patube after the Tight pair; 0 = stock.
+    const bool vsGap = (srcVer < 54);
+    const int  vsAt  = HF_AMP_V1TUBE, vsEnd = HF_AMP_V1TUBE + 4;
     float old[HF_N_PORTS];
     std::memcpy(old, vals, sizeof(old));   // snapshot (old values at front, tail zero)
     int o = 0;
@@ -449,6 +456,7 @@ static void migratePorts(float* vals, uint32_t srcVer) noexcept {
         else if (dynGap && i == dynAt)                   vals[i] = 0.0f;             // v51 dynamic-load lab toggle OFF
         else if (clawGap && i >= clawAt && i < clawEnd)  vals[i] = clawdef[i - clawAt]; // v52 Claw: parked, palette, Howl
         else if (tgGap && i >= tgAt && i < tgEnd)        vals[i] = 0.0f;             // v53 Tight off
+        else if (vsGap && i >= vsAt && i < vsEnd)        vals[i] = 0.0f;             // v54 valve swap: stock
         else                                             vals[i] = old[o++];
     }
 }
@@ -459,7 +467,7 @@ static void hfSerialize(HexForge* p, std::vector<uint8_t>& blob) {
     auto putBytes = [&](const void* d, size_t n){ const uint8_t* b=(const uint8_t*)d; blob.insert(blob.end(), b, b+n); };
     auto putU32   = [&](uint32_t v){ putBytes(&v, 4); };
     auto putPath  = [&](const char* s){ uint32_t len=(uint32_t)std::strlen(s); putU32(len); putBytes(s, len); };
-    putU32(53); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v53: + the Tight pair (per-preset, 2026-10-20); v52: + the Claw ten-port group (per-preset, 2026-10-07); v51: + amp_dynload tail; v50: + the Cab Mic 2 twelve-port tail; v49: + the Helsinki Grind twelve-port tail (B7K panel); v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
+    putU32(54); putU32(kBanks); putU32(kSlots); putU32(HF_N_PORTS); putU32(kFactoryRev);   // v54: + the valve-swap four (per-preset, 2026-11-03); v53: + the Tight pair (per-preset, 2026-10-20); v52: + the Claw ten-port group (per-preset, 2026-10-07); v51: + amp_dynload tail; v50: + the Cab Mic 2 twelve-port tail; v49: + the Helsinki Grind twelve-port tail (B7K panel); v46: Cali Ch3 value transform (no layout change); v45: + the Blue Liner (SVT) six-port tail; v44: + rb_locut; v43: + SIR #34 pair; v42: + EP-3 Age pair; v41: + Plexi Variac; v40: + eco x4 + Drive 2 NAM; v39: + Amp 2 NAM + Cab 2 IR paths; v38: + X2 clone families; v37: + Cab 2 presence; v31: + 14 CPU meter outputs (tail, pre-MIDI); v30: + fuzz guitar vol; v29: + tremolo shape; v28: + speaker drive; v27: + ambient bloom; v26: + reverb type / room density; v25: + reverb density
     for (int b=0;b<kBanks;++b) for (int s=0;s<kSlots;++s) {
         const Preset& pr = p->presets[b][s];
         putU32(pr.used ? 1u : 0u);
@@ -483,9 +491,9 @@ static bool hfDeserialize(HexForge* p, const uint8_t* d, size_t size) {
         std::memcpy(dst, d+off, m); dst[m]='\0'; off += len; };
     uint32_t ver=0, nb=0, ns=0, np=0;
     if (!getU32(ver)) return false; getU32(nb); getU32(ns);
-    if (ver < 2 || ver > 53) return false;   // 53 = Tight pair; 52 = Claw group (51 = amp_dynload tail, 50 = Cab Mic 2 twelve-port tail)
+    if (ver < 2 || ver > 54) return false;   // 54 = valve-swap four; 53 = Tight pair; 52 = Claw group (51 = amp_dynload tail, 50 = Cab Mic 2 twelve-port tail)
     const bool migrateOutDb = (ver == 2);
-    const bool needMigrate  = (ver < 53);  // ...v52 Claw group, v53 Tight pair
+    const bool needMigrate  = (ver < 54);  // ...v52 Claw group, v53 Tight pair, v54 valve swap
     getU32(np);
     if (ver == 36 && np >= 318) ver = 37;   // deployed v36 stamps already carry rb_cab2on (318-param layout)
     uint32_t factoryRev = 0; if (ver >= 11) getU32(factoryRev);   // v11+: factory-preset revision

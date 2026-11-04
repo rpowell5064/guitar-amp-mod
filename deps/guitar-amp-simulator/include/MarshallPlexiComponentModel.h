@@ -132,6 +132,10 @@ private:
     void   solveRailsAt(double s, RailSet& r) const noexcept;
     void   snapshotStages(GlideEnd& e) const noexcept;
     void   buildStages() noexcept;
+    // 2026-11-03, second set: V1 valve, power valves, dynamic Miller (applyExtras2 in the .cpp)
+    int  v1Tube_ = 0, paTube_ = 0;
+    bool dynMiller_ = false;
+    void applyExtras2() noexcept;
     void   applyGlide() noexcept;
     void   buildMix(evhcomp::LinNetV& n, bool brightDriven, double r1, double r2) const noexcept;
     void   recalcMix(bool force) noexcept;

@@ -124,6 +124,7 @@ double AmpegSVTComponentModel::clampGrid(double vs, double& warm) const noexcept
 }
 
 void AmpegSVTComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     if (fs_ <= 0.0) return;
     for (auto& c : ch_) {
         // ── PREAMP ─────────────────────────────────────────────────────────────
@@ -230,6 +231,8 @@ void AmpegSVTComponentModel::buildStages() noexcept {
             // own low-impedance winding, not this chain. ESTIMATE: winding + diodes ~ 6 ohm.
             evhcomp::PowerSupplyV::Params sp;
             sp.rSrc = 6.0; sp.cRes = 50e-6; sp.chokeH = 0.0; sp.cScr = 30e-6; sp.cPI = 40e-6;
+            // supply fix (2026-11-03): silicon, a 300 W winding ESTIMATE 10 ohm (no choke)
+            sp.rectLaw = 1; sp.rWind = 10.0;
             sp.screensOffChain = true; sp.vNode1 = 462.0;
             sp.vNode2 = railC_; sp.iNode2 = c.pv1a.biasIa() + c.pi.biasIa();
             sp.nPre = 1; sp.vPre[0] = railPre_; sp.cPre[0] = 40e-6; sp.parentPre[0] = 1;
@@ -431,6 +434,11 @@ float AmpegSVTComponentModel::processSample(float x, int channel) noexcept {
 
 
 void AmpegSVTComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -541,4 +549,18 @@ float AmpegSVTComponentModel::getParameter(const std::string& id) const noexcept
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void AmpegSVTComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 5) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1a.setTubeOverride(t); c.v1b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v1a.setMiller(dynMiller_, kCgp); c.v3a.setMiller(dynMiller_, kCgp); c.v3b.setMiller(dynMiller_, kCgp); c.v4a.setMiller(dynMiller_, kCgp);
+        c.pv1a.setMiller(dynMiller_, kCgp); c.bh7a.setMiller(dynMiller_, kCgp); c.bh7b.setMiller(dynMiller_, kCgp);
+    }
 }

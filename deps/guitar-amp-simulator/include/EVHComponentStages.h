@@ -25,7 +25,8 @@
 //
 // NOT modelled here (documented limitations, revisit if measurements demand):
 //   * grid-current conduction / coupling-cap blocking shift
-//   * Miller capacitance beyond any explicit schematic grid cap
+//   * Miller capacitance beyond any explicit schematic grid cap -- except in the HT build with
+//     CCStageV::setMiller (2026-11-03), where the stage's input capacitance follows its live gain
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Keeps an additive model's ON path out of line, so that with it OFF the caller compiles
@@ -126,6 +127,12 @@ inline void korenEval(double Vgk, double Vpk,
 // 12BH7 drivers and the 6C4 line driver). Stages default to the compile-time 12AX7
 // path above (tube == nullptr), so every existing amp is bit-identical.
 struct KorenP { double mu, ex, kg1, kp, kvb; };
+// First-preamp-valve choices for the "v1tube" control (2026-11-03): 0 = 12AX7 (the stage's own,
+// the fast table path), then in falling gain. 12AT7 / 12AU7: Koren's own library; 12AY7: the
+// guitarix tube table's fit; 5751: no published Koren set -- ESTIMATE, fitted to the RCA sheet's
+// point (1.0 mA at 250 V / -3 V, gm 1.2 mA/V) with its mu of 70.
+struct KorenP;
+inline const KorenP* preampValve(int idx) noexcept;
 inline void korenEvalP(const KorenP& T, double Vgk, double Vpk,
                        double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
     const double vpk   = std::max(1.0, Vpk);
@@ -144,6 +151,15 @@ inline void korenEvalP(const KorenP& T, double Vgk, double Vpk,
     const double dE1_dVpk = E1 / vpk - vpk * vpk * Vgk * sig / (denom * denom * denom);
     dIa_dVgk = dIa_dE1 * dE1_dVgk;
     dIa_dVpk = dIa_dE1 * dE1_dVpk;
+}
+inline const KorenP* preampValve(int idx) noexcept {
+    static const KorenP kV[4] = {
+        { 70.0,  1.4,  1370.0, 430.0,  300.0 },   // 5751 (ESTIMATE, see above)
+        { 44.16, 1.11, 1192.4, 409.96, 300.0 },   // 12AY7 / 6072
+        { 60.0,  1.35,  460.0, 300.0,  300.0 },   // 12AT7 / ECC81
+        { 21.5,  1.3,  1180.0,  84.0,  300.0 },   // 12AU7 / ECC82
+    };
+    return (idx >= 1 && idx <= 4) ? &kV[idx - 1] : nullptr;
 }
 // ── Table-driven 12AX7 evaluation (2026-09-22 CPU pass) ─────────────────────
 // korenEval() above costs four transcendentals (exp, log1p, exp2, log2) and
@@ -312,6 +328,7 @@ public:
 
     void prepare(double fs, const Params& p) noexcept {
         p_ = p; fs_ = fs;
+        if (tubeOv_) p_.tube = tubeOv_;
         Geq_ = 2.0 * p_.Ck * fs_;
         Gk_  = 1.0 / p_.Rk + Geq_;
         if (p_.RfbP > 0.0) {
@@ -324,6 +341,7 @@ public:
                 1.0 / (2.0 * M_PI * p_.Rgs * p_.Cgs), fs_));
             hasGridLP_ = true;
         } else hasGridLP_ = false;
+        prepareMiller();
         reset();
     }
 
@@ -332,7 +350,29 @@ public:
         IaOp_   = IaBias_;
         VkPrev_ = VkBias_;
         gridLP_.reset();
+        mS_ = 0.0; gainLast_ = mA0_;
     }
+
+    // Re-valve this stage (2026-11-03): a runtime Koren set applied at every later prepare()
+    // (nullptr = the tube the model's Params give). The model re-prepares to apply it.
+    void setTubeOverride(const KorenP* t) noexcept { tubeOv_ = t; }
+    // DYNAMIC MILLER CAPACITANCE (2026-11-03, HT build only). A triode's input capacitance is
+    // Cgk + Cgp (1 + A), A its voltage gain, and A is not a constant: it collapses toward 0 as
+    // the stage cuts off or saturates and is highest around the bias point. So the treble the
+    // grid's source impedance loses to it opens up while the stage clips and closes again as it
+    // recovers. Two cases:
+    //   * the model already gives the stage a static Miller cap (Params::Cgs with Rgs): it is
+    //     kept as the idle value and moves by cgp x (A(t) - A_idle); cgp = the stage's effective
+    //     grid-plate capacitance (whatever scale the static value was fitted with);
+    //   * no static cap: cgk + cgp (1 + A(t)) against rSrc (> 0), the grid stopper / source.
+    // A(t) is the solver's own small-signal gain one sample back. Off = the static filter.
+    HT_NOINLINE void setMiller(bool on, double cgp, double cgk = 0.0, double rSrc = 0.0) noexcept {
+        if (on == mOn_ && cgp == mCgpArg_ && cgk == mCgkArg_ && rSrc == mRArg_) return;
+        mOn_ = on; mCgpArg_ = cgp; mCgkArg_ = cgk; mRArg_ = rSrc;
+        prepareMiller();
+        mS_ = 0.0; gainLast_ = mA0_;
+    }
+    double millerIdleGain() const noexcept { return mA0_; }
 
     // vgIn: grid voltage swing (V, about bias). Returns plate swing (V, inverted).
     // Two builds of the same stage (2026-11-03): the library compiles with -ffast-math, which
@@ -343,7 +383,12 @@ public:
     // The supply-rail / valve-tolerance build, for a model's HT path (out of line).
     HT_NOINLINE double processHt(double vgIn) noexcept { return processT<true>(vgIn); }
     template <bool kHt> double processT(double vgIn) noexcept {
-        if (hasGridLP_) vgIn = gridLP_.process(static_cast<float>(vgIn));
+        if constexpr (kHt) {
+            if (mLive_) vgIn = millerLP(vgIn);
+            else if (hasGridLP_) vgIn = gridLP_.process(static_cast<float>(vgIn));
+        } else {
+            if (hasGridLP_) vgIn = gridLP_.process(static_cast<float>(vgIn));
+        }
         // Grid conduction: the grid sits at 0 V DC (leak to ground) while the
         // cathode sits at Vk, so the grid-cathode diode conducts when the grid
         // swing exceeds Vk + kVgKnee. Above that the source divider (RgSrc vs
@@ -466,6 +511,7 @@ private:
         const double maxIa = vcc / p_.Ra * 0.99;
         const bool   fb    = p_.RfbP > 0.0;
         double Ia = std::clamp(IaOp_, 0.0, maxIa);
+        double gL = -1.0;   // HT build: dIa/dVg of the last iteration (Miller)
         for (int it = 0; it < kMaxIter; ++it) {
             const double Vk  = (Ia + Ihist_) / Gk_;
             const double Vp  = vcc - Ia * p_.Ra;
@@ -480,6 +526,7 @@ private:
             double fp = 1.0 + dVgk * rk + dVpk * (p_.Ra + rk);
             if (fb) fp += dVgk * (p_.Ra / p_.RfbP) * invGfb_;
             if (std::abs(fp) < 1e-30) break;
+            if constexpr (kHt) gL = dVgk / fp;
             const double step = f / fp;
             // ALWAYS apply the correction before testing convergence. Testing the
             // residual first (the pre-2026-09-14 order) returned the warm start
@@ -498,7 +545,44 @@ private:
             if (std::abs(f) < kEps || std::abs(step) < kStepEps) break;
         }
         IaOp_ = Ia;
+        if constexpr (kHt) { if (mLive_ && gL >= 0.0) gainLast_ = p_.Ra * gL; }
         return Ia;
+    }
+
+    // The idle gain and the filter's fixed terms (out of line: see HT_NOINLINE).
+    HT_NOINLINE void prepareMiller() noexcept {
+        mDt_ = 1.0 / fs_;
+        {   // the solver's own small-signal gain at the bias point (cathode cap as at HF)
+            double IaK, dg, dp;
+            korenEvalT(p_.tube, p_.VgBias - IaBias_ * p_.Rk, p_.Vcc - IaBias_ * (p_.Ra + p_.Rk), IaK, dg, dp);
+            if (tol_ != 1.0) { dg *= tol_; dp *= tol_; }
+            const double rk = 1.0 / Gk_;
+            const double fp = 1.0 + dg * rk + dp * (p_.Ra + rk);
+            mA0_ = (fp > 1e-30) ? p_.Ra * dg / fp : 0.0;
+        }
+        mLive_ = false;
+        if (!mOn_ || mCgpArg_ <= 0.0) return;
+        if (hasGridLP_) {            // modulate the model's static cap
+            mR_ = p_.Rgs; mBase_ = p_.Cgs; mCgp_ = mCgpArg_;
+        } else if (mRArg_ > 0.0) {   // the full Miller cap against the given source
+            mR_ = mRArg_; mCgp_ = mCgpArg_; mBase_ = mCgkArg_ + mCgpArg_ * (1.0 + mA0_);
+        } else return;
+        mCmin_ = 0.2 * mBase_;
+        mLive_ = true;
+    }
+    // One-pole low-pass at 1/(2 pi R C(t)), C(t) from the last sample's gain: trapezoidal
+    // (zero-delay) form, prewarped with a short tan series (the corners sit well under fs/4).
+    double millerLP(double x) noexcept {
+        double C = mBase_ + mCgp_ * (std::max(0.0, gainLast_) - mA0_);
+        if (C < mCmin_) C = mCmin_;
+        double w = mDt_ / (2.0 * mR_ * C);
+        if (w > 1.2) w = 1.2;
+        const double w2 = w * w;
+        const double g = w * (1.0 + w2 * (1.0 / 3.0 + w2 * (2.0 / 15.0)));
+        const double v = (x - mS_) * (g / (1.0 + g));
+        const double y = v + mS_;
+        mS_ = y + v;
+        return y;
     }
 
     Params p_{};
@@ -511,6 +595,12 @@ private:
     bool   railOn_ = false;
     BiquadFilter gridLP_;
     bool hasGridLP_ = false;
+    // 2026-11-03: V1 re-valve + dynamic Miller (HT build)
+    const KorenP* tubeOv_ = nullptr;
+    bool   mOn_ = false, mLive_ = false;
+    double mCgpArg_ = 0.0, mCgkArg_ = 0.0, mRArg_ = 0.0;
+    double mDt_ = 1.0 / 48000.0, mR_ = 1.0, mBase_ = 0.0, mCgp_ = 0.0, mCmin_ = 0.0, mA0_ = 0.0;
+    double mS_ = 0.0, gainLast_ = 0.0;
 };
 
 // ── Cathode follower, volts in / volts out (output across Rk) ────────────────
@@ -541,9 +631,12 @@ public:
 
     void prepare(double /*fs*/, const Params& p) noexcept {
         p_ = p;
+        if (tubeOv_) p_.tube = tubeOv_;
         solveBias();
         reset();
     }
+    // Re-valve (2026-11-03, see CCStageV::setTubeOverride).
+    void setTubeOverride(const KorenP* t) noexcept { tubeOv_ = t; }
     void reset() noexcept { IaOp_ = IaBias_; VkPrev_ = VkBias_; }
     // Same as CCStageV::retune: a new solved operating point with the state carried through.
     void retune(double Vcc, double VgBias, double IaBias, double VkBias) noexcept {
@@ -699,6 +792,7 @@ private:
 
     Params p_{};
     double IaOp_ = 0.0, IaBias_ = 0.0, VkBias_ = 0.0, VkPrev_ = 0.0;
+    const KorenP* tubeOv_ = nullptr;
 };
 
 // ── Linear interstage building blocks (volts domain) ─────────────────────────

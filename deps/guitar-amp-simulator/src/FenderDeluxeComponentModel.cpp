@@ -70,6 +70,9 @@ PushPullPowerV::Params deluxePowerParams(double railPI, double idleMa, double zR
     //    ≈ 160 Ω per conduction, choke ≈ 4 H. AC heaters, artificial centre tap. ──
     p.supply.mainsHz = 60.0;
     p.supply.rSrc  = 160.0;
+    // supply fix (2026-11-03): GZ34 (perveance 3.6e-3, see the Vox), winding 56 ohm a half +
+    // the primary reflected (a Deluxe Reverb-type transformer, measured) ~ 81 ohm; choke ESTIMATE 150 ohm.
+    p.supply.rectLaw = 2; p.supply.valvePerv = 3.57e-3; p.supply.rWind = 81.0; p.supply.chokeDcr = 150.0;
     p.supply.cRes  = 16e-6;
     p.supply.chokeH = 4.0;
     p.supply.cScr  = 16e-6;
@@ -90,6 +93,7 @@ void FenderDeluxeComponentModel::prepare(double oversampledSampleRate, int /*max
 }
 
 void FenderDeluxeComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     const double Zp100 = par(100e3, kRp);   // a 100k-plate 12AX7's source impedance
     for (auto& c : ch_) {
         // ── V2A: 100k plate, 1k5 ∥ 25µ cathode, 68k grid stop against the 1M leak ──
@@ -193,6 +197,11 @@ float FenderDeluxeComponentModel::processSample(float x, int channel) noexcept {
 
 void FenderDeluxeComponentModel::setParameter(const std::string& id, float value) noexcept {
     auto rebuild = [this]() { if (fs_ > 0.0) { buildStages(); recalcPots(); } };
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) rebuild(); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "bass")     { bass_ = value; recalcPots(); }
     else if (id == "treble")   { treble_ = value; recalcPots(); }
@@ -261,4 +270,17 @@ float FenderDeluxeComponentModel::getParameter(const std::string& id) const noex
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void FenderDeluxeComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 3) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v2a.setTubeOverride(t); c.v2b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v2a.setMiller(dynMiller_, 1.7e-12, 1.6e-12, 68e3);   // the first stage's 68k grid stopper
+    }
 }

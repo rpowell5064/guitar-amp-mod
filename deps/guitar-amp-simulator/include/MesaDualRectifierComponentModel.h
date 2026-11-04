@@ -178,6 +178,10 @@ private:
     std::array<ChState, kMaxCh> ch_;
 
     void buildStages() noexcept;
+    // 2026-11-03, second set: V1 valve, power valves, dynamic Miller (applyExtras2 in the .cpp)
+    int  v1Tube_ = 0, paTube_ = 0;
+    bool dynMiller_ = false;
+    void applyExtras2() noexcept;
     void recalcPots() noexcept;
     static int ldrFor(int mode) noexcept;
 

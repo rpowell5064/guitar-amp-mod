@@ -729,6 +729,13 @@ function (event, funcs) {
     // Tight (v53): Crunchy, Gainzilla, Tangerang, Beardo BE, Cali V, Diamond Plate, Tremont 15
     // -- mirrors hasTight() in hf_types.inc.
     function hasTight(m) { return m === 1 || m === 2 || m === 4 || m === 6 || m === 11 || m === 12 || m === 13; }
+    // Valve swap (v54): V1 / Power Valves ride a COMPONENT BUILD only -- the Component Model
+    // toggle (amp_evhcomp, global, default on) with an amp that has a twin, or the Citrus 200
+    // (always one). Mirrors runsComponentBuild() in hf_types.inc.
+    function hasValveSwap(m, comp) {
+        return (comp && (m === 0 || m === 1 || m === 2 || m === 4 || m === 6 || m === 8 || m === 10 || m === 11 || m === 12 || m === 14)) || m === 15;
+    }
+    function compToggle(icon) { var c = icon.data('hf_comp'); return (c == null) ? true : c; }
     function applyAmp(icon) {
         var m = icon.data('hf_amp_m'); if (m == null) m = 1;
         var a = icon.data('hf_amp_auto'); if (a == null) a = true;
@@ -749,6 +756,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
         show(icon, 'amp', '.c-amp-tight', hasTight(m));   // Tight: the seven high-gain amps
+        show(icon, 'amp', '.c-amp-valves', hasValveSwap(m, compToggle(icon)));   // Valve swap: component builds
         show(icon, 'amp', '.c-amp-pa',   m !== 3 && m !== 5 && m !== 15);
         show(icon, 'amp', '.c-amp-paman', m !== 3 && m !== 5 && m !== 15 && !a);
         show(icon, 'amp', '.c-amp-nam',  m === 5);
@@ -791,6 +799,7 @@ function (event, funcs) {
         show(icon, 'amp2', '.c-rb-plexi', m === 10);
         show(icon, 'amp2', '.c-rb-jcm', m === 1);
         show(icon, 'amp2', '.c-rb-tight', hasTight(m));
+        show(icon, 'amp2', '.c-rb-valves', hasValveSwap(m, compToggle(icon)));
         show(icon, 'amp2', '.c-rb-pa',   m !== 3 && m !== 5 && m !== 15);
         show(icon, 'amp2', '.c-rb-paman', m !== 3 && m !== 5 && m !== 15 && !a);
         var showVoice = (m === 3 || m === 6 || m === 11 || m === 12 || m === 13 || m === 14);
@@ -1231,6 +1240,7 @@ function (event, funcs) {
             else if (sym === 'rb_pamp_auto')       icon.data('hf_rb_auto', val > 0.5);
             else if (sym === 'rb_cab2on')          icon.find('[data-target=cab2]').toggleClass('hf-subnode-off', !(val > 0.5));
             else if (sym === 'amp_pamp_auto')      icon.data('hf_amp_auto', val > 0.5);
+            else if (sym === 'amp_evhcomp')        icon.data('hf_comp', val > 0.5);   // valve-swap visibility
             else if (sym === 'out_voice')          icon.find('.hf-outvoice').toggleClass('hf-ov-on', val > 0.5);   // FRFR knobs show only while ON
             else if (sym === 'amp_mv_mode')        icon.data('hf_mv', parseInt(val, 10));
             else if (sym === 'amp_mv_eqpreset')    icon.data('hf_mveq', parseInt(val, 10));
@@ -1448,6 +1458,7 @@ function (event, funcs) {
         if ('amp_channel' in map)   icon.data('hf_amp_ch', parseFloat(map.amp_channel));
         if ('rb_channel' in map)    icon.data('hf_rb_ch', parseFloat(map.rb_channel));
         if ('amp_pamp_auto' in map) icon.data('hf_amp_auto', map.amp_pamp_auto > 0.5);
+        if ('amp_evhcomp' in map)   icon.data('hf_comp', map.amp_evhcomp > 0.5);   // valve-swap visibility (v54)
         if ('fz_pedal' in map)      icon.data('hf_fz_p', parseInt(map.fz_pedal, 10));
         if ('dl_type' in map)       icon.data('hf_dl_t', parseInt(map.dl_type, 10));
         if ('fz2_pedal' in map)     icon.data('hf_fz2_p', parseInt(map.fz2_pedal, 10));
@@ -1743,6 +1754,8 @@ function (event, funcs) {
             icon.data('hf_amp_m', parseInt(event.value, 10)); applyAmp(icon);
         } else if (s === 'amp_pamp_auto') {
             icon.data('hf_amp_auto', event.value > 0.5); applyAmp(icon);
+        } else if (s === 'amp_evhcomp') {   // the Component Model toggle gates the valve swap on both rigs
+            icon.data('hf_comp', event.value > 0.5); applyAmp(icon); applyRbAmp(icon);
         } else if (s === 'amp_mv_mode') {
             icon.data('hf_mv', parseInt(event.value, 10)); applyMesa(icon);
         } else if (s === 'amp_mv_eqpreset') {

@@ -78,6 +78,21 @@ public:
         // draws (< 0 = the LTP's live current).
         double vNode2 = 0.0;
         double iNode2 = -1.0;
+        // ── Rectifier law + home mains (2026-11-03 supply fix; used only while setFix(true)) ──
+        // With the fix off the rectifier is the linear rSrc above, at mainsHz (bit-identical).
+        // On: the HT winding's own resistance plus the rectifier's real drop -- silicon a
+        // fixed forward drop, a valve rectifier the Child law I = perveance * V^1.5 per
+        // conducting plate (its drop grows as I^(2/3), not in proportion) -- and the choke at
+        // its own DC resistance: the printed drop across it divided by the few milliamps we
+        // model gave several times a real choke's resistance, and the screens' full-power
+        // current ran through it. The part of the printed drop the choke's resistance does not
+        // explain is drawn as a constant load at the screen node, so idle stays the drawing's.
+        int    rectLaw    = 0;      // 0 = linear rSrc, 1 = silicon, 2 = valve (Child law)
+        double rWind      = 0.0;    // HT winding resistance per conduction, primary reflected in (ohm)
+        double siDrop     = 1.0;    // silicon: forward drop per conduction (V)
+        double valvePerv  = 0.0;    // valve: perveance of the conducting plate(s) (A/V^1.5)
+        double chokeDcr   = 0.0;    // choke DC resistance (ohm); 0 = derived from the printed drop
+        double mainsHzFix = 0.0;    // the amp's home mains rate with the fix on (0 = mainsHz)
     };
 
     // Idle operating point, from the power stage's own solve: node voltages and the
@@ -89,6 +104,11 @@ public:
 
     HT_NOINLINE void prepare(double fs, const Params& p, const Idle& idle) noexcept {
         fs_ = fs; dt_ = 1.0 / fs; p_ = p; id_ = idle;
+        law_ = 0;
+        if (fix_) {   // the supply fix: the amp's home mains and its rectifier law
+            if (p_.mainsHzFix > 0.0) p_.mainsHz = p_.mainsHzFix;
+            law_ = std::clamp(p_.rectLaw, 0, 2);
+        }
         p_.nPre = std::clamp(p_.nPre, 0, kMaxPre);
         // Node chain: 0 = reservoir, 1 = screen, 2 = PI, 3.. = preamp nodes.
         n_ = 3 + p_.nPre;
@@ -116,9 +136,18 @@ public:
         // zero (or that our idle currents cannot explain) gets a 10 Ω floor.
         for (int k = 0; k < n_; ++k) iThru0_[k] = iLoad0_[k];
         for (int k = n_ - 1; k >= 1; --k) iThru0_[par_[k]] += iThru0_[k];
+        iFixExtra_ = 0.0;
+        if (law_ > 0 && p_.chokeH > 0.0 && p_.chokeDcr > 0.0) {
+            // the choke at its own resistance; the rest of the printed drop is a constant load at
+            // the screen node (it flows through the reservoir and the choke as well)
+            const double need = (v0_[0] - v0_[1]) / p_.chokeDcr - iThru0_[1];
+            if (need > 0.0) { iFixExtra_ = need; iLoad0_[1] += need; iThru0_[1] += need; iThru0_[0] += need; }
+        }
         for (int k = 1; k < n_; ++k)
             r_[k] = std::max(10.0, (v0_[par_[k]] - v0_[k]) / std::max(1e-6, iThru0_[k]));
         chokeOn_ = p_.chokeH > 0.0;
+        kChild_ = (law_ == 2 && p_.valvePerv > 0.0) ? std::pow(p_.valvePerv, -2.0 / 3.0) : 0.0;
+        uWarm_ = 0.0;
         calibrate();
         reset();
     }
@@ -145,11 +174,15 @@ public:
         load[0] = p_.platesAfterChoke ? 0.0 : iPlate;
         load[1] = (p_.screensOffChain ? 0.0 : iScr) + (p_.platesAfterChoke ? iPlate : 0.0);
         load[1] += p_.iScrExtra;
+        if (law_ > 0) load[1] += iFixExtra_;
         load[2] = (p_.iNode2 >= 0.0 ? p_.iNode2 : iPI) + p_.iPIExtra;
         for (int k = 3; k < n_; ++k) load[k] = iLoad0_[k];
         advance(load, vPk_);
     }
 
+    // The 2026-11-03 supply fix (Params::rectLaw ... mainsHzFix): takes effect at the next prepare().
+    void setFix(bool on) noexcept { fix_ = on; }
+    bool fix() const noexcept { return fix_; }
     // Deviation of node k from its printed idle voltage (V): 0 = plates, 1 = screens,
     // 2 = PI, 3 + i = preamp node i.
     double dv(int k) const noexcept { return (k < n_) ? v_[k] - v0_[k] : 0.0; }
@@ -162,6 +195,35 @@ public:
     int    nodes() const noexcept { return n_; }
 
 private:
+    // One sample of the rectifier into the reservoir with the fix on. vPred = the reservoir after
+    // this sample's discharge, a = dt / C. While the secondary is above it a current i flows with
+    //     vs - (vPred + a i) = rWind i + [silicon: siDrop | valve: (i / P)^(2/3)]
+    // which rises monotonically in i. Silicon is closed-form; the valve is solved in u = i^(1/3)
+    // (a cubic: (rWind + a) u^3 + P^(-2/3) u^2 = vs - vPred), Newton warm-started from the last
+    // conduction.
+    double conduct(double vs, double vPred, double a, double& uw) const noexcept {
+        const double R = p_.rWind + a;
+        if (law_ == 1) {
+            const double d = vs - vPred - p_.siDrop;
+            return d > 0.0 ? vPred + a * d / R : vPred;
+        }
+        const double d0 = vs - vPred;
+        if (d0 <= 0.0) return vPred;
+        const double k = kChild_;
+        double u = uw;
+        if (u <= 0.0) u = (k > 0.0) ? std::min(std::sqrt(d0 / k), std::cbrt(d0 / R)) : std::cbrt(d0 / R);
+        for (int it = 0; it < 12; ++it) {
+            const double f  = (R * u + k) * u * u - d0;
+            const double fp = (3.0 * R * u + 2.0 * k) * u;
+            if (fp <= 1e-30) { u = (k > 0.0) ? std::sqrt(d0 / k) : std::cbrt(d0 / R); continue; }
+            const double nu = std::max(0.5 * u, u - f / fp);   // damped from below (the cubic is convex for u > 0)
+            const bool done = std::abs(nu - u) < 1e-10 * (1.0 + u);
+            u = nu;
+            if (done) break;
+        }
+        uw = u;
+        return vPred + a * u * u * u;
+    }
     void advance(const double* load, double vPk) noexcept {
         // Rectifier → reservoir, implicit in the charging current (stable for any rSrc·cRes):
         // conducting while the secondary's |sin| sits above the reservoir.
@@ -176,7 +238,8 @@ private:
             iOut = (v_[0] - v_[1]) / r_[1];
         }
         double v0n = v_[0] - a * (load[0] + iOut);
-        if (vs > v0n) v0n = (v0n + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc);
+        if (law_ == 0) { if (vs > v0n) v0n = (v0n + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc); }
+        else v0n = conduct(vs, v0n, a, uWarm_);
         // downstream nodes: each fed from its parent through r_[k] (node 1: the choke/resistor)
         double net[kMaxPre + 3];
         net[0] = 0.0; net[1] = iOut - load[1];
@@ -199,13 +262,14 @@ private:
         const int per = std::max(8, int(std::lround(fs_ / p_.mainsHz)));
         const int settle = per * 12, meas = per * 2;      // ~0.2 s settle, two cycles averaged
         auto runMean = [&](double vPk) {
-            double v = id_.vPlate, s = 0.0, c = 1.0, acc = 0.0;
+            double v = id_.vPlate, s = 0.0, c = 1.0, acc = 0.0, uw = 0.0;
             const double a = dt_ / c_[0], iL = iThru0_[0];
             for (int i = 0; i < settle + meas; ++i) {
                 const double sn = s * rc_ + c * rs_, cn = c * rc_ - s * rs_; s = sn; c = cn;
                 const double vs = vPk * std::abs(s);
                 double vn = v - a * iL;
-                if (vs > vn) vn = (vn + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc);
+                if (law_ == 0) { if (vs > vn) vn = (vn + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc); }
+                else vn = conduct(vs, vn, a, uw);
                 v = vn;
                 if (i >= settle) acc += v;
             }
@@ -223,13 +287,14 @@ private:
         vPk_ = x1;
         // the settled reservoir at phase 0 (s = 0): run whole cycles and stop on the boundary
         {
-            double v = id_.vPlate, s = 0.0, c = 1.0;
+            double v = id_.vPlate, s = 0.0, c = 1.0, uw = 0.0;
             const double a = dt_ / c_[0], iL = iThru0_[0];
             for (int i = 0; i < settle; ++i) {
                 const double sn = s * rc_ + c * rs_, cn = c * rc_ - s * rs_; s = sn; c = cn;
                 const double vs = vPk_ * std::abs(s);
                 double vn = v - a * iL;
-                if (vs > vn) vn = (vn + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc);
+                if (law_ == 0) { if (vs > vn) vn = (vn + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc); }
+                else vn = conduct(vs, vn, a, uw);
                 v = vn;
             }
             vRes0_ = v;
@@ -248,6 +313,10 @@ private:
     double vPk_ = 0.0, vRes0_ = 0.0;
     double s_ = 0.0, co_ = 1.0, rs_ = 0.0, rc_ = 1.0, ph_ = 0.0;
     int    cnt_ = 0;
+    // the 2026-11-03 supply fix
+    bool   fix_ = false;
+    int    law_ = 0;
+    double kChild_ = 0.0, uWarm_ = 0.0, iFixExtra_ = 0.0;
 };
 
 } // namespace evhcomp

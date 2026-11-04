@@ -119,6 +119,7 @@ void FriedmanBE100ComponentModel::solveRails() noexcept {
 }
 
 void FriedmanBE100ComponentModel::buildStages() noexcept {
+    applyExtras2();   // 2026-11-03: valve overrides + Miller set-up ahead of the stage builds
     const double Zp320 = par(320e3, kRp);           // V1A/V2A plate node impedance (LF)
     const double Zp220 = par(220e3, kRp);           // same node above C8/C13's corner
     const double gHi   = Zp220 / Zp320;             // −0.6 dB: the 100k half is bypassed
@@ -212,6 +213,8 @@ void FriedmanBE100ComponentModel::buildStages() noexcept {
             // ESTIMATE: winding + diodes ~ 10 ohm, choke ~ 4 H, loop branch ~ 3 mA.
             evhcomp::PowerSupplyV::Params sp;
             sp.rSrc = 10.0; sp.cRes = 50e-6; sp.chokeH = 4.0; sp.cScr = 16.5e-6; sp.cPI = 100e-6; sp.iPIExtra = 3e-3;
+            // supply fix (2026-11-03): silicon, a 100 W winding ESTIMATE 20 ohm, choke ESTIMATE 70 ohm
+            sp.rectLaw = 1; sp.rWind = 20.0; sp.chokeDcr = 70.0;
             sp.nPre = 2;
             sp.vPre[0] = railV3_;  sp.cPre[0] = 22e-6; sp.iPre[0] = c.v3a.biasIa() + c.v3b.biasIa();
             sp.vPre[1] = railV12_; sp.cPre[1] = 22e-6; sp.iPre[1] = c.v1a.biasIa() + c.v1b.biasIa() + c.v2a.biasIa() + c.v2b.biasIa();
@@ -392,6 +395,11 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
 
 
 void FriedmanBE100ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (const int r = evhcomp::twinExtras2(id, value, v1Tube_, paTube_, dynMiller_)) {   // 2026-11-03, second set
+        if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
+    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -502,4 +510,18 @@ float FriedmanBE100ComponentModel::getParameter(const std::string& id) const noe
         }
     }
     return 0.0f;
+}
+
+// 2026-11-03, second set: the first preamp valve ("v1tube"), the output valves ("patube": the amp's
+// own type counts as stock) and the dynamic Miller capacitance ("miller"). Overrides persist in the
+// stages and the power section, so every later rebuild honours them.
+void FriedmanBE100ComponentModel::applyExtras2() noexcept {
+    const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 1) ? nullptr : evhcomp::powerValve(paTube_);
+    for (auto& c : ch_) {
+        c.v1a.setTubeOverride(t); c.v1b.setTubeOverride(t);
+        c.pa.setValve(pv);
+        c.v1a.setMiller(dynMiller_, kCgp); c.v1b.setMiller(dynMiller_, kCgp); c.v2a.setMiller(dynMiller_, kCgp);
+        c.v2b.setMiller(dynMiller_, kCgp); c.v3a.setMiller(dynMiller_, kCgp);
+    }
 }

@@ -16,6 +16,7 @@
 // See hexforge_plugin.cpp for the reference (LV2) wrapper.
 // ─────────────────────────────────────────────────────────────────────────────
 #pragma once
+#include <atomic>   // TEMPORARY physics A/B poll (abHt, 2026-11-03)
 #include "../hexforge_ports.h"
 #include "../hexforge_factory_presets.h"   // band/song factory presets, generated
 

@@ -153,6 +153,10 @@ private:
     std::array<ChState, kMaxCh> ch_;
 
     void recalcPots() noexcept;
+    // 2026-11-03, second set: V1 valve, power valves, dynamic Miller (applyExtras2 in the .cpp)
+    int  v1Tube_ = 0, paTube_ = 0;
+    bool dynMiller_ = false;
+    void applyExtras2() noexcept;
 
     // Rails from the 1981 DC table (100 W MV): V1 pair at 280 V, V2 at 290 V.
     static constexpr double kRailV1 = 280.0;
