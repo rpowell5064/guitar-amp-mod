@@ -150,6 +150,7 @@ private:
     float  stackMid_ = 0.50f;                    // fit20: tone-pot law — linear (the sheet prints no taper; every grid take prefers it)
 
     LinearSmoother gainSmooth_, masterSmooth_;
+    evhcomp::TaperMemo tpGain_, tpMaster_, tpOut_;   // per-sample pot tapers (2026-11-03)
 
     struct ChState {
         evhcomp::CCStageV   v1a;

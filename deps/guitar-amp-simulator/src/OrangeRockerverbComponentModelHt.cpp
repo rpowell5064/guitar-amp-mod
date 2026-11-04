@@ -39,7 +39,7 @@ float OrangeRockerverbComponentModel::processSampleHt(float x, int channel) noex
         v = c.c18lp.process(float(v));
         tap(2, v);
         v = c.coup23.process(float(v));
-        v *= audioTaper(gainSmooth_.getCurrentValue(), gainMidA_); // GAIN gang A (no bright cap)
+        v *= tpGain_(gainSmooth_.getCurrentValue(), gainMidA_); // GAIN gang A (no bright cap)
         v = c.v8a.processHt(v);
         v = c.c19lp.process(float(v));
         tap(3, v);
@@ -47,7 +47,7 @@ float OrangeRockerverbComponentModel::processSampleHt(float x, int channel) noex
         v = c.v8b.processHt(v);
         tap(4, v);
         v = c.tsDirty.process(float(v));
-        v *= audioTaper(masterSmooth_.getCurrentValue(), potMidA_);    // VOLUME RV8 500KA
+        v *= tpMaster_(masterSmooth_.getCurrentValue(), potMidA_);    // VOLUME RV8 500KA
         tap(5, v);
     } else {
         v = c.v10a.processHt(v);

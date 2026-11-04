@@ -216,7 +216,7 @@ void MesaDualRectifierComponentModel::recalcPots() noexcept {
         c.bleed.prepare(fs_, 1.0, gHi, fc);
         // GAIN pot bright cap: 0.001µ across the top section → shelf from the wiper
         // fraction up to unity, corner set by the cap against top ‖ bottom.
-        const double r  = std::max(0.002, double(audioTaper(gainSmooth_.getCurrentValue(), gainMid_)));
+        const double r  = std::max(0.002, double(tpGain_(gainSmooth_.getCurrentValue(), gainMid_)));
         const double fcB = 1.0 / (2.0 * M_PI * 1.0e-9 * par((1.0 - r) * 1e6 + 1.0, r * 1e6));
         c.bright.prepare(fs_, r, 1.0, fcB);
     }
@@ -270,7 +270,7 @@ float MesaDualRectifierComponentModel::processSample(float x, int channel) noexc
     if (bleedOn_) v = c.bleed.process(float(v));
     tap(6, v);
     // MASTER 1M (Clean bypasses the Orange master: LDR16).
-    if (!L.orMasterBypass) v *= audioTaper(masterSmooth_.getCurrentValue(), masterMid_);
+    if (!L.orMasterBypass) v *= tpMaster_(masterSmooth_.getCurrentValue(), masterMid_);
     v = c.coup28.process(float(v));
     tap(7, v);
     const int mo = std::clamp(mode_, 0, 7);

@@ -329,7 +329,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         v = c.ch3Shelf.process(float(v));
         v = c.ts3.process(float(v));
         tap(9, v);
-        v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // THREE VOLUME 1M-30A
+        v *= tpMaster_(masterSmooth_.getCurrentValue(), 0.30f);   // THREE VOLUME 1M-30A
         tap(10, v);
         if (ownPa_) { v = c.pa.process(v * kPaBufGain * paDrive_); v = c.redHf.process(float(v)); tap(11, v); if (probeTap_ >= 0) return float(c.tapLast[probeTap_]); return float(v * outScalePa_); }   // CH3 open-loop presence restore (post power-amp)
         if (probeTap_ >= 0) return float(c.tapLast[probeTap_]);
@@ -340,7 +340,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         v = c.v1bLoad.process(float(v));
         tap(2, v);
         v = c.ch2Feed.process(float(v));
-        v *= audioTaper(gainSmooth_.getCurrentValue(), gainMidBlue_);     // ONE/TWO GAIN 250k-30A
+        v *= tpGain_(gainSmooth_.getCurrentValue(), gainMidBlue_);     // ONE/TWO GAIN 250k-30A
         tap(3, v);
         v = c.v5a.process(v);
         tap(4, v);
@@ -358,7 +358,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
         v = c.ch12Shelf.process(float(v));
         v = c.ts12.process(float(v));
         tap(9, v);
-        v *= audioTaper(masterSmooth_.getCurrentValue(), 0.30f);   // CH1/2 VOL 1M-30A
+        v *= tpMaster_(masterSmooth_.getCurrentValue(), 0.30f);   // CH1/2 VOL 1M-30A
         tap(10, v);
         // Blue (CH2) presence restore, post power-amp; the CH1/Green relay state is left flat.
         if (ownPa_) { v = c.pa.process(v * kPaBufGain * paDrive_); if (!greenLegs_) v = c.blueHf.process(float(v)); tap(11, v); if (probeTap_ >= 0) return float(c.tapLast[probeTap_]); return float(v * outScalePa_); }

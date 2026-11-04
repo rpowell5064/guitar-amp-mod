@@ -37,7 +37,7 @@ float MesaMarkVComponentModel::processSampleHt(float x, int channel) noexcept {
     s = c.coup20.process(float(s));                       // N1
     // GAIN network (sheet 3): R5i 680k → GAIN 1MA to ground; R52 475k loads the WIPER
     // (it hangs from the wiper node, not under the pot). Wiper fraction with the load:
-    const float  r  = audioTaper(gainSmooth_.getCurrentValue(), gainMid_);
+    const float  r  = tpGain_(gainSmooth_.getCurrentValue(), gainMid_);
     const double lo = par(std::max(50.0, double(r) * 1e6), 475e3);
     const double wiper = s * lo / (680e3 + (1.0 - double(r)) * 1e6 + lo);
     tap(3, wiper);
@@ -59,7 +59,7 @@ float MesaMarkVComponentModel::processSampleHt(float x, int channel) noexcept {
     e = c.v6a.processHt(e);
     tap(8, e);
     e = c.coup43.process(float(e));
-    e *= audioTaper(masterSmooth_.getCurrentValue(), masterMid_);   // CH3 MASTER 100KA
+    e *= tpMaster_(masterSmooth_.getCurrentValue(), masterMid_);   // CH3 MASTER 100KA
     e = c.clampEq.process(e);                                  // EQ amplifier swing at its input (Q1)
     e = c.geq.process(e);                                      // graphic EQ (sheet 6, slider mode)
     if (!c.geq.flat()) e = c.clampEq.process(e);               // ...and at its output (Q4); flat is exact unity
@@ -67,7 +67,7 @@ float MesaMarkVComponentModel::processSampleHt(float x, int channel) noexcept {
     e = c.v6b.processHt(e);
     tap(9, e);
     e = c.coup50.process(float(e));
-    e *= audioTaper(outputPot_, 0.15f);                        // rear OUTPUT 1MA (fixed)
+    e *= tpOut_(outputPot_, 0.15f);                        // rear OUTPUT 1MA (fixed)
     e = c.clampPi.process(e);                                  // 4744 ×4 before R209/C56
     e = c.coup56.process(float(e));
     tap(10, e);

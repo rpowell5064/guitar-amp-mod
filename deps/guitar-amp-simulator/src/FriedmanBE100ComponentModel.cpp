@@ -360,7 +360,7 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
         s = c.v2b.process(s);
         tap(3, s);
         s = c.coup19.process(float(s));            // C19 → VR4
-        s *= audioTaper(gainSmooth_.getCurrentValue(), gainMid_);   // GAIN wiper
+        s *= tpGain_(gainSmooth_.getCurrentValue(), gainMid_);   // GAIN wiper
         s = c.r30c26.process(float(s));            // R30 ‖ C26 / R28
         tap(4, s);
         s = c.v3a.process(s);
@@ -380,7 +380,7 @@ float FriedmanBE100ComponentModel::processSample(float x, int channel) noexcept 
         tap(6, s);
         s = c.ts.process(float(s));                // TMB
         s *= c.divMaster;                          // R59 → R32 ‖ VR5
-        s *= audioTaper(masterSmooth_.getCurrentValue(), kAudioMid);   // MASTER wiper
+        s *= tpMaster_(masterSmooth_.getCurrentValue(), kAudioMid);   // MASTER wiper
         tap(7, s);
         s = c.coup31.process(float(s));            // C31 → R37 (loop bypassed)
         out = c.pa.process(s * paDrive_);

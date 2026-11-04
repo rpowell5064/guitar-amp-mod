@@ -62,7 +62,7 @@ float MesaDualRectifierComponentModel::processSampleHt(float x, int channel) noe
     if (bleedOn_) v = c.bleed.process(float(v));
     tap(6, v);
     // MASTER 1M (Clean bypasses the Orange master: LDR16).
-    if (!L.orMasterBypass) v *= audioTaper(masterSmooth_.getCurrentValue(), masterMid_);
+    if (!L.orMasterBypass) v *= tpMaster_(masterSmooth_.getCurrentValue(), masterMid_);
     v = c.coup28.process(float(v));
     tap(7, v);
     const int mo = std::clamp(mode_, 0, 7);

@@ -130,6 +130,7 @@ private:
                                    //       bass-travel criterion (lab reports/bass-ab-2026-10-05/pa-drive-*.txt).
 
     LinearSmoother gainSmooth_, masterSmooth_;
+    evhcomp::TaperMemo tpGain_, tpMaster_, tpOut_;   // per-sample pot tapers (2026-11-03)
 
     struct ChState {
         evhcomp::CCStageV   v1a;

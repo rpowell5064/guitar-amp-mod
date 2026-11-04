@@ -183,7 +183,7 @@ float OrangeAD200BModel::processSample(float x, int channel) noexcept {
     v = c.ro1.process(v);
     tap(0, v);
     v = c.coup2.process(float(v));
-    v *= double(audioTaper(gainSmooth_.getCurrentValue(), gainMid_));   // P1 GAIN 500k LOG
+    v *= double(tpGain_(gainSmooth_.getCurrentValue(), gainMid_));   // P1 GAIN 500k LOG
     tap(1, v);
     v = c.ro2LP.process(float(v));
     v = c.ro2.process(v);

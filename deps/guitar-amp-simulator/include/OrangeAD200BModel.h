@@ -103,6 +103,7 @@ private:
     double nfbScale_ = 1.0;                      // fit17 (lab: 0 = open loop)
 
     LinearSmoother gainSmooth_, masterSmooth_;
+    evhcomp::TaperMemo tpGain_, tpMaster_, tpOut_;   // per-sample pot tapers (2026-11-03)
 
     struct ChState {
         evhcomp::CCStageV   ro1;

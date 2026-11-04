@@ -226,7 +226,7 @@ float JCM800ComponentModel::processSample(float x, int channel) noexcept {
     tap(4, v);
     v = c.ts.process(float(v));            // TMB stack
     tap(5, v);
-    v *= audioTaper(masterSmooth_.getCurrentValue(), 0.15f);   // VR2 1M log master
+    v *= tpMaster_(masterSmooth_.getCurrentValue(), 0.15f);   // VR2 1M log master
     tap(6, v);
     v = c.pa.process(v * paDrive_);        // LTP + 4x EL34 + NFB + OT (paDrive_: fit40)
     tap(7, v);

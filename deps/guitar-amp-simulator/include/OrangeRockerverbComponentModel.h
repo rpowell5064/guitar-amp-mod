@@ -121,6 +121,7 @@ private:
     double railDropScale_ = 1.0;                 // fit13: scale on the derived dropper-chain drops
 
     LinearSmoother gainSmooth_, masterSmooth_;
+    evhcomp::TaperMemo tpGain_, tpMaster_, tpOut_;   // per-sample pot tapers (2026-11-03)
 
     struct ChState {
         // dirty

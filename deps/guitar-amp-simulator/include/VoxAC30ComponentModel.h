@@ -105,6 +105,7 @@ private:
     bool   c42On_ = false;                       // fit15: the dashed "A" 25p across V11-A — an optional mod on the sheet, NOT fitted (the grids reject it)
 
     LinearSmoother gainSmooth_;
+    evhcomp::TaperMemo tpGain_, tpMaster_, tpOut_;   // per-sample pot tapers (2026-11-03)
 
     struct ChState {
         evhcomp::CCStageV   v1;         // paralleled pair as one triode

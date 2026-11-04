@@ -176,6 +176,31 @@
     compiler's inlining: the golden changes in 16 rows by <= 0.0009 dB RMS (rounding only).
   - Device A/B: TEMPORARY flag files supply_on / valve_on in the Hex Forge config dir (the
     twins run whenever the Component Model toggle is on, its shipped default).
+  - **Decided by ear the same day: all ON.** Hex Forge sends supply / ripple / heaterhum /
+    micro / spread = 1 to both rigs every block; the flag poll is gone. The models' own
+    defaults stay 0 (the other plugins and the lab harnesses are unchanged).
+
+- **2026-11-03 — twin CPU pass (no change in sound).** Measured per twin through the 4x
+  wrapper (callgrind for where, wall clock for how much); every change nulls below the same
+  twin's response to -140 dBFS input noise (the Recto's and Plexi's high-gain edges shift
+  by a hair under ANY perturbation, so the comparison is against that, not against zero).
+  - softplusFast(): log1p(exp(x)) + sigmoid from a 960-point cubic-Hermite table (~3e-10 of
+    the value). It was 5-21 % of a twin: the soft grid knee on every CCStageV and
+    CFStageV, and korenEvalP (the SVT's runtime valves).
+  - TaperMemo: per-sample audioTaper (log + pow) on smoothed knobs recomputes only when the
+    knob moves (bit-identical).
+  - PI: the joint Newton's converged Jacobian replaces ltpLinearize's two extra valve
+    evaluations (same partials, at a point within 10 nA).
+  - Screen droop ^1.5 as x*sqrt(x); OT core tanh(ph)/ph by its series below 0.02 and by
+    one exp above.
+  - x86 (10 twins, extras on): 137.9 -> 120.4 % of a core (-13 %), below the 130.1 % the
+    twins cost before the HT supply existed. Pi 5 (same bench, one core): 362 -> 318 %.
+  - Pi golden refreshed with the extras on: 112 of 128 rows move; twin presets lose level
+    to the sag (JCM800 -2.3 dB mean, BE-100 -2.4, Recto -3.8 with World Went Away -5.6,
+    Plexi -1.6, Mark V -1.6; EVH/Hiwatt/NAM unchanged). OPEN: the linear rectifier R was
+    fitted at moderate drive and over-sags at full power (Recto plate node -132 V on the
+    valve rectifier, -66 V on silicon at master 0.6); a Child-law valve drop + winding R
+    and a full-power calibration should come before any preset re-level.
 
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go

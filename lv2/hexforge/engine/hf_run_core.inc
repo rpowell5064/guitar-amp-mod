@@ -413,12 +413,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             a2->setParameter("sag",       *p->ports[HF_RB_SAG]);
             a2->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 (shared global toggle)
             a2->setParameter("palegacy",  0.0f);   // RETIRED 2026-10-07 (the user's A/B: quieter, darker, and the old stage squeals at 21.8 kHz on the Friedman HBE at idle); the port stays for the layout, always off  // lab A/B (shared global toggle)
-            if (p->abHt.load(std::memory_order_relaxed) > 0 || p->abHtApplied > 0) {   // TEMPORARY HT-supply / valve A/B
-                const int f = std::max(0, p->abHt.load(std::memory_order_relaxed));
-                const float s = (f & 1) ? 1.0f : 0.0f, v = (f & 2) ? 1.0f : 0.0f;
-                a2->setParameter("supply", s); a2->setParameter("ripple", 1.0f);
-                a2->setParameter("heaterhum", v); a2->setParameter("micro", v); a2->setParameter("spread", v);
-            }
+            a2->setParameter("supply", 1.0f); a2->setParameter("ripple", 1.0f);   // component twins (see main rig)
+            a2->setParameter("heaterhum", 1.0f); a2->setParameter("micro", 1.0f); a2->setParameter("spread", 1.0f);
             if (rbM != kFriedmanIdx) a2->setParameter("channel", *p->ports[HF_RB_CHANNEL]);   // Friedman: own port below (see main rig)
             a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
             if (rbM == kFriedmanIdx) {
@@ -550,13 +546,10 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     amp->setParameter("sag",       *p->ports[HF_AMP_SAG]);
     amp->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 lab toggle (global tail)
     amp->setParameter("palegacy",  0.0f);   // RETIRED 2026-10-07: the rev-189 stage lost the A/B by ear and self-oscillates (Friedman HBE, 21.8 kHz at -10 dBFS after the note stops); the port stays for the layout, always off  // lab A/B: the rev-189 power stage (global tail, 2026-10-07)
-    if (p->abHt.load(std::memory_order_relaxed) > 0 || p->abHtApplied > 0) {   // TEMPORARY HT-supply / valve A/B
-        const int f = std::max(0, p->abHt.load(std::memory_order_relaxed));
-        const float s = (f & 1) ? 1.0f : 0.0f, v = (f & 2) ? 1.0f : 0.0f;
-        amp->setParameter("supply", s); amp->setParameter("ripple", 1.0f);
-        amp->setParameter("heaterhum", v); amp->setParameter("micro", v); amp->setParameter("spread", v);
-        p->abHtApplied = f;
-    }
+    // Component twins (2026-11-03, decided by ear on the device): HT supply sag + ripple into
+    // the plates, screens, PI and preamp rails; AC-heater hum, V1 microphony, valve spread.
+    amp->setParameter("supply", 1.0f); amp->setParameter("ripple", 1.0f);
+    amp->setParameter("heaterhum", 1.0f); amp->setParameter("micro", 1.0f); amp->setParameter("spread", 1.0f);
     // The Friedman takes its channel from its OWN port below; sending the generic
     // amp_channel first made the component build (which re-prepares its relay-
     // switched stages on every real change) flip 0->HBE EVERY BLOCK = a 1.5 kHz
@@ -714,14 +707,6 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->reverb.setParameter("density", *p->ports[HF_RV_DENSITY]);      // classic / dense tank (v25)
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
     p->reverb.setParameter("bloom",   *p->ports[HF_RV_BLOOM]);         // Hex Ambient bloom (v27)
-    // TEMPORARY HT-supply / valve A/B (2026-11-03, remove once decided): ask the worker
-    // twice a second whether <configDir>/supply_on and valve_on exist.
-    p->abPollCtr += n;
-    if (p->abPollCtr >= static_cast<uint32_t>(p->rate * 0.5)) {
-        p->abPollCtr = 0;
-        WorkMsg am; am.type = W_AB_POLL;
-        p->worker->schedule(&am, sizeof(am));
-    }
     p->cab.setParameter("roomdense",  *p->ports[HF_CAB_ROOMDENSE]);    // classic / dense room (v26)
     {   // Speaker Drive: 0 Off / 1 Subtle / 2 Full (item #40 envelope heuristics,
         // 0.35/0.75) / 3 Physical (2026-09-21: the state-based large-signal driver

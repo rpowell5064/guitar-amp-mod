@@ -160,7 +160,7 @@ void OrangeRockerverbComponentModel::recalcPots() noexcept {
     const float mD = std::clamp(mid_, 0.0f, 1.0f);               // RV6 25KB linear
     const float tC = std::clamp(treble_, 0.0f, 1.0f);            // RV3 250KB linear
     const float bC = audioTaper(bass_, cleanBassMid_);           // RV2 250KA (its own law: the clean grid reads 2 dB less travel than the dirty)
-    const double g = std::max(0.002, double(audioTaper(gainSmooth_.getCurrentValue(), potMidA_)));   // clean VOLUME RV1 (not fitted: the grid is the dirty channel)
+    const double g = std::max(0.002, double(tpGain_(gainSmooth_.getCurrentValue(), potMidA_)));   // clean VOLUME RV1 (not fitted: the grid is the dirty channel)
     for (auto& c : ch_) {
         c.tsDirty.setTreble(tD); c.tsDirty.setBass(bD); c.tsDirty.setMid(mD);
         c.tsClean.setTreble(tC); c.tsClean.setBass(bC); c.tsClean.setMid(1.0f);   // fixed 6k8 = "mid pot" at max
@@ -208,7 +208,7 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
         v = c.c18lp.process(float(v));
         tap(2, v);
         v = c.coup23.process(float(v));
-        v *= audioTaper(gainSmooth_.getCurrentValue(), gainMidA_); // GAIN gang A (no bright cap)
+        v *= tpGain_(gainSmooth_.getCurrentValue(), gainMidA_); // GAIN gang A (no bright cap)
         v = c.v8a.process(v);
         v = c.c19lp.process(float(v));
         tap(3, v);
@@ -216,7 +216,7 @@ float OrangeRockerverbComponentModel::processSample(float x, int channel) noexce
         v = c.v8b.process(v);
         tap(4, v);
         v = c.tsDirty.process(float(v));
-        v *= audioTaper(masterSmooth_.getCurrentValue(), potMidA_);    // VOLUME RV8 500KA
+        v *= tpMaster_(masterSmooth_.getCurrentValue(), potMidA_);    // VOLUME RV8 500KA
         tap(5, v);
     } else {
         v = c.v10a.process(v);

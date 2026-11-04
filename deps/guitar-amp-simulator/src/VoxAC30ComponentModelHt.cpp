@@ -26,7 +26,7 @@ float VoxAC30ComponentModel::processSampleHt(float x, int channel) noexcept {
     v = c.v1.processHt(v);
     tap(0, v);
     v = c.coup2.process(float(v));
-    v *= audioTaper(gainSmooth_.getCurrentValue(), gainMid_);   // BRILLIANT VOLUME VR4 470k
+    v *= tpGain_(gainSmooth_.getCurrentValue(), gainMid_);   // BRILLIANT VOLUME VR4 470k
     v = c.bright.process(float(v));                             // C8 120pF across the pot's top leg
     tap(1, v);
     v = c.v11a.processHt(v);

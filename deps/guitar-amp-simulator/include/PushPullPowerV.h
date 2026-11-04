@@ -405,9 +405,15 @@ public:
             // The pair is solved jointly (ltpSolveJoint), so a feedback step moves BOTH plates within
             // the sample: the coupled partials through the shared tail. gB = dIaB/dvgB on its own,
             // cB = dIaB/dIaA, cA = dIaA/dIaB.
+            // When the joint Newton converged tightly, its last Jacobian IS this linearisation (its
+            // point is within the final step, under 10 nA, of the solve): reused instead of two more
+            // valve evaluations (2026-11-03 CPU pass).
             double gA_, cA, gB_, cB;
-            ltpLinearize<kHt>(vgA, IaA, IaB, p_.ltpRaA, gA_, cA);
-            ltpLinearize<kHt>(vgB, IaB, IaA, p_.ltpRaB, gB_, cB);
+            if (jacOk_) { gA_ = jac_[0]; cA = jac_[1]; gB_ = jac_[2]; cB = jac_[3]; }
+            else {
+                ltpLinearize<kHt>(vgA, IaA, IaB, p_.ltpRaA, gA_, cA);
+                ltpLinearize<kHt>(vgB, IaB, IaA, p_.ltpRaB, gB_, cB);
+            }
             const double den  = 1.0 - cA * cB;
             const double dIaB = (std::abs(den) > 1e-6) ? gB_ / den : gB_;
             const double dIaA = cA * dIaB;
@@ -625,7 +631,8 @@ private:
             // (bit-identical goldens).
             if (legacyPa_) droop = std::min(200.0, std::max(0.0, scrEnv_ - scrIdle_) * p_.screenR) * (sagDepth_ / 0.3);
             if constexpr (kHt) { if (supplyDepth_ > 0.0f && !p_.supply.screensOffChain) droop -= scrRailD_; }   // the screen NODE itself moves with the supply
-            scrFactor_ = std::pow(std::max(0.3, 1.0 - droop / p_.vg2), 1.5);
+            const double sx = std::max(0.3, 1.0 - droop / p_.vg2);
+            scrFactor_ = sx * std::sqrt(sx);   // ^1.5 (sqrt, not pow: 2026-11-03 CPU pass)
         }
 
         double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
@@ -658,7 +665,10 @@ private:
         {
             fluxInt_ = fluxInt_ * fluxLeak_ + spk / fs_;          // volts -> volt-seconds
             const double ph = std::abs(fluxInt_) / fluxPhiMax_;
-            fluxGain_ = (ph > 1e-6) ? std::tanh(ph) / ph : 1.0;
+            if (ph < 0.02) { const double q = ph * ph;   // tanh(ph)/ph by its series: < 1e-15 off here, and no tanh call
+                             fluxGain_ = 1.0 + q * (-1.0 / 3.0 + q * (2.0 / 15.0 + q * (-17.0 / 315.0))); }
+            else { const double e = std::exp(-2.0 * ph);   // tanh = (1 - e)/(1 + e): one exp, not tanh's expm1 path
+                   fluxGain_ = (1.0 - e) / ((1.0 + e) * ph); }
             spk *= fluxGain_;
         }
         nfbPrev_ = float(spk);
@@ -753,6 +763,7 @@ private:
         IaA = ia0; IaB = ib0;
         const double stepCapA = 0.25 * maxA, stepCapB = 0.25 * maxB;
         bool converged = false;
+        jacOk_ = false;
         for (int it = 0; it < 6; ++it) {
             const double dI = (IaA + IaB) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (IaA + IaB) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
@@ -770,7 +781,13 @@ private:
             sB = std::clamp(sB, -stepCapB, stepCapB);
             IaA = std::clamp(IaA - sA, 0.0, maxA);
             IaB = std::clamp(IaB - sB, 0.0, maxB);
-            if ((std::abs(fA) < 1e-10 && std::abs(fB) < 1e-10) || (std::abs(sA) < 1e-8 && std::abs(sB) < 1e-8)) { converged = true; break; }
+            if ((std::abs(fA) < 1e-10 && std::abs(fB) < 1e-10) || (std::abs(sA) < 1e-8 && std::abs(sB) < 1e-8)) {
+                converged = true;
+                if (std::abs(jAA) > 1e-30 && std::abs(jBB) > 1e-30) {   // = ltpLinearize's dg/fp and -(dg+dp)dVk/fp per side
+                    jac_[0] = dgA / jAA; jac_[1] = -jAB / jAA; jac_[2] = dgB / jBB; jac_[3] = -jBA / jBB; jacOk_ = true;
+                }
+                break;
+            }
             if (it == 5 && std::abs(sA) < 1e-5 && std::abs(sB) < 1e-5) converged = true;
         }
         if (!converged) {   // a hard slew the Newton could not settle: the sequential sweep from the warm start
@@ -962,6 +979,8 @@ private:
     double ltpTailV_ = 51.0, ltpIaBiasA_ = 2.5e-3, ltpIBiasTot_ = 5e-3;
     double ltpVpBiasA_ = 68.0, ltpVpBiasB_ = 23.0;
     double IaOpA_ = 2.5e-3, IaOpB_ = 2.5e-3;
+    double jac_[4] = {};                         // the joint solve's converged LTP partials (gA, cA, gB, cB)
+    bool   jacOk_ = false;
 
     // Capacity of the table. The ACTIVE count is lutN_ (Params::lutPoints), which
     // defaults to 1024 and is clamped to this. Keep the capacity SMALL: the array

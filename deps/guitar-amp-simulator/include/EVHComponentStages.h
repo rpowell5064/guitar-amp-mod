@@ -41,6 +41,41 @@
 
 namespace evhcomp {
 
+// ── Table-driven softplus (2026-11-03 CPU pass) ──────────────────────────────
+// softplus(x) = log1p(exp(x)) and its slope sigmoid(x) for |x| < 30 (the callers keep
+// their own tails). One exp plus one log1p was 5-21 % of a component twin's time (the
+// soft grid-conduction knee runs on every stage, every oversampled sample). The table
+// holds g(t) = log1p(exp(-t)) and s(t) = sigmoid(-t) on t in [0, 30] at h = 1/32 and
+// interpolates both as cubic Hermite (g' = -s, s' = -s(1-s), so the slopes come free);
+// softplus(x) = max(x, 0) + g(|x|). Every derivative of g falls like g itself, so the
+// error is ~3e-10 of the value everywhere, near zero as well as at the knee.
+struct SoftplusTable {
+    static constexpr int    N = 960;
+    static constexpr double tMax = 30.0, h = tMax / N;
+    struct E { double g, s; };
+    E e[N + 2];
+    SoftplusTable() noexcept {
+        for (int i = 0; i <= N + 1; ++i) {
+            const double ex = std::exp(-h * i);
+            e[i].g = std::log1p(ex); e[i].s = ex / (1.0 + ex);
+        }
+    }
+};
+inline const SoftplusTable kSoftplus{};
+inline double softplusFast(double x, double& sig) noexcept {
+    using ST = SoftplusTable;
+    const double t = std::abs(x);
+    const double u = std::min(t, ST::tMax) * (1.0 / ST::h);
+    const int    i = int(u);
+    const double f = u - i, f2 = f * f, f3 = f2 * f;
+    const double h00 = 2 * f3 - 3 * f2 + 1, h10 = (f3 - 2 * f2 + f) * ST::h, h01 = -2 * f3 + 3 * f2, h11 = (f3 - f2) * ST::h;
+    const ST::E& n0 = kSoftplus.e[i]; const ST::E& n1 = kSoftplus.e[i + 1];
+    const double g = h00 * n0.g - h10 * n0.s + h01 * n1.g - h11 * n1.s;
+    const double s = h00 * n0.s - h10 * (n0.s * (1.0 - n0.s)) + h01 * n1.s - h11 * (n1.s * (1.0 - n1.s));
+    if (x > 0.0) { sig = 1.0 - s; return x + g; }
+    sig = s; return g;
+}
+
 // Koren published 12AX7 parameters (shared by every stage).
 struct Koren12AX7 {
     static constexpr double mu  = 100.0;
@@ -100,7 +135,7 @@ inline void korenEvalP(const KorenP& T, double Vgk, double Vpk,
     if (inner >= 12.0)       { E1 = vpk / T.kp * inner; sig = 1.0; }
     else if (inner <= -80.0) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
     else if (inner <= -12.0) { const double e = std::exp(inner); E1 = vpk / T.kp * e; sig = e; }
-    else { const double e = std::exp(inner); E1 = vpk / T.kp * std::log1p(e); sig = e / (1.0 + e); }
+    else E1 = vpk / T.kp * softplusFast(inner, sig);
     if (E1 <= 0.0) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
     const double E1p = std::exp2(T.ex * std::log2(E1));
     Ia = E1p / T.kg1;
@@ -271,7 +306,7 @@ public:
         double soft;
         if (over > 30.0)       soft = over;
         else if (over < -30.0) soft = 0.0;
-        else                   soft = std::log1p(std::exp(over));
+        else                   { double sg; soft = softplusFast(over, sg); }
         return vg - soft * kneeV * (1.0 - ratio);
     }
 
@@ -571,7 +606,7 @@ private:
             double soft, sig;
             if (over > 30.0)       { soft = over; sig = 1.0; }
             else if (over < -30.0) { soft = 0.0;  sig = 0.0; }
-            else { const double e = std::exp(over); soft = std::log1p(e); sig = e / (1.0 + e); }
+            else soft = softplusFast(over, sig);
             Vg = vSrc - soft * p_.gridKneeV * (1.0 - ratio);
             dVgdVk = sig * (1.0 - ratio);
         }
@@ -797,5 +832,15 @@ inline float audioTaper(float alpha, float midFraction) noexcept {
     const float k = std::log(midFraction) / std::log(0.5f);
     return std::pow(alpha, k);
 }
+// audioTaper() for a value read every sample (a smoothed knob): recomputes only when the
+// knob or the taper changes, so a resting knob costs a compare instead of log + pow
+// (2026-11-03 CPU pass; the result is the same function's, bit for bit).
+struct TaperMemo {
+    float a = -1.0f, m = -1.0f, r = 0.0f;
+    float operator()(float alpha, float midFraction) noexcept {
+        if (alpha != a || midFraction != m) { a = alpha; m = midFraction; r = audioTaper(alpha, midFraction); }
+        return r;
+    }
+};
 
 } // namespace evhcomp

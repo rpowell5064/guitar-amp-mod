@@ -513,7 +513,7 @@ static_assert(kSwWatchN <= 96, "grow swWatchPrev[]");   // grown 64->96 (2026-09
 static const float kDivFactor[8] = { 2.0f, 1.5f, 1.0f, 0.66667f, 0.75f, 0.5f, 0.33333f, 0.25f };
 
 // ── Worker messaging ──────────────────────────────────────────────────────────
-enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE, W_AB_POLL };
+enum WorkType { W_AMP_LOAD, W_AMP_FREE, W_CAB_IR, W_NAM_LOAD, W_NAM_FREE };
 struct WorkMsg {
     WorkType          type;
     AmpBlockExtended* amp = nullptr;   // AMP_LOAD reply / AMP_FREE target
@@ -628,12 +628,6 @@ struct HexForge {
                                          // prepared 60 Hz so the default path re-tunes NOTHING (bit-identical)
     PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
     PickupLoadSim     trimLoad;         // pickup/cable/input-impedance sim (v24, default off)
-    // TEMPORARY HT-supply / valve A/B (2026-11-03, remove once decided): the worker polls
-    // <configDir>/supply_on (bit 0: sag + ripple + rails) and valve_on (bit 1: heater hum,
-    // microphony, valve spread); -1 = no answer yet. Off = the amp params are never sent.
-    std::atomic<int>  abHt{-1};
-    int               abHtApplied = 0;
-    uint32_t          abPollCtr = 0;
     bool              itZinCouple = false;  // roadmap #45: first pedal's Zin loads the pickup.
                                             // No port yet -> always off = bit-identical.
     OutputBoost       trimBoost;        // pickup-agnostic output boost + beef (Input Trim)

@@ -135,6 +135,7 @@ private:
                                // (loudness-matched vs the JFE Red capture, 2026-09-09)
 
     LinearSmoother gainSmooth_, masterSmooth_;
+    evhcomp::TaperMemo tpGain_, tpMaster_, tpOut_;   // per-sample pot tapers (2026-11-03)
 
     struct ChState {
         // Shared input stage
