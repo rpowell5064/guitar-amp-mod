@@ -160,6 +160,26 @@ public:
         // volt at the resonance peak (a combo's valves sit in the cab's field; a head's do not).
         double microHz = 3200.0, microQ = 40.0, microCouple = 2.0e-7;
         double spreadV = 1.2;        // output pair idle mismatch at full spread (grid volts, ±)
+
+        // ── Third set (2026-11-03) ──────────────────────────────────────────
+        // The phase inverter's own valve (nullptr = 12AX7, the original path). The Deluxe's V6
+        // is a 12AT7; the twins had all run their PI as a 12AX7.
+        const KorenP* piTube = nullptr;
+        // OUTPUT TRANSFORMER, second order (setOtRes): the fitted 1-pole at otHfHz is the
+        // winding capacitance against the reflected load (C = 1 / (2 pi otHfHz raa)); the
+        // leakage inductance in series with the load makes it the transformer's real response
+        //     V/I = raa / (s^2 L C + s raa C + 1),   f0 = 1/(2 pi sqrt(L C)), Q = sqrt(L/C) / raa
+        // -- identical to the fitted pole well below f0, the transformer's own roll-off above.
+        // ESTIMATE per amp (no guitar OT's leakage is published but Hammond's AC30 replacements,
+        // 4.6-5.1 mH). 0 = none.
+        double otLeakH = 0.0;
+        // The cab this amp's load curve (zRes / zHf) was anchored on: a CabModels speaker-row
+        // index (setCabLoad loads the stage with the chosen cab RELATIVE to this one).
+        int    nativeCab = 0;
+        // Fixed-bias supply (setBiasSupply): its own winding, half-wave, RC-filtered; it shares
+        // the transformer primary with the HT winding, so it droops (the valves run hotter) as
+        // the HT load droops the primary, with its own ripple. ESTIMATE-class.
+        double biasTauS = 0.15, biasRippleV = 0.05;
     };
 
     // A power valve the output stage can be re-valved with (2026-11-03): the Koren pentode
@@ -317,6 +337,24 @@ public:
             sup_.prepare(fs_, p_.supply, { p_.vb, p_.vg2, p_.ltpVcc, iPl, iPl * p_.screenFrac, ltpIBiasTot_ });
             for (auto& h : hp_) h = HpState{};
         }
+    }
+    // ── Third set (2026-11-03): additive, HT build only; off = the stage as above ──────
+    // The OT as a second-order section (Params::otLeakH) in place of the fitted pole.
+    void setOtRes(bool on) noexcept { const bool b = on && otLeakOk_; if (b && !otResOn_) otLP2_.reset(); otResOn_ = b; }
+    // Load the stage with the cab the rig runs: the chosen cab's impedance against the
+    // native one's (Params::nativeCab), each as the valve stage sees it -- the speaker's
+    // impedance against the pentode's own plate resistance (open loop ~4x the load), which is
+    // why a +20 dB impedance peak reads ~+11 dB at the plates, as the twins' anchored curves
+    // do. nullptr / off = the amp's own.
+    HT_NOINLINE void setCabLoad(bool on, const SpeakerParams* nativeRow, const SpeakerParams* chosen) noexcept {
+        cabOn_ = on; cabNative_ = nativeRow; cabChosen_ = chosen;
+        buildCabLoad();
+    }
+    // The fixed-bias supply (Params::biasTauS / biasRippleV); cathode-biased stages ignore it.
+    void setBiasSupply(bool on) noexcept {
+        biasSupOn_ = on && p_.cathodeBiasR <= 0.0;
+        sup_.track(biasSupOn_);
+        if (!biasSupOn_) { biasSup_ = 0.0; biasDroop_ = 0.0; }
     }
     // Re-valve the output stage (nullptr = the amp's own valves, bit-identical). Kept across every
     // later prepare(); the model re-prepares to apply it (bias solve + tables: not for the audio thread).
@@ -476,6 +514,9 @@ public:
 
         // Pass 1 at the delayed guess, with every state it touches snapshotted first.
         const LoopState snap = saveLoopState();
+        BiquadFilter::State snapC[3] = {}, snapOt{};   // HT-only states (2026-11-03, third set)
+        if constexpr (kHt) { if (cabLive_) { snapC[0] = cabA_.getState(); snapC[1] = cabB_.getState(); snapC[2] = cabC_.getState(); }
+                             if (otResOn_) snapOt = otLP2_.getState(); }
         double gA = c118HP_.process(float(rawA));
         double gB = c119HP_.process(float(rawB));
         if (piCapActive_) { gA = piCapA_.process(float(gA)); gB = piCapB_.process(float(gB)); }
@@ -488,6 +529,7 @@ public:
         {
             if (std::abs(d1) > 1e-7 * (1.0 + std::abs(spk1))) {   // a measurable step: re-measure the secant
                 restoreLoopState(snap);
+                if constexpr (kHt) restoreHtStates(snapC, snapOt);
                 const double spk2 = driveOutputLean<kHt>(c118Peek<kHt>(rawA - dgA * d1), c119Peek<kHt>(rawB - dgB * d1));
                 const double D = (spk2 - spk1) / d1;              // d(spk)/d(nfb) across the real step
                 loopL_ = std::clamp(D * beta0_, -30.0, 0.0);        // negative feedback: L <= 0 (a positive secant is a clipping artefact)
@@ -501,6 +543,7 @@ public:
         // consistently. The LTP is linearised about its solve; the slow envelopes (bias network,
         // cathode average, screen sag) keep their first-pass advance; the driver keeps its ratio.
         restoreLoopState(snap);
+        if constexpr (kHt) restoreHtStates(snapC, snapOt);
         double spk = driveOutputLean<kHt>(c118Peek<kHt>(rawA - dgA * dNfb), c119Peek<kHt>(rawB - dgB * dNfb));
         {
             // The implicit solution lies between the delayed guess and the previous output; a lean
@@ -512,6 +555,7 @@ public:
             if (spk < lo - m || spk > hi + m) {
                 ++loopFallbacks_;
                 restoreLoopState(snap);
+                if constexpr (kHt) restoreHtStates(snapC, snapOt);
                 spk = driveOutputLean<kHt>(c118Peek<kHt>(rawA), c119Peek<kHt>(rawB));
             }
         }
@@ -529,6 +573,10 @@ public:
     LoopState saveLoopState() const noexcept {
         return { c118HP_.getState(), c119HP_.getState(), piCapA_.getState(), piCapB_.getState(),
                  zHF_.getState(), zRes_.getState(), otLP_.getState(), otHP_.getState(), fluxInt_, cathShiftLast_ };
+    }
+    void restoreHtStates(const BiquadFilter::State* c, const BiquadFilter::State& ot) noexcept {
+        if (cabLive_) { cabA_.setState(c[0]); cabB_.setState(c[1]); cabC_.setState(c[2]); }
+        if (otResOn_) otLP2_.setState(ot);
     }
     void restoreLoopState(const LoopState& s) noexcept {
         c118HP_.setState(s.c118); c119HP_.setState(s.c119); piCapA_.setState(s.piA); piCapB_.setState(s.piB);
@@ -562,13 +610,15 @@ public:
     double driveOutputLean(double gA, double gB) noexcept {
         gA = gridClamp(gA) - biasShift_ - cathShiftLast_;
         gB = gridClamp(gB) - biasShift_ - cathShiftLast_;
-        if constexpr (kHt) { gA += spreadOff_; gB -= spreadOff_; }
+        if constexpr (kHt) { gA += spreadOff_; gB -= spreadOff_; if (biasSupOn_) { gA += biasSup_; gB += biasSup_; } }
         const double iP = lut<kHt>(gA) * p_.imbalance;
         const double iN = lut<kHt>(gB);
         double spk = (iP - iN) * (p_.raa / 4.0) / p_.otRatio * scrFactor_;
         if (dynLoad_) spk *= zRatio_;
         spk = zHF_.process(zRes_.process(float(spk)));
-        spk = otLP_.process(otHP_.process(float(spk)));
+        if constexpr (kHt) { if (cabLive_) spk = cabC_.process(cabB_.process(cabA_.process(float(spk)))); }
+        if constexpr (kHt) { if (otResOn_) spk = otLP2_.process(otHP_.process(float(spk))); else spk = otLP_.process(otHP_.process(float(spk))); }
+        else spk = otLP_.process(otHP_.process(float(spk)));
         fluxInt_ = fluxInt_ * fluxLeak_ + spk / fs_;
         spk *= fluxGain_;                       // the core gain of pass 1 (flux moves slowly; no tanh here)
         nfbPrev_ = float(spk);
@@ -639,7 +689,7 @@ private:
         cathShiftLast_ = cathShift;
         gA = gridClamp(gA) - biasShift_ - cathShift;
         gB = gridClamp(gB) - biasShift_ - cathShift;
-        if constexpr (kHt) { gA += spreadOff_; gB -= spreadOff_; }
+        if constexpr (kHt) { gA += spreadOff_; gB -= spreadOff_; if (biasSupOn_) { gA += biasSup_; gB += biasSup_; } }
         gEffA_ = gA; gEffB_ = gB;
 
         const double iP = lut<kHt>(gA) * p_.imbalance;
@@ -676,7 +726,9 @@ private:
             zRatio_ = (std::abs(before) > 1e-9) ? spk / before : 1.0;   // the lean second pass reuses it
         }
         spk = zHF_.process(zRes_.process(float(spk)));               // the amp's anchored reflected-impedance curve, both ways
-        spk = otLP_.process(otHP_.process(float(spk)));
+        if constexpr (kHt) { if (cabLive_) spk = cabC_.process(cabB_.process(cabA_.process(float(spk)))); }   // the rig's cab, relative to it
+        if constexpr (kHt) { if (otResOn_) spk = otLP2_.process(otHP_.process(float(spk))); else spk = otLP_.process(otHP_.process(float(spk))); }
+        else spk = otLP_.process(otHP_.process(float(spk)));
         // ── OT CORE SATURATION, IN THE FLUX DOMAIN (rewritten 2026-09-26) ────────
         // Core flux is the INTEGRAL of the winding voltage, so for a sine of amplitude A at
         // frequency f the peak flux is A/(2*pi*f): the same voltage is four times the flux at
@@ -717,6 +769,7 @@ public:
     double outBias()   const noexcept { return vBias_; }
 
     double ltpTailV()  const noexcept { return ltpTailV_; }
+    int    nativeCab() const noexcept { return p_.nativeCab; }
     double ltpTailmA() const noexcept { return ltpIBiasTot_ * 1e3; }
     double outIdlemA() const noexcept { return outIdle_ * 1e3; }
     double outBiasV()  const noexcept { return vBias_; }
@@ -735,8 +788,13 @@ private:
         for (int i = 0; i < 200; ++i) {
             const double vK = ltpTailV_ + I * p_.ltpRk;
             double iA, iB, d1, d2;
+            if (p_.piTube) {   // the PI's own valve (2026-11-03); else the original exact 12AX7
+                korenEvalP(*p_.piTube, ltpTailV_ - vK, p_.ltpVcc - (I * 0.5) * p_.ltpRaA - vK, iA, d1, d2);
+                korenEvalP(*p_.piTube, ltpTailV_ - vK, p_.ltpVcc - (I * 0.5) * p_.ltpRaB - vK, iB, d1, d2);
+            } else {
             korenEval(ltpTailV_ - vK, p_.ltpVcc - (I * 0.5) * p_.ltpRaA - vK, iA, d1, d2);
             korenEval(ltpTailV_ - vK, p_.ltpVcc - (I * 0.5) * p_.ltpRaB - vK, iB, d1, d2);
+            }
             I += 0.3 * ((iA + iB) - I);
             I = std::clamp(I, 1e-5, 10e-3);
         }
@@ -755,7 +813,7 @@ private:
         const double dI = (Ia + Iother) - ltpIBiasTot_;
         const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
         double iK, dg, dp;
-        korenEvalT(nullptr, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
+        korenEvalT(p_.piTube, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
         if constexpr (kHt) { if (piSpreadOn_ && side >= 0) { const double t = side ? piTolB_ : piTolA_; iK *= t; dg *= t; dp *= t; } }
         const double dVk = p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : p_.ltpRtail);
         const double fp  = 1.0 + dg * dVk + dp * (Ra + dVk);
@@ -777,8 +835,8 @@ private:
             const double dI = (IaA + IaB) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (IaA + IaB) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iKA, dgA, dpA, iKB, dgB, dpB;
-            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
-            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            korenEvalT(p_.piTube, ltpTailV_ - vK, (vcc - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(p_.piTube, ltpTailV_ - vK, (vcc - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
             const double fA = IaA - iKA, fB = IaB - iKB;
             const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
             const double jBA = (dgB + dpB) * dVk,                         jBB = 1.0 + dgB * dVk + dpB * (p_.ltpRaB + dVk);
@@ -803,8 +861,8 @@ private:
             const double dI = (IaA + IaB) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (IaA + IaB) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iKA, dgA, dpA, iKB, dgB, dpB;
-            korenEvalT(nullptr, ltpTailV_ + vgA - vK, (vccPI<kHt>() - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
-            korenEvalT(nullptr, ltpTailV_ + vgB - vK, (vccPI<kHt>() - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            korenEvalT(p_.piTube, ltpTailV_ + vgA - vK, (vccPI<kHt>() - IaA * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(p_.piTube, ltpTailV_ + vgB - vK, (vccPI<kHt>() - IaB * p_.ltpRaB) - vK, iKB, dgB, dpB);
             if constexpr (kHt) { if (piSpreadOn_) { iKA *= piTolA_; dgA *= piTolA_; dpA *= piTolA_; iKB *= piTolB_; dgB *= piTolB_; dpB *= piTolB_; } }
             const double fA = IaA - iKA, fB = IaB - iKB;
             const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
@@ -842,7 +900,7 @@ private:
             const double dI = (Ia + Iother) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (Ia + Iother) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iK, dg, dp;
-            korenEvalT(nullptr, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
+            korenEvalT(p_.piTube, ltpTailV_ + vg - vK, (vccPI<kHt>() - Ia * Ra) - vK, iK, dg, dp);
             if constexpr (kHt) { if (piSpreadOn_ && side >= 0) { const double t = side ? piTolB_ : piTolA_; iK *= t; dg *= t; dp *= t; } }
             const double f = Ia - iK;
             const double dVk = p_.ltpRk + p_.ltpRtail;
@@ -879,8 +937,70 @@ private:
     }
     // What prepare() rebuilds for the second set of extras (out of line, see HT_NOINLINE).
     HT_NOINLINE void prepareExtras() noexcept {
+        {   // the OT's second-order section (Params::otLeakH): C from the fitted pole against raa
+            otLeakOk_ = false;
+            if (p_.otLeakH > 0.0 && p_.otHfHz > 0.0 && p_.raa > 0.0) {
+                double L = p_.otLeakH;
+                if (const char* e = std::getenv("HTOT_LX")) L *= std::atof(e);   // lab: leakage scale
+                const double C = 1.0 / (2.0 * M_PI * p_.otHfHz * p_.raa);
+                const double f0 = 1.0 / (2.0 * M_PI * std::sqrt(L * C)), Q = std::sqrt(L / C) / p_.raa;
+                if (f0 < 0.45 * fs_) { otLP2_.setCoeffs(Filters::lowpass(f0, Q, fs_)); otLeakOk_ = true; }
+            }
+            otResOn_ = otResOn_ && otLeakOk_;
+            otLP2_.reset();
+        }
+        biasK_ = 1.0 - std::exp(-1.0 / (std::max(1e-3, p_.biasTauS) * fs_));
+        biasSupOn_ = biasSupOn_ && p_.cathodeBiasR <= 0.0;
+        biasSup_ = 0.0; biasDroop_ = 0.0;
+        buildCabLoad();
         if (piSpreadOn_) solvePiSpread();
     }
+    // The cab-load ratio (setCabLoad): three biquads, chosen / native, each cab's normalised
+    // impedance Z/Re = 1 + motional + coil as the plates see it against a source of kSrc x Re:
+    //   H = Z / (Z + kSrc), normalised to DC. The box resonance and the coil's semi-inductive
+    // rise sit in separate bands, so each is its own exact section:
+    //   resonance  (s^2 + s (1+r)/Qm + 1) / (s^2 + s (1 + r/(1+k))/Qm + 1)   (s in units of the box fc)
+    //   coil       (1+k) N / (N + k D),  N = s Le (Re+Rp) + Re Rp,  D = Re (s Le + Rp)
+    // with r = Qms/Qes, the box raising fs and Qms by sqrt(1 + Vas/Vb) (open back: free air).
+    static constexpr double kSrc = 4.0;   // ESTIMATE: a pentode stage's open-loop plate resistance ~4x its load
+    static BiquadCoeffs bilinear(double b2, double b1, double b0, double a2, double a1, double a0, double fWarp, double fs) noexcept {
+        // analog (b2 s^2 + b1 s + b0) / (a2 s^2 + a1 s + a0), s in rad/s; prewarped at fWarp
+        const double w = 2.0 * M_PI * fWarp, K = w / std::tan(w / (2.0 * fs));
+        const double K2 = K * K;
+        const double A0 = a2 * K2 + a1 * K + a0;
+        return { (b2 * K2 + b1 * K + b0) / A0, (2.0 * b0 - 2.0 * b2 * K2) / A0, (b2 * K2 - b1 * K + b0) / A0,
+                 (2.0 * a0 - 2.0 * a2 * K2) / A0, (a2 * K2 - a1 * K + a0) / A0 };
+    }
+    struct CabZ { double fc, num1, den1, lz, lp; };   // box fc, the two damping terms, the coil's zero / pole (rad/s)
+    static CabZ cabZ(const SpeakerParams& sp) noexcept {
+        const double al = sp.vb > 0.0 ? sp.vas / sp.vb : 0.0, g = std::sqrt(1.0 + al);
+        const double fc = sp.fs * g, qm = sp.qms * g, r = sp.qms / std::max(1e-3, sp.qes);
+        CabZ z; z.fc = fc; z.num1 = (1.0 + r) / qm; z.den1 = (1.0 + r / (1.0 + kSrc)) / qm;
+        // coil: (1+k) N / (N + k D) = (1+k)(s Le(Re+Rp) + Re Rp) / (s Le (Re+Rp+k Re) + Re Rp (1+k))
+        const double Re = sp.re, Le = std::max(1e-6, sp.le), Rp = std::max(0.1, sp.leRp);
+        z.lz = Re * Rp / (Le * (Re + Rp));                         // zero (rad/s)
+        z.lp = Re * Rp * (1.0 + kSrc) / (Le * (Re + Rp + kSrc * Re)); // pole (rad/s)
+        return z;
+    }
+    HT_NOINLINE void buildCabLoad() noexcept {
+        cabLive_ = false;
+        if (!cabOn_ || !cabNative_ || !cabChosen_ || fs_ <= 0.0 || cabChosen_ == cabNative_) return;
+        const CabZ c = cabZ(*cabChosen_), n = cabZ(*cabNative_);
+        const double wc = 2.0 * M_PI * c.fc, wn = 2.0 * M_PI * n.fc;
+        // chosen resonance, then the native one's inverse; (s/w)^2 + s/w d + 1 -> s^2 + s w d + w^2
+        cabA_.setCoeffs(bilinear(1.0, wc * c.num1, wc * wc, 1.0, wc * c.den1, wc * wc, c.fc, fs_));
+        cabB_.setCoeffs(bilinear(1.0, wn * n.den1, wn * wn, 1.0, wn * n.num1, wn * wn, n.fc, fs_));
+        // coil: [(s + zc)/(s + pc)] * [(s + pn)/(s + zn)] with each section's DC gain 1 (pc/zc, zn/pn)
+        {   // the coil pair, DC-normalised: H(0) = (zc pn)/(pc zn) -> 1
+            BiquadCoeffs k = bilinear(1.0, c.lz + n.lp, c.lz * n.lp, 1.0, c.lp + n.lz, c.lp * n.lz, 3000.0, fs_);
+            const double g = (c.lp * n.lz) / (c.lz * n.lp);
+            k.b0 *= g; k.b1 *= g; k.b2 *= g;
+            cabC_.setCoeffs(k);
+        }
+        cabA_.reset(); cabB_.reset(); cabC_.reset();
+        cabLive_ = true;
+    }
+
     // The PI pair at rest with this unit's two halves (piTolA_/B_): its plates' DC offsets from the
     // matched pair's, taken back out of the swing as the coupling caps would.
     HT_NOINLINE void solvePiSpread() noexcept {
@@ -895,8 +1015,8 @@ private:
             const double dI = (ia + ib) - ltpIBiasTot_;
             const double vK = ltpTailV_ + (ia + ib) * p_.ltpRk + (p_.ltpTailBypassed ? 0.0 : dI * p_.ltpRtail);
             double iKA, dgA, dpA, iKB, dgB, dpB;
-            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - ia * p_.ltpRaA) - vK, iKA, dgA, dpA);
-            korenEvalT(nullptr, ltpTailV_ - vK, (vcc - ib * p_.ltpRaB) - vK, iKB, dgB, dpB);
+            korenEvalT(p_.piTube, ltpTailV_ - vK, (vcc - ia * p_.ltpRaA) - vK, iKA, dgA, dpA);
+            korenEvalT(p_.piTube, ltpTailV_ - vK, (vcc - ib * p_.ltpRaB) - vK, iKB, dgB, dpB);
             iKA *= piTolA_; dgA *= piTolA_; dpA *= piTolA_; iKB *= piTolB_; dgB *= piTolB_; dpB *= piTolB_;
             const double fA = ia - iKA, fB = ib - iKB;
             const double jAA = 1.0 + dgA * dVk + dpA * (p_.ltpRaA + dVk), jAB = (dgA + dpA) * dVk;
@@ -989,6 +1109,10 @@ private:
             if (!((railMask_ >> k) & 1)) railD_[k] = 0.0;
         }
         plateSagS_ = std::clamp(-railD_[0] / sagSpanV_, -1.0, 2.0);
+        if (biasSupOn_) {   // the bias winding: the primary's droop through the bias filter, plus its ripple
+            biasDroop_ += biasK_ * (sup_.primaryDroop() - biasDroop_);
+            biasSup_ = -vBias_ * biasDroop_ * dep + p_.biasRippleV * dep * sup_.mainsSin();
+        }
         scrRailD_  = railD_[1];
         piRailD_   = railD_[2];
         piRailS_   = railS_[2];
@@ -1132,6 +1256,12 @@ private:
     bool   piSpreadOn_ = false;
     float  spread_ = 0.0f;
     double piTolA_ = 1.0, piTolB_ = 1.0, piDcA_ = 0.0, piDcB_ = 0.0;
+    // third set (2026-11-03)
+    BiquadFilter otLP2_, cabA_, cabB_, cabC_;
+    bool   otResOn_ = false, otLeakOk_ = false, cabOn_ = false, cabLive_ = false, biasSupOn_ = false;
+    const SpeakerParams* cabNative_ = nullptr;
+    const SpeakerParams* cabChosen_ = nullptr;
+    double biasK_ = 0.0, biasDroop_ = 0.0, biasSup_ = 0.0;
 };
 
 // The 2026-11-03 supply-side controls, routed the same way on every model that owns a
@@ -1144,6 +1274,8 @@ inline bool supplyParam(PushPullPowerV& pa, const std::string& id, float v) noex
     else if (id == "micro")     pa.setMicrophonic(v);
     else if (id == "spread")    pa.setTubeSpread(v);
     else if (id == "pispread")  pa.setPiSpread(v > 0.5f);
+    else if (id == "otres")     pa.setOtRes(v > 0.5f);
+    else if (id == "biassup")   pa.setBiasSupply(v > 0.5f);
     else if (id == "rectlaw")   pa.setSupplyFix(v > 0.5f);
     else return false;
     return true;
@@ -1169,6 +1301,31 @@ inline const PushPullPowerV::PowerValve* powerValve(int idx) noexcept {
 // nullptr), "miller" 0/1. Returns 0 = not one of these ids, -1 = unchanged, 1 = re-apply the
 // Miller set-up, 2 = a valve changed (re-apply and re-prepare: bias solves and tables, so
 // hosts change these off the audio thread).
+// The third set's cab controls (2026-11-03): "cabload" 0/1 and "cabrow" (a CabModels speaker-row
+// index, -1 = the amp's own cab). Returns 0 = not ours, -1 = unchanged, 1 = re-apply (TwinCab.h).
+inline int twinCabParam(const std::string& id, float v, bool& on, int& row) noexcept {
+    if (id == "cabload") { const bool b = v > 0.5f; if (b == on) return -1; on = b; return 1; }
+    if (id == "cabrow")  { const int k = std::clamp(int(std::lround(v)), -1, 9); if (k == row) return -1; row = k; return 1; }
+    return 0;
+}
+// The 6550 as itself (2026-11-03, "correct tubes"): the SVT and the AD200 ran Koren's KT88 set. Koren's
+// library has the 6550 (7.9 / 1.35 / 890 / 60 / 24); the gm scale is re-landed so the stage idles at
+// the SAME grid bias the drawing / fit gave (the bias solve then finds the same operating point).
+inline void reValve6550(PushPullPowerV::Params& p) noexcept {
+    auto ia = [&p](double mu, double ex, double kg1, double kp, double kvb, double vgk) {
+        const double inner = kp * (1.0 / mu + vgk / p.vg2);
+        if (inner < -80.0) return 0.0;
+        const double e1 = p.vg2 / kp * (inner > 80.0 ? inner : std::log1p(std::exp(inner)));
+        return e1 <= 0.0 ? 0.0 : std::pow(e1, ex) / kg1 * std::atan(p.vb / kvb);
+    };
+    double lo = -200.0, hi = -1.0;   // the old set's idle bias
+    for (int i = 0; i < 80; ++i) { const double m = 0.5 * (lo + hi);
+        if (p.iaScale * ia(p.mu, p.ex, p.kg1, p.kp, p.kvb, m) > p.idleTarget) hi = m; else lo = m; }
+    const double vg = 0.5 * (lo + hi);
+    p.mu = 7.9; p.ex = 1.35; p.kg1 = 890.0; p.kp = 60.0; p.kvb = 24.0;
+    const double i6550 = ia(p.mu, p.ex, p.kg1, p.kp, p.kvb, vg);
+    if (i6550 > 0.0) p.iaScale = p.idleTarget / i6550;
+}
 inline int twinExtras2(const std::string& id, float v, int& v1Tube, int& paTube, bool& miller) noexcept {
     if (id == "v1tube") { const int k = std::clamp(int(v + 0.5f), 0, 4); if (k == v1Tube) return -1; v1Tube = k; return 2; }
     if (id == "patube") { const int k = std::clamp(int(v + 0.5f), 0, 5); if (k == paTube) return -1; paTube = k; return 2; }

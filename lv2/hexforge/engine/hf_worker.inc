@@ -26,11 +26,12 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     if (msg->type == W_AMP_FREE) { delete msg->amp; return true; }
     if (msg->type == W_NAM_FREE) { delete msg->nam; return true; }
     if (msg->type == W_AB_POLL) {   // TEMPORARY physics A/B (2026-11-03, see hf_types.inc)
-        static const char* const kAbFiles[4] = { "/miller_on", nullptr /* bit 1: OT resonance, retired */, "/pispread_on", "/rectlaw_on" };
+        static const char* const kAbFiles[7] = { "/miller_on", "/otres_on", "/pispread_on", "/rectlaw_on",
+                                                 "/cabload_on", "/biassup_on", "/tubefix_on" };
         const std::string dir = hfplat::configDir();
         int v = 0;
-        for (int b = 0; b < 4; ++b)
-            if (kAbFiles[b]) if (FILE* f = std::fopen((dir + kAbFiles[b]).c_str(), "r")) { v |= (1 << b); std::fclose(f); }
+        for (int b = 0; b < 7; ++b)
+            if (FILE* f = std::fopen((dir + kAbFiles[b]).c_str(), "r")) { v |= (1 << b); std::fclose(f); }
         p->abHt.store(v, std::memory_order_relaxed);
         return true;
     }
@@ -44,6 +45,7 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
                 p->cab2.setIR(L, R.empty()?nullptr:&R);
             else p->cab2.setIR(CabModels::generate("@factory", p->rate));
             p->cab2.setSpeakerParams(CabModels::speakerFor(sent ? sent : ""));   // physical speaker row (2026-09-21)
+            p->cabRow2.store(sent ? CabModels::speakerRowIndex(sent) : (msg->path[0] ? -1 : 0), std::memory_order_relaxed);
             return true;
         }
         if (sent)                                                         // built-in synthetic cab
@@ -51,6 +53,7 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R)) p->cab.setIR(L, R.empty()?nullptr:&R);
         else p->cab.setIR(CabModels::generate("@factory", p->rate));   // empty path = clear to (enriched) Factory Cab
         p->cab.setSpeakerParams(CabModels::speakerFor(sent ? sent : ""));   // physical speaker row (user IRs: factory row)
+        p->cabRow1.store(sent ? CabModels::speakerRowIndex(sent) : (msg->path[0] ? -1 : 0), std::memory_order_relaxed);   // the twins' load (2026-11-03)
         return true;
     }
     if (msg->type == W_NAM_LOAD) {
@@ -74,6 +77,8 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     // (bias solves + output-valve tables, ~10-25 ms on a Pi 5), which must stay off the RT thread.
     na->setParameter("v1tube", static_cast<float>(msg->v1tube));
     na->setParameter("patube", static_cast<float>(msg->patube));
+    // TEMPORARY A/B (2026-11-03): the valve-type correction rebuilds the model too -- here, not on the audio thread
+    { const int f = p->abHt.load(std::memory_order_relaxed); if (f > 0) na->setParameter("tubefix", (f & 64) ? 1.0f : 0.0f); }
     WorkMsg reply; reply.type = W_AMP_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx; reply.namSlot = msg->namSlot;   // slot 1 = Rig B (forgetting this routed B builds into the MAIN amp)
     reply.v1tube = msg->v1tube; reply.patube = msg->patube;
     respond(handle, sizeof(reply), &reply);

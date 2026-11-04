@@ -1,3 +1,4 @@
+#include "TwinCab.h"
 #include "MesaDualRectifierComponentModel.h"
 #include <cmath>
 #include <cstdlib>
@@ -87,6 +88,8 @@ PushPullPowerV::Params rectoPowerParams(double railC, double railA, double otHfH
     p.fluxRefHz = 40.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 1000.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 1k 2W screens
     p.outTrim = 1.0;
+    p.nativeCab = 0;   // the cab its load curve was anchored on: Factory V30-class 4x12 (2026-11-03)
+    p.otLeakH = 8e-3;   // ESTIMATE: OT leakage inductance (Hammond AC30-class OTs measure ~5 mH)
     return p;
 }
 } // namespace
@@ -292,7 +295,16 @@ void MesaDualRectifierComponentModel::setParameter(const std::string& id, float 
         if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
         return;
     }
-    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (id == "pispread" || id == "rectlaw" || id == "otres" || id == "biassup") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (const int r = evhcomp::twinCabParam(id, value, cabLoad_, cabRow_)) {   // 2026-11-03: the rig's cab as the load
+        if (r > 0) for (auto& c : ch_) evhcomp::applyCab(c.pa, cabLoad_, cabRow_);
+        return;
+    }
+    if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
+        const bool b = value > 0.5f;
+        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);

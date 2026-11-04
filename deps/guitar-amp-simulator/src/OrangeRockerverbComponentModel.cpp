@@ -1,3 +1,4 @@
+#include "TwinCab.h"
 #include "OrangeRockerverbComponentModel.h"
 #include <cmath>
 #include <cstdlib>
@@ -64,6 +65,8 @@ PushPullPowerV::Params rockerverbPowerParams(double railC, double railA, double 
     p.fluxRefHz = 40.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 1000.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 1k 5W screens
     p.outTrim = 1.0;
+    p.nativeCab = 0;   // the cab its load curve was anchored on: Factory V30-class 4x12 (2026-11-03)
+    p.otLeakH = 6e-3;   // ESTIMATE: OT leakage inductance (Hammond AC30-class OTs measure ~5 mH)
     return p;
 }
 } // namespace
@@ -254,7 +257,16 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
         if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
         return;
     }
-    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (id == "pispread" || id == "rectlaw" || id == "otres" || id == "biassup") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (const int r = evhcomp::twinCabParam(id, value, cabLoad_, cabRow_)) {   // 2026-11-03: the rig's cab as the load
+        if (r > 0) for (auto& c : ch_) evhcomp::applyCab(c.pa, cabLoad_, cabRow_);
+        return;
+    }
+    if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
+        const bool b = value > 0.5f;
+        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);
@@ -358,6 +370,9 @@ void OrangeRockerverbComponentModel::applyExtras2() noexcept {
     for (auto& c : ch_) {
         c.v9a.setTubeOverride(t); c.v9b.setTubeOverride(t); c.v10a.setTubeOverride(t); c.v10b.setTubeOverride(t);
         c.pa.setValve(pv);
+        // "tubefix" (2026-11-03): V7 is an ECC81 / 12AT7 on the drawing (driver follower + loop return)
+        c.v7a.setTubeOverride(tubeFix_ ? evhcomp::preampValve(3) : nullptr);
+        c.v7b.setTubeOverride(tubeFix_ ? evhcomp::preampValve(3) : nullptr);
         c.v9a.setMiller(dynMiller_, kCgp); c.v9b.setMiller(dynMiller_, kCgp); c.v8a.setMiller(dynMiller_, kCgp); c.v8b.setMiller(dynMiller_, kCgp);
         c.v10a.setMiller(dynMiller_, kCgp); c.v10b.setMiller(dynMiller_, kCgp); c.v7b.setMiller(dynMiller_, kCgp);
     }

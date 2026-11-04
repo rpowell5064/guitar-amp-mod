@@ -431,6 +431,22 @@ inline const SpeakerParams& speakerFor(const std::string& id) {
     return kFactory;
 }
 
+// The speaker rows above by index (2026-11-03: the component twins' power stage loads with the cab
+// the rig actually runs). 0 = the Factory row (also every unknown sentinel), 1..9 in this order;
+// speakerRowIndex() returns -1 for "no known speaker" (a user IR file, No Cab), which the twins
+// read as "keep the amp's own cab".
+inline const char* const* speakerRowIds() noexcept {
+    static const char* const kIds[10] = { "@factory", "@greenback", "@american-ob", "@vox2x12", "@hiwatt",
+                                          "@doom", "@bass810", "@bass410h", "@bass210", "@bass115" };
+    return kIds;
+}
+inline int speakerRowIndex(const std::string& id) noexcept {
+    if (id.empty() || id[0] != '@' || id == "@nocab") return -1;
+    for (int i = 1; i < 10; ++i) if (id == speakerRowIds()[i]) return i;
+    return 0;
+}
+inline const SpeakerParams& speakerRowAt(int i) noexcept { return speakerFor(speakerRowIds()[(i >= 0 && i < 10) ? i : 0]); }
+
 // A '@' path that is NOT the factory sentinel → one of our extra synthetic cabs.
 inline bool isSentinel(const char* p) {
     return p && p[0] == '@';

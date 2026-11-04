@@ -1,3 +1,4 @@
+#include "TwinCab.h"
 #include "FenderDeluxeComponentModel.h"
 #include "CabModels.h"
 #include <cmath>
@@ -64,6 +65,8 @@ PushPullPowerV::Params deluxePowerParams(double railPI, double idleMa, double zR
     p.fluxRefHz = 40.0;  p.fluxSatV = fluxSatV;
     p.screenR = 470.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 470 Ω screens
     p.outTrim = 1.0;
+    p.nativeCab = 2;   // the cab its load curve was anchored on: American open-back 1x12 (2026-11-03)
+    p.otLeakH = 5e-3;   // ESTIMATE: OT leakage inductance (Hammond AC30-class OTs measure ~5 mH)
 
     // ── HT supply: GZ34 full-wave → 16µ reservoir (plates via the OT centre tap) → choke
     //    → 16µ screens → 16µ PI → 16µ preamp. ESTIMATE: valve rectifier + HT winding
@@ -121,6 +124,7 @@ void FenderDeluxeComponentModel::buildStages() noexcept {
             pp.supply.vPre[0] = kRailPre;
             pp.supply.cPre[0] = 16e-6;
             pp.supply.iPre[0] = c.v2a.biasIa() + c.v2b.biasIa() + c.v4b.biasIa() + 3.0e-3;
+            pp.piTube = tubeFix_ ? evhcomp::preampValve(3) : nullptr;   // "tubefix": V6 is a 12AT7 (2026-11-03)
             c.pa.prepare(fs_, pp);
         }
         c.pa.setSupply(supply_); c.pa.setRipple(ripple_); c.pa.setHeaterHum(hum_);
@@ -201,7 +205,16 @@ void FenderDeluxeComponentModel::setParameter(const std::string& id, float value
         if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) rebuild(); }
         return;
     }
-    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (id == "pispread" || id == "rectlaw" || id == "otres" || id == "biassup") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (const int r = evhcomp::twinCabParam(id, value, cabLoad_, cabRow_)) {   // 2026-11-03: the rig's cab as the load
+        if (r > 0) for (auto& c : ch_) evhcomp::applyCab(c.pa, cabLoad_, cabRow_);
+        return;
+    }
+    if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
+        const bool b = value > 0.5f;
+        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) rebuild(); }
+        return;
+    }
     if      (id == "gain")     { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "bass")     { bass_ = value; recalcPots(); }
     else if (id == "treble")   { treble_ = value; recalcPots(); }

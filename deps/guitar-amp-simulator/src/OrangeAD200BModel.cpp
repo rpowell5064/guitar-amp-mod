@@ -1,3 +1,4 @@
+#include "TwinCab.h"
 #include "OrangeAD200BModel.h"
 #include "CabModels.h"
 #include <cmath>
@@ -70,6 +71,8 @@ PushPullPowerV::Params ad200PowerParams(double railV2, double railA, double rail
     // see the SVT model: the toolkit scales by (raa/4)/otRatio where the ideal
     // push-pull value is raa/(2*otRatio), so 2.0 restores it.
     p.outTrim = 2.0;
+    p.nativeCab = 6;   // the cab its load curve was anchored on: bass 8x10 (2026-11-03)
+    p.otLeakH = 8e-3;   // ESTIMATE: OT leakage inductance (Hammond AC30-class OTs measure ~5 mH)
     return p;
 }
 } // namespace
@@ -112,8 +115,10 @@ void OrangeAD200BModel::buildStages() noexcept {
             sp.nPre = 1; sp.vPre[0] = railV1_; sp.cPre[0] = 50e-6; sp.iPre[0] = c.ro1.biasIa() + c.ro2.biasIa() + 2e-3;
             c.pa.setSupplyLayout(sp, 2.0e-6, 0.5e-7);   // a head
         }
-        c.pa.prepare(fs_, ad200PowerParams(railV2_, railA_, railScreen_, otHfHz_, zHfDb_, zResHz_, zResDb_,
-                                           idleMa_, raa_, nfbStabHz_, fluxLim_, kneeV_, iaScale_, nfbScale_, lutPoints_));
+        {   auto pp = ad200PowerParams(railV2_, railA_, railScreen_, otHfHz_, zHfDb_, zResHz_, zResDb_,
+                                       idleMa_, raa_, nfbStabHz_, fluxLim_, kneeV_, iaScale_, nfbScale_, lutPoints_);
+            if (tubeFix_) evhcomp::reValve6550(pp);   // "tubefix" (2026-11-03): the 6550 as itself, not the KT88 set
+            c.pa.prepare(fs_, pp); }
         c.pa.setSpeakerRow(CabModels::speakerFor("@bass810"));   // Phase 5: the cab this amp drives
         c.pa.setSagDepth(sag_);
         c.dnr.prepare(fs_, 6000.0, 0.02f, 0.006f);
@@ -210,7 +215,16 @@ void OrangeAD200BModel::setParameter(const std::string& id, float value) noexcep
         if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
         return;
     }
-    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (id == "pispread" || id == "rectlaw" || id == "otres" || id == "biassup") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (const int r = evhcomp::twinCabParam(id, value, cabLoad_, cabRow_)) {   // 2026-11-03: the rig's cab as the load
+        if (r > 0) for (auto& c : ch_) evhcomp::applyCab(c.pa, cabLoad_, cabRow_);
+        return;
+    }
+    if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
+        const bool b = value > 0.5f;
+        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);

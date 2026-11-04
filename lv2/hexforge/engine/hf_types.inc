@@ -639,9 +639,13 @@ struct HexForge {
     PickupVoicer      trimVoice;        // single-coil -> humbucker voicing (Input Trim)
     PickupLoadSim     trimLoad;         // pickup/cable/input-impedance sim (v24, default off)
     // TEMPORARY physics A/B (2026-11-03, remove once decided): the worker polls <configDir>/
-    // miller_on (bit 0), pispread_on (bit 2) and rectlaw_on (bit 3); -1 = no
-    // answer yet. Until a poll answers (or after one was applied) the amp params are never sent.
+    // miller_on (bit 0), otres_on (bit 1), pispread_on (bit 2), rectlaw_on (bit 3), cabload_on
+    // (bit 4), biassup_on (bit 5) and tubefix_on (bit 6); -1 = no answer yet. Until a poll answers
+    // (or after one was applied) the amp params are never sent.
     std::atomic<int>  abHt{-1};
+    // The speaker row each cab slot has loaded (CabModels::speakerRowIndex; -1 = a user IR / No Cab),
+    // written by the worker's W_CAB_IR, read here to load the twins' power stage with it (2026-11-03).
+    std::atomic<int>  cabRow1{0}, cabRow2{0};
     int               abHtApplied = 0;
     uint32_t          abPollCtr = 0;
     bool              itZinCouple = false;  // roadmap #45: first pedal's Zin loads the pickup.

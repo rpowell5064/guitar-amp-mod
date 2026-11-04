@@ -117,6 +117,9 @@ private:
     int  v1Tube_ = 0, paTube_ = 0;
     bool dynMiller_ = false;
     void applyExtras2() noexcept;
+    // third set (2026-11-03): the rig's cab as the power stage's load, the corrected valve types
+    bool cabLoad_ = false, tubeFix_ = false;
+    int  cabRow_ = -1;
     void recalcPots() noexcept;
 
     // Printed supply nodes (AB763 sheet): preamp 250 V, PI 400 V, screens 415 V, plates 420 V.

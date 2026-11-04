@@ -1,3 +1,4 @@
+#include "TwinCab.h"
 #include "FriedmanBE100ComponentModel.h"
 #include <cmath>
 #include <cstdlib>
@@ -81,6 +82,9 @@ PushPullPowerV::Params friedmanPowerParams(double railPI, double otHfHz, double 
     p.fluxRefHz = 40.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 1e3;  p.screenAttS = 0.010; p.screenRelS = 0.200;
     p.outTrim = 1.0;
+    p.nativeCab = 0;   // the cab its load curve was anchored on: Factory V30-class 4x12 (2026-11-03)
+    p.otLeakH = 0.0;    // OT second-order section OFF on this twin (2026-11-03): its loop at presence 0 rang with any
+                        // leakage that lands the resonance in band (8 mH: +55 dB at 45 kHz; the Plexi still +15 dB at 2 mH)
     return p;
 }
 } // namespace
@@ -399,7 +403,16 @@ void FriedmanBE100ComponentModel::setParameter(const std::string& id, float valu
         if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
         return;
     }
-    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (id == "pispread" || id == "rectlaw" || id == "otres" || id == "biassup") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (const int r = evhcomp::twinCabParam(id, value, cabLoad_, cabRow_)) {   // 2026-11-03: the rig's cab as the load
+        if (r > 0) for (auto& c : ch_) evhcomp::applyCab(c.pa, cabLoad_, cabRow_);
+        return;
+    }
+    if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
+        const bool b = value > 0.5f;
+        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);

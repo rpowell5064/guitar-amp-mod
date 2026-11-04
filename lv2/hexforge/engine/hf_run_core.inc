@@ -439,6 +439,16 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
                 a2->setParameter("miller",   (f & 1) ? 1.0f : 0.0f);
                 a2->setParameter("pispread", (f & 4) ? 1.0f : 0.0f);
                 a2->setParameter("rectlaw",  (f & 8) ? 1.0f : 0.0f);
+                a2->setParameter("otres",    (f & 2) ? 1.0f : 0.0f);
+                a2->setParameter("cabload",  (f & 16) ? 1.0f : 0.0f);
+                a2->setParameter("biassup",  (f & 32) ? 1.0f : 0.0f);
+                a2->setParameter("tubefix",  (f & 64) ? 1.0f : 0.0f);
+            }
+            {   // the twin's load = the cab Amp 2 actually drives: Cab 2 when it is in, else Cab 1 (2026-11-03)
+                const bool c2 = *p->ports[HF_RB_CAB2ON] > 0.5f;
+                const int  row = c2 ? p->cabRow2.load(std::memory_order_relaxed)
+                                    : (*p->ports[HF_CAB_ENABLE] > 0.5f ? p->cabRow1.load(std::memory_order_relaxed) : -1);
+                a2->setParameter("cabrow", static_cast<float>(row));
             }
             if (rbM != kFriedmanIdx) a2->setParameter("channel", *p->ports[HF_RB_CHANNEL]);   // Friedman: own port below (see main rig)
             a2->setParameter("resonance", *p->ports[HF_RB_RESONANCE]);
@@ -585,8 +595,15 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         amp->setParameter("miller",   (f & 1) ? 1.0f : 0.0f);
         amp->setParameter("pispread", (f & 4) ? 1.0f : 0.0f);
         amp->setParameter("rectlaw",  (f & 8) ? 1.0f : 0.0f);
+        amp->setParameter("otres",    (f & 2) ? 1.0f : 0.0f);
+        amp->setParameter("cabload",  (f & 16) ? 1.0f : 0.0f);
+        amp->setParameter("biassup",  (f & 32) ? 1.0f : 0.0f);
+        amp->setParameter("tubefix",  (f & 64) ? 1.0f : 0.0f);
         p->abHtApplied = f;
     }
+    // The twin's load = the cab this rig runs (2026-11-03): Cab 1's speaker row, or the amp's own when
+    // Cab 1 is off / a user IR / No Cab (-1). Inert unless "cabload" is on.
+    amp->setParameter("cabrow", static_cast<float>(*p->ports[HF_CAB_ENABLE] > 0.5f ? p->cabRow1.load(std::memory_order_relaxed) : -1));
     // The Friedman takes its channel from its OWN port below; sending the generic
     // amp_channel first made the component build (which re-prepares its relay-
     // switched stages on every real change) flip 0->HBE EVERY BLOCK = a 1.5 kHz
@@ -745,7 +762,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     p->reverb.setParameter("type",    *p->ports[HF_RV_TYPE]);          // plate / spring / ambient (v26/v27)
     p->reverb.setParameter("bloom",   *p->ports[HF_RV_BLOOM]);         // Hex Ambient bloom (v27)
     // TEMPORARY physics A/B (2026-11-03, remove once decided): ask the worker twice a second
-    // whether <configDir>/miller_on, pispread_on and rectlaw_on exist.
+    // whether <configDir>/miller_on, otres_on, pispread_on, rectlaw_on, cabload_on, biassup_on and tubefix_on exist.
     p->abPollCtr += n;
     if (p->abPollCtr >= static_cast<uint32_t>(p->rate * 0.5)) {
         p->abPollCtr = 0;

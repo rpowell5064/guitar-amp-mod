@@ -136,6 +136,9 @@ private:
     int  v1Tube_ = 0, paTube_ = 0;
     bool dynMiller_ = false;
     void applyExtras2() noexcept;
+    // third set (2026-11-03): the rig's cab as the power stage's load, the corrected valve types
+    bool cabLoad_ = false, tubeFix_ = false;
+    int  cabRow_ = -1;
     void   applyGlide() noexcept;
     void   buildMix(evhcomp::LinNetV& n, bool brightDriven, double r1, double r2) const noexcept;
     void   recalcMix(bool force) noexcept;

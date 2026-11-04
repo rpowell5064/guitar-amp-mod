@@ -158,6 +158,8 @@ public:
         iL_ = iThru0_[1];
         ph_ = 0.0; s_ = 0.0; co_ = 1.0;
         cnt_ = 0;
+        iRect_ = iThru0_[0];
+        kTrack_ = 1.0 - std::exp(-1.0 / (0.020 * fs_));
     }
 
     // One sample. iPlate / iScr / iPI = the instantaneous TOTAL currents the output
@@ -180,6 +182,15 @@ public:
         advance(load, vPk_);
     }
 
+    // The rectifier's mean charging current (2026-11-03, the separate bias supply): the bias winding
+    // shares the transformer's PRIMARY with the HT winding, so the HT load droops it too. track()
+    // turns the averaging on (20 ms); primaryDroop() = the fraction the primary's share of the
+    // winding resistance (half of it, ESTIMATE) drops every secondary under the extra current.
+    void track(bool on) noexcept { if (on && !track_) iRect_ = iThru0_[0]; track_ = on; }
+    double primaryDroop() const noexcept {
+        const double rPrim = 0.5 * (law_ > 0 ? p_.rWind : p_.rSrc);
+        return std::max(0.0, iRect_ - iThru0_[0]) * rPrim / std::max(1.0, vPk_);
+    }
     // The 2026-11-03 supply fix (Params::rectLaw ... mainsHzFix): takes effect at the next prepare().
     void setFix(bool on) noexcept { fix_ = on; }
     bool fix() const noexcept { return fix_; }
@@ -238,8 +249,10 @@ private:
             iOut = (v_[0] - v_[1]) / r_[1];
         }
         double v0n = v_[0] - a * (load[0] + iOut);
+        const double vPred = v0n;
         if (law_ == 0) { if (vs > v0n) v0n = (v0n + a * vs / p_.rSrc) / (1.0 + a / p_.rSrc); }
         else v0n = conduct(vs, v0n, a, uWarm_);
+        if (track_) iRect_ += kTrack_ * ((v0n - vPred) / a - iRect_);   // the rectifier's charging current, averaged
         // downstream nodes: each fed from its parent through r_[k] (node 1: the choke/resistor)
         double net[kMaxPre + 3];
         net[0] = 0.0; net[1] = iOut - load[1];
@@ -317,6 +330,9 @@ private:
     bool   fix_ = false;
     int    law_ = 0;
     double kChild_ = 0.0, uWarm_ = 0.0, iFixExtra_ = 0.0;
+    // the bias supply's view of the primary (2026-11-03)
+    bool   track_ = false;
+    double iRect_ = 0.0, kTrack_ = 0.0;
 };
 
 } // namespace evhcomp

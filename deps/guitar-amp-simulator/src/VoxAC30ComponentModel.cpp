@@ -1,4 +1,5 @@
-﻿#include "VoxAC30ComponentModel.h"
+﻿#include "TwinCab.h"
+#include "VoxAC30ComponentModel.h"
 #include "CabModels.h"
 #include <cmath>
 #include <cstdlib>
@@ -79,6 +80,8 @@ PushPullPowerV::Params voxPowerParams(double preV, double htV, double otHfHz, do
     p.fluxRefHz = 40.0;  p.fluxSatV = fluxLim;   // lab hook feeds the anchor
     p.screenR = 100.0; p.screenAttS = 0.010; p.screenRelS = 0.200;   // 100 Î© screens: little screen sag
     p.outTrim = 1.0;
+    p.nativeCab = 3;   // the cab its load curve was anchored on: Vox alnico 2x12 (2026-11-03)
+    p.otLeakH = 5e-3;   // ESTIMATE: OT leakage inductance (Hammond AC30-class OTs measure ~5 mH)
     return p;
 }
 } // namespace
@@ -241,7 +244,16 @@ void VoxAC30ComponentModel::setParameter(const std::string& id, float value) noe
         if (r > 0) { applyExtras2(); if (r == 2 && fs_ > 0.0) prepare(fs_, 0); }
         return;
     }
-    if (id == "pispread" || id == "rectlaw") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (id == "pispread" || id == "rectlaw" || id == "otres" || id == "biassup") { for (auto& c : ch_) evhcomp::supplyParam(c.pa, id, value); return; }
+    if (const int r = evhcomp::twinCabParam(id, value, cabLoad_, cabRow_)) {   // 2026-11-03: the rig's cab as the load
+        if (r > 0) for (auto& c : ch_) evhcomp::applyCab(c.pa, cabLoad_, cabRow_);
+        return;
+    }
+    if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
+        const bool b = value > 0.5f;
+        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }
+        return;
+    }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
         for (auto& c : ch_) {
             evhcomp::supplyParam(c.pa, id, value);

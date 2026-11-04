@@ -232,7 +232,29 @@
     Q 1.2 estimate made the BE-100 loop unstable (+78 dB at 36 kHz, +9 dB at 2 kHz) and the
     Plexi ring (+29 dB at 22 kHz); even at 80 kHz / Q 0.7 presence 0 still rang. The twins'
     fitted HF loop terms already carry the OT's top; adding it needs a re-fit of those terms
-    against the captures, not an estimate on top.
+    against the captures, not an estimate on top. (Done the right way the same night, below.)
+- **2026-11-03 — twin extras, third set (cab as the load, bias supply, OT as a second-order
+  section, corrected valve types).** All off by default; TEMPORARY A/B files otres_on,
+  cabload_on, biassup_on, tubefix_on beside the second set's.
+  - Cab as the load: the power stage carries the ratio of the rig's cab to the amp's native
+    cab (Params::nativeCab), each built from its CabModels speaker row as the plates see it
+    -- Z against a pentode source of ~4x the load, so a +20 dB impedance peak reads ~+11 dB,
+    where the twins' anchored curves sit. Native cab = exactly unchanged; e.g. the Recto into
+    an open-back 1x12 +4..6 dB at 50-80 Hz, -2.4 dB at 150; the Deluxe into a closed 4x12
+    gains the box bump at 80-150 Hz. The engine publishes each cab slot's speaker row
+    (user IR / No Cab / Cab 1 off = the amp's own); Amp 2 follows Cab 2 when it is in.
+  - Bias supply: fixed-bias stages' bias droops with the transformer primary (half the
+    winding resistance, ESTIMATE) under the HT load, through a 150 ms filter, plus 50 mV of
+    mains ripple. Small by nature: ~0.2 V on a cranked 100 W twin (-50 dB re signal).
+  - OT: the fitted pole IS the winding capacitance against raa; with the leakage (5-8 mH
+    ESTIMATE) the section becomes raa / (s^2 L C + s raa C + 1) -- the same below ~5 kHz
+    (<= 0.5 dB), the transformer's own roll-off above. Stable at presence 0 / .5 / 1 on the
+    JCM800, Mark V, Recto, Deluxe, SVT and AD200; above the band on the AC30 / Rockerverb;
+    OFF on the BE-100 and Plexi, whose loops at presence 0 rang with any in-band leakage.
+  - Corrected valves: the Deluxe's V6 PI is a 12AT7 (Params::piTube; -0.8 dB), the
+    Rockerverb's V7 an ECC81, and the SVT / AD200 run Koren's 6550 set instead of the KT88's,
+    re-landed on the same idle bias (SVT +3.2 dB: its 6550s have more gm at that bias).
+    OPEN: the Rockerverb twin's drawings print 4x 6V6 while its captures are MKIII (2x EL34).
 
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
