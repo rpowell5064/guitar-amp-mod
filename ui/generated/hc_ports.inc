@@ -2,7 +2,7 @@
 // Included once, by ui/core/hc_registry.cpp.
 
 static const hc::FileParam kAmpFiles[] = { {"https://rpowell5064.github.io/guitaramp-suite/amp#nammodel", "nammodel", "NAM Model", ".nam", false} };
-static const char* const kAmpGroups[] = { "Amp", "Model Options", "Power Amp", "NAM", "Engine", "Stage" };
+static const char* const kAmpGroups[] = { "Amp", "Model Options", "Power Amp", "NAM", "Engine", "Stage", "Valves" };
 static const hc::EnumPt kAmp_e4[] = { {0.0f, "Clean Meanie"}, {1.0f, "Crunchy McCrunchFace"}, {2.0f, "Gainzilla"}, {3.0f, "Doom Daddy"}, {4.0f, "Tangerang"}, {5.0f, "Neural (NAM)"}, {6.0f, "Beardo BE"}, {7.0f, "Hi-Volt"}, {8.0f, "Chime Thirty"}, {9.0f, "Backline Plus"}, {10.0f, "Plexiglass"}, {11.0f, "Cali V"}, {12.0f, "Diamond Plate"}, {13.0f, "Tremont 15"}, {14.0f, "Blue Liner"}, {15.0f, "Citrus 200"} };
 static const hc::EnumPt kAmp_e15[] = { {0.0f, "Independent"}, {1.0f, "Parallel"}, {2.0f, "Series"} };
 static const hc::EnumPt kAmp_e18[] = { {0.0f, "6L6GC"}, {1.0f, "EL34"}, {2.0f, "EL84"}, {3.0f, "KT88"}, {4.0f, "6V6"}, {5.0f, "6550"} };
@@ -16,6 +16,9 @@ static const hc::EnumPt kAmp_e49[] = { {0.0f, "Clean"}, {1.0f, "Crunch"}, {2.0f,
 static const hc::EnumPt kAmp_e56[] = { {0.0f, "220 Hz"}, {1.0f, "800 Hz"}, {2.0f, "3 kHz"} };
 static const hc::EnumPt kAmp_e59[] = { {0.0f, "Standard"}, {1.0f, "Eco"} };
 static const hc::EnumPt kAmp_e60[] = { {0.0f, "60 Hz"}, {1.0f, "50 Hz"} };
+static const hc::EnumPt kAmp_e66[] = { {0.0f, "12AX7 (stock)"}, {1.0f, "5751"}, {2.0f, "12AY7"}, {3.0f, "12AT7"}, {4.0f, "12AU7"} };
+static const hc::EnumPt kAmp_e67[] = { {0.0f, "Stock"}, {1.0f, "EL34"}, {2.0f, "6L6GC"}, {3.0f, "6V6GT"}, {4.0f, "EL84"}, {5.0f, "KT88"} };
+static const hc::EnumPt kAmp_e68[] = { {0.0f, "Own Cab"}, {1.0f, "Factory 4x12"}, {2.0f, "Chime 2x12"}, {3.0f, "American 2x12"}, {4.0f, "Cashback 4x12"}, {5.0f, "Hi-Volt 4x12"}, {6.0f, "Doom 4x12"}, {7.0f, "Bass 8x10"}, {8.0f, "Bass 4x10 Horn"}, {9.0f, "Bass 2x10"}, {10.0f, "Bass 1x15"} };
 static const hc::PortInfo kAmpPorts[] = {
     { 4, "model", "Model", 0.0f, 15.0f, 1.0f, 12u, "", kAmp_e4, 16, 0 },
     { 5, "gain", "Gain", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 0 },
@@ -79,6 +82,9 @@ static const hc::PortInfo kAmpPorts[] = {
     { 63, "stage_fb", "Stage Feedback", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 5 },
     { 64, "stage_fbdist", "Stage Distance", 0.3f, 5.0f, 1.0f, 0u, "m", nullptr, 0, 5 },
     { 65, "stage_fbsus", "Stage Sustain", 0.0f, 1.0f, 0.5f, 0u, "", nullptr, 0, 5 },
+    { 66, "v1tube", "V1 Valve", 0.0f, 4.0f, 0.0f, 12u, "", kAmp_e66, 5, 6 },
+    { 67, "patube", "Power Valves", 0.0f, 5.0f, 0.0f, 12u, "", kAmp_e67, 6, 6 },
+    { 68, "spk_load", "Speaker Load", 0.0f, 10.0f, 0.0f, 12u, "", kAmp_e68, 11, 6 },
 };
 
 static const hc::FileParam kCabFiles[] = { {"https://rpowell5064.github.io/guitaramp-suite/cab#irfile", "irfile", "Cabinet IR", ".wav", false}, {"https://rpowell5064.github.io/guitaramp-suite/cab#rigs", "rigs", "Saved Rigs", "", true} };
@@ -991,7 +997,7 @@ static const hc::PortInfo kWahPorts[] = {
 };
 
 static const hc::PluginInfo kPlugins[] = {
-    { "amp", "https://rpowell5064.github.io/guitaramp-suite/amp", "https://rpowell5064.github.io/guitaramp-suite/amp#x11ui", kAmpPorts, 62, 66, 67, kAmpFiles, 1, kAmpGroups, 6,
+    { "amp", "https://rpowell5064.github.io/guitaramp-suite/amp", "https://rpowell5064.github.io/guitaramp-suite/amp#x11ui", kAmpPorts, 65, 69, 70, kAmpFiles, 1, kAmpGroups, 7,
       "AMP", "16 amp models · power-amp stage", { hc::Rgb::hex(0x19e0ff), hc::Rgb::hex(0x2a3340), hc::Rgb::hex(0x161b22) } },
     { "cab", "https://rpowell5064.github.io/guitaramp-suite/cab", "https://rpowell5064.github.io/guitaramp-suite/cab#x11ui", kCabPorts, 24, 28, 29, kCabFiles, 2, kCabGroups, 5,
       "CABINET", "cabinet IRs · low / high cut · mix", { hc::Rgb::hex(0x56aaff), hc::Rgb::hex(0x24476b), hc::Rgb::hex(0x14283d) } },

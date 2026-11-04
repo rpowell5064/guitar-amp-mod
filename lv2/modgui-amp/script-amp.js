@@ -29,7 +29,7 @@ function (event, funcs) {
         tab('voice', hasVoice);
         tab('power', hasPower);
         tab('nam', true);
-        var ok = { amp: true, voice: hasVoice, power: hasPower, nam: true, stage: true };
+        var ok = { amp: true, voice: hasVoice, power: hasPower, nam: true, stage: true, valves: has_valves(icon, m) };
         var cur = icon.data('amp_tab') || 'amp';
         if (!ok[cur]) set_tab(icon, 'amp');
     }
@@ -121,6 +121,16 @@ function (event, funcs) {
         icon.find('[rata-role=compgroup]').toggleClass('mod-hidden', !has);
         icon.find('[rata-role=compctls]').toggleClass('mod-hidden', !on);
         icon.find('[rata-role=pagroup]').toggleClass('mod-hidden', on);
+        // Valves tab (2026-11-04): only while a twin that takes the valve swap runs
+        var vt = icon.find('[rata-role=tab][data-tab=valves]')[0];
+        var showV = has_valves(icon, m);
+        if (vt) vt.classList.toggle('hf-tab-gone', !showV);
+        if (!showV && icon.data('amp_tab') === 'valves') set_tab(icon, 'power');
+    }
+    // Keep in sync with hasValveSwap in amp_plugin.cpp: every component build but the Gainzilla's
+    // (its stages are its own), and the Citrus 200 (always schematic-exact).
+    function has_valves(icon, m) {
+        return (!!HAS_COMP[m] && m !== 2 && (icon.data('amp_comp') || 0) > 0.5) || m === 15;
     }
     // Show the loaded NAM file name (fires on user pick AND on pedalboard load).
     function set_nam(icon, value) {

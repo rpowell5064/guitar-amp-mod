@@ -17,7 +17,7 @@ enum Model {
 };
 constexpr int kInternalDefault = kCrunchy;   // leaving Neural with no remembered model
 
-enum Tab { kTabAmp, kTabVoice, kTabPower, kTabNeural, kTabStage };
+enum Tab { kTabAmp, kTabVoice, kTabPower, kTabValves, kTabNeural, kTabStage };
 
 const char* const kNames[kModels] = {
     "Clean Meanie", "Crunchy McCrunchFace", "Gainzilla", "Doom Daddy", "Tangerang", "Neural",
@@ -72,6 +72,14 @@ bool hasComp(int m)
     }
 }
 
+// A twin that takes the valve swap is running (keep in sync with hasValveSwap in amp_plugin.cpp):
+// every component build but the Gainzilla's, and the Citrus 200 (always schematic-exact).
+bool hasValves(const hc::Values& v)
+{
+    const int m = modelOf(v);
+    return (hasComp(m) && m != kGainzilla && v.get("comp") > 0.5f) || m == kCitrus;
+}
+
 // The high-gain amps that carry a Tight knob (keep in sync with hasTight in amp_plugin.cpp).
 bool hasTight(int m)
 {
@@ -118,7 +126,7 @@ hc::PanelSpec ampPanel()
     };
 
     // ── Tabs: Neural is the mode switch; Voicing / Power Amp only where a model has them.
-    s.tabs       = { "Amp", "Voicing / Channel", "Power Amp", "Neural", "Stage" };
+    s.tabs       = { "Amp", "Voicing / Channel", "Power Amp", "Valves", "Neural", "Stage" };
     s.tabVisible = {
         {},
         [](V v) {
@@ -129,6 +137,7 @@ hc::PanelSpec ampPanel()
                    m == kCaliV || m == kDiamond || m == kTremont || m == kBlueLiner;
         },
         [](V v) { return modelOf(v) != kDoomDaddy && modelOf(v) != kNeural; },
+        [](V v) { return hasValves(v); },   // Valves: a twin that takes the valve swap is running
         {},
         {},   // Stage: every model, Neural too
     };
@@ -145,6 +154,7 @@ hc::PanelSpec ampPanel()
     s.tabFollow = [](V v, int cur) {
         if (modelOf(v) == kNeural)
             return cur == kTabStage ? cur : int(kTabNeural);
+        if (cur == kTabValves && !hasValves(v)) return int(kTabPower);
         return cur == kTabNeural ? int(kTabAmp) : cur;
     };
 
@@ -265,6 +275,11 @@ hc::PanelSpec ampPanel()
                     kTabPower),
           hc::onTab({ "Feel", { hc::knob("pamp_resonance"), hc::toggle("pamp_airfeel") }, paShown },
                     kTabPower) },
+
+        // ── Valves (2026-11-04): retube the twin; the cab its power stage drives
+        { hc::onTab({ "Valves", { hc::select("v1tube", "V1"), hc::select("patube", "Power Valves") } },
+                    kTabValves),
+          hc::onTab({ "Load", { hc::select("spk_load", "Speaker") } }, kTabValves) },
 
         // ── Neural
         { hc::onTab({ "Neural (NAM)",

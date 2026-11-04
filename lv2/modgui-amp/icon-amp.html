@@ -36,6 +36,7 @@
         <div class="hf-tab hf-tab-active" rata-role="tab" data-tab="amp">Amp</div>
         <div class="hf-tab" rata-role="tab" data-tab="voice">Voicing / Channel</div>
         <div class="hf-tab" rata-role="tab" data-tab="power">Power Amp</div>
+        <div class="hf-tab hf-tab-gone" rata-role="tab" data-tab="valves" title="Retube the component build; the cab it drives">Valves</div>
         <div class="hf-tab" rata-role="tab" data-tab="nam">Neural</div>
         <div class="hf-tab" rata-role="tab" data-tab="stage" title="The amp in the room: the speaker driving your strings">Stage</div>
         <!-- MAINS (2026-09-25): 60 / 50 Hz for the input hum comb + gate detector. Lives on the
@@ -298,6 +299,50 @@
                             {{#controls.47}}<div class="mod-knob" title="{{name}}"><div class="mod-knob-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}"></div><span class="mod-knob-title">{{name}}</span><span class="mod-knob-value" mod-role="input-control-value" mod-port-symbol="{{symbol}}"></span></div>{{/controls.47}}
                             {{#controls.21}}<div class="mod-switch pa-sw" title="{{name}}"><div class="mod-switch-image" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="switch"></div><span class="mod-switch-title">{{name}}</span></div>{{/controls.21}}
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ══ VALVES TAB (2026-11-04, mirrors Hex Forge's Valves tab): retube the component twin and tell it
+             which cab it drives. Shown only while a twin that takes it runs (see update_comp). ══ -->
+        <div class="hf-tabpanel" rata-role="panel" data-tab="valves">
+            <div class="hf-agroups">
+                <div class="hf-agroup">
+                    <span class="hf-agroup-title">Valves</span>
+                    <div class="hf-agroup-body clearfix">
+                        {{#controls.61}}
+                        <div class="hf-valve-sel" title="The first preamp valve (both halves). 12AX7 is stock; the others have less gain">
+                            <span class="mod-inline-label">V1</span>
+                            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                            </div>
+                        </div>
+                        {{/controls.61}}
+                        {{#controls.62}}
+                        <div class="hf-valve-sel" title="The output valves, re-biased for each type. Stock = the amp's own">
+                            <span class="mod-inline-label">Power Valves</span>
+                            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                            </div>
+                        </div>
+                        {{/controls.62}}
+                    </div>
+                </div>
+                <div class="hf-agroup">
+                    <span class="hf-agroup-title">Load</span>
+                    <div class="hf-agroup-body clearfix">
+                        {{#controls.63}}
+                        <div class="hf-valve-sel" title="The cab you run after this amp: its speaker is the power stage's load. Own Cab = the speaker the amp was voiced on">
+                            <span class="mod-inline-label">Speaker</span>
+                            <div class="mod-enumerated mod-mini-select" mod-role="input-control-port" mod-port-symbol="{{symbol}}" mod-widget="custom-select" title="{{name}}">
+                                <div mod-role="input-control-value" mod-port-symbol="{{symbol}}" class="mod-enumerated-selected"></div>
+                                <div class="mod-enumerated-list">{{#scalePoints}}<div mod-role="enumeration-option" mod-port-value="{{value}}">{{label}}</div>{{/scalePoints}}</div>
+                            </div>
+                        </div>
+                        {{/controls.63}}
                     </div>
                 </div>
             </div>

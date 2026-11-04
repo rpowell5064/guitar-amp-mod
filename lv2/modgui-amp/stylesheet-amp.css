@@ -593,3 +593,5 @@
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-engine-body { display: flex; align-items: center; justify-content: center; gap: 18px; flex-wrap: wrap; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-engine-body [rata-role=compctls] { display: inline-flex; align-items: center; gap: 18px; }
 .mod-pedal-guitaramp-amp{{{cns}}} .hf-engine-body [rata-role=compctls].mod-hidden { display: none; }
+/* VALVES tab (2026-11-04): a label over each valve / speaker selector */
+.mod-pedal-guitaramp-amp{{{cns}}} .hf-valve-sel { display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 10px; }

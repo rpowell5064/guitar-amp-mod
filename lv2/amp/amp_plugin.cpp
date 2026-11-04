@@ -25,6 +25,10 @@
 #include "DenormalGuard.h"
 #include "AnagramPortState.h"
 #include <new>
+#include <atomic>
+#include <cstdio>
+#include <cstdlib>
+#include <string>
 #include <cstring>
 #include <cstdint>
 #include <cmath>
@@ -64,6 +68,16 @@ static constexpr int kMt15Idx     = 13;    // Tremont 15 (PRS MT15)
 static constexpr int kSvtIdx      = 14;    // Blue Liner (Ampeg SVT — bass)
 static constexpr int kAd200Idx    = 15;    // Citrus 200 (Orange AD200B Mark III — bass; own power section)
 static constexpr int kMaxModel    = 15;    // highest selectable model index (Citrus 200)
+// Valve swap (2026-11-04, mirrors Hex Forge amp_v1tube / amp_patube): V1 = the first preamp valve,
+// Power Valves = the output valves, auto re-biased (Stock = the amp's own valve, bit-identical).
+static constexpr int kV1TubeMax = 4;   // 12AX7 (stock) / 5751 / 12AY7 / 12AT7 / 12AU7
+static constexpr int kPaTubeMax = 5;   // Stock / EL34 / 6L6GC / 6V6GT / EL84 / KT88
+// Speaker Load (2026-11-04): the cab the twin's power stage drives. The cab is a separate plugin, so
+// the amp is told which one: 0 = the amp's own, 1-10 = the Cab plugin's built-in list in its order
+// (Factory, Chime 2x12, American 2x12, Cashback, Hi-Volt, Doom, Bass 8x10 / 4x10 / 2x10 / 1x15),
+// mapped to the CabModels::speakerRowIds() rows.
+static constexpr int kSpkLoadMax = 10;
+static const int kSpkLoadRow[kSpkLoadMax + 1] = { -1, 0, 3, 2, 1, 4, 5, 6, 7, 8, 9 };
 static constexpr int kMaxBlock    = 512;   // internal processing chunk
 static constexpr uint32_t kFbMaxN = 8192;   // Stage Feedback input buffer (a longer period runs with the loop off)
 // Stage Feedback's speaker tap is the AMP's output here, not a cab's: the plugin cannot see the cab after
@@ -92,6 +106,11 @@ static inline bool hasTight(int m) noexcept {
 // Amps that have a schematic-exact twin. Keep in sync with HAS_COMP in script-amp.js.
 static inline bool hasComponentModel(int m) noexcept {
     return m == 0 || m == 1 || m == 2 || m == 4 || m == 6 || m == 8 || m == 10 || m == 11 || m == 12 || m == 14;
+}
+// The twins that take the valve swap, the corrected valve types and the Speaker Load: every component
+// build but the Gainzilla's, plus the Citrus 200 (always schematic-exact). Mirrors c-valves in script-amp.js.
+static inline bool hasValveSwap(int m, bool comp) noexcept {
+    return (comp && hasComponentModel(m) && m != 2) || m == kAd200Idx;
 }
 static inline AmpModel componentAmpFor(int m) noexcept {
     switch (m) {
@@ -217,6 +236,8 @@ enum AmpPorts {
     P_TIGHT,                                               // 2026-10-20 (mv73): Tight on the high-gain amps (mirrors Hex Forge amp_tight; 0 = off)
     P_STAGE_FB, P_STAGE_FBDIST, P_STAGE_FBSUS,             // 2026-10-20 (mv74): Stage Feedback -- the speaker driving the strings
                                                            // (mirrors Hex Forge stage_fb/fbdist/fbsus; 0 = off, bit-identical)
+    P_V1TUBE, P_PATUBE, P_SPKLOAD,                         // 2026-11-04 (mv77): VALVES tab -- V1 valve, power valves, the cab the
+                                                           // power stage drives (mirrors Hex Forge; 0 = stock / own cab, bit-identical)
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,                                               // KosmOS: kx:Reset trigger
 #endif
@@ -224,7 +245,8 @@ enum AmpPorts {
     P_N_PORTS
 };
 
-enum WorkType { WORK_LOAD, WORK_FREE, WORK_NAM_LOAD, WORK_NAM_FREE };
+enum WorkType { WORK_LOAD, WORK_FREE, WORK_NAM_LOAD, WORK_NAM_FREE,
+                WORK_AB_POLL };   // TEMPORARY physics A/B (2026-11-04, as Hex Forge's W_AB_POLL)
 
 struct WorkMsg {
     WorkType          type;
@@ -233,6 +255,9 @@ struct WorkMsg {
     int               modelIdx = 0;
     bool              comp = false;    // build the component twin (when the model has one)
     bool              eco  = false;    // Engine Quality: 2x instead of 4x oversampling
+    int               v1tube = 0;      // valve swap the fresh amp is built with (+ reply)
+    int               patube = 0;
+    int               ab     = 0;      // TEMPORARY A/B flags the fresh amp is built with (+ reply)
     char              path[kPathMax] = {0};
 };
 
@@ -275,6 +300,15 @@ struct AmpPlugin {
     int  lastTube  = -1;
     bool lastComp  = false;   // component build the loaded amp was built with
     bool lastEco   = false;
+    // Valve swap + the A/B physics: a change REBUILDS the amp on the worker (the twin's bias solves and
+    // valve tables, ~10-25 ms on a Pi 5), never on this thread. last* = what the last scheduled build
+    // carries; the running amp was built with its own values and is never retubed here.
+    int  lastV1 = 0, lastPa = 0, lastAb = 0;
+    // TEMPORARY physics A/B (2026-11-04, remove once decided; the same files as Hex Forge): the worker
+    // polls <HOME>/.config/hexchain/ miller_on (bit 0), otres_on (1), pispread_on (2), rectlaw_on (3),
+    // biassup_on (5), tubefix_on (6). cabload_on (4) is not read: here the Speaker Load port decides.
+    std::atomic<int> abHt{0};
+    uint32_t abPollCtr = 0;
     char namPath[kPathMax] = {0};
     float mono[kMaxBlock], monoOut[kMaxBlock];
     float gbufL[kMaxBlock], gbufR[kMaxBlock];   // gated-input scratch (avoids writing host input buffers)
@@ -320,8 +354,14 @@ static LV2_Worker_Status scheduleRebuild(AmpPlugin* p, int modelIdx) {
     // mod-host's worker until it aborted on a corrupted free
     msg.comp = hasComponentModel(modelIdx) && p->ctrl[P_COMP] && *p->ctrl[P_COMP] > 0.5f;
     msg.eco  = p->ctrl[P_ECO]  && *p->ctrl[P_ECO]  > 0.5f;
+    if (hasValveSwap(modelIdx, msg.comp)) {
+        msg.v1tube = p->ctrl[P_V1TUBE] ? clampIdx(*p->ctrl[P_V1TUBE], 0, kV1TubeMax) : 0;
+        msg.patube = p->ctrl[P_PATUBE] ? clampIdx(*p->ctrl[P_PATUBE], 0, kPaTubeMax) : 0;
+    }
+    msg.ab = p->abHt.load(std::memory_order_relaxed);
     const LV2_Worker_Status st = p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
-    if (st == LV2_WORKER_SUCCESS) { p->lastComp = msg.comp; p->lastEco = msg.eco; }
+    if (st == LV2_WORKER_SUCCESS) { p->lastComp = msg.comp; p->lastEco = msg.eco;
+                                    p->lastV1 = msg.v1tube; p->lastPa = msg.patube; p->lastAb = msg.ab; }
     return st;
 }
 
@@ -376,6 +416,18 @@ static LV2_Worker_Status amp_work(LV2_Handle h, LV2_Worker_Respond_Function resp
 
     if (msg->type == WORK_FREE)     { delete msg->amp; return LV2_WORKER_SUCCESS; }
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
+    if (msg->type == WORK_AB_POLL) {   // TEMPORARY physics A/B (2026-11-04, see AmpPlugin::abHt)
+        static const char* const kAbFiles[7] = { "/miller_on", "/otres_on", "/pispread_on", "/rectlaw_on",
+                                                 nullptr, "/biassup_on", "/tubefix_on" };
+        const char* home = std::getenv("HOME");
+        const std::string dir = (home && home[0]) ? std::string(home) + "/.config/hexchain" : std::string("/tmp");
+        int v = 0;
+        for (int b = 0; b < 7; ++b)
+            if (kAbFiles[b])
+                if (FILE* f = std::fopen((dir + kAbFiles[b]).c_str(), "r")) { v |= (1 << b); std::fclose(f); }
+        p->abHt.store(v, std::memory_order_relaxed);
+        return LV2_WORKER_SUCCESS;
+    }
 
     if (msg->type == WORK_NAM_LOAD) {
         auto* nm = new(std::nothrow) NamModel;
@@ -394,6 +446,18 @@ static LV2_Worker_Status amp_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     {   // Component Build swaps in the schematic-exact twin (own power section)
         const int idx = clampIdx(static_cast<float>(msg->modelIdx), 0, kMaxModel);
         na->setAmpModel((msg->comp && hasComponentModel(idx)) ? componentAmpFor(idx) : kModelMap[idx]);
+    }
+    // Valve swap + the A/B physics are set HERE, on the fresh amp: each change rebuilds the twin's
+    // stages, which must stay off the audio thread. 0 = stock / off, which the amp already is.
+    if (msg->v1tube) na->setParameter("v1tube", static_cast<float>(msg->v1tube));
+    if (msg->patube) na->setParameter("patube", static_cast<float>(msg->patube));
+    if (const int f = msg->ab) {
+        na->setParameter("miller",   (f & 1)  ? 1.0f : 0.0f);
+        na->setParameter("otres",    (f & 2)  ? 1.0f : 0.0f);
+        na->setParameter("pispread", (f & 4)  ? 1.0f : 0.0f);
+        na->setParameter("rectlaw",  (f & 8)  ? 1.0f : 0.0f);
+        na->setParameter("biassup",  (f & 32) ? 1.0f : 0.0f);
+        na->setParameter("tubefix",  (f & 64) ? 1.0f : 0.0f);
     }
     WorkMsg reply; reply.type = WORK_LOAD; reply.amp = na; reply.modelIdx = msg->modelIdx;
     respond(handle, sizeof(reply), &reply);
@@ -455,6 +519,7 @@ static void anagramUpdateUi(AmpPlugin* p, int m) {
     for (int q : { P_SV_ULTRALO, P_SV_ULTRAHI, P_SV_MIDFREQ }) ui.ui(q, m == kSvtIdx);
 
     ui.ui(P_COMP,    hasComponentModel(m));
+    for (int q : { P_V1TUBE, P_PATUBE, P_SPKLOAD }) ui.ui(q, hasValveSwap(m, on(P_COMP)));
     ui.ui(P_DYNLOAD, comp);
     ui.ui(P_ECO,     comp);
     ui.ui(P_PA_AUTO,   paFace);
@@ -631,9 +696,23 @@ static void amp_run(LV2_Handle h, uint32_t n) {
         p->inComb[1].prepare(p->rate, mainsHz);
         p->inGate.setParameter("mainsHz", mainsHz);
     }
-    if (modelIdx != p->lastModel || compOn != p->lastComp || ecoOn != p->lastEco) {
+    const bool valves = hasValveSwap(modelIdx, compOn);
+    const int  v1Want = (valves && p->ctrl[P_V1TUBE]) ? clampIdx(*p->ctrl[P_V1TUBE], 0, kV1TubeMax) : 0;
+    const int  paWant = (valves && p->ctrl[P_PATUBE]) ? clampIdx(*p->ctrl[P_PATUBE], 0, kPaTubeMax) : 0;
+    const int  abWant = p->abHt.load(std::memory_order_relaxed);
+    if (modelIdx != p->lastModel || compOn != p->lastComp || ecoOn != p->lastEco
+        || v1Want != p->lastV1 || paWant != p->lastPa || abWant != p->lastAb) {
         if (scheduleRebuild(p, modelIdx) == LV2_WORKER_SUCCESS) p->lastModel = modelIdx;
     }
+#ifndef HEXCHAIN_ANAGRAM
+    // TEMPORARY physics A/B (2026-11-04, remove once decided): ask the worker twice a second.
+    p->abPollCtr += n;
+    if (p->abPollCtr >= static_cast<uint32_t>(p->rate * 0.5)) {
+        p->abPollCtr = 0;
+        WorkMsg am; am.type = WORK_AB_POLL;
+        p->schedule->schedule_work(p->schedule->handle, sizeof(am), &am);
+    }
+#endif
 
     if (modelIdx == kSunnIdx) {
         amp->setParameter("vol1",         *p->ctrl[P_GAIN]);
@@ -659,6 +738,15 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("channel",  *p->ctrl[P_CHANNEL]);
     amp->setParameter("resonance",*p->ctrl[P_RESON]);
     amp->setParameter("dynload",  *p->ctrl[P_DYNLOAD]);   // component builds only: the driver as the PA's load (small-signal transparent)
+    // Component twins (2026-11-03 in Hex Forge, decided by ear): HT supply sag + ripple into the plates,
+    // screens, PI and preamp rails; AC-heater hum, V1 microphony, valve spread.
+    amp->setParameter("supply", 1.0f); amp->setParameter("ripple", 1.0f);
+    amp->setParameter("heaterhum", 1.0f); amp->setParameter("micro", 1.0f); amp->setParameter("spread", 1.0f);
+    {   // Speaker Load: the chosen cab's speaker as the twin's power-stage load (0 = its own cab, unchanged)
+        const int sl = (valves && p->ctrl[P_SPKLOAD]) ? clampIdx(*p->ctrl[P_SPKLOAD], 0, kSpkLoadMax) : 0;
+        amp->setParameter("cabrow",  static_cast<float>(kSpkLoadRow[sl]));
+        amp->setParameter("cabload", sl > 0 ? 1.0f : 0.0f);
+    }
 
     // Beardo BE (Friedman) — its own 3-way channel (Clean/BE/HBE) + voicing toggles.
     if (modelIdx == kFriedmanIdx) {
