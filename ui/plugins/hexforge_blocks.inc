@@ -434,27 +434,33 @@ PanelSpec amp(bool two)
         face.badge   = kAmpNames[k];
         return face;
     };
-    s.tabs = { "Amp", "Voicing / Channel", "Power Amp", "Neural" };
+    // Tab indices: 0 Amp, 1 Voicing, 2 Power Amp, 3 Valves (2026-11-03), 4 Neural, 5 Blend (Amp 2).
+    s.tabs = { "Amp", "Voicing / Channel", "Power Amp", "Valves", "Neural" };
     if (two)
         s.tabs.push_back("Blend");
     s.tabVisible = { {},
                      [m](V v) { const int k = m(v); return k == 3 || k == 6 || k == 11 || k == 12 || k == 13 || k == 14; },
                      [m](V v) { const int k = m(v); return k != 3 && k != 5 && k != 15; },
+                     // Valves (v54): only while this rig runs a component build -- Component Model on
+                     // with an amp that has a twin, or the Citrus 200. Mirrors runsComponentBuild().
+                     [m](V v) { const int k = m(v);
+                                const bool twin = k == 0 || k == 1 || k == 2 || k == 4 || k == 6 || k == 8 || k == 10 || k == 11 || k == 12 || k == 14;
+                                return (v.get("amp_evhcomp") > 0.5f && twin) || k == 15; },
                      {} };
     auto lastInternal = std::make_shared<int>(1);
     s.onTab = [m, ms, lastInternal](int tab, V v, const PortSetter& set) {
         const int k = m(v);
-        if (tab == 3 && k != 5) {
+        if (tab == 4 && k != 5) {
             *lastInternal = k;
             set(ms.c_str(), 5);
-        } else if (tab != 3 && tab != 4 && k == 5) {
+        } else if (tab != 4 && tab != 5 && k == 5) {
             set(ms.c_str(), *lastInternal == 5 ? 1 : *lastInternal);
         }
     };
     s.tabFollow = [m](V v, int cur) {
         if (m(v) == 5)
-            return cur == 4 ? 4 : 3;
-        return cur == 3 ? 0 : cur;
+            return cur == 5 ? 5 : 4;
+        return cur == 4 ? 0 : cur;
     };
     s.onEdit = [p, ms](const std::string& sym, float v, const PortSetter& set) {
         if (sym == ms && std::lround(v) == 6)
@@ -500,11 +506,6 @@ PanelSpec amp(bool two)
         face.push_back(hc::toggle("amp_evhcomp", "Component", comp));
         face.push_back(hc::toggle("amp_dynload", "Dyn Load", comp));
     }
-    // Valve swap (v54): only while this rig runs a component build -- Component Model on with an
-    // amp that has a twin, or the Citrus 200 (always one). Mirrors runsComponentBuild() in hf_types.inc.
-    auto valves = [m, comp](V v) { return (v.get("amp_evhcomp") > 0.5f && comp(v)) || m(v) == 15; };
-    face.push_back(hc::select(p + "v1tube", "V1", valves));
-    face.push_back(hc::select(p + "patube", "Valves", valves));
     for (auto c : { hc::knob(p + "master", "Master", mast), hc::knob(p + "sag", "Sag"),
                     hc::toggle(p + "channel", "Channel", [m](V v) { return m(v) == 2 || m(v) == 4; }),
                     hc::knob(p + "resonance", "Resonance", is(2)), hc::knob(p + "bass", "Bass"),
@@ -565,13 +566,14 @@ PanelSpec amp(bool two)
                                           "NAM Model"),
                                  360),
                         hc::knob(p + "nam_gain", "NAM Gain"), hc::knob(p + "nam_vol", "NAM Level") } },
-                    3) },
+                    4) },
+        { hc::onTab({ "Valves", { hc::select(p + "v1tube", "V1"), hc::select(p + "patube", "Power Valves") } }, 3) },
     };
     if (two)
         s.rows.push_back({ hc::onTab({ "Blend with Amp 1",
                                        { hc::knob("rb_blend", "Blend A/B"), hc::knob("rb_level", "B Level"),
                                          hc::toggle("rb_pol", "B Invert"), hc::knob("rb_locut", "B LoCut") } },
-                                     4) });
+                                     5) });
     s.plateMinH = 0;   // the face sizes to the tallest tab
     return s;
 }

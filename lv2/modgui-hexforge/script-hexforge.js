@@ -484,7 +484,7 @@ function (event, funcs) {
             el.style.setProperty('--neon-delay', '-' + (Math.random() * 240).toFixed(2) + 's');
         }
     }
-    // ── Amp detail TABS (Amp / Voicing / Power Amp / Neural-or-Blend) ──
+    // ── Amp detail TABS (Amp / Voicing / Power Amp / Valves / Neural-or-Blend) ──
     function setAmpTab(icon, blk, name) {
         var p = panelOf(icon, blk);
         p.find('[rata-role=atab]').each(function () {
@@ -767,12 +767,14 @@ function (event, funcs) {
         var p = panelOf(icon, 'amp');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
         p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);
+        var showValves = hasValveSwap(m, compToggle(icon));   // Valves tab: component builds only
+        p.find('[rata-role=atab][data-tab=valves]').toggleClass('hf-atab-gone', !showValves);
         p.find('[rata-role=atab][data-tab=nam]').removeClass('hf-atab-gone');   // Neural tab is ALWAYS available (it's the mode switch)
         // Keep the active tab in sync with the mode: entering/leaving NAM (model 5) flips the tab.
         var cur = icon.data('hf_amp_tab') || 'amp';
         if (m === 5 && cur !== 'nam') { setAmpTab(icon, 'amp', 'nam'); cur = 'nam'; }
         else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp', 'amp'); cur = 'amp'; }
-        var ok = { amp: true, voice: showVoice, power: showPower, nam: true };
+        var ok = { amp: true, voice: showVoice, power: showPower, valves: showValves, nam: true };
         if (!ok[cur]) setAmpTab(icon, 'amp', 'amp');
         p.find('[rata-role=lbl-amp_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 8 || m === 0 ? 'Volume' : (m === 5 ? 'Output' : 'Gain'))));
         setModelVal(icon, 'amp', m);
@@ -807,11 +809,13 @@ function (event, funcs) {
         var p = panelOf(icon, 'amp2');
         p.find('[rata-role=atab][data-tab=voice]').toggleClass('hf-atab-gone', !showVoice);
         p.find('[rata-role=atab][data-tab=power]').toggleClass('hf-atab-gone', !showPower);
+        var showValves = hasValveSwap(m, compToggle(icon));
+        p.find('[rata-role=atab][data-tab=valves]').toggleClass('hf-atab-gone', !showValves);
         p.find('[rata-role=atab][data-tab=nam]').removeClass('hf-atab-gone');
         var cur = icon.data('hf_rb_tab') || 'amp';
         if (m === 5 && cur !== 'nam') { setAmpTab(icon, 'amp2', 'nam'); cur = 'nam'; }
         else if (m !== 5 && cur === 'nam') { setAmpTab(icon, 'amp2', 'amp'); cur = 'amp'; }
-        var ok = { amp: true, voice: showVoice, power: showPower, nam: true, blend: true };
+        var ok = { amp: true, voice: showVoice, power: showPower, valves: showValves, nam: true, blend: true };
         if (!ok[cur]) setAmpTab(icon, 'amp2', 'amp');
         p.find('[rata-role=lbl-rb_gain]').text(m === 3 ? 'Normal Vol' : (m === 10 ? 'Vol I' : (m === 8 || m === 0 ? 'Volume' : (m === 5 ? 'Output' : 'Gain'))));
         applyAmpFace(icon, 'amp2', m);
