@@ -44,6 +44,7 @@ public:
         OrangeAD200B = 22,
         MarshallPlexiComponent = 23,
         FenderDeluxeComponent = 24,
+        SunnModelTComponent = 25,
         HiwattDR103Component = 26,
     };
 

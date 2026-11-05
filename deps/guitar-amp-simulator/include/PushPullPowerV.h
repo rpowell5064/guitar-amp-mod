@@ -65,6 +65,12 @@ public:
         // stability cap, e.g. the BE-100's C32 100p): a differential 1-pole
         // roll-off at 1/(2π·C·(ZpA+ZpB)), Zp = Ra ‖ rp(62k5). 0 = none.
         double piPlateCap = 0.0;
+        // The PI -> output-grid coupling high-pass and the feedback path's own high-pass (Hz).
+        // 0 = the toolkit's original fixed corners (.047u into 221k5 = 15.3 Hz; .047u into 1M =
+        // 3.4 Hz), bit-identical. A drawing with other values sets them (2026-11-05, Sunn Model T:
+        // .25u into 100k + 1k, and a DC-coupled loop).
+        double piCoupHz  = 0.0;
+        double nfbCoupHz = 0.0;
 
         // ── Output stage ─────────────────────────────────────────────────────
         double vb   = 491.0;       // plate supply (V)
@@ -192,11 +198,11 @@ public:
         if (valve_) applyValve();
         lutB_ = nullptr; lutBlend_ = 0.0;   // a fresh prepare starts off any supply glide
         c118HP_.setCoeffs(Filters::highpass1pole(
-            1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
+            p_.piCoupHz > 0.0 ? p_.piCoupHz : 1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
         c119HP_.setCoeffs(Filters::highpass1pole(
-            1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
+            p_.piCoupHz > 0.0 ? p_.piCoupHz : 1.0 / (2.0 * M_PI * 0.047e-6 * 221.5e3), fs_));
         c89HP_.setCoeffs(Filters::highpass1pole(
-            1.0 / (2.0 * M_PI * 0.047e-6 * 1e6), fs_));
+            p_.nfbCoupHz > 0.0 ? p_.nfbCoupHz : 1.0 / (2.0 * M_PI * 0.047e-6 * 1e6), fs_));
         // Lab A/B only: EVHCOMP_IMPLICIT=0 restores the one-sample-delayed feedback loop.
         if (const char* e = std::getenv("EVHCOMP_IMPLICIT")) implicitLoop_ = std::atof(e) != 0.0;
         if (std::getenv("EVHCOMP_JOINTONLY")) jointOnly_ = true;        // lab: joint LTP solve, delayed loop
