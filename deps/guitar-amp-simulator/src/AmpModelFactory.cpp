@@ -26,6 +26,7 @@
 #include "FenderDeluxeComponentModel.h"
 #include "SunnModelTComponentModel.h"
 #include "HiwattDR103ComponentModel.h"
+#include "PeaveyBackstageComponentModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -56,6 +57,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::FenderDeluxeComponent: return std::make_unique<FenderDeluxeComponentModel>();
         case ModelID::SunnModelTComponent: return std::make_unique<SunnModelTComponentModel>();
         case ModelID::HiwattDR103Component: return std::make_unique<HiwattDR103ComponentModel>();
+        case ModelID::PeaveyBackstageComponent: return std::make_unique<PeaveyBackstageComponentModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -107,6 +109,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::FenderDeluxeComponent: return "Fender Deluxe Reverb Component";
         case ModelID::SunnModelTComponent: return "Sunn Model T Component";
         case ModelID::HiwattDR103Component: return "Hiwatt DR103 Component";
+        case ModelID::PeaveyBackstageComponent: return "Peavey Backstage Component";
         default:                           return "Unknown";
     }
 }
@@ -144,6 +147,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::FenderDeluxeComponent: return 4;  // 2x 6V6GT (AB763)
         case ModelID::SunnModelTComponent: return 5;  // 4x 6550 (D-1029 A)
         case ModelID::HiwattDR103Component: return 1;  // 4x EL34 (Hiwatt 100 W output stage)
+        case ModelID::PeaveyBackstageComponent: return 0;  // solid-state (own power amp; no valves)
         default:                           return 1;
     }
 }
@@ -198,5 +202,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Fender Deluxe Reverb Component") return ModelID::FenderDeluxeComponent;
     if (name == "Sunn Model T Component") return ModelID::SunnModelTComponent;
     if (name == "Hiwatt DR103 Component") return ModelID::HiwattDR103Component;
+    if (name == "Peavey Backstage Component") return ModelID::PeaveyBackstageComponent;
     return ModelID::SunnModelT;
 }

@@ -37,7 +37,8 @@ enum class AmpModel {
     PlexiComp,              // component-exact Marshall 1959 Super Lead, July 1970 (Lab toggle)
     DeluxeComp,             // component-exact Fender Deluxe Reverb AB763, vibrato channel (Lab toggle, 2026-10-04)
     SunnComp,               // component-exact Sunn Model T, D-1029 rev A 1973 (Lab toggle, 2026-11-05)
-    HiwattComp              // component-exact Hiwatt DR103, early-70s four-input (Lab toggle, 2026-11-05)
+    HiwattComp,             // component-exact Hiwatt DR103, early-70s four-input (Lab toggle, 2026-11-05)
+    BackstageComp           // component-exact Peavey Backstage Plus, solid state (Lab toggle, 2026-11-05)
 };
 
 // Amp block: gain staging → tone stack → power amp simulation.

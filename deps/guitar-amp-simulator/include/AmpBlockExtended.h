@@ -86,6 +86,7 @@ public:
             case AmpModel::DeluxeComp:         fid = FID::FenderDeluxeComponent;       break;
             case AmpModel::SunnComp:           fid = FID::SunnModelTComponent;         break;
             case AmpModel::HiwattComp:         fid = FID::HiwattDR103Component;        break;
+            case AmpModel::BackstageComp:      fid = FID::PeaveyBackstageComponent;    break;
             default:                            isExtended = false;              break;
         }
 

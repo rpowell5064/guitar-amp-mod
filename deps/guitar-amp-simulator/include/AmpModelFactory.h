@@ -46,6 +46,7 @@ public:
         FenderDeluxeComponent = 24,
         SunnModelTComponent = 25,
         HiwattDR103Component = 26,
+        PeaveyBackstageComponent = 27,
     };
 
     static constexpr int kNumModels = 15;
