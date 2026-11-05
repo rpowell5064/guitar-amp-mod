@@ -56,6 +56,8 @@ public:
     void  reset()                                                 noexcept override;
     void  advanceSmoothing()                                      noexcept override;
     float processSample(float x, int channel)                     noexcept override;
+    float processSampleHt(float x, int channel) noexcept override;   // the twins' extras on (2026-11-05; EVH5150ComponentModelHt.cpp)
+    bool  htActive() const noexcept override { return ch_[0].pa.htOn() || dynMiller_; }
     void  setParameter(const std::string& id, float value)        noexcept override;
     float getParameter(const std::string& id) const               noexcept override;
 
@@ -193,6 +195,16 @@ private:
     std::array<ChState, kMaxCh> ch_;
 
     void recalcPots() noexcept;   // gain/tone-pot-dependent pieces
+    // The twins' extras (2026-11-05), all default off / stock. Defined in EVH5150ComponentModelHt.cpp
+    // with the extras' signal path, so this file's per-sample code is untouched.
+    int  v1Tube_ = 0, paTube_ = 0;             // "v1tube" (V1 = V1-A + V1-B) / "patube" (0 = the drawing's 6L6GC)
+    bool dynMiller_ = false;                   // "miller"
+    bool cabLoad_ = false;                     // "cabload"
+    int  cabRow_ = -1;                         // "cabrow"
+    void applyExtras2() noexcept;              // valve overrides + Miller set-up (ahead of the stage builds)
+    void applySupplyLayout() noexcept;         // the HT supply tree (after the stage builds: needs their idle currents)
+    bool setExtraParam(const std::string& id, float value) noexcept;
+    bool getExtraParam(const std::string& id, float& value) const noexcept;
     void applyZRes() noexcept { for (auto& c : ch_) c.pa.setZRes(zResHz_, zResDb_, zResQ_); }
     void applyKnee() noexcept;   // fit9: push kneeV_ into every triode stage
     // Reflected speaker impedance, revised 2026-09-26 (user: "missing some tight lowend").
