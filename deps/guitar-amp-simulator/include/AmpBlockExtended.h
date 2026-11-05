@@ -84,6 +84,7 @@ public:
             case AmpModel::OrangeAD200B:       fid = FID::OrangeAD200B;                break;
             case AmpModel::PlexiComp:          fid = FID::MarshallPlexiComponent;      break;
             case AmpModel::DeluxeComp:         fid = FID::FenderDeluxeComponent;       break;
+            case AmpModel::BackstageComp:      fid = FID::PeaveyBackstageComponent;    break;
             default:                            isExtended = false;              break;
         }
 

@@ -44,6 +44,8 @@ public:
         OrangeAD200B = 22,
         MarshallPlexiComponent = 23,
         FenderDeluxeComponent = 24,
+        // 25, 26: SunnModelTComponent / HiwattDR103Component (parallel branch)
+        PeaveyBackstageComponent = 27,
     };
 
     static constexpr int kNumModels = 15;
