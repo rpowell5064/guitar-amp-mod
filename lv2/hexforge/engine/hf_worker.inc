@@ -26,11 +26,12 @@ static bool hfWork(HexForge* p, const void* data, HfRespondFn respond, void* han
     if (msg->type == W_AMP_FREE) { delete msg->amp; return true; }
     if (msg->type == W_NAM_FREE) { delete msg->nam; return true; }
     if (msg->type == W_AB_POLL) {   // TEMPORARY physics A/B (2026-11-03, see hf_types.inc)
-        static const char* const kAbFiles[7] = { "/miller_on", "/otres_on", "/pispread_on", "/rectlaw_on",
-                                                 "/cabload_on", "/biassup_on", "/tubefix_on" };
+        static const char* const kAbFiles[9] = { "/miller_on", "/otres_on", "/pispread_on", "/rectlaw_on",
+                                                 "/cabload_on", "/biassup_on", "/tubefix_on",
+                                                 "/newtwins_on", "/gzht_on" };   // 2026-11-05: bits 7 and 8
         const std::string dir = hfplat::configDir();
         int v = 0;
-        for (int b = 0; b < 7; ++b)
+        for (int b = 0; b < 9; ++b)
             if (FILE* f = std::fopen((dir + kAbFiles[b]).c_str(), "r")) { v |= (1 << b); std::fclose(f); }
         p->abHt.store(v, std::memory_order_relaxed);
         return true;

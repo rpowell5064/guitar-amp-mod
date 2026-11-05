@@ -66,6 +66,7 @@ bool hasComp(int m)
     switch (m) {
     case kCleanMeanie: case kCrunchy: case kGainzilla: case kTangerang: case kBeardo:
     case kChime: case kPlexi: case kCaliV: case kDiamond: case kBlueLiner:
+    case kDoomDaddy: case kHiVolt: case kBackline: case kTremont:   // 2026-11-05 (behind newtwins_on until decided)
         return true;
     default:
         return false;
@@ -73,11 +74,11 @@ bool hasComp(int m)
 }
 
 // A twin that takes the valve swap is running (keep in sync with hasValveSwap in amp_plugin.cpp):
-// every component build but the Gainzilla's, and the Citrus 200 (always schematic-exact).
+// every component build but the solid-state Backline Plus, and the Citrus 200 (always schematic-exact).
 bool hasValves(const hc::Values& v)
 {
     const int m = modelOf(v);
-    return (hasComp(m) && m != kGainzilla && v.get("comp") > 0.5f) || m == kCitrus;
+    return (hasComp(m) && m != kBackline && v.get("comp") > 0.5f) || m == kCitrus;
 }
 
 // The high-gain amps that carry a Tight knob (keep in sync with hasTight in amp_plugin.cpp).

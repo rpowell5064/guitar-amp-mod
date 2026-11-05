@@ -105,12 +105,20 @@ static inline bool hasTight(int m) noexcept {
 // ── Component builds (2026-09-23, mirrors Hex Forge v48+) ───────────────────
 // Amps that have a schematic-exact twin. Keep in sync with HAS_COMP in script-amp.js.
 static inline bool hasComponentModel(int m) noexcept {
-    return m == 0 || m == 1 || m == 2 || m == 4 || m == 6 || m == 8 || m == 10 || m == 11 || m == 12 || m == 14;
+    return m == 0 || m == 1 || m == 2 || m == 3 || m == 4 || m == 6 || m == 7 || m == 8 || m == 9 || m == 10 || m == 11 || m == 12 || m == 13 || m == 14;
 }
+// TEMPORARY A/B (2026-11-05, as Hex Forge's): the four newest twins (Doom Daddy, Hi-Volt, Backline Plus,
+// Tremont 15) run only while ~/.config/hexchain/newtwins_on exists (abHt bit 7); the Gainzilla twin takes
+// the HT extras only while gzht_on exists (bit 8). The Anagram never polls: both stay off there.
+static constexpr int kAbNewTwins = 128;
+static constexpr int kAbGzHt     = 256;
+static inline bool isNewTwin(int m) noexcept { return m == 3 || m == 7 || m == 9 || m == 13; }
+static inline bool twinAllowed(int m, int abFlags) noexcept { return !isNewTwin(m) || (abFlags & kAbNewTwins) != 0; }
 // The twins that take the valve swap, the corrected valve types and the Speaker Load: every component
-// build but the Gainzilla's, plus the Citrus 200 (always schematic-exact). Mirrors c-valves in script-amp.js.
+// build (the Gainzilla's since 2026-11-05) but the solid-state Backline Plus, plus the Citrus 200
+// (always schematic-exact). Mirrors has_valves in script-amp.js.
 static inline bool hasValveSwap(int m, bool comp) noexcept {
-    return (comp && hasComponentModel(m) && m != 2) || m == kAd200Idx;
+    return (comp && hasComponentModel(m) && m != 9) || m == kAd200Idx;
 }
 static inline AmpModel componentAmpFor(int m) noexcept {
     switch (m) {
@@ -124,6 +132,10 @@ static inline AmpModel componentAmpFor(int m) noexcept {
         case 11: return AmpModel::MesaMarkVComp;
         case 12: return AmpModel::MesaDualRectifierComp;
         case 14: return AmpModel::SvtComp;
+        case 3:  return AmpModel::SunnComp;
+        case 7:  return AmpModel::HiwattComp;
+        case 9:  return AmpModel::BackstageComp;
+        case 13: return AmpModel::MT15Comp;
         default: return AmpModel::EVH5150Comp;
     }
 }
@@ -133,22 +145,23 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 // at the same knobs, so the Component Build switch is loudness-neutral.
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
-static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, 0.0f, 10.40f, 0.0f, 1.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.95f, -3.00f, 0.0f, -2.41f, 0.0f };
+// [3]/[7]/[9]/[13]: the 2026-11-05 twins (parity with Hex Forge hf_types.inc)
+static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, -7.35f, 10.40f, 0.0f, 1.80f, 3.60f, 4.50f, 0.70f, 1.40f, -2.95f, -3.00f, -0.05f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
     { 0.00f, 0.20f, 0.05f, 0.00f, 0.00f, 0.00f, -0.05f },   // JCM800 corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8): presets 62/1/24 at -24/-34 dBFS RMS, the twin's own gain-knob loudness law now sits within 0.2 dB of the shipped model (the old row {6.6 3.3 1.2 0 -.7 -1.2 -1.5} was compensating the wrong input scale); previously re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 4.40f, 1.90f, 0.70f, 0.00f, -0.40f, -0.70f, -1.00f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 3.35f, 1.65f, 0.67f, 0.00f, -0.53f, -0.97f, -1.37f },   // Doom Daddy twin (2026-11-05, standalone render at master .7; re-measure with the preset re-level)
     { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -6.45f, -3.50f, -1.05f, 0.00f, 0.25f, 0.20f, 0.25f },   // Friedman corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8, VR4 .25, HBE trim): BE/HBE presets 28/63/12 at -24/-34 dBFS RMS, mean; was {-4.95 -3.0 -1.35 0 -.05 -.15 -.2} with inVolts 1.0 / knee .75 (-24 dBFS, tone knobs at noon; mean of BE and HBE)
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 4.73f, 0.35f, -0.28f, 0.00f, 0.45f, 0.84f, 1.19f },   // Hi-Volt twin (2026-11-05, same)
     { 1.60f, 0.40f, 0.20f, 0.00f, -0.10f, -0.30f, -0.30f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -3.26f, -0.15f, 0.21f, 0.00f, 0.45f, 0.32f, 0.23f },   // Backline Plus twin (2026-11-05, same)
     { 3.30f, 1.60f, 0.50f, 0.00f, -0.10f, -0.20f, -0.20f },
     { -5.40f, -0.85f, -0.15f, 0.00f, 0.00f, 0.00f, -0.05f },   // Cali V: re-measured in-plugin 2026-10-19 (preset 52, wavgain 19.5) for the input scale 0.0011 -> 0.0070; Mk -2.80 -> -2.95
     { 4.70f, 3.20f, 1.60f, 0.00f, -0.40f, -0.90f, -1.60f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -6.65f, -2.72f, -0.89f, 0.00f, 0.43f, 0.66f, 0.79f },   // Tremont 15 twin, Lead (2026-11-05, same)
     { 0.77f, 0.13f, -0.02f, -0.00f, 0.06f, 0.12f, 0.15f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };
@@ -184,7 +197,7 @@ static const float kCompModeDb[16][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -3.27f, -2.08f, 4.98f, 2.58f, 2.72f, 2.24f, -0.00f, 1.51f, 0.29f },
     { -6.51f, 0.68f, 4.33f, 2.63f, 0.57f, 1.42f, 0.78f, -1.81f, -1.81f },   // Diamond Plate per mode; 2026-10-19 + the 55 Hz low-resonance fit's A-weighted loss (parity with Hex Forge hf_types.inc)
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 3.23f, 4.07f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },   // Tremont 15 twin (2026-11-05): Clean / Crunch (the real clean channel with the treble pot's pull-Boost) / Lead, relative to Lead
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };
@@ -352,7 +365,8 @@ static LV2_Worker_Status scheduleRebuild(AmpPlugin* p, int modelIdx) {
     // gated like run()'s compOn: recorded raw, a model with no twin read as changed on EVERY block and
     // rebuilt the amp each period (Component Build is on by default) -- 2026-10-29 that storm flooded
     // mod-host's worker until it aborted on a corrupted free
-    msg.comp = hasComponentModel(modelIdx) && p->ctrl[P_COMP] && *p->ctrl[P_COMP] > 0.5f;
+    msg.comp = hasComponentModel(modelIdx) && p->ctrl[P_COMP] && *p->ctrl[P_COMP] > 0.5f
+               && twinAllowed(modelIdx, p->abHt.load(std::memory_order_relaxed));
     msg.eco  = p->ctrl[P_ECO]  && *p->ctrl[P_ECO]  > 0.5f;
     if (hasValveSwap(modelIdx, msg.comp)) {
         msg.v1tube = p->ctrl[P_V1TUBE] ? clampIdx(*p->ctrl[P_V1TUBE], 0, kV1TubeMax) : 0;
@@ -417,12 +431,13 @@ static LV2_Worker_Status amp_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     if (msg->type == WORK_FREE)     { delete msg->amp; return LV2_WORKER_SUCCESS; }
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     if (msg->type == WORK_AB_POLL) {   // TEMPORARY physics A/B (2026-11-04, see AmpPlugin::abHt)
-        static const char* const kAbFiles[7] = { "/miller_on", "/otres_on", "/pispread_on", "/rectlaw_on",
-                                                 nullptr, "/biassup_on", "/tubefix_on" };
+        static const char* const kAbFiles[9] = { "/miller_on", "/otres_on", "/pispread_on", "/rectlaw_on",
+                                                 nullptr, "/biassup_on", "/tubefix_on",
+                                                 "/newtwins_on", "/gzht_on" };   // 2026-11-05: bits 7 and 8
         const char* home = std::getenv("HOME");
         const std::string dir = (home && home[0]) ? std::string(home) + "/.config/hexchain" : std::string("/tmp");
         int v = 0;
-        for (int b = 0; b < 7; ++b)
+        for (int b = 0; b < 9; ++b)
             if (kAbFiles[b])
                 if (FILE* f = std::fopen((dir + kAbFiles[b]).c_str(), "r")) { v |= (1 << b); std::fclose(f); }
         p->abHt.store(v, std::memory_order_relaxed);
@@ -493,7 +508,8 @@ static LV2_Worker_Status amp_work_response(LV2_Handle h, uint32_t, const void* d
 static void anagramUpdateUi(AmpPlugin* p, int m) {
     auto on = [p](int port) { return p->ctrl[port] && *p->ctrl[port] > 0.5f; };
     const bool rvClean  = (m == 4 && on(P_CHANNEL));          // Rockerverb clean channel: no Middle / Master
-    const bool comp     = hasComponentModel(m) && on(P_COMP);
+    const bool twin     = hasComponentModel(m) && !isNewTwin(m);   // the 2026-11-05 twins wait for their A/B, which the device has no files for
+    const bool comp     = twin && on(P_COMP);
     const bool hasPower = (m != kSunnIdx && m != kNamIdx);   // Sunn's own power section; a capture has its own
     const bool paFace   = hasPower && !comp;                  // a component twin runs its own power section
     const bool paManual = paFace && !on(P_PA_AUTO);
@@ -518,8 +534,8 @@ static void anagramUpdateUi(AmpPlugin* p, int m) {
     for (int q : { P_MT_MODE, P_MT_BRIGHT })            ui.ui(q, m == kMt15Idx);
     for (int q : { P_SV_ULTRALO, P_SV_ULTRAHI, P_SV_MIDFREQ }) ui.ui(q, m == kSvtIdx);
 
-    ui.ui(P_COMP,    hasComponentModel(m));
-    for (int q : { P_V1TUBE, P_PATUBE, P_SPKLOAD }) ui.ui(q, hasValveSwap(m, on(P_COMP)));
+    ui.ui(P_COMP,    twin);
+    for (int q : { P_V1TUBE, P_PATUBE, P_SPKLOAD }) ui.ui(q, hasValveSwap(m, on(P_COMP)) && (twin || m == kAd200Idx));
     ui.ui(P_DYNLOAD, comp);
     ui.ui(P_ECO,     comp);
     ui.ui(P_PA_AUTO,   paFace);
@@ -687,7 +703,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     AmpBlockExtended* amp = p->amp;
     amp->setBypass(false);
 
-    const bool compOn = hasComponentModel(modelIdx) && *p->ctrl[P_COMP] > 0.5f;
+    const bool compOn = hasComponentModel(modelIdx) && *p->ctrl[P_COMP] > 0.5f
+                        && twinAllowed(modelIdx, p->abHt.load(std::memory_order_relaxed));
     const bool ecoOn  = *p->ctrl[P_ECO] > 0.5f;
     const float mainsHz = (p->ctrl[P_MAINS] && *p->ctrl[P_MAINS] > 0.5f) ? 50.0f : 60.0f;
     if (mainsHz != p->mainsCur) {   // 50/60 Hz mains: re-tune the input hum comb + the gate's detector comb
@@ -740,8 +757,11 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     amp->setParameter("dynload",  *p->ctrl[P_DYNLOAD]);   // component builds only: the driver as the PA's load (small-signal transparent)
     // Component twins (2026-11-03 in Hex Forge, decided by ear): HT supply sag + ripple into the plates,
     // screens, PI and preamp rails; AC-heater hum, V1 microphony, valve spread.
-    amp->setParameter("supply", 1.0f); amp->setParameter("ripple", 1.0f);
-    amp->setParameter("heaterhum", 1.0f); amp->setParameter("micro", 1.0f); amp->setParameter("spread", 1.0f);
+    {   // TEMPORARY A/B (2026-11-05): the Gainzilla twin's only while gzht_on exists
+        const float ht = (modelIdx != 2 || (p->abHt.load(std::memory_order_relaxed) & kAbGzHt)) ? 1.0f : 0.0f;
+        amp->setParameter("supply", ht); amp->setParameter("ripple", ht);
+        amp->setParameter("heaterhum", ht); amp->setParameter("micro", ht); amp->setParameter("spread", ht);
+    }
     {   // Speaker Load: the chosen cab's speaker as the twin's power-stage load (0 = its own cab, unchanged)
         const int sl = (valves && p->ctrl[P_SPKLOAD]) ? clampIdx(*p->ctrl[P_SPKLOAD], 0, kSpkLoadMax) : 0;
         amp->setParameter("cabrow",  static_cast<float>(kSpkLoadRow[sl]));
@@ -897,7 +917,8 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     const float compSel = (modelIdx == 2 || modelIdx == 4) ? *p->ctrl[P_CHANNEL]
                         : (modelIdx == kFriedmanIdx)       ? *p->ctrl[P_FR_CHANNEL]
                         : (modelIdx == kMesaIdx)           ? *p->ctrl[P_MV_MODE]
-                        : (modelIdx == kRectoIdx)          ? *p->ctrl[P_RC_MODE] : 0.0f;
+                        : (modelIdx == kRectoIdx)          ? *p->ctrl[P_RC_MODE]
+                        : (modelIdx == kMt15Idx)           ? *p->ctrl[P_MT_MODE] : 0.0f;
     const float mk = kModelMakeup[modelIdx]
                    * (compOn ? compParity(modelIdx, *p->ctrl[P_GAIN], *p->ctrl[P_MASTER], compSel) : 1.0f);
     if (mk != 1.0f) for (uint32_t i = 0; i < n; ++i) { outL[i] *= mk; outR[i] *= mk; }

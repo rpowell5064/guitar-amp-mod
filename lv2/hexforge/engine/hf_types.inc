@@ -74,8 +74,15 @@ static const int   kCanonical[16] = { 0, 1, 2, 4, 5, 3, 6, 0, 9, 0, 10, 10, 7, 8
 // Amps that have a schematic-exact component build. Keep in sync with the
 // c-amp-comp visibility rule in script-hexforge.js.
 static inline bool hasComponentModel(int ampModel) noexcept {
-    return ampModel == 0 || ampModel == 1 || ampModel == 2 || ampModel == 4 || ampModel == 6 || ampModel == 8 || ampModel == 10 || ampModel == 11 || ampModel == 12 || ampModel == 14;
+    return ampModel == 0 || ampModel == 1 || ampModel == 2 || ampModel == 3 || ampModel == 4 || ampModel == 6 || ampModel == 7 || ampModel == 8 || ampModel == 9 || ampModel == 10 || ampModel == 11 || ampModel == 12 || ampModel == 13 || ampModel == 14;
 }
+// TEMPORARY A/B (2026-11-05): the four newest twins (Doom Daddy / Sunn Model T, Hi-Volt / Hiwatt DR103,
+// Backline Plus / Peavey Backstage Plus, Tremont 15 / PRS MT15) run only while <configDir>/newtwins_on
+// exists (abHt bit 7); otherwise the Component Model toggle leaves those amps on their shipped models.
+static constexpr int kAbNewTwins = 128;
+static constexpr int kAbGzHt     = 256;   // <configDir>/gzht_on: the Gainzilla twin takes the HT extras too
+static inline bool isNewTwin(int m) noexcept { return m == 3 || m == 7 || m == 9 || m == 13; }
+static inline bool twinAllowed(int m, int abFlags) noexcept { return !isNewTwin(m) || (abFlags & kAbNewTwins) != 0; }
 static inline AmpModel componentAmpFor(int ampModel) noexcept {
     switch (ampModel) {
         case 0:  return AmpModel::DeluxeComp;
@@ -88,6 +95,10 @@ static inline AmpModel componentAmpFor(int ampModel) noexcept {
         case 8:  return AmpModel::VoxComp;
         case 14: return AmpModel::SvtComp;
         case 10: return AmpModel::PlexiComp;
+        case 3:  return AmpModel::SunnComp;
+        case 7:  return AmpModel::HiwattComp;
+        case 9:  return AmpModel::BackstageComp;
+        case 13: return AmpModel::MT15Comp;
         default: return AmpModel::EVH5150Comp;
     }
 }
@@ -114,6 +125,8 @@ static inline bool hasTight(int m) { return m == 1 || m == 2 || m == 4 || m == 6
 // Citrus 200 (always a component build). Elsewhere the engine sends 0/0 (stock). Mirrored by the
 // c-amp-valves / c-rb-valves rule in script-hexforge.js and hexforge_blocks.inc.
 static inline bool runsComponentBuild(int m, bool compToggle) { return (compToggle && hasComponentModel(m)) || m == kAd200Idx; }
+// The Valves page: every component build but the solid-state Backline Plus twin (no valves to swap).
+static inline bool takesValveSwap(int m, bool compToggle) { return runsComponentBuild(m, compToggle) && m != kBacklineIdx; }
 static constexpr int kV1TubeMax = 4;   // 12AX7 (stock) / 5751 / 12AY7 / 12AT7 / 12AU7
 static constexpr int kPaTubeMax = 5;   // Stock / EL34 / 6L6GC / 6V6GT / EL84 / KT88
 static constexpr int kAmpModelMax = kAd200Idx;   // the amp dropdown's clamp ceiling
@@ -190,22 +203,24 @@ static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
 // (2026-09-15): rendered on the user DI against the shipped model through its shared
 // power amp. The real LOUDNESS law tracks the shipped gain law within 1 dB; the 1959 has
 // no master, so the master axis carries the shipped model's 5 dB master span.
-static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, 0.0f, 10.40f, 0.0f, 1.80f, 0.0f, 4.50f, 0.0f, 1.40f, -2.95f, -3.00f, 0.0f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
+// [3] Doom Daddy, [7] Hi-Volt, [9] Backline Plus, [13] Tremont 15 (2026-11-05, the new twins): first rows from the
+// standalone renders at master .7 against the shipped model; re-measured in-plugin with the preset re-level.
+static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, -7.35f, 10.40f, 0.0f, 1.80f, 3.60f, 4.50f, 0.70f, 1.40f, -2.95f, -3.00f, -0.05f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
     { 0.00f, 0.20f, 0.05f, 0.00f, 0.00f, 0.00f, -0.05f },   // JCM800 corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8): presets 62/1/24 at -24/-34 dBFS RMS, the twin's own gain-knob loudness law now sits within 0.2 dB of the shipped model (the old row {6.6 3.3 1.2 0 -.7 -1.2 -1.5} was compensating the wrong input scale); previously re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 4.40f, 1.90f, 0.70f, 0.00f, -0.40f, -0.70f, -1.00f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 3.35f, 1.65f, 0.67f, 0.00f, -0.53f, -0.97f, -1.37f },   // Doom Daddy twin (2026-11-05, standalone render at master .7; re-measure with the preset re-level)
     { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -6.45f, -3.50f, -1.05f, 0.00f, 0.25f, 0.20f, 0.25f },   // Friedman corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8, VR4 .25, HBE trim): BE/HBE presets 28/63/12 at -24/-34 dBFS RMS, mean; was {-4.95 -3.0 -1.35 0 -.05 -.15 -.2} with inVolts 1.0 / knee .75 (-24 dBFS, tone knobs at noon; mean of BE and HBE)
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 4.73f, 0.35f, -0.28f, 0.00f, 0.45f, 0.84f, 1.19f },   // Hi-Volt twin (2026-11-05, same)
     { 1.60f, 0.40f, 0.20f, 0.00f, -0.10f, -0.30f, -0.30f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -3.26f, -0.15f, 0.21f, 0.00f, 0.45f, 0.32f, 0.23f },   // Backline Plus twin (2026-11-05, same)
     { 3.30f, 1.60f, 0.50f, 0.00f, -0.10f, -0.20f, -0.20f },
     { -5.40f, -0.85f, -0.15f, 0.00f, 0.00f, 0.00f, -0.05f },   // Cali V: re-measured in-plugin 2026-10-19 (preset 52, wavgain 19.5) for the input scale 0.0011 -> 0.0070; Mk -2.80 -> -2.95
     { 4.70f, 3.20f, 1.60f, 0.00f, -0.40f, -0.90f, -1.60f },
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { -6.65f, -2.72f, -0.89f, 0.00f, 0.43f, 0.66f, 0.79f },   // Tremont 15 twin, Lead (2026-11-05, same)
     { 0.77f, 0.13f, -0.02f, -0.00f, 0.06f, 0.12f, 0.15f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };
@@ -247,7 +262,7 @@ static const float kCompModeDb[16][9] = {
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -3.27f, -2.08f, 4.98f, 2.58f, 2.72f, 2.24f, -0.00f, 1.51f, 0.29f },
     { -6.51f, 0.68f, 4.33f, 2.63f, 0.57f, 1.42f, 0.78f, -1.81f, -1.81f },   // Diamond Plate per mode. 2026-10-19: + the A-weighted chain-output loss of the 55 Hz low-resonance fit (+0.74/+1.43/+5.41/+1.45/+3.72/+1.74/+0.78/+1.40; the boom it removed was the loudest band)
-    { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
+    { 3.23f, 4.07f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },   // Tremont 15 twin (2026-11-05): Clean / Crunch (the real clean channel with the treble pot's pull-Boost) / Lead, relative to Lead
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
 };

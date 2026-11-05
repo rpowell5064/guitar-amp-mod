@@ -444,8 +444,8 @@ PanelSpec amp(bool two)
                      // Valves (v54): only while this rig runs a component build -- Component Model on
                      // with an amp that has a twin, or the Citrus 200. Mirrors runsComponentBuild().
                      [m](V v) { const int k = m(v);
-                                const bool twin = k == 0 || k == 1 || k == 2 || k == 4 || k == 6 || k == 8 || k == 10 || k == 11 || k == 12 || k == 14;
-                                return (v.get("amp_evhcomp") > 0.5f && twin) || k == 15; },
+                                const bool twin = k == 0 || k == 1 || k == 2 || k == 3 || k == 4 || k == 6 || k == 7 || k == 8 || k == 10 || k == 11 || k == 12 || k == 13 || k == 14;   // + the 2026-11-05 twins
+                                return (v.get("amp_evhcomp") > 0.5f && twin) || k == 15; },   // not 9: the Backline Plus twin is solid state
                      {} };
     auto lastInternal = std::make_shared<int>(1);
     s.onTab = [m, ms, lastInternal](int tab, V v, const PortSetter& set) {
@@ -487,7 +487,7 @@ PanelSpec amp(bool two)
     auto mid  = [m, rvClean](V v) { const int k = m(v); return !(k == 0 || k == 8 || rvClean(v)); };
     auto pres = [m](V v) { const int k = m(v); return !(k == 0 || k == 4 || k == 9 || k == 13 || k == 14 || k == 15); };
     auto mast = [m, rvClean](V v) { const int k = m(v); return !(k == 0 || k == 8 || k == 10 || k == 14 || rvClean(v)); };
-    auto comp = [m](V v) { const int k = m(v); return k == 0 || k == 1 || k == 2 || k == 4 || k == 6 || k == 8 || k == 10 || k == 11 || k == 12 || k == 14; };
+    auto comp = [m](V v) { const int k = m(v); return k == 0 || k == 1 || k == 2 || k == 3 || k == 4 || k == 6 || k == 7 || k == 8 || k == 9 || k == 10 || k == 11 || k == 12 || k == 13 || k == 14; };
     const std::string pa = p + "pamp_auto";
     auto paman = [m, pa](V v) { const int k = m(v); return k != 3 && k != 5 && k != 15 && v.get(pa.c_str()) <= 0.5f; };
 

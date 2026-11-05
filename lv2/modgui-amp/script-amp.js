@@ -113,7 +113,7 @@ function (event, funcs) {
     // Component Build (2026-09-23): the ENGINE group shows only for models with a
     // schematic-exact twin (keep HAS_COMP in sync with hasComponentModel in amp_plugin.cpp);
     // with the twin on, its own power section runs and the shared Power Amp face hides.
-    var HAS_COMP = { 0: 1, 1: 1, 2: 1, 4: 1, 6: 1, 8: 1, 10: 1, 11: 1, 12: 1, 14: 1 };
+    var HAS_COMP = { 0: 1, 1: 1, 2: 1, 3: 1, 4: 1, 6: 1, 7: 1, 8: 1, 9: 1, 10: 1, 11: 1, 12: 1, 13: 1, 14: 1 };   // 3/7/9/13: 2026-11-05 (behind newtwins_on until decided)
     function update_comp(icon) {
         var m = icon.data('amp_model'); if (m == null) m = 0;
         var has = !!HAS_COMP[m];
@@ -127,10 +127,10 @@ function (event, funcs) {
         if (vt) vt.classList.toggle('hf-tab-gone', !showV);
         if (!showV && icon.data('amp_tab') === 'valves') set_tab(icon, 'power');
     }
-    // Keep in sync with hasValveSwap in amp_plugin.cpp: every component build but the Gainzilla's
-    // (its stages are its own), and the Citrus 200 (always schematic-exact).
+    // Keep in sync with hasValveSwap in amp_plugin.cpp: every component build but the solid-state
+    // Backline Plus, and the Citrus 200 (always schematic-exact).
     function has_valves(icon, m) {
-        return (!!HAS_COMP[m] && m !== 2 && (icon.data('amp_comp') || 0) > 0.5) || m === 15;
+        return (!!HAS_COMP[m] && m !== 9 && (icon.data('amp_comp') || 0) > 0.5) || m === 15;
     }
     // Show the loaded NAM file name (fires on user pick AND on pedalboard load).
     function set_nam(icon, value) {

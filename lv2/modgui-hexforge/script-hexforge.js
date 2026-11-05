@@ -733,7 +733,7 @@ function (event, funcs) {
     // toggle (amp_evhcomp, global, default on) with an amp that has a twin, or the Citrus 200
     // (always one). Mirrors runsComponentBuild() in hf_types.inc.
     function hasValveSwap(m, comp) {
-        return (comp && (m === 0 || m === 1 || m === 2 || m === 4 || m === 6 || m === 8 || m === 10 || m === 11 || m === 12 || m === 14)) || m === 15;
+        return (comp && (m === 0 || m === 1 || m === 2 || m === 3 || m === 4 || m === 6 || m === 7 || m === 8 || m === 10 || m === 11 || m === 12 || m === 13 || m === 14)) || m === 15;   // 2026-11-05: + Doom Daddy, Hi-Volt, Tremont 15 (not the solid-state Backline Plus)
     }
     function compToggle(icon) { var c = icon.data('hf_comp'); return (c == null) ? true : c; }
     function applyAmp(icon) {
@@ -752,7 +752,7 @@ function (event, funcs) {
         show(icon, 'amp', '.c-amp-pres', ar.pres);
         show(icon, 'amp', '.c-amp-mast', ar.mast);
         // Component Model (Lab): amps that have a schematic-exact build.
-        show(icon, 'amp', '.c-amp-comp', m === 0 || m === 1 || m === 2 || m === 4 || m === 6 || m === 8 || m === 10 || m === 11 || m === 12 || m === 14);
+        show(icon, 'amp', '.c-amp-comp', m === 0 || m === 1 || m === 2 || m === 3 || m === 4 || m === 6 || m === 7 || m === 8 || m === 9 || m === 10 || m === 11 || m === 12 || m === 13 || m === 14);
         show(icon, 'amp', '.c-amp-plexi', m === 10);   // Plexiglass: 1959 Vol II (Normal ch, jumpered)
         show(icon, 'amp', '.c-amp-jcm', m === 1);      // Crunchy: SIR #34 mod switch
         show(icon, 'amp', '.c-amp-tight', hasTight(m));   // Tight: the seven high-gain amps

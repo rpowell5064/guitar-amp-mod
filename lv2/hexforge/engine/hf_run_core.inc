@@ -323,7 +323,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // v48 lab toggle: amps with a component build swap to the schematic-exact
     // model (each carries its own power section; the shared PA is bypassed).
     const bool compOn = p->ports[HF_AMP_EVHCOMP] && *p->ports[HF_AMP_EVHCOMP] > 0.5f
-                        && hasComponentModel(ampModel);
+                        && hasComponentModel(ampModel)
+                        && twinAllowed(ampModel, std::max(0, p->abHt.load(std::memory_order_relaxed)));   // TEMPORARY A/B: newtwins_on
     // Valve swap (v54): only a component build takes it (else 0/0 = stock). A change REBUILDS
     // the amp on the worker (the model's own rebuild is ~10-25 ms on a Pi 5, never on this thread).
     const bool compBuild = compOn || (ampModel == kAd200Idx);
@@ -359,7 +360,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         // same amp sounded different on the two rigs, the rig-B divergence class
         // the 2026-09-04 audit already caught once with gain tracking).
         const bool rbCompOn = p->ports[HF_AMP_EVHCOMP] && *p->ports[HF_AMP_EVHCOMP] > 0.5f
-                              && hasComponentModel(rbModel);
+                              && hasComponentModel(rbModel)
+                              && twinAllowed(rbModel, std::max(0, p->abHt.load(std::memory_order_relaxed)));   // TEMPORARY A/B: newtwins_on
         // amp2Requested guards the build-in-flight window: without it, !p->amp2
         // stays true until the crossfade swap lands and this scheduled a fresh
         // ~MB amp build EVERY BLOCK (user-reported RAM/CPU runaway, 2026-07-30).
@@ -428,8 +430,11 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             a2->setParameter("sag",       *p->ports[HF_RB_SAG]);
             a2->setParameter("dynload",   p->ports[HF_AMP_DYNLOAD] ? *p->ports[HF_AMP_DYNLOAD] : 0.0f);   // Phase 5 (shared global toggle)
             a2->setParameter("palegacy",  0.0f);   // RETIRED 2026-10-07 (the user's A/B: quieter, darker, and the old stage squeals at 21.8 kHz on the Friedman HBE at idle); the port stays for the layout, always off  // lab A/B (shared global toggle)
-            a2->setParameter("supply", 1.0f); a2->setParameter("ripple", 1.0f);   // component twins (see main rig)
-            a2->setParameter("heaterhum", 1.0f); a2->setParameter("micro", 1.0f); a2->setParameter("spread", 1.0f);
+            {   // component twins (see main rig); the Gainzilla twin's only behind gzht_on for now
+                const float ht = (rbM != 2 || (std::max(0, p->abHt.load(std::memory_order_relaxed)) & kAbGzHt)) ? 1.0f : 0.0f;
+                a2->setParameter("supply", ht); a2->setParameter("ripple", ht);
+                a2->setParameter("heaterhum", ht); a2->setParameter("micro", ht); a2->setParameter("spread", ht);
+            }
             // Valve swap (v54): the values amp2 was BUILT with on the worker -- never a change here
             // (pushing the live port would retube on the audio thread before the rebuild lands).
             a2->setParameter("v1tube", static_cast<float>(p->liveAmp2V1));
@@ -583,8 +588,12 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     amp->setParameter("palegacy",  0.0f);   // RETIRED 2026-10-07: the rev-189 stage lost the A/B by ear and self-oscillates (Friedman HBE, 21.8 kHz at -10 dBFS after the note stops); the port stays for the layout, always off  // lab A/B: the rev-189 power stage (global tail, 2026-10-07)
     // Component twins (2026-11-03, decided by ear on the device): HT supply sag + ripple into
     // the plates, screens, PI and preamp rails; AC-heater hum, V1 microphony, valve spread.
-    amp->setParameter("supply", 1.0f); amp->setParameter("ripple", 1.0f);
-    amp->setParameter("heaterhum", 1.0f); amp->setParameter("micro", 1.0f); amp->setParameter("spread", 1.0f);
+    // TEMPORARY A/B (2026-11-05): the Gainzilla twin gained the same extras; it takes them only while gzht_on exists.
+    {
+        const float ht = (ampModel != 2 || (std::max(0, p->abHt.load(std::memory_order_relaxed)) & kAbGzHt)) ? 1.0f : 0.0f;
+        amp->setParameter("supply", ht); amp->setParameter("ripple", ht);
+        amp->setParameter("heaterhum", ht); amp->setParameter("micro", ht); amp->setParameter("spread", ht);
+    }
     // Valve swap (v54): the values this amp was BUILT with on the worker (W_AMP_LOAD), so this is
     // never a change -- pushing the live port instead would retube on the audio thread (~10-25 ms
     // rebuild) in the window before the worker's rebuild lands.
@@ -731,7 +740,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     const float compSel = (ampAlgo == 2 || ampAlgo == 4) ? *p->ports[HF_AMP_CHANNEL]
                         : (ampAlgo == kFriedmanIdx)      ? *p->ports[HF_AMP_FR_CHANNEL]
                         : (ampAlgo == kMesaIdx)          ? *p->ports[HF_AMP_MV_MODE]
-                        : (ampAlgo == kRectoIdx)         ? *p->ports[HF_AMP_RC_MODE] : 0.0f;
+                        : (ampAlgo == kRectoIdx)         ? *p->ports[HF_AMP_RC_MODE]
+                        : (ampAlgo == kMt15Idx)          ? *p->ports[HF_AMP_MT_MODE] : 0.0f;
     p->tight.setAmount(hasTight(ampModel) ? *p->ports[HF_AMP_TIGHT] : 0.0f);   // Tight (v53): high-gain amps only
     const float ampMakeup = kAmpMakeup[ampAlgo]
                           * (compOn ? compParity(ampAlgo, *p->ports[HF_AMP_GAIN],
@@ -1180,7 +1190,8 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
             const float sel2 = (rbAlgo == 2 || rbAlgo == 4) ? *p->ports[HF_RB_CHANNEL]
                              : (rbAlgo == kFriedmanIdx)      ? *p->ports[HF_RB_FR_CHANNEL]
                              : (rbAlgo == kMesaIdx)          ? *p->ports[HF_RB_MV_MODE]
-                             : (rbAlgo == kRectoIdx)         ? *p->ports[HF_RB_RC_MODE] : 0.0f;
+                             : (rbAlgo == kRectoIdx)         ? *p->ports[HF_RB_RC_MODE]
+                             : (rbAlgo == kMt15Idx)          ? *p->ports[HF_RB_MT_MODE] : 0.0f;
             const float mk2 = kAmpMakeup[rbAlgo]
                             * (p->lastAmp2Comp ? compParity(rbAlgo, *p->ports[HF_RB_GAIN],
                                                             *p->ports[HF_RB_MASTER], sel2) : 1.0f);
