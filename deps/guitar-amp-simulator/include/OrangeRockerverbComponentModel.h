@@ -61,6 +61,12 @@
 // ECC81s modelled with the 12AX7 Koren set (their gains match within 5 %, the
 // overload knee does not); the 6V6 quad uses Koren's published 6V6GT set with
 // the idle current an estimate; the reverb (V6) and loop are bypassed.
+//
+// "tubefix" (default off; off = the above, unchanged): V7 as the ECC81 it is, and the power
+// section of the Rockerverb 50 MKIII as built -- 2x EL34 (one per side, fixed bias, Koren EL34
+// set), idle and primary ESTIMATE (Orange publish neither), the same supply, 1k screens and
+// bias network -- with the valve-set-dependent power constants (drive scale, idle, primary,
+// load bump) held per set. "patube" stock (0) and 1 (EL34) both name that pair.
 // ─────────────────────────────────────────────────────────────────────────────
 class OrangeRockerverbComponentModel final : public AmpModelBase {
 public:
@@ -167,6 +173,18 @@ private:
     void applyExtras2() noexcept;
     // third set (2026-11-03): the rig's cab as the power stage's load, the corrected valve types
     bool cabLoad_ = false, tubeFix_ = false;
+    // "tubefix" power section (2026-11-05): the MKIII's 2x EL34 instead of the drawing's 4x 6V6.
+    // The valve-set-dependent power constants live per set; the active set's values are copied into
+    // paDrive_ / zHfDb_ / zResDb_ / idleMa_ / raa_ (which the signal path and buildStages read), so
+    // tubefix off is the 6V6 set byte for byte. The fit2..fit6 / fit40 lab hooks write the active set.
+    struct PaSet { float drive; double zHfDb, zResDb, idleMa, raa; };
+    PaSet pa6V6_  { 0.681f, 0.0, 7.0, 25.0, 4000.0 };   // the values above (4x 6V6, the drawing)
+    // 2x EL34 (MKIII): drive 1.30 and the load bump 6 dB CALIBRATED for this valve set (the pair is biased
+    // ~8 V colder than the quad and needs the swing); idle 40 mA ESTIMATE (~63 % of 25 W at ~400 V); primary
+    // 3k7 ESTIMATE + CALIBRATED (no OT data published; between the usual 50 W EL34 3k4 and the 6V6 quad's 4k).
+    PaSet paEl34_ { 1.30f, 0.0, 6.0, 40.0, 3700.0 };
+    PaSet& paSet() noexcept { return tubeFix_ ? paEl34_ : pa6V6_; }
+    void loadPaSet() noexcept { const PaSet& s = paSet(); paDrive_ = s.drive; zHfDb_ = s.zHfDb; zResDb_ = s.zResDb; idleMa_ = s.idleMa; raa_ = s.raa; }
     int  cabRow_ = -1;
     void recalcPots() noexcept;
 

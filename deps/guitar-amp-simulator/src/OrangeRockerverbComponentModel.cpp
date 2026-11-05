@@ -15,7 +15,7 @@ inline double par(double a, double b) { return 1.0 / (1.0 / a + 1.0 / b); }
 
 PushPullPowerV::Params rockerverbPowerParams(double railC, double railA, double otHfHz, double zHfDb, double zResDb,
                                              double idleMa, double raa, double nfbStabHz, double fluxLim, double kneeV,
-                                             double nfbSeriesR) {
+                                             double nfbSeriesR, bool el34) {
     PushPullPowerV::Params p;
     // ── V5 ECC83 LTP (sheet 1): R27 82k / R32 100k from C; R28 680 → R30 15k → NFB
     //    node → R31 100 → ground; R26/R29 1M grid leaks to the R28/R30 junction.
@@ -36,6 +36,19 @@ PushPullPowerV::Params rockerverbPowerParams(double railC, double railA, double 
     p.idleTarget = idleMa * 1e-3;  // ESTIMATE: "bias set fully anti-CW"
     p.tubesPerSide = 2.0;
     p.raa        = raa;            // ESTIMATE: OT unlabelled
+    if (el34) {
+        // "tubefix" (2026-11-05): the Rockerverb 50 MKIII power section -- 2x EL34, one per side,
+        // fixed bias, on the same 290-0-290 VAC winding (owners measure ~395-420 V on the plates,
+        // the railA anchor), screens off the choke node B through 1k 5W, 50 W into 16 / 8 ohm.
+        // Koren EL34 with the gm scale the JCM800 / Plexi twins land the datasheet gm with.
+        p.mu = 11.0; p.ex = 1.35; p.kg1 = 650.0; p.kp = 60.0; p.kvb = 24.0;
+        p.iaScale      = 2.2;
+        p.tubesPerSide = 1.0;
+        // idleMa: ESTIMATE ~40 mA a valve (~63 % of the EL34's 25 W at ~400 V; owners report the
+        //   factory setting a little hotter than 40 mA). raa: ESTIMATE 3k7 (Orange print no OT data).
+        //   Screens: vg2 = railA - 15 still holds (2x ~40 mA + screens through the choke, + the 1k).
+        p.lutSpan      = 80.0;         // the EL34's idle grid sits near -36 V: a wider table than the 6V6's
+    }
     p.otRatio    = std::sqrt(raa / 16.0);
     p.gridFeedR  = 1.5e3;          // R9/R11/R15/R17
     p.gridKneeV  = kneeV;
@@ -148,9 +161,10 @@ void OrangeRockerverbComponentModel::buildStages() noexcept {
             c.pa.setSupplyLayout(sp, 0.2e-6, 0.5e-7);   // preamp valves on DC heaters; a head
         }
         { auto pp = rockerverbPowerParams(railC, railA_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
-                                          fluxLim_, kneeV_, nfbSeriesR_);
+                                          fluxLim_, kneeV_, nfbSeriesR_, tubeFix_);
           pp.zResHz = zResHz_; c.pa.prepare(fs_, pp); }
         c.pa.setSagDepth(sag_);
+        if (tubeFix_) c.pa.setDynLoad(dynLoad_);   // "tubefix" (2026-11-05): keep Dynamic Load across the rebuild (prepare() resets it to off)
         c.dirtyHf.prepare(fs_, 1.0, std::pow(10.0, dirtyHfDb_ / 20.0), 1200.0);   // DIRTY presence shelf
         c.dnr.prepare(fs_);
         for (auto& a : c.tapAcc) a = 0.0;
@@ -264,7 +278,7 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     }
     if (id == "tubefix") {   // 2026-11-03: the valve types the drawings print, where the twin had substituted
         const bool b = value > 0.5f;
-        if (b != tubeFix_) { tubeFix_ = b; applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }
+        if (b != tubeFix_) { tubeFix_ = b; loadPaSet(); applyExtras2(); if (fs_ > 0.0) prepare(fs_, 0); }   // + the MKIII's 2x EL34 (2026-11-05)
         return;
     }
     if (id == "supply" || id == "ripple" || id == "heaterhum" || id == "micro" || id == "spread") {   // 2026-11-03
@@ -290,10 +304,10 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit0")     { gainMidA_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }
     else if (id == "fit1")     { railA_ = value;    if (fs_ > 0.0) buildStages(); }
     else if (id == "fit2")     { otHfHz_ = value;   if (fs_ > 0.0) buildStages(); }
-    else if (id == "fit3")     { zHfDb_  = value;   if (fs_ > 0.0) buildStages(); }
-    else if (id == "fit4")     { zResDb_ = value;   if (fs_ > 0.0) buildStages(); }
-    else if (id == "fit5")     { idleMa_ = value;   if (fs_ > 0.0) buildStages(); }
-    else if (id == "fit6")     { raa_    = value;   if (fs_ > 0.0) buildStages(); }
+    else if (id == "fit3")     { zHfDb_  = paSet().zHfDb  = value; if (fs_ > 0.0) buildStages(); }   // fit3..fit6 / fit40: the active valve set
+    else if (id == "fit4")     { zResDb_ = paSet().zResDb = value; if (fs_ > 0.0) buildStages(); }
+    else if (id == "fit5")     { idleMa_ = paSet().idleMa = value; if (fs_ > 0.0) buildStages(); }
+    else if (id == "fit6")     { raa_    = paSet().raa    = value; if (fs_ > 0.0) buildStages(); }
     else if (id == "fit7")     { nfbStabHz_ = value; if (fs_ > 0.0) buildStages(); }
     else if (id == "fit8")     { fluxLim_ = value;  if (fs_ > 0.0) buildStages(); }
     else if (id == "fit9")     { kneeV_ = std::max(0.0f, value); if (fs_ > 0.0) buildStages(); }
@@ -309,7 +323,7 @@ void OrangeRockerverbComponentModel::setParameter(const std::string& id, float v
     else if (id == "fit19")    { dStackRT_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: treble pot RV7 (ohm)
     else if (id == "fit20")    { dStackRB_ = std::max(1e3, double(value));   if (fs_ > 0.0) buildStages(); }   // lab: bass pot RV5 (ohm)
     else if (id == "fit21")    { dStackRM_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: mid pot RV6 (ohm)
-    else if (id == "fit40")    { paDrive_ = std::clamp(value, 0.05f, 2.0f); }
+    else if (id == "fit40")    { paDrive_ = paSet().drive = std::clamp(value, 0.05f, 2.0f); }
     else if (id == "fit42")    { cleanBassMid_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: CLEAN bass pot law
     else if (id == "fit41")    { potMidA_ = std::clamp(value, 0.02f, 0.9f); recalcPots(); }   // lab: BASS/master pot law   // lab + calibration: power-stage drive scale
     else if (id == "fit22")    { dStackRS_ = std::max(100.0, double(value)); if (fs_ > 0.0) buildStages(); }   // lab: slope R62 (ohm)
@@ -366,7 +380,9 @@ float OrangeRockerverbComponentModel::getParameter(const std::string& id) const 
 // stages and the power section, so every later rebuild honours them.
 void OrangeRockerverbComponentModel::applyExtras2() noexcept {
     const evhcomp::KorenP* t = evhcomp::preampValve(v1Tube_);
-    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 0) ? nullptr : evhcomp::powerValve(paTube_);
+    // stock (0) = the twin's own set: the drawing's 6V6 quad, or with "tubefix" the MKIII's EL34 pair,
+    // which "patube" 1 (EL34) then also names
+    const evhcomp::PushPullPowerV::PowerValve* pv = (paTube_ == 0 || (tubeFix_ && paTube_ == 1)) ? nullptr : evhcomp::powerValve(paTube_);
     for (auto& c : ch_) {
         c.v9a.setTubeOverride(t); c.v9b.setTubeOverride(t); c.v10a.setTubeOverride(t); c.v10b.setTubeOverride(t);
         c.pa.setValve(pv);
