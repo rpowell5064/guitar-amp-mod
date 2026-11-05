@@ -24,6 +24,7 @@
 #include "OrangeAD200BModel.h"
 #include "MarshallPlexiComponentModel.h"
 #include "FenderDeluxeComponentModel.h"
+#include "HiwattDR103ComponentModel.h"
 
 std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
     switch (id) {
@@ -52,6 +53,7 @@ std::unique_ptr<AmpModelBase> AmpModelFactory::create(ModelID id) {
         case ModelID::OrangeAD200B:      return std::make_unique<OrangeAD200BModel>();
         case ModelID::MarshallPlexiComponent: return std::make_unique<MarshallPlexiComponentModel>();
         case ModelID::FenderDeluxeComponent: return std::make_unique<FenderDeluxeComponentModel>();
+        case ModelID::HiwattDR103Component: return std::make_unique<HiwattDR103ComponentModel>();
         default:                           return std::make_unique<SunnModelT>();
     }
 }
@@ -101,6 +103,7 @@ const char* AmpModelFactory::getModelName(ModelID id) noexcept {
         case ModelID::OrangeAD200B:      return "Citrus 200";
         case ModelID::MarshallPlexiComponent: return "Marshall 1959 Super Lead Component";
         case ModelID::FenderDeluxeComponent: return "Fender Deluxe Reverb Component";
+        case ModelID::HiwattDR103Component: return "Hiwatt DR103 Component";
         default:                           return "Unknown";
     }
 }
@@ -136,6 +139,7 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
         case ModelID::OrangeAD200B:      return 5;  // 6550 quad
         case ModelID::MarshallPlexiComponent: return 1;  // 4x EL34 (Unicord 70-6-11, July 1970)
         case ModelID::FenderDeluxeComponent: return 4;  // 2x 6V6GT (AB763)
+        case ModelID::HiwattDR103Component: return 1;  // 4x EL34 (Hiwatt 100 W output stage)
         default:                           return 1;
     }
 }
@@ -188,5 +192,6 @@ AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) no
     if (name == "Citrus 200")          return ModelID::OrangeAD200B;
     if (name == "Marshall 1959 Super Lead Component") return ModelID::MarshallPlexiComponent;
     if (name == "Fender Deluxe Reverb Component") return ModelID::FenderDeluxeComponent;
+    if (name == "Hiwatt DR103 Component") return ModelID::HiwattDR103Component;
     return ModelID::SunnModelT;
 }
