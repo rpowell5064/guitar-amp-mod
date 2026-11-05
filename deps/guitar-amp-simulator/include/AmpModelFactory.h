@@ -47,6 +47,7 @@ public:
         SunnModelTComponent = 25,
         HiwattDR103Component = 26,
         PeaveyBackstageComponent = 27,
+        PRSMT15Component = 28,
     };
 
     static constexpr int kNumModels = 15;

@@ -87,6 +87,7 @@ public:
             case AmpModel::SunnComp:           fid = FID::SunnModelTComponent;         break;
             case AmpModel::HiwattComp:         fid = FID::HiwattDR103Component;        break;
             case AmpModel::BackstageComp:      fid = FID::PeaveyBackstageComponent;    break;
+            case AmpModel::MT15Comp:           fid = FID::PRSMT15Component;            break;
             default:                            isExtended = false;              break;
         }
 
