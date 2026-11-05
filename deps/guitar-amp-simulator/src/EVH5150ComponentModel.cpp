@@ -28,6 +28,7 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
     masterSmooth_.reset(fs_, 0.015);
     gainSmooth_.setCurrentAndTargetValue(gain_);
     masterSmooth_.setCurrentAndTargetValue(master_);
+    applyExtras2();   // 2026-11-05: valve overrides + Miller set-up ahead of the stage builds
 
     for (auto& c : ch_) {
         // ── Shared input stage V1-A ──────────────────────────────────────────
@@ -218,6 +219,7 @@ void EVH5150ComponentModel::prepare(double oversampledSampleRate, int /*maxBlock
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
+    applySupplyLayout();   // 2026-11-05: the HT supply tree (needs the stages' idle currents)
     applyKnee();
     recalcPots();
     reset();
@@ -272,7 +274,7 @@ void EVH5150ComponentModel::reset() noexcept {
         c.d_v56.reset(); c.v5b.reset(); c.v5bPole.reset(); c.d_v56b.reset();
         c.v6a.reset(); c.cfFeed12.reset(); c.v6b.reset(); c.ch12Shelf.reset();
         c.ts12.reset();
-        c.pa.reset();
+        c.pa.reset(); c.pa.resetExtras();   // 2026-11-05: the extras state (supply nodes, filters)
         for (auto& a : c.tapAcc) a = 0.0;
         c.tapN = 0;
     }
@@ -368,6 +370,7 @@ float EVH5150ComponentModel::processSample(float x, int channel) noexcept {
 }
 
 void EVH5150ComponentModel::setParameter(const std::string& id, float value) noexcept {
+    if (setExtraParam(id, value)) return;   // the twins' extras (2026-11-05, EVH5150ComponentModelHt.cpp)
     if      (id == "gain")    { gain_ = value; gainSmooth_.setTargetValue(value); recalcPots(); }
     else if (id == "master")  { master_ = value; masterSmooth_.setTargetValue(value); }
     else if (id == "bass")    { bass_   = value; recalcPots(); }
@@ -402,6 +405,7 @@ void EVH5150ComponentModel::setParameter(const std::string& id, float value) noe
 }
 
 float EVH5150ComponentModel::getParameter(const std::string& id) const noexcept {
+    { float v = 0.0f; if (getExtraParam(id, v)) return v; }   // lab read-outs of the extras (supply nodes)
     if (id == "gain")    return gain_;
     if (id == "master")  return master_;
     if (id == "bass")    return bass_;

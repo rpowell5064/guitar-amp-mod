@@ -255,6 +255,26 @@
     Rockerverb's V7 an ECC81, and the SVT / AD200 run Koren's 6550 set instead of the KT88's,
     re-landed on the same idle bias (SVT +3.2 dB: its 6550s have more gm at that bias).
     OPEN: the Rockerverb twin's drawings print 4x 6V6 while its captures are MKIII (2x EL34).
+- **2026-11-05 — the EVH 5150 III twin gets the extras (level with the other ten).** Its power
+  section is its own class (EVHPowerSectionV), so the three sets are ported into it rather
+  than the twin moved onto PushPullPowerV (a different LTP solve, loop closure and LUT build:
+  it could not reproduce the shipped output, and every off-state bit had to stay). Same ids,
+  all off by default; off = bit-identical (hash over 14 knob rows, both channels).
+  - Supply (drawing 0079092000 sheet 3): silicon bridge -> reservoir/plates +491 -> choke ->
+    screens +485 -> +420 -> X +317 (V3, V4-A, V6) -> W +273 (V1, V2, V5 and the V9 PI); the
+    derived droppers land on the drawing's ~10k sections. Caps / choke / winding R ESTIMATE.
+    All preamp triodes take their node (no motorboat: the slow share is an operating-point
+    move only, as on the other twins); the cathode followers stay on their printed rail.
+  - Measured at gain .6 master .5: HT set -0.55 dB (Blue) / -0.69 dB (Red) (the others lost
+    1.5-3.8: a 50 W silicon supply with 22 uF sections sags 17-27 V at the plates); bloom
+    -0.2 / -0.5 dB; ripple sidebands -49 / -54 dBc; no idle oscillation at gain 1 / master 1 /
+    presence 0,1 / resonance 0,1; 256 knob extremes x 5 valve combinations finite; CPU +11 %.
+  - Heaters at the DC-heater figure (0.3 uV at V1, ESTIMATE): the AC figure put -52 dBFS of
+    60 Hz out of this cascade at full gain. Miller: V1-A's C2 moves with the live gain, V1-B gets
+    Cgk + Cgp(1+A) behind R32 (-38 dB re signal). "tubefix": the twin already runs the drawing's
+    valves (accepted, no effect). Cab load native row = the V30-class 4x12. OT section: 6 mH
+    leakage ESTIMATE, stable at presence 0 / .5 / 1. The EVH's htActive() also covers a
+    re-valved pair and the Miller switch (its screen-idle term is a literal in the off path).
 
 ## EXECUTION MODEL (two phases)
 - **Phase 1 (code):** land every item's DSP. Strictly-non-regressive improvements go
