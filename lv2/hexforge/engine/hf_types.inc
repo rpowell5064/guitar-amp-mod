@@ -129,6 +129,9 @@ static inline bool runsComponentBuild(int m, bool compToggle) { return (compTogg
 static inline bool takesValveSwap(int m, bool compToggle) { return runsComponentBuild(m, compToggle) && m != kBacklineIdx; }
 static constexpr int kV1TubeMax = 4;   // 12AX7 (stock) / 5751 / 12AY7 / 12AT7 / 12AU7
 static constexpr int kPaTubeMax = 5;   // Stock / EL34 / 6L6GC / 6V6GT / EL84 / KT88
+// The Rockerverb twin's power valves default to EL34 (2026-11-05, the user's ear on the device): its Stock
+// position builds the EL34 swap; the 6V6GT choice still gives the drawing's valve.
+static inline int paValveFor(int m, int pa) noexcept { return (m == 4 && pa == 0) ? 1 : pa; }
 static constexpr int kAmpModelMax = kAd200Idx;   // the amp dropdown's clamp ceiling
 // rb_cab enum: 0-5 = the guitar sentinels, 6 = "No Cab (Direct)" (FROZEN — stored
 // presets reference it), 7-10 = the bass cabs (2026-08-28, appended AFTER No Cab
@@ -205,13 +208,13 @@ static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
 // no master, so the master axis carries the shipped model's 5 dB master span.
 // [3] Doom Daddy, [7] Hi-Volt, [9] Backline Plus, [13] Tremont 15 (2026-11-05, the new twins): first rows from the
 // standalone renders at master .7 against the shipped model; re-measured in-plugin with the preset re-level.
-static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, -7.35f, 10.40f, 0.0f, 1.80f, 3.60f, 4.50f, 0.70f, 1.40f, -2.95f, -3.00f, -0.05f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
+static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, -7.35f, 7.29f, 0.0f, 1.80f, 3.60f, 4.50f, 0.70f, 1.40f, -2.95f, -3.00f, -0.05f, -2.41f, 0.0f };   // [15] Citrus 200 has no Lab toggle
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
     { 0.00f, 0.20f, 0.05f, 0.00f, 0.00f, 0.00f, -0.05f },   // JCM800 corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8): presets 62/1/24 at -24/-34 dBFS RMS, the twin's own gain-knob loudness law now sits within 0.2 dB of the shipped model (the old row {6.6 3.3 1.2 0 -.7 -1.2 -1.5} was compensating the wrong input scale); previously re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 4.40f, 1.90f, 0.70f, 0.00f, -0.40f, -0.70f, -1.00f },
     { 3.35f, 1.65f, 0.67f, 0.00f, -0.53f, -0.97f, -1.37f },   // Doom Daddy twin (2026-11-05, standalone render at master .7; re-measure with the preset re-level)
-    { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
+    { -14.86f, -7.90f, -3.35f, 0.00f, 0.16f, 0.53f, 0.75f },   // Rockerverb twin on EL34 (2026-11-05: its Stock power valves, the user's ear); mk 10.40 -> 7.29, standalone render
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -6.45f, -3.50f, -1.05f, 0.00f, 0.25f, 0.20f, 0.25f },   // Friedman corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8, VR4 .25, HBE trim): BE/HBE presets 28/63/12 at -24/-34 dBFS RMS, mean; was {-4.95 -3.0 -1.35 0 -.05 -.15 -.2} with inVolts 1.0 / knee .75 (-24 dBFS, tone knobs at noon; mean of BE and HBE)
     { 4.73f, 0.35f, -0.28f, 0.00f, 0.45f, 0.84f, 1.19f },   // Hi-Volt twin (2026-11-05, same)

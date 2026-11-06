@@ -329,7 +329,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
     // the amp on the worker (the model's own rebuild is ~10-25 ms on a Pi 5, never on this thread).
     const bool compBuild = compOn || (ampModel == kAd200Idx);
     const int  ampV1 = compBuild ? clampi(*p->ports[HF_AMP_V1TUBE], 0, kV1TubeMax) : 0;
-    const int  ampPa = compBuild ? clampi(*p->ports[HF_AMP_PATUBE], 0, kPaTubeMax) : 0;
+    const int  ampPa = compBuild ? paValveFor(ampModel, clampi(*p->ports[HF_AMP_PATUBE], 0, kPaTubeMax)) : 0;
     if (ampIsAlgo && (ampModel != p->lastAmpModel || ecoQ != p->lastEco
                       || compOn != p->lastEvhComp
                       || ampV1 != p->lastAmpV1 || ampPa != p->lastAmpPa)) {   // rebuild for algo models (model / Engine Quality / lab-toggle / valve-swap change)
@@ -368,7 +368,7 @@ static void hfEngineRun(HexForge* p, uint32_t n, const int* swPresses, int nSwPr
         // Valve swap (v54), as on the main rig: component builds only, rebuilt on the worker.
         const bool rbCompBuild = rbCompOn || (rbModel == kAd200Idx);
         const int  rbV1 = rbCompBuild ? clampi(*p->ports[HF_RB_V1TUBE], 0, kV1TubeMax) : 0;
-        const int  rbPa = rbCompBuild ? clampi(*p->ports[HF_RB_PATUBE], 0, kPaTubeMax) : 0;
+        const int  rbPa = rbCompBuild ? paValveFor(rbModel, clampi(*p->ports[HF_RB_PATUBE], 0, kPaTubeMax)) : 0;
         if (!rbNamSel && (rbModel != p->lastAmp2Model || rbEco != p->lastAmp2Eco
                           || rbCompOn != p->lastAmp2Comp || !p->amp2
                           || rbV1 != p->lastAmp2V1 || rbPa != p->lastAmp2Pa) && !p->amp2Requested) {

@@ -117,6 +117,9 @@ static inline bool twinAllowed(int m, int abFlags) noexcept { return !isNewTwin(
 // The twins that take the valve swap, the corrected valve types and the Speaker Load: every component
 // build (the Gainzilla's since 2026-11-05) but the solid-state Backline Plus, plus the Citrus 200
 // (always schematic-exact). Mirrors has_valves in script-amp.js.
+// The Rockerverb twin's power valves default to EL34 (2026-11-05, the user's ear on the device): its Stock
+// position builds the EL34 swap; the 6V6GT choice still gives the drawing's valve.
+static inline int paValveFor(int m, int pa) noexcept { return (m == 4 && pa == 0) ? 1 : pa; }
 static inline bool hasValveSwap(int m, bool comp) noexcept {
     return (comp && hasComponentModel(m) && m != 9) || m == kAd200Idx;
 }
@@ -146,13 +149,13 @@ static inline AmpModel componentAmpFor(int m) noexcept {
 static const float kCompGainKnob[7]   = { 0.2f, 0.3f, 0.4f, 0.5f, 0.6f, 0.7f, 0.8f };
 static const float kCompMasterKnob[4] = { 0.2f, 0.4f, 0.7f, 0.9f };
 // [3]/[7]/[9]/[13]: the 2026-11-05 twins (parity with Hex Forge hf_types.inc)
-static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, -7.35f, 10.40f, 0.0f, 1.80f, 3.60f, 4.50f, 0.70f, 1.40f, -2.95f, -3.00f, -0.05f, -2.41f, 0.0f };
+static const float kCompMkDb[16] = { 10.50f, 1.90f, 3.60f, -7.35f, 7.29f, 0.0f, 1.80f, 3.60f, 4.50f, 0.70f, 1.40f, -2.95f, -3.00f, -0.05f, -2.41f, 0.0f };
 static const float kCompGainDb[16][7] = {
     { 19.30f, 10.30f, 4.20f, 0.00f, -2.70f, -4.50f, -5.40f },
     { 0.00f, 0.20f, 0.05f, 0.00f, 0.00f, 0.00f, -0.05f },   // JCM800 corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8): presets 62/1/24 at -24/-34 dBFS RMS, the twin's own gain-knob loudness law now sits within 0.2 dB of the shipped model (the old row {6.6 3.3 1.2 0 -.7 -1.2 -1.5} was compensating the wrong input scale); previously re-measured 2026-10-06 at the playing level (-24 dBFS RMS, tone knobs at noon): the rev-190 rows were taken on the Friedman's CLEAN channel (45 dB of gain-knob travel) and applied to BE/HBE (10 dB), which inverted the gain knob in use
     { 4.40f, 1.90f, 0.70f, 0.00f, -0.40f, -0.70f, -1.00f },
     { 3.35f, 1.65f, 0.67f, 0.00f, -0.53f, -0.97f, -1.37f },   // Doom Daddy twin (2026-11-05, standalone render at master .7; re-measure with the preset re-level)
-    { -12.50f, -7.00f, -3.10f, 0.00f, 0.10f, 0.40f, 0.60f },
+    { -14.86f, -7.90f, -3.35f, 0.00f, 0.16f, 0.53f, 0.75f },   // Rockerverb twin on EL34 (2026-11-05: its Stock power valves, the user's ear); mk 10.40 -> 7.29, standalone render
     { 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f, 0.00f },
     { -6.45f, -3.50f, -1.05f, 0.00f, 0.25f, 0.20f, 0.25f },   // Friedman corrected 2026-10-07 (evening) in-plugin after the knee anchor (inVolts 2.8, VR4 .25, HBE trim): BE/HBE presets 28/63/12 at -24/-34 dBFS RMS, mean; was {-4.95 -3.0 -1.35 0 -.05 -.15 -.2} with inVolts 1.0 / knee .75 (-24 dBFS, tone knobs at noon; mean of BE and HBE)
     { 4.73f, 0.35f, -0.28f, 0.00f, 0.45f, 0.84f, 1.19f },   // Hi-Volt twin (2026-11-05, same)
@@ -370,7 +373,7 @@ static LV2_Worker_Status scheduleRebuild(AmpPlugin* p, int modelIdx) {
     msg.eco  = p->ctrl[P_ECO]  && *p->ctrl[P_ECO]  > 0.5f;
     if (hasValveSwap(modelIdx, msg.comp)) {
         msg.v1tube = p->ctrl[P_V1TUBE] ? clampIdx(*p->ctrl[P_V1TUBE], 0, kV1TubeMax) : 0;
-        msg.patube = p->ctrl[P_PATUBE] ? clampIdx(*p->ctrl[P_PATUBE], 0, kPaTubeMax) : 0;
+        msg.patube = paValveFor(modelIdx, p->ctrl[P_PATUBE] ? clampIdx(*p->ctrl[P_PATUBE], 0, kPaTubeMax) : 0);
     }
     msg.ab = p->abHt.load(std::memory_order_relaxed);
     const LV2_Worker_Status st = p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
@@ -715,7 +718,7 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     }
     const bool valves = hasValveSwap(modelIdx, compOn);
     const int  v1Want = (valves && p->ctrl[P_V1TUBE]) ? clampIdx(*p->ctrl[P_V1TUBE], 0, kV1TubeMax) : 0;
-    const int  paWant = (valves && p->ctrl[P_PATUBE]) ? clampIdx(*p->ctrl[P_PATUBE], 0, kPaTubeMax) : 0;
+    const int  paWant = valves ? paValveFor(modelIdx, p->ctrl[P_PATUBE] ? clampIdx(*p->ctrl[P_PATUBE], 0, kPaTubeMax) : 0) : 0;
     const int  abWant = p->abHt.load(std::memory_order_relaxed);
     if (modelIdx != p->lastModel || compOn != p->lastComp || ecoOn != p->lastEco
         || v1Want != p->lastV1 || paWant != p->lastPa || abWant != p->lastAb) {
