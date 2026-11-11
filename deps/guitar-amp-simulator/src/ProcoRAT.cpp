@@ -26,6 +26,12 @@ void ProcoRAT::reset() noexcept {
         c.inputHP .reset();
         c.filterLP.reset();
         c.vout = 0.0;
+#ifdef HEXCHAIN_ANAGRAM
+        // A complete clear: reset() is the device build's allocation-free kx:Reset and model
+        // switch-in (fresh models construct these at zero, so prepare() is unchanged).
+        c.dcBlock .reset();
+        c.legShelf.reset();
+#endif
     }
     distSmooth_.setCurrentAndTargetValue(distortion_);
     volSmooth_ .setCurrentAndTargetValue(volume_);

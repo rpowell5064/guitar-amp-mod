@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include "BiquadFilter.h"
 #include "DynamicBias.h"
@@ -34,7 +35,7 @@ public:
     void  setParameter(const std::string& id, float value)  noexcept override;
     float getParameter(const std::string& id) const         noexcept override;
 
-    const char* modelName() const noexcept override { return "DS-1"; }
+    const char* modelName() const noexcept override { return GAS_NAME("DS-1"); }
     int recommendedTubeType() const noexcept override { return 1; } // EL34-ish downstream
 
 private:

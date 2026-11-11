@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
@@ -42,7 +43,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 0; } // 6L6GC
-    const char* modelName()           const noexcept override { return "EVH 5150 III"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("EVH 5150 III"); }
 
 private:
     double oversampledFs_ = 0.0;

@@ -195,6 +195,9 @@ public:
 
     void prepare(double fs, const Params& p) noexcept {
         fs_ = fs; p_ = p;
+#ifdef HEXCHAIN_ANAGRAM
+        korenPrepare(p_.piTube);
+#endif
         if (valve_) applyValve();
         lutB_ = nullptr; lutBlend_ = 0.0;   // a fresh prepare starts off any supply glide
         c118HP_.setCoeffs(Filters::highpass1pole(
@@ -204,8 +207,10 @@ public:
         c89HP_.setCoeffs(Filters::highpass1pole(
             p_.nfbCoupHz > 0.0 ? p_.nfbCoupHz : 1.0 / (2.0 * M_PI * 0.047e-6 * 1e6), fs_));
         // Lab A/B only: EVHCOMP_IMPLICIT=0 restores the one-sample-delayed feedback loop.
+#ifndef HEXCHAIN_ANAGRAM   // lab switches: not on the device
         if (const char* e = std::getenv("EVHCOMP_IMPLICIT")) implicitLoop_ = std::atof(e) != 0.0;
         if (std::getenv("EVHCOMP_JOINTONLY")) jointOnly_ = true;        // lab: joint LTP solve, delayed loop
+#endif
         piCapActive_ = p_.piPlateCap > 0.0;
         if (piCapActive_) {
             const double zpA = 1.0 / (1.0 / p_.ltpRaA + 1.0 / 62.5e3);

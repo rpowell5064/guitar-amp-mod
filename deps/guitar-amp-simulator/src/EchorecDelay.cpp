@@ -38,7 +38,7 @@ void EchorecDelay::prepare(double sr, int maxBlock, int numCh) {
 
 void EchorecDelay::reset() noexcept {
     for (auto& c : ch_) {
-        std::fill(c.drumBuf.begin(), c.drumBuf.end(), 0.0f);
+        DELAYBASE_CLEAR_LINE(c.drumBuf);
         c.writeIdx = 0;
         for (auto& eq : c.headEQ) eq.reset();
         c.fbLP.reset();

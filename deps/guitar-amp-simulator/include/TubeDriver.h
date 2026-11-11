@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include "BiquadFilter.h"
 #include "EVHComponentStages.h"
@@ -62,7 +63,7 @@ public:
     void  setParameter(const std::string& id, float value)  noexcept override;
     float getParameter(const std::string& id) const         noexcept override;
 
-    const char* modelName() const noexcept override { return "Tube Driver"; }
+    const char* modelName() const noexcept override { return GAS_NAME("Tube Driver"); }
     int recommendedTubeType() const noexcept override { return 3; }   // KT88 — Hiwatt platform (Gilmour)
 
     // Cubic Hermite table on a uniform grid; build() takes f(x, value&, slope&).

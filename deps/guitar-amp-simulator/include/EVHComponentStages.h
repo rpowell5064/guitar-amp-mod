@@ -2,6 +2,11 @@
 #include "BiquadFilter.h"
 #include <cmath>
 #include <algorithm>
+#ifdef HEXCHAIN_ANAGRAM
+#include <memory>
+#include <mutex>
+#include <vector>
+#endif
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -126,7 +131,15 @@ inline void korenEval(double Vgk, double Vpk,
 // Runtime Koren triode set for stages that are NOT 12AX7s (2026-09-12, SVT: the
 // 12BH7 drivers and the 6C4 line driver). Stages default to the compile-time 12AX7
 // path above (tube == nullptr), so every existing amp is bit-identical.
+#ifdef HEXCHAIN_ANAGRAM
+struct KorenTablesP;
+// fast: this set's tables (korenPrepare, off the audio thread), else nullptr = the exact path.
+// The tables depend on mu/ex/kp/kvb only; kg1 stays a plain scale, so a copy with a new kg1
+// (Beardo's cathode follower) may keep them. A brace-built set starts without.
+struct KorenP { double mu, ex, kg1, kp, kvb; mutable const KorenTablesP* fast = nullptr; };
+#else
 struct KorenP { double mu, ex, kg1, kp, kvb; };
+#endif
 // First-preamp-valve choices for the "v1tube" control (2026-11-03): 0 = 12AX7 (the stage's own,
 // the fast table path), then in falling gain. 12AT7 / 12AU7: Koren's own library; 12AY7: the
 // guitarix tube table's fit; 5751: no published Koren set -- ESTIMATE, fitted to the RCA sheet's
@@ -188,6 +201,12 @@ struct KorenTables {
     struct B { float p, dp; };                 // E1^Ex and d/dt on the sqrt grid
     struct C { float c, dc; };                 // (v/Kp)^Ex and d/dv
     A a[NA + 1]; B b[NB + 1]; C c[NC + 1];
+#ifdef HEXCHAIN_ANAGRAM
+    // 1/sqrt(Kvb + v^2) and d/dv on the C grid (Anagram CPU pass, 2026-11-09): the sqrt and the
+    // divide were the head of the evaluation's dependency chain; on vpk alone, like C.
+    struct Q { float q, dq; };
+    Q q[NC + 1];
+#endif
     KorenTables() noexcept {
         using T = Koren12AX7;
         for (int i = 0; i <= NA; ++i) {
@@ -205,6 +224,11 @@ struct KorenTables {
             const double v = vLo + (vHi - vLo) * i / NC;
             c[i].c = float(std::pow(v / T::Kp, T::Ex));
             c[i].dc = float(T::Ex / T::Kp * std::pow(v / T::Kp, T::Ex - 1.0));
+#ifdef HEXCHAIN_ANAGRAM
+            const double r2 = T::Kvb + v * v;
+            q[i].q  = float(1.0 / std::sqrt(r2));
+            q[i].dq = float(-v / (r2 * std::sqrt(r2)));
+#endif
         }
     }
 };
@@ -220,6 +244,25 @@ inline void korenEvalFast(double Vgk, double Vpk,
     const KT& K = kKorenTables;
     const double vpk      = std::max(1.0, Vpk);
     const double invVpk   = 1.0 / vpk;                                 // off the critical path
+#ifdef HEXCHAIN_ANAGRAM
+    // (vpk/Kp)^Ex and 1/sqrt(Kvb + vpk^2) from the vpk grid: one shared index, no sqrt/divide
+    double c14, invDenom;
+    if (vpk < KT::vHi) {
+        const double u = (vpk - KT::vLo) * (1.0 / hC);
+        const int i = int(u);
+        const double f = u - i, f2 = f * f, f3 = f2 * f;
+        const double h00 = 2 * f3 - 3 * f2 + 1, h10 = (f3 - 2 * f2 + f) * hC, h01 = -2 * f3 + 3 * f2, h11 = (f3 - f2) * hC;
+        const KT::Q& q0 = K.q[i]; const KT::Q& q1 = K.q[i + 1];
+        invDenom = h00 * q0.q + h10 * q0.dq + h01 * q1.q + h11 * q1.dq;
+        const KT::C& n0 = K.c[i]; const KT::C& n1 = K.c[i + 1];
+        c14 = h00 * n0.c + h10 * n0.dc + h01 * n1.c + h11 * n1.dc;
+    } else {
+        invDenom = 1.0 / std::sqrt(T::Kvb + vpk * vpk);
+        c14 = std::exp2(T::Ex * std::log2(vpk * kInvKp));
+    }
+    const double inner    = T::Kp * (1.0 / T::mu + Vgk * invDenom);
+    if (inner < KT::xLo) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
+#else
     const double invDenom = 1.0 / std::sqrt(T::Kvb + vpk * vpk);      // the chain: sqrt -> div -> inner -> A
     const double inner    = T::Kp * (1.0 / T::mu + Vgk * invDenom);
     if (inner < KT::xLo) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
@@ -232,6 +275,7 @@ inline void korenEvalFast(double Vgk, double Vpk,
         const KT::C& n0 = K.c[i]; const KT::C& n1 = K.c[i + 1];
         c14 = (2 * f3 - 3 * f2 + 1) * n0.c + ((f3 - 2 * f2 + f) * hC) * n0.dc + (-2 * f3 + 3 * f2) * n1.c + ((f3 - f2) * hC) * n1.dc;
     } else c14 = std::exp2(T::Ex * std::log2(vpk * kInvKp));
+#endif
     double sig, invS;
     if (inner < KT::xHi) {
         const double u = (inner - KT::xLo) * (1.0 / hA);
@@ -264,8 +308,121 @@ inline void korenEvalFast(double Vgk, double Vpk,
     dIa_dVpk = T::Ex * Ia * invVpk - k * vpk * Vgk * sig * (invDenom * invDenom * invDenom);
 }
 
+#ifdef HEXCHAIN_ANAGRAM
+// ── Tables for the runtime valve sets (Anagram CPU pass, 2026-11-09) ────────
+// korenEvalP costs exp2 + log2 + sqrt + four divides per call; on the SVT (12BH7 drivers,
+// 6C4) and every valve swap it ran inside the Newton loops at the oversampled rate. Same
+// scheme as KorenTables, built per (mu, ex, kp, kvb) at prepare time and shared by every
+// stage with that set; the evaluation mirrors korenEvalFast with the set's constants.
+struct KorenTablesP {
+    static constexpr int    NA = KorenTables::NA, NB = KorenTables::NB, NC = KorenTables::NC;
+    static constexpr double xLo = KorenTables::xLo, xHi = KorenTables::xHi, vLo = KorenTables::vLo, vHi = KorenTables::vHi;
+    double mu, ex, kp, kvb, e1Max;
+    KorenTables::A a[NA + 1]; KorenTables::B b[NB + 1]; KorenTables::C c[NC + 1]; KorenTables::Q q[NC + 1];
+    explicit KorenTablesP(const KorenP& T) noexcept
+        : mu(T.mu), ex(T.ex), kp(T.kp), kvb(T.kvb), e1Max(64.0 * 600.0 / T.kp) {   // the 12AX7's reach, scaled by Kp
+        for (int i = 0; i <= NA; ++i) {
+            const double x = xLo + (xHi - xLo) * i / NA;
+            const double S = std::log1p(std::exp(x)), sg = 1.0 / (1.0 + std::exp(-x));
+            a[i].sig = float(sg); a[i].s14 = float(std::pow(S, ex));
+            a[i].d14 = float(ex * std::pow(S, ex - 1.0) * sg); a[i].invS = float(1.0 / S);
+        }
+        for (int i = 0; i <= NB; ++i) {
+            const double t = double(i) / NB, e1 = e1Max * t * t;
+            b[i].p = float(std::pow(e1, ex));
+            b[i].dp = float(i == 0 ? 0.0 : ex * std::pow(e1, ex - 1.0) * 2.0 * e1Max * t);
+        }
+        for (int i = 0; i <= NC; ++i) {
+            const double v = vLo + (vHi - vLo) * i / NC;
+            c[i].c = float(std::pow(v / kp, ex));
+            c[i].dc = float(ex / kp * std::pow(v / kp, ex - 1.0));
+            const double r2 = kvb + v * v;
+            q[i].q  = float(1.0 / std::sqrt(r2));
+            q[i].dq = float(-v / (r2 * std::sqrt(r2)));
+        }
+    }
+};
+// The shared tables for T's constants: built on first use, kept for the process. Takes a lock
+// and may build (~10k transcendentals), so it belongs in prepare paths, not run().
+inline const KorenTablesP* korenTablesFor(const KorenP& T) {
+    static std::mutex m;
+    static std::vector<std::unique_ptr<KorenTablesP>> sets;
+    std::lock_guard<std::mutex> lock(m);
+    for (const auto& t : sets)
+        if (t->mu == T.mu && t->ex == T.ex && t->kp == T.kp && t->kvb == T.kvb) return t.get();
+    sets.emplace_back(new KorenTablesP(T));
+    return sets.back().get();
+}
+// Attach T's tables (no-op for the compile-time 12AX7 or an already prepared set).
+inline void korenPrepare(const KorenP* T) {
+    if (!T || __atomic_load_n(&T->fast, __ATOMIC_ACQUIRE)) return;
+    __atomic_store_n(&T->fast, korenTablesFor(*T), __ATOMIC_RELEASE);
+}
+inline void korenEvalFastP(const KorenTablesP& K, double kg1, double Vgk, double Vpk,
+                           double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
+    using KT = KorenTablesP;
+    constexpr double hA = (KT::xHi - KT::xLo) / KT::NA, hB = 1.0 / KT::NB, hC = (KT::vHi - KT::vLo) / KT::NC;
+    const double invKg1 = 1.0 / kg1;
+    const double vpk    = std::max(1.0, Vpk);
+    const double invVpk = 1.0 / vpk;
+    double c14, invDenom;
+    if (vpk < KT::vHi) {
+        const double u = (vpk - KT::vLo) * (1.0 / hC);
+        const int i = int(u);
+        const double f = u - i, f2 = f * f, f3 = f2 * f;
+        const double h00 = 2 * f3 - 3 * f2 + 1, h10 = (f3 - 2 * f2 + f) * hC, h01 = -2 * f3 + 3 * f2, h11 = (f3 - f2) * hC;
+        const KorenTables::Q& q0 = K.q[i]; const KorenTables::Q& q1 = K.q[i + 1];
+        invDenom = h00 * q0.q + h10 * q0.dq + h01 * q1.q + h11 * q1.dq;
+        const KorenTables::C& n0 = K.c[i]; const KorenTables::C& n1 = K.c[i + 1];
+        c14 = h00 * n0.c + h10 * n0.dc + h01 * n1.c + h11 * n1.dc;
+    } else {
+        invDenom = 1.0 / std::sqrt(K.kvb + vpk * vpk);
+        c14 = std::exp2(K.ex * std::log2(vpk / K.kp));
+    }
+    const double inner = K.kp * (1.0 / K.mu + Vgk * invDenom);
+    if (inner < KT::xLo) { Ia = dIa_dVgk = dIa_dVpk = 0.0; return; }
+    double sig, invS;
+    if (inner < KT::xHi) {
+        const double u = (inner - KT::xLo) * (1.0 / hA);
+        const int i = int(u);
+        const double f = u - i, f2 = f * f, f3 = f2 * f;
+        const double h00 = 2 * f3 - 3 * f2 + 1, h10 = (f3 - 2 * f2 + f) * hA, h01 = -2 * f3 + 3 * f2, h11 = (f3 - f2) * hA;
+        const KorenTables::A& n0 = K.a[i]; const KorenTables::A& n1 = K.a[i + 1];
+        const double g0 = n0.sig, g1 = n1.sig, r0 = n0.invS, r1 = n1.invS;
+        const double s14 = h00 * n0.s14 + h10 * n0.d14 + h01 * n1.s14 + h11 * n1.d14;
+        sig  = h00 * g0 + h10 * (g0 * (1.0 - g0)) + h01 * g1 + h11 * (g1 * (1.0 - g1));
+        invS = h00 * r0 + h10 * (-g0 * r0 * r0)   + h01 * r1 + h11 * (-g1 * r1 * r1);
+        Ia = c14 * s14 * invKg1;
+    } else {
+        sig = 1.0; invS = 1.0 / inner;
+        const double E1 = vpk / K.kp * inner;
+        double P;
+        if (E1 < K.e1Max) {
+            const double u = std::sqrt(E1 / K.e1Max) * KT::NB;
+            int i = int(u); if (i >= KT::NB) i = KT::NB - 1;
+            const double f = u - i, f2 = f * f, f3 = f2 * f;
+            const KorenTables::B& n0 = K.b[i]; const KorenTables::B& n1 = K.b[i + 1];
+            P = (2 * f3 - 3 * f2 + 1) * n0.p + ((f3 - 2 * f2 + f) * hB) * n0.dp + (-2 * f3 + 3 * f2) * n1.p + ((f3 - f2) * hB) * n1.dp;
+        } else P = std::exp2(K.ex * std::log2(E1));
+        Ia = P * invKg1;
+    }
+    const double k = K.ex * Ia * invS * K.kp;
+    dIa_dVgk = k * invDenom * sig;
+    dIa_dVpk = K.ex * Ia * invVpk - k * vpk * Vgk * sig * (invDenom * invDenom * invDenom);
+}
+#endif
+
 inline void korenEvalT(const KorenP* T, double Vgk, double Vpk,
                        double& Ia, double& dIa_dVgk, double& dIa_dVpk) noexcept {
+#ifdef HEXCHAIN_ANAGRAM
+    if (T) {
+        if (const KorenTablesP* k = __atomic_load_n(&T->fast, __ATOMIC_RELAXED))   // address-dependent: ordered
+            korenEvalFastP(*k, T->kg1, Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+        else
+            korenEvalP(*T, Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
+        return;
+    }
+#endif
     if (T)                     korenEvalP(*T, Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
     else if (korenFastFlag())  korenEvalFast(Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
     else                       korenEval(Vgk, Vpk, Ia, dIa_dVgk, dIa_dVpk);
@@ -329,6 +486,9 @@ public:
     void prepare(double fs, const Params& p) noexcept {
         p_ = p; fs_ = fs;
         if (tubeOv_) p_.tube = tubeOv_;
+#ifdef HEXCHAIN_ANAGRAM
+        korenPrepare(p_.tube);
+#endif
         Geq_ = 2.0 * p_.Ck * fs_;
         Gk_  = 1.0 / p_.Rk + Geq_;
         if (p_.RfbP > 0.0) {
@@ -632,6 +792,9 @@ public:
     void prepare(double /*fs*/, const Params& p) noexcept {
         p_ = p;
         if (tubeOv_) p_.tube = tubeOv_;
+#ifdef HEXCHAIN_ANAGRAM
+        korenPrepare(p_.tube);
+#endif
         solveBias();
         reset();
     }
@@ -712,9 +875,15 @@ private:
         const double maxIa = p_.Vcc / p_.Rk * 0.999;
         double Ia = std::clamp(Ia0, 0.0, maxIa);
         bool ok = false;
+#ifdef HEXCHAIN_ANAGRAM
+        double bLo = 0.0, bHi = maxIa;   // the root's bracket, from the residuals Newton has seen
+#endif
         for (int it = 0; it < iters; ++it) {
             double f, fp;
             jointResidual(vSrc, Ia, f, fp);
+#ifdef HEXCHAIN_ANAGRAM
+            if (f > 0.0) bHi = std::min(bHi, Ia); else bLo = std::max(bLo, Ia);
+#endif
             // The exit MUST stay at kEps (1 nA): any looser residual or step gate
             // lets the warm start pass untouched for small grid signals — a dead
             // zone that reads as crossover distortion (100 nA: CLEAN grid 6.9 -> 34;
@@ -737,12 +906,31 @@ private:
             // most driven samples at 80 evaluations a time — the SVT's CPU sink
             // (84 % sine / 330 % noise on the Pi). Now rare: 30 halvings of 10 mA
             // reach 10 pA.
+#ifdef HEXCHAIN_ANAGRAM
+            // Safeguarded Newton instead (Anagram CPU pass, 2026-11-09): the same monotonic
+            // residual and the same root, but Newton steps inside the bracket the failed loop
+            // already narrowed, halving only when a step would leave it. Measured on a plucked-
+            // guitar DI this fallback still ran on 7-16 % of the follower's samples at 30
+            // evaluations each; now it settles in a few. Exit at the bisection's own 10 pA.
+            double lo = bLo, hi = bHi, f, fp;
+            Ia = std::clamp(Ia, lo, hi);
+            for (int i = 0; i < 40 && hi - lo > 1e-11; ++i) {
+                jointResidual(vSrc, Ia, f, fp);
+                if (f > 0.0) hi = Ia; else lo = Ia;
+                double nx = (fp > 1e-30) ? Ia - f / fp : -1.0;
+                if (!(nx > lo && nx < hi)) nx = 0.5 * (lo + hi);
+                const double step = std::abs(nx - Ia);
+                Ia = nx;
+                if (step < 1e-11) break;
+            }
+#else
             double lo = 0.0, hi = maxIa, f, fp;
             for (int i = 0; i < 30; ++i) {
                 Ia = 0.5 * (lo + hi);
                 jointResidual(vSrc, Ia, f, fp);
                 if (f > 0.0) hi = Ia; else lo = Ia;
             }
+#endif
         }
         return Ia;
     }
@@ -813,7 +1001,13 @@ public:
         double gridKneeV = 0.0;
         const KorenP* tube = nullptr;
     };
-    void prepare(double /*fs*/, const Params& p) noexcept { p_ = p; solveBias(); reset(); }
+    void prepare(double /*fs*/, const Params& p) noexcept {
+        p_ = p;
+#ifdef HEXCHAIN_ANAGRAM
+        korenPrepare(p_.tube);
+#endif
+        solveBias(); reset();
+    }
     void reset() noexcept { IaOp_ = IaBias_; VkPrev_ = VkBias_; plate_ = cath_ = 0.0; }
     // vgIn: grid swing about its bias. Afterwards plateOut() / cathodeOut() hold
     // the two swings (plate inverted, cathode in phase).

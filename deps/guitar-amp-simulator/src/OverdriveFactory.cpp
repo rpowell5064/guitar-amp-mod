@@ -1,3 +1,4 @@
+#include "GasName.h"
 #include "OverdriveFactory.h"
 #include "TubeScreamer808.h"
 #include "LifePedal.h"
@@ -9,7 +10,9 @@
 #include "DOD250.h"
 #include "EchoplexPreamp.h"
 #include "TubeDriver.h"
+#ifndef HEXCHAIN_ANAGRAM   // the device ships no model of the vendor's own pedal
 #include "MicrotubesB7K.h"
+#endif
 #include "TrebleBooster.h"
 
 std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
@@ -25,7 +28,9 @@ std::unique_ptr<OverdriveBase> OverdriveFactory::create(OverdriveType type) {
         case OverdriveType::DOD250:          return std::make_unique<DOD250>();
         case OverdriveType::EchoplexPreamp:  return std::make_unique<EchoplexPreamp>();
         case OverdriveType::TubeDriver:      return std::make_unique<TubeDriver>();
+#ifndef HEXCHAIN_ANAGRAM
         case OverdriveType::MicrotubesB7K:   return std::make_unique<MicrotubesB7K>();
+#endif
         case OverdriveType::TrebleBooster:   return std::make_unique<TrebleBooster>();
         default:                             return std::make_unique<TubeScreamer808>();
     }
@@ -51,20 +56,20 @@ std::unique_ptr<NamOverdrive> OverdriveFactory::createNam(const std::string& fil
 
 const char* OverdriveFactory::modelName(OverdriveType type) noexcept {
     switch (type) {
-        case OverdriveType::TubeScreamer808: return "Tube Screamer 808";
-        case OverdriveType::LifePedal:       return "Life Pedal";
-        case OverdriveType::NAM:             return "NAM Overdrive";
-        case OverdriveType::ProcoRAT:        return "ProCo RAT";
-        case OverdriveType::BigMuffPi:       return "Big Muff Pi";
-        case OverdriveType::DS1:             return "DS-1";
-        case OverdriveType::Klon:            return "Klon Centaur";
-        case OverdriveType::SuperOverdriveSD1: return "Boss SD-1";
-        case OverdriveType::DOD250:          return "DOD 250";
-        case OverdriveType::EchoplexPreamp:  return "Echoplex EP-3 Preamp";
-        case OverdriveType::TubeDriver:      return "Butler Tube Driver";
-        case OverdriveType::MicrotubesB7K:   return "Helsinki Grind";
-        case OverdriveType::TrebleBooster:   return "Treble Ranger";
-        default:                             return "Unknown";
+        case OverdriveType::TubeScreamer808: return GAS_NAME("Tube Screamer 808");
+        case OverdriveType::LifePedal:       return GAS_NAME("Life Pedal");
+        case OverdriveType::NAM:             return GAS_NAME("NAM Overdrive");
+        case OverdriveType::ProcoRAT:        return GAS_NAME("ProCo RAT");
+        case OverdriveType::BigMuffPi:       return GAS_NAME("Big Muff Pi");
+        case OverdriveType::DS1:             return GAS_NAME("DS-1");
+        case OverdriveType::Klon:            return GAS_NAME("Klon Centaur");
+        case OverdriveType::SuperOverdriveSD1: return GAS_NAME("Boss SD-1");
+        case OverdriveType::DOD250:          return GAS_NAME("DOD 250");
+        case OverdriveType::EchoplexPreamp:  return GAS_NAME("Echoplex EP-3 Preamp");
+        case OverdriveType::TubeDriver:      return GAS_NAME("Butler Tube Driver");
+        case OverdriveType::MicrotubesB7K:   return GAS_NAME("Helsinki Grind");
+        case OverdriveType::TrebleBooster:   return GAS_NAME("Treble Ranger");
+        default:                             return GAS_NAME("Unknown");
     }
 }
 

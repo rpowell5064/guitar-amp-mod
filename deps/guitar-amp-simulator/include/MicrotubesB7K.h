@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include "BiquadFilter.h"
 #include "LinNetV.h"
@@ -64,7 +65,7 @@ public:
     void  setParameter(const std::string& id, float value)  noexcept override;
     float getParameter(const std::string& id) const         noexcept override;
 
-    const char* modelName() const noexcept override { return "Helsinki Grind"; }
+    const char* modelName() const noexcept override { return GAS_NAME("Helsinki Grind"); }
     int recommendedTubeType() const noexcept override { return 5; }   // 6550 — the SVT stack pairing
 
 private:

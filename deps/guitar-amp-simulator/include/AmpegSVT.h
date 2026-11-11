@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "BiquadFilter.h"
@@ -41,7 +42,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 5; } // 6550
-    const char* modelName()           const noexcept override { return "Blue Liner"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Blue Liner"); }
 
 private:
     static constexpr float kMidCenters[3] = { 220.0f, 800.0f, 3000.0f };

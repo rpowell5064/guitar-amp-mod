@@ -9,6 +9,10 @@
 #include <cstring>
 #include <new>
 #include <cmath>
+#ifdef HEXCHAIN_ANAGRAM
+#include "AnagramRt.h"
+#include <algorithm>
+#endif
 
 #define FUZZ_URI "https://rpowell5064.github.io/guitaramp-suite/fuzz"
 
@@ -51,9 +55,26 @@ struct FuzzPlugin {
     std::unique_ptr<OversamplingWrapper> ff;   // Fizz Factory (ZVex-style chaos/gated octave)
     float* ports[P_N_PORTS] = {};
 #ifdef HEXCHAIN_ANAGRAM
-    double rate = 48000.0;     // kept for the kx:Reset re-prepare
+    double rate = 48000.0;
     bool resetLatch = false;
     AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
+
+    // Click-free switching (2026-11-09). Every pedal is pre-built; a switch resets the incoming
+    // one (allocation-free: its filters, AA filters and smoothers) and crossfades old -> new
+    // over XFade::kLen with both running. An Italian Hero era change is a switch too: it
+    // ping-pongs between two Italian Hero instances, so new coefficients never land on a
+    // ringing filter. Bypass ramps instead of cutting; a fully bypassed block runs nothing.
+    static constexpr int      kSlots = 5;     // 0/1 = Italian Hero A/B, 2 = Tone Bender, 3 = Octavia, 4 = Fizz Factory
+    static constexpr uint32_t kMaxN  = 512;   // sub-block (run() splits longer periods)
+    std::unique_ptr<OversamplingWrapper> ih2;
+    OversamplingWrapper* slot[kSlots] = {};
+    PushCache<48> pc[kSlots];                 // per-instance ANAGRAM_PUSH state
+    int   ihEra[2] = { -1, -1 };              // the era each Italian Hero instance runs
+    int   cur = -1, prev = -1;                // rendering slot; outgoing slot while a switch fades (-1 = none)
+    bool  started = false;
+    XFade sw;                                 // prev -> cur
+    XFade wet;                                // dry -> processed (bypass)
+    float dry[kMaxN] = {}, scr[kMaxN] = {};
 #endif
 };
 
@@ -78,6 +99,11 @@ static LV2_Handle fuzz_instantiate(const LV2_Descriptor*, double rate,
     p->ih->setParameter("era", 2.0f);   // default Italian Hero variant: Gotham
 #ifdef HEXCHAIN_ANAGRAM
     p->rate = rate;
+    p->ih2 = std::make_unique<OversamplingWrapper>(std::make_unique<EHXBigMuff>());
+    p->ih2->prepare(rate, 512, 1);
+    p->ih2->setParameter("era", 2.0f);
+    p->slot[0] = p->ih.get(); p->slot[1] = p->ih2.get();
+    p->slot[2] = p->tb.get(); p->slot[3] = p->oc.get(); p->slot[4] = p->ff.get();
 #endif
     return p;
 }
@@ -86,20 +112,102 @@ static void fuzz_connect_port(LV2_Handle h, uint32_t port, void* data) {
     static_cast<FuzzPlugin*>(h)->ports[port] = static_cast<float*>(data);
 }
 
+#ifdef HEXCHAIN_ANAGRAM
+// The parameter pushes for one slot (the same mapping as the public build's run below),
+// skipped while unchanged. An Italian Hero instance gets the era it was switched in on.
+static void fuzzPush(FuzzPlugin* p, int s) {
+    auto  v = [p](int q) { return *p->ports[q]; };
+    auto& c = p->pc[s];
+    auto& o = *p->slot[s];
+    switch (s) {
+    case 0: case 1:   // Italian Hero (Muff)
+        ANAGRAM_PUSH(c, o, "era",   static_cast<float>(p->ihEra[s]));
+        ANAGRAM_PUSH(c, o, "drive", v(P_SUSTAIN));
+        ANAGRAM_PUSH(c, o, "tone",  v(P_TONE));
+        ANAGRAM_PUSH(c, o, "level", v(P_VOLUME));
+        break;
+    case 2:           // Tone Bender MkII
+        ANAGRAM_PUSH(c, o, "attack",    v(P_SUSTAIN));
+        ANAGRAM_PUSH(c, o, "level",     v(P_VOLUME));
+        ANAGRAM_PUSH(c, o, "bias",      v(P_BIAS));
+        ANAGRAM_PUSH(c, o, "inputtrim", v(P_TRIM));
+        ANAGRAM_PUSH(c, o, "getemp",    v(P_TEMP));
+        ANAGRAM_PUSH(c, o, "gvol",      v(P_GVOL));
+        break;
+    case 3:           // Octavia (its tone setter redesigns three filters: never per block)
+        ANAGRAM_PUSH(c, o, "drive", v(P_SUSTAIN));
+        ANAGRAM_PUSH(c, o, "tone",  v(P_TONE));
+        ANAGRAM_PUSH(c, o, "level", v(P_VOLUME));
+        break;
+    default:          // Fizz Factory
+        ANAGRAM_PUSH(c, o, "sustain",   v(P_SUSTAIN));
+        ANAGRAM_PUSH(c, o, "bias",      v(P_BIAS));
+        ANAGRAM_PUSH(c, o, "inputtrim", v(P_TRIM));
+        ANAGRAM_PUSH(c, o, "getemp",    v(P_TEMP));
+        ANAGRAM_PUSH(c, o, "level",     v(P_VOLUME));
+        break;
+    }
+}
+
+// The slot the ports ask for (the public build's pedal decode: <= 0 Italian Hero, 1, 2, else 3).
+// An Italian Hero era other than the running instance's selects the other instance.
+static int fuzzWant(FuzzPlugin* p, int& era) {
+    const int pedal = static_cast<int>(*p->ports[P_PEDAL] + 0.5f);
+    era = std::clamp(static_cast<int>(std::lround(*p->ports[P_MODE])), 0, 5);   // = EHXBigMuff's decode
+    if (pedal <= 0) {
+        if (p->cur == 0 || p->cur == 1) return (p->ihEra[p->cur] == era) ? p->cur : 1 - p->cur;
+        return (p->ihEra[1] == era) ? 1 : 0;
+    }
+    return pedal == 1 ? 2 : pedal == 2 ? 3 : 4;
+}
+
+static void fuzzBlock(FuzzPlugin* p, const float* in, float* out, uint32_t n, bool bypassed) {
+    if (bypassed && p->wet.pos <= 0.0f) {          // fully bypassed: nothing runs
+        if (out != in) std::memmove(out, in, sizeof(float) * n);
+        p->prev = -1; p->sw.pos = 1.0f;
+        return;
+    }
+    int era = 0;
+    const int want = fuzzWant(p, era);
+    bool resetCur = false, sel = true;
+    if (p->cur < 0) {                               // first block: the pedal is fresh from prepare()
+        p->cur = want;
+    } else if (p->wet.pos <= 0.0f) {                // back from a full bypass: start clean, no stale state
+        p->cur = want; p->prev = -1; p->sw.pos = 1.0f; resetCur = true;
+    } else if (p->prev < 0 && want != p->cur) {     // a switch (one at a time: a newer one waits for this fade)
+        p->prev = p->cur; p->cur = want; p->sw.pos = 0.0f; resetCur = true;
+    } else sel = false;
+    if (sel && p->cur <= 1) p->ihEra[p->cur] = era;  // (a running instance's era never changes)
+
+    std::memcpy(p->dry, in, sizeof(float) * n);     // in and out may alias
+    float* ins[1]  = { p->dry };
+    float* outs[1] = { out };
+    fuzzPush(p, p->cur);
+    if (resetCur) p->slot[p->cur]->reset();         // after the pushes: the smoothers snap to the new values
+    p->slot[p->cur]->process(ins, outs, static_cast<int>(n), 1);
+    if (p->prev >= 0) {
+        float* olds[1] = { p->scr };
+        fuzzPush(p, p->prev);
+        p->slot[p->prev]->process(ins, olds, static_cast<int>(n), 1);
+        p->sw.mix(p->scr, out, out, n, true);
+        if (p->sw.settled(true)) p->prev = -1;
+    }
+    if (bypassed || p->wet.pos < 1.0f) p->wet.mix(p->dry, out, out, n, !bypassed);
+}
+#endif
+
 static void fuzz_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<FuzzPlugin*>(h);
 
 #ifdef HEXCHAIN_ANAGRAM
-    // kx:Reset trigger (rising edge): full state clear via re-prepare, so a
-    // freshly paired dual-mono partner starts identical (provisional; fires
-    // only on host preset/pairing events).
+    // kx:Reset trigger (rising edge): full state clear, so a freshly paired dual-mono partner
+    // starts identical. Allocation-free (no re-prepare): every pedal's filters, AA filters and
+    // smoothers are cleared, and a running switch fade is dropped.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
-            p->ih->prepare(p->rate, 512, 1);
-            p->tb->prepare(p->rate, 512, 1);
-            p->oc->prepare(p->rate, 512, 1);
-            p->ff->prepare(p->rate, 512, 1);
+            for (auto* s : p->slot) s->reset();
+            p->prev = -1; p->sw.pos = 1.0f;
         }
     } else p->resetLatch = false;
 #endif
@@ -111,7 +219,7 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
         const int  pedal = static_cast<int>(v(P_PEDAL) + 0.5f);
         const bool tbff  = (pedal == 1 || pedal == 3);
         p->ui.ui(P_MODE, pedal == 0);
-        p->ui.ui(P_TONE, !tbff);
+        p->ui.ui(P_TONE, true, !tbff);   // greyed, not hidden: a hide needs dg:mayUpdateBlockedState, which drops it from Scenes
         for (int q : { P_BIAS, P_TRIM, P_TEMP, P_GVOL }) p->ui.ui(q, tbff);
     }
 #endif
@@ -120,6 +228,14 @@ static void fuzz_run(LV2_Handle h, uint32_t n) {
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#ifdef HEXCHAIN_ANAGRAM
+    if (n == 0) return;
+    if (!p->started) { p->started = true; p->wet.pos = bypassed ? 0.0f : 1.0f; }
+    for (uint32_t off = 0; off < n; off += FuzzPlugin::kMaxN)
+        fuzzBlock(p, p->ports[P_IN] + off, p->ports[P_OUT] + off,
+                  std::min(FuzzPlugin::kMaxN, n - off), bypassed);
+    return;
+#endif
     if (bypassed) {
         if (p->ports[P_OUT] != p->ports[P_IN])
             std::memcpy(p->ports[P_OUT], p->ports[P_IN], sizeof(float) * n);

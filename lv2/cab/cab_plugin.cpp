@@ -21,6 +21,10 @@
 #include "StageListener.h"
 #include "DenormalGuard.h"
 #include "AnagramPortState.h"
+#include "AnagramRt.h"
+#ifdef HEXCHAIN_ANAGRAM
+#include "kx/control-input-port-change-request.h"
+#endif
 #include <new>
 #include <cstring>
 #include <cstdint>
@@ -30,6 +34,8 @@
 #include <string>
 #include <cstdio>
 #include <cstdlib>
+#include <climits>
+#include <algorithm>
 #ifndef _WIN32
 #include <sys/stat.h>
 #endif
@@ -51,6 +57,7 @@ enum CabPorts {
     P_CABMODEL,                // KosmOS: built-in cab list (its file browser cannot reach the @sentinels).
                                // First, so the device's control flow opens on it; this target's port
                                // layout is its own (generated TTL), never shared with saved MOD boards.
+    P_RIG,                     // KosmOS: the cab rigs as a list (2026-11-10, anagramRig): 0 Custom
 #endif
     P_LOWCUT, P_HIGHCUT, P_MIX, P_BYPASS,
     P_NAM_GAIN, P_NAM_VOL,     // Neural (NAM): input drive + output level (dB), used only in NAM mode
@@ -78,8 +85,15 @@ struct URIs {
     LV2_URID ir_file, nam_file, rigs;
 };
 
-enum WorkType { WORK_IR, WORK_NAM_LOAD, WORK_NAM_FREE };
-struct WorkMsg { WorkType type; char path[kPathMax]; NamModel* nam; };
+enum WorkType { WORK_IR, WORK_NAM_LOAD, WORK_NAM_FREE, WORK_LISTEN };
+#ifdef HEXCHAIN_ANAGRAM
+// Stage Listen, baked in (see cab_listen_anagram)
+static constexpr float kLisAmbience = 0.5f;
+static constexpr float kLisDist     = 1.0f;
+static constexpr int   kLisRoom     = 1;   // Medium
+#endif
+struct WorkMsg { WorkType type; char path[kPathMax]; NamModel* nam;
+                 float ldist = 1.0f, lspread = 0.0f; int lroom = 1, lidx = 0; };   // WORK_LISTEN (Anagram)
 
 struct CabPlugin {
     double rate = 48000.0;
@@ -111,6 +125,34 @@ struct CabPlugin {
     bool resetLatch = false;   // kx:Reset edge detect
     int  lastCab    = -1;      // built-in cab the convolver holds (-1 = re-apply on the next run)
     AnagramPortState<P_N_PORTS> ui;
+    // The Rig list (anagramRig): the host's change-request feature (optional), the rig value last
+    // seen, the rig whose values were asked for (waiting for the host to apply them), the rig the
+    // controls currently match (watched: touching one turns the list back to Custom).
+    const LV2_ControlInputPort_Change_Request* chg = nullptr;
+    int      rigSeen   = -1;   // -1 = take the next value as it is (startup / Reset: preset recall)
+    int      rigAsked  = 0;
+    int      rigActive = 0;
+    uint32_t rigWait   = 0;
+    // Real-time pass (2026-11-09; 16-frame period, see AnagramRt.h):
+    PushCache<40> push;              // setParameter only on change (four of them redesign ~20 biquads)
+    XFade byp;                       // bypass: dry (0) <-> wet (1), 8 ms; fully dry = the cab is idle
+    bool  bypFull = false;           // fully bypassed: process() skipped, its state cleared in slices
+    bool  started = false;           // the first run starts every ramp settled at its target
+    float dryL[kMaxBlock], dryR[kMaxBlock];
+    // Stage Listen: two listeners. A Stand At / Room / spread change is configured on the worker
+    // into the idle one, which takes over the running one's history, pre-rolls and crossfades in.
+    struct LisCfg { float dist = 1.0f, spread = 0.0f; int room = 1;
+                    bool operator!=(const LisCfg& o) const { return dist != o.dist || spread != o.spread || room != o.room; } };
+    StageListener lis1;
+    StageListener* lisP[2] = { nullptr, nullptr };
+    LisCfg lisCfg[2];
+    int    lisA = 0;                 // the listener heard
+    int    lisPhase = 0;             // 0 idle, 1 worker configuring the other, 2 ready, 3 pre-roll, 4 crossfade
+    int    lisCount = 0;
+    XFade  lisXf;                    // A -> B during phase 4
+    XFade  lisOn;                    // listen off (0) <-> on (1)
+    float  preL[kMaxBlock], preR[kMaxBlock], lisTL[kMaxBlock], lisTR[kMaxBlock];
+    static constexpr int kLisPreroll = 1440;   // 30 ms: the new paths' scatter all-passes and EQ settle
 #endif
 
     LV2_URID_Map*        map      = nullptr;
@@ -141,7 +183,7 @@ static const char* cabSentinel(const char* path) {
 #ifdef HEXCHAIN_ANAGRAM
 // The Cab Model list (P_CABMODEL), in the modgui's built-in cab order.
 static const char* const kCabSentinels[] = {
-    "@factory", "@vox2x12", "@american-ob", "@greenback", "@hiwatt",
+    "@factory", CAB_ID_VOX2X12, "@american-ob", CAB_ID_GREENBACK, CAB_ID_HIWATT,
     "@doom", "@bass810", "@bass410h", "@bass210", "@bass115",
 };
 static constexpr int kNumCabs = static_cast<int>(sizeof(kCabSentinels) / sizeof(kCabSentinels[0]));
@@ -236,12 +278,25 @@ static LV2_Handle cab_instantiate(const LV2_Descriptor*, double rate,
     lv2_atom_forge_init(&p->forge, p->map);
 #ifdef HEXCHAIN_ANAGRAM
     p->ui.init(features);
+    p->chg = static_cast<const LV2_ControlInputPort_Change_Request*>(
+        lv2_find_feature(features, LV2_CONTROL_INPUT_PORT_CHANGE_REQUEST_URI));
 #endif
     cabLoadRigs(p);   // user rigs (State restore may replace them)
 
     p->rate = rate;
     p->dsp.prepare(rate, kMaxBlock, 2);
     p->lis.prepare(rate);
+#ifdef HEXCHAIN_ANAGRAM
+    p->lis1.prepare(rate);
+    p->lisP[0] = &p->lis; p->lisP[1] = &p->lis1;
+    for (int i = 0; i < 2; ++i) {   // configured here, never on the audio thread: Stand At 1 m, Medium
+        p->lisCfg[i].spread = 20.0f;  // room, and the spread every feed starts with (a pair until 0.5 s of L == R)
+        p->lisP[i]->setStereoSpread(20.0f);
+        p->lisP[i]->setAmbience(kLisAmbience);   // Listen baked in: the room under the close mic
+        p->lisP[i]->pathCount();
+    }
+    p->lisOn.pos = 0.0f;
+#endif
     const std::vector<float> ir = CabModels::generate("@factory", rate);   // enriched Factory Cab (2026-07-14)
     p->dsp.setIR(ir);
     return p;
@@ -264,15 +319,34 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
     if (msg->type == WORK_IR) {
         std::vector<float> L, R;
         const char* sent = cabSentinel(msg->path);
+#ifdef HEXCHAIN_ANAGRAM
+        // the speaker row is published WITH the IR: both land in the same block (2026-11-09)
+#define CAB_SPK , CabModels::speakerFor(sent ? sent : "")
+#else
+#define CAB_SPK
+#endif
         if (sent)                                                  // built-in synthetic cab (@vox2x12, @bass810, …; basename-detected — see cabSentinel)
-            p->dsp.setIR(CabModels::generate(sent, p->rate));
+            p->dsp.setIR(CabModels::generate(sent, p->rate), nullptr CAB_SPK);
         else if (msg->path[0] && loadIRFile(msg->path, p->rate, L, R))
-            p->dsp.setIR(L, R.empty() ? nullptr : &R);   // lock-free publish
+            p->dsp.setIR(L, R.empty() ? nullptr : &R CAB_SPK);   // lock-free publish
         else
-            p->dsp.setIR(CabModels::generate("@factory", p->rate));   // empty/@factory → enriched Factory Cab
+            p->dsp.setIR(CabModels::generate("@factory", p->rate), nullptr CAB_SPK);   // empty/@factory → enriched Factory Cab
+#undef CAB_SPK
+#ifndef HEXCHAIN_ANAGRAM
         p->dsp.setSpeakerParams(CabModels::speakerFor(sent ? sent : ""));   // physical speaker row (2026-09-21)
+#endif
         return LV2_WORKER_SUCCESS;
     }
+#ifdef HEXCHAIN_ANAGRAM
+    if (msg->type == WORK_LISTEN) {   // configure the idle listener (the audio thread leaves it alone)
+        StageListener* l = p->lisP[msg->lidx];
+        l->setDistance(msg->ldist); l->setRoom(msg->lroom); l->setStereoSpread(msg->lspread);
+        l->pathCount();
+        WorkMsg reply; reply.type = WORK_LISTEN; reply.nam = nullptr; reply.path[0] = '\0';
+        respond(handle, sizeof(reply), &reply);
+        return LV2_WORKER_SUCCESS;
+    }
+#endif
     if (msg->type == WORK_NAM_FREE) { delete msg->nam; return LV2_WORKER_SUCCESS; }
     // WORK_NAM_LOAD
     auto* nm = new(std::nothrow) NamModel;
@@ -286,6 +360,9 @@ static LV2_Worker_Status cab_work(LV2_Handle h, LV2_Worker_Respond_Function resp
 static LV2_Worker_Status cab_work_response(LV2_Handle h, uint32_t, const void* data) {
     auto* p = static_cast<CabPlugin*>(h);
     const auto* msg = static_cast<const WorkMsg*>(data);
+#ifdef HEXCHAIN_ANAGRAM
+    if (msg->type == WORK_LISTEN) { p->lisPhase = 2; return LV2_WORKER_SUCCESS; }
+#endif
     if (msg->type != WORK_NAM_LOAD) return LV2_WORKER_SUCCESS;
     NamModel* old = p->nam;
     p->nam = msg->nam;
@@ -293,6 +370,199 @@ static LV2_Worker_Status cab_work_response(LV2_Handle h, uint32_t, const void* d
     p->schedule->schedule_work(p->schedule->handle, sizeof(freeMsg), &freeMsg);
     return LV2_WORKER_SUCCESS;
 }
+
+#ifdef HEXCHAIN_ANAGRAM
+// ── Stage Listen (Anagram) ──────────────────────────────────────────────────
+// Baked in (2026-11-10, the user: "a more baked in subtle effect"): always on, no controls. The
+// listener runs as ambience -- the close-mic cab stays the direct sound (no travel delay, no head
+// filter, no added latency) and the room it stands in (its reflections, from their directions, and
+// the tail) sits under it at half the full listener's level. Stand At 1 m in the medium room: the
+// settings the full Listen was voiced at. The listen ports are hidden and ignored on the device;
+// the cab's own room ambience stays the player's to add.
+// On the cab's output in place. A configuration change goes through the worker into the idle
+// listener (phase 1), which takes over the running one's history (2), pre-rolls in parallel (3)
+// and crossfades in (4). Listen on/off is an 8 ms crossfade around the whole listener.
+static void cab_listen_anagram(CabPlugin* p, float* outL, float* outR, uint32_t n, bool want) {
+    CabPlugin::LisCfg tgt;
+    tgt.dist = kLisDist;
+    tgt.room = kLisRoom;
+    const bool active = want || !p->lisOn.settled(false);
+    if (active) {   // one cab or a pair: identical L/R cab output for 0.5 s = one cab dead ahead
+        if (outL == outR || std::memcmp(outL, outR, sizeof(float) * n) == 0) {
+            if (p->lisMonoRun < static_cast<uint32_t>(p->rate * 0.5)) p->lisMonoRun += n;
+        } else p->lisMonoRun = 0;
+    }
+    tgt.spread = p->lisMonoRun >= static_cast<uint32_t>(p->rate * 0.5) ? 0.0f : 20.0f;
+    if (p->lisPhase == 0 && tgt != p->lisCfg[p->lisA]) {
+        const int B = p->lisA ^ 1;
+        WorkMsg m; m.type = WORK_LISTEN; m.nam = nullptr; m.path[0] = '\0';
+        m.ldist = tgt.dist; m.lroom = tgt.room; m.lspread = tgt.spread; m.lidx = B;
+        p->lisCfg[B] = tgt;
+        p->lisPhase = 1;   // set first: a synchronous worker replies (phase 2) inside schedule_work
+        if (p->schedule->schedule_work(p->schedule->handle, sizeof(m), &m) != LV2_WORKER_SUCCESS)
+            p->lisPhase = 0;
+    }
+    if (p->lisPhase == 2) {
+        if (active && p->lisWas) {
+            p->lisP[p->lisA ^ 1]->adoptRuntime(*p->lisP[p->lisA]);
+            p->lisPhase = 3; p->lisCount = CabPlugin::kLisPreroll;
+        } else { p->lisA ^= 1; p->lisPhase = 0; }   // not heard: just swap
+    }
+    if (!active) { p->lisWas = false; return; }
+    if (!p->lisWas) {   // (re)starting: from silence, not the tail it stopped on
+        if (p->lisPhase >= 3) { p->lisA ^= 1; p->lisPhase = 0; }
+        p->lisP[p->lisA]->clearState();
+        p->lisWas = true;
+    }
+    const bool onRamp = !p->lisOn.settled(want);
+    if (onRamp) { std::memcpy(p->preL, outL, sizeof(float) * n); std::memcpy(p->preR, outR, sizeof(float) * n); }
+    StageListener& a = *p->lisP[p->lisA];
+    if (p->lisPhase >= 3) {
+        StageListener& b = *p->lisP[p->lisA ^ 1];
+        std::memcpy(p->lisTL, outL, sizeof(float) * n); std::memcpy(p->lisTR, outR, sizeof(float) * n);
+        b.process(p->lisTL, p->lisTR, static_cast<int>(n));
+        a.process(outL, outR, static_cast<int>(n));
+        if (p->lisPhase == 3) {
+            p->lisCount -= static_cast<int>(n);
+            if (p->lisCount <= 0) { p->lisPhase = 4; p->lisXf.pos = 0.0f; }
+        } else {
+            p->lisXf.mix2(outL, p->lisTL, outL, outR, p->lisTR, outR, n, true);
+            if (p->lisXf.settled(true)) { p->lisA ^= 1; p->lisPhase = 0; }
+        }
+    } else {
+        a.process(outL, outR, static_cast<int>(n));
+    }
+    if (onRamp) p->lisOn.mix2(p->preL, outL, outL, p->preR, outR, outR, n, want);
+}
+
+// The IR path (Anagram): parameters pushed on change, an 8 ms bypass ramp (dry copies taken
+// before processing: the host's buffers may alias), the cab idle and cleared once fully dry.
+static void cab_chunk_anagram(CabPlugin* p, float* inL, float* inR, float* outL, float* outR,
+                              uint32_t n, bool bypass) {
+    const bool wet = !bypass;
+    const bool listen = true;   // baked in (above)
+    if (!p->started) {   // nothing to fade from yet
+        p->started = true;
+        p->byp.pos = wet ? 1.0f : 0.0f;
+        p->lisOn.pos = (listen && wet) ? 1.0f : 0.0f;
+    }
+    if (!wet && p->byp.settled(false)) {          // fully bypassed: dry; the cab state cleared a slice per block
+        if (!p->bypFull) { p->bypFull = true; p->dsp.anaDirty(); }
+        p->dsp.anaClearStep(4096);
+        if (outL != inL) std::memcpy(outL, inL, sizeof(float) * n);
+        if (outR != inR) std::memcpy(outR, inR, sizeof(float) * n);
+        p->monoRun = 0;
+        p->lisOn.pos = 0.0f;   // (lisMonoRun kept: a bypass cycle must not reconfigure the listener twice)
+        cab_listen_anagram(p, outL, outR, 0, false);   // not heard; keeps a reconfiguration moving
+        return;
+    }
+    if (p->bypFull) {   // back from fully dry: from silence (the bypass ramp brings the listener in too)
+        p->bypFull = false; p->dsp.anaClearStep(INT_MAX); p->monoRun = 0;
+        p->lisOn.pos = listen ? 1.0f : 0.0f;
+    }
+    const bool ramp = !p->byp.settled(wet);
+    if (ramp) { std::memcpy(p->dryL, inL, sizeof(float) * n); std::memcpy(p->dryR, inR, sizeof(float) * n); }
+
+    CabinetBlock& d = p->dsp;
+    ANAGRAM_PUSH(p->push, d, "lowCutHz",  *p->ports[P_LOWCUT]);
+    ANAGRAM_PUSH(p->push, d, "highCutHz", *p->ports[P_HIGHCUT]);
+    ANAGRAM_PUSH(p->push, d, "mix",       *p->ports[P_MIX]);
+    ANAGRAM_PUSH(p->push, d, "micpos",    *p->ports[P_MICPOS]);
+    ANAGRAM_PUSH(p->push, d, "micdist",   *p->ports[P_MICDIST]);
+    ANAGRAM_PUSH(p->push, d, "roomon",    *p->ports[P_ROOMON]);   // the player's own room, on top of the ambience
+    ANAGRAM_PUSH(p->push, d, "roommix",   *p->ports[P_ROOMMIX]);
+    ANAGRAM_PUSH(p->push, d, "roomamt",   *p->ports[P_ROOMAMT]);
+    ANAGRAM_PUSH(p->push, d, "voice",     *p->ports[P_VOICE]);
+    ANAGRAM_PUSH(p->push, d, "roomdense", 1.0f);   // Room Density is always Dense on the device (2026-11-10)
+    {
+        int spk = static_cast<int>(*p->ports[P_SPKDRIVE] + 0.5f);
+        if (spk < 0) spk = 0; else if (spk > 3) spk = 3;
+        ANAGRAM_PUSH(p->push, d, "spkmodel",    spk == 3 ? 1.0f : 0.0f);
+        ANAGRAM_PUSH(p->push, d, "spkdrive",    (spk == 1 || spk == 2) ? 1.0f : 0.0f);
+        ANAGRAM_PUSH(p->push, d, "spkdriveamt", spk == 2 ? 0.75f : (spk == 1 ? 0.35f : 0.0f));
+    }
+    ANAGRAM_PUSH(p->push, d, "mic2type",  *p->ports[P_MIC2TYPE]);
+    ANAGRAM_PUSH(p->push, d, "mic2pos",   *p->ports[P_MIC2POS]);
+    ANAGRAM_PUSH(p->push, d, "mic2dist",  *p->ports[P_MIC2DIST]);
+    ANAGRAM_PUSH(p->push, d, "mic2lvl",   *p->ports[P_MIC2LVL]);
+    ANAGRAM_PUSH(p->push, d, "mic2align", *p->ports[P_MIC2ALIGN]);
+    ANAGRAM_PUSH(p->push, d, "mic2pol",   *p->ports[P_MIC2POL]);
+
+    const bool same = (inL == inR) || std::memcmp(inL, inR, sizeof(float) * n) == 0;
+    const uint32_t hold = static_cast<uint32_t>(p->rate * kMonoHoldSec);
+    if (!same) p->monoRun = 0;
+    else if (p->monoRun < hold) p->monoRun += n;
+    if (same && p->monoRun >= hold) {
+        for (uint32_t off = 0; off < n; off += kMaxBlock) {
+            const int len = static_cast<int>((n - off > (uint32_t)kMaxBlock) ? kMaxBlock : (n - off));
+            if (outL != inL) std::memcpy(outL + off, inL + off, sizeof(float) * len);
+            d.processMonoToStereo(outL + off, outR + off, len);
+        }
+    } else {
+        float* ins[2]  = { inL,  inR  };
+        float* outs[2] = { outL, outR };
+        d.process(ins, outs, static_cast<int>(n), 2);
+    }
+    cab_listen_anagram(p, outL, outR, n, listen);
+    if (ramp) p->byp.mix2(p->dryL, outL, outL, p->dryR, outR, outR, n, wet);
+}
+
+static void cab_run_anagram(CabPlugin* p, uint32_t n, bool bypass) {
+    float* inL  = p->ports[P_IN_L];  float* inR  = p->ports[P_IN_R];
+    float* outL = p->ports[P_OUT_L]; float* outR = p->ports[P_OUT_R];
+    for (uint32_t off = 0; off < n; off += kMaxBlock) {   // (the device runs 16 frames: one chunk)
+        const uint32_t len = std::min<uint32_t>(n - off, kMaxBlock);
+        cab_chunk_anagram(p, inL + off, inR + off, outL + off, outR + off, len, bypass);
+    }
+    if (n == 0) cab_chunk_anagram(p, inL, inR, outL, outR, 0, bypass);
+}
+#endif
+
+#ifdef HEXCHAIN_ANAGRAM
+// ── The Rig list (2026-11-10) ─────────────────────────────────────────────────
+// KosmOS shows no per-block presets, so the cab rigs (the modgui's RIGS; CabRigsAnagram.h, generated
+// with the factory presets) are a list control. Picking a rig asks the host to set the Cab Model and
+// every mic / room / cut control to the rig's values (kx control-input-port-change-request; mod-host
+// reports each change back, so the knobs move and the values are saved). The controls stay editable:
+// once they match the rig they are watched, and touching one turns the list back to Custom.
+// A value already there at startup or after a Reset (a preset recall) is taken as it is, never
+// re-applied over the controls saved with it. Nothing here touches the audio.
+#include "CabRigsAnagram.h"
+static bool rigMatches(const CabPlugin* p, int rig) noexcept {
+    for (int k = 0; k < kRigNPorts; ++k) {
+        const float* v = p->ports[kRigPorts[k]];
+        const float want = kRigValues[rig - 1][k];
+        if (!v || std::fabs(*v - want) > 1e-4f * std::max(1.0f, std::fabs(want))) return false;
+    }
+    return true;
+}
+static void anagramRig(CabPlugin* p, uint32_t n) {
+    if (!p->ports[P_RIG]) return;
+    const int r = std::clamp(static_cast<int>(*p->ports[P_RIG] + 0.5f), 0, kRigCount);
+    if (p->rigSeen < 0) {   // startup / preset recall: as saved
+        p->rigSeen = r; p->rigAsked = 0;
+        p->rigActive = (r > 0 && rigMatches(p, r)) ? r : 0;
+        return;
+    }
+    if (r != p->rigSeen) {   // the player picked a rig (or Custom)
+        p->rigSeen = r; p->rigActive = 0; p->rigAsked = 0;
+        if (r > 0 && p->chg) {
+            for (int k = 0; k < kRigNPorts; ++k)
+                p->chg->request_change(p->chg->handle, static_cast<uint32_t>(kRigPorts[k]), kRigValues[r - 1][k]);
+            p->rigAsked = r; p->rigWait = 0;
+        }
+    }
+    if (p->rigAsked) {   // waiting for the host to apply the rig
+        if (rigMatches(p, p->rigAsked)) { p->rigActive = p->rigAsked; p->rigAsked = 0; }
+        else if ((p->rigWait += n) > static_cast<uint32_t>(p->rate * 2.0)) p->rigAsked = 0;   // declined: leave it
+        return;
+    }
+    if (p->rigActive && r == p->rigActive && !rigMatches(p, r) && p->chg) {   // a rig control was changed
+        p->chg->request_change(p->chg->handle, P_RIG, 0.0f);   // -> Custom (seen next blocks: 0 applies nothing)
+        p->rigActive = 0;
+    }
+}
+#endif
 
 // ── Audio ────────────────────────────────────────────────────────────────────
 static void cab_run(LV2_Handle h, uint32_t n) {
@@ -307,21 +577,26 @@ static void cab_run(LV2_Handle h, uint32_t n) {
     // active IR on the worker (prepare() drops the loaded IR; the worker
     // regenerates it from irPath — "" → the enriched Factory Cab). NAM state
     // resets in place.
+    // 2026-11-09: in place -- no prepare() (it reallocated the room buffers, re-FFT'd the IR into
+    // every slot on the audio thread and raced the worker writing storedIR_), no IR rebuild: a cab
+    // change in progress completes, then every running state is cleared; the IR stays loaded.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
-            p->dsp.prepare(p->rate, kMaxBlock, 2);
-            p->lis.reset();
-            p->lastCab = -1;   // a built-in cab is rebuilt by the Cab Model block below
-            if (p->irPath[0] && !cabSentinel(p->irPath)) {   // a user IR
-                WorkMsg msg; msg.type = WORK_IR; msg.nam = nullptr;
-                std::strncpy(msg.path, p->irPath, kPathMax - 1); msg.path[kPathMax - 1] = '\0';
-                p->schedule->schedule_work(p->schedule->handle, sizeof(msg), &msg);
-            }
+            p->dsp.reset();
+            if (p->lisPhase >= 3) { p->lisA ^= 1; p->lisPhase = 0; }   // a listener crossfade completes
+            p->lisP[p->lisA]->clearState();
+            p->lisMonoRun = 0; p->monoRun = 0;
+            const bool byp = (*p->ports[P_BYPASS] > 0.5f) || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+            p->byp.pos = byp ? 0.0f : 1.0f; p->bypFull = byp;          // ramps settled at their targets
+            const bool lon = !byp;   // Listen is baked in
+            p->lisOn.pos = lon ? 1.0f : 0.0f; p->lisWas = lon;
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
             p->ui.invalidate();
+            p->rigSeen = -1; p->rigAsked = 0; p->rigActive = 0;   // a preset recall: its Rig and controls as saved
         }
     } else p->resetLatch = false;
+    anagramRig(p, n);
 #endif
 
     const bool haveNotify = (p->notify != nullptr);
@@ -344,6 +619,9 @@ static void cab_run(LV2_Handle h, uint32_t n) {
                 lv2_atom_object_get(obj, u.patch_property, &prop, u.patch_value, &val, 0);
                 if (!prop || prop->type != u.atom_URID || !val) continue;
                 if (val->type == u.atom_String) {   // user rigs JSON from the modgui
+#ifdef HEXCHAIN_ANAGRAM
+                    continue;   // KosmOS: no rigs parameter, and never file IO on the audio thread
+#endif
                     if (reinterpret_cast<const LV2_Atom_URID*>(prop)->body == u.rigs) {
                         const char* js = static_cast<const char*>(LV2_ATOM_BODY_CONST(val));
                         std::strncpy(p->rigsJson, js, CabPlugin::kRigsMax - 1); p->rigsJson[CabPlugin::kRigsMax - 1] = '\0';
@@ -402,11 +680,9 @@ static void cab_run(LV2_Handle h, uint32_t n) {
         p->ui.ui(P_MICPOS,  builtIn);
         p->ui.ui(P_MICDIST, builtIn);
         p->ui.ui(P_ROOMON,  builtIn);
-        for (int q : { P_ROOMMIX, P_ROOMAMT, P_ROOMDENSE }) p->ui.ui(q, builtIn, on(P_ROOMON));
+        for (int q : { P_ROOMMIX, P_ROOMAMT }) p->ui.ui(q, builtIn, on(P_ROOMON));
         p->ui.ui(P_MIC2TYPE, builtIn);
         for (int q : { P_MIC2POS, P_MIC2DIST, P_MIC2LVL, P_MIC2ALIGN, P_MIC2POL }) p->ui.ui(q, builtIn, on(P_MIC2TYPE));
-        p->ui.ui(P_LDIST, true, on(P_LISTEN));
-        p->ui.ui(P_LROOM, true, on(P_LISTEN));
     }
 #endif
 
@@ -414,6 +690,13 @@ static void cab_run(LV2_Handle h, uint32_t n) {
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     const bool bypass = (*p->ports[P_BYPASS] > 0.5f) ||
                         (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#ifdef HEXCHAIN_ANAGRAM
+    if (!(p->nam && p->nam->isLoaded())) {
+        cab_run_anagram(p, n, bypass);
+        if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+        return;
+    }
+#endif
     float* inL  = p->ports[P_IN_L];  float* inR  = p->ports[P_IN_R];
     float* outL = p->ports[P_OUT_L]; float* outR = p->ports[P_OUT_R];
     // Stage Listen: the listener renders the real room, so the cab's own room ambience steps aside
@@ -550,10 +833,18 @@ static LV2_State_Status cab_restore(LV2_Handle h, LV2_State_Retrieve_Function re
         char* path = mapPath ? mapPath->absolute_path(mapPath->handle, ap) : const_cast<char*>(ap);
         std::vector<float> L, R;
         if (const char* sent = cabSentinel(path)) {   // built-in cab (possibly mod-ui-mangled path)
+#ifdef HEXCHAIN_ANAGRAM
+            p->dsp.setIR(CabModels::generate(sent, p->rate), nullptr, CabModels::speakerFor(sent));
+#else
             p->dsp.setIR(CabModels::generate(sent, p->rate));
+#endif
             std::strncpy(p->irPath, sent, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
         } else if (loadIRFile(path, p->rate, L, R)) {
+#ifdef HEXCHAIN_ANAGRAM
+            p->dsp.setIR(L, R.empty() ? nullptr : &R, CabModels::speakerFor(""));
+#else
             p->dsp.setIR(L, R.empty() ? nullptr : &R);
+#endif
             std::strncpy(p->irPath, path, kPathMax - 1); p->irPath[kPathMax - 1] = '\0';
         }
         if (mapPath && path != ap) free(path);

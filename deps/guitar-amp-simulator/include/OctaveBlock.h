@@ -51,13 +51,25 @@ public:
         upLPA_  = 1.0f - std::exp(-twoPi * 110.0f / fs_);         // DC tracker for octave-up
         recomputeRatio();
         for (auto& c : ch_) c = {};
+#ifdef HEXCHAIN_ANAGRAM
+        gA_ = 1.0f - std::exp(-1.0f / (0.010f * fs_));   // 10 ms gain smoothing (no zipper on the knobs)
+        gUp_ = up_; gDown_ = down_; gDry_ = dry_; gMicro_ = micro_;
+#endif
     }
     void process(float** in, float** out, int n, int nch) override {
         if (bypassed) { copyBlock(in, out, n, nch); return; }
         const int chs = std::min(nch, 2);
+#ifdef HEXCHAIN_ANAGRAM
+        const bool doMicro = micro_ > 1.0e-4f || gMicro_ > 1.0e-4f;
+#else
         const bool doMicro = micro_ > 1.0e-4f;
+#endif
         const float twoPiOverFs = 2.0f * 3.14159265f / fs_;
         for (int i = 0; i < n; ++i) {
+#ifdef HEXCHAIN_ANAGRAM
+            gUp_ += gA_ * (up_ - gUp_); gDown_ += gA_ * (down_ - gDown_);
+            gDry_ += gA_ * (dry_ - gDry_); gMicro_ += gA_ * (micro_ - gMicro_);
+#endif
             for (int c = 0; c < chs; ++c) {
                 auto& s = ch_[c];
                 const float x = in[c][i];
@@ -128,7 +140,11 @@ public:
                     shimmer = I * cw + Q * sw;
                 }
 
+#ifdef HEXCHAIN_ANAGRAM
+                out[c][i] = gDry_ * x + gDown_ * sub * 1.2f + gUp_ * up * 1.4f + gMicro_ * shimmer;
+#else
                 out[c][i] = dry_ * x + down_ * sub * 1.2f + up_ * up * 1.4f + micro_ * shimmer;
+#endif
             }
             for (int c = chs; c < nch; ++c) if (in[c] != out[c]) out[c][i] = in[c][i];
         }
@@ -184,6 +200,9 @@ private:
     float deglitch_ = 1.0f;   // divider hysteresis ON by default (set 0 for the old divider)
     int   interval_ = 0;
     float microRatio_ = 1.0f;
+#ifdef HEXCHAIN_ANAGRAM
+    float gA_ = 0.0f, gUp_ = 0.0f, gDown_ = 0.5f, gDry_ = 1.0f, gMicro_ = 0.0f;   // smoothed gains
+#endif
     float envA_ = 0.0f, envR_ = 0.0f, lpInA_ = 0.0f, subLPA_ = 0.0f, upLPA_ = 0.0f;
     struct ChannelState {
         float env = 0.0f, lpIn = 0.0f, prevLp = 0.0f, flip = 1.0f, subLP = 0.0f, upLP = 0.0f;

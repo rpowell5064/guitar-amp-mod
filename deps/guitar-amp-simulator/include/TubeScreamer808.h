@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include "BiquadFilter.h"
 #include <array>
@@ -38,7 +39,7 @@ public:
     void  setParameter(const std::string& id, float value) noexcept override;
     float getParameter(const std::string& id) const        noexcept override;
 
-    const char* modelName() const noexcept override { return "Tube Screamer 808"; }
+    const char* modelName() const noexcept override { return GAS_NAME("Tube Screamer 808"); }
 
 private:
     double oversampledFs_ = 0.0;

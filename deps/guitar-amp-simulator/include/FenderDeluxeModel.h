@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
@@ -32,7 +33,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 0; } // 6L6GC/6V6 family
-    const char* modelName()           const noexcept override { return "Fender Deluxe Reverb"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Fender Deluxe Reverb"); }
 
 private:
     double oversampledFs_ = 0.0;

@@ -26,7 +26,7 @@ void DigitalDelay::prepare(double sr, int maxBlock, int numCh) {
 
 void DigitalDelay::reset() noexcept {
     for (auto& c : ch_) {
-        std::fill(c.buf.begin(), c.buf.end(), 0.0f);
+        DELAYBASE_CLEAR_LINE(c.buf);
         c.writeIdx = 0;
         c.fbLP.reset();
         c.fbHP.reset();

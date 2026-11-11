@@ -48,6 +48,10 @@ public:
         winPk_ = totPk_ = 0.0f; winCnt_ = 0; floorDb_ = -55.0f; holdLeft_ = 0.0f; decayDbps_ = 8.0f; skipWin_ = 0; pending_ = 0; periodic_ = prevPeriodic_ = false; attackDb_ = -200.0f; aliveTarget_ = 0.0f;
         period_ = periodTarget_ = 0.0; pickAmp_ = 0.0f; envIn_ = envSpk_ = 0.0f; gEst_ = 100.0f;
         muted_ = true; alive_ = 0.0f; hop_ = 0; prevEnvDb_ = -200.0f;
+#ifdef HEXCHAIN_ANAGRAM
+        pickedWin_ = false; pickLin_ = std::pow(10.0f, (floorDb_ + 6.0f) / 20.0f);
+        sincePick_ = 0x7fffffff; pickDec_ = 0x7fffffff; snapLen_ = int(fs_ * 0.060);
+#endif
     }
 
     // amount 0..1 = how loud the stage is / how hard the strings are driven; distance in metres.
@@ -81,7 +85,13 @@ public:
 
         float s = 0.0f;
         if (period_ > 0.0) {
+#ifdef HEXCHAIN_ANAGRAM
+            // fret change: ~10 ms glide; for 60 ms after a pick the tuning follows each YIN estimate (a new
+            // note is a jump, not a slide: gliding made the loop feed back on the OLD note for ~80 ms)
+            period_ += (periodTarget_ - period_) * (sincePick_ < snapLen_ ? 0.05 : glide_);
+#else
             period_ += (periodTarget_ - period_) * glide_;                    // fret change: ~10 ms glide
+#endif
             const float back = readFrac(str_, strW_, period_ - 1.0);         // -1: the loss filter's delay
             const float g = muted_ ? kMuteG : loopG();
             loss_ = loss_ + kLossA * (back - loss_);                          // partials above ~3 kHz die faster
@@ -148,10 +158,32 @@ private:
         // natural decay is 5-30 dB/s) once past the pick's own transient = a palm / fretting-hand mute.
         winPk_ = std::max(winPk_, std::fabs(di));
         totPk_ = std::max(totPk_, std::fabs(total));
+#ifdef HEXCHAIN_ANAGRAM
+        // Onset latency pass (2026-11-09). The pick test below (window peak 6 dB over the last window and
+        // the floor) is applied the moment the window's running peak crosses it, not when the window closes
+        // (the same picks, up to 20 ms sooner), and a pending pick is accepted on the first YIN result made
+        // mostly of post-pick DI rather than at the next window boundary. Was 89 ms from silence to an
+        // engaged string and 80-95 ms to retune on a new note; the string's own build-up is unchanged.
+        if (sincePick_ < 0x7fffffff) ++sincePick_;
+        if (!pickedWin_ && winPk_ > pickLin_) {
+            pickedWin_ = true;
+            for (float& v : str_) v *= 0.1f;
+            pending_ = 5;            // counted down at window ends: this partial window + 4 (as before)
+            pendPk_ = winPk_; pendDb_ = 20.0f * std::log10(winPk_ + 1e-9f);
+            sincePick_ = 0; pickDec_ = 0;
+        }
+        if (pickedWin_) { pendPk_ = std::max(pendPk_, winPk_); if (pending_ == 0) pickAmp_ = std::max(pickAmp_, 1.2f * winPk_); }
+#endif
         if (++winCnt_ >= int(fs_ * 0.020)) {
             winCnt_ = 0;
             const float db = 20.0f * std::log10(winPk_ + 1e-9f);
             const float tot = 20.0f * std::log10(totPk_ + 1e-9f);
+#ifdef HEXCHAIN_ANAGRAM
+            if (pickedWin_) {        // seen mid-window (above): its peak is now the whole window's
+                pendDb_ = std::max(pendDb_, db);
+                if (pending_ == 0) attackDb_ = std::max(attackDb_, db);   // accepted already: the attack's true peak
+            }
+#else
             if (db - prevEnvDb_ > 6.0f && db > floorDb_ + 6.0f) {
                 // a pick OR a hand touching the strings: either way the contact damps what the string was doing.
                 // It is a note if a pitch follows within 80 ms, otherwise a touch (= a mute: once the dry string
@@ -159,8 +191,14 @@ private:
                 for (float& v : str_) v *= 0.1f;
                 pending_ = 4; pendPk_ = winPk_; pendDb_ = db;
             }
+#endif
             if (pending_ > 0) {
+#ifdef HEXCHAIN_ANAGRAM
+                if (periodic_ && pickDec_ >= kWin / 2) {   // (a pitch from before the pick is not this note's)
+                    period_ = periodTarget_;
+#else
                 if (periodic_) {
+#endif
                     muted_ = false; pickAmp_ = std::max(pendPk_, 1e-5f) * 1.2f; attackDb_ = pendDb_; holdLeft_ = holdSec_;
                     decayDbps_ = 8.0f; skipWin_ = 1; pending_ = 0;
                 } else if (--pending_ == 0) {
@@ -187,15 +225,66 @@ private:
             // pickup floor: learnt from the windows with no pitch in them (hiss by definition), never from a note
             if (!periodic_ && pending_ == 0) floorDb_ = std::max(-100.0f, floorDb_ + 0.05f * (db - floorDb_));
             prevEnvDb_ = db; winPk_ = 0.0f; totPk_ = 0.0f;
+#ifdef HEXCHAIN_ANAGRAM
+            pickedWin_ = false;      // the next window's pick threshold, linear (no log per sample)
+            pickLin_ = std::pow(10.0f, (std::max(prevEnvDb_, floorDb_) + 6.0f) / 20.0f);
+#endif
         }
+#ifdef HEXCHAIN_ANAGRAM
+        // on: ~7 ms, a mute: ~10 ms (both were ~40: a hand stops a real string in tens of ms); a hold running out: ~1 s
+        alive_ += (aliveTarget_ - alive_) * (aliveTarget_ > alive_ ? 0.003f : (muted_ ? 0.002f : 0.00002f));
+#else
         alive_ += (aliveTarget_ - alive_) * ((muted_ || aliveTarget_ > alive_) ? 0.0005f : 0.00002f);   // on / a mute: ~40 ms; a hold running out: ~1 s
+#endif
         // YIN pitch on the decimated DI
         const double v = aa2_.p(aa1_.p(di));
         if (++decPhase_ >= kDecim) {
             decPhase_ = 0; dec_[decW_] = float(v); decW_ = (decW_ + 1) % kDecLen;
+#ifdef HEXCHAIN_ANAGRAM
+            if (pickDec_ < 0x7fffffff) ++pickDec_;
+            if (++hop_ >= kHop) {
+                hop_ = 0; yin();
+                // a pending pick is a note as soon as a pitch shows in a window mostly after the pick
+                if (pending_ > 0 && periodic_ && pickDec_ >= kWin / 2) {
+                    muted_ = false; pickAmp_ = std::max(pendPk_, 1e-5f) * 1.2f; attackDb_ = pendDb_; holdLeft_ = holdSec_;
+                    decayDbps_ = 8.0f; skipWin_ = 1; pending_ = 0; aliveTarget_ = 1.0f;
+                    period_ = periodTarget_;   // a new note: tune to it at once
+                }
+            } else yinStep();
+#else
             if (++hop_ >= kHop) { hop_ = 0; yin(); }
+#endif
         }
     }
+
+#ifdef HEXCHAIN_ANAGRAM
+    // YIN spread over its hop (Anagram CPU pass, 2026-11-09). yin() summed tauMax x kWin (~84k)
+    // squared differences in ONE call, every 16th period of the device's 16-frame host: a burst of
+    // half a period on a little core, on top of the amp. For each lag, the terms whose samples are
+    // already 64 decimated samples old when yin() runs are known a whole hop early, so they are
+    // summed here, a few lags per decimated sample; yin() adds only the terms that touch the hop's
+    // newest samples (about a sixth). Same window, same lags, same moment the pitch lands.
+    int yinTauMax() const { return std::min(int(fs_ / kDecim / 55.0), kDecLen - kWin - 2); }
+    void yinStep() {                       // after decimated sample hop_ (1..kHop-1) of this hop
+        const int tauMax = yinTauMax(), need = kWin + tauMax, nOld = need - kHop;
+        if (hop_ == 1) {                   // the next yin()'s x[0 .. nOld): all written by now
+            const int base = decW_ + kDecLen + (kHop - hop_) - need;
+            for (int i = 0; i < nOld; ++i) xOld_[i] = dec_[(base + i) % kDecLen];
+        }
+        const int per = (tauMax + kHop - 3) / (kHop - 2);   // lags per step: all done by hop_ kHop-2
+        const int t0 = 1 + (hop_ - 1) * per, t1 = std::min(tauMax, t0 + per - 1);
+        // Each lag compares the NEWEST kWin samples with the kWin before them by tau (x[j] vs x[j + tau],
+        // j + tau over the last kWin): the window starts at the oldest sample only for the lowest lag-max
+        // note. (It used to start at x[0] for every lag, so a high note's estimate ignored the newest
+        // ~18 ms of DI.) The terms whose samples are all old are summed here.
+        for (int tau = t0; tau <= t1; ++tau) {
+            const int j0 = need - kWin - tau, jEnd = nOld - tau;
+            float acc = 0.0f;
+            for (int j = j0; j < jEnd; ++j) { const float e = xOld_[j] - xOld_[j + tau]; acc += e * e; }
+            yinPart_[tau] = acc;
+        }
+    }
+#endif
 
     void yin() {
         const double fsd = fs_ / kDecim;
@@ -204,11 +293,20 @@ private:
         const int need = kWin + tauMax;
         for (int i = 0; i < need; ++i) x[i] = dec_[(decW_ + kDecLen - need + i) % kDecLen];
         float d[256]; d[0] = 1.0f; float run = 0.0f; int best = -1;
+#ifdef HEXCHAIN_ANAGRAM
+        const int nOld = need - kHop;
+        for (int tau = 1; tau <= tauMax; ++tau) {
+            float acc = yinPart_[tau];                     // summed during the hop: the all-old terms
+            for (int j = nOld - tau; j < need - tau; ++j) { const float e = x[j] - x[j + tau]; acc += e * e; }
+            run += acc; d[tau] = run > 0.0f ? acc * float(tau) / run : 1.0f;
+        }
+#else
         for (int tau = 1; tau <= tauMax; ++tau) {
             float acc = 0.0f;
             for (int j = 0; j < kWin; ++j) { const float e = x[j] - x[j + tau]; acc += e * e; }
             run += acc; d[tau] = run > 0.0f ? acc * float(tau) / run : 1.0f;
         }
+#endif
         for (int tau = std::max(2, tauMin); tau < tauMax; ++tau)
             if (d[tau] < 0.15f && d[tau] <= d[tau + 1]) { best = tau; break; }
         periodic_ = best >= 0 && d[best] < 0.10f;                              // a clearly pitched DI (noise reads ~1)
@@ -225,6 +323,16 @@ private:
     float amount_ = 0.0f, dist_ = 1.0f, holdSec_ = 6.5f, holdLeft_ = 0.0f, decayDbps_ = 8.0f; int skipWin_ = 0, pending_ = 0; float pendPk_ = 0.0f, pendDb_ = -200.0f;
     std::vector<float> spk_, str_, dec_;
     size_t spkW_ = 0, strW_ = 0; int decW_ = 0, decPhase_ = 0, hop_ = 0;
+#ifdef HEXCHAIN_ANAGRAM
+    float xOld_[kWin + 256] = {};          // the next yin()'s old samples (captured at hop_ 1)
+    float yinPart_[256] = {};              // per lag: the old-sample part of the sum
+    // onset latency pass (see trackDi)
+    bool  pickedWin_ = false;              // this window's pick was seen (mid-window)
+    float pickLin_   = 1e30f;              // the running-peak level that is a pick (6 dB over last window and floor)
+    int   sincePick_ = 0x7fffffff;         // samples since the last pick (tuning snaps for snapLen_)
+    int   pickDec_   = 0x7fffffff;         // decimated samples since the last pick
+    int   snapLen_   = 2880;               // 60 ms
+#endif
     LP2 aa1_, aa2_, body_;
     float lastS_ = 0.0f, winPk_ = 0.0f, totPk_ = 0.0f, floorDb_ = -55.0f; int winCnt_ = 0; bool periodic_ = false, prevPeriodic_ = false;
     float loss_ = 0.0f, envIn_ = 0.0f, envSpk_ = 0.0f, gEst_ = 100.0f;

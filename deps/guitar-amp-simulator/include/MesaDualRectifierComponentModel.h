@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "EVHComponentStages.h"
 #include "PushPullPowerV.h"
@@ -74,7 +75,7 @@ public:
     float getParameter(const std::string& id) const               noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 0; } // 6L6GC
-    const char* modelName()           const noexcept override { return "Mesa Dual Rectifier Component"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Mesa Dual Rectifier Component"); }
 
     // The drawing's five LDR states.
     enum Ldr : int { kOrNorm = 0, kOrClean = 1, kOrModern = 2, kRdModern = 3, kRdVintage = 4 };

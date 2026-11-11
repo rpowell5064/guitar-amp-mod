@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include "NamModel.h"
 #include <string>
@@ -35,7 +36,7 @@ public:
     void  setParameter(const std::string& id, float value) noexcept override;
     float getParameter(const std::string& id) const        noexcept override;
 
-    const char* modelName() const noexcept override { return "NAM Overdrive"; }
+    const char* modelName() const noexcept override { return GAS_NAME("NAM Overdrive"); }
 
     bool loadFromFile(const std::string& path);
     bool isLoaded()   const noexcept { return nam_.isLoaded(); }

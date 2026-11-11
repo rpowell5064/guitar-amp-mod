@@ -1,3 +1,4 @@
+#include "GasName.h"
 #include "AmpModelFactory.h"
 #include "SunnModelT.h"
 #include "Rockerverb50.h"
@@ -84,36 +85,36 @@ std::unique_ptr<OversamplingWrapper> AmpModelFactory::createWithOversampling(Mod
 
 const char* AmpModelFactory::getModelName(ModelID id) noexcept {
     switch (id) {
-        case ModelID::SunnModelT:          return "Sunn Model T";
-        case ModelID::OrangeRockerverb50:  return "Orange Rockerverb 50 MKII";
-        case ModelID::MarshallJCM800:      return "Marshall JCM800";
-        case ModelID::FenderDeluxe:        return "Fender Deluxe Reverb";
-        case ModelID::EVH5150:             return "EVH 5150 III";
-        case ModelID::FriedmanBEDeluxe:    return "Beardo BE";
-        case ModelID::HiwattDR103:         return "Hiwatt DR103";
-        case ModelID::VoxAC30:             return "Vox AC30 Top Boost";
-        case ModelID::PeaveyBackstage:     return "Peavey Backstage Plus";
-        case ModelID::MarshallPlexi1959:   return "Marshall Plexi 1959";
-        case ModelID::MesaMarkV:           return "Mesa Mark V";
-        case ModelID::MesaDualRectifier:   return "Diamond Plate";
-        case ModelID::PRSMT15:             return "Tremont 15";
-        case ModelID::AmpegSVT:            return "Blue Liner";
-        case ModelID::EVH5150Component:    return "EVH 5150 III Component";
-        case ModelID::JCM800Component:     return "Marshall JCM800 Component";
-        case ModelID::FriedmanBE100Component: return "Friedman BE-100 Component";
-        case ModelID::MesaMarkVComponent:  return "Mesa Mark V Component";
-        case ModelID::MesaDualRectifierComponent: return "Mesa Dual Rectifier Component";
-        case ModelID::OrangeRockerverbComponent: return "Orange Rockerverb 50 Component";
-        case ModelID::VoxAC30Component: return "Vox AC30 Top Boost Component";
-        case ModelID::AmpegSVTComponent: return "Ampeg SVT Component";
-        case ModelID::OrangeAD200B:      return "Citrus 200";
-        case ModelID::MarshallPlexiComponent: return "Marshall 1959 Super Lead Component";
-        case ModelID::FenderDeluxeComponent: return "Fender Deluxe Reverb Component";
-        case ModelID::SunnModelTComponent: return "Sunn Model T Component";
-        case ModelID::HiwattDR103Component: return "Hiwatt DR103 Component";
-        case ModelID::PeaveyBackstageComponent: return "Peavey Backstage Component";
-        case ModelID::PRSMT15Component: return "PRS MT15 Component";
-        default:                           return "Unknown";
+        case ModelID::SunnModelT:          return GAS_NAME("Sunn Model T");
+        case ModelID::OrangeRockerverb50:  return GAS_NAME("Orange Rockerverb 50 MKII");
+        case ModelID::MarshallJCM800:      return GAS_NAME("Marshall JCM800");
+        case ModelID::FenderDeluxe:        return GAS_NAME("Fender Deluxe Reverb");
+        case ModelID::EVH5150:             return GAS_NAME("EVH 5150 III");
+        case ModelID::FriedmanBEDeluxe:    return GAS_NAME("Beardo BE");
+        case ModelID::HiwattDR103:         return GAS_NAME("Hiwatt DR103");
+        case ModelID::VoxAC30:             return GAS_NAME("Vox AC30 Top Boost");
+        case ModelID::PeaveyBackstage:     return GAS_NAME("Peavey Backstage Plus");
+        case ModelID::MarshallPlexi1959:   return GAS_NAME("Marshall Plexi 1959");
+        case ModelID::MesaMarkV:           return GAS_NAME("Mesa Mark V");
+        case ModelID::MesaDualRectifier:   return GAS_NAME("Diamond Plate");
+        case ModelID::PRSMT15:             return GAS_NAME("Tremont 15");
+        case ModelID::AmpegSVT:            return GAS_NAME("Blue Liner");
+        case ModelID::EVH5150Component:    return GAS_NAME("EVH 5150 III Component");
+        case ModelID::JCM800Component:     return GAS_NAME("Marshall JCM800 Component");
+        case ModelID::FriedmanBE100Component: return GAS_NAME("Friedman BE-100 Component");
+        case ModelID::MesaMarkVComponent:  return GAS_NAME("Mesa Mark V Component");
+        case ModelID::MesaDualRectifierComponent: return GAS_NAME("Mesa Dual Rectifier Component");
+        case ModelID::OrangeRockerverbComponent: return GAS_NAME("Orange Rockerverb 50 Component");
+        case ModelID::VoxAC30Component: return GAS_NAME("Vox AC30 Top Boost Component");
+        case ModelID::AmpegSVTComponent: return GAS_NAME("Ampeg SVT Component");
+        case ModelID::OrangeAD200B:      return GAS_NAME("Citrus 200");
+        case ModelID::MarshallPlexiComponent: return GAS_NAME("Marshall 1959 Super Lead Component");
+        case ModelID::FenderDeluxeComponent: return GAS_NAME("Fender Deluxe Reverb Component");
+        case ModelID::SunnModelTComponent: return GAS_NAME("Sunn Model T Component");
+        case ModelID::HiwattDR103Component: return GAS_NAME("Hiwatt DR103 Component");
+        case ModelID::PeaveyBackstageComponent: return GAS_NAME("Peavey Backstage Component");
+        case ModelID::PRSMT15Component: return GAS_NAME("PRS MT15 Component");
+        default:                           return GAS_NAME("Unknown");
     }
 }
 
@@ -158,55 +159,55 @@ int AmpModelFactory::recommendedTubeType(ModelID id) noexcept {
 
 const char* const* AmpModelFactory::getAllModelNames() noexcept {
     static const char* const kNames[] = {
-        "Sunn Model T",
-        "Orange Rockerverb 50 MKII",
-        "Marshall JCM800",
-        "Fender Deluxe Reverb",
-        "EVH 5150 III",
-        "Beardo BE",
-        "Hiwatt DR103",
-        "Vox AC30 Top Boost",
-        "Peavey Backstage Plus",
-        "Marshall Plexi 1959",
-        "Mesa Mark V",
-        "Diamond Plate",
-        "Tremont 15",
-        "Blue Liner",
-        "Citrus 200",
+        GAS_NAME("Sunn Model T"),
+        GAS_NAME("Orange Rockerverb 50 MKII"),
+        GAS_NAME("Marshall JCM800"),
+        GAS_NAME("Fender Deluxe Reverb"),
+        GAS_NAME("EVH 5150 III"),
+        GAS_NAME("Beardo BE"),
+        GAS_NAME("Hiwatt DR103"),
+        GAS_NAME("Vox AC30 Top Boost"),
+        GAS_NAME("Peavey Backstage Plus"),
+        GAS_NAME("Marshall Plexi 1959"),
+        GAS_NAME("Mesa Mark V"),
+        GAS_NAME("Diamond Plate"),
+        GAS_NAME("Tremont 15"),
+        GAS_NAME("Blue Liner"),
+        GAS_NAME("Citrus 200"),
         nullptr
     };
     return kNames;
 }
 
 AmpModelFactory::ModelID AmpModelFactory::fromString(const std::string& name) noexcept {
-    if (name == "Sunn Model T")              return ModelID::SunnModelT;
-    if (name == "Orange Rockerverb 50 MKII") return ModelID::OrangeRockerverb50;
-    if (name == "Marshall JCM800")           return ModelID::MarshallJCM800;
-    if (name == "Fender Deluxe Reverb")      return ModelID::FenderDeluxe;
-    if (name == "EVH 5150 III")              return ModelID::EVH5150;
-    if (name == "Beardo BE")                 return ModelID::FriedmanBEDeluxe;
-    if (name == "Hiwatt DR103")              return ModelID::HiwattDR103;
-    if (name == "Vox AC30 Top Boost")        return ModelID::VoxAC30;
-    if (name == "Peavey Backstage Plus")     return ModelID::PeaveyBackstage;
-    if (name == "Marshall Plexi 1959")       return ModelID::MarshallPlexi1959;
-    if (name == "Mesa Mark V")               return ModelID::MesaMarkV;
-    if (name == "Diamond Plate")             return ModelID::MesaDualRectifier;
-    if (name == "Tremont 15")                return ModelID::PRSMT15;
-    if (name == "Blue Liner")                return ModelID::AmpegSVT;
-    if (name == "EVH 5150 III Component")    return ModelID::EVH5150Component;
-    if (name == "Marshall JCM800 Component") return ModelID::JCM800Component;
-    if (name == "Friedman BE-100 Component") return ModelID::FriedmanBE100Component;
-    if (name == "Mesa Mark V Component")      return ModelID::MesaMarkVComponent;
-    if (name == "Mesa Dual Rectifier Component") return ModelID::MesaDualRectifierComponent;
-    if (name == "Orange Rockerverb 50 Component") return ModelID::OrangeRockerverbComponent;
-    if (name == "Vox AC30 Top Boost Component") return ModelID::VoxAC30Component;
-    if (name == "Ampeg SVT Component") return ModelID::AmpegSVTComponent;
-    if (name == "Citrus 200")          return ModelID::OrangeAD200B;
-    if (name == "Marshall 1959 Super Lead Component") return ModelID::MarshallPlexiComponent;
-    if (name == "Fender Deluxe Reverb Component") return ModelID::FenderDeluxeComponent;
-    if (name == "Sunn Model T Component") return ModelID::SunnModelTComponent;
-    if (name == "Hiwatt DR103 Component") return ModelID::HiwattDR103Component;
-    if (name == "Peavey Backstage Component") return ModelID::PeaveyBackstageComponent;
-    if (name == "PRS MT15 Component") return ModelID::PRSMT15Component;
+    if (name == GAS_NAME("Sunn Model T"))              return ModelID::SunnModelT;
+    if (name == GAS_NAME("Orange Rockerverb 50 MKII")) return ModelID::OrangeRockerverb50;
+    if (name == GAS_NAME("Marshall JCM800"))           return ModelID::MarshallJCM800;
+    if (name == GAS_NAME("Fender Deluxe Reverb"))      return ModelID::FenderDeluxe;
+    if (name == GAS_NAME("EVH 5150 III"))              return ModelID::EVH5150;
+    if (name == GAS_NAME("Beardo BE"))                 return ModelID::FriedmanBEDeluxe;
+    if (name == GAS_NAME("Hiwatt DR103"))              return ModelID::HiwattDR103;
+    if (name == GAS_NAME("Vox AC30 Top Boost"))        return ModelID::VoxAC30;
+    if (name == GAS_NAME("Peavey Backstage Plus"))     return ModelID::PeaveyBackstage;
+    if (name == GAS_NAME("Marshall Plexi 1959"))       return ModelID::MarshallPlexi1959;
+    if (name == GAS_NAME("Mesa Mark V"))               return ModelID::MesaMarkV;
+    if (name == GAS_NAME("Diamond Plate"))             return ModelID::MesaDualRectifier;
+    if (name == GAS_NAME("Tremont 15"))                return ModelID::PRSMT15;
+    if (name == GAS_NAME("Blue Liner"))                return ModelID::AmpegSVT;
+    if (name == GAS_NAME("EVH 5150 III Component"))    return ModelID::EVH5150Component;
+    if (name == GAS_NAME("Marshall JCM800 Component")) return ModelID::JCM800Component;
+    if (name == GAS_NAME("Friedman BE-100 Component")) return ModelID::FriedmanBE100Component;
+    if (name == GAS_NAME("Mesa Mark V Component"))      return ModelID::MesaMarkVComponent;
+    if (name == GAS_NAME("Mesa Dual Rectifier Component")) return ModelID::MesaDualRectifierComponent;
+    if (name == GAS_NAME("Orange Rockerverb 50 Component")) return ModelID::OrangeRockerverbComponent;
+    if (name == GAS_NAME("Vox AC30 Top Boost Component")) return ModelID::VoxAC30Component;
+    if (name == GAS_NAME("Ampeg SVT Component")) return ModelID::AmpegSVTComponent;
+    if (name == GAS_NAME("Citrus 200"))          return ModelID::OrangeAD200B;
+    if (name == GAS_NAME("Marshall 1959 Super Lead Component")) return ModelID::MarshallPlexiComponent;
+    if (name == GAS_NAME("Fender Deluxe Reverb Component")) return ModelID::FenderDeluxeComponent;
+    if (name == GAS_NAME("Sunn Model T Component")) return ModelID::SunnModelTComponent;
+    if (name == GAS_NAME("Hiwatt DR103 Component")) return ModelID::HiwattDR103Component;
+    if (name == GAS_NAME("Peavey Backstage Component")) return ModelID::PeaveyBackstageComponent;
+    if (name == GAS_NAME("PRS MT15 Component")) return ModelID::PRSMT15Component;
     return ModelID::SunnModelT;
 }

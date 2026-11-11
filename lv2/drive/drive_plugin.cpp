@@ -19,8 +19,11 @@
 #include <cstdint>
 #include <algorithm>
 #include <cmath>
+#ifdef HEXCHAIN_ANAGRAM
+#include "AnagramRt.h"
+#endif
 
-#define DRIVE_URI     "https://rpowell5064.github.io/guitaramp-suite/drive"
+#define DRIVE_URI    "https://rpowell5064.github.io/guitaramp-suite/drive"
 #define DRIVE_NAM_URI DRIVE_URI "#nammodel"
 static constexpr int kPathMax  = 1024;
 static constexpr int kMaxBlock = 512;
@@ -82,6 +85,19 @@ struct DrivePlugin {
 #ifdef HEXCHAIN_ANAGRAM
     bool resetLatch = false;   // kx:Reset edge detect
     AnagramPortState<P_N_PORTS> ui;   // per-model control visibility reported to the host
+
+    // Allocation-free model switching (2026-11-09). OverdriveBlock::setType() built the new
+    // model on the audio thread (make_unique + prepare(): up to 32 KB of buffers and, for the
+    // Tube Chauffeur, ~14 ms of stage building in one period) and freed the old one when its
+    // fade ended. Here every pedal on the device is built at instantiate; a switch resets the
+    // incoming one (allocation-free) and crossfades old -> new over XFade::kLen with both
+    // running. Bypass ramps instead of cutting; a fully bypassed block runs nothing.
+    std::unique_ptr<OversamplingWrapper> mdl[kMaxModel + 1];   // by LV2 model index; NAM (3) and 10 absent
+    PushCache<8> pc[kMaxModel + 1];
+    int   cur = -1, prev = -1;   // rendering model; outgoing model while a switch fades
+    bool  started = false;
+    XFade sw, wet;
+    float dry[kMaxBlock] = {}, scr[kMaxBlock] = {};
 #endif
 
     LV2_Worker_Schedule* schedule = nullptr;
@@ -126,10 +142,68 @@ static LV2_Handle drive_instantiate(const LV2_Descriptor*, double rate,
     p->ui.init(features);
 #endif
     p->rate = rate;
+#ifdef HEXCHAIN_ANAGRAM
+    // OverdriveBlock's stored defaults, applied the way it applies them: before prepare() for
+    // the model it builds first (Green Man), after prepare() for a model setType() builds.
+    auto defaults = [](OversamplingWrapper& m) {
+        m.setParameter("drive", 0.5f); m.setParameter("tone", 0.5f); m.setParameter("level", 0.5f);
+        m.setParameter("mix", 1.0f);   m.setParameter("octave", 0.3f);
+    };
+    for (int i = 0; i <= kMaxModel; ++i) {
+        if (i == kNamIdx || i == 10) continue;   // not on the device (run() maps both to 0)
+        p->mdl[i] = OverdriveFactory::createOversampled(kModelMap[i], false);
+        if (!p->mdl[i]) { delete p; return nullptr; }
+        if (i == 0) defaults(*p->mdl[i]);
+        p->mdl[i]->prepare(rate, kMaxBlock, 1);
+        if (i != 0) defaults(*p->mdl[i]);
+    }
+#else
     p->dsp.prepare(rate, kMaxBlock, 1);
     p->dsp.setType(OverdriveType::TubeScreamer808);
+#endif
     return p;
 }
+
+#ifdef HEXCHAIN_ANAGRAM
+static void driveBlock(DrivePlugin* p, const float* in, float* out, uint32_t n, int model, bool bypassed) {
+    if (bypassed && p->wet.pos <= 0.0f) {          // fully bypassed: nothing runs
+        if (out != in) std::memmove(out, in, sizeof(float) * n);
+        p->prev = -1; p->sw.pos = 1.0f;
+        return;
+    }
+    bool resetCur = false;
+    if (p->cur < 0) {                               // first block: fresh from prepare()
+        p->cur = model;
+    } else if (p->wet.pos <= 0.0f) {                // back from a full bypass: start clean
+        p->cur = model; p->prev = -1; p->sw.pos = 1.0f; resetCur = true;
+    } else if (p->prev < 0 && model != p->cur) {    // a switch (a newer one waits for this fade)
+        p->prev = p->cur; p->cur = model; p->sw.pos = 0.0f; resetCur = true;
+    }
+    auto push = [p](int s) {
+        auto& c = p->pc[s];
+        auto& o = *p->mdl[s];
+        ANAGRAM_PUSH(c, o, "drive",  *p->ports[P_DRIVE]);
+        ANAGRAM_PUSH(c, o, "tone",   *p->ports[P_TONE]);    // most models redesign filters on tone
+        ANAGRAM_PUSH(c, o, "level",  *p->ports[P_LEVEL]);
+        ANAGRAM_PUSH(c, o, "mix",    *p->ports[P_MIX]);
+        ANAGRAM_PUSH(c, o, "octave", *p->ports[P_OCTAVE]);
+    };
+    std::memcpy(p->dry, in, sizeof(float) * n);     // in and out may alias
+    float* ins[1]  = { p->dry };
+    float* outs[1] = { out };
+    push(p->cur);
+    if (resetCur) p->mdl[p->cur]->reset();          // after the pushes: the smoothers snap to the new values
+    p->mdl[p->cur]->process(ins, outs, static_cast<int>(n), 1);
+    if (p->prev >= 0) {
+        float* olds[1] = { p->scr };
+        push(p->prev);
+        p->mdl[p->prev]->process(ins, olds, static_cast<int>(n), 1);
+        p->sw.mix(p->scr, out, out, n, true);
+        if (p->sw.settled(true)) p->prev = -1;
+    }
+    if (bypassed || p->wet.pos < 1.0f) p->wet.mix(p->dry, out, out, n, !bypassed);
+}
+#endif
 
 static void drive_connect_port(LV2_Handle h, uint32_t port, void* data) {
     auto* p = static_cast<DrivePlugin*>(h);
@@ -169,19 +243,15 @@ static void drive_run(LV2_Handle h, uint32_t n) {
 
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset trigger (rising edge): clear ALL state memory so a freshly
-    // paired dual-mono partner starts identical. prepare() is the full
-    // re-init; it allocates, but the host only fires Reset on preset/bank/
-    // pairing events (provisional).
+    // paired dual-mono partner starts identical (host preset/bank/pairing events).
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
-            // RECONSTRUCT, not just prepare(): a same-size prepare() keeps old filter
-            // memory (the RAT left 8e-4 between two reset partners at 16-frame blocks).
-            p->dsp.~OverdriveBlock();
-            new (&p->dsp) OverdriveBlock{};
-            p->dsp.prepare(p->rate, kMaxBlock, 1);
-            p->lastModel = -1;   // re-apply model + params on the next block
-            if (p->nam) p->nam->reset(p->rate, kMaxBlock);
+            // Allocation-free: the running pedal's reset() (complete since ProcoRAT's clears its
+            // DC blocker and leg shelf too; the 8e-4 residue a same-size prepare() left between
+            // two reset partners). An idle pedal is reset when it is switched in.
+            if (p->cur >= 0) p->mdl[p->cur]->reset();
+            p->prev = -1; p->sw.pos = 1.0f;
         }
     } else p->resetLatch = false;
 #endif
@@ -231,6 +301,15 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     // Bypassed when EITHER this plugin's own Bypass port is on OR the host's
     // designated lv2:enabled port is off.  Mind the inverted sense of enabled.
     bypassed = bypassed || (p->ports[P_ENABLED] && *p->ports[P_ENABLED] <= 0.5f);
+#ifdef HEXCHAIN_ANAGRAM
+    if (n > 0) {
+        if (!p->started) { p->started = true; p->wet.pos = bypassed ? 0.0f : 1.0f; }
+        for (uint32_t off = 0; off < n; off += kMaxBlock)
+            driveBlock(p, in + off, out + off, std::min<uint32_t>(kMaxBlock, n - off), model, bypassed);
+    }
+    if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);
+    return;
+#endif
     if (bypassed) {
         if (out != in) std::memcpy(out, in, sizeof(float) * n);
         if (haveNotify) lv2_atom_forge_pop(&p->forge, &seqFrame);

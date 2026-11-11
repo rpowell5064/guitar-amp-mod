@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
@@ -41,7 +42,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 1; } // EL34 (Simul-Class)
-    const char* modelName()           const noexcept override { return "Mesa Mark V"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Mesa Mark V"); }
 
 private:
     // Which pre-built triode preset a stage uses (resolved to CircuitParams at prepare()

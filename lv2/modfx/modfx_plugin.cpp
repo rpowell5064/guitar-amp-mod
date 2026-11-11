@@ -1,5 +1,8 @@
 #include "lv2_util.h"
 #include "AnagramPortState.h"
+#ifdef HEXCHAIN_ANAGRAM
+#include "AnagramRt.h"
+#endif
 #include "ModulationBlock.h"
 #include "ModulationFactory.h"
 #include "UniVibeEffect.h"
@@ -36,6 +39,7 @@ struct ModfxPlugin {
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
     AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
+    PushCache<8> push;                // ANAGRAM_PUSH: every effect keeps its values (no invalidate)
 #endif
 };
 
@@ -47,6 +51,9 @@ static LV2_Handle modfx_instantiate(const LV2_Descriptor*, double rate,
     p->ui.init(features);
 #endif
     UniVibeEffect::warmup();   // off the audio thread: a later switch to Uni-Verse costs no solve
+#ifdef HEXCHAIN_ANAGRAM
+    p->dsp.enableRt();   // every type built here; switches and bypass crossfade on the audio thread
+#endif
     p->dsp.prepare(rate, 512, 2);
     p->dsp.setType(ModulationType::CE2_Chorus);
     p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
@@ -69,7 +76,7 @@ static void modfx_run(LV2_Handle h, uint32_t n) {
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
-            p->dsp.prepare(p->sampleRate, 512, 2);
+            p->dsp.hardReset();   // allocation-free: the selected effect restarts from its reset state
             p->lastType = -1;   // re-apply the modulation type below
         }
     } else p->resetLatch = false;
@@ -93,12 +100,18 @@ static void modfx_run(LV2_Handle h, uint32_t n) {
         p->dsp.setType(ModulationFactory::fromIndex(type));
     }
 
-    p->dsp.setParameter("rate",        *p->ports[P_RATE]);
-    p->dsp.setParameter("depth",       *p->ports[P_DEPTH]);
-    p->dsp.setParameter("mix",         *p->ports[P_MIX]);
-    p->dsp.setParameter("stereoWidth", *p->ports[P_WIDTH]);
-    p->dsp.setParameter("centerDelay", *p->ports[P_OFFSET]);   // ms (0 for effects without a delay line)
-    p->dsp.setParameter("shape",       *p->ports[P_SHAPE]);    // tremolo waveform (ignored by other types)
+#ifdef HEXCHAIN_ANAGRAM
+#define MODFX_PUSH(id, val) ANAGRAM_PUSH(p->push, p->dsp, id, val)   // only when changed
+#else
+#define MODFX_PUSH(id, val) p->dsp.setParameter(id, val)
+#endif
+    MODFX_PUSH("rate",        *p->ports[P_RATE]);
+    MODFX_PUSH("depth",       *p->ports[P_DEPTH]);
+    MODFX_PUSH("mix",         *p->ports[P_MIX]);
+    MODFX_PUSH("stereoWidth", *p->ports[P_WIDTH]);
+    MODFX_PUSH("centerDelay", *p->ports[P_OFFSET]);   // ms (0 for effects without a delay line)
+    MODFX_PUSH("shape",       *p->ports[P_SHAPE]);    // tremolo waveform (ignored by other types)
+#undef MODFX_PUSH
 
     float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
     float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };

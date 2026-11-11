@@ -23,11 +23,55 @@ public:
     // Clear echo tails (2026-07-23: seamless switching — a bypassed delay holds
     // its buffer and replays stale repeats when re-engaged).
     void reset() noexcept {
+#ifdef HEXCHAIN_ANAGRAM
+        if (rt_) { hardReset(); return; }
+#endif
         if (model_)    model_->reset();
         if (oldModel_) oldModel_->reset();
     }
 
+#ifdef HEXCHAIN_ANAGRAM
+    // KosmOS real-time mode (call before prepare()). Every delay type is built and prepared up
+    // front, so nothing is allocated, freed or prepared on the audio thread. A type change
+    // fades the old model's INPUT out over 8 ms and lets its echoes ring on (spill-over) for
+    // kTailHoldS, then fades them over kTailFadeS; the new model's input fades in, so its first
+    // repeat does not start mid-note. Bypass does the same (trails). Dry is always unity (every
+    // model returns x + mix * wet), so only the wet paths are faded. A model that stops is
+    // zeroed a slice per period, then reset without the fill when it is selected again.
+    void enableRt() noexcept { rt_ = true; }
+    // kx:Reset: every model stops and is cleared (allocation-free; the output is dry until the
+    // selected model's lines are zero, a few ms), then the selected one restarts.
+    void hardReset() noexcept;
+#endif
+
 private:
+#ifdef HEXCHAIN_ANAGRAM
+    static constexpr int   kTypes     = 6;      // DelayType::Digital .. Bbd
+    static constexpr int   kRamp      = 384;    // 8 ms at 48 kHz (input fades, kills)
+    static constexpr float kTailHoldS = 1.0f;   // spill-over: echoes ring this long at full level...
+    static constexpr float kTailFadeS = 1.5f;   // ...then fade out over this
+    static constexpr int   kClearPerFrame = 512;   // floats zeroed per frame of a period (32 KB per 16)
+    struct Slot {
+        std::unique_ptr<DelayBase> m;
+        float inPos   = 0.0f;   // input gain ramp, 0..1 (smoothstep)
+        float outPos  = 0.0f;   // wet output gain ramp, 0..1 (smoothstep)
+        int   hold    = 0;      // tail samples left at full level
+        bool  run     = false;  // processed this period
+        bool  kill    = false;  // a superseded tail: fade out in kRamp
+        bool  used    = false;  // has run since it was last zeroed
+        bool  dirty   = false;  // lines need zeroing before it can run again
+        int   clrLine = 0;
+        size_t clrPos = 0;
+    };
+    Slot slot_[kTypes];
+    bool rt_      = false;
+    bool rtFirst_ = true;    // the first period: start the selected model as is (as the old code)
+    int  sel_     = -1;      // the model the input goes to; -1 = bypassed
+    int  tailSamples_ = 0, tailFadeLen_ = 1;
+    void processRt(float** in, float** out, int numSamples, int nCh) noexcept;
+    void select(int want) noexcept;
+    bool clearSome(Slot& s, size_t& budget) noexcept;
+#endif
     static constexpr int   kMaxCh   = 2;
     static constexpr float kXfadeMs = 10.0f;
 

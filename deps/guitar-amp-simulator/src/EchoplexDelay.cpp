@@ -44,13 +44,23 @@ void EchoplexDelay::prepare(double sr, int maxBlock, int numCh) {
 
 void EchoplexDelay::reset() noexcept {
     for (auto& c : ch_) {
-        std::fill(c.buf.begin(), c.buf.end(), 0.0f);
+        DELAYBASE_CLEAR_LINE(c.buf);
         c.writeIdx = 0;
         c.ageLPz   = 0.0f;
         c.wowPhase = 0.0f;
         c.flutWalk.setImmediate(0.0f);
         c.flutHPz  = 0.0f;
     }
+#ifdef HEXCHAIN_ANAGRAM
+    // The walks' seeds and the wow rate as prepare() leaves them, so a reset() lands in
+    // exactly the prepared state (a prebuilt model re-selected, or kx:Reset, sounds like a
+    // freshly built one).
+    for (int c = 0; c < kMaxCh; ++c) {
+        ch_[c].wowFreqHz      = 0.15f + 0.05f * static_cast<float>(c);
+        ch_[c].flutWalk.seed_ = 0x0EC30u + 0x3000u * c;
+        ch_[c].seed           = 0x9E3779B9u + 0x9000u * c;
+    }
+#endif
     preamp_.reset();
     timeSmoother_.setImmediate(timeMs_);
     feedbackSmoother_.setImmediate(feedback_);

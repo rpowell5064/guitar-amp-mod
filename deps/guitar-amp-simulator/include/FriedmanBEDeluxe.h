@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
@@ -42,7 +43,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 1; } // EL34
-    const char* modelName()           const noexcept override { return "Beardo BE"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Beardo BE"); }
 
 private:
     enum Channel { CH_CLEAN = 0, CH_BE = 1, CH_HBE = 2 };

@@ -1,3 +1,4 @@
+#include "GasName.h"
 #include "DelayFactory.h"
 #include "DigitalDelay.h"
 #include "TapeDelay.h"
@@ -20,13 +21,13 @@ std::unique_ptr<DelayBase> DelayFactory::create(DelayType type) {
 
 const char* DelayFactory::modelName(DelayType type) noexcept {
     switch (type) {
-        case DelayType::Digital: return "Digital";
-        case DelayType::Tape:    return "Tape";
-        case DelayType::Echorec: return "Echorec";
-        case DelayType::Seraph:  return "Seraph";
-        case DelayType::Echoplex: return "Echoplex EP-3";
-        case DelayType::Bbd:     return "Analog BBD";
-        default:                 return "Unknown";
+        case DelayType::Digital: return GAS_NAME("Digital");
+        case DelayType::Tape:    return GAS_NAME("Tape");
+        case DelayType::Echorec: return GAS_NAME("Echorec");
+        case DelayType::Seraph:  return GAS_NAME("Seraph");
+        case DelayType::Echoplex: return GAS_NAME("Echoplex EP-3");
+        case DelayType::Bbd:     return GAS_NAME("Analog BBD");
+        default:                 return GAS_NAME("Unknown");
     }
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "DelayBase.h"
 #include <array>
 
@@ -29,8 +30,12 @@ public:
     float processSample(float x, int ch)                       noexcept override;
     void  setParameter(const std::string& id, float value)     noexcept override;
     float getParameter(const std::string& id) const            noexcept override;
-    const char* delayName() const noexcept override { return "Seraph"; }
+    const char* delayName() const noexcept override { return GAS_NAME("Seraph"); }
 
+#ifdef HEXCHAIN_ANAGRAM
+    int                 lineCount() const noexcept override { return 2 * kMaxCh; }
+    std::vector<float>* line(int i)       noexcept override { return (i & 1) ? &ch_[i >> 1].bufB : &ch_[i >> 1].bufA; }
+#endif
 private:
     float timeMs_      = 300.0f;
     float feedback_    =   0.45f;

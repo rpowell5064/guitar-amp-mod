@@ -430,7 +430,13 @@ static constexpr float kHallTrim = 1.281f;   // +2.15 dB, flat over the Decay ra
 void PlateReverbBlock::processStudio(float** in, float** out, int numSamples, int nCh) noexcept {
     if (studioOn) studioPlate.set(decayTime, damping, modDepth, modRate, preDelayMs);
     else          hall.set(decayTime, damping, modDepth, modRate, preDelayMs);
+#ifdef HEXCHAIN_ANAGRAM
+    // pow + log once per Decay change instead of once per block (the same value: same function)
+    if (studioOn && decayTime != studioTrimDecay_) { studioTrimDecay_ = decayTime; studioTrimVal_ = studioTrim(decayTime); }
+    const float trim = studioOn ? studioTrimVal_ : kHallTrim;
+#else
     const float trim = studioOn ? studioTrim(decayTime) : kHallTrim;
+#endif
     for (int i = 0; i < numSamples; ++i) {
         const float xl = in[0][i];
         const float xr = (nCh >= 2) ? in[1][i] : xl;

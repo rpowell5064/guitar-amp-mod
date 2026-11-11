@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include "BiquadFilter.h"
 #include <array>
@@ -24,7 +25,7 @@ public:
     void  setParameter(const std::string& id, float value) noexcept override;
     float getParameter(const std::string& id) const        noexcept override;
 
-    const char* modelName() const noexcept override { return "Octavia"; }
+    const char* modelName() const noexcept override { return GAS_NAME("Octavia"); }
 
 private:
     // Germanium rectifier threshold (item 3): fz is a normalized ±1 tanh, so the

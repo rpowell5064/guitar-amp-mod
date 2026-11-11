@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "OverdriveBase.h"
 #include <algorithm>
 #include <array>
@@ -59,7 +60,7 @@ public:
     void  setParameter(const std::string& id, float value)  noexcept override;
     float getParameter(const std::string& id) const         noexcept override;
 
-    const char* modelName() const noexcept override { return "Echoplex EP-3 Preamp"; }
+    const char* modelName() const noexcept override { return GAS_NAME("Echoplex EP-3 Preamp"); }
     int recommendedTubeType() const noexcept override { return 1; }   // EL34 — it lives in front of Marshalls
 
     // ── printed values ────────────────────────────────────────────────────────

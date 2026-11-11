@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
@@ -38,7 +39,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 0; } // 6L6GC (see PA case 8 note)
-    const char* modelName()           const noexcept override { return "Tremont 15"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Tremont 15"); }
 
 private:
     enum StageType { ST_FV1, ST_FV2, ST_MV1, ST_MV2, ST_MV3, ST_MV4, ST_EV1, ST_EV2, ST_EV3, ST_EV4 };

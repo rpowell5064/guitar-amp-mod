@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "DelayBase.h"
 #include "BiquadFilter.h"
 #include <array>
@@ -64,7 +65,7 @@ public:
 
     void reset() noexcept override {
         for (auto& c : ch_) {
-            std::fill(c.bucket.begin(), c.bucket.end(), 0.0f);
+            DELAYBASE_CLEAR_LINE(c.bucket);
             c.bw = 0; c.phase = 0.0; c.held = 0.0f; c.prevC = 0.0f; c.preOut = 0.0f;
             c.envC = kRef; c.envE = kRef; c.lastWet = 0.0f; c.noise = 0x2545F491u;
             c.pre1.reset(); c.pre2.reset(); c.post1.reset(); c.post2.reset(); c.post3.reset(); c.dcHP.reset();
@@ -133,8 +134,12 @@ public:
         if (id == "stereoWidth") return stereoWidth_;
         return 0.0f;
     }
-    const char* delayName() const noexcept override { return "Analog BBD"; }
+    const char* delayName() const noexcept override { return GAS_NAME("Analog BBD"); }
 
+#ifdef HEXCHAIN_ANAGRAM
+    int                 lineCount() const noexcept override { return kMaxCh; }
+    std::vector<float>* line(int i)       noexcept override { return &ch_[i].bucket; }
+#endif
 private:
     // Compander reference level (unity point) ~ -12 dBFS, rail headroom, detector floor.
     static constexpr float kRef   = 0.25f;

@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "EVHComponentStages.h"
 #include "PushPullPowerV.h"
@@ -59,7 +60,7 @@ public:
     float getParameter(const std::string& id) const               noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 1; } // EL34
-    const char* modelName()           const noexcept override { return "Marshall JCM800 Component"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Marshall JCM800 Component"); }
 
 private:
     double fs_ = 0.0;

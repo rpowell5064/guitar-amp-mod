@@ -10,6 +10,13 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+// reset()'s delay-line fill (skipped by resetKeepLines() in the HEXCHAIN_ANAGRAM build)
+#ifdef HEXCHAIN_ANAGRAM
+#define DELAYBASE_CLEAR_LINE(v) do { if (!keepLines_) std::fill((v).begin(), (v).end(), 0.0f); } while (0)
+#else
+#define DELAYBASE_CLEAR_LINE(v) std::fill((v).begin(), (v).end(), 0.0f)
+#endif
+
 // Abstract base class for all delay model implementations.
 //
 // processSample(float x, int ch) is called once per sample per channel in
@@ -29,6 +36,17 @@ public:
     virtual void  setParameter(const std::string& id, float value)              noexcept = 0;
     virtual float getParameter(const std::string& id) const                     noexcept = 0;
     virtual const char* delayName() const noexcept = 0;
+
+#ifdef HEXCHAIN_ANAGRAM
+    // KosmOS real-time support (DelayBlock::enableRt): the delay lines, so an idle model can be
+    // zeroed a slice per period (one memset of 0.75-1.5 MB inside a 0.33 ms period is an xrun),
+    // and reset() without that fill, for a model whose lines are already zero.
+    virtual int                 lineCount() const noexcept { return 0; }
+    virtual std::vector<float>* line(int)         noexcept { return nullptr; }
+    void resetKeepLines() noexcept { keepLines_ = true; reset(); keepLines_ = false; }
+protected:
+    bool keepLines_ = false;
+#endif
 
 protected:
     double sampleRate_   = 44100.0;

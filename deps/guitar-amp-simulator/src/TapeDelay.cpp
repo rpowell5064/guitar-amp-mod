@@ -39,7 +39,7 @@ void TapeDelay::prepare(double sr, int maxBlock, int numCh) {
 void TapeDelay::reset() noexcept {
     for (int ci = 0; ci < kMaxCh; ++ci) {
         auto& c = ch_[ci];
-        std::fill(c.buf.begin(), c.buf.end(), 0.0f);
+        DELAYBASE_CLEAR_LINE(c.buf);
         c.writeIdx    = 0;
         c.wowPhase    = 0.0f;
         // Same phases + seeds as prepare(), so a mid-stream reset() is

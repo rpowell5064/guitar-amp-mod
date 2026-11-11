@@ -30,6 +30,16 @@ public:
     AmpModelBase*       getModel()       noexcept { return model_.get(); }
     const AmpModelBase* getModel() const noexcept { return model_.get(); }
 
+#ifdef HEXCHAIN_ANAGRAM
+    // Allocation-free state clear for the audio thread (a pre-built model switched back in, a
+    // kx:Reset): the AA filter histories and the model's own reset(). The scratch buffer is
+    // fully rewritten by every process(), so it needs no clearing.
+    void reset() noexcept {
+        for (int ch = 0; ch < kMaxCh; ++ch) { upAA_[ch].reset(); downAA_[ch].reset(); }
+        if (model_) model_->reset();
+    }
+#endif
+
 private:
     std::unique_ptr<AmpModelBase> model_;
     const int factor_;            // oversampling ratio (set in constructor)

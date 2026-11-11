@@ -1,4 +1,16 @@
 #pragma once
+// The built-in cabs' ids. The device build (HEXCHAIN_ANAGRAM) names none after a real speaker or
+// amp brand (its binaries carry no third-party marks); every other build keeps the public ids,
+// which saved boards and the modgui use.
+#ifdef HEXCHAIN_ANAGRAM
+#define CAB_ID_GREENBACK "@classic4x12"
+#define CAB_ID_HIWATT    "@hivolt4x12"
+#define CAB_ID_VOX2X12   "@chime2x12"
+#else
+#define CAB_ID_GREENBACK "@greenback"
+#define CAB_ID_HIWATT    "@hiwatt"
+#define CAB_ID_VOX2X12   "@vox2x12"
+#endif
 #include "BiquadFilter.h"
 #include "DefaultCabIR.h"
 #include "SpeakerModel.h"
@@ -208,10 +220,10 @@ inline const Enrich* enrichFor(const std::string& id) {
         1, {0.35f, 0.0f, 0.0f},   {0.18f, 0.0f, 0.0f},    3.8f, 0.16f, 700.0f, 50.0f, 2.6f, 8.0f,
         kBassBands, 11 };
     if (id.empty() || id == "@factory") return &kFactory;
-    if (id == "@vox2x12")     return &kVox;
+    if (id == CAB_ID_VOX2X12)     return &kVox;
     if (id == "@american-ob") return &kAmerOB;
-    if (id == "@greenback")   return &kGreenbk;
-    if (id == "@hiwatt")      return &kHiwatt;
+    if (id == CAB_ID_GREENBACK)   return &kGreenbk;
+    if (id == CAB_ID_HIWATT)      return &kHiwatt;
     if (id == "@doom")        return &kDoom;
     if (id == "@bass810")     return &kBass810;
     if (id == "@bass410h")    return &kBass410h;
@@ -240,7 +252,7 @@ inline std::vector<float> generate(const std::string& id, double sr, bool enrich
     auto add = [&](auto coeffs) { BiquadFilter f; f.setCoeffs(coeffs); s.push_back(f); };
     float lenSec = 0.045f;
 
-    if (id == "@vox2x12") {
+    if (id == CAB_ID_VOX2X12) {
         // Vox alnico 2×12: bright & chimey. Higher LP corner (extended top), a
         // forward upper-mid/presence push, only a shallow low-mid dip (Vox is
         // mid-present, not scooped), and an alnico "sparkle" bump ~4.5 kHz.
@@ -266,7 +278,7 @@ inline std::vector<float> generate(const std::string& id, double sr, bool enrich
         add(Filters::lowpass  (7600.0, 1.20, sr));      // airy top, tamed shoulder
         add(Filters::lowpass  (8000.0, 0.75, sr));
         add(Filters::peaking  (9500.0,-6.0, 2.5, sr));
-    } else if (id == "@greenback") {
+    } else if (id == CAB_ID_GREENBACK) {
         // Celestion Greenback 4×12: warm woody mids, smooth top (~5 kHz), classic
         // Marshall crunch. Less scoop than the V30; a mid "honk" ~1.6 kHz.
         add(Filters::highpass (86.0,  0.82, sr));
@@ -279,7 +291,7 @@ inline std::vector<float> generate(const std::string& id, double sr, bool enrich
         add(Filters::lowpass  (5100.0, 1.40, sr));      // smooth, warm rolloff
         add(Filters::lowpass  (5100.0, 0.80, sr));
         add(Filters::lowpass  (5300.0, 0.70, sr));
-    } else if (id == "@hiwatt") {
+    } else if (id == CAB_ID_HIWATT) {
         // Hiwatt/Fane 4×12: full-range, tight, flat/hi-fi, extended ends — the
         // Gilmour platform. Least coloured of the set.
         add(Filters::highpass (74.0,  0.75, sr));       // extended, tight low
@@ -419,10 +431,10 @@ inline const SpeakerParams& speakerFor(const std::string& id) {
         p.fs=40; p.qes=0.40; p.qms=5.5; p.vas=0.150; p.re=5.8; p.le=1.2e-3; p.sd=0.088; p.xmax=5.0e-3;
         p.vb=0.090; p.vDriver=1.0; p.blDroop=0.12; p.kStiff=0.35;
         p.pRated=200; p.brkF[0]=600; p.brkF[1]=1100; p.brkF[2]=1800; p.brkDb=1.5; p.brkComp=0.3; p.cryMix=0.0; return p; }();
-    if (id == "@vox2x12")     return kVox;
+    if (id == CAB_ID_VOX2X12)     return kVox;
     if (id == "@american-ob") return kAmerOB;
-    if (id == "@greenback")   return kGreenbk;
-    if (id == "@hiwatt")      return kHiwatt;
+    if (id == CAB_ID_GREENBACK)   return kGreenbk;
+    if (id == CAB_ID_HIWATT)      return kHiwatt;
     if (id == "@doom")        return kDoom;
     if (id == "@bass810")     return kBass810;
     if (id == "@bass410h")    return kBass410;
@@ -436,7 +448,7 @@ inline const SpeakerParams& speakerFor(const std::string& id) {
 // speakerRowIndex() returns -1 for "no known speaker" (a user IR file, No Cab), which the twins
 // read as "keep the amp's own cab".
 inline const char* const* speakerRowIds() noexcept {
-    static const char* const kIds[10] = { "@factory", "@greenback", "@american-ob", "@vox2x12", "@hiwatt",
+    static const char* const kIds[10] = { "@factory", CAB_ID_GREENBACK, "@american-ob", CAB_ID_VOX2X12, CAB_ID_HIWATT,
                                           "@doom", "@bass810", "@bass410h", "@bass210", "@bass115" };
     return kIds;
 }

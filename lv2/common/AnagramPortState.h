@@ -16,13 +16,18 @@
 
 template <int N>
 struct AnagramPortState {
-    // Hidden ports are blocked by the host as well as hidden. If on-device testing
-    // shows preset recall is blocked on a hidden port, flip kHide to INACTIVE
-    // (greyed, still settable) in one place.
-    static constexpr LV2_Control_Port_State kHide = LV2_CONTROL_PORT_STATE_HIDDEN;
+    // A control that does not exist on the current model is reported INACTIVE (greyed, still
+    // settable, still in Scenes). Measured on the device (2026-11-09 dev image): the host accepts
+    // HIDDEN but the settings screen never removes a control, and HIDDEN/BLOCKED are honoured
+    // only on ports declaring dg:mayUpdateBlockedState, which also drops them from Scenes. The
+    // specs lay each model's controls out on their own pages instead.
+    static constexpr LV2_Control_Port_State kHide = LV2_CONTROL_PORT_STATE_INACTIVE;
 
     const LV2_Control_Port_State_Update* host = nullptr;
     int8_t sent[N];
+    // Ports from here on are past what the host tracks (KosmOS keeps a block's first 60 control
+    // ports): never reported -- a report for one trips the UI's "paramIndex != UINT8_MAX" assertion.
+    uint32_t limit = N;
 
     AnagramPortState() noexcept { invalidate(); }
 
@@ -35,7 +40,7 @@ struct AnagramPortState {
     void invalidate() noexcept { std::memset(sent, -1, sizeof(sent)); }
 
     void set(uint32_t port, LV2_Control_Port_State state) noexcept {
-        if (!host || port >= static_cast<uint32_t>(N) || sent[port] == static_cast<int8_t>(state)) return;
+        if (!host || port >= static_cast<uint32_t>(N) || port >= limit || sent[port] == static_cast<int8_t>(state)) return;
         if (host->update_state(host->handle, port, state) == LV2_CONTROL_PORT_STATE_UPDATE_SUCCESS)
             sent[port] = static_cast<int8_t>(state);
     }

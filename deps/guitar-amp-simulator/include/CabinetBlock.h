@@ -3,6 +3,10 @@
 #include "BiquadFilter.h"
 #include "OlaConvolver.h"
 #include "SpeakerModel.h"
+#ifdef HEXCHAIN_ANAGRAM
+#include "CabConvolver.h"
+#include <algorithm>
+#endif
 #include <array>
 #include <atomic>
 #include <vector>
@@ -48,6 +52,21 @@ public:
     // Clear all running state: convolver tails, room combs, EQ + glue (2026-07-23,
     // seamless switching). IR spectra/coefficients are untouched.
     void reset() noexcept;
+#ifdef HEXCHAIN_ANAGRAM
+    // Darkglass Anagram (2026-11-09). A cab change crossfades: the new IR inherits the running
+    // input history and the old one keeps running until it has faded out (kAnaFade samples), so
+    // there is no step and no lost tail; the cab's speaker row is published WITH its IR and lands
+    // in the same block (setIR with a SpeakerParams). reset() (kx:Reset) finishes a change and
+    // clears the running state in place (no allocation, no IR rebuild). anaClearStep() clears
+    // it a slice at a time while the host has the block fully bypassed (the plugin ramps dry <->
+    // wet itself and skips process() once dry): re-enabling starts from silence, not a stale tail.
+    void setIR(const std::vector<float>& irLeft, const std::vector<float>* irRight,
+               const SpeakerParams& sp);
+    bool anaClearStep(int budgetFloats) noexcept;   // true = clean
+    void anaDirty() noexcept { anaClean_ = false; anaClearCursor_ = 0; }
+    bool anaClean() const noexcept { return anaClean_; }
+    static constexpr int kAnaFade = 960;            // cab crossfade, 20 ms at 48 kHz
+#endif
 
 private:
     float lowCutHz_  =  80.0f;
@@ -162,10 +181,57 @@ private:
                        if (st.compare_exchange_weak(s, n, std::memory_order_acq_rel)) return; } }
         void clear() noexcept { st.store(0, std::memory_order_release); }
     };
+#ifdef HEXCHAIN_ANAGRAM
+    // Four slots: the writer must also avoid the slot the audio thread still fades OUT of
+    // (`hold`), so a new publish during a crossfade never lands on a convolver in use.
+    struct SlotState4 {
+        static constexpr uint32_t kNone = 0xffu;
+        std::atomic<uint32_t> st{kNone << 16};               // front | inUse << 8 | hold << 16
+        int  peek() const noexcept { return int(st.load(std::memory_order_acquire) & 0xffu); }
+        int  claimHold(int hold) noexcept {                  // audio thread: inUse = front, hold = hold
+            uint32_t s = st.load(std::memory_order_acquire);
+            for (;;) { const uint32_t n = (s & 0xffu) | ((s & 0xffu) << 8) | (uint32_t(hold) << 16);
+                       if (n == s || st.compare_exchange_weak(s, n, std::memory_order_acq_rel)) return int(n & 0xffu); } }
+        void release() noexcept {                            // audio thread: the faded-out slot is free
+            uint32_t s = st.load(std::memory_order_acquire);
+            for (;;) { const uint32_t n = (s & 0xffffu) | (kNone << 16);
+                       if (n == s || st.compare_exchange_weak(s, n, std::memory_order_acq_rel)) return; } }
+        int  freeSlot() const noexcept {
+            const uint32_t s = st.load(std::memory_order_acquire);
+            const int f = int(s & 0xffu), u = int((s >> 8) & 0xffu), h = int((s >> 16) & 0xffu);
+            for (int i = 0; i < 4; ++i) if (i != f && i != u && i != h) return i;
+            return f; }
+        void publish(int w) noexcept {
+            uint32_t s = st.load(std::memory_order_acquire);
+            for (;;) { const uint32_t n = (s & ~0xffu) | uint32_t(w);
+                       if (st.compare_exchange_weak(s, n, std::memory_order_acq_rel)) return; } }
+        void clear() noexcept { st.store(kNone << 16, std::memory_order_release); }
+    };
+    static constexpr int kNumSlots = 4;
+    CabConvolver            convolvers_[kNumSlots][kMaxCh];
+    SlotState4              irSt_;
+    SpeakerParams           slotSpk_[kNumSlots];   // the speaker row published with each slot's IR
+    int   anaCur_ = 0, anaNxt_ = -1;               // slot playing / slot fading in (-1 = none)
+    float anaFade_ = 0.0f, anaFadeEnd_ = 0.0f;     // crossfade position at block start / end
+    bool  anaFresh_ = true;                        // nothing played since prepare/clear: switch at once
+    bool  anaSpkRun_ = false;                      // the incoming speaker model ran this change
+    bool  anaClean_ = true;
+    int   anaClearCursor_ = 0, anaClearOff_ = 0;
+    std::array<SpeakerModel, kMaxCh> anaSpk_;      // the incoming cab's speaker during a change
+    std::vector<float> anaTmp_[kMaxCh], anaSpkIn_[kMaxCh];
+    int  anaBegin(int nCh) noexcept;               // claim / start a change; returns the playing slot
+    void anaPre(int c, const float* in, int n) noexcept;      // incoming speaker model on the raw input
+    void anaConvolve(int c, const float* in, float* out, int n) noexcept;
+    void anaEnd(int n) noexcept;                   // commit the fade; finish the change when done
+    void anaFinish() noexcept;                     // complete a change now
+    void anaMonoReturn(int n) noexcept;            // the mono fast path hands channel 0 to channel 1
+    void anaApplySpk(int slot) noexcept;
+#else
     static constexpr int kNumSlots = 3;
 
     OlaConvolver            convolvers_[kNumSlots][kMaxCh];
     SlotState               irSt_;
+#endif
     // Per slot: the R IR differs from the L IR (a true stereo .wav). Written with
     // the slot on the message thread before publish(); the mono fast path must
     // not run on such a slot (it convolves channel 0 only).
@@ -204,8 +270,47 @@ private:
         std::array<float, kDlyLen> ribRing{};      // ribbon (w2) fixed offset
         std::array<float, kDlyLen> distRing{};     // primary-mic distance offset
         int dlyW = 0;                              // shared write index
+#ifdef HEXCHAIN_ANAGRAM
+        // The mic placement's two chains (playing / fading in), each with its own ring
+        // (it delays the chain's output); micLP..distAir and distRing above go unused.
+        struct AnaMicSet {
+            BiquadFilter lp, bite, body, prox, air;
+            std::array<float, kDlyLen> ring{};
+        };
+        AnaMicSet ana[2];
+#endif
     };
     std::array<EQState, kMaxCh> eqState_;
+#ifdef HEXCHAIN_ANAGRAM
+    // Mic placement crossfade (Anagram, 2026-11-10). Position/distance 0/0 is the as-voiced
+    // path with no placement chain at all, so moving off 0 used to switch the chain in at once
+    // (from stale filter state: a +12 dB click), and any change moved its coefficients and its
+    // time-of-flight tap in one step. Now a change loads the incoming placement into the idle
+    // chain (state carried over from the playing one, or cleared when nothing was playing) and
+    // crossfades to it over kAnaMicFade samples; the off placement is the plain signal. Changes
+    // arriving during a fade wait for it to finish (the latest wins). With nothing changing,
+    // the playing chain is the original chain, computed as before (same values).
+    struct AnaMicCfg {
+        BiquadCoeffs lp, bite, body, prox, air;
+        int   delay = 0;
+        bool  on = false;
+        float p = 0.0f, d = 0.0f;
+    };
+    static constexpr int kAnaMicFade = 480;        // 10 ms at 48 kHz
+    AnaMicCfg anaMicCfg_[2];                       // per chain
+    AnaMicCfg anaMicWant_;                         // the latest placement (rebuildEQ)
+    int   anaMicCur_ = 0;                          // the playing chain
+    bool  anaMicFading_ = false;                   // the other chain is fading in
+    float anaMicPos_ = 0.0f;                       // fade position at block start
+    bool  anaMicLoopOn() const noexcept {          // a placement chain is in play (the loops' micActive_)
+        return anaMicCfg_[anaMicCur_].on || (anaMicFading_ && anaMicCfg_[1 - anaMicCur_].on);
+    }
+    float anaMic(EQState& e, float x, int i) noexcept;   // one sample: chain(s) + ring(s), at e.dlyW
+    void  anaMicBegin() noexcept;                  // block start: start a fade to a new placement
+    void  anaMicEnd(int n) noexcept;               // block end: advance / finish the fade
+    void  anaMicReset() noexcept;                  // land the latest placement now, all state cleared
+    void  anaMicLoad(int k) noexcept;              // chain k's coefficients into every channel
+#endif
 
     struct Mic2State {
         BiquadFilter tA, tB, tC, tD;                 // type curve (relative to the IR's own mic)
@@ -219,6 +324,45 @@ private:
         }
     };
     std::array<Mic2State, kMaxCh> mic2_;
+#ifdef HEXCHAIN_ANAGRAM
+    // Mic 2 crossfade (Anagram, 2026-11-10): the same scheme as the primary's placement, for
+    // everything Mic 2 does per sample: its type curve, position, distance / Align tap and
+    // polarity. mic2_ is set 0, anaMic2B_ set 1; a change loads the idle set (state carried
+    // over) and fades to it. Mic 2 coming on (type Off -> a mic) starts from cleared state.
+    struct AnaMic2Cfg {
+        BiquadCoeffs co[9];                        // tA tB tC tD pLP pBite pBody dProx dAir
+        int   type = 0, delay = 0;
+        bool  posOn = false, pol = false;
+        float p = 0.0f, d = 0.0f;
+    };
+    std::array<Mic2State, kMaxCh> anaMic2B_;
+    AnaMic2Cfg anaMic2Cfg_[2], anaMic2Want_;
+    int   anaMic2Cur_ = 0;
+    bool  anaMic2Fading_ = false;
+    float anaMic2Pos_ = 0.0f;
+    int   anaMic2I_[kMaxCh] = {};                  // per channel: samples ticked this block
+    int   anaMic2Type_ = 0;                        // the type Mic 2 ran with last block (0 = idle)
+    Mic2State& anaM2(int k, int c) noexcept { return k ? anaMic2B_[c] : mic2_[c]; }
+    float anaMic2Tick(int c, float base) noexcept;
+    void  anaMic2Begin() noexcept;
+    void  anaMic2End(int n) noexcept;
+    void  anaMic2Reset() noexcept;
+    void  anaMic2Load(int k) noexcept;
+    // Voice crossfade (Anagram, 2026-11-10): Room <-> Studio switched the whole post chain in
+    // one sample (a +26 dB click). While a change fades, anaVoicePost runs both voices on the
+    // shared bracket / placement / Mic 2 and crossfades them (kAnaMicFade samples, reversible
+    // mid-way); the regular loops run unchanged the rest of the time. Entering Studio clears
+    // its filters (they last ran who knows when); the bus glue keeps its envelopes.
+    bool  anaVoiceFading_ = false;
+    bool  anaVoiceA_ = false;                      // the voice the fade started from (true = Studio)
+    bool  anaVoiceSeen_ = false;                   // the voice the loops ran last
+    float anaVoicePos_ = 0.0f;                     // 0 = voice A .. 1 = the other
+    void  anaVoiceBegin() noexcept;
+    void  anaVoiceEnd(int n) noexcept;
+    void  anaVoicePost(int c, float* io, int n) noexcept;
+    void  anaVoicePostMono(float* L, float* R, int n) noexcept;
+    void  anaVoiceTick(EQState& e, int c, float x, int i, float& wS, float& wR) noexcept;
+#endif
     // one sample of Mic 2 from the bracketed base signal, delayed, polarity applied
     float mic2Tick(Mic2State& m, float base) noexcept;
 
@@ -289,3 +433,39 @@ private:
     void rebuildEQ();
     void loadIRIntoSlot(int slot);
 };
+
+#ifdef HEXCHAIN_ANAGRAM
+// The mic placement's per-sample step (inline: it runs inside the post-EQ loops).
+inline float cabAnaMicRun(BiquadFilter& lp, BiquadFilter& bite, BiquadFilter& body, BiquadFilter& prox,
+                         BiquadFilter& air, float* ring, int delay, int w, float x) noexcept {
+    float v = lp.process(x);
+    v = bite.process(v);
+    v = body.process(v);
+    v = prox.process(v);
+    v = air.process(v);
+    ring[w] = v;   // time of flight (delay 0 reads the sample just written)
+    return ring[(w - delay) & 255];
+}
+
+inline float CabinetBlock::anaMic(EQState& e, float x, int i) noexcept {
+    static_assert(EQState::kDlyLen == 256, "anaMicRun's ring mask");
+    const int k0 = anaMicCur_;
+    const AnaMicCfg& c0 = anaMicCfg_[k0];
+    float y = x;
+    if (c0.on) {
+        auto& m = e.ana[k0];
+        y = cabAnaMicRun(m.lp, m.bite, m.body, m.prox, m.air, m.ring.data(), c0.delay, e.dlyW, x);
+    }
+    if (!anaMicFading_) return y;
+    const int k1 = 1 - k0;
+    const AnaMicCfg& c1 = anaMicCfg_[k1];
+    float z = x;
+    if (c1.on) {
+        auto& m = e.ana[k1];
+        z = cabAnaMicRun(m.lp, m.bite, m.body, m.prox, m.air, m.ring.data(), c1.delay, e.dlyW, x);
+    }
+    const float p = std::min(1.0f, anaMicPos_ + float(i + 1) * (1.0f / kAnaMicFade));
+    const float g = p * p * (3.0f - 2.0f * p);
+    return y + g * (z - y);
+}
+#endif

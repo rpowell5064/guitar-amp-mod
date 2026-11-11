@@ -95,4 +95,7 @@ private:
 
     void hopUpdate() noexcept;                // at each hop boundary: FFT + MAC + IFFT -> tail_
     static void fft128(Cx* buf, bool inverse) noexcept;
+#ifdef HEXCHAIN_ANAGRAM
+    friend class CabConvolver;                // the Anagram cab's convolver shares the FFT
+#endif
 };

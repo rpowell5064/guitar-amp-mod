@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "TriodeComponent.h"
 #include "ToneStackComponent.h"
@@ -37,7 +38,7 @@ public:
     float getParameter(const std::string& id) const                noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 1; } // EL34
-    const char* modelName()           const noexcept override { return "Marshall JCM800"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Marshall JCM800"); }
 
     // Supply-sag-into-operating-point (item #22, pilot amp, 2026-07-28): pushes
     // the shared PowerAmpProcessor's own sag envelope back into every preamp

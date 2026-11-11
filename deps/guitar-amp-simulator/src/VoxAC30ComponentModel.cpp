@@ -158,7 +158,7 @@ void VoxAC30ComponentModel::buildStages() noexcept {
         }
         c.pa.prepare(fs_, voxPowerParams(preV_, htV_, otHfHz_, zHfDb_, zResDb_, idleMa_, raa_, nfbStabHz_,
                                          fluxLim_, kneeV_, cathR_, cathC_));
-        { SpeakerParams sp = CabModels::speakerFor("@vox2x12"); sp.srcR = 6.0;   // Phase 5: the cab this amp drives (open-back alnico); its 85 Hz peak sits on musical difference tones, so it is damped like the NFB amps despite the AC30 having no loop
+        { SpeakerParams sp = CabModels::speakerFor(CAB_ID_VOX2X12); sp.srcR = 6.0;   // Phase 5: the cab this amp drives (open-back alnico); its 85 Hz peak sits on musical difference tones, so it is damped like the NFB amps despite the AC30 having no loop
           c.pa.setSpeakerRow(sp); }
         c.pa.setSagDepth(sag_);
         c.dnr.prepare(fs_, 6000.0, 0.02f, 0.006f);   // AC30: rig hiss at the higher gain law

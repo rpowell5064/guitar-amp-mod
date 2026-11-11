@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 
 // Abstract base class for all overdrive/distortion models.
@@ -14,6 +15,6 @@
 // multiplies the host rate by kFactor before calling prepare()).
 class OverdriveBase : public AmpModelBase {
 public:
-    const char* modelName()           const noexcept override { return "OverdriveBase"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("OverdriveBase"); }
     int         recommendedTubeType() const noexcept override { return -1; }
 };

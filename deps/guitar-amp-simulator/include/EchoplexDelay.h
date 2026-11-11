@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "DelayBase.h"
 #include "EchoplexPreamp.h"
 #include <array>
@@ -45,8 +46,12 @@ public:
     float processSample(float x, int ch)                       noexcept override;
     void  setParameter(const std::string& id, float value)     noexcept override;
     float getParameter(const std::string& id) const            noexcept override;
-    const char* delayName() const noexcept override { return "Echoplex EP-3"; }
+    const char* delayName() const noexcept override { return GAS_NAME("Echoplex EP-3"); }
 
+#ifdef HEXCHAIN_ANAGRAM
+    int                 lineCount() const noexcept override { return kMaxCh; }
+    std::vector<float>* line(int i)       noexcept override { return &ch_[i].buf; }
+#endif
 private:
     // modLock (2026-10-18): channel 1+ reuse channel 0's transport wobble of the
     // same sample, so a mono fold hears ONE tape loop instead of two differently-

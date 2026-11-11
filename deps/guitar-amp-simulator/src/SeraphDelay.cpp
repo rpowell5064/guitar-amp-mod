@@ -34,8 +34,8 @@ void SeraphDelay::prepare(double sr, int maxBlock, int numCh) {
 
 void SeraphDelay::reset() noexcept {
     for (auto& c : ch_) {
-        std::fill(c.bufA.begin(), c.bufA.end(), 0.0f);
-        std::fill(c.bufB.begin(), c.bufB.end(), 0.0f);
+        DELAYBASE_CLEAR_LINE(c.bufA);
+        DELAYBASE_CLEAR_LINE(c.bufB);
         c.writeIdx = 0;
         c.lpA.reset(); c.hpA.reset(); c.lpB.reset(); c.hpB.reset();
     }

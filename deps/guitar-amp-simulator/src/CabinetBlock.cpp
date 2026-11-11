@@ -77,6 +77,13 @@ void CabinetBlock::prepare(double sr, int maxBlock, int nCh) {
         }
     }
     irSt_.clear();
+#ifdef HEXCHAIN_ANAGRAM
+    for (int c = 0; c < kMaxCh; ++c) { anaTmp_[c].assign((size_t)maxBlock, 0.0f); anaSpkIn_[c].assign((size_t)maxBlock, 0.0f); }
+    anaCur_ = 0; anaNxt_ = -1; anaFade_ = anaFadeEnd_ = 0.0f;
+    anaFresh_ = true; anaSpkRun_ = false; anaClean_ = true; anaClearCursor_ = 0; anaClearOff_ = 0;
+    anaMicReset();
+    anaMic2Reset();
+#endif
 }
 
 void CabinetBlock::setIR(const std::vector<float>& irLeft,
@@ -89,6 +96,9 @@ void CabinetBlock::setIR(const std::vector<float>& irLeft,
     // Write a slot the audio thread is neither on nor about to claim, then publish.
     const int w = irSt_.freeSlot();
     loadIRIntoSlot(w);
+#ifdef HEXCHAIN_ANAGRAM
+    slotSpk_[w] = slotSpk_[irSt_.peek()];   // no row given: keep the current one
+#endif
     irSt_.publish(w);
 }
 
@@ -266,6 +276,9 @@ float CabinetBlock::spkDriveTick(SpkDriveState& s, float x) noexcept {
 
 // Mic 2: type curve → position/distance morphs → time of flight → polarity.
 float CabinetBlock::mic2Tick(Mic2State& m, float base) noexcept {
+#ifdef HEXCHAIN_ANAGRAM
+    return anaMic2Tick(int(&m - mic2_.data()), base);   // two sets, crossfaded on a change
+#else
     float w = m.tA.process(base);
     w = m.tB.process(w);
     w = m.tC.process(w);
@@ -279,13 +292,18 @@ float CabinetBlock::mic2Tick(Mic2State& m, float base) noexcept {
     w = m.ring[(size_t)((m.w - mic2Delay_) & (EQState::kDlyLen - 1))];
     m.w = (m.w + 1) & (EQState::kDlyLen - 1);
     return mic2Pol_ ? -w : w;
+#endif
 }
 
 void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     if (bypassed) { copyBlock(in, out, numSamples, nCh); return; }
 
     // Load front slot once — consistent L/R for the whole block, never blocks.
+#ifdef HEXCHAIN_ANAGRAM
+    anaBegin(nCh);   // claims a new IR: it fades in over the running one (anaConvolve)
+#else
     const int slot    = irSt_.claim();
+#endif
     const int chCount = std::min(nCh, kMaxCh);
     if (monoActive_ && chCount > 1) {
         // Returning to true stereo after the mono fast path: ch1's conv/EQ state
@@ -293,7 +311,11 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
         // so ch0's state IS what ch1's would have been: hand it over (2026-10-18;
         // this used to clear ch1, which dropped R's tail for one IR length).
         monoActive_ = false;
+#ifdef HEXCHAIN_ANAGRAM
+        anaMonoReturn(numSamples);   // lazily: the delay line is copied by the next hop boundary
+#else
         convolvers_[slot][1].copyStateFrom(convolvers_[slot][0]);   // only the claimed slot: the others may be mid-load
+#endif
         spk_[1]      = spk_[0];
         spkState_[1] = spkState_[0];
         mic2_[1]     = mic2_[0];
@@ -307,6 +329,9 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
         // Item #40: speaker-drive compression, PRE-convolution (models the cone/coil's
         // own response to being driven, not the "dry" bypass signal). Off by default.
         // 2026-09-21: the physical speaker model replaces it when engaged.
+#ifdef HEXCHAIN_ANAGRAM
+        anaPre(c, in[c], numSamples);   // during a cab change: the incoming cab's speaker
+#endif
         if (spkModel_) {
             if (c == 0) spkPrepareIfNeeded();
             auto& m = spk_[c];
@@ -319,7 +344,14 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
         }
 
         // Overlap-add convolution (writes wet to out[c]).
+#ifdef HEXCHAIN_ANAGRAM
+        anaConvolve(c, in[c], out[c], numSamples);
+#else
         convolvers_[slot][c].process(in[c], out[c], numSamples);
+#endif
+#ifdef HEXCHAIN_ANAGRAM
+        if (anaVoiceFading_) { anaVoicePost(c, out[c], numSamples); continue; }   // both voices, crossfaded
+#endif
 
         // Post-EQ on wet, then wet/dry mix. Mic placement filters run only when moved
         // off the baseline (micActive_), so the default path stays bit-identical.
@@ -330,6 +362,9 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                 float base = e.lowCut.process(out[c][i]);
                 base = e.highCut.process(base);
                 // primary mic = the user's placement path (controls stay live)
+#ifdef HEXCHAIN_ANAGRAM
+                float w1 = anaMic(e, base, i);   // placement chain + time of flight, crossfaded on a change
+#else
                 float w1 = base;
                 if (micActive_) {
                     w1 = e.micLP.process(w1);
@@ -338,12 +373,15 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                     w1 = e.distProx.process(w1);
                     w1 = e.distAir.process(w1);
                 }
+#endif
                 float w;
                 if (mic2Type_ > 0) {
                     // Phase 3: an engaged Mic 2 replaces the fixed ribbon + 35 % blend
                     float w2 = mic2Tick(mic2_[c], base);
+#ifndef HEXCHAIN_ANAGRAM
                     e.distRing[e.dlyW] = w1;
                     w1 = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+#endif
                     e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
                     w = (1.0f - mic2Lvl_) * w1 + mic2Lvl_ * w2;
                 } else {
@@ -353,9 +391,13 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                 w2 = e.mic2Body.process(w2);
                 // Item #41: real inter-mic time offsets (rings written every
                 // sample; distDelay_ 0 reads the current sample = bit-identical)
+#ifndef HEXCHAIN_ANAGRAM
                 e.distRing[e.dlyW] = w1;
+#endif
                 e.ribRing[e.dlyW]  = w2;
+#ifndef HEXCHAIN_ANAGRAM
                 w1 = e.distRing[(e.dlyW - distDelay_)   & (EQState::kDlyLen - 1)];
+#endif
                 w2 = e.ribRing [(e.dlyW - ribbonDelay_) & (EQState::kDlyLen - 1)];
                 e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
                 w = 0.65f * w1 + 0.35f * w2;   // two mics, now honestly displaced in time
@@ -389,6 +431,9 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
             for (int i = 0; i < numSamples; ++i) {
                 float base = e.lowCut.process(out[c][i]);
                 base = e.highCut.process(base);
+#ifdef HEXCHAIN_ANAGRAM
+                float w1 = anaMic(e, base, i);   // placement chain + time of flight, crossfaded on a change
+#else
                 float w1 = base;
                 if (micActive_) {
                     w1 = e.micLP.process(w1);
@@ -397,8 +442,11 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                     w1 = e.distProx.process(w1);
                     w1 = e.distAir.process(w1);
                 }
+#endif
+#ifndef HEXCHAIN_ANAGRAM
                 e.distRing[e.dlyW] = w1;
                 w1 = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+#endif
                 e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
                 const float w2 = mic2Tick(mic2_[c], base);
                 float w = (1.0f - mic2Lvl_) * w1 + mic2Lvl_ * w2;
@@ -411,6 +459,9 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                 float w = out[c][i];
                 w = e.lowCut.process(w);
                 w = e.highCut.process(w);
+#ifdef HEXCHAIN_ANAGRAM
+                w = anaMic(e, w, i);   // placement chain + time of flight, crossfaded on a change
+#else
                 w = e.micLP.process(w);
                 w = e.micBite.process(w);
                 w = e.micBody.process(w);
@@ -419,6 +470,7 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
                 // Item #41: micDist time-of-flight (0 = bit-identical)
                 e.distRing[e.dlyW] = w;
                 w = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+#endif
                 e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
                 if (roomOn_) w += roomMix_ * roomOut(c, w);   // room rides the wet cab signal
                 out[c][i] = dryBuf_[i] * (1.0f - mix_) + w * mix_;
@@ -444,13 +496,26 @@ void CabinetBlock::process(float** in, float** out, int numSamples, int nCh) {
     for (int c = chCount; c < nCh; ++c)
         if (in[c] != out[c])
             for (int i = 0; i < numSamples; ++i) out[c][i] = in[c][i];
+#ifdef HEXCHAIN_ANAGRAM
+    anaEnd(numSamples);
+#endif
 }
 
 void CabinetBlock::reset() noexcept {
     // Only the slot this thread owns. A slot the message thread is loading resets itself
     // at the end of setIR(); sweeping every slot here raced that load (2026-09-24).
+#ifdef HEXCHAIN_ANAGRAM
+    // kx:Reset: finish a cab change, then clear the playing convolvers in place (O(1))
+    anaFinish();
+    for (int c = 0; c < kMaxCh; ++c) convolvers_[anaCur_][c].reset();
+    anaFresh_ = true; anaClean_ = true; anaClearCursor_ = 0;
+    spkNeedPrep_ = true;   // SpeakerModel::reset() keeps its breakup/hop state; prepare() clears it all
+    anaMicReset();
+    anaMic2Reset();
+#else
     { const int s = irSt_.claim();
       for (int c = 0; c < kMaxCh; ++c) convolvers_[s][c].reset(); }
+#endif
     for (auto& e : eqState_) {
         e.lowCut.reset(); e.highCut.reset();
         e.micLP.reset(); e.micBite.reset(); e.micBody.reset();
@@ -484,8 +549,13 @@ void CabinetBlock::reset() noexcept {
 // identical channels through process() at roughly half the cost.
 void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexcept {
     if (bypassed) { std::copy(L, L + numSamples, R); return; }
+#ifdef HEXCHAIN_ANAGRAM
+    const int slot = anaBegin(2);
+    if (slotDual_[slot] || (anaNxt_ >= 0 && slotDual_[anaNxt_])) {
+#else
     const int slot = irSt_.claim();
     if (slotDual_[slot]) {
+#endif
         // A true stereo IR: R must convolve with the R IR, so run the full stereo
         // path on the identical pair (2026-10-18; this path used to give R the L IR).
         std::copy(L, L + numSamples, R);
@@ -496,6 +566,9 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
     monoActive_ = true;
 
     std::copy(L, L + numSamples, dryBuf_.begin());
+#ifdef HEXCHAIN_ANAGRAM
+    anaPre(0, L, numSamples);
+#endif
     if (spkModel_) {
         spkPrepareIfNeeded();
         auto& m = spk_[0];
@@ -504,13 +577,23 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
         auto& sp = spkState_[0];
         for (int i = 0; i < numSamples; ++i) L[i] = spkDriveTick(sp, L[i]);
     }
+#ifdef HEXCHAIN_ANAGRAM
+    anaConvolve(0, L, L, numSamples);
+#else
     convolvers_[slot][0].process(L, L, numSamples);
+#endif
     auto& e = eqState_[0];
+#ifdef HEXCHAIN_ANAGRAM
+    if (anaVoiceFading_) { anaVoicePostMono(L, R, numSamples); anaEnd(numSamples); return; }
+#endif
 
     if (studio_) {
         for (int i = 0; i < numSamples; ++i) {
             float base = e.lowCut.process(L[i]);
             base = e.highCut.process(base);
+#ifdef HEXCHAIN_ANAGRAM
+            float w1 = anaMic(e, base, i);   // placement chain + time of flight, crossfaded on a change
+#else
             float w1 = base;
             if (micActive_) {
                 w1 = e.micLP.process(w1);
@@ -519,11 +602,14 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
                 w1 = e.distProx.process(w1);
                 w1 = e.distAir.process(w1);
             }
+#endif
             float w;
             if (mic2Type_ > 0) {
                 float w2 = mic2Tick(mic2_[0], base);
+#ifndef HEXCHAIN_ANAGRAM
                 e.distRing[e.dlyW] = w1;
                 w1 = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+#endif
                 e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
                 w = (1.0f - mic2Lvl_) * w1 + mic2Lvl_ * w2;
             } else {
@@ -531,9 +617,13 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             w2 = e.mic2Bite.process(w2);
             w2 = e.mic2Body.process(w2);
             // Item #41: real inter-mic time offsets (see stereo path)
+#ifndef HEXCHAIN_ANAGRAM
             e.distRing[e.dlyW] = w1;
+#endif
             e.ribRing[e.dlyW]  = w2;
+#ifndef HEXCHAIN_ANAGRAM
             w1 = e.distRing[(e.dlyW - distDelay_)   & (EQState::kDlyLen - 1)];
+#endif
             w2 = e.ribRing [(e.dlyW - ribbonDelay_) & (EQState::kDlyLen - 1)];
             e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
             w = 0.65f * w1 + 0.35f * w2;
@@ -558,6 +648,9 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
         for (int i = 0; i < numSamples; ++i) {
             float base = e.lowCut.process(L[i]);
             base = e.highCut.process(base);
+#ifdef HEXCHAIN_ANAGRAM
+            float w1 = anaMic(e, base, i);   // placement chain + time of flight, crossfaded on a change
+#else
             float w1 = base;
             if (micActive_) {
                 w1 = e.micLP.process(w1);
@@ -566,8 +659,11 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
                 w1 = e.distProx.process(w1);
                 w1 = e.distAir.process(w1);
             }
+#endif
+#ifndef HEXCHAIN_ANAGRAM
             e.distRing[e.dlyW] = w1;
             w1 = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+#endif
             e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
             const float w2 = mic2Tick(mic2_[0], base);
             const float w = (1.0f - mic2Lvl_) * w1 + mic2Lvl_ * w2;
@@ -583,6 +679,9 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
         for (int i = 0; i < numSamples; ++i) {
             float w = e.lowCut.process(L[i]);
             w = e.highCut.process(w);
+#ifdef HEXCHAIN_ANAGRAM
+            w = anaMic(e, w, i);   // placement chain + time of flight, crossfaded on a change
+#else
             w = e.micLP.process(w);
             w = e.micBite.process(w);
             w = e.micBody.process(w);
@@ -591,6 +690,7 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             // Item #41: micDist time-of-flight (0 = bit-identical)
             e.distRing[e.dlyW] = w;
             w = e.distRing[(e.dlyW - distDelay_) & (EQState::kDlyLen - 1)];
+#endif
             e.dlyW = (e.dlyW + 1) & (EQState::kDlyLen - 1);
             const float dry = dryBuf_[i] * (1.0f - mix_);
             if (roomOn_) {
@@ -625,6 +725,9 @@ void CabinetBlock::processMonoToStereo(float* L, float* R, int numSamples) noexc
             L[i] = y; R[i] = y;
         }
     }
+#ifdef HEXCHAIN_ANAGRAM
+    anaEnd(numSamples);
+#endif
 }
 
 void CabinetBlock::setParameter(const std::string& id, float v) {
@@ -747,6 +850,11 @@ void CabinetBlock::rebuildEQ() {
     // (ribbonDelay_ kept at 0; ring infrastructure retained).
     distDelay_   = std::min(static_cast<int>(d * 0.0009 * sampleRate + 0.5), EQState::kDlyLen - 1);
     ribbonDelay_ = 0;
+#ifdef HEXCHAIN_ANAGRAM
+    // the placement lands through a crossfade (anaMicBegin); the loops follow the chains in play
+    anaMicWant_ = { plp, pbt, pbd, dpx, dar, distDelay_, micActive_, micPos_, micDist_ };
+    micActive_ = anaMicLoopOn();
+#endif
     // Studio voice fixed chain: ribbon-ish second mic + bracket + console curve.
     const BiquadCoeffs m2l = Filters::lowpass (4800.0, 0.707, sampleRate);
     const BiquadCoeffs m2b = Filters::peaking (4200.0, -3.0, 1.2, sampleRate);
@@ -794,11 +902,17 @@ void CabinetBlock::rebuildEQ() {
         const int ownDelay = std::min(static_cast<int>(d2 * 0.0009 * sampleRate + 0.5), EQState::kDlyLen - 1);
         mic2Delay_ = mic2Align_ ? distDelay_ : ownDelay;   // Align = coherent with the primary
         mic2PosOn_ = mic2Pos_ > 0.001f;
+#ifdef HEXCHAIN_ANAGRAM
+        // lands through a crossfade (anaMic2Begin), never on the playing set
+        anaMic2Want_ = { { tA, tB, tC, tD, plp2, pbt2, pbd2, dpx2, dar2 }, mic2Type_, mic2Delay_,
+                         mic2PosOn_, mic2Pol_, mic2Pos_, mic2Dist_ };
+#else
         for (auto& m : mic2_) {
             m.tA.setCoeffs(tA); m.tB.setCoeffs(tB); m.tC.setCoeffs(tC); m.tD.setCoeffs(tD);
             m.pLP.setCoeffs(plp2); m.pBite.setCoeffs(pbt2); m.pBody.setCoeffs(pbd2);
             m.dProx.setCoeffs(dpx2); m.dAir.setCoeffs(dar2);
         }
+#endif
     }
     for (auto& e : eqState_) {
         e.lowCut.setCoeffs(lc);

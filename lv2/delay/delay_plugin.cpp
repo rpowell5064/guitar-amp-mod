@@ -1,5 +1,8 @@
 #include "lv2_util.h"
 #include "AnagramPortState.h"
+#ifdef HEXCHAIN_ANAGRAM
+#include "AnagramRt.h"
+#endif
 #include "DelayBlock.h"
 #include "DelayFactory.h"
 #include <new>
@@ -50,6 +53,7 @@ struct DelayPlugin {
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
     AnagramPortState<P_N_PORTS> ui;   // per-type control visibility reported to the host
+    PushCache<16> push;               // ANAGRAM_PUSH: the models keep their values (no invalidate)
 #endif
 };
 
@@ -59,6 +63,7 @@ static LV2_Handle delay_instantiate(const LV2_Descriptor*, double rate,
     if (!p) return nullptr;
 #ifdef HEXCHAIN_ANAGRAM
     p->ui.init(features);
+    p->dsp.enableRt();   // every delay type built here; switches and bypass fade on the audio thread
 #endif
     p->dsp.prepare(rate, 512, 2);
     p->ports[P_ENABLED] = nullptr;   // null-checked in run (hosts connect every port first)
@@ -81,7 +86,7 @@ static void delay_run(LV2_Handle h, uint32_t n) {
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {
         if (!p->resetLatch) {
             p->resetLatch = true;
-            p->dsp.prepare(p->sampleRate, 512, 2);
+            p->dsp.hardReset();   // allocation-free: the lines are zeroed a slice per period
             p->lastType = -1;   // re-apply the delay type below
         }
     } else p->resetLatch = false;
@@ -109,21 +114,29 @@ static void delay_run(LV2_Handle h, uint32_t n) {
         p->dsp.setType(DelayFactory::fromIndex(type));
     }
 
-    p->dsp.setParameter("timeMs",       *p->ports[P_TIME]);
-    p->dsp.setParameter("feedback",     *p->ports[P_FB]);
-    p->dsp.setParameter("mix",          *p->ports[P_MIX]);
-    p->dsp.setParameter("stereoWidth",  *p->ports[P_WIDTH]);
-    p->dsp.setParameter("wowDepth",     *p->ports[P_WOW]);
-    p->dsp.setParameter("flutterDepth", *p->ports[P_FLUTTER]);
-    p->dsp.setParameter("pattern",      *p->ports[P_PATTERN]);   // Seraph
-    p->dsp.setParameter("ducking",      *p->ports[P_DUCK]);      // Seraph
-    p->dsp.setParameter("modDepth",     *p->ports[P_MODDEP]);    // Seraph
-    p->dsp.setParameter("modRate",      *p->ports[P_MODRATE]);   // Seraph
-    p->dsp.setParameter("age",          *p->ports[P_AGE]);        // EP-3
+#ifdef HEXCHAIN_ANAGRAM
+    // Pushed only when changed (each push walks a string chain into all six models, and the
+    // EP-3's age / the Seraph's width and rate rebuild coefficients).
+#define DELAY_PUSH(id, val) ANAGRAM_PUSH(p->push, p->dsp, id, val)
+#else
+#define DELAY_PUSH(id, val) p->dsp.setParameter(id, val)
+#endif
+    DELAY_PUSH("timeMs",       *p->ports[P_TIME]);
+    DELAY_PUSH("feedback",     *p->ports[P_FB]);
+    DELAY_PUSH("mix",          *p->ports[P_MIX]);
+    DELAY_PUSH("stereoWidth",  *p->ports[P_WIDTH]);
+    DELAY_PUSH("wowDepth",     *p->ports[P_WOW]);
+    DELAY_PUSH("flutterDepth", *p->ports[P_FLUTTER]);
+    DELAY_PUSH("pattern",      *p->ports[P_PATTERN]);   // Seraph
+    DELAY_PUSH("ducking",      *p->ports[P_DUCK]);      // Seraph
+    DELAY_PUSH("modDepth",     *p->ports[P_MODDEP]);    // Seraph
+    DELAY_PUSH("modRate",      *p->ports[P_MODRATE]);   // Seraph
+    DELAY_PUSH("age",          *p->ports[P_AGE]);        // EP-3
 
     int prog = static_cast<int>(*p->ports[P_HEADS] + 0.5f);
     prog = (prog < 0) ? 0 : (prog > 11) ? 11 : prog;
-    p->dsp.setParameter("headMask", static_cast<float>(kEchorecProgram[prog]));
+    DELAY_PUSH("headMask", static_cast<float>(kEchorecProgram[prog]));
+#undef DELAY_PUSH
 
     float* ins[2]  = { p->ports[P_IN_L],  p->ports[P_IN_R]  };
     float* outs[2] = { p->ports[P_OUT_L], p->ports[P_OUT_R] };

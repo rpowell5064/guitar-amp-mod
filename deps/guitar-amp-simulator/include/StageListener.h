@@ -81,6 +81,32 @@ public:
         o[5] = float(p.itdL / fs_ * 1e6); o[6] = float(p.itdR / fs_ * 1e6); o[7] = float(p.order);
     }
     float lateDelayMs() const { return float(lateDelay_ / fs_ * 1e3); }
+#ifdef HEXCHAIN_ANAGRAM
+    // Darkglass Anagram (2026-11-09): configure() (trig, the EQ fit, path allocation) runs on the
+    // plugin's worker on a SECOND listener, which then takes over this one's running state and
+    // is crossfaded in -- no allocation, no RT configure, no tail dropout on a Stand At / Room
+    // change. clearState() is reset() without the reconfigure.
+    void clearState() {
+        for (auto& b : src_) std::fill(b.begin(), b.end(), 0.0f);
+        w_ = 0;
+        hall_.clear();
+        clearPaths();
+    }
+    // Start from `o`'s input history and late tail (same rate: no allocation); own paths and EQ
+    // start clean and are pre-rolled by the caller before they are heard.
+    void adoptRuntime(const StageListener& o) {
+        for (int s = 0; s < 2; ++s) std::copy(o.src_[s].begin(), o.src_[s].end(), src_[s].begin());
+        w_ = o.w_;
+        hall_ = o.hall_;                                   // equal sizes: copies in place
+        hall_.set(hallT60(), 0.3f, 0.25f, 0.5f, 1.0f);     // this room's decay (configure()'s call)
+        clearPaths();
+    }
+    // Ambience (Anagram, 2026-11-10: Listen baked in as a subtle effect, the user's call): the input
+    // stays the direct sound -- no travel delay, no head filter, no added latency -- and only the
+    // room (the reflections and the tail) is added under it, at g x the full listener's level.
+    // 0 = the full listener (the default).
+    void setAmbience(float g) { amb_ = std::max(0.0f, g); }
+#endif
 
     // in-place on a block: L/R in = the chain's output, L/R out = what the player's two ears hear
     void process(float* L, float* R, int n) {
@@ -90,6 +116,9 @@ public:
             src_[0][w_] = xl; src_[1][w_] = xr;
             float el = 0.0f, er = 0.0f;
             for (Path& p : paths_) {
+#ifdef HEXCHAIN_ANAGRAM
+                if (amb_ > 0.0f && p.order == 0) continue;   // ambience: the input is the direct sound
+#endif
                 const float x = read(src_[p.src], p.delay);
                 // walls (per-bounce absorption LP) and the cone's off-axis roll-off, folded into one pole
                 p.lp += p.lpA * (x - p.lp);
@@ -112,12 +141,31 @@ public:
             tl *= lateGain_; tr *= lateGain_;
             float ol = el + tl, orr = er + tr;
             for (int b = 0; b < kBands; ++b) { ol = eqL_[b].process(ol); orr = eqR_[b].process(orr); }
+#ifdef HEXCHAIN_ANAGRAM
+            if (amb_ > 0.0f) {
+                // the room keeps off the low strings (2026-11-10, the user: it sounded odd on a bass):
+                // 24 dB/oct from kAmbHpHz, so the lows stay the dry, close-mic'd cab
+                for (int k = 0; k < 2; ++k) { ol = ambHpL_[k].process(ol); orr = ambHpR_[k].process(orr); }
+                ol = xl + amb_ * ol; orr = xr + amb_ * orr;
+            }
+#endif
             L[i] = ol; R[i] = orr;
             w_ = (w_ + 1) & mask_;
         }
     }
 
 private:
+#ifdef HEXCHAIN_ANAGRAM
+    void clearPaths() {
+        for (Path& p : paths_) {
+            p.lp = 0.0f; p.hp1 = 0.0f; p.hp2 = 0.0f;
+            std::fill(std::begin(p.ap), std::end(p.ap), 0.0f); p.apW = 0;
+            for (Ear* e : { &p.earL, &p.earR }) { std::fill(std::begin(e->buf), std::end(e->buf), 0.0f); e->w = 0; e->z = 0.0f; e->xz = 0.0f; }
+        }
+        for (int b = 0; b < kBands; ++b) { eqL_[b].reset(); eqR_[b].reset(); }
+        for (int k = 0; k < 2; ++k) { ambHpL_[k].reset(); ambHpR_[k].reset(); }
+    }
+#endif
     static constexpr double kC = 343.0;
     static constexpr double kHeadR = 0.0875;           // head radius (m)
     static constexpr double kScatter = 0.35;           // scattered share of each bounce's reflected energy
@@ -317,12 +365,26 @@ private:
         for (Path& p : paths_) p.gain *= og;
         lateGain_ *= og;
         hall_.clear();
+#ifdef HEXCHAIN_ANAGRAM
+        {
+            static const double kQ[2] = { 0.5411961, 1.3065630 };
+            for (int k = 0; k < 2; ++k) {
+                const BiquadCoeffs c = Filters::highpass(kAmbHpHz, kQ[k], fs_);
+                ambHpL_[k].setCoeffs(c); ambHpR_[k].setCoeffs(c); ambHpL_[k].reset(); ambHpR_[k].reset();
+            }
+        }
+#endif
         configured_ = true;
     }
 
     double fs_ = 48000.0;
     float dist_ = 1.0f, spread_ = 0.0f; int room_ = Medium;
     bool configured_ = false;
+#ifdef HEXCHAIN_ANAGRAM
+    float amb_ = 0.0f;
+    static constexpr double kAmbHpHz = 300.0;   // ambience high-pass: the low strings / a bass stay dry
+    BiquadFilter ambHpL_[2], ambHpR_[2];        // 4th-order Butterworth (Q 0.541, 1.307), set in configure()
+#endif
     std::vector<float> src_[2]; size_t w_ = 0, mask_ = 0;
     std::vector<Path> paths_;
     studiorev::FdnHall hall_;
@@ -331,4 +393,15 @@ private:
     float hpA_ = 0.04f;
 public:
     float eqDb(int b) const { return eqDb_[b]; }   // the lab check prints the neutralising EQ
+#ifdef HEXCHAIN_ANAGRAM
+private:
+    // the Hall's decay as configure() sets it (kept out of configure(): fast-math codegen)
+    float hallT60() const {
+        static const double dims[3][3] = { { 4.0, 5.0, 2.7 }, { 6.0, 8.0, 3.0 }, { 10.0, 14.0, 4.5 } };
+        static const double alphaWall[3] = { 0.40, 0.35, 0.30 };
+        const double W = dims[room_][0], Dp = dims[room_][1], H = dims[room_][2], al = alphaWall[room_];
+        const double V = W * Dp * H, S = 2 * (W * Dp + W * H + Dp * H), A = S * al;
+        return float(std::clamp(0.161 * V / A, 0.2, 2.5) * 1.18);
+    }
+#endif
 };

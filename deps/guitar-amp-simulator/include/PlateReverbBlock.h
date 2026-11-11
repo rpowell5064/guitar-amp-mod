@@ -36,8 +36,32 @@ public:
         studioPlate.clear();
         hall.clear();
     }
+#ifdef HEXCHAIN_ANAGRAM
+    // Device build (2026-11-09), allocation-free for the audio thread:
+    //  resetAll()        every tail buffer, the spring tank included (kx:Reset)
+    //  clearActiveTank() only the tank the current type runs (a type re-engaged after another
+    //                    tank ran, or re-enabled after a full bypass, starts from silence
+    //                    instead of replaying the tail it was frozen with)
+    void resetAll() noexcept { reset(); spring.reset(); }
+    void clearActiveTank() noexcept {
+        if (springOn)      { spring.reset(); return; }
+        if (studioOn)      { studioPlate.clear(); return; }
+        if (hallOn)        { hall.clear(); return; }
+        auto clear = [](DelayLine& d) { std::fill(d.buf.begin(), d.buf.end(), 0.0f); d.writeIdx = 0; };
+        clear(preDelay);
+        for (auto& a : ap) clear(a.dl);
+        for (auto& c : combs) { clear(c.dl); c.lastLP = 0.0f; c.shelfZ = 0.0f; }
+        clearVelvet();
+        for (auto& a : smearAp) clear(a.dl);
+        clear(bloomLine);
+        bloomLP = inHP = loopHP = 0.0f;
+    }
+#endif
 
 private:
+#ifdef HEXCHAIN_ANAGRAM
+    float studioTrimDecay_ = -1.0f, studioTrimVal_ = 1.0f;   // processStudio's trim, recomputed on a Decay change only
+#endif
     // Parameters
     float preDelayMs = 10.0f;
     float decayTime  =  1.5f; // seconds (RT60)

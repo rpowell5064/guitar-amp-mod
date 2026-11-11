@@ -1,4 +1,5 @@
 #pragma once
+#include "GasName.h"
 #include "AmpModelBase.h"
 #include "EVHComponentStages.h"
 #include "MarkVGraphicEqV.h"
@@ -74,7 +75,7 @@ public:
     float getParameter(const std::string& id) const               noexcept override;
 
     int         recommendedTubeType() const noexcept override { return 0; } // 6L6GC
-    const char* modelName()           const noexcept override { return "Mesa Mark V Component"; }
+    const char* modelName()           const noexcept override { return GAS_NAME("Mesa Mark V Component"); }
 
 private:
     double fs_ = 0.0;
