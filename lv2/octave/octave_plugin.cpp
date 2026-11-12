@@ -21,6 +21,7 @@ enum OctavePorts {
                           // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,              // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_N_PORTS
 };
@@ -28,6 +29,9 @@ enum OctavePorts {
 struct OctavePlugin {
     OctaveBlock dsp;
     float* ports[P_N_PORTS];
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
@@ -52,6 +56,7 @@ static LV2_Handle octave_instantiate(const LV2_Descriptor*, double rate,
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
     p->ports[P_RESET]   = nullptr;
+    p->ports[P_TILE_FRAME] = nullptr;
     p->ui.init(features);
 #else
     (void) features;
@@ -65,6 +70,9 @@ static void octave_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void octave_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<OctavePlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init.
     if (p->ports[P_RESET] && *p->ports[P_RESET] > 0.5f) {

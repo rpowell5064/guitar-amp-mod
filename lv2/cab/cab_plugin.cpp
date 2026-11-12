@@ -74,6 +74,7 @@ enum CabPorts {
                                   // (headphones), mirrors Hex Forge stage_listen/ldist/room; off = bit-identical
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,                   // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
@@ -88,7 +89,7 @@ struct URIs {
 enum WorkType { WORK_IR, WORK_NAM_LOAD, WORK_NAM_FREE, WORK_LISTEN };
 #ifdef HEXCHAIN_ANAGRAM
 // Stage Listen, baked in (see cab_listen_anagram)
-static constexpr float kLisAmbience = 0.5f;
+static constexpr float kLisAmbience = 1.0f;   // 0.5 -> 1.0 (2026-11-11, the user: "add more of the listen back in. it was the sweetener")
 static constexpr float kLisDist     = 1.0f;
 static constexpr int   kLisRoom     = 1;   // Medium
 #endif
@@ -104,6 +105,9 @@ struct CabPlugin {
     NamModel*    nam = nullptr;   // when non-null + loaded, overrides the IR
 
     float* ports[P_N_PORTS]          = {};
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
     const LV2_Atom_Sequence* control = nullptr;
     LV2_Atom_Sequence*       notify  = nullptr;
 
@@ -376,7 +380,7 @@ static LV2_Worker_Status cab_work_response(LV2_Handle h, uint32_t, const void* d
 // Baked in (2026-11-10, the user: "a more baked in subtle effect"): always on, no controls. The
 // listener runs as ambience -- the close-mic cab stays the direct sound (no travel delay, no head
 // filter, no added latency) and the room it stands in (its reflections, from their directions, and
-// the tail) sits under it at half the full listener's level. Stand At 1 m in the medium room: the
+// the tail) sits under it at the full listener's level (it was half until 2026-11-11). Stand At 1 m in the medium room: the
 // settings the full Listen was voiced at. The listen ports are hidden and ignored on the device;
 // the cab's own room ambience stays the player's to add.
 // On the cab's output in place. A configuration change goes through the worker into the idle
@@ -570,6 +574,9 @@ static void cab_run(LV2_Handle h, uint32_t n) {
     DenormalGuard denormalGuard;   // flush denormals (NAM/IR state can spike CPU in decay/silence)
 #endif  // KosmOS forbids touching global CPU registers (FTZ) — even scoped
     auto* p = static_cast<CabPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
     const URIs& u = p->uris;
 
 #ifdef HEXCHAIN_ANAGRAM

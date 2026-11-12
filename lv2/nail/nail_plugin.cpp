@@ -35,6 +35,7 @@ enum NailPorts {
                           // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,              // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_N_PORTS
 };
@@ -42,6 +43,9 @@ enum NailPorts {
 struct NailPlugin {
     std::unique_ptr<OversamplingWrapper> nail;
     float* ports[P_N_PORTS] = {};
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
@@ -138,6 +142,9 @@ static void nail_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void nail_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<NailPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
 
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state clear so a freshly paired dual-mono

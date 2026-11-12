@@ -26,6 +26,7 @@ enum CompPorts {
                           // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,              // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_N_PORTS
 };
@@ -33,6 +34,9 @@ enum CompPorts {
 struct CompPlugin {
     CompressorBlock dsp;
     float* ports[P_N_PORTS];
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
     float  grOut = 0.0f;
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
@@ -64,6 +68,7 @@ static LV2_Handle comp_instantiate(const LV2_Descriptor*, double rate,
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
     p->ports[P_RESET]   = nullptr;
+    p->ports[P_TILE_FRAME] = nullptr;
     p->blk[1].setParameter("type", 1.0f);
     for (auto& b : p->blk) b.prepare(rate, 512, 1);
     p->glideK = 1.0f - std::exp(-static_cast<float>(CompPlugin::kChunk) / (0.010f * static_cast<float>(rate)));
@@ -140,6 +145,9 @@ static void comp_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void comp_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<CompPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init so a freshly paired dual-mono
     // partner starts identical.

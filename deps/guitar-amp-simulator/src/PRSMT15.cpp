@@ -109,7 +109,14 @@ void PRSMT15::recalcFilters() noexcept {
             // Crunch low-mids follow the gain pot (blue keeps a 125-315 Hz fullness red
             // loses); restored POST-clip as a peak so nothing thumps or re-clips.
             // (og clamped above - the fit only covers the capture anchors.)
+#ifdef HEXCHAIN_ANAGRAM
+            // 2026-11-11 (the user on the device: Lunchbox Crunch "is also boomy"): the capture fit's
+            // 70 put +8.8 dB at 170 Hz at noon gain and up to +17 dB with the gain down. 30: +3.8 dB
+            // at noon, +7 dB at most.
+            c.bodySh.setCoeffs(Filters::peaking(m.bodyFc, 30.0 * og * og * og * bassSc, 0.9, oversampledFs_));
+#else
             c.bodySh.setCoeffs(Filters::peaking(m.bodyFc, 70.0 * og * og * og * bassSc, 0.9, oversampledFs_));
+#endif
         } else {
             c.bodySh.setCoeffs(Filters::lowshelf(m.bodyFc, m.bodyDb * bassSc, oversampledFs_));
         }

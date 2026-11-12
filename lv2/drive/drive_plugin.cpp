@@ -54,6 +54,7 @@ enum DrivePorts {
                                // mod-host breaks if control ports follow them.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,                   // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_CONTROL, P_NOTIFY,       // atom in/out — MUST be last: mod-host breaks if control ports follow them
     P_N_PORTS
@@ -76,6 +77,9 @@ struct DrivePlugin {
     NamModel* nam = nullptr;
 
     float* ports[P_N_PORTS] = {};
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
     const LV2_Atom_Sequence* control = nullptr;
     LV2_Atom_Sequence*       notify  = nullptr;
 
@@ -239,6 +243,9 @@ static void drive_run(LV2_Handle h, uint32_t n) {
     DenormalGuard denormalGuard;   // flush denormals (NAM state can spike CPU in decay/silence)
 #endif  // KosmOS forbids touching global CPU registers (FTZ) — even scoped
     auto* p = static_cast<DrivePlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
     const URIs& u = p->uris;
 
 #ifdef HEXCHAIN_ANAGRAM

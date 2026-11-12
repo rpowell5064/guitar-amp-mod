@@ -30,6 +30,7 @@ enum ReverbPorts {
                           // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,              // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_N_PORTS
 };
@@ -37,6 +38,9 @@ enum ReverbPorts {
 struct ReverbPlugin {
     PlateReverbBlock dsp;
     float* ports[P_N_PORTS];
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
     bool   resetLatch = false;     // kx:Reset edge detect
@@ -74,6 +78,7 @@ static LV2_Handle reverb_instantiate(const LV2_Descriptor*, double rate,
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
     p->ports[P_RESET]   = nullptr;
+    p->ports[P_TILE_FRAME] = nullptr;
 #endif
     return p;
 }
@@ -161,6 +166,9 @@ static void reverbBlock(ReverbPlugin* p, const float* inL, const float* inR, flo
 
 static void reverb_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<ReverbPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): every tail buffer cleared (the spring tank too) so a rig/preset
     // change never carries stale reverb and a freshly paired dual-mono partner starts

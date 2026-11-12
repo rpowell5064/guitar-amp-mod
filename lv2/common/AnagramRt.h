@@ -80,4 +80,64 @@ struct XFade {
         pos = p;
     }
 };
+
+// ── The chain tile's animation (2026-11-11) ──────────────────────────────────
+// tile_frame: an output port KosmOS reads to pick the frame of the chain tile's filmstrip
+// (styling.ttl dgcs:blockImage parameters; the art is tools/punk_style.py tile_anim). The strip:
+// kCalm frames of the neon outline erasing itself round the unit and drawing itself back, then
+// kGlitch frames of one tracking glitch (the whole outline flickering), then an empty frame.
+// While the block is on, the cycle runs in order (each step held 225..245 ms, a cycle about
+// 15 s) and every 25..60 s the glitch plays through (each frame 80..140 ms), after which the
+// line carries on from where it was; bypassed it reads kFrames, the empty frame, so the plain
+// off tile shows. Every interval comes from a generator seeded per instance, so no two blocks
+// keep time together.
+// Touches no audio: an add and a compare per run(), a few integer ops per frame step.
+struct TileAnim {
+    static constexpr int      kCalm   = 64;    // (kFrames + 1) x 200 px must stay under 16384 px
+    static constexpr int      kGlitch = 6;
+    static constexpr int      kFrames = kCalm + kGlitch;
+    static constexpr uint32_t kMs     = 48;          // samples per ms at the device's 48 kHz
+    uint32_t acc   = 0;
+    uint32_t hold  = 0;
+    uint32_t wait  = 0;                              // samples until the next glitch
+    uint32_t rng   = 0;
+    int      frame = 0;
+    int      lap   = 0;                              // the line's place, kept through a glitch
+    uint32_t next() noexcept {                       // xorshift32
+        rng ^= rng << 13; rng ^= rng >> 17; rng ^= rng << 5;
+        return rng;
+    }
+    uint32_t span(uint32_t lo, uint32_t hi) noexcept { return lo + next() % (hi - lo + 1); }
+    void step() noexcept {
+        if (frame >= kCalm && frame < kFrames - 1) {             // in a glitch: on through it
+            ++frame;
+            hold = span(80, 140) * kMs;
+        } else if (frame == kFrames - 1 || wait > 0) {           // the line runs on
+            lap = (lap + 1) % kCalm;
+            frame = lap;
+            hold = span(225, 245) * kMs;
+        } else {                                                  // the glitch comes
+            frame = kCalm;
+            hold = span(80, 140) * kMs;
+            wait = span(25000, 60000) * kMs;
+        }
+    }
+    void run(float* port, uint32_t n, const float* enabled) noexcept {
+        if (!port) return;
+        if (rng == 0) {                              // first run: seed from this instance's address
+            rng = static_cast<uint32_t>(reinterpret_cast<uintptr_t>(this) >> 4) | 1u;
+            lap = frame = static_cast<int>(next() % kCalm);
+            hold = span(225, 245) * kMs;
+            wait = span(5000, 30000) * kMs;          // the first glitch, anywhere in 5..30 s
+        }
+        const bool on = !(enabled && *enabled <= 0.5f);
+        if (on) {
+            acc += n;
+            wait = wait > n ? wait - n : 0;
+            while (acc >= hold) { acc -= hold; step(); }
+        }
+        *port = static_cast<float>(on ? frame : kFrames);
+    }
+};
+
 #endif

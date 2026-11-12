@@ -44,6 +44,7 @@ enum FuzzPorts {
                      // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET   = 13,  // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_N_PORTS
 };
@@ -54,6 +55,9 @@ struct FuzzPlugin {
     std::unique_ptr<OversamplingWrapper> oc;   // Octavia (octave-up fuzz)
     std::unique_ptr<OversamplingWrapper> ff;   // Fizz Factory (ZVex-style chaos/gated octave)
     float* ports[P_N_PORTS] = {};
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     double rate = 48000.0;
     bool resetLatch = false;
@@ -198,6 +202,9 @@ static void fuzzBlock(FuzzPlugin* p, const float* in, float* out, uint32_t n, bo
 
 static void fuzz_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<FuzzPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
 
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset trigger (rising edge): full state clear, so a freshly paired dual-mono partner

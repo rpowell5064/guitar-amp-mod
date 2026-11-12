@@ -32,6 +32,7 @@ enum DelayPorts {
                           // INVERTED vs Bypass: 1 = processing on, 0 = bypassed.
 #ifdef HEXCHAIN_ANAGRAM
     P_RESET,              // KosmOS: kx:Reset trigger
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
 #endif
     P_N_PORTS
 };
@@ -48,6 +49,9 @@ static const int kEchorecProgram[12] = {
 struct DelayPlugin {
     DelayBlock dsp;
     float* ports[P_N_PORTS];
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
     int    lastType = -1;
 #ifdef HEXCHAIN_ANAGRAM
     double sampleRate = 48000.0;   // for the kx:Reset full re-init
@@ -70,6 +74,7 @@ static LV2_Handle delay_instantiate(const LV2_Descriptor*, double rate,
 #ifdef HEXCHAIN_ANAGRAM
     p->sampleRate = rate;
     p->ports[P_RESET]   = nullptr;
+    p->ports[P_TILE_FRAME] = nullptr;
 #endif
     return p;
 }
@@ -80,6 +85,9 @@ static void delay_connect_port(LV2_Handle h, uint32_t port, void* data) {
 
 static void delay_run(LV2_Handle h, uint32_t n) {
     auto* p = static_cast<DelayPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ports[P_TILE_FRAME], n, p->ports[P_ENABLED]);
+#endif
 #ifdef HEXCHAIN_ANAGRAM
     // kx:Reset (rising edge): full state re-init — clears the delay lines so a
     // rig/preset change never replays stale echoes.

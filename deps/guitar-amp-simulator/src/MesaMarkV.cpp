@@ -50,7 +50,16 @@ const MesaMarkV::ModeCfg MesaMarkV::kModes[MesaMarkV::kNumModes] = {
     130.0f, 200.0f, 12000.0f, 700.0f, 3.0f, 3400.0f, 10.0f, 3300.0f,8.5f,0.45f, 1.9f,2.2f, 0.156f, 0.70f, 1.0f },
   // 5 Mark I (Ch2) — mid-forward Boogie lead (Santana "singing"), Fender stack
   { 4, {ST_FV1,ST_MV2,ST_MV3,ST_EV2}, {1.8f,2.6f,3.0f,3.0f,0}, {2.6f,3.0f,3.2f,3.0f,0}, TS::Fender, false,
-    12.0f, 60.0f, 13000.0f, 600.0f, 2.0f, 3200.0f, 9.0f, 3300.0f,12.0f,0.45f, 1.9f,2.2f, 0.13f, 0.68f, 1.0f },
+#ifdef HEXCHAIN_ANAGRAM
+    // 2026-11-11 (the user on the device: Vintage Lead "sounds boomy"): the input / inter-stage
+    // high-passes were 12 / 60 Hz, far below every other gain mode (30-130 / 85-200 Hz), so the
+    // four-stage cascade saturated on the lows. 60 / 120 Hz only took 1-2 dB off 125-250 Hz (the
+    // filters are one-pole), so it takes Crunch's corners.
+    130.0f, 200.0f, 13000.0f,
+#else
+    12.0f, 60.0f, 13000.0f,
+#endif
+    600.0f, 2.0f, 3200.0f, 9.0f, 3300.0f,12.0f,0.45f, 1.9f,2.2f, 0.13f, 0.68f, 1.0f },
   // 6 Mark IIC+ (Ch3) — THE lead: tone stack PRE the 5-stage cascade; scooped lows, big 3–5k presence peak
   { 5, {ST_FV1,ST_MV2,ST_MV3,ST_EV2,ST_EV3}, {1.2f,1.7f,2.1f,2.3f,2.2f}, {2.0f,2.6f,2.9f,2.7f,2.2f}, TS::Fender, true,
     85.0f, 200.0f, 15000.0f, 700.0f, 3.0f, 3600.0f, 11.0f, 3200.0f,8.0f,0.5f, 1.4f,2.0f, 0.098f, 0.80f, 1.0f },

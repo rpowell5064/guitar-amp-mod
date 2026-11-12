@@ -27,6 +27,10 @@
 #include "NamModel.h"
 #include "DenormalGuard.h"
 #include "AnagramPortState.h"
+#ifdef HEXCHAIN_ANAGRAM
+#include "AnagramRt.h"
+#include "kx/control-input-port-change-request.h"
+#endif
 #include <new>
 #include <atomic>
 #include <cstdio>
@@ -247,17 +251,19 @@ enum AmpPorts {
     P_PL_VOL2,
     P_MT_BRIGHT,
     P_SV_ULTRALO, P_SV_ULTRAHI, P_SV_MIDFREQ,
+    P_ECO,                                                 // Quality, on the device since 2026-11-11
     P_ENABLED,
     P_TIGHT,
     P_V1TUBE, P_PATUBE,
     P_RESET,
+    P_TILE_FRAME,       // output: the chain tile's frame (TileAnim)
     // hidden on the device, past the host's 60: they keep their TTL defaults (or snapshotPorts sets them)
     P_CHANNEL, P_BYPASS,
     P_PA_BYPASS, P_PA_TUBE, P_PA_PRES, P_PA_DEPTH, P_PA_SAG, P_PA_MASTER, P_PA_NFB, P_PA_RESON, P_PA_AIR, P_PA_AUTO,
     P_FR_CHANNEL, P_MV_MODE, P_NAM_GAIN, P_NAM_VOL,
     P_RC_MODE, P_RC_VARIAC, P_RC_RECT, P_MT_MODE,
     P_PAMP_COUPL, P_PL_VARIAC, P_JCM_SIR34,
-    P_COMP, P_DYNLOAD, P_ECO, P_MAINS,
+    P_COMP, P_DYNLOAD, P_MAINS,
     P_STAGE_FB, P_STAGE_FBDIST, P_STAGE_FBSUS,
     P_SUNN_V2, P_SUNN_LNK, P_SUNN_B2, P_SUNN_M2, P_SUNN_T2, P_SUNN_BR1, P_SUNN_BR2,
     P_FR_FAT, P_FR_C45, P_FR_SAT,
@@ -316,9 +322,18 @@ static int clampIdx(float v, int lo, int hi) {
 // hidden on the device and ignored for these models. Diamond Plate (Recto) sits this release out.
 // The Cali V's Component Build models channel 3 only so far (MesaMarkVComponentModel: modes 0-5
 // play IIC+): its channel 1 and 2 rows run the standard model, which has all nine (noTwin).
-struct AnaModel { int model; int port; float val; bool noTwin = false; };   // port -1: no channel
+// os2 (2026-11-11, CPU): the row runs at 2x oversampling (the Engine Quality build) instead of 4x, about
+// half its cost. Only rows whose aliasing at 2x stayed within 2.5 dB of 4x on a hot 3.1 kHz / 1 kHz tone
+// (measured on the device, docs/NOTES.md): Clean Meanie, Tangerang Clean, Cali V Clean and Fat. Beardo
+// Clean (-6 dB), Cali V Tweed (-14), Tremont Clean (-10) and Citrus 200 (-9) break up more than that
+// and stay at 4x.
+// stdQ (2026-11-11, the user: Coastline Tweed "sounds odd" once Eco became the default): picking the row
+// sets Quality to Standard (4x); Eco stays selectable. The four rows that failed the 2x alias test (Tweed:
+// its guitar render at 2x differs from 4x by -3.9 dB above 8 kHz). Leaving one for a plain row sets Eco
+// back (the default). amp_run, anagramQualityFollowsRow.
+struct AnaModel { int model; int port; float val; bool noTwin = false; bool os2 = false; bool stdQ = false; };   // port -1: no channel
 static const AnaModel kAnaModels[] = {
-    {  0, -1, 0 },              // Clean Meanie
+    {  0, -1, 0, false, true }, // Clean Meanie
     {  1, P_JCM_SIR34, 0 },     // Crunchy McCrunchFace
     {  1, P_JCM_SIR34, 1 },     // Crunchy Hot Mod (the rental-fleet hot-rod mod)
     {  2, P_CHANNEL, 0 },       // Gain Kaiju Blue
@@ -326,8 +341,8 @@ static const AnaModel kAnaModels[] = {
     {  3, P_SUNN_BR1, 0 },      // Doom Daddy Normal (the Normal channel alone, brights off)
     {  3, P_SUNN_BR1, 1 },      // Doom Daddy Brite (both channels jumpered, both brights on)
     {  4, P_CHANNEL, 0 },       // Tangerang Dirty
-    {  4, P_CHANNEL, 1 },       // Tangerang Clean
-    {  6, P_FR_CHANNEL, 0 },    // Beardo Clean
+    {  4, P_CHANNEL, 1, false, true },  // Tangerang Clean
+    {  6, P_FR_CHANNEL, 0, false, false, true }, // Beardo Clean (Standard)
     {  6, P_FR_CHANNEL, 1 },    // Beardo Drive
     {  6, P_FR_CHANNEL, 2 },    // Beardo Hot
     {  7, -1, 0 },              // Hi-Volt
@@ -335,20 +350,20 @@ static const AnaModel kAnaModels[] = {
     {  9, -1, 0 },              // Backline Plus
     { 10, P_PL_VARIAC, 0 },     // Plexiglass
     { 10, P_PL_VARIAC, 1 },     // Plexiglass Low Volt (the variac mod)
-    { 11, P_MV_MODE, 0, true }, // Cali V Clean (standard model)
-    { 11, P_MV_MODE, 1, true }, // Cali V Fat (standard model)
-    { 11, P_MV_MODE, 2, true }, // Cali V Tweed (standard model)
+    { 11, P_MV_MODE, 0, true, true }, // Cali V Clean (standard model)
+    { 11, P_MV_MODE, 1, true, true }, // Cali V Fat (standard model)
+    { 11, P_MV_MODE, 2, true, false, true }, // Cali V Tweed (standard model; Standard)
     { 11, P_MV_MODE, 3, true }, // Cali V Edge (standard model)
     { 11, P_MV_MODE, 4, true }, // Cali V Crunch (standard model)
     { 11, P_MV_MODE, 5, true }, // Cali V Vintage Lead (standard model)
     { 11, P_MV_MODE, 6 },       // Cali V Classic Lead
     { 11, P_MV_MODE, 7 },       // Cali V Modern Lead
     { 11, P_MV_MODE, 8 },       // Cali V Extreme
-    { 13, P_MT_MODE, 0 },       // Tremont 15 Clean
+    { 13, P_MT_MODE, 0, false, false, true }, // Tremont 15 Clean (Standard)
     { 13, P_MT_MODE, 1 },       // Tremont 15 Crunch
     { 13, P_MT_MODE, 2 },       // Tremont 15 Lead
     { 14, -1, 0 },              // Blue Liner
-    { 15, -1, 0 },              // Citrus 200
+    { 15, -1, 0, false, false, true }, // Citrus 200 (Standard)
 };
 static constexpr int kAnaN = static_cast<int>(sizeof(kAnaModels) / sizeof(kAnaModels[0]));
 static inline const AnaModel& anaModel(float portValue) noexcept {
@@ -474,6 +489,9 @@ struct AmpPlugin {
                                        // prepared 60 Hz so the default path re-tunes nothing
 
     float* ctrl[P_N_PORTS] = {};
+#ifdef HEXCHAIN_ANAGRAM
+    TileAnim tile;   // the chain tile's animation (P_TILE_FRAME)
+#endif
     const LV2_Atom_Sequence* control = nullptr;
     LV2_Atom_Sequence*       notify  = nullptr;
 
@@ -508,6 +526,8 @@ struct AmpPlugin {
     float    pushLast[160] = {};
     uint32_t pushGen[160]  = {};
     AnagramPortState<P_N_PORTS> ui;   // per-model control visibility reported to the host
+    const LV2_ControlInputPort_Change_Request* chg = nullptr;   // asks the host to set Quality (stdQ rows)
+    int rowSeen = -1;                 // the list row last seen (-1: startup / Reset, take as saved)
     // Glitch-free switching (see BuildKey)
     uint32_t   buildSeq = 0;              // the newest build asked for; older replies are dropped
     // One build at a time (2026-11-10, the user: spinning the model list made the switches lag
@@ -598,6 +618,8 @@ static LV2_Handle amp_instantiate(const LV2_Descriptor*, double rate,
     lv2_atom_forge_init(&p->forge, p->map);
 #ifdef HEXCHAIN_ANAGRAM
     p->ui.init(features);
+    p->chg = static_cast<const LV2_ControlInputPort_Change_Request*>(
+        lv2_find_feature(features, LV2_CONTROL_INPUT_PORT_CHANGE_REQUEST_URI));
     p->ui.limit = kHostTracked;   // the hidden ports past the host's 60 are never reported
 #endif
 
@@ -769,9 +791,10 @@ static void applyRow(const AnaModel& a, float* v) {
     if (v[P_MV_EQPRESET] < 0.5f) v[P_MV_EQPRESET] = 1.0f;
     // Speaker Load is not on the device: the amp's own cab
     v[P_SPKLOAD] = 0.0f;
-    // Engine Quality and Mains are not on the device (2026-11-10): Standard quality; the port reads
-    // 60 Hz, the mains actually used is detected from the input (MainsDetect.h, amp_run).
-    v[P_ECO] = 0.0f;
+    // Quality (2026-11-11, on the device): the player's Standard (4x) / Eco (2x); the rows marked os2
+    // are always Eco. Mains is not on the device: the port reads 60 Hz, the mains actually used is
+    // detected from the input (MainsDetect.h, amp_run).
+    v[P_ECO] = (a.os2 || v[P_ECO] > 0.5f) ? 1.0f : 0.0f;
     v[P_MAINS] = 0.0f;
 }
 // The row a finished build was made for (its port values carry the row's channel): found once at
@@ -1029,7 +1052,9 @@ static void anagramUpdateUi(AmpPlugin* p, int m, const AnaModel& sel) {
     ui.ui(P_COMP,    twin);
     for (int q : { P_V1TUBE, P_PATUBE }) ui.ui(q, hasValveSwap(m, comp) && (comp || m == kAd200Idx));
     ui.ui(P_DYNLOAD, comp);
-    ui.ui(P_ECO,     comp);
+    // Quality (2026-11-11, on the device): every model but the ones that always run at 2x (the os2
+    // rows, the Sunn) -- there it is already Eco
+    ui.ui(P_ECO,     !sel.os2 && m != kSunnIdx);
     ui.ui(P_PA_AUTO,   paFace);
     ui.ui(P_PA_BYPASS, paFace);
     for (int q : { P_PA_TUBE, P_PA_PRES, P_PA_DEPTH, P_PA_SAG, P_PA_MASTER, P_PA_NFB, P_PA_RESON, P_PA_AIR })
@@ -1068,6 +1093,9 @@ static void amp_run(LV2_Handle h, uint32_t n) {
     DenormalGuard denormalGuard;
 #endif  // KosmOS forbids touching global CPU registers (FTZ) — even scoped
     auto* p = static_cast<AmpPlugin*>(h);
+#ifdef HEXCHAIN_ANAGRAM
+    p->tile.run(p->ctrl[P_TILE_FRAME], n, p->ctrl[P_ENABLED]);
+#endif
     const URIs& u = p->uris;
 
 #ifdef HEXCHAIN_ANAGRAM
@@ -1118,8 +1146,22 @@ static void amp_run(LV2_Handle h, uint32_t n) {
             if (p->nam) p->nam->reset(p->rate, kMaxBlock);
             p->lastTube = -1;   // re-apply the tube type below
             p->ui.invalidate();  // re-report every control's state after the reset
+            p->rowSeen = -1;     // a preset recall: its Quality is taken as saved
         }
     } else p->resetLatch = false;
+    {   // anagramQualityFollowsRow: picking a stdQ row sets Quality to Standard, leaving one for a
+        // plain row sets Eco (the default) back. The host applies it and reports it (the control
+        // moves and is saved); the player can still change it. A row seen at startup or after a
+        // Reset is taken as it is.
+        const int row = clampIdx(*p->ctrl[P_MODEL], 0, kAnaN - 1);
+        if (p->rowSeen < 0) p->rowSeen = row;
+        else if (row != p->rowSeen) {
+            const bool was = kAnaModels[p->rowSeen].stdQ, now = kAnaModels[row].stdQ;
+            p->rowSeen = row;
+            if (now != was && p->chg && p->ctrl[P_ECO])
+                p->chg->request_change(p->chg->handle, P_ECO, now ? 0.0f : 1.0f);
+        }
+    }
 #endif
 
     // Open the notify sequence + handle incoming NAM file set/get.

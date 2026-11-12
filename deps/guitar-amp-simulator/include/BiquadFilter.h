@@ -15,10 +15,22 @@ struct BiquadCoeffs {
 // Transposed Direct Form II — numerically robust, single-sample latency.
 class BiquadFilter {
 public:
-    void setCoeffs(const BiquadCoeffs& c) noexcept { co = c; }
+    void setCoeffs(const BiquadCoeffs& c) noexcept {
+        co = c;
+#ifdef HEXCHAIN_ANAGRAM
+        ident = (c.b0 == 1.0 && c.b1 == c.a1 && c.b2 == c.a2);
+#endif
+    }
     void reset()  noexcept { s1 = s2 = 0.0; }
 
     float process(float x) noexcept {
+#ifdef HEXCHAIN_ANAGRAM
+        // An exact identity (b0 = 1, b1 = a1, b2 = a2: a 0 dB peaking / shelving band, a filter never
+        // set) with empty state passes x through: y = x, and the state would stay at 0 up to a
+        // rounding residue (-ffast-math may fuse b1 x - a1 y). Skipped: the Cali V's graphic EQ at
+        // Flat is five of these on every oversampled sample (2026-11-11, CPU).
+        if (ident && s1 == 0.0 && s2 == 0.0) return x;
+#endif
         const double xd = x;
         const double y  = co.b0 * xd + s1;
         s1 = co.b1 * xd - co.a1 * y + s2;
@@ -35,6 +47,9 @@ public:
 private:
     BiquadCoeffs co;
     double s1{}, s2{};
+#ifdef HEXCHAIN_ANAGRAM
+    bool ident = true;   // the default coefficients are the identity
+#endif
 };
 
 // Audio EQ Cookbook (R. Bristow-Johnson) factory functions.

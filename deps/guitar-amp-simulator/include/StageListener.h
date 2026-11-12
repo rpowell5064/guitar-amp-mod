@@ -55,6 +55,16 @@ public:
     enum Room { Small = 0, Medium = 1, Large = 2 };
 
     void prepare(double fs) {
+#ifdef HEXCHAIN_ANAGRAM
+        // The device only runs the ambience (setAmbience): the room is rendered at HALF the host rate
+        // (2026-11-11, CPU: the listener was two thirds of the cab). Everything rate-dependent is derived
+        // from fs_ in configure(), so the room is simply this listener at fs / 2; process() feeds it the
+        // average of each pair of input samples and interpolates its output back up under the dry signal.
+        // The reflections are wall-filtered and high-passed and the tail is diffuse: nothing of the room
+        // above ~11 kHz is lost in practice. (The full listener, amb_ = 0, is not used on the device.)
+        fs = fs * 0.5;
+        hAcc_[0] = hAcc_[1] = 0.0f; for (auto& h : hHist_) std::fill(std::begin(h), std::end(h), 0.0f); hW_ = 0; hPh_ = 0;
+#endif
         fs_ = fs;
         size_t n = 1; while (n < size_t(fs * 0.15)) n <<= 1;   // power of two (a mask, not a divide, per read); 150 ms
         for (auto& b : src_) b.assign(n, 0.0f);                 // covers the large room's front wall
@@ -89,6 +99,7 @@ public:
     void clearState() {
         for (auto& b : src_) std::fill(b.begin(), b.end(), 0.0f);
         w_ = 0;
+        hAcc_[0] = hAcc_[1] = 0.0f; for (auto& h : hHist_) std::fill(std::begin(h), std::end(h), 0.0f); hW_ = 0; hPh_ = 0;
         hall_.clear();
         clearPaths();
     }
@@ -97,6 +108,8 @@ public:
     void adoptRuntime(const StageListener& o) {
         for (int s = 0; s < 2; ++s) std::copy(o.src_[s].begin(), o.src_[s].end(), src_[s].begin());
         w_ = o.w_;
+        for (int c = 0; c < 2; ++c) { hAcc_[c] = o.hAcc_[c]; std::copy(std::begin(o.hHist_[c]), std::end(o.hHist_[c]), std::begin(hHist_[c])); }
+        hW_ = o.hW_; hPh_ = o.hPh_;
         hall_ = o.hall_;                                   // equal sizes: copies in place
         hall_.set(hallT60(), 0.3f, 0.25f, 0.5f, 1.0f);     // this room's decay (configure()'s call)
         clearPaths();
@@ -108,6 +121,85 @@ public:
     void setAmbience(float g) { amb_ = std::max(0.0f, g); }
 #endif
 
+#ifdef HEXCHAIN_ANAGRAM
+    // in-place on a block. The room runs at fs_ = host rate / 2 (prepare()): every second input sample
+    // it takes one step on the mean of the pair; its output is interpolated back to the host rate by a
+    // halfband FIR (Kaiser 8, 8 taps a side on the odd phase: flat to 8 kHz, images above 16 kHz
+    // -73.6 dB; a linear interpolator left the room's 2-8 kHz mirrored at -50 dB in 16-22 kHz) and
+    // added under the dry input. Latency: 8 half-rate samples (0.33 ms), nothing for an ambience.
+    void process(float* L, float* R, int n) {
+        static constexpr float kHb[8] = { 0.6260910549f, -0.1824496163f, 0.0830734093f, -0.0384552759f,
+                                          0.0160406480f, -0.0054688828f, 0.0012845081f, -0.0000992598f };
+        if (!configured_) configure();
+        for (int i = 0; i < n; ++i) {
+            const float xl = L[i], xr = R[i];
+            hAcc_[0] += xl; hAcc_[1] += xr;
+            float y[2];
+            if (hPh_) {      // a room step; out: the half-rate sample 8 steps back (the even phase)
+                float ol, orr;
+                roomStep(0.5f * hAcc_[0], 0.5f * hAcc_[1], ol, orr);
+                hAcc_[0] = hAcc_[1] = 0.0f;
+                hHist_[0][hW_] = ol; hHist_[1][hW_] = orr; hW_ = (hW_ + 1) & 15;
+                for (int c = 0; c < 2; ++c) y[c] = hHist_[c][(hW_ - 9) & 15];
+            } else {         // the odd phase: halfway between that sample and the next
+                for (int c = 0; c < 2; ++c) {
+                    float a = 0.0f;
+                    for (int j = 0; j < 8; ++j)
+                        a += kHb[j] * (hHist_[c][(hW_ - 9 - j) & 15] + hHist_[c][(hW_ - 8 + j) & 15]);
+                    y[c] = a;
+                }
+            }
+            const float yl = y[0], yr = y[1];
+            hPh_ ^= 1;
+            if (amb_ > 0.0f) { L[i] = xl + amb_ * yl; R[i] = xr + amb_ * yr; }
+            else             { L[i] = yl; R[i] = yr; }   // (the full listener: not used on the device)
+        }
+    }
+private:
+    // one sample of the room at fs_: the reflections, the tail, the EQ and the ambience high-pass
+    void roomStep(float xl, float xr, float& ol, float& orr) {
+        src_[0][w_] = xl; src_[1][w_] = xr;
+        float el = 0.0f, er = 0.0f;
+        for (Path& p : paths_) {
+#ifdef HEXCHAIN_ANAGRAM
+            if (amb_ > 0.0f && p.order == 0) continue;   // ambience: the input is the direct sound
+#endif
+            const float x = read(src_[p.src], p.delay);
+            // walls (per-bounce absorption LP) and the cone's off-axis roll-off, folded into one pole
+            p.lp += p.lpA * (x - p.lp);
+            float s = p.lp * p.gain;
+            if (p.order > 0) {   // no body in the reflections: the coherent low-mid comb is what hollowed the tone
+                p.hp1 += hpA_ * (s - p.hp1); s -= p.hp1;
+                p.hp2 += hpA_ * (s - p.hp2); s -= p.hp2;
+            }
+            if (p.apD > 0) {   // the wall's scatter: (-g + z^-D) / (1 - g z^-D)
+                const float dl = p.ap[(p.apW - p.apD) & 255], y = -p.apG * s + dl;
+                p.ap[p.apW] = s + p.apG * y; p.apW = (p.apW + 1) & 255; s = y;
+            }
+            // the head: each ear has its own delay (ITD) and shadow filter
+            p.earL.push(s); p.earR.push(s);
+            el += p.earL.out(p.itdL); er += p.earR.out(p.itdR);
+        }
+        // late field: both cabs, from just after the direct sound, into the true-stereo Hall FDN
+        float tl, tr;
+        hall_.process(read(src_[0], lateDelay_), read(src_[1], lateDelay_), tl, tr);
+        tl *= lateGain_; tr *= lateGain_;
+        ol = el + tl; orr = er + tr;
+        for (int b = 0; b < kBands; ++b) { ol = eqL_[b].process(ol); orr = eqR_[b].process(orr); }
+#ifdef HEXCHAIN_ANAGRAM
+        if (amb_ > 0.0f) {
+            // the room keeps off the low strings (2026-11-10, the user: it sounded odd on a bass):
+            // 24 dB/oct from kAmbHpHz, so the lows stay the dry, close-mic'd cab
+            for (int k = 0; k < 2; ++k) { ol = ambHpL_[k].process(ol); orr = ambHpR_[k].process(orr); }
+        }
+#endif
+        w_ = (w_ + 1) & mask_;
+    }
+    float hAcc_[2] = {};          // the half-rate room's input pair
+    float hHist_[2][16] = {};     // its last outputs (the interpolator's taps)
+    int   hW_ = 0, hPh_ = 0;
+public:
+#else
     // in-place on a block: L/R in = the chain's output, L/R out = what the player's two ears hear
     void process(float* L, float* R, int n) {
         if (!configured_) configure();
@@ -153,6 +245,8 @@ public:
             w_ = (w_ + 1) & mask_;
         }
     }
+
+#endif
 
 private:
 #ifdef HEXCHAIN_ANAGRAM
