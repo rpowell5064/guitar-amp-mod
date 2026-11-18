@@ -31,7 +31,16 @@ public:
     void process(float** in, float** out, int numSamples, int numChannels) noexcept override {
         if (buf_[0].empty()) { for (int c=0;c<numChannels;++c) if(in[c]!=out[c]) std::copy(in[c],in[c]+numSamples,out[c]); return; }
         const int ch = std::min(numChannels, kMaxCh);
-        const float rateHz = (rateHz_ > 0.0f) ? rateHz_ : (kRateMin + rate_ * (kRateMax - kRateMin));
+        // Rate is exponential (2026-11-18): linear, the knob's middle swept at ~2 Hz -- a pitch
+        // wobble that read as a rotary. Now the middle is ~0.45 Hz, a jet sweep; same end points.
+        const float rateHz = (rateHz_ > 0.0f) ? rateHz_ : kRateMin * std::pow(kRateMax / kRateMin, rate_);
+        // Mix (2026-11-18): the lower half brings the delayed copy up to equal with the dry (the
+        // deepest notches, the classic flange, at the middle); the upper half takes the dry out
+        // towards the delayed copy alone (a pitch vibrato). Before, dry + mix * wet: the notches
+        // only reached full depth at the very top. kMixNorm holds the level against the dry.
+        const float wetG = std::min(1.0f, 2.0f * mix_);
+        const float dryG = std::min(1.0f, 2.0f * (1.0f - mix_));
+        const float outG = 1.0f / ((1.0f + kMixNorm * std::min(wetG, dryG)) * (1.0f + kWetNorm * wetG));
         const float incr   = rateHz / fs_;
         const float baseS  = kBaseMs * fs_ * 0.001f;
         const float sweepS = (0.3f + 0.7f * depth_) * kSweepMs * fs_ * 0.001f;
@@ -70,7 +79,7 @@ public:
                 // by voicing_ (default 1 = damped; 0 = the old full-bandwidth feedback).
                 fbLP_[c] += fbLPCoeff_ * (wet - fbLP_[c]);
                 fb_[c] = wet + voicing_ * (fbLP_[c] - wet);
-                out[c][i] = dry + mix_ * wet;
+                out[c][i] = (dryG * dry + wetG * wet) * outG;
             }
             for (int c = ch; c < numChannels; ++c) if (in[c] != out[c]) out[c][i] = in[c][i];
         }
@@ -97,6 +106,10 @@ private:
     static constexpr int   kMaxCh = 2;
     static constexpr float kRateMin = 0.05f, kRateMax = 4.0f;
     static constexpr float kBaseMs = 0.6f, kSweepMs = 5.0f;
+    // Level hold across Mix (measured 2026-11-18, guitar DI, default Rate / Depth): the dry and the
+    // delayed copy add where they meet, and the feedback lifts the delayed copy on its own.
+    // Within +-0.6 dB of the dry from Mix 0 to 1.
+    static constexpr float kMixNorm = 0.28f, kWetNorm = 0.245f;
     static constexpr float kOffsetMaxMs = 100.0f;   // user "Center Delay" pushes the centre out (0 = stock)
     float fs_ = 48000.0f;
     float rate_ = 0.3f, depth_ = 0.6f, mix_ = 0.5f, stereoWidth_ = 0.5f;

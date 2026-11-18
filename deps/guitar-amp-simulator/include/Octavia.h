@@ -34,6 +34,7 @@ private:
     static constexpr float kCompA = 1.368f;   // cp(0) = +2.7 dB, the shortfall at Drive 0
     static constexpr float kCompB = 3.709f;
     static constexpr float kCompC = 9.606f;   // cp(1) = 0.479 = -6.4 dB, the excess at Drive 10
+    static constexpr float kOut  = 1.51f;     // output scale (2026-11-18: 0.32 sat 13 dB under the other fuzzes)
     static constexpr float kGeVf   = 0.12f;
     static constexpr float kGeNorm = 1.0f / (1.0f - kGeVf);
     bool  geThresh_ = false;   // false = ideal |x| (default, bit-identical); "geThresh"

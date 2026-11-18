@@ -49,8 +49,9 @@
 //
 // Params: "rate" = SPEED (0 slow … 1 fast), "depth" = INTENSITY, "mode" = CHORUS (0) /
 // VIBRATO (1), "outputLevel" (−6..+6 dB, 0.5 = 0 dB), "stereoWidth" (second channel runs
-// its own lamp from a delayed LFO), "mix" = the weight of the wet leg in the CHORUS sum
-// (1 = the circuit's own 100K/100K mix; not a control on the pedal).
+// its own lamp from a delayed LFO), "mix" = 0 .. 0.5 the weight of the wet leg in the CHORUS
+// sum (0.5 = the circuit's own 100K/100K mix), 0.5 .. 1 a crossfade to the VIBRATO output
+// (2026-11-18; not a control on the pedal: it brings the Vibrato mode to a host without "mode").
 class UniVibeEffect : public ModulationEffect {
 public:
     void  prepare(double sampleRate, int maxBlockSize, int numChannels) override;

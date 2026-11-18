@@ -33,6 +33,7 @@
 class LifePedal final : public OverdriveBase {
 public:
     static constexpr int kMaxCh = 2;
+    static constexpr float kRail = 0.15f;   // the distortion's output rail (level-matched 2026-11-18)
 
     void  prepare(double oversampledFs, int maxBlockSize) noexcept override;
     void  reset()                                         noexcept override;

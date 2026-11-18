@@ -10,13 +10,15 @@
 //   Delicate   — full Muff (uses every field).
 //   Con Molars — inHp/gain/asym/interLp/outScale; cab freqs are fixed in code.
 //   Tusk       — inHp/gain/asym/interLp/outScale; ring carrier from FILTER in code.
+// outScale re-levelled 2026-11-18: every mode sat +15..+21 dB over the dry at the default knobs
+// (peaks over full scale); now ~+5 dB, with the drives.
 //          inHp   gLo   gHi    asym  interLp  toneLp  toneHp  outScale
 const NailDistortion::Voicing NailDistortion::kMode[kNumModes] = {
-    { 50.0f, 3.0f,  40.0f, 0.00f,    0.0f,   0.0f,    0.0f, 0.80f }, // 0 Broke      (crude digital hard-clip + decimate/bitcrush)
-    { 90.0f, 6.0f, 165.0f, 0.14f, 5200.0f,   0.0f,    0.0f, 0.90f }, // 1 Dahnward   (Metal-Zone-leaning: tight lows, buzzy bite, mid push)
-    { 28.0f, 2.0f,  76.0f, 0.07f, 3800.0f, 290.0f, 1900.0f, 1.05f }, // 2 Delicate   (Muff: fat lows, gentle scoop, hot)
-    { 110.0f, 2.5f, 70.0f, 0.05f, 5000.0f,   0.0f,    0.0f, 0.40f }, // 3 Con Molars (bright clip → miked speaker/cab voicing; level-matched via probe)
-    { 80.0f, 5.0f, 120.0f, 0.08f, 4000.0f,   0.0f,    0.0f, 0.60f }, // 4 Tusk       (high-sustain clip → ring modulator)
+    { 50.0f, 3.0f,  40.0f, 0.00f,    0.0f,   0.0f,    0.0f, 0.130f }, // 0 Broke      (crude digital hard-clip + decimate/bitcrush)
+    { 90.0f, 6.0f, 165.0f, 0.14f, 5200.0f,   0.0f,    0.0f, 0.275f }, // 1 Dahnward   (Metal-Zone-leaning: tight lows, buzzy bite, mid push)
+    { 28.0f, 2.0f,  76.0f, 0.07f, 3800.0f, 290.0f, 1900.0f, 0.286f }, // 2 Delicate   (Muff: fat lows, gentle scoop, hot)
+    { 110.0f, 2.5f, 70.0f, 0.05f, 5000.0f,   0.0f,    0.0f, 0.121f }, // 3 Con Molars (bright clip → miked speaker/cab voicing; level-matched via probe)
+    { 80.0f, 5.0f, 120.0f, 0.08f, 4000.0f,   0.0f,    0.0f, 0.125f }, // 4 Tusk       (high-sustain clip → ring modulator)
 };
 
 // ── prepare ───────────────────────────────────────────────────────────────────

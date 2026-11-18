@@ -55,6 +55,10 @@ public:
             return ((h3*fr + h2)*fr + h1)*fr + pB;
         };
 
+        // Equal-power dry / rotor blend (2026-11-18): the linear crossfade of the dry with the
+        // Doppler-shifted, amplitude-modulated rotors dipped ~4 dB at the middle, under the other
+        // mod types. kRotorGain makes up the rotors' own AM loss.
+        const float xfGain = 1.0f / std::sqrt((1.0f - mix_) * (1.0f - mix_) + mix_ * mix_);
         for (int i = 0; i < numSamples; ++i) {
             // Rotor inertia: the light horn spins up/down fast, the heavy drum slowly,
             // so a speed change blooms (chorale<->tremolo). Targets: drum lags the horn.
@@ -87,14 +91,14 @@ public:
                     const float drumAM = 1.0f - amAmt * 0.5f * (0.5f - 0.5f * drumSin);
                     ++w_[c];
                     const float wet = hi * hornAM + lo * drumAM;
-                    out[c][i] = dry + mix_ * (wet - dry);
+                    out[c][i] = (dry + mix_ * (kRotorGain * wet - dry)) * xfGain;
                 } else {
                     // Old single-band path (voicing 0).
                     const float delayS = baseS + dopS * (0.6f*hornSin + 0.4f*drumSin) * 0.5f + dopS * 0.5f;
                     float wet = hread(c, delayS);
                     ++w_[c];
                     const float am = 1.0f - amAmt * (0.5f - 0.5f * (0.7f*hornSin + 0.3f*drumSin));
-                    out[c][i] = dry + mix_ * (wet * am - dry);
+                    out[c][i] = (dry + mix_ * (kRotorGain * wet * am - dry)) * xfGain;
                 }
             }
             for (int c = ch; c < numChannels; ++c) if (in[c] != out[c]) out[c][i] = in[c][i];
@@ -120,6 +124,7 @@ private:
     static constexpr int   kMaxCh = 2;
     static constexpr float kRateMin = 0.7f, kRateMax = 7.0f;
     static constexpr float kBaseMs = 1.5f, kDopMs = 1.6f;
+    static constexpr float kRotorGain = 1.0f;   // the rotors' AM make-up (level-matched 2026-11-18)
     float fs_ = 48000.0f;
     float rate_ = 0.3f, depth_ = 0.6f, mix_ = 0.6f, stereoWidth_ = 0.7f;
     float voicing_ = 1.0f;   // two-band horn/drum Leslie by default (set 0 for old single-band)

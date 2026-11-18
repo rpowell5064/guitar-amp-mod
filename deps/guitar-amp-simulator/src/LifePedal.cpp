@@ -71,7 +71,10 @@ float LifePedal::processSample(float x, int ch) noexcept {
     const float distorted = s.postLPF.process(clipped);   // RAT "filter" tone
 
     // ── Stage 3: dry/wet + MOSFET clean boost (level) ──
-    const float blended = (1.0f - mixCur_) * in + mixCur_ * distorted;
+    // kRail (2026-11-18): the soft clip is normalised to +-1, so the drive sat at full scale --
+    // +21 dB over the dry at the default knobs, 15 dB above the other drives, and clipping the
+    // output. The rail is scaled to the other drives' level; the clean blend keeps unity.
+    const float blended = (1.0f - mixCur_) * in + mixCur_ * kRail * distorted;
     const float boost   = 1.0f + levelCur_;               // 0 dB … +6 dB clean boost
     return blended * boost;
 }

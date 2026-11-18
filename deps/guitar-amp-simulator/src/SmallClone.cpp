@@ -60,6 +60,9 @@ void SmallClone::process(float** in, float** out,
     const float depthTargetSamp = depth_ * static_cast<float>(sampleRate_)
                                 * (seasick_ ? kSeasickDepthMs : kDepthMaxMs) * 0.001f;
     const float dryGain = seasick_ ? (1.0f - mix_) : 1.0f;   // crossfade in Seasick mode
+    // Seasick's crossfade is equal-power (2026-11-18): a linear crossfade of the dry and the swept
+    // copy (largely uncorrelated) dipped ~4 dB at the middle, under every other mod type.
+    const float xfGain  = seasick_ ? 1.0f / std::sqrt(dryGain * dryGain + mix_ * mix_) : 1.0f;
     const float offsetTargetSamp = offsetMs_ * static_cast<float>(sampleRate_) * 0.001f;
     const float maxDelaySamp = static_cast<float>(bufMask_ - 1);
 
@@ -108,7 +111,7 @@ void SmallClone::process(float** in, float** out,
 
             chState_[c].lpOut += lpOutAlpha_ * (bbdOut - chState_[c].lpOut);
 
-            out[c][i] = dry * dryGain + chState_[c].lpOut * mix_;   // unity-dry chorus / seasick crossfade
+            out[c][i] = (dry * dryGain + chState_[c].lpOut * mix_) * xfGain;   // unity-dry chorus / seasick crossfade
         }
         for (int c = chCount; c < numChannels; ++c)
             if (in[c] != out[c]) out[c][i] = in[c][i];

@@ -384,7 +384,12 @@ void UniVibeEffect::process(float** in, float** out, int numSamples, int numChan
     const double kVib = par(kVibShunt, kVolumePot) / (kVibSeries + par(kVibShunt, kVolumePot));
     // CHORUS node: dry and wet each through 100K, loaded by the 100K VOLUME pot.
     const double kCh = 1.0 / (1.0 / kMixR + 1.0 / kMixR + 1.0 / kVolumePot) / kMixR;
-    const double m = double(mix_);
+    // Mix (2026-11-18): the lower half brings the wet leg up to the circuit's own CHORUS blend
+    // (100K / 100K) at the middle; the upper half crossfades to the VIBRATO output, reached at
+    // the top. Before, mix weighted the wet leg alone, so the middle was half the pedal's chorus
+    // (subtle), and a device without a Mode control never reached the vibrato.
+    const double m  = std::min(1.0, 2.0 * double(mix_));
+    const double xv = std::max(0.0, 2.0 * double(mix_) - 1.0);
 
     for (int i = 0; i < numSamples; ++i) {
         if (ctrlCount_ == 0) { controlStep(nCh); ctrlCount_ = ctrlDiv_; }
@@ -402,7 +407,9 @@ void UniVibeEffect::process(float** in, float** out, int numSamples, int numChan
                 if (k < 3) { ve = softLimit(gE_ * vn, hr); vc = softLimit(-gC_ * vn, hr); }
                 else wet = softLimit(gF_ * vn, hr);
             }
-            const double vout = vibrato_ ? wet * kVib : (dry + m * wet) * kCh;
+            const double vib  = wet * kVib;
+            const double cho  = (dry + m * wet) * kCh;
+            const double vout = vibrato_ ? vib : cho + xv * (vib - cho);
             out[c][i] = float(vout * outGain);
         }
         for (int c = nCh; c < numChannels; ++c)

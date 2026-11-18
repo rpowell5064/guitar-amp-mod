@@ -77,7 +77,9 @@ public:
             // 0-10 → 0-+20 dB
             const float makeupLin = std::pow(10.0f, v * 2.0f * 0.05f);
             for (auto& c : vca_) c.setMakeupGain(makeupLin);
-            for (auto& c : fet_) c.setOutputGain(v * 0.1f);
+            // FET (2026-11-18): the 1176 OUTPUT law put Makeup 0 at -20 dB, 18 dB under the VCA
+            // voice at the same knobs. Now both run 0-+20 dB from a level-matched start.
+            for (auto& c : fet_) c.setOutputDb(kFetLevelDb + v * 2.0f);
 
         } else if (id == "scHP") {
             // Detector-only sidechain high-pass, Hz. 0 = OFF.
@@ -112,4 +114,5 @@ private:
 
     std::array<VCACompressor,     kMaxCh> vca_;
     std::array<FETCompressor1176, kMaxCh> fet_;
+    static constexpr float kFetLevelDb = -2.0f;   // FET output at Makeup 0, matched to the VCA voice
 };

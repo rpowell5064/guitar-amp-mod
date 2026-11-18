@@ -54,7 +54,7 @@ float Octavia::processSample(float x, int ch) noexcept {
     // rotation to well under half a dB.  (derivation kept out of the public tree)
     const float d  = driveCur_;
     const float cp = (kCompA + kCompB * d) / (1.0f + kCompC * d);
-    return levelCur_ * 0.32f * cp * y;
+    return levelCur_ * kOut * cp * y;   // kOut: level-matched to the other fuzzes 2026-11-18 (was 0.32, -11 dB)
 }
 
 void Octavia::setParameter(const std::string& id, float v) noexcept {

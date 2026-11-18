@@ -52,6 +52,7 @@ public:
     // 0-1 normalised input/output trim
     void setInputGain (float n01) noexcept { inputGain_  = std::pow(10.0f, n01 * 30.0f * 0.05f); } // 0 → +30 dB
     void setOutputGain(float n01) noexcept { outputGain_ = std::pow(10.0f, (n01 * 24.0f - 20.0f) * 0.05f); }
+    void setOutputDb  (float db)  noexcept { outputGain_ = std::pow(10.0f, db * 0.05f); }
 
     // attack/release: 1 = fastest (hardware convention)
     void setAttack (float n01) noexcept { attackNorm_  = n01; recalcTimeConstants(); }
