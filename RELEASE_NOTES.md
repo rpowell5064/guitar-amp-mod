@@ -1,5 +1,28 @@
 # Hex Chain Release Notes
 
+## v1.23.0 — 2026-11-18
+
+The effects update. Every effect block was rendered type by type against a guitar DI and
+measured. The flanger, the Uni-Verse and the tape echoes were voiced wrong, and six types
+sat far from their siblings at the default knobs. All of it is fixed, in the standalone
+plugins and in Hex Forge, and the factory presets those changes touched are re-levelled.
+
+### Changed
+
+- **Flanger** sweeps like a flanger. Rate now follows a curve, so its middle is a slow 0.45 Hz jet instead of a 2 Hz pitch wobble that read as a rotary; the slowest and fastest settings are unchanged. The middle of Mix now sets the delayed copy equal to the dry, which gives the deepest notches (20.5 dB, up from 13.7), and above the middle the dry fades out towards a pure pitch vibrato. The level holds within 0.7 dB of the dry across Mix.
+- **Uni-Verse:** the middle of Mix is now the circuit's own chorus blend (it was half of it, which is why the vibe sounded subtle), and the top of Mix crossfades to its vibrato output. The Mode switch, where a host shows it, still selects the vibrato outright.
+- **Levels at the default knobs**, against the dry signal: the Once76 compressor voice -18 dB -> 0 dB (Makeup now runs 0 to +20 dB from a start level with 5 Creature Amp); Octavius -11.5 -> +2 dB; New Dawn +21.5 -> +5 dB (it clipped the output); all five Nail modes +15..+21 -> +5 dB (their peaks went over full scale); Rotary and Seasick Vibe no longer dip about 4 dB at the middle of Mix.
+- **Hex Forge factory presets** rev 200: the twelve presets these changes moved by more than 0.3 dB were re-measured against v1.22.0 and re-levelled, so none of them jumps. Dial-ins saved on the device are preserved.
+
+### Fixed
+
+- **Tape and Vintage Echo repeats sounded gritty**, more so on long delays. The tape wobble was a fraction of the delay time, so the flutter grew with the time: about 0.7 % of pitch at 250 ms on the Vintage Echo (1 % on Tape at its default knobs) and three times that at 750 ms, smearing half of each repeat's energy into sidebands. Wow and flutter are now a tape-speed error, the same at any delay time, as on a real transport. Tape's Wow and Flutter knobs now set the peak pitch wobble (0.003 = 0.3 %): Wow sounds about the same at typical times, the default Flutter is about ten times gentler.
+- **PatchStorage listings stopped updating** after v1.20.0: the uploader's update call was routed through a workaround that the site no longer accepted. Updates go the standard way again.
+
+### If you saved boards with these effects
+
+The fixes change how the Flanger and Uni-Verse respond to Mix and Rate, and the levels above. A board that turned the Once76's Makeup up to make up for its old start level will now be much louder; turn it back down.
+
 ## v1.22.0 — 2026-10-29
 
 The stage update. A direct rig loses two things a loud amp in a room gives you: the

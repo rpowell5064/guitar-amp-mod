@@ -262,12 +262,11 @@ jobs:
         run: |
           set -e
           git clone --depth 1 https://github.com/patchstorage/patchstorage-lv2-uploader uploader
-          # PatchStorage's hosting edge returns an HTML 403 for PUT/PATCH/DELETE before the
-          # request reaches WordPress (2026-09-27), which broke every listing UPDATE while
-          # file uploads (POST) kept working. Route the one update call through the WP REST
-          # method override. Exits non-zero if the call is not in the expected shape, so this
-          # cannot silently no-op. Remove both this step and the script once PUT works again.
-          python build-tools/patchstorage/patch_uploader_put.py uploader/uploader.py
+          # The uploader updates a listing with a plain PUT (unmodified upstream). 2026-09-27 to
+          # 2026-11: PatchStorage's host blocked PUT, and a POST + X-HTTP-Method-Override
+          # workaround reached the edit endpoint without its body ("Missing parameter(s)" on every
+          # update, v1.21.0 and v1.22.0). PUT reaches the app again (2026-11-18), so the
+          # workaround is gone.
           # the uploader has no requirements.txt; its third-party imports are these
           pip install -q click rdflib requests
           for t in linux-amd64 rpi-aarch64 patchbox-os-arm32; do

@@ -16,8 +16,8 @@
  },
  "Berlin Wall Pulse": {
   "idx": 17,
-  "peak": -0.25,
-  "rms": -19.04
+  "peak": -1.39,
+  "rms": -19.74
  },
  "Blackwing Rise": {
   "idx": 60,
@@ -36,8 +36,8 @@
  },
  "Bridge Vibe": {
   "idx": 32,
-  "peak": -6.36,
-  "rms": -18.98
+  "peak": -6.81,
+  "rms": -18.35
  },
  "Broken Crush": {
   "idx": 46,
@@ -91,8 +91,8 @@
  },
  "Dark Side Air": {
   "idx": 16,
-  "peak": 2.08,
-  "rms": -14.07
+  "peak": 1.75,
+  "rms": -12.24
  },
  "Desert Robot": {
   "idx": 38,
@@ -116,8 +116,8 @@
  },
  "Forest Wash": {
   "idx": 34,
-  "peak": 5.06,
-  "rms": -11.72
+  "peak": 3.57,
+  "rms": -13.29
  },
  "Frayed Justice": {
   "idx": 68,
@@ -156,8 +156,8 @@
  },
  "Hazy Solo": {
   "idx": 21,
-  "peak": -6.5,
-  "rms": -19.86
+  "peak": -5.78,
+  "rms": -19.22
  },
  "Helsinki Clean": {
   "idx": 76,
@@ -191,8 +191,8 @@
  },
  "I Saw a Deer": {
   "idx": 67,
-  "peak": 11.15,
-  "rms": -6.11
+  "peak": 1.04,
+  "rms": -16.07
  },
  "Imperial Lead": {
   "idx": 13,
@@ -226,13 +226,13 @@
  },
  "Little Feather": {
   "idx": 22,
-  "peak": -6.87,
-  "rms": -22.57
+  "peak": -3.83,
+  "rms": -19.53
  },
  "March Stabs": {
   "idx": 44,
-  "peak": -8.43,
-  "rms": -21.4
+  "peak": -8.67,
+  "rms": -21.74
  },
  "Marionette Master": {
   "idx": 52,
@@ -266,8 +266,8 @@
  },
  "Numb Sustain": {
   "idx": 18,
-  "peak": 1.63,
-  "rms": -11.47
+  "peak": 4.47,
+  "rms": -8.63
  },
  "Plug-In Junior": {
   "idx": 56,
@@ -296,8 +296,8 @@
  },
  "Retro Poland": {
   "idx": 58,
-  "peak": -4.58,
-  "rms": -25.06
+  "peak": 0.48,
+  "rms": -17.02
  },
  "Rhythm": {
   "idx": 2,
@@ -336,8 +336,8 @@
  },
  "Skye Crusher": {
   "idx": 24,
-  "peak": -9.53,
-  "rms": -20.74
+  "peak": -7.17,
+  "rms": -18.38
  },
  "Skye Soar": {
   "idx": 26,
@@ -381,8 +381,8 @@
  },
  "Sweet Dispersion": {
   "idx": 64,
-  "peak": -10.25,
-  "rms": -28.7
+  "peak": -6.97,
+  "rms": -24.21
  },
  "Vanishing Drive": {
   "idx": 28,

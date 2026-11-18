@@ -22,14 +22,16 @@
 
 An industrial distortion block with five distinct topologies — each its own circuit, not one voicing knob: Broke (crude digital hard-clip with sample-rate decimation + bit-reduction), Dahnward (scooped high-gain preamp into a sweepable resonant band-pass), Delicate (a swollen, gherkin-fat fuzz with a wide filter sweep), Con Molars (a bright clip re-amped through a fixed miked-speaker voicing) and Yo, Hey Adrian! (a high-sustain clip into a switchable ring modulator). Controls: Mode, Drive, Filter, Texture, Level, plus a Ring Mod toggle for the Yo, Hey Adrian! mode. Oversampled; works standalone or in the Hex Chain suite.
 
-Amp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a cranked British master-volume half-stack is the classic move. Free and open source (GPL-3).""" ;
+Amp pairing: some modes and settings work into a clean amp or DI; the higher-gain settings generally want a driven amp — a cranked British master-volume half-stack is the classic move. Free and open source (GPL-3).
+
+v1.23: every mode is level with the drives (at the default knobs they were 10-16 dB louder and peaked over full scale).""" ;
     mod:label  "Nail" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 29 ;   # 29: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 28: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 27: panel 415 -> 485 (the LEVEL row hung off the plate). 26: previous.
+    lv2:microVersion 30 ;   # 30: every mode's outScale re-levelled to the drives (they sat +15..+21 dB over the dry with peaks over full scale) (2026-11-18). 29: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 28: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 27: panel 415 -> 485 (the LEVEL row hung off the plate). 26: previous.
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

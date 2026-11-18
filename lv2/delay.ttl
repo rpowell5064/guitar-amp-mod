@@ -34,14 +34,16 @@ Six delay machines in one block:
 
 All modulated delay taps use smooth high-quality interpolation, so warble stays musical instead of gritty. Unity-gain mix — engaging it never drops your level.
 
-Free and open source (GPL-3).""" ;
+Free and open source (GPL-3).
+
+v1.23: Tape and Vintage Echo flutter is now a tape-speed error. It no longer grows with the delay time, which made long repeats sound gritty. Tape's Wow and Flutter set the peak pitch wobble (0.003 = 0.3 %).""" ;
     mod:label  "Delay" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 34 ;   # 34: Analog Echo delay type (5): a compander bucket-brigade echo (2:1 compressor, fixed 3 kHz filters, an 8192-stage clocked bucket line, 1:2 expander, regen through the whole chain), 20-550 ms. 33: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 29: EP-3 Echo type (JFET preamp + Age) + age port
+    lv2:microVersion 35 ;   # 35: Tape and Vintage Echo wow / flutter are tape-speed errors (a fixed pitch deviation), no longer a fraction of the delay time (flutter grew with the time: grit on long repeats); Tape's Wow / Flutter value is the peak pitch fraction (2026-11-18). 34: Analog Echo delay type (5): a compander bucket-brigade echo (2:1 compressor, fixed 3 kHz filters, an 8192-stage clocked bucket line, 1:2 expander, regen through the whole chain), 20-550 ms. 33: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 29: EP-3 Echo type (JFET preamp + Age) + age port
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

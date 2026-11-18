@@ -23,14 +23,16 @@
 
 A musical, low-CPU compressor for evening out picking dynamics and adding sustain — equally at home on guitar and bass, in front of a dirt pedal or across a clean signal. Runs on every target including 32-bit Pi.
 
-Free and open source (GPL-3).""" ;
+Free and open source (GPL-3).
+
+v1.23: the Once76 voice starts level with 5 Creature Amp (at Makeup 0 it was 18 dB quieter), and both run 0 to +20 dB of makeup. A board that turned Makeup up to make up for the Once76 will now be louder: turn it back down.""" ;
     mod:label  "Compressor" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 2 ;
-    lv2:microVersion 33 ;   # 33: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
+    lv2:microVersion 34 ;   # 34: Once76 output level-matched to 5 Creature Amp: Makeup 0 = -2 dB (was the 1176 OUTPUT law's -20 dB), 0-+20 dB over the knob like the VCA (2026-11-18). 33: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 32: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [

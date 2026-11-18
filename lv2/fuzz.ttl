@@ -29,14 +29,16 @@ Four distinct fuzz circuits under one footswitch:
 
 Everything is oversampled for clean, defined high-gain without the aliasing fizz that plagues naive digital fuzz. Works standalone or in the Hex Chain suite.
 
-Free and open source (GPL-3).""" ;
+Free and open source (GPL-3).
+
+v1.23: Octavius is 13 dB louder, level with the other three fuzzes.""" ;
     mod:label  "Fuzz" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 36 ;   # 36: Voice knobs wrap inside the plate at four (I Know It / Fuzz Zachary hung 35 px off both sides); pedal 448 -> 544 px (2026-10-29). 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
+    lv2:microVersion 37 ;   # 37: Octavius output scale 0.32 -> 1.51 (+13.5 dB, level with the other fuzzes) (2026-11-18). 36: Voice knobs wrap inside the plate at four (I Know It / Fuzz Zachary hung 35 px off both sides); pedal 448 -> 544 px (2026-10-29). 35: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 34: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
