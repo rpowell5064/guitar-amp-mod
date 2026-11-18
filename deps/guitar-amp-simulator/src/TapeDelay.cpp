@@ -84,21 +84,28 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     const float wowW    = s.wowWalk.next();
     const float scrapeW = s.scrapeWalk.next();
 
-    const float modOld  = wowDepth_ * std::sin(s.wowPhase)
-                        + flutterDepth_ * std::sin(s.flutterPhase);
+    // Wow / Flutter are TAPE-SPEED errors (2026-11-18): each depth is the peak pitch deviation
+    // (0.003 = 0.3 %), so the read offset is depth / (2 pi f) seconds, whatever the delay time.
+    // It was depth x the delay, which made the flutter grow with the time: ~1 % pitch at 6 Hz at
+    // the default 250 ms (sidebands louder than the note: grit), three times that at 750 ms.
+    const float kW = fs / (twoPi * 0.8f);                         // wow:     samples per unit pitch
+    const float kF = fs / (twoPi * 6.0f);                         // flutter: likewise, at 6 Hz
+    const float kC = fs / (twoPi * capRate);                      // capstan flutter, at its rate
+    const float modOld  = wowDepth_ * kW * std::sin(s.wowPhase)
+                        + flutterDepth_ * kF * std::sin(s.flutterPhase);
     // Authentic mod: mostly smooth (slow sine wow + capstan periodic flutter) with a
     // GENTLE aperiodic random component. The random walks are blended low so they add
     // texture without jittering the read pointer fast enough to sound grainy.
     // 2026-07-27: random-walk fractions cut (0.3->0.15 wow, 0.2->0.1 scrape) — the old
     // blend jittered the read pointer enough to sound "wrong"/grainy. Now 85-90% smooth
     // sine with just a whisper of aperiodic drift = natural tape wander.
-    const float modAuth = wowDepth_     * (0.85f * std::sin(s.wowPhase) + 0.15f * wowW)
-                        + flutterDepth_ * (0.90f * std::sin(s.capPhase) + 0.10f * scrapeW);
-    mod = modOld + tapeVoice_ * (modAuth - modOld);
+    const float modAuth = wowDepth_     * kW * (0.85f * std::sin(s.wowPhase) + 0.15f * wowW)
+                        + flutterDepth_ * kC * (0.90f * std::sin(s.capPhase) + 0.10f * scrapeW);
+    mod = modOld + tapeVoice_ * (modAuth - modOld);   // samples
     lockMod_ = mod;
     }
 
-    delaySamples += delaySamples * mod;
+    delaySamples += mod;
     delaySamples = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
 
     // Read delayed sample (Hermite — the wow/flutter-modulated tap).

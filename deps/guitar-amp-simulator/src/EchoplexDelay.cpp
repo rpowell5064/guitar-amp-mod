@@ -77,7 +77,7 @@ float EchoplexDelay::processSample(float x, int ch) noexcept {
     float delaySamples = timeSmoother_.current() * fs / 1000.0f;
 
     if (modLock_ && ch > 0) {
-        delaySamples += delaySamples * lockWear_ * lockWob_;   // channel 0's transport
+        delaySamples += lockWob_;   // channel 0's transport (its offset, in samples)
     } else {
     // Wow: sine whose RATE random-walks in [0.1, 0.3] Hz — bounded ±1 by
     // construction, ±2e-5 Hz/sample walk step.
@@ -93,9 +93,14 @@ float EchoplexDelay::processSample(float x, int ch) noexcept {
     const float flutter = std::clamp(fl - s.flutHPz, -1.0f, 1.0f);
 
     // Worn transport wobbles more: wear = 0.35 (serviced) … 1.0 (thrashed).
+    // The wobble is a TAPE-SPEED error, so its depth is a fixed time offset (2026-11-18). It was
+    // a fraction of the delay, which made the flutter grow with the delay time: ~0.7 % pitch at
+    // 6-12 Hz at the default 250 ms (sidebands holding half the repeat's energy, heard as grit),
+    // three times that at 750 ms. kWowMs keeps the wow as it was at the 310 ms default.
     const float wear = 0.35f + 0.65f * age_;
-    delaySamples += delaySamples * wear * (wow * 0.0035f + flutter * 0.0008f);
-    if (modLock_) { lockWear_ = wear; lockWob_ = wow * 0.0035f + flutter * 0.0008f; }
+    const float wob  = wear * fs * 0.001f * (wow * kWowMs + flutter * kFlutterMs);
+    delaySamples += wob;
+    if (modLock_) { lockWear_ = wear; lockWob_ = wob; }
     }
     delaySamples  = std::clamp(delaySamples, 1.0f, static_cast<float>(bufLen - 3));
 

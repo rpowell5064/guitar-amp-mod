@@ -21,9 +21,9 @@
 //       transport wear = 0.35 + 0.65·age      (scales wow/flutter depth)
 //   - Wow: sine LFO whose RATE random-walks in [0.1, 0.3] Hz (bounded ±1 by
 //     construction, no variance guesswork — the ambient-reverb-LFO lesson);
-//     depth ±0.35 % of the current delay at full wear.
+//     depth ±kWowMs at full wear (a fixed time offset: a tape-speed error, 2026-11-18).
 //   - Flutter: 12 Hz random-walk noise minus a 6 Hz 1-pole = 6–12 Hz band;
-//     depth ±0.08 % at full wear.
+//     depth ±kFlutterMs at full wear (likewise; it was ±0.08 % of the delay).
 //   - Feedback saturation: tanh(2.5·u)·0.4 — the 1/2.5 normalization keeps
 //     small-signal loop gain EXACTLY fb, so the loop is unconditionally
 //     stable below fb = 1.0 and self-oscillates musically at the 0.95 cap
@@ -52,7 +52,8 @@ private:
     // same sample, so a mono fold hears ONE tape loop instead of two differently-
     // wobbling copies (chorus smear). Hiss stays per channel. Off = bit-identical.
     bool  modLock_  = false;
-    float lockWob_  = 0.0f, lockWear_ = 0.0f;
+    float lockWob_  = 0.0f, lockWear_ = 0.0f;   // lockWob_: channel 0's offset in samples
+    static constexpr float kWowMs = 1.085f, kFlutterMs = 0.020f;   // transport wobble depth at full wear
 
     float timeMs_   = 310.0f;
     float feedback_ =   0.35f;
