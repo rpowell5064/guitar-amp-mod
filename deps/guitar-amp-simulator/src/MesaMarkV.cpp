@@ -41,7 +41,13 @@ const MesaMarkV::ModeCfg MesaMarkV::kModes[MesaMarkV::kNumModes] = {
     45.0f, 100.0f, 12000.0f, 620.0f, 1.5f, 3000.0f, 8.0f, 4500.0f,3.5f,0.4f, 0.55f,0.8f, 0.42f, 0.75f, 1.0f },
   // 2 Tweed (Ch1) — tweed midrange, edge of breakup (3 stages)
   { 3, {ST_FV1,ST_FV2,ST_MV2}, {1.6f,2.0f,2.2f,0,0}, {2.4f,2.6f,2.6f,0,0}, TS::Fender, false,
-    60.0f, 140.0f, 11000.0f, 640.0f, 2.0f, 3200.0f, 9.0f, 3300.0f,20.0f,0.35f, 1.4f,1.6f, 0.26f, 0.72f, 1.0f },
+    // 2026-11-21 (the user on the device: Coastline Tweed "sounds harsh"): the 3.3 kHz voice peak was
+    // its unfitted starting value, +20 dB at Q 0.35 (the other modes: +3.5 to +12), which gave Tweed the
+    // most 2-4 kHz of every amp and the thinnest lows of its channel. Now +8 dB, Clean / Crunch's range;
+    // makeup 0.26 -> 0.285 holds its level (it measured 0.8 dB down at gain 30-70%). The peak sits before
+    // the output limiter, so at +20 the boosted 3.3 kHz hit the limiter first as the gain came up: the
+    // harshness the user heard from about half gain.
+    60.0f, 140.0f, 11000.0f, 640.0f, 2.0f, 3200.0f, 9.0f, 3300.0f,8.0f,0.35f, 1.4f,1.6f, 0.285f, 0.72f, 1.0f },
   // 3 Edge (Ch2) — low-gain crunch
   { 3, {ST_MV1,ST_MV2,ST_MV3}, {1.6f,2.2f,2.6f,0,0}, {2.6f,3.0f,3.0f,0,0}, TS::Marshall, false,
     30.0f, 90.0f, 12000.0f, 700.0f, 3.0f, 3400.0f, 9.0f, 3300.0f,5.5f,0.5f, 1.7f,2.0f, 0.17f, 0.72f, 1.0f },
