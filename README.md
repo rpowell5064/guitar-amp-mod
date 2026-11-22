@@ -1,8 +1,9 @@
 # Hex Chain — a complete guitar rig as LV2 plugins
 
 Hex Chain is a suite of fifteen open-source LV2 plugins for the MOD / pi-Stomp platform,
-Zynthian and desktop LV2 hosts, with **Hex Forge** (the whole chain in one plugin) also
-available as a Windows and macOS plugin and standalone app.
+Zynthian and desktop LV2 hosts, with **Hex Forge** (the whole chain in one plugin). A
+commercial Windows and macOS version of Hex Forge is sold at
+[hexchainaudio.com](https://hexchainaudio.com).
 
 Sixteen amp models, most of them built as circuits from their own drawings and run that way
 by default. Twelve drive pedals, four fuzzes, a speaker-and-room cabinet stage with two mics,
@@ -29,8 +30,8 @@ amp), and a second amp and cab can run as a parallel rig.
   is plugged in and it sets the pickup voicing for you, globally, saved with the board.
 - **Per-block CPU meters, a strobe tuner, an auto-calibration wizard** for the input level,
   a dB-scaled output with a transparent clip limiter, and an optional stereo doubler.
-- A **desktop build** (VST3 and standalone on Windows, AU/VST3 and standalone on macOS)
-  with the same engine and the same panel; see [`desktop/BUILDING.md`](desktop/BUILDING.md).
+- A **commercial desktop version** (VST3, AU and standalone, Windows and macOS) with the
+  same engine and panel, from [hexchainaudio.com](https://hexchainaudio.com).
 
 ## Scratch Pad
 
@@ -104,7 +105,8 @@ formats. The Cabinet is pure convolution.
 - **PatchStorage:** each plugin as its own listing for `linux-amd64`, `rpi-aarch64` and
   `patchbox-os-arm32` (NAM is hidden on the 32-bit target). The runbook is in
   [`build-tools/patchstorage/README.md`](build-tools/patchstorage/README.md).
-- **Windows and macOS:** Hex Forge as a plugin and a standalone app, from the same release.
+- **Windows and macOS:** Hex Forge as a plugin and a standalone app, sold separately at
+  [hexchainaudio.com](https://hexchainaudio.com).
 
 ## Building
 
@@ -120,8 +122,7 @@ cmake --install build --prefix ~/.local
 On a 2 GB Pi build the NAM-linked targets one at a time (`-j1`). `build-tools/` holds the
 pi-Stomp deploy scripts, the preset generator, the offline measurement harnesses and the
 golden-render regression test; `bash build-tools/package_bundle.sh <ver>` builds the
-release tarball locally. The desktop build is documented in
-[`desktop/BUILDING.md`](desktop/BUILDING.md).
+release tarball locally.
 
 ## Licensing — open source **and** commercial
 

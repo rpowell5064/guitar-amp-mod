@@ -11,7 +11,7 @@ What remains public is everything needed to **build, gate and deploy** the suite
 * `build-tools/gen_hexforge_presets.py` — generated preset tables
 * `build-tools/hexforge_golden.cpp` — golden-render regression gate (128 presets)
 * `build-tools/hexforge_migrate_test.cpp` — preset-blob migration round-trip
-* `build-tools/hf_resampler_test.cpp`, `hexforge_engine_standalone.cpp`
+* `build-tools/hexforge_engine_standalone.cpp` — engine builds without LV2 headers
 * `build-tools/deploy_pi.sh`, `reload_pi.sh`, `build_verify_pi.sh` — device deploy
 
 The amp models ship with their voicing constants in the source, as always; how

@@ -2353,19 +2353,24 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(REPO, "lv2", "modgui-hexforge"), exist_ok=True)
     with open(os.path.join(REPO, "lv2", "modgui-hexforge", "icon-hexforge.html"), "w", newline="\n", encoding="utf-8") as f:
         f.write(icon)
-    os.makedirs(os.path.join(REPO, "desktop", "generated"), exist_ok=True)
-    with open(os.path.join(REPO, "desktop", "generated", "hexforge_params.h"), "w", newline="\n", encoding="utf-8") as f:
-        f.write(jp)
-    # Desktop webview page (M2): pre-rendered icon + css + port metadata.
-    os.makedirs(os.path.join(REPO, "desktop", "resources"), exist_ok=True)
-    with open(os.path.join(REPO, "desktop", "resources", "icon-hexforge-desktop.html"), "w", newline="\n", encoding="utf-8") as f:
-        f.write(emit_desktop_icon(icon))
-    with open(os.path.join(REPO, "lv2", "modgui-hexforge", "stylesheet-hexforge.css"), "r", encoding="utf-8") as f:
-        css = f.read()
-    with open(os.path.join(REPO, "desktop", "resources", "stylesheet-hexforge-desktop.css"), "w", newline="\n", encoding="utf-8") as f:
-        f.write(emit_desktop_css(css))
-    with open(os.path.join(REPO, "desktop", "resources", "hexforge-ports.js"), "w", newline="\n", encoding="utf-8") as f:
-        f.write(emit_ports_js())
+    # The desktop plugin lives in its own (private) repo; it runs this generator
+    # with HEXFORGE_DESKTOP_DIR pointing at its checkout to get its parameter
+    # table and webview page. Without it, only the LV2 outputs are written.
+    desk = os.environ.get("HEXFORGE_DESKTOP_DIR")
+    if desk:
+        os.makedirs(os.path.join(desk, "generated"), exist_ok=True)
+        with open(os.path.join(desk, "generated", "hexforge_params.h"), "w", newline="\n", encoding="utf-8") as f:
+            f.write(jp)
+        os.makedirs(os.path.join(desk, "resources"), exist_ok=True)
+        with open(os.path.join(desk, "resources", "icon-hexforge-desktop.html"), "w", newline="\n", encoding="utf-8") as f:
+            f.write(emit_desktop_icon(icon))
+        with open(os.path.join(REPO, "lv2", "modgui-hexforge", "stylesheet-hexforge.css"), "r", encoding="utf-8") as f:
+            css = f.read()
+        with open(os.path.join(desk, "resources", "stylesheet-hexforge-desktop.css"), "w", newline="\n", encoding="utf-8") as f:
+            f.write(emit_desktop_css(css))
+        with open(os.path.join(desk, "resources", "hexforge-ports.js"), "w", newline="\n", encoding="utf-8") as f:
+            f.write(emit_ports_js())
     print("ports:", NFIXED + len(ctrl), "(fixed %d + control %d)" % (NFIXED, len(ctrl)))
-    print("wrote lv2/hexforge.ttl, hexforge_ports.h, modgui-hexforge/icon-hexforge.html,")
-    print("      desktop/generated/hexforge_params.h + desktop/resources/{icon,css,ports}")
+    print("wrote lv2/hexforge.ttl, hexforge_ports.h, modgui-hexforge/icon-hexforge.html")
+    if desk:
+        print("      %s: generated/hexforge_params.h + resources/{icon,css,ports}" % desk)

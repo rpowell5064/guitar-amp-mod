@@ -70,10 +70,6 @@ target_include_directories(hexforge_ampcycle PRIVATE
     ${HF_LV2_INCLUDE})
 target_link_libraries(hexforge_ampcycle PRIVATE GuitarAmpSim)
 
-# Desktop sample-rate converter verification (M3): SNR, image rejection,
-# streaming equivalence across ragged block sizes.
-add_executable(hf_resampler_test "${CMAKE_CURRENT_SOURCE_DIR}/hf_resampler_test.cpp")
-
 # Anagram compile gates (M4 pilots + M5 full suite): every ported TU must
 # build in BOTH flag states (default pi-Stomp AND -DHEXCHAIN_ANAGRAM=1) —
 # object libs only, no linking (each TU exports lv2_descriptor).
