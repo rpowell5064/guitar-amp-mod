@@ -107,7 +107,7 @@ void SmallClone::process(float** in, float** out,
             const float h2 = pA - 2.5f * pB + 2.0f * pC - 0.5f * pD;
             const float h3 = 0.5f * (pD - pA) + 1.5f * (pB - pC);
             const float bbdOut = ((h3 * frac + h2) * frac + h1) * frac + pB;
-            ++writeIdx_[c];
+            writeIdx_[c] = (writeIdx_[c] + 1) & bufMask_;   // wrapped: an unbounded counter loses fractional precision as a float (#17)
 
             chState_[c].lpOut += lpOutAlpha_ * (bbdOut - chState_[c].lpOut);
 

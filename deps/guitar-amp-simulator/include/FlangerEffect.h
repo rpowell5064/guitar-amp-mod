@@ -72,7 +72,7 @@ public:
                 const float hc2 = xm1 - 2.5f * x0 + 2.0f * x1 - 0.5f * x2;
                 const float hc3 = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
                 const float wet = ((hc3 * fr + hc2) * fr + hc1) * fr + x0;
-                ++w_[c];
+                w_[c] = (w_[c] + 1) & mask_;   // wrapped: an unbounded counter loses fractional precision as a float (#17)
                 // Damp the feedback: analog BBD flangers band-limit every recirculation,
                 // so high feedback BLOOMS instead of ringing glassy/metallic (and it's
                 // stabilizing — HF can't build up in the loop). 1-pole LP ~5 kHz, blended

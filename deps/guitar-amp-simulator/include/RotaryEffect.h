@@ -89,14 +89,14 @@ public:
                     const float hd = 0.5f + 0.5f * hornSin;
                     const float hornAM = 1.0f - amAmt * (1.0f - hd * hd);         // shaped
                     const float drumAM = 1.0f - amAmt * 0.5f * (0.5f - 0.5f * drumSin);
-                    ++w_[c];
+                    w_[c] = (w_[c] + 1) & mask_;   // wrapped: an unbounded counter loses fractional precision as a float (#17)
                     const float wet = hi * hornAM + lo * drumAM;
                     out[c][i] = (dry + mix_ * (kRotorGain * wet - dry)) * xfGain;
                 } else {
                     // Old single-band path (voicing 0).
                     const float delayS = baseS + dopS * (0.6f*hornSin + 0.4f*drumSin) * 0.5f + dopS * 0.5f;
                     float wet = hread(c, delayS);
-                    ++w_[c];
+                    w_[c] = (w_[c] + 1) & mask_;   // wrapped: an unbounded counter loses fractional precision as a float (#17)
                     const float am = 1.0f - amAmt * (0.5f - 0.5f * (0.7f*hornSin + 0.3f*drumSin));
                     out[c][i] = (dry + mix_ * (kRotorGain * wet * am - dry)) * xfGain;
                 }

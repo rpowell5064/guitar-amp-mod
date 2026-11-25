@@ -155,7 +155,7 @@ void CE2Chorus::process(float** in, float** out,
             const float hc3  = 0.5f * (x2 - xm1) + 1.5f * (x0 - x1);
             const float bbdOut = ((hc3 * frac + hc2) * frac + hc1) * frac + x0;
 
-            ++writeIdx_[c];
+            writeIdx_[c] = (writeIdx_[c] + 1) & bufMask_;   // wrapped: an unbounded counter loses fractional precision as a float (#17)
 
             // ── BBD output reconstruction LPF ─────────────────────────────────
             chState_[c].lpOut += lpOutAlpha_ * (bbdOut - chState_[c].lpOut);
