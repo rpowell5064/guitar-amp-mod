@@ -1,5 +1,17 @@
 # Hex Chain Release Notes
 
+## v1.23.1 — 2026-11-24
+
+A fix for the modulation block, and a gentler Cali V Tweed.
+
+### Fixed
+
+- **Chorus, flanger and rotary turned grainy after a few minutes** ([#17](https://github.com/rpowell5064/guitar-amp-mod/issues/17)). Lush-2, Nevermind Chorus, Seasick Vibe, Flanger and Rotary, in the standalone Modulation plugin and in Hex Forge's Mod blocks. The point each one reads its delay line at was kept as a sample count that only grew, and it lost precision the longer the plugin ran: clean for about the first five minutes, then a rising digital grit, about 6 times the clean level by 10 minutes and 15 times by 30. Changing Type built a fresh effect, which is why switching away and back cleaned it up. The count now wraps, so the sound stays the same however long the plugin runs.
+
+### Changed
+
+- **Cali V Tweed is less harsh** (Amp and Hex Forge). Its 3.3 kHz voice peak was +20 dB, against +3.5 to +12 on the other modes, and it hit the output limiter first as the gain came up: a fizzy top from about half gain. It is now +8 dB, so the mode measures about 2 dB less at 2-4 kHz and fuller below 800 Hz, at the same level. No factory preset uses Tweed.
+
 ## v1.23.0 — 2026-11-18
 
 The effects update. Every effect block was rendered type by type against a guitar DI and

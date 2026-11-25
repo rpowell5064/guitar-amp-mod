@@ -37,14 +37,16 @@ A Center Delay control (0–100 ms) shifts the delay line the chorus/flanger mod
 
 Works standalone or as part of the Hex Chain suite / Hex Forge. Free and open source (GPL-3).
 
-v1.23: the Flanger sweeps like a flanger. The middle of Rate is a slow 0.45 Hz jet (it was 2 Hz, a pitch wobble that read as a rotary), and the middle of Mix sets the delayed copy equal to the dry for the deepest notches, with the dry fading out above it. Uni-Verse: the middle of Mix is now the circuit's own chorus blend, and the top of Mix reaches its vibrato. Rotary and Seasick Vibe no longer dip 4 dB at the middle of Mix.""" ;
+v1.23: the Flanger sweeps like a flanger. The middle of Rate is a slow 0.45 Hz jet (it was 2 Hz, a pitch wobble that read as a rotary), and the middle of Mix sets the delayed copy equal to the dry for the deepest notches, with the dry fading out above it. Uni-Verse: the middle of Mix is now the circuit's own chorus blend, and the top of Mix reaches its vibrato. Rotary and Seasick Vibe no longer dip 4 dB at the middle of Mix.
+
+v1.23.1: Lush-2, Nevermind Chorus, Seasick Vibe, Flanger and Rotary no longer turn grainy after a few minutes. The point they read their delay line at lost precision the longer the plugin ran, and changing Type was all that cleared it.""" ;
     mod:label  "Modulation" ;
     mod:brand  "Hex Chain" ;
     doap:license <http://www.gnu.org/licenses/gpl-3.0.html> ;
     doap:maintainer [ a foaf:Person ; foaf:name "Ryan Powell" ;
                       foaf:homepage <https://rpowell5064.github.io/guitaramp-suite/> ] ;
     lv2:minorVersion 1 ;
-    lv2:microVersion 40 ;   # 40: Flanger Rate exponential (middle 0.45 Hz, was 2 Hz linear) and an equal-mix Mix law (deepest notches at the middle, dry out above it, level held); Uni-Verse Mix middle = the circuit's chorus blend, top = its vibrato; Rotary and Seasick equal-power blends (were -4 dB at mid Mix) (2026-11-18). 39: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 38: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 37: panel 430 -> 490 (the plate measured 477 px live). 34: version bump to re-list on PatchStorage so the listing description publishes (was missing). 33: Script Phaser type 8 (script-era P90, no feedback)
+    lv2:microVersion 41 ;   # 41: Lush-2 / Nevermind / Seasick / Flanger / Rotary delay-line write counters wrap at the buffer mask: the unbounded counter, read as a float, lost the tap's fractional precision after a few minutes (grainy noise, issue #17) (2026-11-24). 40: Flanger Rate exponential (middle 0.45 Hz, was 2 Hz linear) and an equal-mix Mix law (deepest notches at the middle, dry out above it, level held); Uni-Verse Mix middle = the circuit's chorus blend, top = its vibrato; Rotary and Seasick equal-power blends (were -4 dB at mid Mix) (2026-11-18). 39: lv2:enabled block-enable port added at the END (designated so generic-UI hosts can bind it as the bypass; INVERTED sense, 1 = on). The existing bypass port is unmoved: renumbering it would shift every port after it and invalidate saved boards. 38: LV2 port groups (generic-UI hosts like Zynthian page the controls by these; metadata only). 37: panel 430 -> 490 (the plate measured 477 px live). 34: version bump to re-list on PatchStorage so the listing description publishes (was missing). 33: Script Phaser type 8 (script-era P90, no feedback)
     lv2:optionalFeature lv2:hardRTCapable ;
 
     lv2:port [
