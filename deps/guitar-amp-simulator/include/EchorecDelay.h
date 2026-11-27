@@ -97,6 +97,10 @@ private:
     float noiseLevel_   =   0.0f;   // [0,1] → −60 dB noise at 1.0
 
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
+    // Wow / Flutter depths smoothed (2026-11-27, a tester: the Wow knob crackled while turned):
+    // the depth scales the drum's speed error (several samples of read offset at long times), so a raw knob step jumped
+    // the tap. Settled, a smoother returns its target exactly (output unchanged).
+    ParamSmoother wowSmoother_, flutterSmoother_;
     float currentSpeedMod_ = 1.0f;  // cached per-sample from advanceSmoothing
 
     // ── Shared motor modulation (same for all channels) ───────────────────

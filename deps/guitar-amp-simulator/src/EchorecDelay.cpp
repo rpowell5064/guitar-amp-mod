@@ -23,9 +23,13 @@ void EchorecDelay::prepare(double sr, int maxBlock, int numCh) {
     timeSmoother_.prepare(fs, 50.0f);
     feedbackSmoother_.prepare(fs, 5.0f);
     mixSmoother_.prepare(fs, 5.0f);
+    wowSmoother_.prepare(fs, 30.0f);
+    flutterSmoother_.prepare(fs, 30.0f);
     timeSmoother_.setImmediate(timeMs_);
     feedbackSmoother_.setImmediate(feedback_);
     mixSmoother_.setImmediate(mix_);
+    wowSmoother_.setImmediate(wowDepth_);
+    flutterSmoother_.setImmediate(flutterDepth_);
 
     // Shared motor modulation — one drum shared by both channels.
     wowWalk_.prepare(0.2f, fs, 0xDEADBEEFu);
@@ -47,6 +51,8 @@ void EchorecDelay::reset() noexcept {
     timeSmoother_.setImmediate(timeMs_);
     feedbackSmoother_.setImmediate(feedback_);
     mixSmoother_.setImmediate(mix_);
+    wowSmoother_.setImmediate(wowDepth_);
+    flutterSmoother_.setImmediate(flutterDepth_);
     wowWalk_.setImmediate(0.0f);
     flutterWalk_.setImmediate(0.0f);
     currentSpeedMod_ = 1.0f;
@@ -56,6 +62,8 @@ void EchorecDelay::advanceSmoothing() noexcept {
     timeSmoother_.tick(timeMs_);
     feedbackSmoother_.tick(feedback_);
     mixSmoother_.tick(mix_);
+    wowSmoother_.tick(wowDepth_);
+    flutterSmoother_.tick(flutterDepth_);
 
     // Advance shared motor modulation (both channels read the same speed).
     const float wow     = wowWalk_.next();
@@ -63,8 +71,8 @@ void EchorecDelay::advanceSmoothing() noexcept {
 
     // wowDepth [0,1] → ±1% speed deviation; flutterDepth [0,1] → ±0.5%.
     // RandomWalk outputs are normalized to σ≈1, so depth=1 gives ~1% RMS deviation.
-    currentSpeedMod_ = 1.0f + wowDepth_     * 0.01f  * wow
-                            + flutterDepth_ * 0.005f * flutter;
+    currentSpeedMod_ = 1.0f + wowSmoother_.current()     * 0.01f  * wow
+                            + flutterSmoother_.current() * 0.005f * flutter;
     currentSpeedMod_ = std::clamp(currentSpeedMod_, 0.9f, 1.1f);
 }
 

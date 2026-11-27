@@ -67,6 +67,10 @@ private:
     float lockMod_ = 0.0f;
 
     ParamSmoother timeSmoother_, feedbackSmoother_, mixSmoother_;
+    // Wow / Flutter depths smoothed (2026-11-27, a tester: the Wow knob crackled while turned):
+    // the depth scales a read offset of up to hundreds of samples, so a raw knob step jumped
+    // the tap. Settled, a smoother returns its target exactly (output unchanged).
+    ParamSmoother wowSmoother_, flutterSmoother_;
 
     struct ChannelState {
         std::vector<float> buf;

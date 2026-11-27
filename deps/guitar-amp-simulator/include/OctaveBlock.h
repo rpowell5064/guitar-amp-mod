@@ -5,8 +5,9 @@
 
 // Octave block — analog-style (Boss OC-2 voicing) sub-octave + octave-up generator
 // blended with dry. The sub-octave is a flip-flop divider (a square at half the input
-// frequency, gated by the input envelope); the octave-up is a full-wave rectifier of
-// the isolated fundamental. Both track MONOPHONICALLY — clean and singing on single
+// frequency, gated by the input envelope); the octave-up doubles the isolated
+// fundamental (a note-tracking low-pass, its analytic signal squared; upVoice 0 = the
+// old full-wave rectifier). Both track MONOPHONICALLY — clean and singing on single
 // notes (leads), gnarlier on chords, exactly like a real analog octaver (not a
 // polyphonic POG). For Mastodon-style octave leads and synth-y sub textures.
 //
@@ -26,7 +27,8 @@
 //   24-TET band. Monophonic, like the octaver itself.
 //
 // Params (0..1 unless noted): up (octave-up level), down (sub-octave level),
-//   dry (dry blend), micro (shimmer voice level), interval (0..5 = 24-TET step).
+//   dry (dry blend), micro (shimmer voice level), interval (0..5 = 24-TET step),
+//   mix (the whole pedal against the clean input; 1 = the pedal as set).
 class OctaveBlock : public AudioBlock {
 public:
     // 24-TET microtonal intervals for the shimmer voice, in cents. Odd quarter-tone
@@ -100,9 +102,41 @@ public:
                 const float sub = s.subLP;
 
                 // Octave-up: full-wave rectified fundamental (2× freq), DC-blocked.
-                const float upRaw = std::fabs(lp) * 2.0f;
-                s.upLP += upLPA_ * (upRaw - s.upLP);
-                const float up = upRaw - s.upLP;
+                // upVoice_ 1 (2026-11-27, a tester: "the octave up didn't sound like an octave
+                // up"): the rectifier (upVoice 0, below) passes the played note itself at about -6 dB under the
+                // octave (the 350 Hz one-pole leaves the 2nd/3rd harmonics in, and rectifying a
+                // mix makes difference tones at f). Now: a 4-pole low-pass that follows the
+                // tracked note isolates the fundamental, and squaring its analytic signal
+                // (z^2/|z|: the same Hilbert pair as the shimmer) doubles every frequency, so no
+                // component lands back on f; |z| keeps the envelope.
+                float up;
+                if (upVoice_ > 0.5f) {
+                    if (s.upFc != s.f0) {   // retune on a new pitch only (a tan per note)
+                        s.upFc = s.f0;
+                        const float fc = s.f0 > 0.0f ? std::min(std::max(1.25f * s.f0, 60.0f), 1500.0f) : 1000.0f;
+                        const float g = std::tan(3.14159265f * fc / fs_);
+                        s.upA1 = 1.0f / (1.0f + g * (g + 1.41421356f));
+                        s.upA2 = g * s.upA1; s.upA3 = g * s.upA2;
+                    }
+                    float f = x;
+                    for (int k = 0; k < 2; ++k) {   // TPT state-variable low-pass, Q 0.707
+                        const float v3 = f - s.upIc2[k];
+                        const float v1 = s.upA1 * s.upIc1[k] + s.upA2 * v3;
+                        const float v2 = s.upIc2[k] + s.upA2 * s.upIc1[k] + s.upA3 * v3;
+                        s.upIc1[k] = 2.0f * v1 - s.upIc1[k];
+                        s.upIc2[k] = 2.0f * v2 - s.upIc2[k];
+                        f = v2;
+                    }
+                    const float uI = hilbert(s.apUI, kApI, s.upZ1);
+                    const float uQ = hilbert(s.apUQ, kApQ, f);
+                    s.upZ1 = f;
+                    const float a = std::sqrt(uI * uI + uQ * uQ);
+                    up = kUpGain * (uI * uI - uQ * uQ) / (a + 1.0e-6f);
+                } else {
+                    const float upRaw = std::fabs(lp) * 2.0f;
+                    s.upLP += upLPA_ * (upRaw - s.upLP);
+                    up = upRaw - s.upLP;
+                }
 
                 // Microtonal shimmer via single-sideband frequency shift.
                 float shimmer = 0.0f;
@@ -128,7 +162,8 @@ public:
                     shimmer = I * cw + Q * sw;
                 }
 
-                out[c][i] = dry_ * x + down_ * sub * 1.2f + up_ * up * 1.4f + micro_ * shimmer;
+                const float y = dry_ * x + down_ * sub * 1.2f + up_ * up * 1.4f + micro_ * shimmer;
+                out[c][i] = y + (1.0f - mix_) * (x - y);   // Mix 1: exactly y
             }
             for (int c = chs; c < nch; ++c) if (in[c] != out[c]) out[c][i] = in[c][i];
         }
@@ -146,6 +181,8 @@ public:
         else if (id == "dry")      dry_ = v;
         else if (id == "micro")    micro_ = v;
         else if (id == "deglitch") deglitch_ = v;   // divider hysteresis (default on)
+        else if (id == "upVoice")  upVoice_ = v;    // 1 = clean doubler (default), 0 = the old rectifier
+        else if (id == "mix")      mix_ = v;
     }
     float getParameter(const std::string& id) const override {
         if (id == "up")       return up_;
@@ -154,10 +191,13 @@ public:
         if (id == "micro")    return micro_;
         if (id == "interval") return static_cast<float>(interval_);
         if (id == "deglitch") return deglitch_;
+        if (id == "upVoice")  return upVoice_;
+        if (id == "mix")      return mix_;
         return 0.0f;
     }
 private:
     static constexpr float kHystFrac = 0.12f;   // Schmitt hysteresis as a fraction of env
+    static constexpr float kUpGain   = 1.0f;    // the doubler's level, matched to the rectifier's
     // 2nd-order all-pass: H(z) = (a − z^-2)/(1 − a z^-2).
     struct AP2 { float x1=0, x2=0, y1=0, y2=0; };
     // Polyphase-IIR Hilbert half-band all-pass coefficients (8-pole, ~60 Hz–8 kHz 90°).
@@ -180,8 +220,9 @@ private:
     }
 
     float fs_ = 48000.0f;
-    float up_ = 0.0f, down_ = 0.5f, dry_ = 1.0f, micro_ = 0.0f;
+    float up_ = 0.0f, down_ = 0.5f, dry_ = 1.0f, micro_ = 0.0f, mix_ = 1.0f;
     float deglitch_ = 1.0f;   // divider hysteresis ON by default (set 0 for the old divider)
+    float upVoice_  = 1.0f;   // octave-up voice: 1 = tracked low-pass + analytic doubler, 0 = rectifier
     int   interval_ = 0;
     float microRatio_ = 1.0f;
     float envA_ = 0.0f, envR_ = 0.0f, lpInA_ = 0.0f, subLPA_ = 0.0f, upLPA_ = 0.0f;
@@ -191,6 +232,9 @@ private:
         int   sinceCross = 0;
         float f0 = 0.0f, shift = 0.0f, oscPh = 0.0f, hilbZ1 = 0.0f;
         AP2   apI[4], apQ[4];
+        float upFc = -1.0f, upA1 = 0.0f, upA2 = 0.0f, upA3 = 0.0f, upZ1 = 0.0f;   // octave-up doubler
+        float upIc1[2] = {0.0f, 0.0f}, upIc2[2] = {0.0f, 0.0f};
+        AP2   apUI[4], apUQ[4];
     };
     ChannelState ch_[2];
 };

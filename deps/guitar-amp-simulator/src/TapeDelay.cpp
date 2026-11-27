@@ -28,9 +28,13 @@ void TapeDelay::prepare(double sr, int maxBlock, int numCh) {
     timeSmoother_.prepare(static_cast<float>(sr), 50.0f);
     feedbackSmoother_.prepare(static_cast<float>(sr), 5.0f);
     mixSmoother_.prepare(static_cast<float>(sr), 5.0f);
+    wowSmoother_.prepare(static_cast<float>(sr), 30.0f);
+    flutterSmoother_.prepare(static_cast<float>(sr), 30.0f);
     timeSmoother_.setImmediate(timeMs_);
     feedbackSmoother_.setImmediate(feedback_);
     mixSmoother_.setImmediate(mix_);
+    wowSmoother_.setImmediate(wowDepth_);
+    flutterSmoother_.setImmediate(flutterDepth_);
 
     rebuildFilters();
     reset();
@@ -52,12 +56,16 @@ void TapeDelay::reset() noexcept {
     timeSmoother_.setImmediate(timeMs_);
     feedbackSmoother_.setImmediate(feedback_);
     mixSmoother_.setImmediate(mix_);
+    wowSmoother_.setImmediate(wowDepth_);
+    flutterSmoother_.setImmediate(flutterDepth_);
 }
 
 void TapeDelay::advanceSmoothing() noexcept {
     timeSmoother_.tick(timeMs_);
     feedbackSmoother_.tick(feedback_);
     mixSmoother_.tick(mix_);
+    wowSmoother_.tick(wowDepth_);
+    flutterSmoother_.tick(flutterDepth_);
 }
 
 float TapeDelay::processSample(float x, int ch) noexcept {
@@ -91,16 +99,17 @@ float TapeDelay::processSample(float x, int ch) noexcept {
     const float kW = fs / (twoPi * 0.8f);                         // wow:     samples per unit pitch
     const float kF = fs / (twoPi * 6.0f);                         // flutter: likewise, at 6 Hz
     const float kC = fs / (twoPi * capRate);                      // capstan flutter, at its rate
-    const float modOld  = wowDepth_ * kW * std::sin(s.wowPhase)
-                        + flutterDepth_ * kF * std::sin(s.flutterPhase);
+    const float wowD = wowSmoother_.current(), flutD = flutterSmoother_.current();
+    const float modOld  = wowD * kW * std::sin(s.wowPhase)
+                        + flutD * kF * std::sin(s.flutterPhase);
     // Authentic mod: mostly smooth (slow sine wow + capstan periodic flutter) with a
     // GENTLE aperiodic random component. The random walks are blended low so they add
     // texture without jittering the read pointer fast enough to sound grainy.
     // 2026-07-27: random-walk fractions cut (0.3->0.15 wow, 0.2->0.1 scrape) — the old
     // blend jittered the read pointer enough to sound "wrong"/grainy. Now 85-90% smooth
     // sine with just a whisper of aperiodic drift = natural tape wander.
-    const float modAuth = wowDepth_     * kW * (0.85f * std::sin(s.wowPhase) + 0.15f * wowW)
-                        + flutterDepth_ * kC * (0.90f * std::sin(s.capPhase) + 0.10f * scrapeW);
+    const float modAuth = wowD  * kW * (0.85f * std::sin(s.wowPhase) + 0.15f * wowW)
+                        + flutD * kC * (0.90f * std::sin(s.capPhase) + 0.10f * scrapeW);
     mod = modOld + tapeVoice_ * (modAuth - modOld);   // samples
     lockMod_ = mod;
     }
